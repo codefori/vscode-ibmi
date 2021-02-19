@@ -14,7 +14,8 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:ibmi-code.connect"
+		"onCommand:ibmi-code.connect",
+		"onView:memberBrowser"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -22,6 +23,31 @@
 			{
 				"command": "ibmi-code.connect",
 				"title": "IBM i: Connect"
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "ibmi-explorer",
+					"title": "IBM i",
+					"icon": "media/as400.svg"
+				}
+			]
+		},
+		"views": {
+			"ibmi-explorer": [
+				{
+					"id": "memberBrowser",
+					"name": "Member Browser",
+					"contextualTitle": "Member Browser",
+					"icon": "media/as400.svg"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "memberBrowser",
+				"contents": "No connection found.\n[Connect to an IBM i](command:ibmi-code.connect)"
 			}
 		]
 	},

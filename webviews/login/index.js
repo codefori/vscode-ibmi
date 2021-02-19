@@ -4,9 +4,8 @@ const path = require('path');
 const fs = require('fs');
 
 const IBMi = require('../../api/IBMi');
-const IBMiContent = require('../../api/IBMiContent');
 
-var instance = require('../../Instance');
+var instance = require('../../instance');
 
 const LoginHTML = fs.readFileSync(path.join(__dirname, 'login.html'), {encoding: 'utf8'});
 
@@ -21,7 +20,7 @@ module.exports = class Login {
       }
     );
 
-    panel.webview.html = this.getHTML();
+    panel.webview.html = LoginHTML;
 
     // Handle messages from the webview
     panel.webview.onDidReceiveMessage(
@@ -36,10 +35,10 @@ module.exports = class Login {
               await connection.connect(message.data);
               panel.dispose();
 
-              instance.connection = connection;
-              instance.content = new IBMiContent(connection);
-
               vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
+
+              instance.setConnection(connection);
+              instance.loadAllofExtension();
 
             } catch (e) {
               vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);
@@ -50,14 +49,5 @@ module.exports = class Login {
       },
       undefined,
     );
-  }
-
-  static getHTML() {
-    var html = LoginHTML;
-
-    html = html.replace(new RegExp('\\!WEBFORMS\\!', 'g'), path.join(__dirname, '..', 'webforms.css'));
-
-    console.log(html);
-    return html;
   }
 }

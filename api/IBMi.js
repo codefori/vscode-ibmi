@@ -1,7 +1,4 @@
 const node_ssh = require('node-ssh');
-const parse = require('csv-parse/lib/sync');
-
-const IBMiContent = require('./IBMiContent');
 
 module.exports = class IBMi {
   constructor() {
@@ -165,40 +162,6 @@ module.exports = class IBMi {
   }
 
   /**
-   * Download the contents of a table.
-   * @param {string} lib 
-   * @param {string} file 
-   * @param {string} [mbr] Will default to file provided 
-   */
-  async getTable(lib, file, mbr) {
-    if (!mbr) mbr = file; //Incase mbr is the same file
-
-    const content = new IBMiContent(this);
-    const tempRmt = this.getTempRemote(IBMi.qualifyPath(undefined, lib, file, mbr));
-
-    await this.remoteCommand(
-      'QSYS/CPYTOIMPF FROMFILE(' +
-        lib +
-        '/' +
-        file +
-        ' ' +
-        mbr +
-        ') ' +
-        "TOSTMF('" +
-        tempRmt +
-        "') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL)",
-    );
-
-    var result = await content.downloadStreamfile(tempRmt);
-
-    return parse(result, {
-      columns: true,
-      skip_empty_lines: true,
-    });
-    
-  }
-
-  /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
    */
@@ -208,11 +171,22 @@ module.exports = class IBMi {
       console.log('Using existing temp: ' + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      var value = '/tmp/' + makeid();
+      var value = '/tmp/' + IBMi.makeid();
       console.log('Using new temp: ' + value);
       this.tempRemoteFiles[key] = value;
       return value;
     }
+  }
+
+  static makeid() {
+    var text = 'o';
+    var possible =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  
+    for (var i = 0; i < 9; i++)
+      text += possible.charAt(Math.floor(Math.random() * possible.length));
+  
+    return text;
   }
 
   /**
@@ -227,15 +201,4 @@ module.exports = class IBMi {
       (asp ? `/${asp}` : '') + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
     return path;
   }
-}
-
-function makeid() {
-  var text = 'o';
-  var possible =
-    'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-  for (var i = 0; i < 9; i++)
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-
-  return text;
 }
