@@ -15,6 +15,7 @@
 	],
 	"activationEvents": [
 		"onCommand:ibmi-code.connect",
+		"onCommand:ibmi-code.openEditable",
 		"onView:memberBrowser"
 	],
 	"main": "./extension.js",

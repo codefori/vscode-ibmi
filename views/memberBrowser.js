@@ -21,7 +21,7 @@ module.exports = class memberBrowserProvider {
    */
   async getChildren(element) {
     const content = instance.getContent();
-    var items = [], item;
+    var items = [], item, path;
 
     if (element) { //Chosen SPF
       //Fetch members
@@ -32,8 +32,17 @@ module.exports = class memberBrowserProvider {
         const members = await content.getMemberList(lib, spf);
 
         for (const member of members) {
-          item = new vscode.TreeItem(`${member.name}.${member.extension.toLowerCase()}`);
-          item.resourceUri = vscode.Uri.parse(`member:///${member.library}/${member.file}/${member.name}.${member.extension}`);
+          path = `${member.library}/${member.file}/${member.name}.${member.extension}`;
+
+          item = new vscode.TreeItem(`${member.name.toLowerCase()}.${member.extension.toLowerCase()}`);
+          item.description = member.text;
+          item.resourceUri = vscode.Uri.parse(path);
+          item.command = {
+            command: `ibmi-code.openEditable`,
+            title: `Open Member`,
+            arguments: [path]
+          };
+          
           items.push(item);
         }
       } catch (e) {
@@ -44,12 +53,8 @@ module.exports = class memberBrowserProvider {
 
     } else {
       //Load list of chosen SPFs here
-      
-      item = new SPF("QSYSINC/H", "QSYSINC/H");
-      item.tooltip = "A source physical file";
-      //item.description = "A source physical file with source members in";
-
-      items.push(item);
+      items.push(new SPF("QSYSINC/H", "QSYSINC/H"));
+      items.push(new SPF("BARRY/QRPGLESRC", "BARRY/QRPGLESRC"));
     }
 
     return items;

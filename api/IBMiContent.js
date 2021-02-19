@@ -109,7 +109,7 @@ module.exports = class IBMiContent {
   /**
    * @param {string} lib 
    * @param {string} spf
-   * @returns {Promise<{library: string, file: string, name: string, extension: string, recordLength: number}[]>} List of members 
+   * @returns {Promise<{library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
   async getMemberList(lib, spf) {
     lib = lib.toUpperCase();
@@ -129,10 +129,11 @@ module.exports = class IBMiContent {
 
     return results.map(result => ({
       library: result.MBLIB,
-      file: result.MLFILE,
+      file: result.MBFILE,
       name: result.MBNAME,
       extension: result.MBSEU2,
-      recordLength: Number(result.MBMXRL)
+      recordLength: Number(result.MBMXRL),
+      text: result.MBMTXT
     }))
   }
 }
