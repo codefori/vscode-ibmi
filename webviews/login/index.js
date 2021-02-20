@@ -32,13 +32,17 @@ module.exports = class Login {
             const connection = new IBMi();
 
             try {
-              await connection.connect(message.data);
-              panel.dispose();
+              const connected = await connection.connect(message.data);
+              if (connected) {
+                panel.dispose();
 
-              vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
+                vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
 
-              instance.setConnection(connection);
-              instance.loadAllofExtension();
+                instance.setConnection(connection);
+                instance.loadAllofExtension();
+              } else {
+                vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
+              }
 
             } catch (e) {
               vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);

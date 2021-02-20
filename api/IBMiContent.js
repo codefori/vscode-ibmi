@@ -7,6 +7,7 @@ const parse = require('csv-parse/lib/sync');
 
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
+const writeFileAsync = util.promisify(fs.writeFile);
 
 module.exports = class IBMiContent {
   /**
@@ -71,6 +72,39 @@ module.exports = class IBMiContent {
     var body = await readFileAsync(tmpobj, 'utf8');
 
     return body;
+  }
+
+  /**
+   * Upload to a member
+   * @param {string|undefined} asp 
+   * @param {string} lib 
+   * @param {string} spf 
+   * @param {string} mbr 
+   * @param {string} content 
+   */
+  async uploadMemberContent(asp, lib, spf, mbr, content) {
+    lib = lib.toUpperCase();
+    spf = spf.toUpperCase();
+    mbr = mbr.toUpperCase();
+
+    const client = this.ibmi.client;
+    const path = IBMi.qualifyPath(asp, lib, spf, mbr);
+    const tempRmt = this.ibmi.getTempRemote(path);
+    const tmpobj = await tmpFile();
+
+    try {
+      await writeFileAsync(tmpobj, content, 'utf8');
+
+      await client.putFile(tmpobj, tempRmt);
+      await this.ibmi.remoteCommand(
+        `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208)`,
+      );
+
+      return true;
+    } catch (error) {
+      console.log('Failed uploading member: ' + error);
+      return Promise.reject(error);
+    }
   }
 
   /**

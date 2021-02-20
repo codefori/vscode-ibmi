@@ -36,7 +36,7 @@ module.exports = class memberBrowserProvider {
 
           item = new vscode.TreeItem(`${member.name.toLowerCase()}.${member.extension.toLowerCase()}`);
           item.description = member.text;
-          item.resourceUri = vscode.Uri.parse(path);
+          item.resourceUri = vscode.Uri.parse(path).with({scheme: 'member'});
           item.command = {
             command: `ibmi-code.openEditable`,
             title: `Open Member`,
