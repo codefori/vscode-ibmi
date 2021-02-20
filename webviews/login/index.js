@@ -10,7 +10,11 @@ var instance = require('../../instance');
 const LoginHTML = fs.readFileSync(path.join(__dirname, 'login.html'), {encoding: 'utf8'});
 
 module.exports = class Login {
-  static show() {
+  /**
+   * Called to log in to an IBM i
+   * @param {vscode.ExtensionContext} context
+   */
+  static show(context) {
     const panel = vscode.window.createWebviewPanel(
       'systemLogin',
       'IBM i Login',
@@ -39,7 +43,7 @@ module.exports = class Login {
                 vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
 
                 instance.setConnection(connection);
-                instance.loadAllofExtension();
+                instance.loadAllofExtension(context);
               } else {
                 vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
               }

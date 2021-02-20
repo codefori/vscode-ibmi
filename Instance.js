@@ -12,36 +12,43 @@ module.exports = class {
   static getConnection() {return instance.connection};
   static getContent() {return instance.content};
 
-  //We call this after we have made a connect to the IBM i to load the rest of the plugin in.
-  static loadAllofExtension() {
+  /**
+   * We call this after we have made a connect to the IBM i to load the rest of the plugin in.
+   * @param {vscode.ExtensionContext} context
+   */
+  static loadAllofExtension(context) {
     const memberBrowser = require('./views/memberBrowser');
     const qsysFs = new (require('./views/qsysFs'));
 
     if (instance.connection) {
-      vscode.window.registerTreeDataProvider(
-        'memberBrowser',
-        new memberBrowser()
+      context.subscriptions.push(
+        vscode.window.registerTreeDataProvider(
+          'memberBrowser',
+          new memberBrowser()
+      ));
+
+      context.subscriptions.push(
+        vscode.workspace.registerFileSystemProvider('member', qsysFs, { 
+          isCaseSensitive: false
+        })
       );
 
-      
-      vscode.workspace.registerFileSystemProvider('member', qsysFs, { 
-        isCaseSensitive: false
-      });
-
-      vscode.commands.registerCommand('ibmi-code.openEditable', async (path) => {
-        console.log(path);
-        if (path.startsWith('/')) {
-          //IFS
-        } else {
-          let uri = vscode.Uri.parse(path.toLowerCase()).with({scheme: 'member'});
-          try {
-            let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-            await vscode.window.showTextDocument(doc, { preview: false });
-          } catch (e) {
-            console.log(e);
+      context.subscriptions.push(
+        vscode.commands.registerCommand('ibmi-code.openEditable', async (path) => {
+          console.log(path);
+          if (path.startsWith('/')) {
+            //IFS
+          } else {
+            let uri = vscode.Uri.parse(path.toLowerCase()).with({scheme: 'member'});
+            try {
+              let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
+              await vscode.window.showTextDocument(doc, { preview: false });
+            } catch (e) {
+              console.log(e);
+            }
           }
-        }
-      });
+        })
+      );
     }
   }
 };
