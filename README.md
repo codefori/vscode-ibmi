@@ -1,6 +1,6 @@
-# code-for-ibmi README
+# Code for IBM i
 
-Code for IBM i is an extension for Visual Studio Code to work with ILE source righht from Code.
+Code for IBM i is an extension for Visual Studio Code to work with ILE source from Code.
 
 ![](media/image.png)
 
