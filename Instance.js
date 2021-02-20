@@ -24,7 +24,7 @@ module.exports = class {
       context.subscriptions.push(
         vscode.window.registerTreeDataProvider(
           'memberBrowser',
-          new memberBrowser()
+          new memberBrowser(context)
       ));
 
       context.subscriptions.push(

@@ -4,7 +4,21 @@ const vscode = require('vscode');
 var instance = require('../instance');
 
 module.exports = class memberBrowserProvider {
-  constructor() {
+  /**
+   * @param {vscode.ExtensionContext} context
+   */
+  constructor(context) {
+    this.emitter = new vscode.EventEmitter();
+    this.onDidChangeTreeData = this.emitter.event;
+
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeConfiguration(event => {
+        let affected = event.affectsConfiguration("ibmi-code.sourceFileList");
+        if (affected) {
+          this.emitter.fire();
+        }
+      })
+    )
   }
 
   /**
@@ -52,9 +66,12 @@ module.exports = class memberBrowserProvider {
       }
 
     } else {
-      //Load list of chosen SPFs here
-      items.push(new SPF("QSYSINC/H", "QSYSINC/H"));
-      items.push(new SPF("BARRY/QRPGLESRC", "BARRY/QRPGLESRC"));
+      const shortcuts = instance.getConnection().spfShortcuts;
+
+      for (var shortcut of shortcuts) {
+        shortcut = shortcut.toUpperCase()
+        items.push(new SPF(shortcut, shortcut));
+      }
     }
 
     return items;

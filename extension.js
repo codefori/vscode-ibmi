@@ -5,6 +5,7 @@ const vscode = require('vscode');
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
+var instance = require('./instance');
 const LoginPanel = require('./webviews/login');
 
 /**
@@ -19,14 +20,22 @@ function activate(context) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with  registerCommand
 	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('ibmi-code.connect', function () {
-		// The code you place here will be executed every time your command is executed
+	context.subscriptions.push(
+		vscode.commands.registerCommand('ibmi-code.connect', function () {
+			LoginPanel.show(context);
+		})
+	);
 
-		// Display a message box to the user
-		LoginPanel.show(context);
-	});
-
-	context.subscriptions.push(disposable);
+	context.subscriptions.push(
+		vscode.workspace.onDidChangeConfiguration(event => {
+			const connection = instance.getConnection();
+			if (connection) {
+				if (event.affectsConfiguration("ibmi-code")) {
+					connection.loadConfig();
+				}
+			}
+		})
+	)
 }
 
 // this method is called when your extension is deactivated

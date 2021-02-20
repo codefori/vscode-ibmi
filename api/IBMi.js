@@ -1,4 +1,5 @@
 const node_ssh = require('node-ssh');
+const vscode = require('vscode');
 
 module.exports = class IBMi {
   constructor() {
@@ -11,6 +12,7 @@ module.exports = class IBMi {
     this.homeDirectory = '.';
     this.libraryList = [];
     this.tempLibrary = 'ILEDITOR';
+    this.spfShortcuts = ['QSYSINC/H'];
   }
 
   /**
@@ -22,6 +24,8 @@ module.exports = class IBMi {
       connectionObject.keepaliveInterval = 35000;
 
       await this.client.connect(connectionObject);
+      
+      this.loadConfig();
 
       this.currentUser = connectionObject.username;
 
@@ -109,6 +113,17 @@ module.exports = class IBMi {
     } catch (e) {
       return false;
     }
+  }
+  
+  /**
+   * Load configuration from vscode.
+   */
+  loadConfig() {
+    const data = vscode.workspace.getConfiguration('ibmi-code');
+    this.homeDirectory = data.homeDirectory;
+    this.libraryList = data.libraryList.split('.').map(item => item.trim());
+    this.spfShortcuts = data.sourceFileList;
+    this.tempLibrary = data.temporaryLibrary;
   }
 
   /**

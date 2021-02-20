@@ -20,6 +20,35 @@
 	],
 	"main": "./extension.js",
 	"contributes": {
+		"configuration": {
+      "title": "Code for IBM i",
+      "properties": {
+				"ibmi-code.sourceFileList": {
+					"type": "array",
+					"items": {
+							"type": "string",
+							"title": "Library and source physical file"
+					},
+					"default": ["QSYSINC/H"],
+					"description": "As seen in the member browser"
+				},
+        "ibmi-code.libraryList": {
+          "type": "string",
+          "default": "QSYS2,QSYSINC",
+          "description": "Comma delimited list for the library list"
+        },
+        "ibmi-code.homeDirectory": {
+          "type": "string",
+          "default": ".",
+          "description": "Connection home directory"
+        },
+        "ibmi-code.temporaryLibrary": {
+          "type": ["string"],
+          "default": "ILEDITOR",
+          "description": "Temporary library"
+        }
+      }
+    },
 		"commands": [
 			{
 				"command": "ibmi-code.connect",
