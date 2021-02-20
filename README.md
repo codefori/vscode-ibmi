@@ -2,6 +2,11 @@
 
 Code for IBM i is an extension for Visual Studio Code to work with ILE source righht from Code.
 
+## Contributors
+
+* [@connorholyday](https://github.com/connorholyday)
+* [@worksofliam](https://github.com/worksofliam)
+
 ## Features
 
 * [X] Member browser and editor
