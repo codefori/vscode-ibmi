@@ -13,7 +13,7 @@ module.exports = class memberBrowserProvider {
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration("ibmi-code.sourceFileList");
+        let affected = event.affectsConfiguration("code-for-ibmi.sourceFileList");
         if (affected) {
           this.emitter.fire();
         }
@@ -52,7 +52,7 @@ module.exports = class memberBrowserProvider {
           item.description = member.text;
           item.resourceUri = vscode.Uri.parse(path).with({scheme: 'member'});
           item.command = {
-            command: `ibmi-code.openEditable`,
+            command: `code-for-ibmi.openEditable`,
             title: `Open Member`,
             arguments: [path]
           };

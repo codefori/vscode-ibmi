@@ -15,13 +15,13 @@ function activate(context) {
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "ibmi-code" is now active!');
+	console.log('Congratulations, your extension "code-for-ibmi" is now active!');
 
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with  registerCommand
 	// The commandId parameter must match the command field in package.json
 	context.subscriptions.push(
-		vscode.commands.registerCommand('ibmi-code.connect', function () {
+		vscode.commands.registerCommand('code-for-ibmi.connect', function () {
 			LoginPanel.show(context);
 		})
 	);
@@ -30,7 +30,7 @@ function activate(context) {
 		vscode.workspace.onDidChangeConfiguration(event => {
 			const connection = instance.getConnection();
 			if (connection) {
-				if (event.affectsConfiguration("ibmi-code")) {
+				if (event.affectsConfiguration("code-for-ibmi")) {
 					connection.loadConfig();
 				}
 			}

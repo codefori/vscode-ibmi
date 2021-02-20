@@ -24,7 +24,7 @@ module.exports = class IBMi {
       connectionObject.keepaliveInterval = 35000;
 
       await this.client.connect(connectionObject);
-      
+
       this.loadConfig();
 
       this.currentUser = connectionObject.username;
@@ -119,7 +119,7 @@ module.exports = class IBMi {
    * Load configuration from vscode.
    */
   loadConfig() {
-    const data = vscode.workspace.getConfiguration('ibmi-code');
+    const data = vscode.workspace.getConfiguration('code-for-ibmi');
     this.homeDirectory = data.homeDirectory;
     this.libraryList = data.libraryList.split('.').map(item => item.trim());
     this.spfShortcuts = data.sourceFileList;

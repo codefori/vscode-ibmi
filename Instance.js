@@ -34,7 +34,7 @@ module.exports = class {
       );
 
       context.subscriptions.push(
-        vscode.commands.registerCommand('ibmi-code.openEditable', async (path) => {
+        vscode.commands.registerCommand('code-for-ibmi.openEditable', async (path) => {
           console.log(path);
           if (path.startsWith('/')) {
             //IFS

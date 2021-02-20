@@ -1,6 +1,6 @@
 {
-	"name": "ibmi-code",
-	"displayName": "ibmi-code",
+	"name": "code-for-ibmi",
+	"displayName": "code-for-ibmi",
 	"description": "IBM i tools for Code",
 	"version": "0.0.1",
 	"author": {
@@ -14,8 +14,8 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:ibmi-code.connect",
-		"onCommand:ibmi-code.openEditable",
+		"onCommand:code-for-ibmi.connect",
+		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser"
 	],
 	"main": "./extension.js",
@@ -23,7 +23,7 @@
 		"configuration": {
       "title": "Code for IBM i",
       "properties": {
-				"ibmi-code.sourceFileList": {
+				"code-for-ibmi.sourceFileList": {
 					"type": "array",
 					"items": {
 							"type": "string",
@@ -32,17 +32,17 @@
 					"default": ["QSYSINC/H"],
 					"description": "As seen in the member browser"
 				},
-        "ibmi-code.libraryList": {
+        "code-for-ibmi.libraryList": {
           "type": "string",
           "default": "QSYS2,QSYSINC",
           "description": "Comma delimited list for the library list"
         },
-        "ibmi-code.homeDirectory": {
+        "code-for-ibmi.homeDirectory": {
           "type": "string",
           "default": ".",
           "description": "Connection home directory"
         },
-        "ibmi-code.temporaryLibrary": {
+        "code-for-ibmi.temporaryLibrary": {
           "type": ["string"],
           "default": "ILEDITOR",
           "description": "Temporary library"
@@ -51,7 +51,7 @@
     },
 		"commands": [
 			{
-				"command": "ibmi-code.connect",
+				"command": "code-for-ibmi.connect",
 				"title": "IBM i: Connect"
 			}
 		],
@@ -77,7 +77,7 @@
 		"viewsWelcome": [
 			{
 				"view": "memberBrowser",
-				"contents": "No connection found.\n[Connect to an IBM i](command:ibmi-code.connect)"
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
 			}
 		]
 	},
