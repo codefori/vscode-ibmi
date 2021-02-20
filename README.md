@@ -16,6 +16,7 @@ Code for IBM i is an extension for Visual Studio Code to work with ILE source fr
 * [ ] Repo cleanup and re-organisation
 * [ ] IFS Browser
 * [ ] Configuration setup for IFS Browser
+* [ ] Notice at bottom when connect to remote system
 * [ ] Deployed and installable from Code
 * [ ] Compilation settings
 * [ ] Ability to compile sources
