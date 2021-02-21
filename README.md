@@ -4,6 +4,10 @@ Code for IBM i is an extension for Visual Studio Code to work with ILE source fr
 
 ![](media/image.png)
 
+## Guide
+
+**coming soon**
+
 ## Contributors
 
 * [@connorholyday](https://github.com/connorholyday)
@@ -32,7 +36,7 @@ In order to use extension, SSH Daemon must be started on IBM i.
 
 #### Install from VS Code
 
-**todo**
+[You can find the extension in the VS Code Marketplace!](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
 
 #### Run from local
 
