@@ -14,7 +14,7 @@ module.exports = class IBMi {
     this.homeDirectory = '.';
     this.libraryList = [];
     this.tempLibrary = 'ILEDITOR';
-    this.spfShortcuts = ['QSHONI/SOURCE'];
+    this.spfShortcuts = ['QSYSINC/H'];
   }
 
   /**
