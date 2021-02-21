@@ -24,7 +24,7 @@ Code for IBM i is an extension for Visual Studio Code to work with ILE source fr
 
 ## Requirements
 
-In order to use extensiom, SSH Daemon must be started on IBM i.
+In order to use extension, SSH Daemon must be started on IBM i.
 
 ## How to get running
 
