@@ -55,6 +55,7 @@ module.exports = class Login {
                   if (!existingConnections.find(item => item.host === message.data.host)) {
                     existingConnections.push({
                       host: message.data.host,
+                      port: message.data.port,
                       username: message.data.username
                     });
                     await existingConnectionsConfig.update('connections', existingConnections, true);
@@ -100,7 +101,7 @@ module.exports = class Login {
           const connection = new IBMi();
 
           try {
-            const connected = await connection.connect({host, username, password});
+            const connected = await connection.connect({host,port, username, password});
             if (connected) {
               vscode.window.showInformationMessage(`Connected to ${host}!`);
 
