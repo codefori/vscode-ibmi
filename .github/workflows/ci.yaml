@@ -1,7 +1,10 @@
 on:
   release:
+    types: [created]
+    
+jobs:
+  release:
     name: Release and publish
-    needs: test
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout
