@@ -123,7 +123,7 @@ module.exports = class IBMi {
   loadConfig() {
     const data = vscode.workspace.getConfiguration('code-for-ibmi');
     this.homeDirectory = data.homeDirectory;
-    this.libraryList = data.libraryList.split('.').map(item => item.trim());
+    this.libraryList = data.libraryList.split(',').map(item => item.trim());
     this.spfShortcuts = data.sourceFileList;
     this.tempLibrary = data.temporaryLibrary;
   }
@@ -140,7 +140,7 @@ module.exports = class IBMi {
 
   /**
    * 
-   * @param {string} command 
+   * @param {string|string[]} command 
    * @param {string} [directory] 
    * @param {number} [returnType] 
    */
