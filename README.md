@@ -23,7 +23,6 @@ Code for IBM i is an extension for Visual Studio Code to work with ILE source fr
 * [ ] Create, delete and rename streamfiles
 * [X] Notice at bottom when connect to remote system
 * [X] Make it easier to connect to systems again
-* [ ] Deployed and installable from Code
 * [X] Compilation settings
 * [X] Ability to compile sources
 * [X] Error lists show up in Problems
