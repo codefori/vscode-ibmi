@@ -4,6 +4,12 @@ Browse, edit and compile your source members right from Visual Studio Code.
 
 ![](media/image.png)
 
+## Contributors
+
+* [@connorholyday](https://github.com/connorholyday)
+* [@worksofliam](https://github.com/worksofliam)
+* [@alanseiden](https://github.com/alanseiden)
+
 ## Guide
 
 #### How do I get syntax highlighting?
@@ -37,11 +43,6 @@ You can click on a member to open and edit it. There is no member locking and th
 4. Use Ctrl+E or Cmd+E to compile your source.
 5. If you have more than one compile option available to you for the type of source, it will prompt you
 6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
-
-## Contributors
-
-* [@connorholyday](https://github.com/connorholyday)
-* [@worksofliam](https://github.com/worksofliam)
 
 ## Features
 
