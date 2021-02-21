@@ -1,12 +1,14 @@
 {
 	"name": "code-for-ibmi",
-	"displayName": "code-for-ibmi",
+	"displayName": "Code for IBM i",
 	"description": "IBM i tools for Code",
 	"version": "0.0.1",
 	"author": {
-		"name": "Liam Barry Allan", 
-		"url": "https://worksofbarry.com"
+		"name": "Halcyon Tech Ltd", 
+		"url": "https://github.com/halcyon-tech"
 	},
+	"publisher": "halcyontechltd",
+	"repository": {"url": "https://github.com/halcyon-tech/code-for-ibmi"},
 	"engines": {
 		"vscode": "^1.53.0"
 	},
