@@ -36,7 +36,7 @@
 						"title": "Library and source physical file"
 					},
 					"default": [
-						"QSHONI/SOURCE"
+						"QSYSINC/H"
 					],
 					"description": "As seen in the member browser"
 				},
