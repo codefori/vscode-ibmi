@@ -16,6 +16,7 @@ Code for IBM i is an extension for Visual Studio Code to work with ILE source fr
 * [X] Repo cleanup and re-organisation
 * [ ] IFS Browser
 * [ ] Configuration setup for IFS Browser
+* [ ] Notice at bottom when connect to remote system
 * [ ] Deployed and installable from Code
 * [ ] Compilation settings
 * [ ] Ability to compile sources
@@ -23,7 +24,7 @@ Code for IBM i is an extension for Visual Studio Code to work with ILE source fr
 
 ## Requirements
 
-In order to use extensiom, SSH Daemon must be started on IBM i.
+In order to use extension, SSH Daemon must be started on IBM i.
 
 ## How to get running
 
