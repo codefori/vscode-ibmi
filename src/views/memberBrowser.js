@@ -48,7 +48,7 @@ module.exports = class memberBrowserProvider {
         for (const member of members) {
           path = `${member.library}/${member.file}/${member.name}.${member.extension}`;
 
-          item = new vscode.TreeItem(`${member.name.toLowerCase()}.${member.extension.toLowerCase()}`);
+          item = new vscode.TreeItem(`${member.name}.${member.extension}`);
           item.description = member.text;
           item.resourceUri = vscode.Uri.parse(path).with({scheme: 'member'});
           item.command = {
@@ -69,7 +69,7 @@ module.exports = class memberBrowserProvider {
       const shortcuts = instance.getConnection().spfShortcuts;
 
       for (var shortcut of shortcuts) {
-        shortcut = shortcut.toUpperCase()
+        shortcut = shortcut.toUpperCase();
         items.push(new SPF(shortcut, shortcut));
       }
     }

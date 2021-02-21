@@ -22,6 +22,8 @@ module.exports = class {
     const qsysFs = new (require('./views/qsysFs'));
 
     if (instance.connection) {
+      CompileTools.register(context);
+
       const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
       statusBar.text = `IBM i: ${instance.connection.currentHost}`;
       statusBar.show();
@@ -45,7 +47,7 @@ module.exports = class {
           if (path.startsWith('/')) {
             //IFS
           } else {
-            let uri = vscode.Uri.parse(path.toLowerCase()).with({scheme: 'member'});
+            let uri = vscode.Uri.parse(path).with({scheme: 'member'});
             try {
               let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
               await vscode.window.showTextDocument(doc, { preview: false });
@@ -59,7 +61,7 @@ module.exports = class {
       context.subscriptions.push(
         vscode.commands.registerCommand('code-for-ibmi.compileSource', async () => {
           const editor = vscode.window.activeTextEditor;
-          CompileTools.Compile(this, editor.document.uri);
+          CompileTools.Compile(this, editor.document);
         })
       );
     }
