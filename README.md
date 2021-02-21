@@ -15,8 +15,8 @@ Code for IBM i is an extension for Visual Studio Code to work with ILE source fr
 * [X] Basic configration setup (for source physical file list, library list & home directory)
 * [ ] Create, delete, rename & change text on members
 * [ ] IFS Browser
-* [ ] Configuration setup for IFS Browser
-* [ ] Create, delete and rename directory. Create, delete and rename streamfiles
+* [ ] Create, delete and rename directory
+* [ ] Create, delete and rename streamfiles
 * [X] Notice at bottom when connect to remote system
 * [X] Make it easier to connect to systems again
 * [ ] Deployed and installable from Code
