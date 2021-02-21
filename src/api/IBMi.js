@@ -190,7 +190,7 @@ module.exports = class IBMi {
       console.log('Using existing temp: ' + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      var value = '/tmp/' + IBMi.makeid();
+      var value = '/tmp/vscodetemp-' + IBMi.makeid();
       console.log('Using new temp: ' + value);
       this.tempRemoteFiles[key] = value;
       return value;
