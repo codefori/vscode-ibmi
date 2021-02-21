@@ -1,7 +1,8 @@
-const IBMi = require("./api/IBMi");
-const IBMiContent = require("./api/IBMiContent");
 
 const vscode = require('vscode');
+
+const IBMiContent = require("./api/IBMiContent");
+const CompileTools = require("./api/CompileTools");
 
 module.exports = class {
   static setConnection(conn) {
@@ -52,6 +53,13 @@ module.exports = class {
               console.log(e);
             }
           }
+        })
+      );
+
+      context.subscriptions.push(
+        vscode.commands.registerCommand('code-for-ibmi.compileSource', async () => {
+          const editor = vscode.window.activeTextEditor;
+          CompileTools.Compile(this, editor.document.uri);
         })
       );
     }

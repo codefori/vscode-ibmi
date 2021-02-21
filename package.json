@@ -16,6 +16,7 @@
 	"activationEvents": [
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
+		"onCommand:code-for-ibmi.compileSource",
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser"
 	],
@@ -67,6 +68,36 @@
 					},
 					"default": [],
 					"description": "A list of connection details to save you typing again."
+				},
+				"code-for-ibmi.compileCommands": {
+					"type": "array",
+					"items": {
+							"type": "object",
+							"title": "Connection details",
+							"properties": {
+									"fileSystem": {
+											"type": "string",
+											"description": "File system for compile",
+											"enum": ["member", "streamfile"]
+									},
+									"extension": {
+										"type": "string",
+										"description": "Extension for compile type"
+									},
+									"name": {
+											"type": "string",
+											"description": "Compile name"
+									},
+									"command": {
+											"type": "string",
+											"description": "Compile command"
+									}
+							}
+					},
+					"default": [
+						{"fileSystem": "member", "extension": "rpgle", "name": "CRTBNDRPG", "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"}
+					],
+					"description": "A list of connection details to save you typing again."
 				}
       }
     },
@@ -78,6 +109,17 @@
 			{
 				"command": "code-for-ibmi.connectPrevious",
 				"title": "IBM i: Connect to previous"
+			},
+			{
+				"command": "code-for-ibmi.compileSource",
+				"title": "IBM i: Compile Current Source"
+			}
+		],
+		"keybindings": [
+			{
+				"command": "code-for-ibmi.compileSource",
+				"key": "ctrl+e",
+				"mac": "cmd+e"
 			}
 		],
 		"viewsContainers": {
