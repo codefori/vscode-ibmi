@@ -27,6 +27,12 @@ function activate(context) {
 	);
 
 	context.subscriptions.push(
+		vscode.commands.registerCommand('code-for-ibmi.connectPrevious', function () {
+			LoginPanel.LoginToPrevious(context);
+		})
+	);
+
+	context.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration(event => {
 			const connection = instance.getConnection();
 			if (connection) {

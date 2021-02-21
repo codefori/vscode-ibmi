@@ -17,7 +17,7 @@ module.exports = class IBMi {
   }
 
   /**
-   * @param {{host: string, username: string, password: string, keepaliveInterval: number}} connectionObject 
+   * @param {{host: string, username: string, password: string, keepaliveInterval?: number}} connectionObject 
    * @returns {Promise<boolean>} Was succesful at connecting or not.
    */
   async connect(connectionObject) {

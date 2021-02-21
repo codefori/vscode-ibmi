@@ -10,52 +10,111 @@ var instance = require('../../instance');
 const LoginHTML = fs.readFileSync(path.join(__dirname, 'login.html'), {encoding: 'utf8'});
 
 module.exports = class Login {
+
   /**
    * Called to log in to an IBM i
    * @param {vscode.ExtensionContext} context
    */
   static show(context) {
-    const panel = vscode.window.createWebviewPanel(
-      'systemLogin',
-      'IBM i Login',
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true
-      }
-    );
+    if (instance.getConnection()) {
+      vscode.window.showErrorMessage(`Already connected to an IBM i!`);
+    } else {
 
-    panel.webview.html = LoginHTML;
+      const panel = vscode.window.createWebviewPanel(
+        'systemLogin',
+        'IBM i Login',
+        vscode.ViewColumn.One,
+        {
+          enableScripts: true
+        }
+      );
 
-    // Handle messages from the webview
-    panel.webview.onDidReceiveMessage(
-      async message => {
-        switch (message.command) {
-          case 'login':
-            vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
+      panel.webview.html = LoginHTML;
 
-            const connection = new IBMi();
+      // Handle messages from the webview
+      panel.webview.onDidReceiveMessage(
+        async message => {
+          switch (message.command) {
+            case 'login':
+              vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
 
-            try {
-              const connected = await connection.connect(message.data);
-              if (connected) {
-                panel.dispose();
+              const connection = new IBMi();
 
-                vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
+              try {
+                const connected = await connection.connect(message.data);
+                if (connected) {
+                  panel.dispose();
 
-                instance.setConnection(connection);
-                instance.loadAllofExtension(context);
-              } else {
-                vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
+                  vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
+
+                  instance.setConnection(connection);
+                  instance.loadAllofExtension(context);
+
+                  var existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');
+                  var existingConnections = existingConnectionsConfig.get('connections');
+                  if (!existingConnections.find(item => item.host === message.data.host)) {
+                    existingConnections.push({
+                      host: message.data.host,
+                      username: message.data.username
+                    });
+                    await existingConnectionsConfig.update('connections', existingConnections, true);
+                  }
+
+                } else {
+                  vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
+                }
+
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);
               }
 
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);
-            }
+              return;
+          }
+        },
+        undefined,
+      );
 
-            return;
+    }
+  }
+
+  /**
+   * Shows window which will let the user pick from previous connections
+   * @param {vscode.ExtensionContext} context
+   */
+  static async LoginToPrevious(context) {
+    if (instance.getConnection()) {
+      vscode.window.showErrorMessage(`Already connected to an IBM i!`);
+    } else {
+      const existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');
+      const existingConnections = existingConnectionsConfig.get('connections');
+      const items = existingConnections.map(item => `${item.username}@${item.host}`);
+
+      const selected = await vscode.window.showQuickPick(items, {canPickMany: false});
+
+      if (selected) {
+        const [username, host] = selected.split('@');
+
+        const password = await vscode.window.showInputBox({password: true});
+
+        if (password) {
+          const connection = new IBMi();
+
+          try {
+            const connected = await connection.connect({host, username, password});
+            if (connected) {
+              vscode.window.showInformationMessage(`Connected to ${host}!`);
+
+              instance.setConnection(connection);
+              instance.loadAllofExtension(context);
+
+            } else {
+              vscode.window.showErrorMessage(`Not connected to ${host}!`);
+            }
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error connecting to ${host}! ${e.message}`);
+          }
         }
-      },
-      undefined,
-    );
+      }
+    }
   }
 }

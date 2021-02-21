@@ -15,6 +15,7 @@
 	],
 	"activationEvents": [
 		"onCommand:code-for-ibmi.connect",
+		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser"
 	],
@@ -46,13 +47,37 @@
           "type": ["string"],
           "default": "ILEDITOR",
           "description": "Temporary library"
-        }
+        },
+				"code-for-ibmi.connections": {
+					"type": "array",
+					"items": {
+							"type": "object",
+							"title": "Connection details",
+							"properties": {
+									"host": {
+											"type": "string",
+											"description": "Host name or IP address"
+									},
+									"username": {
+											"maxLength": 10,
+											"type": "string",
+											"description": "User profile"
+									}
+							}
+					},
+					"default": [],
+					"description": "A list of connection details to save you typing again."
+				}
       }
     },
 		"commands": [
 			{
 				"command": "code-for-ibmi.connect",
 				"title": "IBM i: Connect"
+			},
+			{
+				"command": "code-for-ibmi.connectPrevious",
+				"title": "IBM i: Connect to previous"
 			}
 		],
 		"viewsContainers": {
