@@ -1,9 +1,5 @@
 on:
-  push:
-    branches:
-      - master
-      
-  publish:
+  release:
     name: Release and publish
     needs: test
     runs-on: ubuntu-18.04
