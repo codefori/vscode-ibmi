@@ -21,6 +21,11 @@ module.exports = class {
     const qsysFs = new (require('./views/qsysFs'));
 
     if (instance.connection) {
+      const statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+      statusBar.text = `IBM i: ${instance.connection.currentHost}`;
+      statusBar.show();
+      context.subscriptions.push(statusBar);
+
       context.subscriptions.push(
         vscode.window.registerTreeDataProvider(
           'memberBrowser',

@@ -4,6 +4,7 @@ const vscode = require('vscode');
 module.exports = class IBMi {
   constructor() {
     this.client = new node_ssh.NodeSSH;
+    this.currentHost = '';
     this.currentUser = '';
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
@@ -27,6 +28,7 @@ module.exports = class IBMi {
 
       this.loadConfig();
 
+      this.currentHost = connectionObject.host;
       this.currentUser = connectionObject.username;
 
       //Perhaps load in existing config if it exists here.
