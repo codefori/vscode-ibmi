@@ -137,13 +137,15 @@ module.exports = class CompileTools {
           ]);
 
           compiled = true;
+          vscode.window.showInformationMessage(`Compiled ${evfeventInfo.lib}/${evfeventInfo.object} successfully!`);
         } catch (e) {
           output = e;
           compiled = false;
+
+          vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile.`);
         }
 
         console.log({compiled, output});
-        vscode.window.showInformationMessage(`Compiled: ${compiled}. Command: ${command}`);
 
         if (command.includes('*EVENTF')) {
           this.refreshDiagnostics(instance, document, evfeventInfo);
