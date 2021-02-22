@@ -20,7 +20,8 @@
 		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.compileSource",
 		"onCommand:code-for-ibmi.openEditable",
-		"onView:memberBrowser"
+		"onView:memberBrowser",
+		"onCommand:code-for-ibmi.createMember"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -106,15 +107,24 @@
 		"commands": [
 			{
 				"command": "code-for-ibmi.connect",
-				"title": "IBM i: Connect"
+				"title": "Connect",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.connectPrevious",
-				"title": "IBM i: Connect to previous"
+				"title": "Connect to previous",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.compileSource",
-				"title": "IBM i: Compile Current Source"
+				"title": "Compile Current Source",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.createMember",
+				"title": "Create Member",
+				"category": "IBM i",
+				"icon": "$(new-file)"
 			}
 		],
 		"keybindings": [
@@ -140,6 +150,14 @@
 					"name": "Member Browser",
 					"contextualTitle": "Member Browser",
 					"icon": "media/as400.svg"
+				}
+			]
+		},
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "code-for-ibmi.createMember",
+					"when": "view == memberBrowser && viewItem == SPF"
 				}
 			]
 		},

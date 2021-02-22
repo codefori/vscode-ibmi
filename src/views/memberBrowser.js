@@ -17,6 +17,42 @@ module.exports = class memberBrowserProvider {
         if (affected) {
           this.emitter.fire();
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
+        if (node) {
+          //Running from right click
+          const fullName = await vscode.window.showInputBox({
+            prompt: "Name of new source member"
+          });
+
+          if (fullName) {
+            const connection = instance.getConnection();
+            const path = node.path.split('/');
+            const [name, extension] = fullName.split('.');
+
+            if (extension !== undefined && extension.length > 0) {
+              try {
+                const uriPath = `${path[0]}/${path[1]}/${name}.${extension}`.toUpperCase();
+
+                vscode.window.showErrorMessage(`Creating and opening member ${uriPath}.`);
+                
+                await connection.remoteCommand(
+                  `ADDPFM FILE(${path[0]}/${path[1]}) MBR(${name}) SRCTYPE(${extension})`
+                );
+
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, uriPath);
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error created new member! ${e}`);
+              }
+            } else {
+              vscode.window.showErrorMessage(`Extension must be provided when creating a member.`);
+            }
+          }
+
+        } else {
+          //Running from command
+        }
       })
     )
   }
@@ -86,6 +122,7 @@ class SPF extends vscode.TreeItem {
   constructor(label, path) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
 
+    this.contextValue = 'SPF';
     this.path = path;
   }
 }
