@@ -21,7 +21,8 @@
 		"onCommand:code-for-ibmi.compileSource",
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser",
-		"onCommand:code-for-ibmi.createMember"
+		"onCommand:code-for-ibmi.createMember",
+		"onCommand:code-for-ibmi.copyMember"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -125,6 +126,12 @@
 				"title": "Create Member",
 				"category": "IBM i",
 				"icon": "$(new-file)"
+			},
+			{
+				"command": "code-for-ibmi.copyMember",
+				"title": "Copy Member",
+				"category": "IBM i",
+				"icon": "$(files)"
 			}
 		],
 		"keybindings": [
@@ -158,6 +165,10 @@
 				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == memberBrowser && viewItem == SPF"
+				},
+				{
+					"command": "code-for-ibmi.copyMember",
+					"when": "view == memberBrowser && viewItem == member"
 				}
 			]
 		},
