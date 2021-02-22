@@ -147,7 +147,7 @@ module.exports = class memberBrowserProvider {
         if (node) {
           const newText = await vscode.window.showInputBox({
             value: node.description,
-            prompt: `Update ${path} text`
+            prompt: `Update ${path[3]} text`
           });
 
           if (newText && newText !== node.description) {
@@ -163,6 +163,51 @@ module.exports = class memberBrowserProvider {
               vscode.window.showErrorMessage(`Error changing member text! ${e}`);
             }
           }
+        } else {
+          //Running from command.
+        }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node) => {
+        const path = node.path.split('/');
+        const oldName = path[2].substring(0, path[2].lastIndexOf('.'));
+
+        if (node) {
+          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
+          if (isStillOpen) {
+            vscode.window.showInformationMessage(`Cannot rename member while it is open.`);
+          } else {
+
+            const newName = await vscode.window.showInputBox({
+              value: path[2],
+              prompt: `Rename ${path[2]}`
+            });
+  
+            if (newName && newName.toUpperCase() !== path[2]) {
+              const connection = instance.getConnection();
+              const newNameParts = newName.split('.');
+
+              if (newNameParts.length === 2) {
+                try {
+                  await connection.remoteCommand(
+                    `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
+                  );
+
+                  await connection.remoteCommand(
+                    `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${newNameParts[0]}) SRCTYPE(${newNameParts[1]})`,
+                  );
+    
+                  if (connection.autoRefresh) this.refresh();
+                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+                } catch (e) {
+                  vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+                }
+              } else {
+                vscode.window.showErrorMessage(`New name format incorrect. 'NAME.EXTENTION' required.`);
+              }
+            }
+          }
+
+          
         } else {
           //Running from command.
         }

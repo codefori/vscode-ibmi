@@ -27,7 +27,8 @@
 		"onCommand:code-for-ibmi.createMember",
 		"onCommand:code-for-ibmi.copyMember",
 		"onCommand:code-for-ibmi.deleteMember",
-		"onCommand:code-for-ibmi.updateMemberText"
+		"onCommand:code-for-ibmi.updateMemberText",
+		"onCommand:code-for-ibmi.renameMember"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -179,6 +180,12 @@
 				"title": "Update Text",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.renameMember",
+				"title": "Rename Member",
+				"category": "IBM i",
+				"icon": "$(files)"
 			}
 		],
 		"keybindings": [
@@ -227,6 +234,10 @@
 				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.renameMember",
 					"when": "view == memberBrowser && viewItem == member"
 				}
 			]
