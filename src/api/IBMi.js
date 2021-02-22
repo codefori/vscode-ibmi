@@ -5,6 +5,7 @@ module.exports = class IBMi {
   constructor() {
     this.client = new node_ssh.NodeSSH;
     this.currentHost = '';
+    this.currentPort = 22;
     this.currentUser = '';
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
@@ -17,7 +18,7 @@ module.exports = class IBMi {
   }
 
   /**
-   * @param {{host: string, username: string, password: string, keepaliveInterval?: number}} connectionObject 
+   * @param {{host: string, port: number, username: string, password: string, keepaliveInterval?: number}} connectionObject 
    * @returns {Promise<boolean>} Was succesful at connecting or not.
    */
   async connect(connectionObject) {
@@ -29,6 +30,7 @@ module.exports = class IBMi {
       this.loadConfig();
 
       this.currentHost = connectionObject.host;
+      this.currentPort = connectionObject.port;
       this.currentUser = connectionObject.username;
 
       //Perhaps load in existing config if it exists here.
@@ -188,7 +190,7 @@ module.exports = class IBMi {
       console.log('Using existing temp: ' + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      var value = '/tmp/' + IBMi.makeid();
+      var value = '/tmp/vscodetemp-' + IBMi.makeid();
       console.log('Using new temp: ' + value);
       this.tempRemoteFiles[key] = value;
       return value;
