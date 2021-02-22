@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "IBM i tools for Code",
-	"version": "0.0.3",
+	"version": "0.0.4",
 	"author": {
 		"name": "Halcyon Tech Ltd",
 		"url": "https://github.com/halcyon-tech"
@@ -239,5 +239,8 @@
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1"
-	}
+	},
+	"extensionDependencies": [
+		"barrettotte.ibmi-languages"
+	]
 }
