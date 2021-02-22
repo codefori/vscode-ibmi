@@ -46,6 +46,8 @@ module.exports = class memberBrowserProvider {
                 );
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, uriPath);
+
+                if (connection.autoRefresh) this.refresh();
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
               }
@@ -86,6 +88,8 @@ module.exports = class memberBrowserProvider {
                 )
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+
+                if (connection.autoRefresh) this.refresh();
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
               }
@@ -101,7 +105,6 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
 
         if (node) {
-          vscode.window.visibleTextEditors.forEach(doc => console.log(doc.document));
           const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
 
           if (isStillOpen) {
@@ -123,6 +126,8 @@ module.exports = class memberBrowserProvider {
                 );
 
                 vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+
+                if (connection.autoRefresh) this.refresh();
               } catch (e) {
                   vscode.window.showErrorMessage(`Error deleting member! ${e}`);
               }

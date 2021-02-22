@@ -64,6 +64,11 @@
 					"default": false,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
+				"code-for-ibmi.autoRefresh": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delele, etc). Turn this off if you find performance is bad."
+				},
 				"code-for-ibmi.connections": {
 					"type": "array",
 					"items": {
