@@ -211,7 +211,7 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.refreshMemberBrowser",
-					"when": "view == memberBrowser"
+					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{
 					"command": "code-for-ibmi.createMember",
