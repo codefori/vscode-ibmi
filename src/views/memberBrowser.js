@@ -77,7 +77,7 @@ module.exports = class memberBrowserProvider {
               try {
                 vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
-                connection.remoteCommand(
+                await connection.remoteCommand(
                   `CPYSRCF FROMFILE(${oldPath[0]}/${oldPath[1]}) TOFILE(${newPath[0]}/${newPath[1]}) FROMMBR(${oldName}) TOMBR(${newName}) MBROPT(*REPLACE)`,
                 )
 
@@ -92,6 +92,27 @@ module.exports = class memberBrowserProvider {
 
         } else {
           //Running from command. Perhaps get active editor?
+        }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
+        if (node) {
+          //Running from right click
+          var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+
+          if (result === `Yes`) {
+            const connection = instance.getConnection();
+            const path = node.path.split('/');
+            const name = path[2].substring(0, path[2].lastIndexOf('.'));
+
+            await connection.remoteCommand(
+              `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+            );
+
+            node.label = 'Deleted';
+          }
+
+        } else {
+          //Running from command.
         }
       })
     )

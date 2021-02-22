@@ -22,7 +22,8 @@
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.createMember",
-		"onCommand:code-for-ibmi.copyMember"
+		"onCommand:code-for-ibmi.copyMember",
+		"onCommand:code-for-ibmi.deleteMember"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -132,6 +133,12 @@
 				"title": "Copy Member",
 				"category": "IBM i",
 				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.deleteMember",
+				"title": "Delete Member",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
 			}
 		],
 		"keybindings": [
@@ -168,6 +175,10 @@
 				},
 				{
 					"command": "code-for-ibmi.copyMember",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.deleteMember",
 					"when": "view == memberBrowser && viewItem == member"
 				}
 			]
