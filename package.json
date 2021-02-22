@@ -22,7 +22,11 @@
 		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.compileSource",
 		"onCommand:code-for-ibmi.openEditable",
-		"onView:memberBrowser"
+		"onView:memberBrowser",
+		"onCommand:code-for-ibmi.refreshMemberBrowser",
+		"onCommand:code-for-ibmi.createMember",
+		"onCommand:code-for-ibmi.copyMember",
+		"onCommand:code-for-ibmi.deleteMember"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -124,15 +128,42 @@
 		"commands": [
 			{
 				"command": "code-for-ibmi.connect",
-				"title": "IBM i: Connect"
+				"title": "Connect",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.connectPrevious",
-				"title": "IBM i: Connect to previous"
+				"title": "Connect to previous",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.compileSource",
-				"title": "IBM i: Compile Current Source"
+				"title": "Compile Current Source",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.refreshMemberBrowser",
+				"title": "Refresh Member Browser",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.createMember",
+				"title": "Create Member",
+				"category": "IBM i",
+				"icon": "$(new-file)"
+			},
+			{
+				"command": "code-for-ibmi.copyMember",
+				"title": "Copy Member",
+				"category": "IBM i",
+				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.deleteMember",
+				"title": "Delete Member",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
 			}
 		],
 		"keybindings": [
@@ -158,6 +189,26 @@
 					"name": "Member Browser",
 					"contextualTitle": "Member Browser",
 					"icon": "media/as400.svg"
+				}
+			]
+		},
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "code-for-ibmi.refreshMemberBrowser",
+					"when": "view == memberBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createMember",
+					"when": "view == memberBrowser && viewItem == SPF"
+				},
+				{
+					"command": "code-for-ibmi.copyMember",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.deleteMember",
+					"when": "view == memberBrowser && viewItem == member"
 				}
 			]
 		},

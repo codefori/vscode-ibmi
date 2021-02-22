@@ -1,6 +1,7 @@
 
 const vscode = require('vscode');
 
+const IBMi = require('./api/IBMi');
 const IBMiContent = require("./api/IBMiContent");
 const CompileTools = require("./api/CompileTools");
 
