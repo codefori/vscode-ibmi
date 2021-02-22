@@ -55,11 +55,14 @@
 					"description": "Connection home directory"
 				},
 				"code-for-ibmi.temporaryLibrary": {
-					"type": [
-						"string"
-					],
+					"type": "string",
 					"default": "ILEDITOR",
 					"description": "Temporary library"
+				},
+				"code-for-ibmi.logCompileOutput": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
@@ -89,7 +92,7 @@
 					"type": "array",
 					"items": {
 						"type": "object",
-						"title": "Connection details",
+						"title": "Configuration for the compile commands.",
 						"properties": {
 							"fileSystem": {
 								"type": "string",

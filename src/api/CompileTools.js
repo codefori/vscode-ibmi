@@ -1,5 +1,4 @@
 
-const { throws } = require('assert');
 const vscode = require('vscode');
 
 const errorHandler = require('./errorHandle');
@@ -16,6 +15,9 @@ const diagnosticSeverity = {
 /** @type {vscode.DiagnosticCollection} */
 var ileDiagnostics;
 
+/** @type {vscode.OutputChannel} */
+var outputChannel;
+
 module.exports = class CompileTools {
 
   /**
@@ -24,6 +26,9 @@ module.exports = class CompileTools {
   static register(context) {
     ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
     context.subscriptions.push(ileDiagnostics);
+
+    outputChannel = vscode.window.createOutputChannel("IBM i Compile Log");
+    context.subscriptions.push(outputChannel);
   }
   
   /**
@@ -45,29 +50,34 @@ module.exports = class CompileTools {
     /** @type {vscode.Diagnostic} */
     var diagnostic;
 
-    for (const file in errors) {
-      diagnostics = [];
-      
-      for (const error of errors[file]) {
-
-        error.column = Math.max(error.column-1, 0);
-        error.linenum = Math.max(error.linenum-1, 0);
-
-        if (error.column === 0 && error.toColumn === 0) {
-          error.column = 0;
-          error.toColumn = 100;
-        }
+    if (Object.keys(errors).length > 0) {
+      for (const file in errors) {
+        diagnostics = [];
         
-        diagnostic = new vscode.Diagnostic(
-          new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
-          `${error.code}: ${error.text}`,
-          diagnosticSeverity[error.sev]
-        );
+        for (const error of errors[file]) {
 
-        diagnostics.push(diagnostic);
+          error.column = Math.max(error.column-1, 0);
+          error.linenum = Math.max(error.linenum-1, 0);
+
+          if (error.column === 0 && error.toColumn === 0) {
+            error.column = 0;
+            error.toColumn = 100;
+          }
+          
+          diagnostic = new vscode.Diagnostic(
+            new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
+            `${error.code}: ${error.text}`,
+            diagnosticSeverity[error.sev]
+          );
+
+          diagnostics.push(diagnostic);
+        }
+
+        ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? '.' + evfeventInfo.ext : ''}`), diagnostics);
       }
 
-      ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? '.' + evfeventInfo.ext : ''}`), diagnostics);
+    } else {
+      ileDiagnostics.clear();
     }
 
 
@@ -122,9 +132,12 @@ module.exports = class CompileTools {
             break;
         }
 
-        command = `system -s "${command}"`;
-
         const connection = instance.getConnection();
+
+        outputChannel.append("Command: " + command + '\n');
+
+        command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
+
         const libl = connection.libraryList.slice(0).reverse();
 
         var output, compiled = false;
@@ -134,18 +147,28 @@ module.exports = class CompileTools {
             'liblist -d ' + connection.defaultUserLibraries.join(' '),
             'liblist -a ' + libl.join(' '),
             command,
-          ]);
+          ], undefined, 1);
 
-          compiled = true;
-          vscode.window.showInformationMessage(`Compiled ${evfeventInfo.lib}/${evfeventInfo.object} successfully!`);
+          if (output.code === 0 || output.code === null) {
+            output = output.stdout;
+            compiled = true;
+            vscode.window.showInformationMessage(`Compiled ${evfeventInfo.lib}/${evfeventInfo.object} successfully!`);
+            
+          } else {
+            output = `${output.stderr}\n\n${output.stdout}\n\n`;
+            compiled = false;
+
+            vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile.`);
+          }
+
         } catch (e) {
           output = e;
           compiled = false;
 
-          vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile.`);
+          vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile (internal error).`);
         }
 
-        console.log({compiled, output});
+        outputChannel.append(output + '\n');
 
         if (command.includes('*EVENTF')) {
           this.refreshDiagnostics(instance, document, evfeventInfo);
