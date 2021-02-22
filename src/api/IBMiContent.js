@@ -168,6 +168,10 @@ module.exports = class IBMiContent {
       extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
       text: result.MBMTXT
-    }))
+    })).sort((a, b) => {
+      if (a.name < b.name) { return -1; }
+      if (a.name > b.name) { return 1; }
+      return 0;
+    });
   }
 }
