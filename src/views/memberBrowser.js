@@ -195,7 +195,7 @@ class Member extends vscode.TreeItem {
   constructor(member) {
     const path = `${member.library}/${member.file}/${member.name}.${member.extension}`;
 
-    super(`${member.name}.${member.extension}`);
+    super(`${member.name}.${member.extension}`.toLowerCase());
 
     this.contextValue = 'member';
     this.description = member.text;

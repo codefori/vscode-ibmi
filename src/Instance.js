@@ -10,7 +10,7 @@ module.exports = class {
     instance.connection = conn;
     instance.content = new IBMiContent(instance.connection);
   };
-
+  
   static getConnection() {return instance.connection};
   static getContent() {return instance.content};
 
@@ -37,6 +37,7 @@ module.exports = class {
       ));
 
       context.subscriptions.push(
+        //@ts-ignore
         vscode.workspace.registerFileSystemProvider('member', qsysFs, { 
           isCaseSensitive: false
         })
@@ -73,5 +74,5 @@ var instance = {
   /** @type {IBMi} */
   connection: undefined,
   /** @type {IBMiContent} */
-  content: undefined, //IBM
+  content: undefined, //IBM,
 };
