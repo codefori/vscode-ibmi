@@ -21,6 +21,7 @@
 		"onCommand:code-for-ibmi.compileSource",
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser",
+		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
 		"onCommand:code-for-ibmi.copyMember",
 		"onCommand:code-for-ibmi.deleteMember"
@@ -123,6 +124,12 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.refreshMemberBrowser",
+				"title": "Refresh Member Browser",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
 				"command": "code-for-ibmi.createMember",
 				"title": "Create Member",
 				"category": "IBM i",
@@ -169,6 +176,10 @@
 		},
 		"menus": {
 			"view/item/context": [
+				{
+					"command": "code-for-ibmi.refreshMemberBrowser",
+					"when": "view == memberBrowser"
+				},
 				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == memberBrowser && viewItem == SPF"

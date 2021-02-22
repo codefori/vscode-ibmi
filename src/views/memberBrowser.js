@@ -15,8 +15,12 @@ module.exports = class memberBrowserProvider {
       vscode.workspace.onDidChangeConfiguration(event => {
         let affected = event.affectsConfiguration("code-for-ibmi.sourceFileList");
         if (affected) {
-          this.emitter.fire();
+          this.refresh();
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.refreshMemberBrowser`, async () => {
+        this.refresh();
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
@@ -104,11 +108,17 @@ module.exports = class memberBrowserProvider {
             const path = node.path.split('/');
             const name = path[2].substring(0, path[2].lastIndexOf('.'));
 
-            await connection.remoteCommand(
-              `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
-            );
+            try {
+              await connection.remoteCommand(
+                `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+              );
 
-            node.label = 'Deleted';
+              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+            } catch (e) {
+                vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+            }
+
+            //Not sure how to remove the item from the list. Must refresh - but that might be slow?
           }
 
         } else {
@@ -116,6 +126,10 @@ module.exports = class memberBrowserProvider {
         }
       })
     )
+  }
+
+  refresh() {
+    this.emitter.fire();
   }
 
   /**
