@@ -26,7 +26,9 @@
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
 		"onCommand:code-for-ibmi.copyMember",
-		"onCommand:code-for-ibmi.deleteMember"
+		"onCommand:code-for-ibmi.deleteMember",
+		"onCommand:code-for-ibmi.updateMemberText",
+		"onCommand:code-for-ibmi.renameMember"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -63,6 +65,11 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
+				},
+				"code-for-ibmi.autoRefresh": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delele, etc). Turn this off if you find performance is bad."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
@@ -146,7 +153,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
-				"title": "Refresh Member Browser",
+				"title": "Refresh Member List",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
@@ -167,6 +174,18 @@
 				"title": "Delete Member",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.updateMemberText",
+				"title": "Update Text",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.renameMember",
+				"title": "Rename Member",
+				"category": "IBM i",
+				"icon": "$(files)"
 			}
 		],
 		"keybindings": [
@@ -199,7 +218,7 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.refreshMemberBrowser",
-					"when": "view == memberBrowser"
+					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{
 					"command": "code-for-ibmi.createMember",
@@ -212,13 +231,21 @@
 				{
 					"command": "code-for-ibmi.deleteMember",
 					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.updateMemberText",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.renameMember",
+					"when": "view == memberBrowser && viewItem == member"
 				}
 			]
 		},
 		"viewsWelcome": [
 			{
 				"view": "memberBrowser",
-				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)"
 			}
 		]
 	},

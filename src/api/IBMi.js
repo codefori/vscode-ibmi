@@ -16,6 +16,7 @@ module.exports = class IBMi {
     this.tempLibrary = 'ILEDITOR';
     this.spfShortcuts = ['QSYSINC/H'];
     this.logCompileOutput = false;
+    this.autoRefresh = false;
   }
 
   /**
@@ -130,6 +131,7 @@ module.exports = class IBMi {
     this.spfShortcuts = data.sourceFileList;
     this.tempLibrary = data.temporaryLibrary;
     this.logCompileOutput = data.logCompileOutput || false;
+    this.autoRefresh = data.autoRefresh;
   }
 
   /**

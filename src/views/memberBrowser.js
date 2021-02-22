@@ -46,6 +46,8 @@ module.exports = class memberBrowserProvider {
                 );
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, uriPath);
+
+                if (connection.autoRefresh) this.refresh();
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
               }
@@ -86,6 +88,8 @@ module.exports = class memberBrowserProvider {
                 )
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+
+                if (connection.autoRefresh) this.refresh();
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
               }
@@ -99,28 +103,111 @@ module.exports = class memberBrowserProvider {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
-        if (node) {
-          //Running from right click
-          var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
-          if (result === `Yes`) {
+        if (node) {
+          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
+
+          if (isStillOpen) {
+            //Since there is no easy way to close a file.
+            vscode.window.showInformationMessage(`Cannot delete member while it is open.`);
+
+          } else {
+            //Running from right click
+            var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+
+            if (result === `Yes`) {
+              const connection = instance.getConnection();
+              const path = node.path.split('/');
+              const name = path[2].substring(0, path[2].lastIndexOf('.'));
+
+              try {
+                await connection.remoteCommand(
+                  `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+                );
+
+                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+
+                if (connection.autoRefresh) this.refresh();
+              } catch (e) {
+                  vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+              }
+
+              //Not sure how to remove the item from the list. Must refresh - but that might be slow?
+            }
+
+          }
+        } else {
+          //Running from command.
+        }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
+        const path = node.path.split('/');
+        const name = path[2].substring(0, path[2].lastIndexOf('.'));
+
+        if (node) {
+          const newText = await vscode.window.showInputBox({
+            value: node.description,
+            prompt: `Update ${path[3]} text`
+          });
+
+          if (newText && newText !== node.description) {
             const connection = instance.getConnection();
-            const path = node.path.split('/');
-            const name = path[2].substring(0, path[2].lastIndexOf('.'));
 
             try {
               await connection.remoteCommand(
-                `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+                `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${name}) TEXT('${newText}')`,
               );
 
-              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+              if (connection.autoRefresh) this.refresh();
             } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+              vscode.window.showErrorMessage(`Error changing member text! ${e}`);
             }
+          }
+        } else {
+          //Running from command.
+        }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node) => {
+        const path = node.path.split('/');
+        const oldName = path[2].substring(0, path[2].lastIndexOf('.'));
 
-            //Not sure how to remove the item from the list. Must refresh - but that might be slow?
+        if (node) {
+          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
+          if (isStillOpen) {
+            vscode.window.showInformationMessage(`Cannot rename member while it is open.`);
+          } else {
+
+            const newName = await vscode.window.showInputBox({
+              value: path[2],
+              prompt: `Rename ${path[2]}`
+            });
+  
+            if (newName && newName.toUpperCase() !== path[2]) {
+              const connection = instance.getConnection();
+              const newNameParts = newName.split('.');
+
+              if (newNameParts.length === 2) {
+                try {
+                  await connection.remoteCommand(
+                    `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
+                  );
+
+                  await connection.remoteCommand(
+                    `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${newNameParts[0]}) SRCTYPE(${newNameParts[1]})`,
+                  );
+    
+                  if (connection.autoRefresh) this.refresh();
+                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+                } catch (e) {
+                  vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+                }
+              } else {
+                vscode.window.showErrorMessage(`New name format incorrect. 'NAME.EXTENTION' required.`);
+              }
+            }
           }
 
+          
         } else {
           //Running from command.
         }
