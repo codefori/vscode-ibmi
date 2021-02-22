@@ -9,6 +9,7 @@ Browse, edit and compile your source members right from Visual Studio Code.
 * [@connorholyday](https://github.com/connorholyday)
 * [@worksofliam](https://github.com/worksofliam)
 * [@alanseiden](https://github.com/alanseiden)
+* [@richardschoen](https://github.com/richardschoen)
 
 ## Guide
 

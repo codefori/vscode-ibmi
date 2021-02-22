@@ -41,6 +41,11 @@
         </div>
 
         <div class="field">
+            <div class="labelBox"><label for="port">Port:</label></div>
+            <input type="text" id="port" name="port" value="22" required>
+        </div>
+
+        <div class="field">
             <div class="labelBox"><label for="username">Username:</label></div>
             <input type="text" id="username" name="username" maxlength="10" required>
         </div>
@@ -60,7 +65,7 @@
         (function() {
             const vscode = acquireVsCodeApi();
             const form = document.getElementById('systemConnect');
-            const fields = ['host', 'username', 'password'];
+            const fields = ['host', 'port', 'username', 'password'];
 
             form.onsubmit = (event) => {
                 event.preventDefault();
