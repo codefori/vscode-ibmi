@@ -36,6 +36,8 @@ module.exports = class Login {
         async message => {
           switch (message.command) {
             case 'login':
+              message.data.port = Number(message.data.port);
+
               vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
 
               const connection = new IBMi();
@@ -88,12 +90,13 @@ module.exports = class Login {
     } else {
       const existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');
       const existingConnections = existingConnectionsConfig.get('connections');
-      const items = existingConnections.map(item => `${item.username}@${item.host}`);
+      const items = existingConnections.map(item => `${item.username}@${item.host}:${item.port}`);
 
       const selected = await vscode.window.showQuickPick(items, {canPickMany: false});
 
       if (selected) {
-        const [username, host] = selected.split('@');
+        const [username, hostname] = selected.split('@');
+        const [host, port] = hostname.split(':');
 
         const password = await vscode.window.showInputBox({password: true});
 
@@ -101,7 +104,7 @@ module.exports = class Login {
           const connection = new IBMi();
 
           try {
-            const connected = await connection.connect({host,port, username, password});
+            const connected = await connection.connect({host, port: Number(port), username, password});
             if (connected) {
               vscode.window.showInformationMessage(`Connected to ${host}!`);
 
