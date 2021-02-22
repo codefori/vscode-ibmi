@@ -99,28 +99,38 @@ module.exports = class memberBrowserProvider {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
+
         if (node) {
-          //Running from right click
-          var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+          vscode.window.visibleTextEditors.forEach(doc => console.log(doc.document));
+          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
 
-          if (result === `Yes`) {
-            const connection = instance.getConnection();
-            const path = node.path.split('/');
-            const name = path[2].substring(0, path[2].lastIndexOf('.'));
+          if (isStillOpen) {
+            //Since there is no easy way to close a file.
+            vscode.window.showInformationMessage(`Cannot delete member while it is open.`);
 
-            try {
-              await connection.remoteCommand(
-                `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
-              );
+          } else {
+            //Running from right click
+            var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
-              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
-            } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+            if (result === `Yes`) {
+              const connection = instance.getConnection();
+              const path = node.path.split('/');
+              const name = path[2].substring(0, path[2].lastIndexOf('.'));
+
+              try {
+                await connection.remoteCommand(
+                  `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+                );
+
+                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+              } catch (e) {
+                  vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+              }
+
+              //Not sure how to remove the item from the list. Must refresh - but that might be slow?
             }
 
-            //Not sure how to remove the item from the list. Must refresh - but that might be slow?
           }
-
         } else {
           //Running from command.
         }
