@@ -132,46 +132,53 @@ module.exports = class CompileTools {
             break;
         }
 
-        const connection = instance.getConnection();
-
-        outputChannel.append("Command: " + command + '\n');
-
-        command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
-
-        const libl = connection.libraryList.slice(0).reverse();
-
-        var output, compiled = false;
-
-        try {
-          output = await connection.qshCommand([
-            'liblist -d ' + connection.defaultUserLibraries.join(' '),
-            'liblist -a ' + libl.join(' '),
-            command,
-          ], undefined, 1);
-
-          if (output.code === 0 || output.code === null) {
-            output = output.stdout;
-            compiled = true;
-            vscode.window.showInformationMessage(`Compiled ${evfeventInfo.lib}/${evfeventInfo.object} successfully!`);
-            
-          } else {
-            output = `${output.stderr}\n\n${output.stdout}\n\n`;
-            compiled = false;
-
-            vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile.`);
-          }
-
-        } catch (e) {
-          output = e;
-          compiled = false;
-
-          vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile (internal error).`);
+        if (command.startsWith('?')) {
+          command = await vscode.window.showInputBox({prompt: "Run action", value: command.substring(1)})
         }
 
-        outputChannel.append(output + '\n');
+        if (command) {
+          const connection = instance.getConnection();
 
-        if (command.includes('*EVENTF')) {
-          this.refreshDiagnostics(instance, document, evfeventInfo);
+          outputChannel.append("Command: " + command + '\n');
+
+          command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
+
+          const libl = connection.libraryList.slice(0).reverse();
+
+          var output, compiled = false;
+
+          try {
+            output = await connection.qshCommand([
+              'liblist -d ' + connection.defaultUserLibraries.join(' '),
+              'liblist -a ' + libl.join(' '),
+              command,
+            ], undefined, 1);
+
+            if (output.code === 0 || output.code === null) {
+              output = output.stdout;
+              compiled = true;
+              vscode.window.showInformationMessage(`Compiled ${evfeventInfo.lib}/${evfeventInfo.object} successfully!`);
+              
+            } else {
+              output = `${output.stderr}\n\n${output.stdout}\n\n`;
+              compiled = false;
+
+              vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile.`);
+            }
+
+          } catch (e) {
+            output = e;
+            compiled = false;
+
+            vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile (internal error).`);
+          }
+
+          outputChannel.append(output + '\n');
+
+          if (command.includes('*EVENTF')) {
+            this.refreshDiagnostics(instance, document, evfeventInfo);
+          }
+
         }
       }
 
