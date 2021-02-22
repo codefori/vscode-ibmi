@@ -96,7 +96,7 @@ module.exports = class CompileTools {
 
     const extension = uri.path.substring(uri.path.lastIndexOf('.')+1);
 
-    const compileOptions = compileCommands.filter(item => item.fileSystem === uri.scheme && item.extension.toUpperCase() === extension.toUpperCase());
+    const compileOptions = compileCommands.filter(item => item.fileSystem === uri.scheme && ['GLOBAL', extension.toUpperCase()].includes(item.extension.toUpperCase()));
 
     if (compileOptions.length > 0) {
       const options = compileOptions.map(item => item.name);
@@ -110,7 +110,7 @@ module.exports = class CompileTools {
       }
 
       if (chosenOptionName) {
-        command = compileCommands.find(item => item.fileSystem === uri.scheme && item.extension.toUpperCase() === extension.toUpperCase() && item.name === chosenOptionName).command;
+        command = compileCommands.find(item => item.fileSystem === uri.scheme && ['GLOBAL', extension.toUpperCase()].includes(item.extension.toUpperCase()) && item.name === chosenOptionName).command;
 
         switch (uri.scheme) {
           case 'member':
