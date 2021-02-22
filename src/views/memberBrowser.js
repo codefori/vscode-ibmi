@@ -139,6 +139,33 @@ module.exports = class memberBrowserProvider {
         } else {
           //Running from command.
         }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
+        const path = node.path.split('/');
+        const name = path[2].substring(0, path[2].lastIndexOf('.'));
+
+        if (node) {
+          const newText = await vscode.window.showInputBox({
+            value: node.description,
+            prompt: `Update ${path} text`
+          });
+
+          if (newText && newText !== node.description) {
+            const connection = instance.getConnection();
+
+            try {
+              await connection.remoteCommand(
+                `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${name}) TEXT('${newText}')`,
+              );
+
+              if (connection.autoRefresh) this.refresh();
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error changing member text! ${e}`);
+            }
+          }
+        } else {
+          //Running from command.
+        }
       })
     )
   }

@@ -26,7 +26,8 @@
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
 		"onCommand:code-for-ibmi.copyMember",
-		"onCommand:code-for-ibmi.deleteMember"
+		"onCommand:code-for-ibmi.deleteMember",
+		"onCommand:code-for-ibmi.updateMemberText"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -172,6 +173,12 @@
 				"title": "Delete Member",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.updateMemberText",
+				"title": "Update Text",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
 			}
 		],
 		"keybindings": [
@@ -216,6 +223,10 @@
 				},
 				{
 					"command": "code-for-ibmi.deleteMember",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.updateMemberText",
 					"when": "view == memberBrowser && viewItem == member"
 				}
 			]
