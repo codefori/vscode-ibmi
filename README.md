@@ -49,7 +49,7 @@ You can click on a member to open and edit it. There is no member locking and th
 
 * [X] Member browser and editor
 * [X] Basic configration setup (for source physical file list, library list & home directory)
-* [ ] Create, delete, rename & change text on members
+* [X] Create, delete, rename & change text on members
 * [ ] IFS Browser
 * [ ] Create, delete and rename directory
 * [ ] Create, delete and rename streamfiles
