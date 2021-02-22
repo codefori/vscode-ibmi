@@ -5,7 +5,7 @@ module.exports = class IBMi {
   constructor() {
     this.client = new node_ssh.NodeSSH;
     this.currentHost = '';
-    this.currentPort = '';
+    this.currentPort = 22;
     this.currentUser = '';
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
@@ -18,7 +18,7 @@ module.exports = class IBMi {
   }
 
   /**
-   * @param {{host: string, port: string, username: string, password: string, keepaliveInterval?: number}} connectionObject 
+   * @param {{host: string, port: number, username: string, password: string, keepaliveInterval?: number}} connectionObject 
    * @returns {Promise<boolean>} Was succesful at connecting or not.
    */
   async connect(connectionObject) {
