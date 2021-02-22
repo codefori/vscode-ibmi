@@ -153,7 +153,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
-				"title": "Refresh Member Browser",
+				"title": "Refresh Member List",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
@@ -245,7 +245,7 @@
 		"viewsWelcome": [
 			{
 				"view": "memberBrowser",
-				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)"
 			}
 		]
 	},
