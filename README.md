@@ -10,6 +10,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * [@worksofliam](https://github.com/worksofliam)
 * [@alanseiden](https://github.com/alanseiden)
 * [@richardschoen](https://github.com/richardschoen)
+* [@barrettotte](https://github.com/barrettotte)
 
 ## Guide
 

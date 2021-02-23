@@ -5,7 +5,7 @@ const fs = require('fs');
 
 const IBMi = require('../../api/IBMi');
 
-var instance = require('../../instance');
+var instance = require('../../Instance');
 
 const LoginHTML = fs.readFileSync(path.join(__dirname, 'login.html'), {encoding: 'utf8'});
 
