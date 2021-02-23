@@ -32,6 +32,11 @@
 	],
 	"main": "./extension.js",
 	"contributes": {
+		"snippets": [
+			{
+				"path": "./snippets/cl.code-snippets"
+			}
+		],
 		"configuration": {
 			"title": "Code for IBM i",
 			"properties": {
@@ -129,6 +134,18 @@
 							"extension": "rpgle",
 							"name": "CRTBNDRPG",
 							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"fileSystem": "member",
+							"extension": "CLLE",
+							"name": "CRTBNDCL",
+							"command": "CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"fileSystem": "member",
+							"extension": "CLP",
+							"name": "CRTCLPGM",
+							"command": "CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) OUTPUT(*PRINT)"
 						}
 					],
 					"description": "A list of connection details to save you typing again."
