@@ -64,7 +64,7 @@
 				"code-for-ibmi.temporaryLibrary": {
 					"type": "string",
 					"default": "ILEDITOR",
-					"description": "Temporary library"
+					"description": "Temporary library. Cannot be QTEMP."
 				},
 				"code-for-ibmi.sourceASP": {
 					"type": "string",
