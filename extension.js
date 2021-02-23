@@ -5,7 +5,7 @@ const vscode = require('vscode');
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-var instance = require('./src/instance');
+var instance = require('./src/Instance');
 const LoginPanel = require('./src/webviews/login');
 
 /**

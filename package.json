@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "IBM i tools for Code",
-	"version": "0.0.2",
+	"version": "0.0.6",
 	"author": {
 		"name": "Halcyon Tech Ltd",
 		"url": "https://github.com/halcyon-tech"
@@ -22,7 +22,13 @@
 		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.compileSource",
 		"onCommand:code-for-ibmi.openEditable",
-		"onView:memberBrowser"
+		"onView:memberBrowser",
+		"onCommand:code-for-ibmi.refreshMemberBrowser",
+		"onCommand:code-for-ibmi.createMember",
+		"onCommand:code-for-ibmi.copyMember",
+		"onCommand:code-for-ibmi.deleteMember",
+		"onCommand:code-for-ibmi.updateMemberText",
+		"onCommand:code-for-ibmi.renameMember"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -56,11 +62,19 @@
 					"description": "Connection home directory"
 				},
 				"code-for-ibmi.temporaryLibrary": {
-					"type": [
-						"string"
-					],
+					"type": "string",
 					"default": "ILEDITOR",
 					"description": "Temporary library"
+				},
+				"code-for-ibmi.logCompileOutput": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
+				},
+				"code-for-ibmi.autoRefresh": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delele, etc). Turn this off if you find performance is bad."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
@@ -71,6 +85,10 @@
 							"host": {
 								"type": "string",
 								"description": "Host name or IP address"
+							},
+							"port": {
+								"type": "number",
+								"description": "Port"
 							},
 							"username": {
 								"maxLength": 10,
@@ -86,7 +104,7 @@
 					"type": "array",
 					"items": {
 						"type": "object",
-						"title": "Connection details",
+						"title": "Configuration for the compile commands.",
 						"properties": {
 							"fileSystem": {
 								"type": "string",
@@ -137,15 +155,54 @@
 		"commands": [
 			{
 				"command": "code-for-ibmi.connect",
-				"title": "IBM i: Connect"
+				"title": "Connect",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.connectPrevious",
-				"title": "IBM i: Connect to previous"
+				"title": "Connect to previous",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.compileSource",
-				"title": "IBM i: Compile Current Source"
+				"title": "Compile Current Source",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.refreshMemberBrowser",
+				"title": "Refresh Member List",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.createMember",
+				"title": "Create Member",
+				"category": "IBM i",
+				"icon": "$(new-file)"
+			},
+			{
+				"command": "code-for-ibmi.copyMember",
+				"title": "Copy Member",
+				"category": "IBM i",
+				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.deleteMember",
+				"title": "Delete Member",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.updateMemberText",
+				"title": "Update Text",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
+				"command": "code-for-ibmi.renameMember",
+				"title": "Rename Member",
+				"category": "IBM i",
+				"icon": "$(files)"
 			}
 		],
 		"keybindings": [
@@ -174,10 +231,38 @@
 				}
 			]
 		},
+		"menus": {
+			"view/item/context": [
+				{
+					"command": "code-for-ibmi.refreshMemberBrowser",
+					"when": "view == memberBrowser && viewItem == SPF"
+				},
+				{
+					"command": "code-for-ibmi.createMember",
+					"when": "view == memberBrowser && viewItem == SPF"
+				},
+				{
+					"command": "code-for-ibmi.copyMember",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.deleteMember",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.updateMemberText",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.renameMember",
+					"when": "view == memberBrowser && viewItem == member"
+				}
+			]
+		},
 		"viewsWelcome": [
 			{
 				"view": "memberBrowser",
-				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)"
 			}
 		]
 	},
@@ -201,5 +286,8 @@
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1"
-	}
+	},
+	"extensionDependencies": [
+		"barrettotte.ibmi-languages"
+	]
 }

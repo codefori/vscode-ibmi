@@ -1,6 +1,6 @@
 # Code for IBM i
 
-Browse, edit and compile your source members right from Visual Studio Code.
+Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
 ![](media/image.png)
 
@@ -9,6 +9,8 @@ Browse, edit and compile your source members right from Visual Studio Code.
 * [@connorholyday](https://github.com/connorholyday)
 * [@worksofliam](https://github.com/worksofliam)
 * [@alanseiden](https://github.com/alanseiden)
+* [@richardschoen](https://github.com/richardschoen)
+* [@barrettotte](https://github.com/barrettotte)
 
 ## Guide
 
@@ -48,7 +50,7 @@ You can click on a member to open and edit it. There is no member locking and th
 
 * [X] Member browser and editor
 * [X] Basic configration setup (for source physical file list, library list & home directory)
-* [ ] Create, delete, rename & change text on members
+* [X] Create, delete, rename & change text on members
 * [ ] IFS Browser
 * [ ] Create, delete and rename directory
 * [ ] Create, delete and rename streamfiles

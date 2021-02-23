@@ -1,7 +1,7 @@
 
 const util = require('util');
 const vscode = require('vscode');
-var instance = require('../instance');
+var instance = require('../Instance');
 
 module.exports = class qsysFs {
   constructor() {
@@ -23,6 +23,7 @@ module.exports = class qsysFs {
 
     return new Uint8Array(Buffer.from(memberContent, 'utf8'));
   }
+
   /**
    * 
    * @param {vscode.Uri} uri 
@@ -42,5 +43,14 @@ module.exports = class qsysFs {
     const name = fullName.substring(0, fullName.lastIndexOf('.'));
 
     return contentApi.uploadMemberContent(undefined, lib, file, name, content.toString('utf8'));
+  }
+
+  /**
+   * @param {vscode.Uri} oldUri 
+   * @param {vscode.Uri} newUri 
+   * @param {{overwrite: boolean}} options 
+   */
+  rename(oldUri, newUri, options) {
+    console.log({oldUri, newUri, options});
   }
 }
