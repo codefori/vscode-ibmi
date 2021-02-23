@@ -1,17 +1,19 @@
 {
     "PGM": {
-        "scope": "CLLE,cl,clp",
+        "scope": "clle,cl,clp",
         "prefix": "PGM",
-        "body": ["PGM", 
-                 "ENDPGM"],
+        "body": ["PGM",
+            "ENDPGM"
+        ],
         "description": "Setup CL Program Start and End"
-        },
+    },
     "SBMJOB": {
-    "scope": "CLLE,cl,clp",
-    "prefix": "SBMJOB",
-    "body": ["SBMJOB CMD(CALL PGM(${1:*LIBL}/${2:Program}) PARM(${3:Parameters})) +", 
-                "JOB(${4:*JOBD}) JOBD(${5:*USRPRF}) JOBQ(${6:*JOBD}) JOBPTY(${7:*JOBD}) +", 
-                "OUTPTY(${8:*JOBD}) PRTDEV(${9:*CURRENT}) OUTQ(${10:*CURRENT}) USER(${11:*CURRENT})"],
-    "description": "Submit a Job to a Job Queue"
+        "scope": "clle,cl,clp",
+        "prefix": "SBMJOB",
+        "body": ["SBMJOB CMD(CALL PGM(${1:*LIBL}/${2:Program}) PARM(${3:Parameters})) +",
+            "JOB(${4:*JOBD}) JOBD(${5:*USRPRF}) JOBQ(${6:*JOBD}) JOBPTY(${7:*JOBD}) +",
+            "OUTPTY(${8:*JOBD}) PRTDEV(${9:*CURRENT}) OUTQ(${10:*CURRENT}) USER(${11:*CURRENT})"
+        ],
+        "description": "Submit a Job to a Job Queue"
     }
-    }
+}
