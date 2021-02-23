@@ -4,11 +4,13 @@
 	"description": "IBM i tools for Code",
 	"version": "0.0.2",
 	"author": {
-		"name": "Halcyon Tech Ltd", 
+		"name": "Halcyon Tech Ltd",
 		"url": "https://github.com/halcyon-tech"
 	},
 	"publisher": "halcyontechltd",
-	"repository": {"url": "https://github.com/halcyon-tech/code-for-ibmi"},
+	"repository": {
+		"url": "https://github.com/halcyon-tech/code-for-ibmi"
+	},
 	"engines": {
 		"vscode": "^1.53.0"
 	},
@@ -24,49 +26,58 @@
 	],
 	"main": "./extension.js",
 	"contributes": {
+		"snippets": [
+			{
+				"path": "./snippets/cl.code-snippets"
+			}
+		],
 		"configuration": {
-      "title": "Code for IBM i",
-      "properties": {
+			"title": "Code for IBM i",
+			"properties": {
 				"code-for-ibmi.sourceFileList": {
 					"type": "array",
 					"items": {
-							"type": "string",
-							"title": "Library and source physical file"
+						"type": "string",
+						"title": "Library and source physical file"
 					},
-					"default": ["QSYSINC/H"],
+					"default": [
+						"QSYSINC/H"
+					],
 					"description": "As seen in the member browser"
 				},
-        "code-for-ibmi.libraryList": {
-          "type": "string",
-          "default": "QSYS2,QSYSINC",
-          "description": "Comma delimited list for the library list"
-        },
-        "code-for-ibmi.homeDirectory": {
-          "type": "string",
-          "default": ".",
-          "description": "Connection home directory"
-        },
-        "code-for-ibmi.temporaryLibrary": {
-          "type": ["string"],
-          "default": "ILEDITOR",
-          "description": "Temporary library"
-        },
+				"code-for-ibmi.libraryList": {
+					"type": "string",
+					"default": "QSYS2,QSYSINC",
+					"description": "Comma delimited list for the library list"
+				},
+				"code-for-ibmi.homeDirectory": {
+					"type": "string",
+					"default": ".",
+					"description": "Connection home directory"
+				},
+				"code-for-ibmi.temporaryLibrary": {
+					"type": [
+						"string"
+					],
+					"default": "ILEDITOR",
+					"description": "Temporary library"
+				},
 				"code-for-ibmi.connections": {
 					"type": "array",
 					"items": {
-							"type": "object",
-							"title": "Connection details",
-							"properties": {
-									"host": {
-											"type": "string",
-											"description": "Host name or IP address"
-									},
-									"username": {
-											"maxLength": 10,
-											"type": "string",
-											"description": "User profile"
-									}
+						"type": "object",
+						"title": "Connection details",
+						"properties": {
+							"host": {
+								"type": "string",
+								"description": "Host name or IP address"
+							},
+							"username": {
+								"maxLength": 10,
+								"type": "string",
+								"description": "User profile"
 							}
+						}
 					},
 					"default": [],
 					"description": "A list of connection details to save you typing again."
@@ -74,35 +85,55 @@
 				"code-for-ibmi.compileCommands": {
 					"type": "array",
 					"items": {
-							"type": "object",
-							"title": "Connection details",
-							"properties": {
-									"fileSystem": {
-											"type": "string",
-											"description": "File system for compile",
-											"enum": ["member", "streamfile"]
-									},
-									"extension": {
-										"type": "string",
-										"description": "Extension for compile type"
-									},
-									"name": {
-											"type": "string",
-											"description": "Compile name"
-									},
-									"command": {
-											"type": "string",
-											"description": "Compile command"
-									}
+						"type": "object",
+						"title": "Connection details",
+						"properties": {
+							"fileSystem": {
+								"type": "string",
+								"description": "File system for compile",
+								"enum": [
+									"member",
+									"streamfile"
+								]
+							},
+							"extension": {
+								"type": "string",
+								"description": "Extension for compile type"
+							},
+							"name": {
+								"type": "string",
+								"description": "Compile name"
+							},
+							"command": {
+								"type": "string",
+								"description": "Compile command"
 							}
+						}
 					},
 					"default": [
-						{"fileSystem": "member", "extension": "rpgle", "name": "CRTBNDRPG", "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"}
+						{
+							"fileSystem": "member",
+							"extension": "rpgle",
+							"name": "CRTBNDRPG",
+							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"fileSystem": "member",
+							"extension": "CLLE",
+							"name": "CRTBNDCL",
+							"command": "CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"fileSystem": "member",
+							"extension": "CLP",
+							"name": "CRTCLPGM",
+							"command": "CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) OUTPUT(*PRINT)"
+						}
 					],
 					"description": "A list of connection details to save you typing again."
 				}
-      }
-    },
+			}
+		},
 		"commands": [
 			{
 				"command": "code-for-ibmi.connect",
