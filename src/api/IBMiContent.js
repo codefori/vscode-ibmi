@@ -36,6 +36,7 @@ module.exports = class IBMiContent {
    * @param {string} mbr 
    */
   async downloadMemberContent(asp, lib, spf, mbr) {
+    if (!asp) asp = this.ibmi.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
@@ -83,6 +84,7 @@ module.exports = class IBMiContent {
    * @param {string} content 
    */
   async uploadMemberContent(asp, lib, spf, mbr, content) {
+    if (!asp) asp = this.ibmi.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();

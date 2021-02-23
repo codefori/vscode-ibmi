@@ -17,6 +17,7 @@ module.exports = class IBMi {
     this.spfShortcuts = ['QSYSINC/H'];
     this.logCompileOutput = false;
     this.autoRefresh = false;
+    this.sourceASP = undefined;
   }
 
   /**
@@ -132,6 +133,7 @@ module.exports = class IBMi {
     this.tempLibrary = data.temporaryLibrary;
     this.logCompileOutput = data.logCompileOutput || false;
     this.autoRefresh = data.autoRefresh;
+    this.sourceASP = (data.sourceASP.length > 0 ? data.sourceASP : undefined);
   }
 
   /**

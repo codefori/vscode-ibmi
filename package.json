@@ -66,6 +66,11 @@
 					"default": "ILEDITOR",
 					"description": "Temporary library"
 				},
+				"code-for-ibmi.sourceASP": {
+					"type": "string",
+					"default": "",
+					"description": "If source files live within a specific ASP, please specify it here. Leave blank otherwise."
+				},
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
 					"default": false,
