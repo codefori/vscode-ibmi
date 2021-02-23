@@ -249,6 +249,7 @@ module.exports = class memberBrowserProvider {
       } catch (e) {
         console.log(e);
         item = new vscode.TreeItem("Error loading members.");
+        vscode.window.showErrorMessage(e);
         items = [item];
       }
 
