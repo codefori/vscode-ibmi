@@ -114,9 +114,13 @@
 									"streamfile"
 								]
 							},
-							"extension": {
-								"type": "string",
-								"description": "Extension for compile type"
+							"extensions": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"description": "Source extension"
+								},
+								"description": "Extensions that can use this action"
 							},
 							"name": {
 								"type": "string",
@@ -131,19 +135,19 @@
 					"default": [
 						{
 							"fileSystem": "member",
-							"extension": "rpgle",
+							"extensions": ["rpgle", "rpg"],
 							"name": "CRTBNDRPG",
 							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
 						},
 						{
 							"fileSystem": "member",
-							"extension": "CLLE",
+							"extensions": ["CLLE", "CL"],
 							"name": "CRTBNDCL",
 							"command": "CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
 						},
 						{
 							"fileSystem": "member",
-							"extension": "CLP",
+							"extensions": ["CLP"],
 							"name": "CRTCLPGM",
 							"command": "CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) OUTPUT(*PRINT)"
 						}

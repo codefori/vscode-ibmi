@@ -92,25 +92,31 @@ module.exports = class CompileTools {
 
     const uri = document.uri;
     const config = vscode.workspace.getConfiguration('code-for-ibmi');
-    const compileCommands = config.get('compileCommands');
+    const availableActions = config.get('compileCommands');
 
     const extension = uri.path.substring(uri.path.lastIndexOf('.')+1);
 
-    const compileOptions = compileCommands.filter(item => item.fileSystem === uri.scheme && ['GLOBAL', extension.toUpperCase()].includes(item.extension.toUpperCase()));
+    //We do this for backwards compatability.
+    //Can be removed in a few versions.
+    for (var action of availableActions) {
+      if (action.extension) action.extensions = [action.extension];
+    }
+
+    const compileOptions = availableActions.filter(action => action.fileSystem === uri.scheme && ['GLOBAL', ...action.extensions.map(x => x.toUpperCase())].includes(extension.toUpperCase()));
 
     if (compileOptions.length > 0) {
       const options = compileOptions.map(item => item.name);
-
+    
       var chosenOptionName, command;
-
+    
       if (options.length === 1) {
         chosenOptionName = options[0]
       } else {
         chosenOptionName = await vscode.window.showQuickPick(options);
       }
-
+    
       if (chosenOptionName) {
-        command = compileCommands.find(item => item.fileSystem === uri.scheme && ['GLOBAL', extension.toUpperCase()].includes(item.extension.toUpperCase()) && item.name === chosenOptionName).command;
+        command = availableActions.find(action => action.fileSystem === uri.scheme && ['GLOBAL', ...action.extensions.map(x => x.toUpperCase())].includes(extension.toUpperCase()) && action.name === chosenOptionName).command;
 
         switch (uri.scheme) {
           case 'member':
