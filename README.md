@@ -1,6 +1,6 @@
 # Code for IBM i
 
-Browse, edit and compile your source members right from Visual Studio Code.
+Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
 ![](media/image.png)
 
