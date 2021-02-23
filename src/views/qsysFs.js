@@ -1,7 +1,7 @@
 
 const util = require('util');
 const vscode = require('vscode');
-var instance = require('../instance');
+var instance = require('../Instance');
 
 module.exports = class qsysFs {
   constructor() {

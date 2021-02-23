@@ -5,7 +5,7 @@ const IBMi = require('./api/IBMi');
 const IBMiContent = require("./api/IBMiContent");
 const CompileTools = require("./api/CompileTools");
 
-module.exports = class {
+module.exports = class Instance {
   static setConnection(conn) {
     instance.connection = conn;
     instance.content = new IBMiContent(instance.connection);
