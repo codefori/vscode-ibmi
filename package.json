@@ -187,7 +187,13 @@
 				"command": "code-for-ibmi.refreshMemberBrowser",
 				"title": "Refresh Member List",
 				"category": "IBM i",
-				"icon": "$(symbol-file)"
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.addSourceFile",
+				"title": "Add Source File",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
 			},
 			{
 				"command": "code-for-ibmi.createMember",
@@ -232,7 +238,7 @@
 				{
 					"id": "ibmi-explorer",
 					"title": "IBM i",
-					"icon": "media/as400.svg"
+					"icon": "media/server.svg"
 				}
 			]
 		},
@@ -242,16 +248,24 @@
 					"id": "memberBrowser",
 					"name": "Member Browser",
 					"contextualTitle": "Member Browser",
-					"icon": "media/as400.svg"
+					"icon": "media/server.svg"
 				}
 			]
 		},
 		"menus": {
-			"view/item/context": [
+			"view/title": [
+				{
+					"command": "code-for-ibmi.addSourceFile",
+					"group": "navigation",
+					"when": "view == memberBrowser"
+				},
 				{
 					"command": "code-for-ibmi.refreshMemberBrowser",
-					"when": "view == memberBrowser && viewItem == SPF"
-				},
+					"group": "navigation",
+					"when": "view == memberBrowser"
+				}
+			],
+			"view/item/context": [
 				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == memberBrowser && viewItem == SPF"

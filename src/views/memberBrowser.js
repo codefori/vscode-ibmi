@@ -8,6 +8,7 @@ module.exports = class memberBrowserProvider {
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
+    this.selections = undefined;
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
 
@@ -21,6 +22,24 @@ module.exports = class memberBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshMemberBrowser`, async () => {
         this.refresh();
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async () => {
+        const config = vscode.workspace.getConfiguration('code-for-ibmi');
+        let sourceFiles = config.get('sourceFileList');
+        const newSourceFile = await vscode.window.showInputBox({
+          prompt: "Source file to add (Format: LIB/FILE)"
+        });
+
+        if (newSourceFile) {
+          if (newSourceFile.includes('/')) {
+            sourceFiles.push(newSourceFile.toUpperCase());
+            config.update('sourceFileList', sourceFiles);
+            this.refresh();
+          } else {
+            vscode.window.showErrorMessage(`Format incorrect. Use LIB/FILE.`);
+          }
+        }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
@@ -58,6 +77,7 @@ module.exports = class memberBrowserProvider {
 
         } else {
           //Running from command
+          console.log(this);
         }
       }),
 
