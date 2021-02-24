@@ -160,16 +160,15 @@ module.exports = class CompileTools {
             ], undefined, 1);
 
             if (output.code === 0 || output.code === null) {
-              output = output.stdout;
               compiled = true;
               vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
               
             } else {
-              output = `${output.stderr}\n\n${output.stdout}\n\n`;
               compiled = false;
-
               vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
             }
+
+            output = `${output.stderr}\n\n${output.stdout}\n\n`;
 
           } catch (e) {
             output = e;
