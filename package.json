@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "IBM i tools for Code",
-	"version": "0.0.8",
+	"version": "0.0.9",
 	"author": {
 		"name": "Halcyon Tech Ltd",
 		"url": "https://github.com/halcyon-tech"
