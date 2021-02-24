@@ -61,9 +61,9 @@ module.exports = class Instance {
       );
 
       context.subscriptions.push(
-        vscode.commands.registerCommand('code-for-ibmi.compileSource', async () => {
+        vscode.commands.registerCommand('code-for-ibmi.runAction', async () => {
           const editor = vscode.window.activeTextEditor;
-          CompileTools.Compile(this, editor.document);
+          CompileTools.RunAction(this, editor.document);
         })
       );
     }

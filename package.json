@@ -20,7 +20,7 @@
 	"activationEvents": [
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
-		"onCommand:code-for-ibmi.compileSource",
+		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
@@ -105,11 +105,12 @@
 					"default": [],
 					"description": "A list of connection details to save you typing again."
 				},
-				"code-for-ibmi.compileCommands": {
+				"code-for-ibmi.actions": {
 					"type": "array",
+					"description": "A list of actions that can be used throughout the extension. For example, you would setup actions to compile source code.",
 					"items": {
 						"type": "object",
-						"title": "Configuration for the compile commands.",
+						"title": "Action",
 						"properties": {
 							"fileSystem": {
 								"type": "string",
@@ -129,11 +130,11 @@
 							},
 							"name": {
 								"type": "string",
-								"description": "Compile name"
+								"description": "Action name"
 							},
 							"command": {
 								"type": "string",
-								"description": "Compile command"
+								"description": "Action command"
 							}
 						}
 					},
@@ -156,8 +157,7 @@
 							"name": "CRTCLPGM",
 							"command": "CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) OUTPUT(*PRINT)"
 						}
-					],
-					"description": "A list of connection details to save you typing again."
+					]
 				}
 			}
 		},
@@ -173,8 +173,8 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.compileSource",
-				"title": "Compile Current Source",
+				"command": "code-for-ibmi.runAction",
+				"title": "Run Action",
 				"category": "IBM i"
 			},
 			{
@@ -216,7 +216,7 @@
 		],
 		"keybindings": [
 			{
-				"command": "code-for-ibmi.compileSource",
+				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
 			}

@@ -87,12 +87,12 @@ module.exports = class CompileTools {
    * @param {*} instance
    * @param {vscode.TextDocument} document 
    */
-  static async Compile(instance, document) {
+  static async RunAction(instance, document) {
     var evfeventInfo = {lib: '', object: ''};
 
     const uri = document.uri;
     const config = vscode.workspace.getConfiguration('code-for-ibmi');
-    const availableActions = config.get('compileCommands');
+    const availableActions = config.get('actions');
 
     const extension = uri.path.substring(uri.path.lastIndexOf('.')+1);
 
