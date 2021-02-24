@@ -162,20 +162,20 @@ module.exports = class CompileTools {
             if (output.code === 0 || output.code === null) {
               output = output.stdout;
               compiled = true;
-              vscode.window.showInformationMessage(`Compiled ${evfeventInfo.lib}/${evfeventInfo.object} successfully!`);
+              vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
               
             } else {
               output = `${output.stderr}\n\n${output.stdout}\n\n`;
               compiled = false;
 
-              vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile.`);
+              vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
             }
 
           } catch (e) {
             output = e;
             compiled = false;
 
-            vscode.window.showErrorMessage(`${evfeventInfo.lib}/${evfeventInfo.object} did not compile (internal error).`);
+            vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
 
           outputChannel.append(output + '\n');
