@@ -21,6 +21,7 @@
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.runAction",
+		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
@@ -174,6 +175,11 @@
 			},
 			{
 				"command": "code-for-ibmi.runAction",
+				"title": "Run Action on Active Editor",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.runActionFromView",
 				"title": "Run Action",
 				"category": "IBM i"
 			},
@@ -264,6 +270,10 @@
 				},
 				{
 					"command": "code-for-ibmi.renameMember",
+					"when": "view == memberBrowser && viewItem == member"
+				},
+				{
+					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == memberBrowser && viewItem == member"
 				}
 			]

@@ -33,10 +33,9 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {vscode.TextDocument} document 
    * @param {{lib: string, object: string, ext?: string}} evfeventInfo
    */
-  static async refreshDiagnostics(instance, document, evfeventInfo) {
+  static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
     const tableData = await content.getTable(evfeventInfo.lib, 'EVFEVENT', evfeventInfo.object);
@@ -85,12 +84,11 @@ module.exports = class CompileTools {
 
   /**
    * @param {*} instance
-   * @param {vscode.TextDocument} document 
+   * @param {vscode.Uri} uri 
    */
-  static async RunAction(instance, document) {
+  static async RunAction(instance, uri) {
     var evfeventInfo = {lib: '', object: ''};
 
-    const uri = document.uri;
     const config = vscode.workspace.getConfiguration('code-for-ibmi');
     const availableActions = config.get('actions');
 
@@ -182,7 +180,7 @@ module.exports = class CompileTools {
           outputChannel.append(output + '\n');
 
           if (command.includes('*EVENTF')) {
-            this.refreshDiagnostics(instance, document, evfeventInfo);
+            this.refreshDiagnostics(instance, evfeventInfo);
           }
 
         }

@@ -63,7 +63,15 @@ module.exports = class Instance {
       context.subscriptions.push(
         vscode.commands.registerCommand('code-for-ibmi.runAction', async () => {
           const editor = vscode.window.activeTextEditor;
-          CompileTools.RunAction(this, editor.document);
+          if (editor) {
+            CompileTools.RunAction(this, editor.document.uri);
+          }
+        })
+      );
+      
+      context.subscriptions.push(
+        vscode.commands.registerCommand(`code-for-ibmi.runActionFromView`, async (node) => {
+          CompileTools.RunAction(this, node.resourceUri);
         })
       );
     }
