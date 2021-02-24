@@ -27,7 +27,7 @@ module.exports = class CompileTools {
     ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
     context.subscriptions.push(ileDiagnostics);
 
-    outputChannel = vscode.window.createOutputChannel("IBM i Compile Log");
+    outputChannel = vscode.window.createOutputChannel("IBM i Output");
     context.subscriptions.push(outputChannel);
   }
   
