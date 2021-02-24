@@ -90,20 +90,21 @@ module.exports = class CompileTools {
     var evfeventInfo = {lib: '', object: ''};
 
     const config = vscode.workspace.getConfiguration('code-for-ibmi');
-    const availableActions = config.get('actions');
+    const allActions = config.get('actions');
 
-    const extension = uri.path.substring(uri.path.lastIndexOf('.')+1);
+    const extension = uri.path.substring(uri.path.lastIndexOf('.')+1).toUpperCase();
 
     //We do this for backwards compatability.
     //Can be removed in a few versions.
-    for (var action of availableActions) {
+    for (var action of allActions) {
       if (action.extension) action.extensions = [action.extension];
+      if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
-    const compileOptions = availableActions.filter(action => action.fileSystem === uri.scheme && ['GLOBAL', ...action.extensions.map(x => x.toUpperCase())].includes(extension.toUpperCase()));
+    const availableActions = allActions.filter(action => action.fileSystem === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes('GLOBAL')));
 
-    if (compileOptions.length > 0) {
-      const options = compileOptions.map(item => item.name);
+    if (availableActions.length > 0) {
+      const options = availableActions.map(item => item.name);
     
       var chosenOptionName, command;
     
@@ -114,7 +115,7 @@ module.exports = class CompileTools {
       }
     
       if (chosenOptionName) {
-        command = availableActions.find(action => action.fileSystem === uri.scheme && ['GLOBAL', ...action.extensions.map(x => x.toUpperCase())].includes(extension.toUpperCase()) && action.name === chosenOptionName).command;
+        command = availableActions.find(action => action.name === chosenOptionName).command;
 
         switch (uri.scheme) {
           case 'member':
