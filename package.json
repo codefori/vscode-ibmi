@@ -356,27 +356,27 @@
 				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == memberBrowser && viewItem == member",
-					"group": "workspace@1"
-				},
-				{
-					"command": "code-for-ibmi.copyMember",
-					"when": "view == memberBrowser && viewItem == member",
-					"group": "memberStuff@2"
-				},
-				{
-					"command": "code-for-ibmi.deleteMember",
-					"when": "view == memberBrowser && viewItem == member",
-					"group": "memberStuff@4"
-				},
-				{
-					"command": "code-for-ibmi.renameMember",
-					"when": "view == memberBrowser && viewItem == member",
-					"group": "memberStuff@3"
+					"group": "1_workspace@1"
 				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
 					"when": "view == memberBrowser && viewItem == member",
-					"group": "memberStuff@1"
+					"group": "2_memberStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.copyMember",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "2_memberStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.deleteMember",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "2_memberStuff@4"
+				},
+				{
+					"command": "code-for-ibmi.renameMember",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "2_memberStuff@3"
 				}
 			]
 		},
