@@ -268,7 +268,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
-				"title": "Refresh Member List",
+				"title": "Refresh All Member Lists",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -278,6 +278,11 @@
 				"category": "IBM i",
 				"icon": "$(new-folder)"
 			},
+            {
+                "command": "code-for-ibmi.refreshSourceFile",
+                "title": "Refresh Member List",
+                "category": "IBM i"
+            },
 			{
 				"command": "code-for-ibmi.createMember",
 				"title": "Create Member",
@@ -353,6 +358,10 @@
 					"command": "code-for-ibmi.createMember",
 					"when": "view == memberBrowser && viewItem == SPF"
 				},
+                {
+                    "command": "code-for-ibmi.refreshSourceFile",
+                    "when": "view == memberBrowser && viewItem == SPF"
+                },
 				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == memberBrowser && viewItem == member",
