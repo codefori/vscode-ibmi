@@ -130,7 +130,7 @@ module.exports = class IBMiContent {
         ') ' +
         "TOSTMF('" +
         tempRmt +
-        "') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)",
+        "') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) ",
     );
 
     var result = await this.downloadStreamfile(tempRmt);
