@@ -354,24 +354,29 @@
 					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{
+					"command": "code-for-ibmi.runActionFromView",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "workspace@1"
+				},
+				{
 					"command": "code-for-ibmi.copyMember",
-					"when": "view == memberBrowser && viewItem == member"
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "memberStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteMember",
-					"when": "view == memberBrowser && viewItem == member"
-				},
-				{
-					"command": "code-for-ibmi.updateMemberText",
-					"when": "view == memberBrowser && viewItem == member"
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "memberStuff@4"
 				},
 				{
 					"command": "code-for-ibmi.renameMember",
-					"when": "view == memberBrowser && viewItem == member"
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "memberStuff@3"
 				},
 				{
-					"command": "code-for-ibmi.runActionFromView",
-					"when": "view == memberBrowser && viewItem == member"
+					"command": "code-for-ibmi.updateMemberText",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "memberStuff@1"
 				}
 			]
 		},
