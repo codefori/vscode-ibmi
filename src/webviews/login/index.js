@@ -98,7 +98,10 @@ module.exports = class Login {
         const [username, hostname] = selected.split('@');
         const [host, port] = hostname.split(':');
 
-        const password = await vscode.window.showInputBox({password: true});
+        const password = await vscode.window.showInputBox({
+          prompt: `Password for ${selected}`,
+          password: true
+        });
 
         if (password) {
           const connection = new IBMi();
