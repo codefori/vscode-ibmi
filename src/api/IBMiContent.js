@@ -54,7 +54,7 @@ module.exports = class IBMiContent {
       try {
         //If this command fails we need to try again after we delete the temp remote
         await this.ibmi.remoteCommand(
-          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208)`, '.'
+          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) FLDDLM(',') DECPNT(*PERIOD)`, '.'
         );
       } catch (e) {
         if (e.startsWith("CPDA08A")) {
@@ -130,7 +130,7 @@ module.exports = class IBMiContent {
         ') ' +
         "TOSTMF('" +
         tempRmt +
-        "') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL)",
+        "') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)",
     );
 
     var result = await this.downloadStreamfile(tempRmt);
