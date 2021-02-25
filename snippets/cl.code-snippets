@@ -79,7 +79,7 @@
     "SELECT": {
         "scope": "clle,cl,clp",
         "prefix": "SELECT",
-        "body": ["SELECT", "WHEN COND(${1:Condition}) THEN(${2:Command})", "", "ENDDO", "", "ENDSELECT"],
+        "body": ["SELECT", "WHEN COND(${1:Condition}) THEN(${2:Command})", "$0", "ENDDO", "ENDSELECT"],
         "description": "Select Statement"
     },
     "SNDSMTPEMM": {
@@ -88,20 +88,21 @@
         "body": ["SNDSMTPEMM RCP((${1:Recipient} ${2:*PRI}) +",
             "(${3:Recipient 2} ${4:*CC}) +",
             "(${5:Recipient 3} ${6:*BCC})) +",
-            "SUBJECT('${7:Subject}') +", 
-            "NOTE('${8:Note}') ATTACH(${9:Attachment})"],
+            "SUBJECT('${7:Subject}') +",
+            "NOTE('${8:Note}') ATTACH(${9:Attachment})"
+        ],
         "description": "Send SMTP Email"
     },
     "SUBR": {
         "scope": "clle,cl,clp",
         "prefix": "SUBR",
-        "body": ["SUBR SUBR(${1:Subroutine Name})", "", "ENDSUBR"],
+        "body": ["SUBR SUBR(${1:Subroutine Name})", "$0", "ENDSUBR"],
         "description": "Create Subroutine"
     },
     "WHEN": {
         "scope": "clle,cl,clp",
         "prefix": "WHEN",
-        "body": ["WHEN COND(${1:Condition}) THEN(${2:Command})", "", "ENDDO"],
+        "body": ["WHEN COND(${1:Condition}) THEN(${2:Command})", "$0", "ENDDO"],
         "description": "When Condition"
-    }                              
+    }
 }
