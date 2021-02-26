@@ -93,7 +93,7 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
 
           if (isStillOpen) {
             //Since there is no easy way to close a file.
@@ -126,7 +126,7 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
         if (node) {
           //Running from right click
-          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
 
           if (isStillOpen) {
             //Since there is no easy way to close a file.
@@ -181,29 +181,31 @@ module.exports = class ifsBrowserProvider {
     const content = instance.getContent();
     var items = [], item;
 
-    if (element) { //Chosen SPF
-      //Fetch members
-      console.log(element.path);
+    if (connection) {
+      if (element) { //Chosen SPF
+        //Fetch members
+        console.log(element.path);
 
-      try {
-        const objects = await content.getFileList(element.path);
+        try {
+          const objects = await content.getFileList(element.path);
 
-        for (const object of objects) {
-          items.push(new Object(object.type, object.name, object.path));
+          for (const object of objects) {
+            items.push(new Object(object.type, object.name, object.path));
+          }
+
+        } catch (e) {
+          console.log(e);
+          item = new vscode.TreeItem("Error loading members.");
+          vscode.window.showErrorMessage(e);
+          items = [item];
         }
 
-      } catch (e) {
-        console.log(e);
-        item = new vscode.TreeItem("Error loading members.");
-        vscode.window.showErrorMessage(e);
-        items = [item];
-      }
+      } else {
+        const objects = await content.getFileList(connection.homeDirectory);
 
-    } else {
-      const objects = await content.getFileList(connection.homeDirectory);
-
-      for (var object of objects) {
-        items.push(new Object(object.type, object.name, object.path));
+        for (var object of objects) {
+          items.push(new Object(object.type, object.name, object.path));
+        }
       }
     }
 

@@ -291,7 +291,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
-				"title": "Refresh Member List",
+				"title": "Refresh All Member Lists",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -301,6 +301,11 @@
 				"category": "IBM i",
 				"icon": "$(new-folder)"
 			},
+            {
+                "command": "code-for-ibmi.refreshSourceFile",
+                "title": "Refresh Member List",
+                "category": "IBM i"
+            },
 			{
 				"command": "code-for-ibmi.removeSourceFile",
 				"title": "Remove Source File",
@@ -438,6 +443,10 @@
 					"when": "view == memberBrowser && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
 				},
+                {
+                    "command": "code-for-ibmi.refreshSourceFile",
+                    "when": "view == memberBrowser && viewItem == SPF"
+                },
 				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == memberBrowser && viewItem == member",
