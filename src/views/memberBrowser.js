@@ -50,8 +50,6 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.refreshSourceFile`, async (node) => {
         if (node) {
             // Running from right click on Source File
-            console.log("Refreshing Source File"); // TODO: remove
-
             const path = node.path.split('/');  // LIB/SPF
             this.refresh(path[0], path[1]);
         } else { 
@@ -302,14 +300,11 @@ module.exports = class memberBrowserProvider {
       console.log(element.path);
       const [lib, spf] = element.path.split('/');
 
-
       // init cache entry if not exists
       var cacheExists = element.path in this.refreshCache;
       if(!cacheExists){
         this.refreshCache[element.path] = []; // init cache entry
-        console.log(`initialized cache for ${element.path}`); // TODO: remove
       }
-      console.log(`target: ${lib}/${spf}`); // TODO: remove
 
       // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
       if(!cacheExists || ([lib, '*ALL'].includes(this.targetLib) && [spf, '*ALL'].includes(this.targetSpf))){
@@ -328,8 +323,6 @@ module.exports = class memberBrowserProvider {
             items = [item];
         }
       } else{
-        console.log(`retrieving member list for ${lib}/${spf} from cache...`); // TODO: remove
-
         // add cached items to tree
         for (const cacheEntry of this.refreshCache[element.path]) {
           items.push(cacheEntry);

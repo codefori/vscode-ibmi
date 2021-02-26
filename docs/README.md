@@ -145,10 +145,9 @@ Each source file can be expanded to reveal its members.
 
 ![assets/srcflist_04.png](assets/srcflist_04.png)
 
-The member list can be manually refreshed by right clicking on the
-source file and selecting **Refresh Member List**.
+A source file can be refreshed by right clicking and selecting **Refresh Member List** in the context menu.
 
-![assets.srcflist_05.png](assets/srcflist_05.png)
+![assets/srcflist_05.png](assets/srcflist_05.png)
 
 
 ## Opening Source Members
@@ -192,6 +191,15 @@ For compile command configuration, see [Settings/Actions](#actions)
 
 
 ### Documentation
+
+#### Getting Started
 - install docsify ```npm i docsify-cli -g```
 - run local with ```docsify serve docs/```
 - by default, runs on http://localhost:3000
+- Read more about [Docsify](https://docsify.js.org/#/)
+
+#### File Structure
+
+- ```docs/README.md``` is the main documentation file
+- ```docs/index.html``` would be for styling tweaks, Docsify configuration, or adding syntax highlighting (PrismJs)
+- ```docs/_sidebar.md``` is for utilizing separate markdown files (chapters in a book is a good comparison)
