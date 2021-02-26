@@ -22,6 +22,140 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, async () => {
         this.refresh();
+      }),
+
+
+      vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
+        const connection = instance.getConnection();
+        let root;
+
+        if (node) {
+          //Running from right click
+          
+          root = node.path;
+        } else {
+          root = connection.homeDirectory;
+        }
+
+        const fullName = await vscode.window.showInputBox({
+          prompt: "Path of new folder",
+          value: root
+        });
+
+        if (fullName) {
+
+          try {
+            await connection.paseCommand(`mkdir ${fullName}`);
+
+            if (connection.autoRefresh) this.refresh();
+
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error creating new directory! ${e}`);
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.createStreamfile`, async (node) => {
+        const connection = instance.getConnection();
+        let root;
+
+        if (node) {
+          //Running from right click
+          
+          root = node.path;
+        } else {
+          root = connection.homeDirectory;
+        }
+        
+        const fullName = await vscode.window.showInputBox({
+          prompt: "Name of new streamfile",
+          value: root
+        });
+
+        if (fullName) {
+          const connection = instance.getConnection();
+
+          try {
+            vscode.window.showInformationMessage(`Creating and streamfile ${fullName}.`);
+
+            await connection.paseCommand(`echo "" > ${fullName}`);
+
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
+
+            if (connection.autoRefresh) this.refresh();
+
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error creating new streamfile! ${e}`);
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
+
+        if (node) {
+          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === node.path);
+
+          if (isStillOpen) {
+            //Since there is no easy way to close a file.
+            vscode.window.showInformationMessage(`Cannot delete streamfile while it is open.`);
+
+          } else {
+            //Running from right click
+            var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+
+            if (result === `Yes`) {
+              const connection = instance.getConnection();
+
+              try {
+                await connection.paseCommand(`rm -rf ${node.path}`)
+
+                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+
+                if (connection.autoRefresh) this.refresh();
+              } catch (e) {
+                  vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
+              }
+            }
+
+          }
+        } else {
+          //Running from command.
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
+        if (node) {
+          //Running from right click
+          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === node.path);
+
+          if (isStillOpen) {
+            //Since there is no easy way to close a file.
+            vscode.window.showInformationMessage(`Cannot delete streamfile while it is open.`);
+
+          } else {
+            const fullName = await vscode.window.showInputBox({
+              prompt: "Name of new path",
+              value: node.path
+            });
+
+            if (fullName) {
+              const connection = instance.getConnection();
+
+              try {
+                await connection.paseCommand(`mv ${node.path} ${fullName}`);
+                if (connection.autoRefresh) this.refresh();
+
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
+              }
+            }
+
+          }
+
+        } else {
+          //Running from command
+          console.log(this);
+        }
       })
     )
   }
