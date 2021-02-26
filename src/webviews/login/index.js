@@ -18,7 +18,7 @@ module.exports = class Login {
   static show(context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-      instance.disconnect();
+      if (!instance.disconnect()) return;
     }
 
     const panel = vscode.window.createWebviewPanel(
@@ -86,7 +86,7 @@ module.exports = class Login {
   static async LoginToPrevious(context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-      instance.disconnect();
+      if (!instance.disconnect()) return;
     }
 
     const existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');

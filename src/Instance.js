@@ -20,13 +20,24 @@ module.exports = class Instance {
   static getConnection() {return instance.connection};
   static getContent() {return instance.content};
 
+  /**
+   * @returns {Promise<boolean>} Indicates whether it was disconnect succesfully or not.
+   */
   static async disconnect() {
+    let doDisconnect = true;
+
     for (const document of vscode.workspace.textDocuments) {
-      if (['member', 'streamfile'].includes(document.uri.scheme)) {
+      console.log(document);
+      if (!document.isClosed && ['member', 'streamfile'].includes(document.uri.scheme)) {
         if (document.isDirty) {
-          vscode.window.showErrorMessage(`Cannot disconnect while files have no saved.`);
-          vscode.window.showTextDocument(document); 
-          return;
+          if (doDisconnect) {
+            await Promise.all([
+              vscode.window.showErrorMessage(`Cannot disconnect while files have no saved.`),
+              vscode.window.showTextDocument(document)
+            ]);
+
+            doDisconnect = false;
+          }
 
         } else {
           await vscode.window.showTextDocument(document); 
@@ -35,15 +46,19 @@ module.exports = class Instance {
       }
     }
 
-    if (instance.connection) {
-      instance.connection.client.dispose();
-      instance.connection = undefined;
-      vscode.commands.executeCommand('setContext', 'code-for-ibmi:connected', false);
+    if (doDisconnect) {
+      if (instance.connection) {
+        instance.connection.client.dispose();
+        instance.connection = undefined;
+        vscode.commands.executeCommand('setContext', 'code-for-ibmi:connected', false);
+      }
+
+
+      await vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser');
+      await vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser');
     }
 
-
-    await vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser');
-    await vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser');
+    return doDisconnect;
   }
 
   /**
