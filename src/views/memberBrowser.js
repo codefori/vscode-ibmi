@@ -12,6 +12,11 @@ module.exports = class memberBrowserProvider {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
 
+    // used for targeted member list refreshes
+    this.targetLib = '*ALL';
+    this.targetSpf = '*ALL';
+    this.refreshCache = {}; // cache entries of format 'LIB/SPF': members[]
+
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(event => {
         let affected = event.affectsConfiguration("code-for-ibmi.sourceFileList");
@@ -42,6 +47,16 @@ module.exports = class memberBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.refreshSourceFile`, async (node) => {
+        if (node) {
+            // Running from right click on Source File
+            const path = node.path.split('/');  // LIB/SPF
+            this.refresh(path[0], path[1]);
+        } else { 
+            // Running from command
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
         if (node) {
           //Running from right click
@@ -66,7 +81,9 @@ module.exports = class memberBrowserProvider {
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, uriPath);
 
-                if (connection.autoRefresh) this.refresh();
+                if (connection.autoRefresh) {
+                  this.refresh(path[0], path[1]);
+                }
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
               }
@@ -109,7 +126,10 @@ module.exports = class memberBrowserProvider {
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
 
-                if (connection.autoRefresh) this.refresh();
+                if (connection.autoRefresh) {
+                  this.refresh(oldPath[0], oldPath[1]);
+                  this.refresh(newPath[0], newPath[1]);
+                }
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
               }
@@ -147,7 +167,9 @@ module.exports = class memberBrowserProvider {
 
                 vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-                if (connection.autoRefresh) this.refresh();
+                if (connection.autoRefresh) {
+                  this.refresh(path[0], path[1]);
+                }
               } catch (e) {
                   vscode.window.showErrorMessage(`Error deleting member! ${e}`);
               }
@@ -178,7 +200,9 @@ module.exports = class memberBrowserProvider {
                 `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${name}) TEXT('${newText}')`,
               );
 
-              if (connection.autoRefresh) this.refresh();
+              if (connection.autoRefresh) {
+                this.refresh(path[0], path[1]);
+              }
             } catch (e) {
               vscode.window.showErrorMessage(`Error changing member text! ${e}`);
             }
@@ -228,7 +252,9 @@ module.exports = class memberBrowserProvider {
                     );
                   }
     
-                  if (connection.autoRefresh) this.refresh();
+                  if (connection.autoRefresh) {
+                    this.refresh(path[0], path[1]);
+                  }
                   else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
                 } catch (e) {
                   vscode.window.showErrorMessage(`Error renaming member! ${e}`);
@@ -247,7 +273,9 @@ module.exports = class memberBrowserProvider {
     )
   }
 
-  refresh() {
+  refresh(lib='*ALL', spf='*ALL') {
+    this.targetLib = lib;
+    this.targetSpf = spf;
     this.emitter.fire();
   }
 
@@ -272,19 +300,34 @@ module.exports = class memberBrowserProvider {
       console.log(element.path);
       const [lib, spf] = element.path.split('/');
 
-      try {
-        const members = await content.getMemberList(lib, spf);
-
-        for (const member of members) {
-          items.push(new Member(member));
-        }
-      } catch (e) {
-        console.log(e);
-        item = new vscode.TreeItem("Error loading members.");
-        vscode.window.showErrorMessage(e);
-        items = [item];
+      // init cache entry if not exists
+      var cacheExists = element.path in this.refreshCache;
+      if(!cacheExists){
+        this.refreshCache[element.path] = []; // init cache entry
       }
 
+      // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
+      if(!cacheExists || ([lib, '*ALL'].includes(this.targetLib) && [spf, '*ALL'].includes(this.targetSpf))){
+        try {
+            const members = await content.getMemberList(lib, spf);
+            this.refreshCache[element.path] = []; // reset cache since we're getting new data
+
+            for (const member of members) {
+              items.push(new Member(member));
+              this.refreshCache[element.path].push(new Member(member));
+            }
+        } catch (e) {
+            console.log(e);
+            item = new vscode.TreeItem("Error loading members.");
+            vscode.window.showErrorMessage(e);
+            items = [item];
+        }
+      } else{
+        // add cached items to tree
+        for (const cacheEntry of this.refreshCache[element.path]) {
+          items.push(cacheEntry);
+        }
+      }
     } else {
       const shortcuts = instance.getConnection().spfShortcuts;
 
@@ -293,7 +336,6 @@ module.exports = class memberBrowserProvider {
         items.push(new SPF(shortcut, shortcut));
       }
     }
-
     return items;
   }
 }
