@@ -74,6 +74,11 @@
 					"default": "ILEDITOR",
 					"description": "Temporary library. Cannot be QTEMP."
 				},
+				"code-for-ibmi.buildLibrary": {
+					"type": "string",
+					"default": "QTEMP",
+					"description": "Library used for &BUILDLIB when running actions from the IFS."
+				},
 				"code-for-ibmi.sourceASP": {
 					"type": "string",
 					"default": "",
