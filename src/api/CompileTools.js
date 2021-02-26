@@ -70,7 +70,7 @@ module.exports = class CompileTools {
           
           diagnostic = new vscode.Diagnostic(
             new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
-            `${error.code}: ${error.text}`,
+            `${error.code}: ${error.text} (${error.sev})`,
             diagnosticSeverity[error.sev]
           );
 
