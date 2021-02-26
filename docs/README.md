@@ -64,14 +64,28 @@ Here is an example of the action used to compile an RPG member:
   }
 ]
 ```
-This action corresponds to files with ```.rpg``` or ```.rpgle``` extensions.
 
-Notice the special identifiers in the command begining with '&'.
-These identifiers correspond to values of whichever member 
-is currently open in the extension.
+This action corresponds to files with ```.rpg``` or ```.rpgle``` extensions. Actions can only work with one `fileSystem`. The two available file systems available are `member` and `streamfile`.
 
-New actions can be added by defining a new action object in the settings
-like the snippet listed above.
+Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Members and streamfiles have different variables.
+
+#### Member variables
+
+| Variable | Usage                              |
+|----------|------------------------------------|
+| &OPENLIB | Library that member resides in     |
+| &OPENSPF | Source file that member resides in |
+| &OPENMBR | Name of member                     |
+
+#### Streamfile variables
+
+| Variable  | Usage                                           |
+|-----------|-------------------------------------------------|
+| &BUILDLIB | Values which comes from Code for IBM i settings |
+| &FULLPATH | Path to the streamfile.                         |
+| &NAME     | Name of the streamfile with no extension        |
+
+New actions can be added by defining a new action object in the settings like the snippet listed above.
 
 ### Auto Refresh
 When enabled, listings will refresh when items are interacted with (create, copy, delete, etc). If performance is bad, it is suggested to disable this option.
@@ -92,7 +106,7 @@ Here is a snippet of what the connection details look like:
 ```
 
 ### Home Directory
-Home directory for user (on IFS).
+Home directory for user. This directory is also the root for the IFS browser.
 
 ### Library List
 Comma delimited list for library list.
