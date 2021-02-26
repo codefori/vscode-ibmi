@@ -1,5 +1,6 @@
 
 const vscode = require('vscode');
+const path = require('path');
 
 const errorHandler = require('./errorHandle');
 
@@ -24,11 +25,15 @@ module.exports = class CompileTools {
    * @param {vscode.ExtensionContext} context
    */
   static register(context) {
-    ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
-    context.subscriptions.push(ileDiagnostics);
+    if (!ileDiagnostics) {
+      ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
+      context.subscriptions.push(ileDiagnostics);
+    }
 
-    outputChannel = vscode.window.createOutputChannel("IBM i Output");
-    context.subscriptions.push(outputChannel);
+    if (!outputChannel) {
+      outputChannel = vscode.window.createOutputChannel("IBM i Output");
+      context.subscriptions.push(outputChannel);
+    }
   }
   
   /**
@@ -72,7 +77,11 @@ module.exports = class CompileTools {
           diagnostics.push(diagnostic);
         }
 
-        ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? '.' + evfeventInfo.ext : ''}`), diagnostics);
+        if (file.startsWith('/'))
+          ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+        else
+          ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? '.' + evfeventInfo.ext : ''}`), diagnostics);
+        
       }
 
     } else {
@@ -117,22 +126,41 @@ module.exports = class CompileTools {
       if (chosenOptionName) {
         command = availableActions.find(action => action.name === chosenOptionName).command;
 
+        let basename, name, ext;
+
         switch (uri.scheme) {
           case 'member':
             const [blank, lib, file, fullName] = uri.path.split('/');
-            const name = fullName.substring(0, fullName.lastIndexOf('.'));
+            name = fullName.substring(0, fullName.lastIndexOf('.'));
 
-            var ext = (fullName.includes('.') ? fullName.substring(fullName.lastIndexOf('.') + 1) : undefined)
+            ext = (fullName.includes('.') ? fullName.substring(fullName.lastIndexOf('.') + 1) : undefined);
 
             evfeventInfo = {
               lib: lib,
               object: name,
-              ext: ext
+              ext
             };
 
             command = command.replace(new RegExp('&OPENLIB', 'g'), lib);
             command = command.replace(new RegExp('&OPENSPF', 'g'), file);
             command = command.replace(new RegExp('&OPENMBR', 'g'), name);
+
+            break;
+
+          case 'streamfile':
+            basename = path.posix.basename(uri.path);
+            name = basename.substring(0, basename.lastIndexOf('.')).toUpperCase();
+            ext = (basename.includes('.') ? basename.substring(basename.lastIndexOf('.') + 1) : undefined);
+
+            evfeventInfo = {
+              lib: config.get('buildLibrary'),
+              object: name,
+              ext
+            };
+
+            command = command.replace(new RegExp('&BUILDLIB', 'g'), config.get('buildLibrary'));
+            command = command.replace(new RegExp('&FULLPATH', 'g'), uri.path);
+            command = command.replace(new RegExp('&NAME', 'g'), name);
 
             break;
         }
