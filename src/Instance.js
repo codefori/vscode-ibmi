@@ -14,6 +14,7 @@ module.exports = class Instance {
   static setConnection(conn) {
     instance.connection = conn;
     instance.content = new IBMiContent(instance.connection);
+    vscode.commands.executeCommand('setContext', 'code-for-ibmi:connected', true);
   };
   
   static getConnection() {return instance.connection};
@@ -23,6 +24,7 @@ module.exports = class Instance {
     if (instance.connection) {
       instance.connection.client.dispose();
       instance.connection = undefined;
+      vscode.commands.executeCommand('setContext', 'code-for-ibmi:connected', false);
     }
   }
 
