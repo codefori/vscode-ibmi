@@ -47,6 +47,28 @@ module.exports = class memberBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.removeSourceFile`, async (node) => {
+        if (node) {
+          //Running from right click
+          const config = vscode.workspace.getConfiguration('code-for-ibmi');
+          let sourceFiles = config.get('sourceFileList');
+
+          let index = -1;
+          sourceFiles.every((sourceFile,i) => {
+            if(sourceFile.toUpperCase() === node.path) {
+              index = i;
+              return false;
+            }
+            return true;
+          });
+          if (index != -1) {
+            sourceFiles.splice(index,1);
+          }
+
+          this.refresh();
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.refreshSourceFile`, async (node) => {
         if (node) {
             // Running from right click on Source File
@@ -56,7 +78,7 @@ module.exports = class memberBrowserProvider {
             // Running from command
         }
       }),
-
+      
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
         if (node) {
           //Running from right click

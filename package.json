@@ -152,107 +152,107 @@
 							}
 						}
 					},
-					"default": [                     
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"RPGLE",
-										"RPG"
-								],
-								"name": "Create Bound RPG Program (CRTBNDRPG)",
-								"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"SQLRPGLE"
-								],
-								"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
-								"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},        
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"RPGLE",
-										"RPG"
-								],
-								"name": "Create RPG Module (CRTRPGMOD)",
-								"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},         
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CMD"
-								],
-								"name": "Create Command (CRTCMD)",
-								"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
-						},        
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CMD"
-								],
-								"name": "Create Command (Allow Return Variables - CRTCMD)",
-								"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
-						},      
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"pf",
-										"lf"
-								],
-								"name": "Delete File (DLTF)",
-								"command": "?DLTF FILE(&OPENLIB/&OPENMBR)"
-						},        
+					"default": [
 						{
 							"fileSystem": "member",
 							"extensions": [
-									"dspf"
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create Bound RPG Program (CRTBNDRPG)",
+							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create RPG Module (CRTRPGMOD)",
+							"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"CMD"
+							],
+							"name": "Create Command (CRTCMD)",
+							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"CMD"
+							],
+							"name": "Create Command (Allow Return Variables - CRTCMD)",
+							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"pf",
+								"lf"
+							],
+							"name": "Delete File (DLTF)",
+							"command": "?DLTF FILE(&OPENLIB/&OPENMBR)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"dspf"
 							],
 							"name": "Create Display File (CRTDSPF)",
 							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) RSTDSP(*NO) REPLACE(*YES)"
 						},
 						{
-								"fileSystem": "member",
-								"extensions": [
-										"pf"
-								],
-								"name": "Create Physical File (CRTPF)",
-								"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1)"
-						},        
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"lf"
-								],
-								"name": "Create :Logical File (CRTLF)",
-								"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF)"
-						},              
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CLP",
-										"CLLE"
-								],
-								"name": "Create CL Program (CRTCLP)",
-								"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
-						},          
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CLP",
-										"CLLE"
-								],
-								"name": "Create Bound CL Program (CRTBNDCL)",
-								"command": "?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+							"fileSystem": "member",
+							"extensions": [
+								"pf"
+							],
+							"name": "Create Physical File (CRTPF)",
+							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1)"
 						},
 						{
-								"fileSystem": "member",
-								"extensions": [
-										"GLOBAL"
-								],
-								"name": "Create Program (CRTPGM)",
-								"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"    
+							"fileSystem": "member",
+							"extensions": [
+								"lf"
+							],
+							"name": "Create :Logical File (CRTLF)",
+							"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"CLP",
+								"CLLE"
+							],
+							"name": "Create CL Program (CRTCLP)",
+							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"CLP",
+								"CLLE"
+							],
+							"name": "Create Bound CL Program (CRTBNDCL)",
+							"command": "?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"fileSystem": "member",
+							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Create Program (CRTPGM)",
+							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
 						}
 					]
 				}
@@ -307,6 +307,12 @@
                 "category": "IBM i"
             },
 			{
+				"command": "code-for-ibmi.removeSourceFile",
+				"title": "Remove Source File",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.createMember",
 				"title": "Create Member",
 				"category": "IBM i",
@@ -336,7 +342,6 @@
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
-
 			{
 				"command": "code-for-ibmi.refreshIFSBrowser",
 				"title": "Refresh IFS List",
@@ -430,7 +435,13 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.createMember",
-					"when": "view == memberBrowser && viewItem == SPF"
+					"when": "view == memberBrowser && viewItem == SPF",
+					"group": "3_sourceFileStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.removeSourceFile",
+					"when": "view == memberBrowser && viewItem == SPF",
+					"group": "3_sourceFileStuff@1"
 				},
                 {
                     "command": "code-for-ibmi.refreshSourceFile",
@@ -461,7 +472,6 @@
 					"when": "view == memberBrowser && viewItem == member",
 					"group": "2_memberStuff@3"
 				},
-
 				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == ifsBrowser && viewItem == streamfile",
@@ -477,7 +487,6 @@
 					"when": "view == ifsBrowser",
 					"group": "2_ifsStuff@2"
 				},
-
 				{
 					"command": "code-for-ibmi.createDirectory",
 					"when": "view == ifsBrowser && viewItem == directory",
@@ -493,7 +502,13 @@
 		"viewsWelcome": [
 			{
 				"view": "memberBrowser",
-				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)"
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)",
+				"when": "code-for-ibmi:connected == false"
+			},
+			{
+				"view": "memberBrowser",
+				"contents": "No source file",
+				"when": "code-for-ibmi:connected == true"
 			}
 		]
 	},
