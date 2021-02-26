@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "IBM i tools for Code",
-	"version": "0.0.13",
+	"version": "0.0.14",
 	"author": {
 		"name": "Halcyon Tech Ltd",
 		"url": "https://github.com/halcyon-tech"
@@ -20,6 +20,7 @@
 	"activationEvents": [
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
+		"onCommand:code-for-ibmi.disconnect",
 		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
@@ -256,6 +257,11 @@
 			{
 				"command": "code-for-ibmi.connectPrevious",
 				"title": "Connect to previous",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.disconnect",
+				"title": "Disconnect from current connection.",
 				"category": "IBM i"
 			},
 			{
