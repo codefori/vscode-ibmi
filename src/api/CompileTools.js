@@ -24,11 +24,15 @@ module.exports = class CompileTools {
    * @param {vscode.ExtensionContext} context
    */
   static register(context) {
-    ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
-    context.subscriptions.push(ileDiagnostics);
+    if (!ileDiagnostics) {
+      ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
+      context.subscriptions.push(ileDiagnostics);
+    }
 
-    outputChannel = vscode.window.createOutputChannel("IBM i Output");
-    context.subscriptions.push(outputChannel);
+    if (!outputChannel) {
+      outputChannel = vscode.window.createOutputChannel("IBM i Output");
+      context.subscriptions.push(outputChannel);
+    }
   }
   
   /**
