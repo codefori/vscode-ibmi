@@ -29,6 +29,14 @@ module.exports = class IBMiContent {
     return readFileAsync(tmpobj, 'utf8');
   }
 
+  async writeStreamfile(remotePath, content) {
+    const client = this.ibmi.client;
+    let tmpobj = await tmpFile();
+
+    await writeFileAsync(tmpobj, content, 'utf8');
+    return client.putFile(tmpobj, remotePath); // assumes streamfile will be UTF8
+  }
+
   /**
    * Download the contents of a source member
    * @param {string|undefined} asp 

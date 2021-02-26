@@ -21,6 +21,9 @@ module.exports = class Instance {
   static loadAllofExtension(context) {
     const memberBrowser = require('./views/memberBrowser');
     const qsysFs = new (require('./views/qsysFs'));
+    
+    const ifsBrowser = require('./views/ifsBrowser');
+    const ifs = new (require('./views/ifs'));
 
     if (instance.connection) {
       CompileTools.register(context);
@@ -44,18 +47,34 @@ module.exports = class Instance {
       );
 
       context.subscriptions.push(
+        vscode.window.registerTreeDataProvider(
+          'ifsBrowser',
+          new ifsBrowser(context)
+      ));
+
+      context.subscriptions.push(
+        //@ts-ignore
+        vscode.workspace.registerFileSystemProvider('streamfile', ifs, { 
+          isCaseSensitive: false
+        })
+      );
+
+      context.subscriptions.push(
         vscode.commands.registerCommand('code-for-ibmi.openEditable', async (path) => {
           console.log(path);
+          let uri;
           if (path.startsWith('/')) {
             //IFS
+            uri = vscode.Uri.parse(path).with({scheme: 'streamfile'});
           } else {
-            let uri = vscode.Uri.parse(path).with({scheme: 'member'});
-            try {
-              let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-              await vscode.window.showTextDocument(doc, { preview: false });
-            } catch (e) {
-              console.log(e);
-            }
+            uri = vscode.Uri.parse(path).with({scheme: 'member'});
+          }
+
+          try {
+            let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
+            await vscode.window.showTextDocument(doc, { preview: false });
+          } catch (e) {
+            console.log(e);
           }
         })
       );

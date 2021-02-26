@@ -29,7 +29,9 @@
 		"onCommand:code-for-ibmi.copyMember",
 		"onCommand:code-for-ibmi.deleteMember",
 		"onCommand:code-for-ibmi.updateMemberText",
-		"onCommand:code-for-ibmi.renameMember"
+		"onCommand:code-for-ibmi.renameMember",
+		"onView:ifsBrowser",
+		"onCommand:code-for-ibmi.refreshIFSBrowser"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -307,6 +309,12 @@
 				"title": "Rename Member",
 				"category": "IBM i",
 				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.refreshIFSBrowser",
+				"title": "Refresh IFS List",
+				"category": "IBM i",
+				"icon": "$(refresh)"
 			}
 		],
 		"keybindings": [
@@ -332,6 +340,12 @@
 					"name": "Member Browser",
 					"contextualTitle": "Member Browser",
 					"icon": "media/server.svg"
+				},
+				{
+					"id": "ifsBrowser",
+					"name": "IFS Browser",
+					"contextualTitle": "IFS Browser",
+					"icon": "media/server.svg"
 				}
 			]
 		},
@@ -346,6 +360,11 @@
 					"command": "code-for-ibmi.refreshMemberBrowser",
 					"group": "navigation",
 					"when": "view == memberBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
 				}
 			],
 			"view/item/context": [
