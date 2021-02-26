@@ -10,6 +10,8 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * [@worksofliam](https://github.com/worksofliam)
 * [@alanseiden](https://github.com/alanseiden)
 * [@richardschoen](https://github.com/richardschoen)
+* [@barrettotte](https://github.com/barrettotte)
+* [@thebeardedgeek](https://github.com/thebeardedgeek)
 
 ## Guide
 
@@ -50,9 +52,9 @@ You can click on a member to open and edit it. There is no member locking and th
 * [X] Member browser and editor
 * [X] Basic configration setup (for source physical file list, library list & home directory)
 * [X] Create, delete, rename & change text on members
-* [ ] IFS Browser
-* [ ] Create, delete and rename directory
-* [ ] Create, delete and rename streamfiles
+* [X] IFS Browser
+* [X] Create, delete and rename directory
+* [X] Create, delete and rename streamfiles
 * [X] Notice at bottom when connect to remote system
 * [X] Make it easier to connect to systems again
 * [X] Compilation settings

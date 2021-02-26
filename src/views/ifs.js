@@ -16,12 +16,10 @@ module.exports = class qsysFs {
    */
   async readFile(uri) {
     const contentApi = instance.getContent();
-    const [blank, lib, file, fullName] = uri.path.split('/');
-    const name = fullName.substring(0, fullName.lastIndexOf('.'));
 
-    const memberContent = await contentApi.downloadMemberContent(undefined, lib, file, name);
+    const fileContent = await contentApi.downloadStreamfile(uri.path);
 
-    return new Uint8Array(Buffer.from(memberContent, 'utf8'));
+    return new Uint8Array(Buffer.from(fileContent, 'utf8'));
   }
 
   /**
@@ -39,10 +37,8 @@ module.exports = class qsysFs {
    */
   writeFile(uri, content, options) {
     const contentApi = instance.getContent();
-    const [blank, lib, file, fullName] = uri.path.split('/');
-    const name = fullName.substring(0, fullName.lastIndexOf('.'));
 
-    return contentApi.uploadMemberContent(undefined, lib, file, name, content.toString('utf8'));
+    return contentApi.writeStreamfile(uri.path, content.toString('utf8'));
   }
 
   /**

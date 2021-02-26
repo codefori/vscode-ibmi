@@ -1,5 +1,6 @@
 const IBMi = require('./IBMi');
 
+const path = require('path');
 const util = require('util');
 var fs = require('fs');
 const tmp = require('tmp');
@@ -28,6 +29,14 @@ module.exports = class IBMiContent {
     return readFileAsync(tmpobj, 'utf8');
   }
 
+  async writeStreamfile(remotePath, content) {
+    const client = this.ibmi.client;
+    let tmpobj = await tmpFile();
+
+    await writeFileAsync(tmpobj, content, 'utf8');
+    return client.putFile(tmpobj, remotePath); // assumes streamfile will be UTF8
+  }
+
   /**
    * Download the contents of a source member
    * @param {string|undefined} asp 
@@ -36,6 +45,7 @@ module.exports = class IBMiContent {
    * @param {string} mbr 
    */
   async downloadMemberContent(asp, lib, spf, mbr) {
+    if (!asp) asp = this.ibmi.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
@@ -83,6 +93,7 @@ module.exports = class IBMiContent {
    * @param {string} content 
    */
   async uploadMemberContent(asp, lib, spf, mbr, content) {
+    if (!asp) asp = this.ibmi.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
@@ -173,5 +184,26 @@ module.exports = class IBMiContent {
       if (a.name > b.name) { return 1; }
       return 0;
     });
+  }
+
+  /**
+   * Get list of items in a path
+   * @param {string} remotePath 
+   * @return {Promise<{type: "directory"|"streamfile", name: string, path: string}[]>} Resulting list
+   */
+  async getFileList(remotePath) {
+    let results = await this.ibmi.paseCommand('ls -p ' + remotePath);
+
+    if (typeof results === "string" && results !== "") {
+      let list = results.split('\n');
+
+      return list.map(item => ({
+        type: ((item.substr(item.length - 1, 1) === '/') ? 'directory' : 'streamfile'),
+        name: item,
+        path: path.posix.join(remotePath, item)
+      }));
+    } else {
+      return [];
+    }
   }
 }

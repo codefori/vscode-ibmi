@@ -1,0 +1,108 @@
+{
+    "PGM": {
+        "scope": "clle,cl,clp",
+        "prefix": "PGM",
+        "body": ["PGM", "", "ENDPGM"],
+        "description": "Setup CL Program Start and End"
+    },
+    "SBMJOB": {
+        "scope": "clle,cl,clp",
+        "prefix": "SBMJOB",
+        "body": ["SBMJOB CMD(CALL PGM(${1:*LIBL}/${2:Program}) PARM(${3:Parameters})) +",
+            "JOB(${4:*JOBD}) JOBD(${5:*USRPRF}) JOBQ(${6:*JOBD}) JOBPTY(${7:*JOBD}) +",
+            "OUTPTY(${8:*JOBD}) PRTDEV(${9:*CURRENT}) OUTQ(${10:*CURRENT}) USER(${11:*CURRENT})"
+        ],
+        "description": "Submit a Job to a Job Queue"
+    },
+    "CALL PGM": {
+        "scope": "clle,cl,clp",
+        "prefix": "CALL PGM",
+        "body": "CALL PGM(${1:*LIBL}/${2:Program}) PARM(${3:Parameters})",
+        "description": "Call a Program"
+    },
+    "CHGVAR": {
+        "scope": "clle,cl,clp",
+        "prefix": "CHGVAR",
+        "body": "CHGVAR VAR(${1:Variable}) VALUE(${2:Value})",
+        "description": "Change Variable"
+    },
+    "CVTDAT": {
+        "scope": "clle,cl,clp",
+        "prefix": "CVTDAT",
+        "body": "CVTDAT DATE(${1:Date to Convert}) TOVAR(${2: Var for Converted Date}) FROMFMT(${3:From Format}) TOFMT(${4:To Format}) TOSEP(${5:Separator})",
+        "description": "Convert Date"
+    },
+    "DCL": {
+        "scope": "clle,cl,clp",
+        "prefix": "DCL",
+        "body": "DCL VAR(${1:Variable}) TYPE(${2:Type}) STG(${3:Storage}) LEN(${4:Length}) VALUE(${5:Initial Value})",
+        "description": "Declare CL Variable"
+    },
+    "DCLF": {
+        "scope": "clle,cl,clp",
+        "prefix": "DCLF",
+        "body": ["DCLF FILE(${1:*LIBL}/${2:File}) RCDFMT(${2:*ALL}) OPNID(${3:*NONE}) +",
+            "ALWVARLEN(${4:*NO}) ALWNULL(${5:*NO}) ALWGRAPHIC(${6:*NO}) DCLBINFLD(${7:*DEC})"
+        ],
+        "description": "Declare File"
+    },
+    "DLTF": {
+        "scope": "clle,cl,clp",
+        "prefix": "DLTF",
+        "body": "DLTF FILE(${1:*LIBL}/${2:File})",
+        "description": "Delete File"
+    },
+    "MONMSG": {
+        "scope": "clle,cl,clp",
+        "prefix": "MONMSG",
+        "body": "MONMSG MSGID(${1:Message ID}) CMPDTA(${2:Comparison Data}) EXEC(${3:Command to Execute})",
+        "description": "Monitor Message"
+    },
+    "RCVF": {
+        "scope": "clle,cl,clp",
+        "prefix": "RCVF",
+        "body": "RCVF DEV(${1:Display Device}) RCDFMT(${2:Record Format}) OPNID(${3:Open File Identifier}) WAIT(${4:Wait})",
+        "description": "Receive File"
+    },
+    "RTVSYSVAL": {
+        "scope": "clle,cl,clp",
+        "prefix": "RTVSYSVAL",
+        "body": "RTVSYSVAL SYSVAL(${1:System Value}) RTNVAR(${2:Returned Value})",
+        "description": "Retrieve System Value"
+    },
+    "OTHERWISE": {
+        "scope": "clle,cl,clp",
+        "prefix": "OTHERWISE",
+        "body": "OTHERWISE CMD(${1:Command})",
+        "description": "Otherwise Condition"
+    },
+    "SELECT": {
+        "scope": "clle,cl,clp",
+        "prefix": "SELECT",
+        "body": ["SELECT", "WHEN COND(${1:Condition}) THEN(${2:Command})", "$0", "ENDDO", "ENDSELECT"],
+        "description": "Select Statement"
+    },
+    "SNDSMTPEMM": {
+        "scope": "clle,cl,clp",
+        "prefix": "SNDSMTPEMM",
+        "body": ["SNDSMTPEMM RCP((${1:Recipient} ${2:*PRI}) +",
+            "(${3:Recipient 2} ${4:*CC}) +",
+            "(${5:Recipient 3} ${6:*BCC})) +",
+            "SUBJECT('${7:Subject}') +",
+            "NOTE('${8:Note}') ATTACH(${9:Attachment})"
+        ],
+        "description": "Send SMTP Email"
+    },
+    "SUBR": {
+        "scope": "clle,cl,clp",
+        "prefix": "SUBR",
+        "body": ["SUBR SUBR(${1:Subroutine Name})", "$0", "ENDSUBR"],
+        "description": "Create Subroutine"
+    },
+    "WHEN": {
+        "scope": "clle,cl,clp",
+        "prefix": "WHEN",
+        "body": ["WHEN COND(${1:Condition}) THEN(${2:Command})", "$0", "ENDDO"],
+        "description": "When Condition"
+    }
+}

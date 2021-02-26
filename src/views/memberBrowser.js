@@ -1,13 +1,14 @@
 
 const vscode = require('vscode');
 
-var instance = require('../instance');
+var instance = require('../Instance');
 
 module.exports = class memberBrowserProvider {
   /**
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
+    this.selections = undefined;
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
 
@@ -21,6 +22,24 @@ module.exports = class memberBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshMemberBrowser`, async () => {
         this.refresh();
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async () => {
+        const config = vscode.workspace.getConfiguration('code-for-ibmi');
+        let sourceFiles = config.get('sourceFileList');
+        const newSourceFile = await vscode.window.showInputBox({
+          prompt: "Source file to add (Format: LIB/FILE)"
+        });
+
+        if (newSourceFile) {
+          if (newSourceFile.includes('/')) {
+            sourceFiles.push(newSourceFile.toUpperCase());
+            config.update('sourceFileList', sourceFiles);
+            this.refresh();
+          } else {
+            vscode.window.showErrorMessage(`Format incorrect. Use LIB/FILE.`);
+          }
+        }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
@@ -58,6 +77,7 @@ module.exports = class memberBrowserProvider {
 
         } else {
           //Running from command
+          console.log(this);
         }
       }),
 
@@ -169,7 +189,9 @@ module.exports = class memberBrowserProvider {
       }),
       vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node) => {
         const path = node.path.split('/');
+
         const oldName = path[2].substring(0, path[2].lastIndexOf('.'));
+        const oldExtension = path[2].substring(path[2].lastIndexOf('.')+1);
 
         if (node) {
           const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
@@ -177,24 +199,34 @@ module.exports = class memberBrowserProvider {
             vscode.window.showInformationMessage(`Cannot rename member while it is open.`);
           } else {
 
-            const newName = await vscode.window.showInputBox({
+            let newName = await vscode.window.showInputBox({
               value: path[2],
               prompt: `Rename ${path[2]}`
             });
+
+            newName = newName.toUpperCase();
   
             if (newName && newName.toUpperCase() !== path[2]) {
               const connection = instance.getConnection();
               const newNameParts = newName.split('.');
+              var renameHappened = false;
 
               if (newNameParts.length === 2) {
                 try {
-                  await connection.remoteCommand(
-                    `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
-                  );
 
-                  await connection.remoteCommand(
-                    `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${newNameParts[0]}) SRCTYPE(${newNameParts[1]})`,
-                  );
+                  if (newNameParts[0] !== oldName) {
+                    await connection.remoteCommand(
+                      `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
+                    );
+
+                    renameHappened = true;
+                  }
+
+                  if (newNameParts[1] !== oldExtension) {
+                    await connection.remoteCommand(
+                      `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${renameHappened ? newNameParts[0] : oldName}) SRCTYPE(${newNameParts[1]})`,
+                    );
+                  }
     
                   if (connection.autoRefresh) this.refresh();
                   else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
