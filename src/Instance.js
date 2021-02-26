@@ -33,6 +33,9 @@ module.exports = class Instance {
   static loadAllofExtension(context) {
     const memberBrowser = require('./views/memberBrowser');
     const qsysFs = new (require('./views/qsysFs'));
+    
+    const ifsBrowser = require('./views/ifsBrowser');
+    const ifs = new (require('./views/ifs'));
 
 
     if (instance.connection) {
@@ -49,9 +52,22 @@ module.exports = class Instance {
       //Update the status bar and that's that.
       if (initialisedBefore) {
         vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser');
+        vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser');
         return;
 
       } else {
+
+        context.subscriptions.push(
+          vscode.commands.registerCommand('code-for-ibmi.disconnect', async () => {
+            if (instance.connection) {
+              statusBar.hide();
+              vscode.window.showInformationMessage(`Disconnecting from ${instance.connection.currentHost}.`);
+              this.disconnect();
+            } else {
+              vscode.window.showErrorMessage(`Not currently connected to any system.`);
+            }
+          })
+        );
 
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
@@ -68,30 +84,34 @@ module.exports = class Instance {
         );
 
         context.subscriptions.push(
-          vscode.commands.registerCommand('code-for-ibmi.disconnect', async () => {
-            if (instance.connection) {
-              statusBar.hide();
-              vscode.window.showInformationMessage(`Disconnecting from ${instance.connection.currentHost}.`);
-              this.disconnect();
-            } else {
-              vscode.window.showErrorMessage(`Not currently connected to any system.`);
-            }
+          vscode.window.registerTreeDataProvider(
+            'ifsBrowser',
+            new ifsBrowser(context)
+        ));
+  
+        context.subscriptions.push(
+          //@ts-ignore
+          vscode.workspace.registerFileSystemProvider('streamfile', ifs, { 
+            isCaseSensitive: false
           })
         );
-
+  
         context.subscriptions.push(
           vscode.commands.registerCommand('code-for-ibmi.openEditable', async (path) => {
             console.log(path);
+            let uri;
             if (path.startsWith('/')) {
               //IFS
+              uri = vscode.Uri.parse(path).with({scheme: 'streamfile'});
             } else {
-              let uri = vscode.Uri.parse(path).with({scheme: 'member'});
-              try {
-                let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-                await vscode.window.showTextDocument(doc, { preview: false });
-              } catch (e) {
-                console.log(e);
-              }
+              uri = vscode.Uri.parse(path).with({scheme: 'member'});
+            }
+  
+            try {
+              let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
+              await vscode.window.showTextDocument(doc, { preview: false });
+            } catch (e) {
+              console.log(e);
             }
           })
         );

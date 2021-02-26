@@ -30,7 +30,13 @@
 		"onCommand:code-for-ibmi.copyMember",
 		"onCommand:code-for-ibmi.deleteMember",
 		"onCommand:code-for-ibmi.updateMemberText",
-		"onCommand:code-for-ibmi.renameMember"
+		"onCommand:code-for-ibmi.renameMember",
+		"onView:ifsBrowser",
+		"onCommand:code-for-ibmi.refreshIFSBrowser",
+		"onCommand:code-for-ibmi.createDirectory",
+		"onCommand:code-for-ibmi.createStreamfile",
+		"onCommand:code-for-ibmi.moveIFS",
+		"onCommand:code-for-ibmi.deleteObject"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -67,6 +73,11 @@
 					"type": "string",
 					"default": "ILEDITOR",
 					"description": "Temporary library. Cannot be QTEMP."
+				},
+				"code-for-ibmi.buildLibrary": {
+					"type": "string",
+					"default": "QTEMP",
+					"description": "Library used for &BUILDLIB when running actions from the IFS."
 				},
 				"code-for-ibmi.sourceASP": {
 					"type": "string",
@@ -313,6 +324,36 @@
 				"title": "Rename Member",
 				"category": "IBM i",
 				"icon": "$(files)"
+			},
+
+			{
+				"command": "code-for-ibmi.refreshIFSBrowser",
+				"title": "Refresh IFS List",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.deleteIFS",
+				"title": "Delete object",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.moveIFS",
+				"title": "Move object",
+				"category": "IBM i",
+				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.createDirectory",
+				"title": "Create directory",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.createStreamfile",
+				"title": "Create streamfile",
+				"category": "IBM i",
+				"icon": "$(new-file)"
 			}
 		],
 		"keybindings": [
@@ -338,6 +379,12 @@
 					"name": "Member Browser",
 					"contextualTitle": "Member Browser",
 					"icon": "media/server.svg"
+				},
+				{
+					"id": "ifsBrowser",
+					"name": "IFS Browser",
+					"contextualTitle": "IFS Browser",
+					"icon": "media/server.svg"
 				}
 			]
 		},
@@ -352,6 +399,21 @@
 					"command": "code-for-ibmi.refreshMemberBrowser",
 					"group": "navigation",
 					"when": "view == memberBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createDirectory",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
 				}
 			],
 			"view/item/context": [
@@ -383,6 +445,33 @@
 					"command": "code-for-ibmi.renameMember",
 					"when": "view == memberBrowser && viewItem == member",
 					"group": "2_memberStuff@3"
+				},
+
+				{
+					"command": "code-for-ibmi.runActionFromView",
+					"when": "view == ifsBrowser && viewItem == streamfile",
+					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.deleteIFS",
+					"when": "view == ifsBrowser",
+					"group": "2_ifsStuff@4"
+				},
+				{
+					"command": "code-for-ibmi.moveIFS",
+					"when": "view == ifsBrowser",
+					"group": "2_ifsStuff@2"
+				},
+
+				{
+					"command": "code-for-ibmi.createDirectory",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "2_ifsStuff@1"
 				}
 			]
 		},
