@@ -329,11 +329,14 @@ module.exports = class memberBrowserProvider {
         }
       }
     } else {
-      const shortcuts = instance.getConnection().spfShortcuts;
+      const connection = instance.getConnection();
+      if (connection) {
+        const shortcuts = connection.spfShortcuts;
 
-      for (var shortcut of shortcuts) {
-        shortcut = shortcut.toUpperCase();
-        items.push(new SPF(shortcut, shortcut));
+        for (var shortcut of shortcuts) {
+          shortcut = shortcut.toUpperCase();
+          items.push(new SPF(shortcut, shortcut));
+        }
       }
     }
     return items;

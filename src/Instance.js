@@ -19,11 +19,29 @@ module.exports = class Instance {
   static getConnection() {return instance.connection};
   static getContent() {return instance.content};
 
-  static disconnect() {
+  static async disconnect() {
+    for (const document of vscode.workspace.textDocuments) {
+      if (['member', 'streamfile'].includes(document.uri.scheme)) {
+        if (document.isDirty) {
+          vscode.window.showErrorMessage(`Cannot disconnect while files have no saved.`);
+          vscode.window.showTextDocument(document); 
+          return;
+
+        } else {
+          await vscode.window.showTextDocument(document); 
+          await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
+        }
+      }
+    }
+
     if (instance.connection) {
       instance.connection.client.dispose();
       instance.connection = undefined;
     }
+
+
+    await vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser');
+    await vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser');
   }
 
   /**
