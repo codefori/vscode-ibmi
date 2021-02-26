@@ -145,7 +145,7 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === '/' + node.path);
 
           if (isStillOpen) {
             //Since there is no easy way to close a file.
@@ -218,7 +218,7 @@ module.exports = class memberBrowserProvider {
         const oldExtension = path[2].substring(path[2].lastIndexOf('.')+1);
 
         if (node) {
-          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === '/' + node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === '/' + node.path);
           if (isStillOpen) {
             vscode.window.showInformationMessage(`Cannot rename member while it is open.`);
           } else {

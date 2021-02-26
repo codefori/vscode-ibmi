@@ -93,7 +93,7 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
 
           if (isStillOpen) {
             //Since there is no easy way to close a file.
@@ -126,7 +126,7 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
         if (node) {
           //Running from right click
-          const isStillOpen = vscode.window.visibleTextEditors.find(editor => editor.document.uri.path === node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
 
           if (isStillOpen) {
             //Since there is no easy way to close a file.
