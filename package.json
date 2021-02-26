@@ -25,6 +25,7 @@
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
 		"onView:memberBrowser",
+		"onCommand:code-for-ibmi.runRPGDebug",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
 		"onCommand:code-for-ibmi.copyMember",
@@ -36,7 +37,7 @@
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
-		"onCommand:code-for-ibmi.deleteObject"
+		"onCommand:code-for-ibmi.deleteIFS"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -276,6 +277,11 @@
 			{
 				"command": "code-for-ibmi.runAction",
 				"title": "Run Action on Active Editor",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.runRPGDebug",
+				"title": "Run RPG Debug",
 				"category": "IBM i"
 			},
 			{
