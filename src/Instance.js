@@ -32,7 +32,7 @@ module.exports = class Instance {
         if (document.isDirty) {
           if (doDisconnect) {
             await Promise.all([
-              vscode.window.showErrorMessage(`Cannot disconnect while files have no saved.`),
+              vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`),
               vscode.window.showTextDocument(document)
             ]);
 
