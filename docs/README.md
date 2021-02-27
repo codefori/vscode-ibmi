@@ -76,6 +76,7 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &OPENLIB | Library that member resides in     |
 | &OPENSPF | Source file that member resides in |
 | &OPENMBR | Name of member                     |
+| &EXT     | Member extension                   |
 
 #### Streamfile variables
 
@@ -84,6 +85,7 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &BUILDLIB | Values which comes from Code for IBM i settings |
 | &FULLPATH | Path to the streamfile.                         |
 | &NAME     | Name of the streamfile with no extension        |
+| &EXT      | Extension of basename                           |
 
 New actions can be added by defining a new action object in the settings like the snippet listed above.
 

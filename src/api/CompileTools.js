@@ -144,6 +144,7 @@ module.exports = class CompileTools {
             command = command.replace(new RegExp('&OPENLIB', 'g'), lib);
             command = command.replace(new RegExp('&OPENSPF', 'g'), file);
             command = command.replace(new RegExp('&OPENMBR', 'g'), name);
+            command = command.replace(new RegExp('&EXT', 'g'), ext);
 
             break;
 
@@ -161,6 +162,7 @@ module.exports = class CompileTools {
             command = command.replace(new RegExp('&BUILDLIB', 'g'), config.get('buildLibrary'));
             command = command.replace(new RegExp('&FULLPATH', 'g'), uri.path);
             command = command.replace(new RegExp('&NAME', 'g'), name);
+            command = command.replace(new RegExp('&EXT', 'g'), ext);
 
             break;
         }
