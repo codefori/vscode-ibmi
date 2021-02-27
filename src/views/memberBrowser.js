@@ -39,7 +39,7 @@ module.exports = class memberBrowserProvider {
         if (newSourceFile) {
           if (newSourceFile.includes('/')) {
             sourceFiles.push(newSourceFile.toUpperCase());
-            config.update('sourceFileList', sourceFiles);
+            config.update('sourceFileList', sourceFiles, vscode.ConfigurationTarget.Global);
             this.refresh();
           } else {
             vscode.window.showErrorMessage(`Format incorrect. Use LIB/FILE.`);

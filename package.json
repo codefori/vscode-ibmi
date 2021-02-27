@@ -34,6 +34,7 @@
 		"onCommand:code-for-ibmi.renameMember",
 		"onView:ifsBrowser",
 		"onCommand:code-for-ibmi.refreshIFSBrowser",
+		"onCommand:code-for-ibmi.changeHomeDirectory",
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
@@ -301,11 +302,11 @@
 				"category": "IBM i",
 				"icon": "$(new-folder)"
 			},
-            {
-                "command": "code-for-ibmi.refreshSourceFile",
-                "title": "Refresh Member List",
-                "category": "IBM i"
-            },
+			{
+				"command": "code-for-ibmi.refreshSourceFile",
+				"title": "Refresh Member List",
+				"category": "IBM i"
+			},
 			{
 				"command": "code-for-ibmi.removeSourceFile",
 				"title": "Remove Source File",
@@ -347,6 +348,12 @@
 				"title": "Refresh IFS List",
 				"category": "IBM i",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.changeHomeDirectory",
+				"title": "Change directory",
+				"category": "IBM i",
+				"icon": "$(root-folder)"
 			},
 			{
 				"command": "code-for-ibmi.deleteIFS",
@@ -427,6 +434,11 @@
 					"when": "view == ifsBrowser"
 				},
 				{
+					"command": "code-for-ibmi.changeHomeDirectory",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
 					"command": "code-for-ibmi.refreshIFSBrowser",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
@@ -443,10 +455,10 @@
 					"when": "view == memberBrowser && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
 				},
-                {
-                    "command": "code-for-ibmi.refreshSourceFile",
-                    "when": "view == memberBrowser && viewItem == SPF"
-                },
+				{
+					"command": "code-for-ibmi.refreshSourceFile",
+					"when": "view == memberBrowser && viewItem == SPF"
+				},
 				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == memberBrowser && viewItem == member",

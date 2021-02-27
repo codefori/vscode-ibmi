@@ -24,6 +24,24 @@ module.exports = class ifsBrowserProvider {
         this.refresh();
       }),
 
+      vscode.commands.registerCommand('code-for-ibmi.changeHomeDirectory', async () => {
+        let config = vscode.workspace.getConfiguration('code-for-ibmi');
+        const homeDirectory = config.get('homeDirectory');
+
+        const newDirectory = await vscode.window.showInputBox({
+          prompt: 'Changing home directory',
+          value: homeDirectory
+        });
+
+        try {
+          if (newDirectory && newDirectory !== homeDirectory) {
+            await config.update('homeDirectory', newDirectory, vscode.ConfigurationTarget.Global);
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }),
+
 
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
         const connection = instance.getConnection();

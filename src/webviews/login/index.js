@@ -61,7 +61,7 @@ module.exports = class Login {
                     port: message.data.port,
                     username: message.data.username
                   });
-                  await existingConnectionsConfig.update('connections', existingConnections, true);
+                  await existingConnectionsConfig.update('connections', existingConnections, vscode.ConfigurationTarget.Global);
                 }
 
               } else {
