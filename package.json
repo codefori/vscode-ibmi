@@ -25,8 +25,8 @@
 		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
+		"onCommand:code-for-ibmi.toggleComment",
 		"onView:memberBrowser",
-		"onCommand:code-for-ibmi.runRPGDebug",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
 		"onCommand:code-for-ibmi.copyMember",
@@ -292,11 +292,6 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.runRPGDebug",
-				"title": "Run RPG Debug",
-				"category": "IBM i"
-			},
-			{
 				"command": "code-for-ibmi.runActionFromView",
 				"title": "Run Action",
 				"category": "IBM i"
@@ -395,6 +390,11 @@
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
+			},
+			{
+				"command": "code-for-ibmi.toggleComment",
+				"key": "ctrl+b",
+				"mac": "cmd+b"
 			}
 		],
 		"viewsContainers": {

@@ -72,6 +72,7 @@ module.exports = class Instance {
     const ifsBrowser = require('./views/ifsBrowser');
     const ifs = new (require('./views/ifs'));
 
+    const Commenter = require('./api/Comment');
 
     if (instance.connection) {
       CompileTools.register(context);
@@ -154,8 +155,15 @@ module.exports = class Instance {
             } catch (e) {
               console.log(e);
             }
+          }),
+
+          vscode.commands.registerCommand('code-for-ibmi.toggleComment', async () => {
+            const path = vscode.window.activeTextEditor.document.uri.path;
+            const type = path.substr(path.lastIndexOf('.')+1).toLowerCase();
+            Commenter(type, vscode.window.activeTextEditor);
           })
         );
+        
 
         //********* Actions */
 
