@@ -53,19 +53,12 @@ module.exports = class memberBrowserProvider {
           const config = vscode.workspace.getConfiguration('code-for-ibmi');
           let sourceFiles = config.get('sourceFileList');
 
-          let index = -1;
-          sourceFiles.every((sourceFile,i) => {
-            if(sourceFile.toUpperCase() === node.path) {
-              index = i;
-              return false;
-            }
-            return true;
-          });
-          if (index != -1) {
-            sourceFiles.splice(index,1);
+          let index = sourceFiles.findIndex(file => file.toUpperCase() === node.path)
+          if (index >= 0) {
+            sourceFiles.splice(index, 1);
           }
 
-          this.refresh();
+          config.update('sourceFileList', sourceFiles, vscode.ConfigurationTarget.Global);
         }
       }),
 
