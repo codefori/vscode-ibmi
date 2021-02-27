@@ -104,6 +104,8 @@ module.exports = class Instance {
           })
         );
 
+        //********* Member Browser */
+
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
             'memberBrowser',
@@ -118,6 +120,8 @@ module.exports = class Instance {
           })
         );
 
+        //********* IFS Browser */
+
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
             'ifsBrowser',
@@ -130,6 +134,8 @@ module.exports = class Instance {
             isCaseSensitive: false
           })
         );
+
+        //********* General editing */
   
         context.subscriptions.push(
           vscode.commands.registerCommand('code-for-ibmi.openEditable', async (path) => {
@@ -150,6 +156,8 @@ module.exports = class Instance {
             }
           })
         );
+
+        //********* Actions */
 
         context.subscriptions.push(
           vscode.commands.registerCommand('code-for-ibmi.runAction', async () => {
