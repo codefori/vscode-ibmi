@@ -127,7 +127,7 @@
 						"type": "object",
 						"title": "Action",
 						"properties": {
-							"fileSystem": {
+							"type": {
 								"type": "string",
 								"description": "File system for compile",
 								"enum": [
@@ -165,7 +165,7 @@
 					},
 					"default": [
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"RPGLE",
 								"RPG"
@@ -174,7 +174,7 @@
 							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"SQLRPGLE"
 							],
@@ -182,7 +182,7 @@
 							"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"RPGLE",
 								"RPG"
@@ -191,7 +191,7 @@
 							"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"CMD"
 							],
@@ -199,7 +199,7 @@
 							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"CMD"
 							],
@@ -207,7 +207,7 @@
 							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"pf",
 								"lf"
@@ -216,7 +216,7 @@
 							"command": "?DLTF FILE(&OPENLIB/&OPENMBR)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"dspf"
 							],
@@ -224,7 +224,7 @@
 							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) RSTDSP(*NO) REPLACE(*YES)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"pf"
 							],
@@ -232,7 +232,7 @@
 							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"lf"
 							],
@@ -240,7 +240,7 @@
 							"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"CLP",
 								"CLLE"
@@ -249,7 +249,7 @@
 							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"CLP",
 								"CLLE"
@@ -258,7 +258,7 @@
 							"command": "?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
 						},
 						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
 								"GLOBAL"
 							],

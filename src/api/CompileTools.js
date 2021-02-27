@@ -111,7 +111,7 @@ module.exports = class CompileTools {
       if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
-    const availableActions = allActions.filter(action => action.fileSystem === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes('GLOBAL')));
+    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes('GLOBAL')));
 
     if (availableActions.length > 0) {
       const options = availableActions.map(item => item.name);

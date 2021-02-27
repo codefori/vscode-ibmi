@@ -55,7 +55,7 @@ Here is an example of the action used to compile an RPG member:
 ```json
 "code-for-ibmi.actions": [
   {
-    "fileSystem": "member",
+    "type": "member",
     "extensions": [
       "rpgle",
       "rpg"
@@ -66,7 +66,7 @@ Here is an example of the action used to compile an RPG member:
 ]
 ```
 
-The two available `fileSystem` property values are:
+The two available `type` property values are:
 
 * `member` for source members
 * `streamfile` for streamfiles
