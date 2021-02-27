@@ -197,11 +197,22 @@ module.exports = class IBMiContent {
     if (typeof results === "string" && results !== "") {
       let list = results.split('\n');
 
-      return list.map(item => ({
-        type: ((item.substr(item.length - 1, 1) === '/') ? 'directory' : 'streamfile'),
-        name: item,
-        path: path.posix.join(remotePath, item)
-      }));
+      const items = list.map(item => {
+        const type = ((item.substr(item.length - 1, 1) === '/') ? 'directory' : 'streamfile');
+
+        return {
+          type, 
+          name: (type === 'directory' ? item.substr(0, item.length - 1) : item),
+          path: path.posix.join(remotePath, item)
+        };
+      });
+
+      //@ts-ignore because it thinks "dictionary"|"streamfile" is a string from the sort call.
+      return items.sort((a, b) => {
+        if (a.name < b.name) { return -1; }
+        if (a.name > b.name) { return 1; }
+        return 0;
+      });
     } else {
       return [];
     }
