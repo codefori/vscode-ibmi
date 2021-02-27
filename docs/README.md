@@ -47,7 +47,8 @@ Settings for this extension will be under ```Code for IBM i```
 ![assets/settings_01.png](assets/settings_01.png)
 
 ### Actions
-Actions that can be performed with the extension. This includes actions to compile source code.
+
+Actions can be used to perform tasks on members, streamfiles and eventually other types of objects too.
 
 Here is an example of the action used to compile an RPG member:
 
@@ -65,7 +66,18 @@ Here is an example of the action used to compile an RPG member:
 ]
 ```
 
-This action corresponds to files with ```.rpg``` or ```.rpgle``` extensions. Actions can only work with one `fileSystem`. The two available file systems available are `member` and `streamfile`.
+The two available `fileSystem` property values are:
+
+* `member` for source members
+* `streamfile` for streamfiles
+
+You can also use the `environment` property to run the action in a certain environment:
+
+* `ile` (default) to run CL commands in the ILE environment
+* `qsh` to run commands in QShell
+* `pase` to run commands in pase
+
+The `extensions` property is used to tie the action to certain types of files or objects. `name` is used to identify the action when selecting & running them. `command` is used to define what will be executed.
 
 Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Members and streamfiles have different variables.
 

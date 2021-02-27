@@ -135,6 +135,16 @@
 									"streamfile"
 								]
 							},
+							"environment": {
+								"type": ["string", null],
+								"description": "Environment for command to be executed in. Default is `ile`.",
+								"default": "ile",
+								"enum": [
+									"ile",
+									"qsh",
+									"pase"
+								]
+							},
 							"extensions": {
 								"type": "array",
 								"items": {

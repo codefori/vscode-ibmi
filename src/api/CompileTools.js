@@ -3,6 +3,7 @@ const vscode = require('vscode');
 const path = require('path');
 
 const errorHandler = require('./errorHandle');
+const IBMi = require('./IBMi');
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -115,7 +116,7 @@ module.exports = class CompileTools {
     if (availableActions.length > 0) {
       const options = availableActions.map(item => item.name);
     
-      var chosenOptionName, command;
+      var chosenOptionName, command, environment;
     
       if (options.length === 1) {
         chosenOptionName = options[0]
@@ -125,6 +126,7 @@ module.exports = class CompileTools {
     
       if (chosenOptionName) {
         command = availableActions.find(action => action.name === chosenOptionName).command;
+        environment = availableActions.find(action => action.name === chosenOptionName).environment || 'ile';
 
         let basename, name, ext;
 
@@ -172,42 +174,62 @@ module.exports = class CompileTools {
         }
 
         if (command) {
+          /** @type {IBMi} */
           const connection = instance.getConnection();
+          const libl = connection.libraryList.slice(0).reverse();
+          /** @type {any} */
+          let commandResult, output;
+          let executed = false;
 
           outputChannel.append("Command: " + command + '\n');
 
-          command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
-
-          const libl = connection.libraryList.slice(0).reverse();
-
-          var output, compiled = false;
-
           try {
-            output = await connection.qshCommand([
-              'liblist -d ' + connection.defaultUserLibraries.join(' '),
-              'liblist -a ' + libl.join(' '),
-              command,
-            ], undefined, 1);
 
-            if (output.code === 0 || output.code === null) {
-              compiled = true;
+            switch (environment) {
+              case 'pase':
+                commandResult = await connection.paseCommand(command, undefined, 1);
+                break;
+
+              case 'qsh':
+                commandResult = await connection.qshCommand([
+                  'liblist -d ' + connection.defaultUserLibraries.join(' '),
+                  'liblist -a ' + libl.join(' '),
+                  command,
+                ], undefined, 1);
+                break;
+
+              case 'ile':
+              default:
+                command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
+                commandResult = await connection.qshCommand([
+                  'liblist -d ' + connection.defaultUserLibraries.join(' '),
+                  'liblist -a ' + libl.join(' '),
+                  command,
+                ], undefined, 1);
+                break;
+            }
+
+            if (commandResult.code === 0 || commandResult.code === null) {
+              executed = true;
               vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
               
             } else {
-              compiled = false;
+              executed = false;
               vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
             }
-
-            output = `${output.stderr}\n\n${output.stdout}\n\n`;
+            
+            output = '';
+            if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
+            if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
 
           } catch (e) {
-            output = e;
-            compiled = false;
+            output = `${e}\n`;
+            executed = false;
 
             vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
 
-          outputChannel.append(output + '\n');
+          outputChannel.append(output);
 
           if (command.includes('*EVENTF')) {
             this.refreshDiagnostics(instance, evfeventInfo);
