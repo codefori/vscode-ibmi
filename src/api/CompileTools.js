@@ -228,6 +228,7 @@ module.exports = class CompileTools {
             if (commandResult.code === 0 || commandResult.code === null) {
               executed = true;
               vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
+              if (connection.autoRefresh) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
               
             } else {
               executed = false;
