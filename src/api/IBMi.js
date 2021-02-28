@@ -9,6 +9,12 @@ module.exports = class IBMi {
     this.currentUser = '';
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
+
+    /** @type {{[name: string]: string}} */
+    this.remoteFeatures = {
+      db2util: undefined,
+      git: undefined
+    };
     
     //Configration:
     this.homeDirectory = '.';
@@ -114,6 +120,20 @@ module.exports = class IBMi {
 
         console.log(e);
       }
+
+      //Next, we see what pase features are available (installed via yum)
+      const packagesPath = `/QOpenSys/pkgs/bin/`;
+      try {
+        //This may enable certain features in the future.
+        const call = await this.paseCommand(`ls -p ${packagesPath}`);
+        if (typeof call === "string") {
+          const files = call.split('\n');
+          for (const feature of Object.keys(this.remoteFeatures))
+            if (files.includes(feature))
+              this.remoteFeatures[feature] = packagesPath + feature;
+        }
+        
+      } catch (e) {}
 
       return true;
 
