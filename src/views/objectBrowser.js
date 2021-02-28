@@ -143,6 +143,6 @@ const objectIcons = {
   'FILE': 'database',
   'CMD': 'terminal',
   'MODULE': 'extensions',
-  'PGM': 'chevron-right',
+  'PGM': 'file-binary',
   '': 'circle-large-outline'
 }
