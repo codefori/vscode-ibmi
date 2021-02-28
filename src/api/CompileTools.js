@@ -128,11 +128,12 @@ module.exports = class CompileTools {
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || 'ile';
 
+        let blank, lib, file, fullName;
         let basename, name, ext;
 
         switch (uri.scheme) {
           case 'member':
-            const [blank, lib, file, fullName] = uri.path.split('/');
+            [blank, lib, file, fullName] = uri.path.split('/');
             name = fullName.substring(0, fullName.lastIndexOf('.'));
 
             ext = (fullName.includes('.') ? fullName.substring(fullName.lastIndexOf('.') + 1) : undefined);
@@ -166,6 +167,21 @@ module.exports = class CompileTools {
             command = command.replace(new RegExp('&NAME', 'g'), name);
             command = command.replace(new RegExp('&EXT', 'g'), ext);
 
+            break;
+
+          case 'object':
+            [blank, lib, fullName] = uri.path.split('/');
+            name = fullName.substring(0, fullName.lastIndexOf('.'));
+
+            evfeventInfo = {
+              lib,
+              object: name,
+              extension
+            };
+
+            command = command.replace(new RegExp('&LIBRARY', 'g'), lib);
+            command = command.replace(new RegExp('&NAME', 'g'), name);
+            command = command.replace(new RegExp('&TYPE', 'g'), extension);
             break;
         }
 

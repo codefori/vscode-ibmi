@@ -276,6 +276,22 @@
 							],
 							"name": "Create Program (CRTPGM)",
 							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "object",
+							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Delete object",
+							"command": "DLTOBJ OBJ(&LIBRARY/&NAME) OBJTYPE(*&TYPE)"
+						},
+						{
+							"type": "object",
+							"extensions": [
+								"pgm"
+							],
+							"name": "Call program",
+							"command": "CALL &LIBRARY/&NAME"
 						}
 					]
 				}
@@ -545,6 +561,11 @@
 				{
 					"command": "code-for-ibmi.refreshObjectList",
 					"when": "view == memberBrowser && viewItem == library"
+				},
+				{
+					"command": "code-for-ibmi.runActionFromView",
+					"when": "view == objectBrowser && viewItem == object",
+					"group": "1_workspace@1"
 				}
 			]
 		},

@@ -124,7 +124,7 @@ class Object extends vscode.TreeItem {
    */
   constructor({library, name, type, text}) {
     if (type.startsWith('*')) type = type.substring(1);
-    
+
     const icon = objectIcons[type] || objectIcons[''];
 
     super(`${name.toLowerCase()}.${type.toLowerCase()}`);
@@ -133,7 +133,8 @@ class Object extends vscode.TreeItem {
     this.path = `${library}/${name}`;
     this.type = type;
     this.description = text;
-    this.iconPath = new vscode.ThemeIcon(icon)
+    this.iconPath = new vscode.ThemeIcon(icon);
+    this.resourceUri = vscode.Uri.parse(`${library}/${name}.${type}`).with({scheme: 'object'})
   }
 }
 
