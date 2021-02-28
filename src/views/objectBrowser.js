@@ -141,6 +141,8 @@ class Object extends vscode.TreeItem {
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons = {
   'FILE': 'database',
-  'PGM': 'terminal', 
+  'CMD': 'terminal',
+  'MODULE': 'extensions',
+  'PGM': 'chevron-right',
   '': 'circle-large-outline'
 }
