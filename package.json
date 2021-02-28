@@ -3,7 +3,14 @@
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
 	"version": "0.1.3",
-	"keywords": ["ibmi", "rpgle", "cobol", "ile", "iseries", "as400"],
+	"keywords": [
+		"ibmi",
+		"rpgle",
+		"cobol",
+		"ile",
+		"iseries",
+		"as400"
+	],
 	"author": {
 		"name": "Halcyon Tech Ltd",
 		"url": "https://github.com/halcyon-tech"
@@ -25,7 +32,6 @@
 		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
-		"onCommand:code-for-ibmi.toggleComment",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
@@ -137,7 +143,10 @@
 								]
 							},
 							"environment": {
-								"type": ["string", null],
+								"type": [
+									"string",
+									null
+								],
 								"description": "Environment for command to be executed in. Default is `ile`.",
 								"default": "ile",
 								"enum": [
@@ -390,11 +399,6 @@
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
-			},
-			{
-				"command": "code-for-ibmi.toggleComment",
-				"key": "ctrl+b",
-				"mac": "cmd+b"
 			}
 		],
 		"viewsContainers": {
