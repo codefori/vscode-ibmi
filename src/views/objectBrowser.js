@@ -26,8 +26,16 @@ module.exports = class objectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.refreshObjectList`, async () => {
-        this.refresh();
+      vscode.commands.registerCommand(`code-for-ibmi.refreshObjectList`, async (library) => {
+        if (library) {
+          if (typeof library === "string") {
+            this.refresh(library);
+          } else if (library.path) {
+            this.refresh(library.path);
+          }
+        } else {
+          this.refresh();
+        }
       })
     )
   }

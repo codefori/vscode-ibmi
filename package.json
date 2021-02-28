@@ -560,7 +560,7 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectList",
-					"when": "view == memberBrowser && viewItem == library"
+					"when": "view == objectBrowser && viewItem == library"
 				},
 				{
 					"command": "code-for-ibmi.runActionFromView",
