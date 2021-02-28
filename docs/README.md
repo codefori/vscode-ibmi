@@ -70,6 +70,7 @@ The two available `type` property values are:
 
 * `member` for source members
 * `streamfile` for streamfiles
+* `object` for objects
 
 You can also use the `environment` property to run the action in a certain environment:
 
@@ -98,6 +99,14 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &FULLPATH | Path to the streamfile.                         |
 | &NAME     | Name of the streamfile with no extension        |
 | &EXT      | Extension of basename                           |
+
+#### Object variables
+
+| Variable  | Usage                             |
+|-----------|-----------------------------------|
+| &LIBRARY  | Library which the object exists   |
+| &NAME     | Name of the object                |
+| &TYPE     | The object type (PGM, FILE, etc)  |
 
 New actions can be added by defining a new action object in the settings like the snippet listed above.
 
