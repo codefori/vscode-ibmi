@@ -45,7 +45,9 @@
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
-		"onCommand:code-for-ibmi.deleteIFS"
+		"onCommand:code-for-ibmi.deleteIFS",
+		"onView:objectBrowser",
+		"onCommand:code-for-ibmi.refreshObjectList"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -392,6 +394,12 @@
 				"title": "Create streamfile",
 				"category": "IBM i",
 				"icon": "$(new-file)"
+			},
+			{
+				"command": "code-for-ibmi.refreshObjectList",
+				"title": "Refresh Object List",
+				"category": "IBM i",
+				"icon": "$(refresh)"
 			}
 		],
 		"keybindings": [
@@ -423,6 +431,11 @@
 					"name": "IFS Browser",
 					"contextualTitle": "IFS Browser",
 					"icon": "media/server.svg"
+				},
+				{
+					"id": "objectBrowser",
+					"name": "Object Browser",
+					"contextualTitle": "Object Browser"
 				}
 			]
 		},
@@ -457,6 +470,11 @@
 					"command": "code-for-ibmi.refreshIFSBrowser",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectList",
+					"group": "navigation",
+					"when": "view == objectBrowser"
 				}
 			],
 			"view/item/context": [
@@ -523,6 +541,10 @@
 					"command": "code-for-ibmi.createStreamfile",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectList",
+					"when": "view == memberBrowser && viewItem == library"
 				}
 			]
 		},
