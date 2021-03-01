@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.1.4",
+	"version": "0.1.5",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -20,7 +20,7 @@
 		"url": "https://github.com/halcyon-tech/code-for-ibmi"
 	},
 	"engines": {
-		"vscode": "^1.53.0"
+		"vscode": "^1.52.0"
 	},
 	"categories": [
 		"Other"
