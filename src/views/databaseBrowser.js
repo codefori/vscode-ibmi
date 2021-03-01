@@ -30,25 +30,27 @@ module.exports = class databaseBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
         const connection = instance.getConnection();
         const content = instance.getContent();
+        const editor = vscode.window.activeTextEditor;
 
-        if (connection.remoteFeatures.db2util) {
-          const editor = vscode.window.activeTextEditor;
-          const statement = parseStatement(editor);
+        if (editor.document.languageId === 'sql') {
+          if (connection.remoteFeatures.db2util) {
+            const statement = parseStatement(editor);
 
-          try {
-            const data = await content.runSQL(statement);
+            try {
+              const data = await content.runSQL(statement);
 
-            const panel = vscode.window.createWebviewPanel(
-              'databaseResult',
-              'Database Result',
-              vscode.ViewColumn.Active
-            );
-            panel.webview.html = generateTable(data);
-          } catch (e) {
-            vscode.window.showErrorMessage("Statement did not execute correctly.");
+              const panel = vscode.window.createWebviewPanel(
+                'databaseResult',
+                'Database Result',
+                vscode.ViewColumn.Active
+              );
+              panel.webview.html = generateTable(data);
+            } catch (e) {
+              vscode.window.showErrorMessage("Statement did not execute correctly.");
+            }
+          } else {
+            vscode.window.showErrorMessage("To execute statements, db2util must be installed on the system.");
           }
-        } else {
-          vscode.window.showErrorMessage("To execute statements, db2util must be installed on the system.");
         }
       }),
 
