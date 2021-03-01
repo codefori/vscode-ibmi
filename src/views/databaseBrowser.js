@@ -54,7 +54,7 @@ module.exports = class databaseBrowserProvider {
       } else 
       
       if (element instanceof TableItem) {
-        console.log(element.table.columns);
+        items.push(...element.table.columns.map(column => new ColumnItem(column)));
       }
 
     } else {
@@ -83,6 +83,7 @@ class SchemaItem extends vscode.TreeItem {
 
     this.contextValue = 'schema';
     this.path = name;
+    this.iconPath = new vscode.ThemeIcon('database');
   }
 }
 
@@ -91,10 +92,44 @@ class TableItem extends vscode.TreeItem {
    * @param {Table} table 
    */
   constructor(table) {
-    super(table.name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
+    super(table.name.toLowerCase());
+
+    this.contextValue = 'table';
+    this.tooltip = table.type;
+    this.iconPath = new vscode.ThemeIcon(TABLE_ICONS[table._type]);
+
+    if (table._type === 'A') {
+      this.collapsibleState = vscode.TreeItemCollapsibleState.None;
+      this.description = `${table.type} - ${table.base}. ${table.text}`;
+    } else {
+      this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
+      this.description = `${table.type}. ${table.text}`;
+    }
 
     /** @type {Table} */
     this.table = table;
-    this.description = table.text;
   }
+}
+
+class ColumnItem extends vscode.TreeItem {
+  /**
+   * 
+   * @param {Column} column 
+   */
+  constructor(column) {
+    super(column.name.toLowerCase(), vscode.TreeItemCollapsibleState.None);
+
+    this.description = `${column.type.toLowerCase()}. ${column.heading}`;
+    this.tooltip = column.comment;
+    this.iconPath = new vscode.ThemeIcon('circle-filled');
+  }
+}
+
+const TABLE_ICONS = {
+  'A': 'files',
+  'L': 'filter',
+  'M': 'file-symlink-file',
+  'P': 'list-flat',
+  'T': 'list-flat',
+  'V': 'eye'
 }

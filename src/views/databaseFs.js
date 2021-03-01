@@ -14,7 +14,7 @@ class Database {
     schema = schema.toUpperCase();
 
     const [tablesResult, columnsResult] = await Promise.all([
-      content.runSQL(`select TABLE_NAME, TABLE_TYPE, TABLE_TEXT from QSYS2.SYSTABLES where TABLE_SCHEMA = '${schema}'`),
+      content.runSQL(`select TABLE_NAME, TABLE_TYPE, TABLE_TEXT, BASE_TABLE_SCHEMA, BASE_TABLE_NAME from QSYS2.SYSTABLES where TABLE_SCHEMA = '${schema}'`),
       content.runSQL(`select * from QSYS2.SYSCOLUMNS where TABLE_SCHEMA = '${schema}' order by ORDINAL_POSITION asc`)
     ]);
 
@@ -48,6 +48,12 @@ class Table {
     this._type = row.TABLE_TYPE;
     this.type = TABLE_TYPES[row.TABLE_TYPE];
     this.text = row.TABLE_TEXT;
+
+    if (this._type === 'A') {
+      //Is ALIAS
+
+      this.base = `${row.BASE_TABLE_SCHEMA}/${row.BASE_TABLE_NAME}`;
+    }
 
     /** @type {Column[]} */
     this.columns = [];    
