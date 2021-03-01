@@ -1,10 +1,11 @@
 
-const { throws } = require('assert');
-const { TextDecoder } = require('util');
 const vscode = require('vscode');
 
 var instance = require('../Instance');
 const {Database, Table, Column} = require('./databaseFs');
+
+/** @type {{[SCHEMA: string]: Table[]}} */
+let schemaCache = {};
 
 module.exports = class databaseBrowserProvider {
   /**
@@ -50,6 +51,56 @@ module.exports = class databaseBrowserProvider {
           vscode.window.showErrorMessage("To execute statements, db2util must be installed on the system.");
         }
       }),
+
+      vscode.languages.registerCompletionItemProvider({language: 'sql'}, {
+        provideCompletionItems: (document, position) => {
+          /** @type vscode.CompletionItem[] */
+          let items = [];
+          let item;
+
+          for (const schema in schemaCache) {
+            for (const table of schemaCache[schema]) {
+              item = new vscode.CompletionItem(`select from ${schema}.${table.name.toLowerCase()}`, vscode.CompletionItemKind.Snippet);
+              if (table._type === 'A') {
+                item.insertText = `SELECT *\nFROM ${schema}.${table.name.toLowerCase()}`;
+              } else {
+                item.insertText = `SELECT\n${table.columns.map(column => '  ' + column.name.toLowerCase()).join(',\n')}\nFROM ${schema}.${table.name.toLowerCase()}`;
+              }
+              item.detail = table.type;
+              item.documentation = table.text;
+              items.push(item);
+
+              for (const column of table.columns) {
+                item = new vscode.CompletionItem(`${table.name.toLowerCase()}.${column.name.toLowerCase()}`, vscode.CompletionItemKind.Variable);
+                item.insertText = column.name.toLowerCase();
+                item.detail = `${column.heading} (${column.type})`;
+                item.documentation = `Belongs to \`${schema}.${table.name.toLowerCase()}\`. ${column.comment !== 'null' ? column.comment : ''}`;
+                items.push(item);
+              }
+            }
+          }
+
+          return items;
+        }
+      }),
+
+      vscode.languages.registerHoverProvider({language: 'sql'}, {
+        provideHover: (document, position, token) => {
+          const range = document.getWordRangeAtPosition(position);
+          const word = document.getText(range).toUpperCase();
+
+          let result;
+          for (const schema in schemaCache) {
+            result = schemaCache[schema].find(table => word === table.name);
+
+            if (result) {
+              return new vscode.Hover(new vscode.MarkdownString(`${result.type}: \`${schema}.${result.name.toLowerCase()}\`. ${result.text}\n\n${result.columns.map(column => `* \`${column.name.toLowerCase()}\` ${column.type}`).join('\n')}`));
+            }
+          }
+
+          return null; 
+        }
+      })
     )
   }
 
@@ -76,6 +127,7 @@ module.exports = class databaseBrowserProvider {
 
       if (element instanceof SchemaItem) {
         const objects = await Database.getObjects(element.path);
+        schemaCache[element.path] = objects;
         items.push(...objects.map(object => new TableItem(object)));
       } else 
       
