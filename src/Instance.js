@@ -72,6 +72,8 @@ module.exports = class Instance {
     const ifsBrowser = require('./views/ifsBrowser');
     const ifs = new (require('./views/ifs'));
 
+    const objectBrowser = require('./views/objectBrowser');
+
     if (instance.connection) {
       CompileTools.register(context);
 
@@ -133,6 +135,14 @@ module.exports = class Instance {
             isCaseSensitive: false
           })
         );
+
+        //********* Object Browser */
+        
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
+            'objectBrowser',
+            new objectBrowser(context)
+        ));
 
         //********* General editing */
   

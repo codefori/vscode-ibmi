@@ -185,6 +185,34 @@ module.exports = class IBMiContent {
 
   /**
    * @param {string} lib 
+   * @returns {Promise<{library: string, name: string, type: string, text: string}[]>} List of members 
+   */
+  async getObjectList(lib) {
+    lib = lib.toUpperCase();
+
+    const tempLib = this.ibmi.tempLibrary;
+    const TempName = IBMi.makeid();
+
+    await this.ibmi.remoteCommand(`DSPOBJD OBJ(${lib}/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+    const results = await this.getTable(tempLib, TempName, TempName);
+
+    if (results.length === 1) {
+      if (results[0].MBNAME.trim() === '') {
+        return []
+      }
+    }
+
+    return results.map(object => ({
+      library: lib,
+      name: object.ODOBNM,
+      type: object.ODOBTP,
+      attribute: object.ODOBAT,
+      text: object.ODOBTX
+    }))
+  }
+
+  /**
+   * @param {string} lib 
    * @param {string} spf
    * @returns {Promise<{library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */

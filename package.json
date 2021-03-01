@@ -45,7 +45,9 @@
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
-		"onCommand:code-for-ibmi.deleteIFS"
+		"onCommand:code-for-ibmi.deleteIFS",
+		"onView:objectBrowser",
+		"onCommand:code-for-ibmi.refreshObjectList"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -274,6 +276,22 @@
 							],
 							"name": "Create Program (CRTPGM)",
 							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "object",
+							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Delete object",
+							"command": "DLTOBJ OBJ(&LIBRARY/&NAME) OBJTYPE(*&TYPE)"
+						},
+						{
+							"type": "object",
+							"extensions": [
+								"pgm"
+							],
+							"name": "Call program",
+							"command": "CALL &LIBRARY/&NAME"
 						}
 					]
 				}
@@ -392,6 +410,12 @@
 				"title": "Create streamfile",
 				"category": "IBM i",
 				"icon": "$(new-file)"
+			},
+			{
+				"command": "code-for-ibmi.refreshObjectList",
+				"title": "Refresh Object List",
+				"category": "IBM i",
+				"icon": "$(refresh)"
 			}
 		],
 		"keybindings": [
@@ -423,6 +447,11 @@
 					"name": "IFS Browser",
 					"contextualTitle": "IFS Browser",
 					"icon": "media/server.svg"
+				},
+				{
+					"id": "objectBrowser",
+					"name": "Object Browser",
+					"contextualTitle": "Object Browser"
 				}
 			]
 		},
@@ -457,6 +486,11 @@
 					"command": "code-for-ibmi.refreshIFSBrowser",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectList",
+					"group": "navigation",
+					"when": "view == objectBrowser"
 				}
 			],
 			"view/item/context": [
@@ -523,6 +557,15 @@
 					"command": "code-for-ibmi.createStreamfile",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectList",
+					"when": "view == objectBrowser && viewItem == library"
+				},
+				{
+					"command": "code-for-ibmi.runActionFromView",
+					"when": "view == objectBrowser && viewItem == object",
+					"group": "1_workspace@1"
 				}
 			]
 		},
