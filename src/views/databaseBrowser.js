@@ -79,7 +79,7 @@ module.exports = class databaseBrowserProvider {
 
 class SchemaItem extends vscode.TreeItem {
   constructor(name) {
-    super(name.toLowerCase());
+    super(name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
 
     this.contextValue = 'schema';
     this.path = name;

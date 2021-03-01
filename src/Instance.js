@@ -73,6 +73,7 @@ module.exports = class Instance {
     const ifs = new (require('./views/ifs'));
 
     const objectBrowser = require('./views/objectBrowser');
+    const databaseBrowser = require('./views/databaseBrowser');
 
     if (instance.connection) {
       CompileTools.register(context);
@@ -142,6 +143,12 @@ module.exports = class Instance {
           vscode.window.registerTreeDataProvider(
             'objectBrowser',
             new objectBrowser(context)
+        ));
+        
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
+            'databaseBrowser',
+            new databaseBrowser(context)
         ));
 
         //********* General editing */
