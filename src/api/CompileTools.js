@@ -1,7 +1,9 @@
 
 const vscode = require('vscode');
+const path = require('path');
 
 const errorHandler = require('./errorHandle');
+const IBMi = require('./IBMi');
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -24,11 +26,15 @@ module.exports = class CompileTools {
    * @param {vscode.ExtensionContext} context
    */
   static register(context) {
-    ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
-    context.subscriptions.push(ileDiagnostics);
+    if (!ileDiagnostics) {
+      ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
+      context.subscriptions.push(ileDiagnostics);
+    }
 
-    outputChannel = vscode.window.createOutputChannel("IBM i Output");
-    context.subscriptions.push(outputChannel);
+    if (!outputChannel) {
+      outputChannel = vscode.window.createOutputChannel("IBM i Output");
+      context.subscriptions.push(outputChannel);
+    }
   }
   
   /**
@@ -65,14 +71,18 @@ module.exports = class CompileTools {
           
           diagnostic = new vscode.Diagnostic(
             new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
-            `${error.code}: ${error.text}`,
+            `${error.code}: ${error.text} (${error.sev})`,
             diagnosticSeverity[error.sev]
           );
 
           diagnostics.push(diagnostic);
         }
 
-        ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? '.' + evfeventInfo.ext : ''}`), diagnostics);
+        if (file.startsWith('/'))
+          ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+        else
+          ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? '.' + evfeventInfo.ext : ''}`), diagnostics);
+        
       }
 
     } else {
@@ -101,12 +111,12 @@ module.exports = class CompileTools {
       if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
-    const availableActions = allActions.filter(action => action.fileSystem === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes('GLOBAL')));
+    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes('GLOBAL')));
 
     if (availableActions.length > 0) {
       const options = availableActions.map(item => item.name);
     
-      var chosenOptionName, command;
+      var chosenOptionName, command, environment;
     
       if (options.length === 1) {
         chosenOptionName = options[0]
@@ -116,24 +126,62 @@ module.exports = class CompileTools {
     
       if (chosenOptionName) {
         command = availableActions.find(action => action.name === chosenOptionName).command;
+        environment = availableActions.find(action => action.name === chosenOptionName).environment || 'ile';
+
+        let blank, lib, file, fullName;
+        let basename, name, ext;
 
         switch (uri.scheme) {
           case 'member':
-            const [blank, lib, file, fullName] = uri.path.split('/');
-            const name = fullName.substring(0, fullName.lastIndexOf('.'));
+            [blank, lib, file, fullName] = uri.path.split('/');
+            name = fullName.substring(0, fullName.lastIndexOf('.'));
 
-            var ext = (fullName.includes('.') ? fullName.substring(fullName.lastIndexOf('.') + 1) : undefined)
+            ext = (fullName.includes('.') ? fullName.substring(fullName.lastIndexOf('.') + 1) : undefined);
 
             evfeventInfo = {
               lib: lib,
               object: name,
-              ext: ext
+              ext
             };
 
             command = command.replace(new RegExp('&OPENLIB', 'g'), lib);
             command = command.replace(new RegExp('&OPENSPF', 'g'), file);
             command = command.replace(new RegExp('&OPENMBR', 'g'), name);
+            command = command.replace(new RegExp('&EXT', 'g'), ext);
 
+            break;
+
+          case 'streamfile':
+            basename = path.posix.basename(uri.path);
+            name = basename.substring(0, basename.lastIndexOf('.')).toUpperCase();
+            ext = (basename.includes('.') ? basename.substring(basename.lastIndexOf('.') + 1) : undefined);
+
+            evfeventInfo = {
+              lib: config.get('buildLibrary'),
+              object: name,
+              ext
+            };
+
+            command = command.replace(new RegExp('&BUILDLIB', 'g'), config.get('buildLibrary'));
+            command = command.replace(new RegExp('&FULLPATH', 'g'), uri.path);
+            command = command.replace(new RegExp('&NAME', 'g'), name);
+            command = command.replace(new RegExp('&EXT', 'g'), ext);
+
+            break;
+
+          case 'object':
+            [blank, lib, fullName] = uri.path.split('/');
+            name = fullName.substring(0, fullName.lastIndexOf('.'));
+
+            evfeventInfo = {
+              lib,
+              object: name,
+              extension
+            };
+
+            command = command.replace(new RegExp('&LIBRARY', 'g'), lib);
+            command = command.replace(new RegExp('&NAME', 'g'), name);
+            command = command.replace(new RegExp('&TYPE', 'g'), extension);
             break;
         }
 
@@ -142,42 +190,63 @@ module.exports = class CompileTools {
         }
 
         if (command) {
+          /** @type {IBMi} */
           const connection = instance.getConnection();
+          const libl = connection.libraryList.slice(0).reverse();
+          /** @type {any} */
+          let commandResult, output;
+          let executed = false;
 
           outputChannel.append("Command: " + command + '\n');
 
-          command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
-
-          const libl = connection.libraryList.slice(0).reverse();
-
-          var output, compiled = false;
-
           try {
-            output = await connection.qshCommand([
-              'liblist -d ' + connection.defaultUserLibraries.join(' '),
-              'liblist -a ' + libl.join(' '),
-              command,
-            ], undefined, 1);
 
-            if (output.code === 0 || output.code === null) {
-              compiled = true;
-              vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
-              
-            } else {
-              compiled = false;
-              vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
+            switch (environment) {
+              case 'pase':
+                commandResult = await connection.paseCommand(command, undefined, 1);
+                break;
+
+              case 'qsh':
+                commandResult = await connection.qshCommand([
+                  'liblist -d ' + connection.defaultUserLibraries.join(' '),
+                  'liblist -a ' + libl.join(' '),
+                  command,
+                ], undefined, 1);
+                break;
+
+              case 'ile':
+              default:
+                command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
+                commandResult = await connection.qshCommand([
+                  'liblist -d ' + connection.defaultUserLibraries.join(' '),
+                  'liblist -a ' + libl.join(' '),
+                  command,
+                ], undefined, 1);
+                break;
             }
 
-            output = `${output.stderr}\n\n${output.stdout}\n\n`;
+            if (commandResult.code === 0 || commandResult.code === null) {
+              executed = true;
+              vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
+              if (connection.autoRefresh) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
+              
+            } else {
+              executed = false;
+              vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
+            }
+            
+            output = '';
+            if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
+            if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
 
           } catch (e) {
-            output = e;
-            compiled = false;
+            output = `${e}\n`;
+            executed = false;
 
             vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
 
-          outputChannel.append(output + '\n');
+          outputChannel.append(output);
 
           if (command.includes('*EVENTF')) {
             this.refreshDiagnostics(instance, evfeventInfo);

@@ -1,5 +1,6 @@
 const IBMi = require('./IBMi');
 
+const path = require('path');
 const util = require('util');
 var fs = require('fs');
 const tmp = require('tmp');
@@ -26,6 +27,14 @@ module.exports = class IBMiContent {
     var tmpobj = await tmpFile();
     await client.getFile(tmpobj, remotePath);
     return readFileAsync(tmpobj, 'utf8');
+  }
+
+  async writeStreamfile(remotePath, content) {
+    const client = this.ibmi.client;
+    let tmpobj = await tmpFile();
+
+    await writeFileAsync(tmpobj, content, 'utf8');
+    return client.putFile(tmpobj, remotePath); // assumes streamfile will be UTF8
   }
 
   /**
@@ -144,6 +153,34 @@ module.exports = class IBMiContent {
 
   /**
    * @param {string} lib 
+   * @returns {Promise<{library: string, name: string, type: string, text: string}[]>} List of members 
+   */
+  async getObjectList(lib) {
+    lib = lib.toUpperCase();
+
+    const tempLib = this.ibmi.tempLibrary;
+    const TempName = IBMi.makeid();
+
+    await this.ibmi.remoteCommand(`DSPOBJD OBJ(${lib}/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+    const results = await this.getTable(tempLib, TempName, TempName);
+
+    if (results.length === 1) {
+      if (results[0].MBNAME.trim() === '') {
+        return []
+      }
+    }
+
+    return results.map(object => ({
+      library: lib,
+      name: object.ODOBNM,
+      type: object.ODOBTP,
+      attribute: object.ODOBAT,
+      text: object.ODOBTX
+    }))
+  }
+
+  /**
+   * @param {string} lib 
    * @param {string} spf
    * @returns {Promise<{library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
@@ -175,5 +212,37 @@ module.exports = class IBMiContent {
       if (a.name > b.name) { return 1; }
       return 0;
     });
+  }
+
+  /**
+   * Get list of items in a path
+   * @param {string} remotePath 
+   * @return {Promise<{type: "directory"|"streamfile", name: string, path: string}[]>} Resulting list
+   */
+  async getFileList(remotePath) {
+    let results = await this.ibmi.paseCommand('ls -p ' + remotePath);
+
+    if (typeof results === "string" && results !== "") {
+      let list = results.split('\n');
+
+      const items = list.map(item => {
+        const type = ((item.substr(item.length - 1, 1) === '/') ? 'directory' : 'streamfile');
+
+        return {
+          type, 
+          name: (type === 'directory' ? item.substr(0, item.length - 1) : item),
+          path: path.posix.join(remotePath, item)
+        };
+      });
+
+      //@ts-ignore because it thinks "dictionary"|"streamfile" is a string from the sort call.
+      return items.sort((a, b) => {
+        if (a.name < b.name) { return -1; }
+        if (a.name > b.name) { return 1; }
+        return 0;
+      });
+    } else {
+      return [];
+    }
   }
 }

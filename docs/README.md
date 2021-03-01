@@ -47,14 +47,15 @@ Settings for this extension will be under ```Code for IBM i```
 ![assets/settings_01.png](assets/settings_01.png)
 
 ### Actions
-Actions that can be performed with the extension. This includes actions to compile source code.
+
+Actions can be used to perform tasks on members, streamfiles and eventually other types of objects too.
 
 Here is an example of the action used to compile an RPG member:
 
 ```json
 "code-for-ibmi.actions": [
   {
-    "fileSystem": "member",
+    "type": "member",
     "extensions": [
       "rpgle",
       "rpg"
@@ -64,14 +65,50 @@ Here is an example of the action used to compile an RPG member:
   }
 ]
 ```
-This action corresponds to files with ```.rpg``` or ```.rpgle``` extensions.
 
-Notice the special identifiers in the command begining with '&'.
-These identifiers correspond to values of whichever member 
-is currently open in the extension.
+The two available `type` property values are:
 
-New actions can be added by defining a new action object in the settings
-like the snippet listed above.
+* `member` for source members
+* `streamfile` for streamfiles
+* `object` for objects
+
+You can also use the `environment` property to run the action in a certain environment:
+
+* `ile` (default) to run CL commands in the ILE environment
+* `qsh` to run commands in QShell
+* `pase` to run commands in pase
+
+The `extensions` property is used to tie the action to certain types of files or objects. `name` is used to identify the action when selecting & running them. `command` is used to define what will be executed.
+
+Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Members and streamfiles have different variables.
+
+#### Member variables
+
+| Variable | Usage                              |
+|----------|------------------------------------|
+| &OPENLIB | Library that member resides in     |
+| &OPENSPF | Source file that member resides in |
+| &OPENMBR | Name of member                     |
+| &EXT     | Member extension                   |
+
+#### Streamfile variables
+
+| Variable  | Usage                                           |
+|-----------|-------------------------------------------------|
+| &BUILDLIB | Values which comes from Code for IBM i settings |
+| &FULLPATH | Path to the streamfile.                         |
+| &NAME     | Name of the streamfile with no extension        |
+| &EXT      | Extension of basename                           |
+
+#### Object variables
+
+| Variable  | Usage                             |
+|-----------|-----------------------------------|
+| &LIBRARY  | Library which the object exists   |
+| &NAME     | Name of the object                |
+| &TYPE     | The object type (PGM, FILE, etc)  |
+
+New actions can be added by defining a new action object in the settings like the snippet listed above.
 
 ### Auto Refresh
 When enabled, listings will refresh when items are interacted with (create, copy, delete, etc). If performance is bad, it is suggested to disable this option.
@@ -92,7 +129,7 @@ Here is a snippet of what the connection details look like:
 ```
 
 ### Home Directory
-Home directory for user (on IFS).
+Home directory for user. This directory is also the root for the IFS browser.
 
 ### Library List
 Comma delimited list for library list.
@@ -131,10 +168,9 @@ Each source file can be expanded to reveal its members.
 
 ![assets/srcflist_04.png](assets/srcflist_04.png)
 
-The member list can be manually refreshed by right clicking on the
-source file and selecting **Refresh Member List**.
+A source file can be refreshed by right clicking and selecting **Refresh Member List** in the context menu.
 
-![assets.srcflist_05.png](assets/srcflist_05.png)
+![assets/srcflist_05.png](assets/srcflist_05.png)
 
 
 ## Opening Source Members
@@ -178,6 +214,15 @@ For compile command configuration, see [Settings/Actions](#actions)
 
 
 ### Documentation
+
+#### Getting Started
 - install docsify ```npm i docsify-cli -g```
 - run local with ```docsify serve docs/```
 - by default, runs on http://localhost:3000
+- Read more about [Docsify](https://docsify.js.org/#/)
+
+#### File Structure
+
+- ```docs/README.md``` is the main documentation file
+- ```docs/index.html``` would be for styling tweaks, Docsify configuration, or adding syntax highlighting (PrismJs)
+- ```docs/_sidebar.md``` is for utilizing separate markdown files (chapters in a book is a good comparison)

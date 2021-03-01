@@ -1,8 +1,16 @@
 {
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
-	"description": "IBM i tools for Code",
-	"version": "0.0.13",
+	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
+	"version": "0.1.4",
+	"keywords": [
+		"ibmi",
+		"rpgle",
+		"cobol",
+		"ile",
+		"iseries",
+		"as400"
+	],
 	"author": {
 		"name": "Halcyon Tech Ltd",
 		"url": "https://github.com/halcyon-tech"
@@ -20,6 +28,7 @@
 	"activationEvents": [
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
+		"onCommand:code-for-ibmi.disconnect",
 		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
@@ -29,7 +38,16 @@
 		"onCommand:code-for-ibmi.copyMember",
 		"onCommand:code-for-ibmi.deleteMember",
 		"onCommand:code-for-ibmi.updateMemberText",
-		"onCommand:code-for-ibmi.renameMember"
+		"onCommand:code-for-ibmi.renameMember",
+		"onView:ifsBrowser",
+		"onCommand:code-for-ibmi.refreshIFSBrowser",
+		"onCommand:code-for-ibmi.changeHomeDirectory",
+		"onCommand:code-for-ibmi.createDirectory",
+		"onCommand:code-for-ibmi.createStreamfile",
+		"onCommand:code-for-ibmi.moveIFS",
+		"onCommand:code-for-ibmi.deleteIFS",
+		"onView:objectBrowser",
+		"onCommand:code-for-ibmi.refreshObjectList"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -66,6 +84,11 @@
 					"type": "string",
 					"default": "ILEDITOR",
 					"description": "Temporary library. Cannot be QTEMP."
+				},
+				"code-for-ibmi.buildLibrary": {
+					"type": "string",
+					"default": "QTEMP",
+					"description": "Library used for &BUILDLIB when running actions from the IFS."
 				},
 				"code-for-ibmi.sourceASP": {
 					"type": "string",
@@ -113,12 +136,25 @@
 						"type": "object",
 						"title": "Action",
 						"properties": {
-							"fileSystem": {
+							"type": {
 								"type": "string",
-								"description": "File system for compile",
+								"description": "Support type this action can use",
 								"enum": [
 									"member",
 									"streamfile"
+								]
+							},
+							"environment": {
+								"type": [
+									"string",
+									null
+								],
+								"description": "Environment for command to be executed in. Default is `ile`.",
+								"default": "ile",
+								"enum": [
+									"ile",
+									"qsh",
+									"pase"
 								]
 							},
 							"extensions": {
@@ -139,107 +175,123 @@
 							}
 						}
 					},
-					"default": [                     
+					"default": [
 						{
-								"fileSystem": "member",
-								"extensions": [
-										"RPGLE",
-										"RPG"
-								],
-								"name": "Create Bound RPG Program (CRTBNDRPG)",
-								"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+							"type": "member",
+							"extensions": [
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create Bound RPG Program (CRTBNDRPG)",
+							"command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
-								"fileSystem": "member",
-								"extensions": [
-										"SQLRPGLE"
-								],
-								"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
-								"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},        
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"RPGLE",
-										"RPG"
-								],
-								"name": "Create RPG Module (CRTRPGMOD)",
-								"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},         
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CMD"
-								],
-								"name": "Create Command (CRTCMD)",
-								"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
-						},        
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CMD"
-								],
-								"name": "Create Command (Allow Return Variables - CRTCMD)",
-								"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
-						},      
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"pf",
-										"lf"
-								],
-								"name": "Delete File (DLTF)",
-								"command": "?DLTF FILE(&OPENLIB/&OPENMBR)"
-						},        
-						{
-							"fileSystem": "member",
+							"type": "member",
 							"extensions": [
-									"dspf"
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create RPG Module (CRTRPGMOD)",
+							"command": "?CRTRPGMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CMD"
+							],
+							"name": "Create Command (CRTCMD)",
+							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CMD"
+							],
+							"name": "Create Command (Allow Return Variables - CRTCMD)",
+							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"pf",
+								"lf"
+							],
+							"name": "Delete File (DLTF)",
+							"command": "?DLTF FILE(&OPENLIB/&OPENMBR)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"dspf"
 							],
 							"name": "Create Display File (CRTDSPF)",
 							"command": "?CRTDSPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) RSTDSP(*NO) REPLACE(*YES)"
 						},
 						{
-								"fileSystem": "member",
-								"extensions": [
-										"pf"
-								],
-								"name": "Create Physical File (CRTPF)",
-								"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1)"
-						},        
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"lf"
-								],
-								"name": "Create :Logical File (CRTLF)",
-								"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF)"
-						},              
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CLP",
-										"CLLE"
-								],
-								"name": "Create CL Program (CRTCLP)",
-								"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
-						},          
-						{
-								"fileSystem": "member",
-								"extensions": [
-										"CLP",
-										"CLLE"
-								],
-								"name": "Create Bound CL Program (CRTBNDCL)",
-								"command": "?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+							"type": "member",
+							"extensions": [
+								"pf"
+							],
+							"name": "Create Physical File (CRTPF)",
+							"command": "?CRTPF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) SIZE(*NOMAX) MAXMBRS(1)"
 						},
 						{
-								"fileSystem": "member",
-								"extensions": [
-										"GLOBAL"
-								],
-								"name": "Create Program (CRTPGM)",
-								"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"    
+							"type": "member",
+							"extensions": [
+								"lf"
+							],
+							"name": "Create :Logical File (CRTLF)",
+							"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CLP",
+								"CLLE"
+							],
+							"name": "Create CL Program (CRTCLP)",
+							"command": "?CRTCLPGM PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OUTPUT(*PRINT) REPLACE(*YES)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"CLP",
+								"CLLE"
+							],
+							"name": "Create Bound CL Program (CRTBNDCL)",
+							"command": "?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Create Program (CRTPGM)",
+							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "object",
+							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Delete object",
+							"command": "DLTOBJ OBJ(&LIBRARY/&NAME) OBJTYPE(*&TYPE)"
+						},
+						{
+							"type": "object",
+							"extensions": [
+								"pgm"
+							],
+							"name": "Call program",
+							"command": "CALL &LIBRARY/&NAME"
 						}
 					]
 				}
@@ -257,6 +309,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.disconnect",
+				"title": "Disconnect from current connection.",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.runAction",
 				"title": "Run Action on Active Editor",
 				"category": "IBM i"
@@ -268,7 +325,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
-				"title": "Refresh Member List",
+				"title": "Refresh All Member Lists",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -277,6 +334,17 @@
 				"title": "Add Source File",
 				"category": "IBM i",
 				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.refreshSourceFile",
+				"title": "Refresh Member List",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.removeSourceFile",
+				"title": "Remove Source File",
+				"category": "IBM i",
+				"icon": "$(remove)"
 			},
 			{
 				"command": "code-for-ibmi.createMember",
@@ -307,6 +375,47 @@
 				"title": "Rename Member",
 				"category": "IBM i",
 				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.refreshIFSBrowser",
+				"title": "Refresh IFS List",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.changeHomeDirectory",
+				"title": "Change directory",
+				"category": "IBM i",
+				"icon": "$(root-folder)"
+			},
+			{
+				"command": "code-for-ibmi.deleteIFS",
+				"title": "Delete object",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.moveIFS",
+				"title": "Move object",
+				"category": "IBM i",
+				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.createDirectory",
+				"title": "Create directory",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.createStreamfile",
+				"title": "Create streamfile",
+				"category": "IBM i",
+				"icon": "$(new-file)"
+			},
+			{
+				"command": "code-for-ibmi.refreshObjectList",
+				"title": "Refresh Object List",
+				"category": "IBM i",
+				"icon": "$(refresh)"
 			}
 		],
 		"keybindings": [
@@ -332,6 +441,17 @@
 					"name": "Member Browser",
 					"contextualTitle": "Member Browser",
 					"icon": "media/server.svg"
+				},
+				{
+					"id": "ifsBrowser",
+					"name": "IFS Browser",
+					"contextualTitle": "IFS Browser",
+					"icon": "media/server.svg"
+				},
+				{
+					"id": "objectBrowser",
+					"name": "Object Browser",
+					"contextualTitle": "Object Browser"
 				}
 			]
 		},
@@ -346,11 +466,46 @@
 					"command": "code-for-ibmi.refreshMemberBrowser",
 					"group": "navigation",
 					"when": "view == memberBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createDirectory",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.changeHomeDirectory",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectList",
+					"group": "navigation",
+					"when": "view == objectBrowser"
 				}
 			],
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.createMember",
+					"when": "view == memberBrowser && viewItem == SPF",
+					"group": "3_sourceFileStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.removeSourceFile",
+					"when": "view == memberBrowser && viewItem == SPF",
+					"group": "3_sourceFileStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.refreshSourceFile",
 					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{
@@ -377,13 +532,53 @@
 					"command": "code-for-ibmi.renameMember",
 					"when": "view == memberBrowser && viewItem == member",
 					"group": "2_memberStuff@3"
+				},
+				{
+					"command": "code-for-ibmi.runActionFromView",
+					"when": "view == ifsBrowser && viewItem == streamfile",
+					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.deleteIFS",
+					"when": "view == ifsBrowser",
+					"group": "2_ifsStuff@4"
+				},
+				{
+					"command": "code-for-ibmi.moveIFS",
+					"when": "view == ifsBrowser",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.createDirectory",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectList",
+					"when": "view == objectBrowser && viewItem == library"
+				},
+				{
+					"command": "code-for-ibmi.runActionFromView",
+					"when": "view == objectBrowser && viewItem == object",
+					"group": "1_workspace@1"
 				}
 			]
 		},
 		"viewsWelcome": [
 			{
 				"view": "memberBrowser",
-				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)"
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)",
+				"when": "code-for-ibmi:connected == false"
+			},
+			{
+				"view": "memberBrowser",
+				"contents": "No source file",
+				"when": "code-for-ibmi:connected == true"
 			}
 		]
 	},
