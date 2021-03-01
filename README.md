@@ -12,6 +12,32 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * [@richardschoen](https://github.com/richardschoen)
 * [@barrettotte](https://github.com/barrettotte)
 * [@thebeardedgeek](https://github.com/thebeardedgeek)
+* [@dferrand](https://github.com/dferrand)
+* [@dariocs](https://github.com/dariocs)
+
+## Features
+
+* Member browser and editor
+* IFS Browser and editor
+* Object browser
+* Settings: Compilation, library list, etc,
+* Error lists show up in Problems automatically
+
+## Requirements
+
+In order to use extension, SSH Daemon must be started on IBM i.
+
+## How to get running
+
+#### Install from VS Code
+
+[You can find the extension in the VS Code Marketplace!](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+
+#### Run from local
+
+1. clone repo
+2. `npm i`
+3. 'Run Extension' from vscode debug.
 
 ## Guide
 
@@ -46,33 +72,3 @@ You can click on a member to open and edit it. There is no member locking and th
 4. Use Ctrl+E or Cmd+E to compile your source.
 5. If you have more than one compile option available to you for the type of source, it will prompt you
 6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
-
-## Features
-
-* [X] Member browser and editor
-* [X] Basic configration setup (for source physical file list, library list & home directory)
-* [X] Create, delete, rename & change text on members
-* [ ] IFS Browser
-* [ ] Create, delete and rename directory
-* [ ] Create, delete and rename streamfiles
-* [X] Notice at bottom when connect to remote system
-* [X] Make it easier to connect to systems again
-* [X] Compilation settings
-* [X] Ability to compile sources
-* [X] Error lists show up in Problems
-
-## Requirements
-
-In order to use extension, SSH Daemon must be started on IBM i.
-
-## How to get running
-
-#### Install from VS Code
-
-[You can find the extension in the VS Code Marketplace!](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
-
-#### Run from local
-
-1. clone repo
-2. `npm i`
-3. 'Run Extension' from vscode debug.
