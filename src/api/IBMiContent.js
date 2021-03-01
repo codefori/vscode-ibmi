@@ -117,6 +117,38 @@ module.exports = class IBMiContent {
       return Promise.reject(error);
     }
   }
+  
+  /**
+   * Run an SQL statement
+   * @param {string} statement 
+   * @returns {Promise<any[]>} Result set
+   */
+  async runSQL(statement) {
+    const command = this.ibmi.remoteFeatures.db2util;
+
+    if (command) {
+      statement = statement.replace(/"/g, '\\"');
+      try {
+        let output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
+
+        if (typeof output === "string") {
+          const rows = JSON.parse(output);
+          for (var row of rows)
+            for (var key in row)
+              if (typeof row[key] === 'string') row[key] = row[key].trim();
+
+          return rows;
+        } else {
+          return [];
+        }
+
+      } catch (e) {
+        return [];
+      }
+    } else {
+      throw new Error("db2util not installed on remote server.");
+    }
+  }
 
   /**
    * Download the contents of a table.

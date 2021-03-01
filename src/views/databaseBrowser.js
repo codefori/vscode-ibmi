@@ -1,7 +1,9 @@
 
+const { throws } = require('assert');
 const vscode = require('vscode');
 
 var instance = require('../Instance');
+const {Database, Table, Column} = require('./databaseFs');
 
 module.exports = class databaseBrowserProvider {
   /**
@@ -42,22 +44,57 @@ module.exports = class databaseBrowserProvider {
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
-    const content = instance.getContent();
     var items = [], item;
 
     if (element) { 
+
+      if (element instanceof SchemaItem) {
+        const objects = await Database.getObjects(element.path);
+        items.push(...objects.map(object => new TableItem(object)));
+      } else 
       
+      if (element instanceof TableItem) {
+        console.log(element.table.columns);
+      }
+
     } else {
       const connection = instance.getConnection();
       if (connection) {
-        const libraries = connection.libraryList;
+        if (connection.remoteFeatures.db2util) {
+          const libraries = connection.libraryList;
 
-        for (var library of libraries) {
-          library = library.toUpperCase();
-          items.push(new SPF(shortcut, shortcut));
+          for (var library of libraries) {
+            items.push(new SchemaItem(library));
+          }
+        } else {
+          items.push(new vscode.TreeItem("'db2util' not installed on system.", vscode.TreeItemCollapsibleState.None));
         }
       }
     }
     return items;
+  }
+}
+
+
+
+class SchemaItem extends vscode.TreeItem {
+  constructor(name) {
+    super(name.toLowerCase());
+
+    this.contextValue = 'schema';
+    this.path = name;
+  }
+}
+
+class TableItem extends vscode.TreeItem {
+  /**
+   * @param {Table} table 
+   */
+  constructor(table) {
+    super(table.name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
+
+    /** @type {Table} */
+    this.table = table;
+    this.description = table.text;
   }
 }
