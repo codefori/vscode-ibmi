@@ -49,7 +49,8 @@
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
 		"onView:databaseBrowser",
-		"onCommand:code-for-ibmi.refreshDatabaseBrowser"
+		"onCommand:code-for-ibmi.refreshDatabaseBrowser",
+		"onCommand:code-for-ibmi.runEditorStatement"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -421,9 +422,15 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshDatabaseBrowser",
-				"title": "Refresh Object List",
+				"title": "Refresh Database Browser",
 				"category": "IBM i",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.runEditorStatement",
+				"title": "Run selected statement",
+				"category": "IBM i",
+				"icon": "$(database)"
 			}
 		],
 		"keybindings": [
@@ -431,6 +438,11 @@
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
+			},
+			{
+				"command": "code-for-ibmi.runEditorStatement",
+				"key": "ctrl+r",
+				"mac": "cmd+r"
 			}
 		],
 		"viewsContainers": {

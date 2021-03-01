@@ -1,5 +1,6 @@
 
 const { throws } = require('assert');
+const { TextDecoder } = require('util');
 const vscode = require('vscode');
 
 var instance = require('../Instance');
@@ -23,7 +24,32 @@ module.exports = class databaseBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshDatabaseBrowser`, async () => {
         this.refresh();
-      })
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
+        const connection = instance.getConnection();
+        const content = instance.getContent();
+
+        if (connection.remoteFeatures.db2util) {
+          const editor = vscode.window.activeTextEditor;
+          const statement = parseStatement(editor);
+
+          try {
+            const data = await content.runSQL(statement);
+
+            const panel = vscode.window.createWebviewPanel(
+              'databaseResult',
+              'Database Result',
+              vscode.ViewColumn.Active
+            );
+            panel.webview.html = generateTable(data);
+          } catch (e) {
+            vscode.window.showErrorMessage("Statement did not execute correctly.");
+          }
+        } else {
+          vscode.window.showErrorMessage("To execute statements, db2util must be installed on the system.");
+        }
+      }),
     )
   }
 
@@ -132,4 +158,81 @@ const TABLE_ICONS = {
   'P': 'list-flat',
   'T': 'list-flat',
   'V': 'eye'
+}
+
+/**
+ * @param {vscode.TextEditor} editor 
+ * @returns {string} Statement
+ */
+function parseStatement(editor) {
+  const document = editor.document;
+
+  let text = document.getText(editor.selection).trim();
+  let statement;
+  
+  if (text.length > 0) {
+    statement = text;
+  } else {
+    const cursor = editor.document.offsetAt(editor.selection.active);
+    text = document.getText();
+
+    let statements = [];
+
+    let inQuote = false;
+    let start = 0, end = 0;
+
+    for (const c of text) {
+      switch (c) {
+        case `'`:
+          inQuote = !inQuote;
+          break;
+        
+        case `;`:
+          if (!inQuote) {
+            statements.push({
+              start,
+              end,
+              text: text.substring(start, end)
+            });
+
+            start = end+1;
+          }
+          break;
+      }
+      end++;
+    }
+
+    //Add ending
+    statements.push({
+      start,
+      end,
+      text: text.substring(start, end)
+    });
+
+    statement = statements.find(range => cursor >= range.start && cursor <= range.end).text;
+  }
+
+  return statement;
+}
+
+/**
+ * @param {any[]} array 
+ * @returns {string} HTML
+ */
+function generateTable(array) {
+  let html = ``;
+
+  const keys = Object.keys(array[0]);
+
+  html += `<table style="width: 100%">`;
+  html += `<thead><tr>${keys.map(key => `<th>${key}</th>`).join('')}</tr></thead>`;
+  
+  html += `<tbody>`;
+  html += array.map(row => {
+    return `<tr>` + keys.map(key => `<td>${row[key]}</td>`).join('') + `</tr>`
+  }).join('');
+  html += `</tbody>`;
+  html += `</table>`;
+
+  return html;
 }
