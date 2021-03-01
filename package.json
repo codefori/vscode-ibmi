@@ -47,7 +47,10 @@
 		"onCommand:code-for-ibmi.moveIFS",
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onView:objectBrowser",
-		"onCommand:code-for-ibmi.refreshObjectList"
+		"onCommand:code-for-ibmi.refreshObjectList",
+		"onView:databaseBrowser",
+		"onCommand:code-for-ibmi.refreshDatabaseBrowser",
+		"onCommand:code-for-ibmi.runEditorStatement"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -416,6 +419,18 @@
 				"title": "Refresh Object List",
 				"category": "IBM i",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.refreshDatabaseBrowser",
+				"title": "Refresh Database Browser",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.runEditorStatement",
+				"title": "Run selected statement",
+				"category": "IBM i",
+				"icon": "$(database)"
 			}
 		],
 		"keybindings": [
@@ -423,6 +438,11 @@
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
+			},
+			{
+				"command": "code-for-ibmi.runEditorStatement",
+				"key": "ctrl+r",
+				"mac": "cmd+r"
 			}
 		],
 		"viewsContainers": {
@@ -452,6 +472,11 @@
 					"id": "objectBrowser",
 					"name": "Object Browser",
 					"contextualTitle": "Object Browser"
+				},
+				{
+					"id": "databaseBrowser",
+					"name": "Database Browser",
+					"contextualTitle": "Database Browser"
 				}
 			]
 		},
@@ -491,6 +516,11 @@
 					"command": "code-for-ibmi.refreshObjectList",
 					"group": "navigation",
 					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshDatabaseBrowser",
+					"group": "navigation",
+					"when": "view == databaseBrowser"
 				}
 			],
 			"view/item/context": [
