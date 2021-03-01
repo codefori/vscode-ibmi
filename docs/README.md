@@ -206,6 +206,24 @@ This is what happens when a compiler error occurs.
 
 For compile command configuration, see [Settings/Actions](#actions)
 
+## Database Browser
+The database browser allows you browse tables in schemas on your connected system. The schema list comes from the defined library list.
+
+Clicking on a schema will load all tables, views, PFs, and LFs inside of the chosen schema. Click on any of those SQL objects will show you what columns are availabe. The tree view is primarily used for information purposes. When the schema has been opened, it will then add snippets to the editor when editing `.sql` sources. 
+
+### Hovering tables shows information it
+
+![assets/db_01.png](assets/db_01.png)
+
+### Editor will provide snippets to insert
+
+![assets/db_02.png](assets/db_02.png)
+
+### Viewing result sets
+
+It is also possible to run SQL statements right from the editor. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
+
+![assets/db_03.png](assets/db_03.png)
 
 ## Extension Development
 1. clone repo
