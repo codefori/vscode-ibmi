@@ -131,6 +131,9 @@ module.exports = class IBMiContent {
       let output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
 
       if (typeof output === "string") {
+        //Little hack for db2util returns blanks where it should be null.
+        output = output.replace(new RegExp(':,', 'g'), ':null,');
+        output = output.replace(new RegExp(':}', 'g'), ':null}');
         const rows = JSON.parse(output);
         for (var row of rows)
           for (var key in row)
