@@ -56,6 +56,7 @@ module.exports = class Instance {
 
       await vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser');
       await vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser');
+      await vscode.commands.executeCommand('code-for-ibmi.refreshObjectList');
     }
 
     return doDisconnect;
@@ -65,7 +66,7 @@ module.exports = class Instance {
    * We call this after we have made a connect to the IBM i to load the rest of the plugin in.
    * @param {vscode.ExtensionContext} context
    */
-  static loadAllofExtension(context) {
+  static async loadAllofExtension(context) {
     const memberBrowser = require('./views/memberBrowser');
     const qsysFs = new (require('./views/qsysFs'));
     
@@ -87,8 +88,11 @@ module.exports = class Instance {
 
       //Update the status bar and that's that.
       if (initialisedBefore) {
-        vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser');
-        vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser');
+        await Promise.all([
+          vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser'),
+          vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser'),
+          vscode.commands.executeCommand('code-for-ibmi.refreshObjectList'),
+        ]);
         return;
 
       } else {
