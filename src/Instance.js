@@ -57,6 +57,7 @@ module.exports = class Instance {
       await vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser');
       await vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser');
       await vscode.commands.executeCommand('code-for-ibmi.refreshObjectList');
+      await vscode.commands.executeCommand('code-for-ibmi.refreshDatabaseBrowser');
     }
 
     return doDisconnect;
@@ -93,6 +94,7 @@ module.exports = class Instance {
           vscode.commands.executeCommand('code-for-ibmi.refreshMemberBrowser'),
           vscode.commands.executeCommand('code-for-ibmi.refreshIFSBrowser'),
           vscode.commands.executeCommand('code-for-ibmi.refreshObjectList'),
+          vscode.commands.executeCommand('code-for-ibmi.refreshDatabaseBrowser')
         ]);
         return;
 
