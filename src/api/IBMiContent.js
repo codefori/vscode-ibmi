@@ -63,7 +63,7 @@ module.exports = class IBMiContent {
       try {
         //If this command fails we need to try again after we delete the temp remote
         await this.ibmi.remoteCommand(
-          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) FLDDLM(',') DECPNT(*PERIOD)`, '.'
+          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208)`, '.'
         );
       } catch (e) {
         if (e.startsWith("CPDA08A")) {
