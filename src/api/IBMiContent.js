@@ -128,21 +128,16 @@ module.exports = class IBMiContent {
 
     if (command) {
       statement = statement.replace(/"/g, '\\"');
-      try {
-        let output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
+      let output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
 
-        if (typeof output === "string") {
-          const rows = JSON.parse(output);
-          for (var row of rows)
-            for (var key in row)
-              if (typeof row[key] === 'string') row[key] = row[key].trim();
+      if (typeof output === "string") {
+        const rows = JSON.parse(output);
+        for (var row of rows)
+          for (var key in row)
+            if (typeof row[key] === 'string') row[key] = row[key].trim();
 
-          return rows;
-        } else {
-          return [];
-        }
-
-      } catch (e) {
+        return rows;
+      } else {
         return [];
       }
     } else {

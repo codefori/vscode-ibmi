@@ -46,7 +46,7 @@ module.exports = class databaseBrowserProvider {
               );
               panel.webview.html = generateTable(data);
             } catch (e) {
-              vscode.window.showErrorMessage("Statement did not execute correctly.");
+              vscode.window.showErrorMessage(e);
             }
           } else {
             vscode.window.showErrorMessage("To execute statements, db2util must be installed on the system.");
@@ -263,7 +263,9 @@ function parseStatement(editor) {
       text: text.substring(start, end)
     });
 
-    statement = statements.find(range => cursor >= range.start && cursor <= range.end).text;
+    let statementData = statements.find(range => cursor >= range.start && cursor <= range.end);
+    statement = statementData.text;
+    editor.selection = new vscode.Selection(editor.document.positionAt(statementData.start), editor.document.positionAt(statementData.end));
   }
 
   return statement;
