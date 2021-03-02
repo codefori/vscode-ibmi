@@ -19,13 +19,6 @@ module.exports = class objectBrowserProvider {
     this.refreshCache = {};
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration(`code-for-ibmi.libraryList`);
-        if (affected) {
-          this.refresh();
-        }
-      }),
-
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectList`, async (library) => {
         if (library) {
           if (typeof library === `string`) {
@@ -100,8 +93,10 @@ module.exports = class objectBrowserProvider {
       }
     } else {
       const connection = instance.getConnection();
+
       if (connection) {
-        const libraries = connection.libraryList;
+        const config = instance.getConfig();
+        const libraries = config.libraryList;
 
         for (let library of libraries) {
           library = library.toUpperCase();
