@@ -19,7 +19,10 @@
 		"no-undef": "warn",
 		"no-unreachable": "warn",
 		"no-unused-vars": "warn",
+		"no-var": "error",
+		"quotes": ["warn", "backtick"],
 		"constructor-super": "warn",
-		"valid-typeof": "warn"
+		"valid-typeof": "warn",
+		"indent": ["error", 2]
 	}
 }

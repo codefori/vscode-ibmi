@@ -1,6 +1,6 @@
 
 
-var instance = require('../Instance');
+let instance = require(`../Instance`);
 
 class Database {
 
@@ -34,12 +34,12 @@ class Database {
 }
 
 const TABLE_TYPES = {
-  A: 'Alias',
-  L: 'Logical file',
-  M: 'Materialized query table',
-  P: 'Physical file',
-  T: 'Table',
-  V: 'View'
+  A: `Alias`,
+  L: `Logical file`,
+  M: `Materialized query table`,
+  P: `Physical file`,
+  T: `Table`,
+  V: `View`
 }
 
 class Table {
@@ -49,7 +49,7 @@ class Table {
     this.type = TABLE_TYPES[row.TABLE_TYPE];
     this.text = row.TABLE_TEXT;
 
-    if (this._type === 'A') {
+    if (this._type === `A`) {
       //Is ALIAS
 
       this.base = `${row.BASE_TABLE_SCHEMA}/${row.BASE_TABLE_NAME}`;
@@ -73,7 +73,7 @@ class Column {
 
     this.nullable = row.IS_NULLABLE;
     this.default = row.COLUMN_DEFAULT;
-    this.identity = (row.IS_IDENTITY === 'YES');
+    this.identity = (row.IS_IDENTITY === `YES`);
 
     this.heading = row.COLUMN_HEADING;
     this.comment = row.LONG_COMMENT;

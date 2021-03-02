@@ -1,7 +1,7 @@
 
-const vscode = require('vscode');
+const vscode = require(`vscode`);
 
-var instance = require('../Instance');
+let instance = require(`../Instance`);
 
 module.exports = class objectBrowserProvider {
   /**
@@ -13,14 +13,14 @@ module.exports = class objectBrowserProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     // used for targeted member list refreshes
-    this.targetLib = '*ALL';
+    this.targetLib = `*ALL`;
 
     /** @type {{[library: string]: Object[]}} */
     this.refreshCache = {};
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration("code-for-ibmi.libraryList");
+        let affected = event.affectsConfiguration(`code-for-ibmi.libraryList`);
         if (affected) {
           this.refresh();
         }
@@ -28,7 +28,7 @@ module.exports = class objectBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectList`, async (library) => {
         if (library) {
-          if (typeof library === "string") {
+          if (typeof library === `string`) {
             this.refresh(library);
           } else if (library.path) {
             this.refresh(library.path);
@@ -43,7 +43,7 @@ module.exports = class objectBrowserProvider {
   /**
    * @param {string} lib 
    */
-  refresh(lib = '*ALL') {
+  refresh(lib = `*ALL`) {
     this.targetLib = lib;
     this.emitter.fire();
   }
@@ -62,7 +62,7 @@ module.exports = class objectBrowserProvider {
    */
   async getChildren(element) {
     const content = instance.getContent();
-    var items = [], item;
+    let items = [], item;
 
     if (element) { //Chosen SPF
       //Fetch members
@@ -70,13 +70,13 @@ module.exports = class objectBrowserProvider {
       const lib = element.path;
 
       // init cache entry if not exists
-      var cacheExists = element.path in this.refreshCache;
+      let cacheExists = element.path in this.refreshCache;
       if (!cacheExists) {
         this.refreshCache[element.path] = []; // init cache entry
       }
 
       // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
-      if (!cacheExists || ([lib, '*ALL'].includes(this.targetLib))) {
+      if (!cacheExists || ([lib, `*ALL`].includes(this.targetLib))) {
         try {
           const objects = await content.getObjectList(lib);
           this.refreshCache[element.path] = []; // reset cache since we're getting new data
@@ -89,7 +89,7 @@ module.exports = class objectBrowserProvider {
           }
         } catch (e) {
           console.log(e);
-          item = new vscode.TreeItem("Error loading members.");
+          item = new vscode.TreeItem(`Error loading members.`);
           vscode.window.showErrorMessage(e);
           items = [item];
         }
@@ -103,7 +103,7 @@ module.exports = class objectBrowserProvider {
       if (connection) {
         const libraries = connection.libraryList;
 
-        for (var library of libraries) {
+        for (let library of libraries) {
           library = library.toUpperCase();
           items.push(new Library(library));
         }
@@ -120,7 +120,7 @@ class Library extends vscode.TreeItem {
   constructor(label) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.contextValue = 'library';
+    this.contextValue = `library`;
     this.path = label.toUpperCase();
   }
 }
@@ -131,26 +131,26 @@ class Object extends vscode.TreeItem {
    * @param {{library: string, name: string, type: string, text: string}} objectInfo
    */
   constructor({library, name, type, text}) {
-    if (type.startsWith('*')) type = type.substring(1);
+    if (type.startsWith(`*`)) type = type.substring(1);
 
-    const icon = objectIcons[type] || objectIcons[''];
+    const icon = objectIcons[type] || objectIcons[``];
 
     super(`${name.toLowerCase()}.${type.toLowerCase()}`);
 
-    this.contextValue = 'object';
+    this.contextValue = `object`;
     this.path = `${library}/${name}`;
     this.type = type;
     this.description = text;
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.resourceUri = vscode.Uri.parse(`${library}/${name}.${type}`).with({scheme: 'object'})
+    this.resourceUri = vscode.Uri.parse(`${library}/${name}.${type}`).with({scheme: `object`})
   }
 }
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons = {
-  'FILE': 'database',
-  'CMD': 'terminal',
-  'MODULE': 'extensions',
-  'PGM': 'file-binary',
-  '': 'circle-large-outline'
+  'FILE': `database`,
+  'CMD': `terminal`,
+  'MODULE': `extensions`,
+  'PGM': `file-binary`,
+  '': `circle-large-outline`
 }

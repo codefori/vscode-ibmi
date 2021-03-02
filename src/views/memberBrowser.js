@@ -1,7 +1,7 @@
 
-const vscode = require('vscode');
+const vscode = require(`vscode`);
 
-var instance = require('../Instance');
+let instance = require(`../Instance`);
 
 module.exports = class memberBrowserProvider {
   /**
@@ -13,13 +13,13 @@ module.exports = class memberBrowserProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     // used for targeted member list refreshes
-    this.targetLib = '*ALL';
-    this.targetSpf = '*ALL';
+    this.targetLib = `*ALL`;
+    this.targetSpf = `*ALL`;
     this.refreshCache = {}; // cache entries of format 'LIB/SPF': members[]
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration("code-for-ibmi.sourceFileList");
+        let affected = event.affectsConfiguration(`code-for-ibmi.sourceFileList`);
         if (affected) {
           this.refresh();
         }
@@ -30,16 +30,16 @@ module.exports = class memberBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async () => {
-        const config = vscode.workspace.getConfiguration('code-for-ibmi');
-        let sourceFiles = config.get('sourceFileList');
+        const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
+        let sourceFiles = config.get(`sourceFileList`);
         const newSourceFile = await vscode.window.showInputBox({
-          prompt: "Source file to add (Format: LIB/FILE)"
+          prompt: `Source file to add (Format: LIB/FILE)`
         });
 
         if (newSourceFile) {
-          if (newSourceFile.includes('/')) {
+          if (newSourceFile.includes(`/`)) {
             sourceFiles.push(newSourceFile.toUpperCase());
-            config.update('sourceFileList', sourceFiles, vscode.ConfigurationTarget.Global);
+            config.update(`sourceFileList`, sourceFiles, vscode.ConfigurationTarget.Global);
             this.refresh();
           } else {
             vscode.window.showErrorMessage(`Format incorrect. Use LIB/FILE.`);
@@ -50,25 +50,25 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.removeSourceFile`, async (node) => {
         if (node) {
           //Running from right click
-          const config = vscode.workspace.getConfiguration('code-for-ibmi');
-          let sourceFiles = config.get('sourceFileList');
+          const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
+          let sourceFiles = config.get(`sourceFileList`);
 
           let index = sourceFiles.findIndex(file => file.toUpperCase() === node.path)
           if (index >= 0) {
             sourceFiles.splice(index, 1);
           }
 
-          config.update('sourceFileList', sourceFiles, vscode.ConfigurationTarget.Global);
+          config.update(`sourceFileList`, sourceFiles, vscode.ConfigurationTarget.Global);
         }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshSourceFile`, async (node) => {
         if (node) {
-            // Running from right click on Source File
-            const path = node.path.split('/');  // LIB/SPF
-            this.refresh(path[0], path[1]);
+          // Running from right click on Source File
+          const path = node.path.split(`/`);  // LIB/SPF
+          this.refresh(path[0], path[1]);
         } else { 
-            // Running from command
+          // Running from command
         }
       }),
       
@@ -76,13 +76,13 @@ module.exports = class memberBrowserProvider {
         if (node) {
           //Running from right click
           const fullName = await vscode.window.showInputBox({
-            prompt: "Name of new source member"
+            prompt: `Name of new source member`
           });
 
           if (fullName) {
             const connection = instance.getConnection();
-            const path = node.path.split('/');
-            const [name, extension] = fullName.split('.');
+            const path = node.path.split(`/`);
+            const [name, extension] = fullName.split(`.`);
 
             if (extension !== undefined && extension.length > 0) {
               try {
@@ -116,8 +116,8 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node) => {
         if (node) {
           //Running from right click
-          var fullPath = await vscode.window.showInputBox({
-            prompt: "New path for copy of source member",
+          let fullPath = await vscode.window.showInputBox({
+            prompt: `New path for copy of source member`,
             value: node.path
           });
 
@@ -125,12 +125,12 @@ module.exports = class memberBrowserProvider {
             fullPath = fullPath.toUpperCase();
 
             const connection = instance.getConnection();
-            const oldPath = node.path.split('/');
-            const oldName = oldPath[2].substring(0, oldPath[2].lastIndexOf('.'));
-            const newPath = fullPath.split('/');
+            const oldPath = node.path.split(`/`);
+            const oldName = oldPath[2].substring(0, oldPath[2].lastIndexOf(`.`));
+            const newPath = fullPath.split(`/`);
 
             if (newPath.length === 3) {
-              const newName = newPath[2].substring(0, newPath[2].lastIndexOf('.'));
+              const newName = newPath[2].substring(0, newPath[2].lastIndexOf(`.`));
 
               try {
                 vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
@@ -160,7 +160,7 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === '/' + node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === `/` + node.path);
 
           if (isStillOpen) {
             //Since there is no easy way to close a file.
@@ -168,12 +168,12 @@ module.exports = class memberBrowserProvider {
 
           } else {
             //Running from right click
-            var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+            let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
             if (result === `Yes`) {
               const connection = instance.getConnection();
-              const path = node.path.split('/');
-              const name = path[2].substring(0, path[2].lastIndexOf('.'));
+              const path = node.path.split(`/`);
+              const name = path[2].substring(0, path[2].lastIndexOf(`.`));
 
               try {
                 await connection.remoteCommand(
@@ -186,7 +186,7 @@ module.exports = class memberBrowserProvider {
                   this.refresh(path[0], path[1]);
                 }
               } catch (e) {
-                  vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+                vscode.window.showErrorMessage(`Error deleting member! ${e}`);
               }
 
               //Not sure how to remove the item from the list. Must refresh - but that might be slow?
@@ -198,8 +198,8 @@ module.exports = class memberBrowserProvider {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
-        const path = node.path.split('/');
-        const name = path[2].substring(0, path[2].lastIndexOf('.'));
+        const path = node.path.split(`/`);
+        const name = path[2].substring(0, path[2].lastIndexOf(`.`));
 
         if (node) {
           const newText = await vscode.window.showInputBox({
@@ -227,13 +227,13 @@ module.exports = class memberBrowserProvider {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node) => {
-        const path = node.path.split('/');
+        const path = node.path.split(`/`);
 
-        const oldName = path[2].substring(0, path[2].lastIndexOf('.'));
-        const oldExtension = path[2].substring(path[2].lastIndexOf('.')+1);
+        const oldName = path[2].substring(0, path[2].lastIndexOf(`.`));
+        const oldExtension = path[2].substring(path[2].lastIndexOf(`.`)+1);
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === '/' + node.path);
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === `/` + node.path);
           if (isStillOpen) {
             vscode.window.showInformationMessage(`Cannot rename member while it is open.`);
           } else {
@@ -247,8 +247,8 @@ module.exports = class memberBrowserProvider {
   
             if (newName && newName.toUpperCase() !== path[2]) {
               const connection = instance.getConnection();
-              const newNameParts = newName.split('.');
-              var renameHappened = false;
+              const newNameParts = newName.split(`.`);
+              let renameHappened = false;
 
               if (newNameParts.length === 2) {
                 try {
@@ -288,7 +288,7 @@ module.exports = class memberBrowserProvider {
     )
   }
 
-  refresh(lib='*ALL', spf='*ALL') {
+  refresh(lib=`*ALL`, spf=`*ALL`) {
     this.targetLib = lib;
     this.targetSpf = spf;
     this.emitter.fire();
@@ -308,34 +308,34 @@ module.exports = class memberBrowserProvider {
    */
   async getChildren(element) {
     const content = instance.getContent();
-    var items = [], item;
+    let items = [], item;
 
     if (element) { //Chosen SPF
       //Fetch members
       console.log(element.path);
-      const [lib, spf] = element.path.split('/');
+      const [lib, spf] = element.path.split(`/`);
 
       // init cache entry if not exists
-      var cacheExists = element.path in this.refreshCache;
+      let cacheExists = element.path in this.refreshCache;
       if(!cacheExists){
         this.refreshCache[element.path] = []; // init cache entry
       }
 
       // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
-      if(!cacheExists || ([lib, '*ALL'].includes(this.targetLib) && [spf, '*ALL'].includes(this.targetSpf))){
+      if(!cacheExists || ([lib, `*ALL`].includes(this.targetLib) && [spf, `*ALL`].includes(this.targetSpf))){
         try {
-            const members = await content.getMemberList(lib, spf);
-            this.refreshCache[element.path] = []; // reset cache since we're getting new data
+          const members = await content.getMemberList(lib, spf);
+          this.refreshCache[element.path] = []; // reset cache since we're getting new data
 
-            for (const member of members) {
-              items.push(new Member(member));
-              this.refreshCache[element.path].push(new Member(member));
-            }
+          for (const member of members) {
+            items.push(new Member(member));
+            this.refreshCache[element.path].push(new Member(member));
+          }
         } catch (e) {
-            console.log(e);
-            item = new vscode.TreeItem("Error loading members.");
-            vscode.window.showErrorMessage(e);
-            items = [item];
+          console.log(e);
+          item = new vscode.TreeItem(`Error loading members.`);
+          vscode.window.showErrorMessage(e);
+          items = [item];
         }
       } else{
         // add cached items to tree
@@ -348,7 +348,7 @@ module.exports = class memberBrowserProvider {
       if (connection) {
         const shortcuts = connection.spfShortcuts;
 
-        for (var shortcut of shortcuts) {
+        for (let shortcut of shortcuts) {
           shortcut = shortcut.toUpperCase();
           items.push(new SPF(shortcut, shortcut));
         }
@@ -366,7 +366,7 @@ class SPF extends vscode.TreeItem {
   constructor(label, path) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.contextValue = 'SPF';
+    this.contextValue = `SPF`;
     this.path = path;
   }
 }
@@ -377,10 +377,10 @@ class Member extends vscode.TreeItem {
 
     super(`${member.name}.${member.extension}`.toLowerCase());
 
-    this.contextValue = 'member';
+    this.contextValue = `member`;
     this.description = member.text;
     this.path = path;
-    this.resourceUri = vscode.Uri.parse(path).with({scheme: 'member'});
+    this.resourceUri = vscode.Uri.parse(path).with({scheme: `member`});
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open Member`,

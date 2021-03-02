@@ -1,8 +1,8 @@
 
-const { throws } = require('assert');
-const vscode = require('vscode');
+const { throws } = require(`assert`);
+const vscode = require(`vscode`);
 
-var instance = require('../Instance');
+let instance = require(`../Instance`);
 
 module.exports = class ifsBrowserProvider {
   /**
@@ -14,7 +14,7 @@ module.exports = class ifsBrowserProvider {
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration("code-for-ibmi.homeDirectory");
+        let affected = event.affectsConfiguration(`code-for-ibmi.homeDirectory`);
         if (affected) {
           this.refresh();
         }
@@ -24,18 +24,18 @@ module.exports = class ifsBrowserProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand('code-for-ibmi.changeHomeDirectory', async () => {
-        let config = vscode.workspace.getConfiguration('code-for-ibmi');
-        const homeDirectory = config.get('homeDirectory');
+      vscode.commands.registerCommand(`code-for-ibmi.changeHomeDirectory`, async () => {
+        let config = vscode.workspace.getConfiguration(`code-for-ibmi`);
+        const homeDirectory = config.get(`homeDirectory`);
 
         const newDirectory = await vscode.window.showInputBox({
-          prompt: 'Changing home directory',
+          prompt: `Changing home directory`,
           value: homeDirectory
         });
 
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
-            await config.update('homeDirectory', newDirectory, vscode.ConfigurationTarget.Global);
+            await config.update(`homeDirectory`, newDirectory, vscode.ConfigurationTarget.Global);
           }
         } catch (e) {
           console.log(e);
@@ -56,7 +56,7 @@ module.exports = class ifsBrowserProvider {
         }
 
         const fullName = await vscode.window.showInputBox({
-          prompt: "Path of new folder",
+          prompt: `Path of new folder`,
           value: root
         });
 
@@ -86,7 +86,7 @@ module.exports = class ifsBrowserProvider {
         }
         
         const fullName = await vscode.window.showInputBox({
-          prompt: "Name of new streamfile",
+          prompt: `Name of new streamfile`,
           value: root
         });
 
@@ -119,7 +119,7 @@ module.exports = class ifsBrowserProvider {
 
           } else {
             //Running from right click
-            var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+            let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
             if (result === `Yes`) {
               const connection = instance.getConnection();
@@ -152,7 +152,7 @@ module.exports = class ifsBrowserProvider {
 
           } else {
             const fullName = await vscode.window.showInputBox({
-              prompt: "Name of new path",
+              prompt: `Name of new path`,
               value: node.path
             });
 
@@ -197,7 +197,7 @@ module.exports = class ifsBrowserProvider {
   async getChildren(element) {
     const connection = instance.getConnection();
     const content = instance.getContent();
-    var items = [], item;
+    let items = [], item;
 
     if (connection) {
       if (element) { //Chosen SPF
@@ -213,7 +213,7 @@ module.exports = class ifsBrowserProvider {
 
         } catch (e) {
           console.log(e);
-          item = new vscode.TreeItem("Error loading members.");
+          item = new vscode.TreeItem(`Error loading members.`);
           vscode.window.showErrorMessage(e);
           items = [item];
         }
@@ -221,7 +221,7 @@ module.exports = class ifsBrowserProvider {
       } else {
         const objects = await content.getFileList(connection.homeDirectory);
 
-        for (var object of objects) {
+        for (let object of objects) {
           items.push(new Object(object.type, object.name, object.path));
         }
       }
@@ -243,10 +243,10 @@ class Object extends vscode.TreeItem {
     this.contextValue = type;
     this.path = path;
 
-    if (type === 'directory') {
+    if (type === `directory`) {
       this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     } else {
-      this.resourceUri = vscode.Uri.parse(path).with({scheme: 'streamfile'});
+      this.resourceUri = vscode.Uri.parse(path).with({scheme: `streamfile`});
       this.command = {
         command: `code-for-ibmi.openEditable`,
         title: `Open Streamfile`,

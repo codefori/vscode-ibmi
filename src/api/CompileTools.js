@@ -1,9 +1,9 @@
 
-const vscode = require('vscode');
-const path = require('path');
+const vscode = require(`vscode`);
+const path = require(`path`);
 
-const errorHandler = require('./errorHandle');
-const IBMi = require('./IBMi');
+const errorHandler = require(`./errorHandle`);
+const IBMi = require(`./IBMi`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -15,10 +15,10 @@ const diagnosticSeverity = {
 }
 
 /** @type {vscode.DiagnosticCollection} */
-var ileDiagnostics;
+let ileDiagnostics;
 
 /** @type {vscode.OutputChannel} */
-var outputChannel;
+let outputChannel;
 
 module.exports = class CompileTools {
 
@@ -27,12 +27,12 @@ module.exports = class CompileTools {
    */
   static register(context) {
     if (!ileDiagnostics) {
-      ileDiagnostics = vscode.languages.createDiagnosticCollection("ILE");
+      ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
       context.subscriptions.push(ileDiagnostics);
     }
 
     if (!outputChannel) {
-      outputChannel = vscode.window.createOutputChannel("IBM i Output");
+      outputChannel = vscode.window.createOutputChannel(`IBM i Output`);
       context.subscriptions.push(outputChannel);
     }
   }
@@ -44,16 +44,16 @@ module.exports = class CompileTools {
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
-    const tableData = await content.getTable(evfeventInfo.lib, 'EVFEVENT', evfeventInfo.object);
+    const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => row.EVFEVENT);
 
     const errors = errorHandler(lines);
 
     /** @type {vscode.Diagnostic[]} */
-    var diagnostics = [];
+    let diagnostics = [];
 
     /** @type {vscode.Diagnostic} */
-    var diagnostic;
+    let diagnostic;
 
     if (Object.keys(errors).length > 0) {
       for (const file in errors) {
@@ -78,10 +78,10 @@ module.exports = class CompileTools {
           diagnostics.push(diagnostic);
         }
 
-        if (file.startsWith('/'))
+        if (file.startsWith(`/`))
           ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
         else
-          ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? '.' + evfeventInfo.ext : ''}`), diagnostics);
+          ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
         
       }
 
@@ -97,26 +97,26 @@ module.exports = class CompileTools {
    * @param {vscode.Uri} uri 
    */
   static async RunAction(instance, uri) {
-    var evfeventInfo = {lib: '', object: ''};
+    let evfeventInfo = {lib: ``, object: ``};
 
-    const config = vscode.workspace.getConfiguration('code-for-ibmi');
-    const allActions = config.get('actions');
+    const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
+    const allActions = config.get(`actions`);
 
-    const extension = uri.path.substring(uri.path.lastIndexOf('.')+1).toUpperCase();
+    const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
 
     //We do this for backwards compatability.
     //Can be removed in a few versions.
-    for (var action of allActions) {
+    for (let action of allActions) {
       if (action.extension) action.extensions = [action.extension];
       if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
-    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes('GLOBAL')));
+    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
       const options = availableActions.map(item => item.name);
     
-      var chosenOptionName, command, environment;
+      let chosenOptionName, command, environment;
     
       if (options.length === 1) {
         chosenOptionName = options[0]
@@ -126,17 +126,17 @@ module.exports = class CompileTools {
     
       if (chosenOptionName) {
         command = availableActions.find(action => action.name === chosenOptionName).command;
-        environment = availableActions.find(action => action.name === chosenOptionName).environment || 'ile';
+        environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
         let blank, lib, file, fullName;
         let basename, name, ext;
 
         switch (uri.scheme) {
-          case 'member':
-            [blank, lib, file, fullName] = uri.path.split('/');
-            name = fullName.substring(0, fullName.lastIndexOf('.'));
+          case `member`:
+            [blank, lib, file, fullName] = uri.path.split(`/`);
+            name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-            ext = (fullName.includes('.') ? fullName.substring(fullName.lastIndexOf('.') + 1) : undefined);
+            ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : undefined);
 
             evfeventInfo = {
               lib: lib,
@@ -144,34 +144,34 @@ module.exports = class CompileTools {
               ext
             };
 
-            command = command.replace(new RegExp('&OPENLIB', 'g'), lib);
-            command = command.replace(new RegExp('&OPENSPF', 'g'), file);
-            command = command.replace(new RegExp('&OPENMBR', 'g'), name);
-            command = command.replace(new RegExp('&EXT', 'g'), ext);
+            command = command.replace(new RegExp(`&OPENLIB`, `g`), lib);
+            command = command.replace(new RegExp(`&OPENSPF`, `g`), file);
+            command = command.replace(new RegExp(`&OPENMBR`, `g`), name);
+            command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
             break;
 
-          case 'streamfile':
+          case `streamfile`:
             basename = path.posix.basename(uri.path);
-            name = basename.substring(0, basename.lastIndexOf('.')).toUpperCase();
-            ext = (basename.includes('.') ? basename.substring(basename.lastIndexOf('.') + 1) : undefined);
+            name = basename.substring(0, basename.lastIndexOf(`.`)).toUpperCase();
+            ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
 
             evfeventInfo = {
-              lib: config.get('buildLibrary'),
+              lib: config.get(`buildLibrary`),
               object: name,
               ext
             };
 
-            command = command.replace(new RegExp('&BUILDLIB', 'g'), config.get('buildLibrary'));
-            command = command.replace(new RegExp('&FULLPATH', 'g'), uri.path);
-            command = command.replace(new RegExp('&NAME', 'g'), name);
-            command = command.replace(new RegExp('&EXT', 'g'), ext);
+            command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.get(`buildLibrary`));
+            command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
+            command = command.replace(new RegExp(`&NAME`, `g`), name);
+            command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
             break;
 
-          case 'object':
-            [blank, lib, fullName] = uri.path.split('/');
-            name = fullName.substring(0, fullName.lastIndexOf('.'));
+          case `object`:
+            [blank, lib, fullName] = uri.path.split(`/`);
+            name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
             evfeventInfo = {
               lib,
@@ -179,14 +179,14 @@ module.exports = class CompileTools {
               extension
             };
 
-            command = command.replace(new RegExp('&LIBRARY', 'g'), lib);
-            command = command.replace(new RegExp('&NAME', 'g'), name);
-            command = command.replace(new RegExp('&TYPE', 'g'), extension);
+            command = command.replace(new RegExp(`&LIBRARY`, `g`), lib);
+            command = command.replace(new RegExp(`&NAME`, `g`), name);
+            command = command.replace(new RegExp(`&TYPE`, `g`), extension);
             break;
         }
 
-        if (command.startsWith('?')) {
-          command = await vscode.window.showInputBox({prompt: "Run action", value: command.substring(1)})
+        if (command.startsWith(`?`)) {
+          command = await vscode.window.showInputBox({prompt: `Run action`, value: command.substring(1)})
         }
 
         if (command) {
@@ -197,29 +197,29 @@ module.exports = class CompileTools {
           let commandResult, output;
           let executed = false;
 
-          outputChannel.append("Command: " + command + '\n');
+          outputChannel.append(`Command: ` + command + `\n`);
 
           try {
 
             switch (environment) {
-              case 'pase':
+              case `pase`:
                 commandResult = await connection.paseCommand(command, undefined, 1);
                 break;
 
-              case 'qsh':
+              case `qsh`:
                 commandResult = await connection.qshCommand([
-                  'liblist -d ' + connection.defaultUserLibraries.join(' '),
-                  'liblist -a ' + libl.join(' '),
+                  `liblist -d ` + connection.defaultUserLibraries.join(` `),
+                  `liblist -a ` + libl.join(` `),
                   command,
                 ], undefined, 1);
                 break;
 
-              case 'ile':
+              case `ile`:
               default:
-                command = `system ${connection.logCompileOutput ? '' : '-s'} "${command}"`;
+                command = `system ${connection.logCompileOutput ? `` : `-s`} "${command}"`;
                 commandResult = await connection.qshCommand([
-                  'liblist -d ' + connection.defaultUserLibraries.join(' '),
-                  'liblist -a ' + libl.join(' '),
+                  `liblist -d ` + connection.defaultUserLibraries.join(` `),
+                  `liblist -a ` + libl.join(` `),
                   command,
                 ], undefined, 1);
                 break;
@@ -235,7 +235,7 @@ module.exports = class CompileTools {
               vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
             }
             
-            output = '';
+            output = ``;
             if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
             if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
 
@@ -248,7 +248,7 @@ module.exports = class CompileTools {
 
           outputChannel.append(output);
 
-          if (command.includes('*EVENTF')) {
+          if (command.includes(`*EVENTF`)) {
             this.refreshDiagnostics(instance, evfeventInfo);
           }
 

@@ -1,12 +1,12 @@
-const node_ssh = require('node-ssh');
-const vscode = require('vscode');
+const node_ssh = require(`node-ssh`);
+const vscode = require(`vscode`);
 
 module.exports = class IBMi {
   constructor() {
     this.client = new node_ssh.NodeSSH;
-    this.currentHost = '';
+    this.currentHost = ``;
     this.currentPort = 22;
-    this.currentUser = '';
+    this.currentUser = ``;
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
 
@@ -17,10 +17,10 @@ module.exports = class IBMi {
     };
     
     //Configration:
-    this.homeDirectory = '.';
+    this.homeDirectory = `.`;
     this.libraryList = [];
-    this.tempLibrary = 'ILEDITOR';
-    this.spfShortcuts = ['QSYSINC/H'];
+    this.tempLibrary = `ILEDITOR`;
+    this.spfShortcuts = [`QSYSINC/H`];
     this.logCompileOutput = false;
     this.autoRefresh = false;
     this.sourceASP = undefined;
@@ -45,7 +45,7 @@ module.exports = class IBMi {
       //Perhaps load in existing config if it exists here.
 
       //Continue with finding out info about system
-      if (this.homeDirectory === '.') this.homeDirectory = `/home/${connectionObject.username}`;
+      if (this.homeDirectory === `.`) this.homeDirectory = `/home/${connectionObject.username}`;
 
       //Create home directory if it does not exist.
       try {
@@ -53,7 +53,7 @@ module.exports = class IBMi {
       } catch (e) {
         //If the folder doesn't exist, then we need to reset the path
         //because we need a valid path for the home directory.
-        if (e.indexOf('File exists') === -1) {
+        if (e.indexOf(`File exists`) === -1) {
           //An error message here also?
           this.homeDirectory = `.`;
         }
@@ -63,21 +63,21 @@ module.exports = class IBMi {
       //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
       let currentLibrary = `QGPL`;
       this.defaultUserLibraries = [];
-      var libraryListString = await this.qshCommand('liblist');
-      if (typeof libraryListString === 'string' && libraryListString !== '') {
-        const libraryList = libraryListString.split('\n');
+      let libraryListString = await this.qshCommand(`liblist`);
+      if (typeof libraryListString === `string` && libraryListString !== ``) {
+        const libraryList = libraryListString.split(`\n`);
 
-        var lib, type;
+        let lib, type;
         for (const line of libraryList) {
           lib = line.substr(0, 10).trim();
           type = line.substr(12);
 
           switch (type) {
-            case 'USR':
+            case `USR`:
               this.defaultUserLibraries.push(lib);
               break;
               
-            case 'CUR':
+            case `CUR`:
               currentLibrary = lib;
               break;
           }
@@ -89,17 +89,17 @@ module.exports = class IBMi {
       //Next, we need to check the temp lib (where temp outfile data lives) exists
       try {
         await this.remoteCommand(
-          'CRTLIB ' + this.tempLibrary,
+          `CRTLIB ` + this.tempLibrary,
           undefined,
         );
       } catch (e) {
-        var [errorcode, errortext] = e.split(':');
+        let [errorcode, errortext] = e.split(`:`);
 
         switch (errorcode) {
-          case 'CPF2111': //Already exists, hopefully ok :)
+          case `CPF2111`: //Already exists, hopefully ok :)
             break;
           
-          case 'CPD0032': //Can't use CRTLIB
+          case `CPD0032`: //Can't use CRTLIB
             try {
               await this.remoteCommand(
                 `CHKOBJ OBJ(QSYS/${this.tempLibrary}) OBJTYPE(*LIB)`,
@@ -108,7 +108,7 @@ module.exports = class IBMi {
 
               //We're all good if no errors
             } catch (e) {
-              if (currentLibrary.startsWith('Q')) {
+              if (currentLibrary.startsWith(`Q`)) {
                 //Temporary library not created. Some parts of the extension will not run without a temporary library.
               } else {
                 this.tempLibrary = currentLibrary;
@@ -126,8 +126,8 @@ module.exports = class IBMi {
       try {
         //This may enable certain features in the future.
         const call = await this.paseCommand(`ls -p ${packagesPath}`);
-        if (typeof call === "string") {
-          const files = call.split('\n');
+        if (typeof call === `string`) {
+          const files = call.split(`\n`);
           for (const feature of Object.keys(this.remoteFeatures))
             if (files.includes(feature))
               this.remoteFeatures[feature] = packagesPath + feature;
@@ -146,9 +146,9 @@ module.exports = class IBMi {
    * Load configuration from vscode.
    */
   loadConfig() {
-    const data = vscode.workspace.getConfiguration('code-for-ibmi');
+    const data = vscode.workspace.getConfiguration(`code-for-ibmi`);
     this.homeDirectory = data.homeDirectory;
-    this.libraryList = data.libraryList.split(',').map(item => item.trim());
+    this.libraryList = data.libraryList.split(`,`).map(item => item.trim());
     this.spfShortcuts = data.sourceFileList;
     this.tempLibrary = data.temporaryLibrary;
     this.logCompileOutput = data.logCompileOutput || false;
@@ -163,7 +163,7 @@ module.exports = class IBMi {
    */
   remoteCommand(command, directory) {
     //execCommand does not crash..
-    return this.paseCommand('system "' + command + '"', directory);
+    return this.paseCommand(`system "` + command + `"`, directory);
   }
 
   /**
@@ -175,12 +175,12 @@ module.exports = class IBMi {
   qshCommand(command, directory = this.homeDirectory, returnType = 0) {
 
     if (Array.isArray(command)) {
-      command = command.join(';');
+      command = command.join(`;`);
     }
 
-    command = command.replace(/"/g, '\\"');
+    command = command.replace(/"/g, `\\"`);
 
-    command = 'echo "' + command + '" | /QOpenSys/usr/bin/qsh';
+    command = `echo "` + command + `" | /QOpenSys/usr/bin/qsh`;
 
     return this.paseCommand(command, directory, returnType);
   }
@@ -192,9 +192,9 @@ module.exports = class IBMi {
    * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
    */
   async paseCommand(command, directory = this.homeDirectory, returnType = 0) {
-    command = command.replace(/\$/g, '\\$');
+    command = command.replace(/\$/g, `\\$`);
 
-    var result = await this.client.execCommand(command, {
+    let result = await this.client.execCommand(command, {
       cwd: directory,
     });
 
@@ -213,22 +213,22 @@ module.exports = class IBMi {
   getTempRemote(key) {
 
     if (this.tempRemoteFiles[key] !== undefined) {
-      console.log('Using existing temp: ' + this.tempRemoteFiles[key]);
+      console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      var value = '/tmp/vscodetemp-' + IBMi.makeid();
-      console.log('Using new temp: ' + value);
+      let value = `/tmp/vscodetemp-` + IBMi.makeid();
+      console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;
     }
   }
 
   static makeid() {
-    var text = 'o';
-    var possible =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let text = `o`;
+    let possible =
+      `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
   
-    for (var i = 0; i < 9; i++)
+    for (let i = 0; i < 9; i++)
       text += possible.charAt(Math.floor(Math.random() * possible.length));
   
     return text;
@@ -243,7 +243,7 @@ module.exports = class IBMi {
    */
   static qualifyPath(asp, lib, obj, mbr) {
     const path =
-      (asp ? `/${asp}` : '') + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
+      (asp ? `/${asp}` : ``) + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
     return path;
   }
 }

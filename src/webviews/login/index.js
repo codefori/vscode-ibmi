@@ -1,13 +1,13 @@
-const vscode = require('vscode');
+const vscode = require(`vscode`);
 
-const path = require('path');
-const fs = require('fs');
+const path = require(`path`);
+const fs = require(`fs`);
 
-const IBMi = require('../../api/IBMi');
+const IBMi = require(`../../api/IBMi`);
 
-var instance = require('../../Instance');
+let instance = require(`../../Instance`);
 
-const LoginHTML = fs.readFileSync(path.join(__dirname, 'login.html'), {encoding: 'utf8'});
+const LoginHTML = fs.readFileSync(path.join(__dirname, `login.html`), {encoding: `utf8`});
 
 module.exports = class Login {
 
@@ -22,8 +22,8 @@ module.exports = class Login {
     }
 
     const panel = vscode.window.createWebviewPanel(
-      'systemLogin',
-      'IBM i Login',
+      `systemLogin`,
+      `IBM i Login`,
       vscode.ViewColumn.One,
       {
         enableScripts: true
@@ -36,7 +36,7 @@ module.exports = class Login {
     panel.webview.onDidReceiveMessage(
       async message => {
         switch (message.command) {
-          case 'login':
+          case `login`:
             message.data.port = Number(message.data.port);
 
             vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
@@ -53,15 +53,15 @@ module.exports = class Login {
                 instance.setConnection(connection);
                 instance.loadAllofExtension(context);
 
-                var existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');
-                var existingConnections = existingConnectionsConfig.get('connections');
+                let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
+                let existingConnections = existingConnectionsConfig.get(`connections`);
                 if (!existingConnections.find(item => item.host === message.data.host)) {
                   existingConnections.push({
                     host: message.data.host,
                     port: message.data.port,
                     username: message.data.username
                   });
-                  await existingConnectionsConfig.update('connections', existingConnections, vscode.ConfigurationTarget.Global);
+                  await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
                 }
 
               } else {
@@ -89,15 +89,15 @@ module.exports = class Login {
       if (!instance.disconnect()) return;
     }
 
-    const existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');
-    const existingConnections = existingConnectionsConfig.get('connections');
+    const existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
+    const existingConnections = existingConnectionsConfig.get(`connections`);
     const items = existingConnections.map(item => `${item.username}@${item.host}:${item.port}`);
 
     const selected = await vscode.window.showQuickPick(items, {canPickMany: false});
 
     if (selected) {
-      const [username, hostname] = selected.split('@');
-      const [host, port] = hostname.split(':');
+      const [username, hostname] = selected.split(`@`);
+      const [host, port] = hostname.split(`:`);
 
       const password = await vscode.window.showInputBox({
         prompt: `Password for ${selected}`,

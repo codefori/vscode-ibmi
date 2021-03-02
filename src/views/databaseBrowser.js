@@ -1,8 +1,8 @@
 
-const vscode = require('vscode');
+const vscode = require(`vscode`);
 
-var instance = require('../Instance');
-const {Database, Table, Column} = require('./databaseFs');
+let instance = require(`../Instance`);
+const {Database, Table, Column} = require(`./databaseFs`);
 
 /** @type {{[SCHEMA: string]: Table[]}} */
 let schemaCache = {};
@@ -17,7 +17,7 @@ module.exports = class databaseBrowserProvider {
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration("code-for-ibmi.libraryList");
+        let affected = event.affectsConfiguration(`code-for-ibmi.libraryList`);
         if (affected) {
           this.refresh();
         }
@@ -32,7 +32,7 @@ module.exports = class databaseBrowserProvider {
         const content = instance.getContent();
         const editor = vscode.window.activeTextEditor;
 
-        if (editor.document.languageId === 'sql') {
+        if (editor.document.languageId === `sql`) {
           if (connection.remoteFeatures.db2util) {
             const statement = parseStatement(editor);
 
@@ -40,8 +40,8 @@ module.exports = class databaseBrowserProvider {
               const data = await content.runSQL(statement);
 
               const panel = vscode.window.createWebviewPanel(
-                'databaseResult',
-                'Database Result',
+                `databaseResult`,
+                `Database Result`,
                 vscode.ViewColumn.Active
               );
               panel.webview.html = generateTable(data);
@@ -49,16 +49,16 @@ module.exports = class databaseBrowserProvider {
               if (typeof e === `string`) {
                 vscode.window.showErrorMessage(e);
               } else {
-                vscode.window.showErrorMessage(e.message || 'Error running SQL statement.');
+                vscode.window.showErrorMessage(e.message || `Error running SQL statement.`);
               }
             }
           } else {
-            vscode.window.showErrorMessage("To execute statements, db2util must be installed on the system.");
+            vscode.window.showErrorMessage(`To execute statements, db2util must be installed on the system.`);
           }
         }
       }),
 
-      vscode.languages.registerCompletionItemProvider({language: 'sql'}, {
+      vscode.languages.registerCompletionItemProvider({language: `sql`}, {
         provideCompletionItems: (document, position) => {
           /** @type vscode.CompletionItem[] */
           let items = [];
@@ -67,10 +67,10 @@ module.exports = class databaseBrowserProvider {
           for (const schema in schemaCache) {
             for (const table of schemaCache[schema]) {
               item = new vscode.CompletionItem(`select from ${schema}.${table.name.toLowerCase()}`, vscode.CompletionItemKind.Snippet);
-              if (table._type === 'A') {
+              if (table._type === `A`) {
                 item.insertText = `SELECT *\nFROM ${schema}.${table.name.toLowerCase()}`;
               } else {
-                item.insertText = `SELECT\n${table.columns.map(column => '  ' + column.name.toLowerCase()).join(',\n')}\nFROM ${schema}.${table.name.toLowerCase()}`;
+                item.insertText = `SELECT\n${table.columns.map(column => `  ` + column.name.toLowerCase()).join(`,\n`)}\nFROM ${schema}.${table.name.toLowerCase()}`;
               }
               item.detail = table.type;
               item.documentation = table.text;
@@ -80,7 +80,7 @@ module.exports = class databaseBrowserProvider {
                 item = new vscode.CompletionItem(`${table.name.toLowerCase()}.${column.name.toLowerCase()}`, vscode.CompletionItemKind.Variable);
                 item.insertText = column.name.toLowerCase();
                 item.detail = `${column.heading} (${column.type})`;
-                item.documentation = `Belongs to \`${schema}.${table.name.toLowerCase()}\`. ${column.comment !== 'null' ? column.comment : ''}`;
+                item.documentation = `Belongs to \`${schema}.${table.name.toLowerCase()}\`. ${column.comment !== `null` ? column.comment : ``}`;
                 items.push(item);
               }
             }
@@ -90,7 +90,7 @@ module.exports = class databaseBrowserProvider {
         }
       }),
 
-      vscode.languages.registerHoverProvider({language: 'sql'}, {
+      vscode.languages.registerHoverProvider({language: `sql`}, {
         provideHover: (document, position, token) => {
           const range = document.getWordRangeAtPosition(position);
           const word = document.getText(range).toUpperCase();
@@ -100,7 +100,7 @@ module.exports = class databaseBrowserProvider {
             result = schemaCache[schema].find(table => word === table.name);
 
             if (result) {
-              return new vscode.Hover(new vscode.MarkdownString(`${result.type}: \`${schema}.${result.name.toLowerCase()}\`. ${result.text}\n\n${result.columns.map(column => `* \`${column.name.toLowerCase()}\` ${column.type}`).join('\n')}`));
+              return new vscode.Hover(new vscode.MarkdownString(`${result.type}: \`${schema}.${result.name.toLowerCase()}\`. ${result.text}\n\n${result.columns.map(column => `* \`${column.name.toLowerCase()}\` ${column.type}`).join(`\n`)}`));
             }
           }
 
@@ -127,7 +127,7 @@ module.exports = class databaseBrowserProvider {
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
-    var items = [], item;
+    let items = [], item;
 
     if (element) { 
 
@@ -147,11 +147,11 @@ module.exports = class databaseBrowserProvider {
         if (connection.remoteFeatures.db2util) {
           const libraries = connection.libraryList;
 
-          for (var library of libraries) {
+          for (let library of libraries) {
             items.push(new SchemaItem(library));
           }
         } else {
-          items.push(new vscode.TreeItem("'db2util' not installed on system.", vscode.TreeItemCollapsibleState.None));
+          items.push(new vscode.TreeItem(`'db2util' not installed on system.`, vscode.TreeItemCollapsibleState.None));
         }
       }
     }
@@ -165,9 +165,9 @@ class SchemaItem extends vscode.TreeItem {
   constructor(name) {
     super(name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.contextValue = 'schema';
+    this.contextValue = `schema`;
     this.path = name;
-    this.iconPath = new vscode.ThemeIcon('database');
+    this.iconPath = new vscode.ThemeIcon(`database`);
   }
 }
 
@@ -178,11 +178,11 @@ class TableItem extends vscode.TreeItem {
   constructor(table) {
     super(table.name.toLowerCase());
 
-    this.contextValue = 'table';
+    this.contextValue = `table`;
     this.tooltip = table.type;
     this.iconPath = new vscode.ThemeIcon(TABLE_ICONS[table._type]);
 
-    if (table._type === 'A') {
+    if (table._type === `A`) {
       this.collapsibleState = vscode.TreeItemCollapsibleState.None;
       this.description = `${table.type} - ${table.base}. ${table.text}`;
     } else {
@@ -205,17 +205,17 @@ class ColumnItem extends vscode.TreeItem {
 
     this.description = `${column.type.toLowerCase()}. ${column.heading}`;
     this.tooltip = column.comment;
-    this.iconPath = new vscode.ThemeIcon('circle-filled');
+    this.iconPath = new vscode.ThemeIcon(`circle-filled`);
   }
 }
 
 const TABLE_ICONS = {
-  'A': 'files',
-  'L': 'filter',
-  'M': 'file-symlink-file',
-  'P': 'list-flat',
-  'T': 'list-flat',
-  'V': 'eye'
+  'A': `files`,
+  'L': `filter`,
+  'M': `file-symlink-file`,
+  'P': `list-flat`,
+  'T': `list-flat`,
+  'V': `eye`
 }
 
 /**
@@ -285,12 +285,12 @@ function generateTable(array) {
   const keys = Object.keys(array[0]);
 
   html += `<table style="width: 100%">`;
-  html += `<thead><tr>${keys.map(key => `<th>${key}</th>`).join('')}</tr></thead>`;
+  html += `<thead><tr>${keys.map(key => `<th>${key}</th>`).join(``)}</tr></thead>`;
   
   html += `<tbody>`;
   html += array.map(row => {
-    return `<tr>` + keys.map(key => `<td>${row[key]}</td>`).join('') + `</tr>`
-  }).join('');
+    return `<tr>` + keys.map(key => `<td>${row[key]}</td>`).join(``) + `</tr>`
+  }).join(``);
   html += `</tbody>`;
   html += `</table>`;
 

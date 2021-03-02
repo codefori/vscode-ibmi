@@ -1,7 +1,7 @@
 
-const util = require('util');
-const vscode = require('vscode');
-var instance = require('../Instance');
+const util = require(`util`);
+const vscode = require(`vscode`);
+let instance = require(`../Instance`);
 
 module.exports = class qsysFs {
   constructor() {
@@ -16,12 +16,12 @@ module.exports = class qsysFs {
    */
   async readFile(uri) {
     const contentApi = instance.getContent();
-    const [blank, lib, file, fullName] = uri.path.split('/');
-    const name = fullName.substring(0, fullName.lastIndexOf('.'));
+    const [blank, lib, file, fullName] = uri.path.split(`/`);
+    const name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
     const memberContent = await contentApi.downloadMemberContent(undefined, lib, file, name);
 
-    return new Uint8Array(Buffer.from(memberContent, 'utf8'));
+    return new Uint8Array(Buffer.from(memberContent, `utf8`));
   }
 
   /**
@@ -39,10 +39,10 @@ module.exports = class qsysFs {
    */
   writeFile(uri, content, options) {
     const contentApi = instance.getContent();
-    const [blank, lib, file, fullName] = uri.path.split('/');
-    const name = fullName.substring(0, fullName.lastIndexOf('.'));
+    const [blank, lib, file, fullName] = uri.path.split(`/`);
+    const name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-    return contentApi.uploadMemberContent(undefined, lib, file, name, content.toString('utf8'));
+    return contentApi.uploadMemberContent(undefined, lib, file, name, content.toString(`utf8`));
   }
 
   /**

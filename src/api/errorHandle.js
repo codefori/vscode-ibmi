@@ -1,5 +1,5 @@
 
-var expRange = require('./expRange');
+let expRange = require(`./expRange`);
 
 /**
  * Returns object of files and their errors
@@ -7,38 +7,38 @@ var expRange = require('./expRange');
  * @returns {{[FILE: string]: { sev: number, linenum: number, column: number, toColumn: number, text: string, code: string }[]}} Errors object
  */
 module.exports = function(lines) {
-  var _FileIDs = {};
-  var _Errors = {};
-  var _Expansions = {};
-  var _TrackCopies = {};
+  let _FileIDs = {};
+  let _Errors = {};
+  let _Expansions = {};
+  let _TrackCopies = {};
 
-  var fileParents = []
+  let fileParents = []
 
-  var copyRange;
-  var pieces = [];
-  var curtype = "";
-  var _FileID;
+  let copyRange;
+  let pieces = [];
+  let curtype = ``;
+  let _FileID;
 
-  var ranges = [];
-  var range;
-  var line;
-  var tempFileID;
+  let ranges = [];
+  let range;
+  let line;
+  let tempFileID;
 
-  for (var x in lines) {
+  for (let x in lines) {
     line = lines[x];
 
-    if (line.trim() == "") continue;
+    if (line.trim() == ``) continue;
     line = line.padEnd(150);
 
-    pieces = arrayClean(line.split(' '), "");
+    pieces = arrayClean(line.split(` `), ``);
     curtype = line.substr(0, 10).trim();
     _FileID = Number(line.substr(13, 3));
     tempFileID = undefined;
 
     switch (curtype) {
-      case "FILEID":
+      case `FILEID`:
         if ((_FileID in _FileIDs) === false) {
-          if (pieces[5].endsWith(')'))
+          if (pieces[5].endsWith(`)`))
             _FileIDs[_FileID] = formatName(pieces[5]);
           else
             _FileIDs[_FileID] = formatIFS(pieces[5]);
@@ -48,7 +48,7 @@ module.exports = function(lines) {
           _Expansions[_FileID] = [];
 
           //000000 check means that the current FILEID is not an include
-          _TrackCopies[_FileID] = (line.substr(17, 6) != "000000");
+          _TrackCopies[_FileID] = (line.substr(17, 6) != `000000`);
           ranges.push(new expRange(Number(pieces[3]), 0));
         } else {
           ranges.push(new expRange(Number(pieces[3]), 0));
@@ -57,7 +57,7 @@ module.exports = function(lines) {
         fileParents.push(_FileID);
         break;
 
-      case "FILEEND":
+      case `FILEEND`:
         fileParents.pop();
         
         if (_FileID in _TrackCopies) {
@@ -71,11 +71,11 @@ module.exports = function(lines) {
         }
         break;
 
-      case "EXPANSION":
+      case `EXPANSION`:
         _Expansions[_FileID].push(new expRange(Number(pieces[6]), Number(pieces[7])));
         break;
         
-      case "ERROR":
+      case `ERROR`:
         let sev = Number(line.substr(58, 2));
         let linenum = Number(line.substr(37, 6));
         let column = Number(line.substr(33, 3));
@@ -84,9 +84,9 @@ module.exports = function(lines) {
         let code = line.substr(48, 7).trim();
         let  sqldiff = 0;
 
-        if (!text.includes("name or indicator SQ")) {
-          if (!code.startsWith('SQL')) {
-            for (var key in _Expansions[_FileID]) {
+        if (!text.includes(`name or indicator SQ`)) {
+          if (!code.startsWith(`SQL`)) {
+            for (let key in _Expansions[_FileID]) {
               range = _Expansions[_FileID][key];
               if (range.afterRange(linenum)) {
                 if (range.inFileRange(linenum)) {
@@ -119,7 +119,7 @@ module.exports = function(lines) {
     }
   }
 
-  var results = {};
+  let results = {};
 
   for (_FileID in _FileIDs) {
     if (_FileID in _Errors) {
@@ -135,7 +135,7 @@ module.exports = function(lines) {
 }
 
 function arrayClean(array, deleteValue) {
-  for (var i = 0; i < array.length; i++) {
+  for (let i = 0; i < array.length; i++) {
     if (array[i] == deleteValue) {
       array.splice(i, 1);
       i--;
@@ -146,15 +146,15 @@ function arrayClean(array, deleteValue) {
 };
 
 function formatName(input) {
-  var pieces = input.split('/');
-  var path = pieces[1].substr(pieces[1], pieces[1].length-1).split('(');
+  let pieces = input.split(`/`);
+  let path = pieces[1].substr(pieces[1], pieces[1].length-1).split(`(`);
 
-  return [pieces[0], path[0], path[1]].join('/')
+  return [pieces[0], path[0], path[1]].join(`/`)
 }
 
 function formatIFS(path) {
-  var pieces = path.split('/');
-  var path = pieces.filter(x => x !== '.');
+  let pieces = path.split(`/`);
+  var path = pieces.filter(x => x !== `.`);
 
-  return path.join('/');
+  return path.join(`/`);
 }
