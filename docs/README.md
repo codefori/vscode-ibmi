@@ -179,6 +179,15 @@ it in the member list.
 
 ![assets/members_01.png](assets/members_01.png)
 
+## Comparing sources
+
+It is now possible to compare two sources, whether they are members or streamfiles.
+
+1. right click on either type, choose 'Select for compare'
+2. right click the other source you'd like to compare with and choose 'Compare with Selected'
+3. Profit ???
+
+![assets/compare_01.png](assets/compare_01.png)
 
 ## Compiling Sources
 Pressing <kbd>F1</kbd> and search for ```IBM i: Run Action```
