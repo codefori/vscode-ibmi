@@ -128,26 +128,36 @@ Here is a snippet of what the connection details look like:
 ],
 ```
 
-### Home Directory
+#### Connection Settings
+
+Each connection gets some of their own properties. **Note that connection properties can only be edited in the form of JSON, other than certain places in the UI**
+
+#### Source File List
+Source files to be included in the member browser.
+
+#### Library List
+An array for the library list. Highest item of the library list goes first.
+
+#### Home Directory
 Home directory for user. This directory is also the root for the IFS browser.
 
-### Library List
-Comma delimited list for library list.
+#### Temporary library
+Temporary library. Is used OUTPUT files. Cannot be QTEMP.
 
-### Log Compile Output
-When enabled, spool files will be logged from command execution.
-These spool files can be found under **OUTPUT** / **IBM i Compile Log**.
+#### Build library
+A library that can be defined/changes for IFS builds.
 
-### Source ASP
+#### Source ASP
 If source files are located in a specific ASP, specify here. 
 Otherwise, leave blank.
 
-### Source File List
-Source files to be included in the member browser.
 
 ### Temporary Library
 Temporary library used by extension. This cannot be QTEMP.
 
+### Log Compile Output
+When enabled, spool files will be logged from command execution.
+These spool files can be found under **OUTPUT** / **IBM i Compile Log**.
 
 ## Adding Source Files
 In order to make the member browser useful, source files need to be declared
