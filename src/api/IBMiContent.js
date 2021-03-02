@@ -45,7 +45,7 @@ module.exports = class IBMiContent {
    * @param {string} mbr 
    */
   async downloadMemberContent(asp, lib, spf, mbr) {
-    if (!asp) asp = this.ibmi.sourceASP;
+    if (!asp) asp = this.ibmi.config.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
@@ -93,7 +93,7 @@ module.exports = class IBMiContent {
    * @param {string} content 
    */
   async uploadMemberContent(asp, lib, spf, mbr, content) {
-    if (!asp) asp = this.ibmi.sourceASP;
+    if (!asp) asp = this.ibmi.config.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
@@ -188,7 +188,7 @@ module.exports = class IBMiContent {
   async getObjectList(lib) {
     lib = lib.toUpperCase();
 
-    const tempLib = this.ibmi.tempLibrary;
+    const tempLib = this.ibmi.config.tempLibrary;
     const TempName = IBMi.makeid();
 
     await this.ibmi.remoteCommand(`DSPOBJD OBJ(${lib}/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
@@ -218,7 +218,7 @@ module.exports = class IBMiContent {
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
 
-    const tempLib = this.ibmi.tempLibrary;
+    const tempLib = this.ibmi.config.tempLibrary;
     const TempName = IBMi.makeid();
 
     await this.ibmi.remoteCommand(`DSPFD FILE(${lib}/${spf}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);

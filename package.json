@@ -64,42 +64,67 @@
 		"configuration": {
 			"title": "Code for IBM i",
 			"properties": {
-				"code-for-ibmi.sourceFileList": {
+				"code-for-ibmi.connectionSettings": {
 					"type": "array",
+					"markdownDescription": "Configurations for different connections.",
 					"items": {
-						"type": "string",
-						"title": "Library and source physical file"
-					},
-					"default": [
-						"QSYSINC/H"
-					],
-					"description": "As seen in the member browser"
+							"type": "object",
+							"description": "Configuration for this connection",
+							"properties": {
+								"host": {
+									"type": "string",
+									"description": "Host for this configuration"
+								},
+
+								"sourceFileList": {
+									"type": "array",
+									"items": {
+										"type": "string",
+										"title": "Library and source physical file"
+									},
+									"default": [
+										"QSYSINC/H"
+									],
+									"description": "As seen in the member browser"
+								},
+
+								"libraryList": {
+									"type": "array",
+									"items": {
+										"type": "string",
+										"title": "Library and source physical file"
+									},
+									"default": ["QSYS2", "QSYSINC"],
+									"description": "Library list. Highest first."
+								},
+
+								"homeDirectory": {
+									"type": "string",
+									"default": ".",
+									"description": "Connection home directory"
+								},
+
+								"temporaryLibrary": {
+									"type": "string",
+									"default": "ILEDITOR",
+									"description": "Temporary library. Cannot be QTEMP."
+								},
+
+								"buildLibrary": {
+									"type": "string",
+									"default": "QTEMP",
+									"description": "Library used for &BUILDLIB when running actions from the IFS."
+								},
+
+								"sourceASP": {
+									"type": ["string"],
+									"default": null,
+									"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise."
+								}
+							}
+					}
 				},
-				"code-for-ibmi.libraryList": {
-					"type": "string",
-					"default": "QSYS2,QSYSINC",
-					"description": "Comma delimited list for the library list"
-				},
-				"code-for-ibmi.homeDirectory": {
-					"type": "string",
-					"default": ".",
-					"description": "Connection home directory"
-				},
-				"code-for-ibmi.temporaryLibrary": {
-					"type": "string",
-					"default": "ILEDITOR",
-					"description": "Temporary library. Cannot be QTEMP."
-				},
-				"code-for-ibmi.buildLibrary": {
-					"type": "string",
-					"default": "QTEMP",
-					"description": "Library used for &BUILDLIB when running actions from the IFS."
-				},
-				"code-for-ibmi.sourceASP": {
-					"type": "string",
-					"default": "",
-					"description": "If source files live within a specific ASP, please specify it here. Leave blank otherwise."
-				},
+
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
 					"default": false,

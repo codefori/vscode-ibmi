@@ -36,43 +36,43 @@ module.exports = class Login {
     panel.webview.onDidReceiveMessage(
       async message => {
         switch (message.command) {
-          case `login`:
-            message.data.port = Number(message.data.port);
+        case `login`:
+          message.data.port = Number(message.data.port);
 
-            vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
+          vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
 
-            const connection = new IBMi();
+          const connection = new IBMi();
 
-            try {
-              const connected = await connection.connect(message.data);
-              if (connected) {
-                panel.dispose();
+          try {
+            const connected = await connection.connect(message.data);
+            if (connected) {
+              panel.dispose();
 
-                vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
+              vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
 
-                instance.setConnection(connection);
-                instance.loadAllofExtension(context);
+              instance.setConnection(connection);
+              instance.loadAllofExtension(context);
 
-                let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
-                let existingConnections = existingConnectionsConfig.get(`connections`);
-                if (!existingConnections.find(item => item.host === message.data.host)) {
-                  existingConnections.push({
-                    host: message.data.host,
-                    port: message.data.port,
-                    username: message.data.username
-                  });
-                  await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
-                }
-
-              } else {
-                vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
+              let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
+              let existingConnections = existingConnectionsConfig.get(`connections`);
+              if (!existingConnections.find(item => item.host === message.data.host)) {
+                existingConnections.push({
+                  host: message.data.host,
+                  port: message.data.port,
+                  username: message.data.username
+                });
+                await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
               }
 
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);
+            } else {
+              vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
             }
 
-            return;
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);
+          }
+
+          return;
         }
       },
       undefined,
