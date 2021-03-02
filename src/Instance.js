@@ -10,6 +10,9 @@ let statusBar;
 
 let initialisedBefore = false;
 
+/** @type {vscode.Uri} */
+let selectedForCompare;
+
 module.exports = class Instance {
   static setConnection(conn) {
     instance.connection = conn;
@@ -175,6 +178,22 @@ module.exports = class Instance {
               await vscode.window.showTextDocument(doc, { preview: false });
             } catch (e) {
               console.log(e);
+            }
+          }),
+
+          vscode.commands.registerCommand(`code-for-ibmi.selectForCompare`, async (node) => {
+            if (node) {
+              selectedForCompare = node.resourceUri;
+              vscode.window.showInformationMessage(`Selected ${node.path} for compare.`);
+            }
+          }),
+          vscode.commands.registerCommand(`code-for-ibmi.compareWithSelected`, async (node) => {
+            if (node) {
+              if (selectedForCompare) {
+                vscode.commands.executeCommand(`vscode.diff`, selectedForCompare, node.resourceUri);
+              } else {
+                vscode.window.showInformationMessage(`Nothing selected to compare.`);
+              }
             }
           })
         );

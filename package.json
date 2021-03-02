@@ -32,6 +32,8 @@
 		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
+		"onCommand:code-for-ibmi.selectForCompare",
+		"onCommand:code-for-ibmi.compareWithSelected",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
@@ -317,6 +319,16 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.selectForCompare",
+				"title": "Select for Compare",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareWithSelected",
+				"title": "Compare with Selected",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.runAction",
 				"title": "Run Action on Active Editor",
 				"category": "IBM i"
@@ -524,6 +536,16 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"command": "code-for-ibmi.selectForCompare",
+					"when": "viewItem == member || viewItem == streamfile",
+					"group": "2_compare@1"
+				},
+				{
+					"command": "code-for-ibmi.compareWithSelected",
+					"when": "viewItem == member || viewItem == streamfile",
+					"group": "2_compare@2"
+				},
 				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == memberBrowser && viewItem == SPF",
