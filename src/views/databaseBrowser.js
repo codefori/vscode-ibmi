@@ -46,7 +46,11 @@ module.exports = class databaseBrowserProvider {
               );
               panel.webview.html = generateTable(data);
             } catch (e) {
-              vscode.window.showErrorMessage(e);
+              if (typeof e === `string`) {
+                vscode.window.showErrorMessage(e);
+              } else {
+                vscode.window.showErrorMessage(e.message || 'Error running SQL statement.');
+              }
             }
           } else {
             vscode.window.showErrorMessage("To execute statements, db2util must be installed on the system.");
