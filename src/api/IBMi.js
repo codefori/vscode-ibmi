@@ -1,5 +1,6 @@
 const node_ssh = require(`node-ssh`);
 const vscode = require(`vscode`);
+const Configuration = require(`./Configuration`);
 
 module.exports = class IBMi {
   constructor() {
@@ -15,14 +16,6 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined
     };
-    
-    //Configration:
-    this.homeDirectory = `.`;
-    this.libraryList = [];
-    this.tempLibrary = `ILEDITOR`;
-    this.spfShortcuts = [`QSYSINC/H`];
-    this.sourceASP = undefined;
-    this.buildLibrary = `QTEMP`;
 
     //Global config
     this.logCompileOutput = false;
@@ -43,22 +36,23 @@ module.exports = class IBMi {
       this.currentPort = connectionObject.port;
       this.currentUser = connectionObject.username;
 
-      await this.loadConfig();
+      /** @type {Configuration} */
+      this.config = await Configuration.load(this.currentHost);
 
       //Perhaps load in existing config if it exists here.
 
       //Continue with finding out info about system
-      if (this.homeDirectory === `.`) await this.set(`homeDirectory`, `/home/${connectionObject.username}`);
+      if (this.config.homeDirectory === `.`) await this.config.set(`homeDirectory`, `/home/${connectionObject.username}`);
 
       //Create home directory if it does not exist.
       try {
-        await this.paseCommand(`mkdir ${this.homeDirectory}`);
+        await this.paseCommand(`mkdir ${this.config.homeDirectory}`);
       } catch (e) {
         //If the folder doesn't exist, then we need to reset the path
         //because we need a valid path for the home directory.
         if (e.indexOf(`File exists`) === -1) {
           //An error message here also?
-          this.homeDirectory = `.`;
+          await this.config.set(`homeDirectory`, `.`);
         }
       }
 
@@ -76,49 +70,49 @@ module.exports = class IBMi {
           type = line.substr(12);
 
           switch (type) {
-            case `USR`:
-              this.defaultUserLibraries.push(lib);
-              break;
+          case `USR`:
+            this.defaultUserLibraries.push(lib);
+            break;
               
-            case `CUR`:
-              currentLibrary = lib;
-              break;
+          case `CUR`:
+            currentLibrary = lib;
+            break;
           }
         }
 
-        if (this.libraryList.length === 0) await this.set(`libraryList`, this.defaultUserLibraries);
+        if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
       }
 
       //Next, we need to check the temp lib (where temp outfile data lives) exists
       try {
         await this.remoteCommand(
-          `CRTLIB ` + this.tempLibrary,
+          `CRTLIB ` + this.config.tempLibrary,
           undefined,
         );
       } catch (e) {
         let [errorcode, errortext] = e.split(`:`);
 
         switch (errorcode) {
-          case `CPF2111`: //Already exists, hopefully ok :)
-            break;
+        case `CPF2111`: //Already exists, hopefully ok :)
+          break;
           
-          case `CPD0032`: //Can't use CRTLIB
-            try {
-              await this.remoteCommand(
-                `CHKOBJ OBJ(QSYS/${this.tempLibrary}) OBJTYPE(*LIB)`,
-                undefined
-              );
+        case `CPD0032`: //Can't use CRTLIB
+          try {
+            await this.remoteCommand(
+              `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+              undefined
+            );
 
-              //We're all good if no errors
-            } catch (e) {
-              if (currentLibrary.startsWith(`Q`)) {
-                //Temporary library not created. Some parts of the extension will not run without a temporary library.
-              } else {
-                this.tempLibrary = currentLibrary;
-                //Using ${currentLibrary} as the temporary library for temporary data.
-              }
+            //We're all good if no errors
+          } catch (e) {
+            if (currentLibrary.startsWith(`Q`)) {
+              //Temporary library not created. Some parts of the extension will not run without a temporary library.
+            } else {
+              this.config.tempLibrary = currentLibrary;
+              //Using ${currentLibrary} as the temporary library for temporary data.
             }
-            break;
+          }
+          break;
         }
 
         console.log(e);
@@ -146,62 +140,6 @@ module.exports = class IBMi {
   }
 
   /**
-   * Update connection settings
-   * @param {string} string 
-   * @param {any} value 
-   */
-  async set(string, value) {
-    const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
-    let connections = globalData.get(`connectionSettings`);
-
-    const index = connections.findIndex(conn => conn.host === this.currentHost);
-
-    if (index >= 0) {
-      connections[index][string] = value;
-      this[string] = value;
-
-      await globalData.update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
-    }
-  }
-  
-  /**
-   * Load configuration from vscode.
-   */
-  async loadConfig() {
-    const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
-
-    let connections = globalData.get(`connectionSettings`);
-
-    if (!connections.find(conn => conn.host === this.currentHost)) {
-      //Defaults
-      connections.push({
-        "host": this.currentHost,
-        "sourceFileList": [`QSYSINC/H`],
-        "libraryList": `QSYS2,QSYSINC`,
-        "homeDirectory": `homeDirectory`,
-        "temporaryLibrary": `ILEDITOR`,
-        "buildLibrary": `QTEMP`,
-        "sourceASP": null
-      });
-
-      await globalData.update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
-    }
-
-    let connectionConfig = connections.find(conn => conn.host === this.currentHost);
-
-    //Connection settings
-    this.spfShortcuts = connectionConfig[`sourceFileList`];
-    this.libraryList = connectionConfig[`libraryList`].split(`,`).map(item => item.trim());
-    this.homeDirectory = connectionConfig[`homeDirectory`];
-    this.tempLibrary = connectionConfig[`temporaryLibrary`];
-    this.sourceASP = (connectionConfig[`sourceASP`] ? connectionConfig[`sourceASP`] : undefined);
-
-    //Editor settings
-    this.logCompileOutput = globalData.get(`logCompileOutput`) || false;
-    this.autoRefresh = globalData.get(`autoRefresh`);
-  }
-
-  /**
    * 
    * @param {string} command 
    * @param {string} [directory] If not passed, will use current home directory
@@ -217,7 +155,7 @@ module.exports = class IBMi {
    * @param {string} [directory] 
    * @param {number} [returnType] 
    */
-  qshCommand(command, directory = this.homeDirectory, returnType = 0) {
+  qshCommand(command, directory = this.config.homeDirectory, returnType = 0) {
 
     if (Array.isArray(command)) {
       command = command.join(`;`);
@@ -236,7 +174,7 @@ module.exports = class IBMi {
    * @param {null|string} [directory] If null/not passed, will default to home directory
    * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
    */
-  async paseCommand(command, directory = this.homeDirectory, returnType = 0) {
+  async paseCommand(command, directory = this.config.homeDirectory, returnType = 0) {
     command = command.replace(/\$/g, `\\$`);
 
     let result = await this.client.execCommand(command, {

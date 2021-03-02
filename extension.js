@@ -6,6 +6,8 @@ const vscode = require(`vscode`);
 // your extension is activated the very first time the command is executed
 
 let instance = require(`./src/Instance`);
+const Configuration = require("./src/api/Configuration");
+
 const LoginPanel = require(`./src/webviews/login`);
 
 /**
@@ -36,8 +38,10 @@ function activate(context) {
     vscode.workspace.onDidChangeConfiguration(async event => {
       const connection = instance.getConnection();
       if (connection) {
+        const config = instance.getConfig();
+
         if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
-          await connection.loadConfig();
+          await config.reload();
         }
       }
     })

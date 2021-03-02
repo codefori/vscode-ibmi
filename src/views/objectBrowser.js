@@ -93,8 +93,10 @@ module.exports = class objectBrowserProvider {
       }
     } else {
       const connection = instance.getConnection();
+
       if (connection) {
-        const libraries = connection.libraryList;
+        const config = instance.getConfig();
+        const libraries = config.libraryList;
 
         for (let library of libraries) {
           library = library.toUpperCase();

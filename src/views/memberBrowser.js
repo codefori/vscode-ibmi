@@ -2,6 +2,7 @@
 const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
+const Configuration = require(`../api/Configuration`);
 
 module.exports = class memberBrowserProvider {
   /**
@@ -24,7 +25,9 @@ module.exports = class memberBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async () => {
         const connection = instance.getConnection();
-        let sourceFiles = connection.spfShortcuts;
+        const config = instance.getConfig();
+
+        let sourceFiles = config.sourceFileList;
 
         const newSourceFile = await vscode.window.showInputBox({
           prompt: `Source file to add (Format: LIB/FILE)`
@@ -33,8 +36,8 @@ module.exports = class memberBrowserProvider {
         if (newSourceFile) {
           if (newSourceFile.includes(`/`)) {
             sourceFiles.push(newSourceFile.toUpperCase());
-            await connection.set(`sourceFileList`, sourceFiles);
-            if (connection.autoRefresh) this.refresh();
+            await config.set(`sourceFileList`, sourceFiles);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
           } else {
             vscode.window.showErrorMessage(`Format incorrect. Use LIB/FILE.`);
           }
@@ -45,15 +48,17 @@ module.exports = class memberBrowserProvider {
         if (node) {
           //Running from right click
           const connection = instance.getConnection();
-          let sourceFiles = connection.spfShortcuts;
+          const config = instance.getConfig();
+
+          let sourceFiles = config.sourceFileList;
 
           let index = sourceFiles.findIndex(file => file.toUpperCase() === node.path)
           if (index >= 0) {
             sourceFiles.splice(index, 1);
           }
 
-          await connection.set(`sourceFileList`, sourceFiles);
-          if (connection.autoRefresh) this.refresh();
+          await config.set(`sourceFileList`, sourceFiles);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
         }
       }),
 
@@ -91,7 +96,7 @@ module.exports = class memberBrowserProvider {
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, uriPath);
 
-                if (connection.autoRefresh) {
+                if (Configuration.get(`autoRefresh`)) {
                   this.refresh(path[0], path[1]);
                 }
               } catch (e) {
@@ -136,7 +141,7 @@ module.exports = class memberBrowserProvider {
 
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
 
-                if (connection.autoRefresh) {
+                if (Configuration.get(`autoRefresh`)) {
                   this.refresh(oldPath[0], oldPath[1]);
                   this.refresh(newPath[0], newPath[1]);
                 }
@@ -177,7 +182,7 @@ module.exports = class memberBrowserProvider {
 
                 vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-                if (connection.autoRefresh) {
+                if (Configuration.get(`autoRefresh`)) {
                   this.refresh(path[0], path[1]);
                 }
               } catch (e) {
@@ -210,7 +215,7 @@ module.exports = class memberBrowserProvider {
                 `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${name}) TEXT('${newText}')`,
               );
 
-              if (connection.autoRefresh) {
+              if (Configuration.get(`autoRefresh`)) {
                 this.refresh(path[0], path[1]);
               }
             } catch (e) {
@@ -262,7 +267,7 @@ module.exports = class memberBrowserProvider {
                     );
                   }
     
-                  if (connection.autoRefresh) {
+                  if (Configuration.get(`autoRefresh`)) {
                     this.refresh(path[0], path[1]);
                   }
                   else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
@@ -340,8 +345,10 @@ module.exports = class memberBrowserProvider {
       }
     } else {
       const connection = instance.getConnection();
+
       if (connection) {
-        const shortcuts = connection.spfShortcuts;
+        const config = instance.getConfig();
+        const shortcuts = config.sourceFileList;
 
         for (let shortcut of shortcuts) {
           shortcut = shortcut.toUpperCase();

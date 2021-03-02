@@ -137,8 +137,10 @@ module.exports = class databaseBrowserProvider {
     } else {
       const connection = instance.getConnection();
       if (connection) {
+        const config = instance.getConfig();
+        
         if (connection.remoteFeatures.db2util) {
-          const libraries = connection.libraryList;
+          const libraries = config.libraryList;
 
           for (let library of libraries) {
             items.push(new SchemaItem(library));
@@ -234,21 +236,21 @@ function parseStatement(editor) {
 
     for (const c of text) {
       switch (c) {
-        case `'`:
-          inQuote = !inQuote;
-          break;
+      case `'`:
+        inQuote = !inQuote;
+        break;
         
-        case `;`:
-          if (!inQuote) {
-            statements.push({
-              start,
-              end,
-              text: text.substring(start, end)
-            });
+      case `;`:
+        if (!inQuote) {
+          statements.push({
+            start,
+            end,
+            text: text.substring(start, end)
+          });
 
-            start = end+1;
-          }
-          break;
+          start = end+1;
+        }
+        break;
       }
       end++;
     }

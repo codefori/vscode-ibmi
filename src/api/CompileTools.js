@@ -4,6 +4,7 @@ const path = require(`path`);
 
 const errorHandler = require(`./errorHandle`);
 const IBMi = require(`./IBMi`);
+const Configuration = require(`./Configuration`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -102,8 +103,10 @@ module.exports = class CompileTools {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
-    const allActions = config.get(`actions`);
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+
+    const allActions = Configuration.get(`actions`);
 
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
 
@@ -160,12 +163,12 @@ module.exports = class CompileTools {
           ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
 
           evfeventInfo = {
-            lib: connection.buildLibrary,
+            lib: config.buildLibrary,
             object: name,
             ext
           };
 
-          command = command.replace(new RegExp(`&BUILDLIB`, `g`), connection.buildLibrary);
+          command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
           command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
           command = command.replace(new RegExp(`&NAME`, `g`), name);
           command = command.replace(new RegExp(`&EXT`, `g`), ext);
@@ -193,7 +196,7 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-          const libl = connection.libraryList.slice(0).reverse();
+          const libl = config.libraryList.slice(0).reverse();
           /** @type {any} */
           let commandResult, output;
           let executed = false;
@@ -217,7 +220,7 @@ module.exports = class CompileTools {
 
             case `ile`:
             default:
-              command = `system ${connection.logCompileOutput ? `` : `-s`} "${command}"`;
+              command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`;
               commandResult = await connection.qshCommand([
                 `liblist -d ` + connection.defaultUserLibraries.join(` `),
                 `liblist -a ` + libl.join(` `),
