@@ -18,20 +18,14 @@ module.exports = class memberBrowserProvider {
     this.refreshCache = {}; // cache entries of format 'LIB/SPF': members[]
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration(`code-for-ibmi.sourceFileList`);
-        if (affected) {
-          this.refresh();
-        }
-      }),
-
       vscode.commands.registerCommand(`code-for-ibmi.refreshMemberBrowser`, async () => {
         this.refresh();
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async () => {
-        const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
-        let sourceFiles = config.get(`sourceFileList`);
+        const connection = instance.getConnection();
+        let sourceFiles = connection.spfShortcuts;
+
         const newSourceFile = await vscode.window.showInputBox({
           prompt: `Source file to add (Format: LIB/FILE)`
         });
@@ -39,8 +33,8 @@ module.exports = class memberBrowserProvider {
         if (newSourceFile) {
           if (newSourceFile.includes(`/`)) {
             sourceFiles.push(newSourceFile.toUpperCase());
-            config.update(`sourceFileList`, sourceFiles, vscode.ConfigurationTarget.Global);
-            this.refresh();
+            await connection.set(`sourceFileList`, sourceFiles);
+            if (connection.autoRefresh) this.refresh();
           } else {
             vscode.window.showErrorMessage(`Format incorrect. Use LIB/FILE.`);
           }
@@ -50,15 +44,16 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.removeSourceFile`, async (node) => {
         if (node) {
           //Running from right click
-          const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
-          let sourceFiles = config.get(`sourceFileList`);
+          const connection = instance.getConnection();
+          let sourceFiles = connection.spfShortcuts;
 
           let index = sourceFiles.findIndex(file => file.toUpperCase() === node.path)
           if (index >= 0) {
             sourceFiles.splice(index, 1);
           }
 
-          config.update(`sourceFileList`, sourceFiles, vscode.ConfigurationTarget.Global);
+          await connection.set(`sourceFileList`, sourceFiles);
+          if (connection.autoRefresh) this.refresh();
         }
       }),
 

@@ -21,9 +21,12 @@ module.exports = class IBMi {
     this.libraryList = [];
     this.tempLibrary = `ILEDITOR`;
     this.spfShortcuts = [`QSYSINC/H`];
+    this.sourceASP = undefined;
+    this.buildLibrary = `QTEMP`;
+
+    //Global config
     this.logCompileOutput = false;
     this.autoRefresh = false;
-    this.sourceASP = undefined;
   }
 
   /**
@@ -36,16 +39,16 @@ module.exports = class IBMi {
 
       await this.client.connect(connectionObject);
 
-      this.loadConfig();
-
       this.currentHost = connectionObject.host;
       this.currentPort = connectionObject.port;
       this.currentUser = connectionObject.username;
 
+      await this.loadConfig();
+
       //Perhaps load in existing config if it exists here.
 
       //Continue with finding out info about system
-      if (this.homeDirectory === `.`) this.homeDirectory = `/home/${connectionObject.username}`;
+      if (this.homeDirectory === `.`) await this.set(`homeDirectory`, `/home/${connectionObject.username}`);
 
       //Create home directory if it does not exist.
       try {
@@ -83,7 +86,7 @@ module.exports = class IBMi {
           }
         }
 
-        if (this.libraryList.length === 0) this.libraryList = this.defaultUserLibraries;
+        if (this.libraryList.length === 0) await this.set(`libraryList`, this.defaultUserLibraries);
       }
 
       //Next, we need to check the temp lib (where temp outfile data lives) exists
@@ -141,19 +144,61 @@ module.exports = class IBMi {
       return false;
     }
   }
+
+  /**
+   * Update connection settings
+   * @param {string} string 
+   * @param {any} value 
+   */
+  async set(string, value) {
+    const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
+    let connections = globalData.get(`connectionSettings`);
+
+    const index = connections.findIndex(conn => conn.host === this.currentHost);
+
+    if (index >= 0) {
+      connections[index][string] = value;
+      this[string] = value;
+
+      await globalData.update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
+    }
+  }
   
   /**
    * Load configuration from vscode.
    */
-  loadConfig() {
-    const data = vscode.workspace.getConfiguration(`code-for-ibmi`);
-    this.homeDirectory = data.homeDirectory;
-    this.libraryList = data.libraryList.split(`,`).map(item => item.trim());
-    this.spfShortcuts = data.sourceFileList;
-    this.tempLibrary = data.temporaryLibrary;
-    this.logCompileOutput = data.logCompileOutput || false;
-    this.autoRefresh = data.autoRefresh;
-    this.sourceASP = (data.sourceASP.length > 0 ? data.sourceASP : undefined);
+  async loadConfig() {
+    const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
+
+    let connections = globalData.get(`connectionSettings`);
+
+    if (!connections.find(conn => conn.host === this.currentHost)) {
+      //Defaults
+      connections.push({
+        "host": this.currentHost,
+        "sourceFileList": [`QSYSINC/H`],
+        "libraryList": `QSYS2,QSYSINC`,
+        "homeDirectory": `homeDirectory`,
+        "temporaryLibrary": `ILEDITOR`,
+        "buildLibrary": `QTEMP`,
+        "sourceASP": null
+      });
+
+      await globalData.update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
+    }
+
+    let connectionConfig = connections.find(conn => conn.host === this.currentHost);
+
+    //Connection settings
+    this.spfShortcuts = connectionConfig[`sourceFileList`];
+    this.libraryList = connectionConfig[`libraryList`].split(`,`).map(item => item.trim());
+    this.homeDirectory = connectionConfig[`homeDirectory`];
+    this.tempLibrary = connectionConfig[`temporaryLibrary`];
+    this.sourceASP = (connectionConfig[`sourceASP`] ? connectionConfig[`sourceASP`] : undefined);
+
+    //Editor settings
+    this.logCompileOutput = globalData.get(`logCompileOutput`) || false;
+    this.autoRefresh = globalData.get(`autoRefresh`);
   }
 
   /**

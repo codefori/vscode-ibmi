@@ -19,13 +19,6 @@ module.exports = class objectBrowserProvider {
     this.refreshCache = {};
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration(`code-for-ibmi.libraryList`);
-        if (affected) {
-          this.refresh();
-        }
-      }),
-
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectList`, async (library) => {
         if (library) {
           if (typeof library === `string`) {

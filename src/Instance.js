@@ -14,6 +14,9 @@ let initialisedBefore = false;
 let selectedForCompare;
 
 module.exports = class Instance {
+  /** 
+   * @param {IBMi} conn
+   */
   static setConnection(conn) {
     instance.connection = conn;
     instance.content = new IBMiContent(instance.connection);

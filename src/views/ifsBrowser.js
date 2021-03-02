@@ -13,20 +13,14 @@ module.exports = class ifsBrowserProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration(`code-for-ibmi.homeDirectory`);
-        if (affected) {
-          this.refresh();
-        }
-      }),
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, async () => {
         this.refresh();
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeHomeDirectory`, async () => {
-        let config = vscode.workspace.getConfiguration(`code-for-ibmi`);
-        const homeDirectory = config.get(`homeDirectory`);
+        const connection = instance.getConnection();
+        const homeDirectory = connection.homeDirectory;
 
         const newDirectory = await vscode.window.showInputBox({
           prompt: `Changing home directory`,
@@ -35,7 +29,9 @@ module.exports = class ifsBrowserProvider {
 
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
-            await config.update(`homeDirectory`, newDirectory, vscode.ConfigurationTarget.Global);
+            await connection.set(`homeDirectory`, newDirectory);
+            
+            if (connection.autoRefresh) this.refresh();
           }
         } catch (e) {
           console.log(e);
@@ -131,7 +127,7 @@ module.exports = class ifsBrowserProvider {
 
                 if (connection.autoRefresh) this.refresh();
               } catch (e) {
-                  vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
+                vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
               }
             }
 
