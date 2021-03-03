@@ -104,7 +104,7 @@
 									"description": "Connection home directory"
 								},
 
-								"temporaryLibrary": {
+								"tempLibrary": {
 									"type": "string",
 									"default": "ILEDITOR",
 									"description": "Temporary library. Cannot be QTEMP."

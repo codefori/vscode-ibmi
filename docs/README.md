@@ -150,7 +150,7 @@ An array of objects. Each object is unique by the host property and is used so d
                 "SAMPLE"
             ],
             "homeDirectory": "/home/alan3/apug",
-            "temporaryLibrary": "ILEDITOR",
+            "tempLibrary": "ILEDITOR",
             "buildLibrary": "QTEMP",
             "sourceASP": null
         }
