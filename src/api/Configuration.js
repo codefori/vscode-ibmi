@@ -9,7 +9,7 @@ module.exports = class Configuration {
     this.sourceFileList = base.sourceFileList || [`QSYSINC/H`];
 
     /** @type {string[]} */
-    this.libraryList = base.libraryList || [`QSYS2`, `QSYSINC`];
+    this.libraryList = base.libraryList || [];
 
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;

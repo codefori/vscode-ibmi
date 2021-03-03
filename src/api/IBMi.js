@@ -106,7 +106,9 @@ module.exports = class IBMi {
               //Temporary library not created. Some parts of the extension will not run without a temporary library.
             } else {
               this.config.tempLibrary = currentLibrary;
+
               //Using ${currentLibrary} as the temporary library for temporary data.
+              await this.config.set(`tempLibrary`, currentLibrary);
             }
           }
           break;
