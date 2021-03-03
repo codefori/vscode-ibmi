@@ -45,7 +45,7 @@ module.exports = class Login {
 
           try {
             const connected = await connection.connect(message.data);
-            if (connected) {
+            if (connected.success) {
               panel.dispose();
 
               vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
@@ -65,7 +65,7 @@ module.exports = class Login {
               }
 
             } else {
-              vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
+              vscode.window.showErrorMessage(`Not connected to ${message.data.host}! ${connected.error.message}`);
             }
 
           } catch (e) {
@@ -109,14 +109,14 @@ module.exports = class Login {
 
         try {
           const connected = await connection.connect({host, port: Number(port), username, password});
-          if (connected) {
+          if (connected.success) {
             vscode.window.showInformationMessage(`Connected to ${host}!`);
 
             instance.setConnection(connection);
             instance.loadAllofExtension(context);
 
           } else {
-            vscode.window.showErrorMessage(`Not connected to ${host}!`);
+            vscode.window.showErrorMessage(`Not connected to ${host}! ${connected.error.message}`);
           }
         } catch (e) {
           vscode.window.showErrorMessage(`Error connecting to ${host}! ${e.message}`);

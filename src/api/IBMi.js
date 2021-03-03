@@ -1,3 +1,4 @@
+const { throws } = require("assert");
 const node_ssh = require(`node-ssh`);
 const vscode = require(`vscode`);
 const Configuration = require(`./Configuration`);
@@ -24,7 +25,7 @@ module.exports = class IBMi {
 
   /**
    * @param {{host: string, port: number, username: string, password: string, keepaliveInterval?: number}} connectionObject 
-   * @returns {Promise<boolean>} Was succesful at connecting or not.
+   * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
   async connect(connectionObject) {
     try {
@@ -132,10 +133,20 @@ module.exports = class IBMi {
         
       } catch (e) {}
 
-      return true;
+      return {
+        success: true
+      };
 
     } catch (e) {
-      return false;
+
+      if (this.client.isConnected()) {
+        this.client.dispose();
+      }
+
+      return {
+        success: false,
+        error: e
+      };
     }
   }
 
