@@ -77,7 +77,10 @@ module.exports = class IBMi {
           }
         }
 
+        //If this is the first time the config is made, then these arrays will be empty
         if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
+        if (this.config.objectBrowserList.length === 0) await this.config.set(`objectBrowserList`, this.defaultUserLibraries);
+        if (this.config.schemaBrowserList.length === 0) await this.config.set(`schemaBrowserList`, this.defaultUserLibraries);
       }
 
       //Next, we need to check the temp lib (where temp outfile data lives) exists

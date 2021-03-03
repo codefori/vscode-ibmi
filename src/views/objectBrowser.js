@@ -2,6 +2,7 @@
 const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
+const Configuration = require("../api/Configuration");
 
 module.exports = class objectBrowserProvider {
   /**
@@ -28,6 +29,43 @@ module.exports = class objectBrowserProvider {
           }
         } else {
           this.refresh();
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.addLibraryToObjectBrowser`, async () => {
+        const config = instance.getConfig();
+
+        let libraries = config.objectBrowserList;
+
+        const newLibrary = await vscode.window.showInputBox({
+          prompt: `Library to add to Object Browser`
+        });
+
+        if (newLibrary) {
+          if (newLibrary.length <= 10) {
+            libraries.push(newLibrary.toUpperCase());
+            await config.set(`objectBrowserList`, libraries);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } else {
+            vscode.window.showErrorMessage(`Library name too long.`);
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.removeLibraryFromObjectBrowser`, async (node) => {
+        if (node) {
+          //Running from right click
+          const config = instance.getConfig();
+
+          let libraries = config.objectBrowserList;
+
+          let index = libraries.findIndex(file => file.toUpperCase() === node.path)
+          if (index >= 0) {
+            libraries.splice(index, 1);
+          }
+
+          await config.set(`objectBrowserList`, libraries);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
         }
       })
     )
@@ -96,7 +134,7 @@ module.exports = class objectBrowserProvider {
 
       if (connection) {
         const config = instance.getConfig();
-        const libraries = config.libraryList;
+        const libraries = config.objectBrowserList;
 
         for (let library of libraries) {
           library = library.toUpperCase();

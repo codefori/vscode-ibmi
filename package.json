@@ -50,6 +50,8 @@
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
+		"onCommand:code-for-ibmi.addLibraryToObjectBrowser",
+		"onCommand:code-for-ibmi.removeLibraryFromObjectBrowser",
 		"onView:databaseBrowser",
 		"onCommand:code-for-ibmi.refreshDatabaseBrowser",
 		"onCommand:code-for-ibmi.runEditorStatement"
@@ -88,14 +90,34 @@
 									"description": "As seen in the member browser"
 								},
 
+								"objectBrowserList": {
+									"type": "array",
+									"items": {
+										"type": "string",
+										"title": "Library name"
+									},
+									"default": [],
+									"description": "List of libraries to in the Object Browser"
+								},
+
+								"schemaBrowserList": {
+									"type": "array",
+									"items": {
+										"type": "string",
+										"title": "schema name"
+									},
+									"default": [],
+									"description": "List of schemas to in the Schema Browser"
+								},
+
 								"libraryList": {
 									"type": "array",
 									"items": {
 										"type": "string",
 										"title": "Library and source physical file"
 									},
-									"default": ["QSYS2", "QSYSINC"],
-									"description": "Library list. Highest first."
+									"default": [],
+									"description": "Library list. Used in actions. Highest first."
 								},
 
 								"homeDirectory": {
@@ -459,6 +481,18 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.addLibraryToObjectBrowser",
+				"title": "Add library to Object Browser",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
+				"title": "Remove library",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.refreshDatabaseBrowser",
 				"title": "Refresh Database Browser",
 				"category": "IBM i",
@@ -551,6 +585,11 @@
 					"when": "view == ifsBrowser"
 				},
 				{
+					"command": "code-for-ibmi.addLibraryToObjectBrowser",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
 					"command": "code-for-ibmi.refreshObjectList",
 					"group": "navigation",
 					"when": "view == objectBrowser"
@@ -638,6 +677,10 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectList",
+					"when": "view == objectBrowser && viewItem == library"
+				},
+				{
+					"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
 					"when": "view == objectBrowser && viewItem == library"
 				},
 				{

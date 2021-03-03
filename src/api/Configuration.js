@@ -8,6 +8,12 @@ module.exports = class Configuration {
     /** @type {string[]} LIB/FILE, LIB/FILEs */
     this.sourceFileList = base.sourceFileList || [`QSYSINC/H`];
 
+    /** @type {string[]} LIB, LIB */
+    this.objectBrowserList = base.objectBrowserList || [];
+
+    /** @type {string[]} schema, schema */
+    this.schemaBrowserList = base.objectBrowserList || [];
+
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];
 
