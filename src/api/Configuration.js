@@ -12,7 +12,7 @@ module.exports = class Configuration {
     this.objectBrowserList = base.objectBrowserList || [];
 
     /** @type {string[]} schema, schema */
-    this.schemaBrowserList = base.objectBrowserList || [];
+    this.databaseBrowserList = base.databaseBrowserList || [];
 
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];

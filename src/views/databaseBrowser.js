@@ -2,6 +2,8 @@
 const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
+const Configuration = require(`../api/Configuration`);
+
 const {Database, Table, Column} = require(`./databaseFs`);
 
 /** @type {{[SCHEMA: string]: Table[]}} */
@@ -18,6 +20,39 @@ module.exports = class databaseBrowserProvider {
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.refreshDatabaseBrowser`, async () => {
         this.refresh();
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.addSchemaToDatabaseBrowser`, async () => {
+        const config = instance.getConfig();
+
+        let schemas = config.databaseBrowserList;
+
+        const newSchema = await vscode.window.showInputBox({
+          prompt: `Library to add to Database Browser`
+        });
+
+        if (newSchema) {
+          schemas.push(newSchema.toUpperCase());
+          await config.set(`databaseBrowserList`, schemas);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.removeSchemaFromDatabaseBrowser`, async (node) => {
+        if (node) {
+          //Running from right click
+          const config = instance.getConfig();
+
+          let schemas = config.databaseBrowserList;
+
+          let index = schemas.findIndex(file => file.toUpperCase() === node.path)
+          if (index >= 0) {
+            schemas.splice(index, 1);
+          }
+
+          await config.set(`databaseBrowserList`, schemas);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
@@ -140,7 +175,7 @@ module.exports = class databaseBrowserProvider {
         const config = instance.getConfig();
         
         if (connection.remoteFeatures.db2util) {
-          const libraries = config.libraryList;
+          const libraries = config.databaseBrowserList;
 
           for (let library of libraries) {
             items.push(new SchemaItem(library));

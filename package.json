@@ -54,6 +54,8 @@
 		"onCommand:code-for-ibmi.removeLibraryFromObjectBrowser",
 		"onView:databaseBrowser",
 		"onCommand:code-for-ibmi.refreshDatabaseBrowser",
+		"onCommand:code-for-ibmi.addSchemaToDatabaseBrowser",
+		"onCommand:code-for-ibmi.removeSchemaFromDatabaseBrowser",
 		"onCommand:code-for-ibmi.runEditorStatement"
 	],
 	"main": "./extension.js",
@@ -100,7 +102,7 @@
 									"description": "List of libraries to in the Object Browser"
 								},
 
-								"schemaBrowserList": {
+								"DatabaseBrowserList": {
 									"type": "array",
 									"items": {
 										"type": "string",
@@ -499,6 +501,18 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
+				"title": "Add Schema to Schema Browser",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",
+				"title": "Remove schema",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.runEditorStatement",
 				"title": "Run selected statement",
 				"category": "IBM i",
@@ -595,6 +609,11 @@
 					"when": "view == objectBrowser"
 				},
 				{
+					"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
+					"group": "navigation",
+					"when": "view == databaseBrowser"
+				},
+				{
 					"command": "code-for-ibmi.refreshDatabaseBrowser",
 					"group": "navigation",
 					"when": "view == databaseBrowser"
@@ -687,6 +706,10 @@
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == objectBrowser && viewItem == object",
 					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",
+					"when": "view == databaseBrowser && viewItem == schema"
 				}
 			]
 		},
