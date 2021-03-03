@@ -1,6 +1,5 @@
-const { throws } = require("assert");
+
 const node_ssh = require(`node-ssh`);
-const vscode = require(`vscode`);
 const Configuration = require(`./Configuration`);
 
 module.exports = class IBMi {
@@ -9,6 +8,7 @@ module.exports = class IBMi {
     this.currentHost = ``;
     this.currentPort = 22;
     this.currentUser = ``;
+    
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
 
@@ -17,10 +17,6 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined
     };
-
-    //Global config
-    this.logCompileOutput = false;
-    this.autoRefresh = false;
   }
 
   /**
