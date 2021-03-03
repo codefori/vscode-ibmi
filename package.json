@@ -102,14 +102,14 @@
 									"description": "List of libraries to in the Object Browser"
 								},
 
-								"DatabaseBrowserList": {
+								"databaseBrowserList": {
 									"type": "array",
 									"items": {
 										"type": "string",
 										"title": "schema name"
 									},
 									"default": [],
-									"description": "List of schemas to in the Schema Browser"
+									"description": "List of schemas to in the Database Browser"
 								},
 
 								"libraryList": {
@@ -502,7 +502,7 @@
 			},
 			{
 				"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
-				"title": "Add Schema to Schema Browser",
+				"title": "Add Schema to Database Browser",
 				"category": "IBM i",
 				"icon": "$(new-folder)"
 			},
