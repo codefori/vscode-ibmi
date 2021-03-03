@@ -171,7 +171,8 @@
 								"description": "Support type this action can use",
 								"enum": [
 									"member",
-									"streamfile"
+									"streamfile",
+									"object"
 								]
 							},
 							"environment": {
@@ -313,7 +314,7 @@
 								"GLOBAL"
 							],
 							"name": "Delete object",
-							"command": "DLTOBJ OBJ(&LIBRARY/&NAME) OBJTYPE(*&TYPE)"
+							"command": "?DLTOBJ OBJ(&LIBRARY/&NAME) OBJTYPE(*&TYPE)"
 						},
 						{
 							"type": "object",
@@ -321,7 +322,7 @@
 								"pgm"
 							],
 							"name": "Call program",
-							"command": "CALL &LIBRARY/&NAME"
+							"command": "?CALL &LIBRARY/&NAME"
 						}
 					]
 				}
