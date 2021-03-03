@@ -86,8 +86,6 @@ module.exports = class Instance {
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
-    const SettingsPanel = require(`./webviews/settings`);
-
     if (instance.connection) {
       CompileTools.register(context);
 
