@@ -86,11 +86,18 @@ module.exports = class Instance {
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
+    const SettingsPanel = require(`./webviews/settings`);
+
     if (instance.connection) {
       CompileTools.register(context);
 
       if (!statusBar) {
         statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        statusBar.command = {
+          command: `workbench.action.openSettings`,
+          title: `Open Connection Settings`,
+          arguments: [`code-for-ibmi.connectionSettings`]
+        };
         context.subscriptions.push(statusBar);
       }
       

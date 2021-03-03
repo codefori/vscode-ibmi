@@ -226,7 +226,7 @@ module.exports = class IBMi {
    */
   static qualifyPath(asp, lib, obj, mbr) {
     const path =
-      (asp ? `/${asp}` : ``) + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
+      (asp && asp.length > 0 ? `/${asp}` : ``) + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
     return path;
   }
 }

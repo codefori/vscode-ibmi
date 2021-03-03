@@ -43,6 +43,26 @@ module.exports = class Configuration {
     }
   }
 
+  /**
+   * Update many values
+   * @param {{[NAME: string]: any}} props 
+   */
+  async setMany(props) {
+    const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
+    let connections = globalData.get(`connectionSettings`);
+
+    const index = connections.findIndex(conn => conn.host === this.host);
+
+    if (index >= 0) {
+      for (const prop in props) {
+        connections[index][prop] = props[prop];
+        this[prop] = props[prop];
+      }
+
+      await globalData.update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
+    }
+  }
+
   /** Reload props from vscode settings */
   reload() {
     const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
