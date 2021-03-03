@@ -65,7 +65,7 @@ module.exports = class Login {
               }
 
             } else {
-              vscode.window.showErrorMessage(`Not connected to ${message.data.host}! ${connected.error.message}`);
+              vscode.window.showErrorMessage(`Not connected to ${message.data.host}! ${connected.error.message || connected.error}`);
             }
 
           } catch (e) {
@@ -116,7 +116,7 @@ module.exports = class Login {
             instance.loadAllofExtension(context);
 
           } else {
-            vscode.window.showErrorMessage(`Not connected to ${host}! ${connected.error.message}`);
+            vscode.window.showErrorMessage(`Not connected to ${host}! ${connected.error.message || connected.error}`);
           }
         } catch (e) {
           vscode.window.showErrorMessage(`Error connecting to ${host}! ${e.message}`);
