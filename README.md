@@ -15,6 +15,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * [@dferrand](https://github.com/dferrand)
 * [@dariocs](https://github.com/dariocs)
 * [@priceaj](https://github.com/priceaj)
+* [@SJLennon](https://github.com/SJLennon)
 
 ## Features
 
@@ -26,7 +27,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
 ## Requirements
 
-In order to use extension, SSH Daemon must be started on IBM i.
+In order to use extension, the SSH Daemon must be started on IBM i. (Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
 
 ## How to get running
 
@@ -40,7 +41,7 @@ In order to use extension, SSH Daemon must be started on IBM i.
 2. `npm i`
 3. 'Run Extension' from vscode debug.
 
-## Guide
+## Quick Start Guide
 
 #### How do I get syntax highlighting?
 
@@ -73,3 +74,7 @@ You can click on a member to open and edit it. There is no member locking and th
 4. Use Ctrl+E or Cmd+E to compile your source.
 5. If you have more than one compile option available to you for the type of source, it will prompt you
 6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
+   
+## Detailed Documentation
+More detailed documentation is available [here](https://halcyon-tech.github.io/code-for-ibmi/#/)
+ 
