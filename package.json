@@ -401,7 +401,7 @@
 			},
 			{
 				"command": "code-for-ibmi.removeSourceFile",
-				"title": "Remove Source File",
+				"title": "Remove source file from view",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
@@ -490,7 +490,7 @@
 			},
 			{
 				"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
-				"title": "Remove library",
+				"title": "Remove library from view",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
@@ -508,7 +508,7 @@
 			},
 			{
 				"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",
-				"title": "Remove schema",
+				"title": "Remove schema from view",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
