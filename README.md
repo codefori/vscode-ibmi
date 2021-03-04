@@ -14,6 +14,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * [@thebeardedgeek](https://github.com/thebeardedgeek)
 * [@dferrand](https://github.com/dferrand)
 * [@dariocs](https://github.com/dariocs)
+* [@SJLennon](https://github.com/SJLennon)
 
 ## Features
 
