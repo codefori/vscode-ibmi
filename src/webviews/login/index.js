@@ -20,7 +20,7 @@ module.exports = class Login {
     let ui = new CustomUI();
 
     ui.addField(new Field(`input`, `host`, `Host or IP Address`));
-    ui.addField(new Field(`input`, `port`, `Host or IP Address`));
+    ui.addField(new Field(`input`, `port`, `Port`));
     ui.fields[1].default = `22`;
     ui.addField(new Field(`input`, `username`, `Username`));
     ui.addField(new Field(`password`, `password`, `Password`));
