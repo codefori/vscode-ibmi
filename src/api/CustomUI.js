@@ -14,7 +14,7 @@ class CustomUI {
    * @param {string} title 
    * @returns {Promise<{panel: vscode.WebviewPanel, data: object}}
    */
-  loadPage(context, title, onDidRecieveMessage) {
+  loadPage(context, title) {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -33,7 +33,6 @@ class CustomUI {
         message => {
           didSubmit = true;
           resolve({panel, data: message});
-          onDidRecieveMessage(panel, message)
         }
       );
   
