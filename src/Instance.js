@@ -14,6 +14,9 @@ let initialisedBefore = false;
 let selectedForCompare;
 
 module.exports = class Instance {
+  /** 
+   * @param {IBMi} conn
+   */
   static setConnection(conn) {
     instance.connection = conn;
     instance.content = new IBMiContent(instance.connection);
@@ -21,6 +24,7 @@ module.exports = class Instance {
   };
   
   static getConnection() {return instance.connection};
+  static getConfig() {return instance.connection.config};
   static getContent() {return instance.content};
 
   /**
@@ -57,10 +61,12 @@ module.exports = class Instance {
       }
 
 
-      await vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`);
-      await vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
-      await vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`);
-      await vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`);
+      await Promise.all([
+        vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
+        vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
+        vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
+        vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
+      ]);
     }
 
     return doDisconnect;
@@ -85,6 +91,11 @@ module.exports = class Instance {
 
       if (!statusBar) {
         statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        statusBar.command = {
+          command: `workbench.action.openSettings`,
+          title: `Open Connection Settings`,
+          arguments: [`code-for-ibmi.connectionSettings`]
+        };
         context.subscriptions.push(statusBar);
       }
       

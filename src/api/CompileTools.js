@@ -4,6 +4,7 @@ const path = require(`path`);
 
 const errorHandler = require(`./errorHandle`);
 const IBMi = require(`./IBMi`);
+const Configuration = require(`./Configuration`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -99,8 +100,13 @@ module.exports = class CompileTools {
   static async RunAction(instance, uri) {
     let evfeventInfo = {lib: ``, object: ``};
 
-    const config = vscode.workspace.getConfiguration(`code-for-ibmi`);
-    const allActions = config.get(`actions`);
+    /** @type {IBMi} */
+    const connection = instance.getConnection();
+
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+
+    const allActions = Configuration.get(`actions`);
 
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
 
@@ -132,57 +138,57 @@ module.exports = class CompileTools {
         let basename, name, ext;
 
         switch (uri.scheme) {
-          case `member`:
-            [blank, lib, file, fullName] = uri.path.split(`/`);
-            name = fullName.substring(0, fullName.lastIndexOf(`.`));
+        case `member`:
+          [blank, lib, file, fullName] = uri.path.split(`/`);
+          name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-            ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : undefined);
+          ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : undefined);
 
-            evfeventInfo = {
-              lib: lib,
-              object: name,
-              ext
-            };
+          evfeventInfo = {
+            lib: lib,
+            object: name,
+            ext
+          };
 
-            command = command.replace(new RegExp(`&OPENLIB`, `g`), lib);
-            command = command.replace(new RegExp(`&OPENSPF`, `g`), file);
-            command = command.replace(new RegExp(`&OPENMBR`, `g`), name);
-            command = command.replace(new RegExp(`&EXT`, `g`), ext);
+          command = command.replace(new RegExp(`&OPENLIB`, `g`), lib);
+          command = command.replace(new RegExp(`&OPENSPF`, `g`), file);
+          command = command.replace(new RegExp(`&OPENMBR`, `g`), name);
+          command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
-            break;
+          break;
 
-          case `streamfile`:
-            basename = path.posix.basename(uri.path);
-            name = basename.substring(0, basename.lastIndexOf(`.`)).toUpperCase();
-            ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
+        case `streamfile`:
+          basename = path.posix.basename(uri.path);
+          name = basename.substring(0, basename.lastIndexOf(`.`)).toUpperCase();
+          ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
 
-            evfeventInfo = {
-              lib: config.get(`buildLibrary`),
-              object: name,
-              ext
-            };
+          evfeventInfo = {
+            lib: config.buildLibrary,
+            object: name,
+            ext
+          };
 
-            command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.get(`buildLibrary`));
-            command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
-            command = command.replace(new RegExp(`&NAME`, `g`), name);
-            command = command.replace(new RegExp(`&EXT`, `g`), ext);
+          command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
+          command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
+          command = command.replace(new RegExp(`&NAME`, `g`), name);
+          command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
-            break;
+          break;
 
-          case `object`:
-            [blank, lib, fullName] = uri.path.split(`/`);
-            name = fullName.substring(0, fullName.lastIndexOf(`.`));
+        case `object`:
+          [blank, lib, fullName] = uri.path.split(`/`);
+          name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-            evfeventInfo = {
-              lib,
-              object: name,
-              extension
-            };
+          evfeventInfo = {
+            lib,
+            object: name,
+            extension
+          };
 
-            command = command.replace(new RegExp(`&LIBRARY`, `g`), lib);
-            command = command.replace(new RegExp(`&NAME`, `g`), name);
-            command = command.replace(new RegExp(`&TYPE`, `g`), extension);
-            break;
+          command = command.replace(new RegExp(`&LIBRARY`, `g`), lib);
+          command = command.replace(new RegExp(`&NAME`, `g`), name);
+          command = command.replace(new RegExp(`&TYPE`, `g`), extension);
+          break;
         }
 
         if (command.startsWith(`?`)) {
@@ -190,9 +196,7 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-          /** @type {IBMi} */
-          const connection = instance.getConnection();
-          const libl = connection.libraryList.slice(0).reverse();
+          const libl = config.libraryList.slice(0).reverse();
           /** @type {any} */
           let commandResult, output;
           let executed = false;
@@ -202,27 +206,27 @@ module.exports = class CompileTools {
           try {
 
             switch (environment) {
-              case `pase`:
-                commandResult = await connection.paseCommand(command, undefined, 1);
-                break;
+            case `pase`:
+              commandResult = await connection.paseCommand(command, undefined, 1);
+              break;
 
-              case `qsh`:
-                commandResult = await connection.qshCommand([
-                  `liblist -d ` + connection.defaultUserLibraries.join(` `),
-                  `liblist -a ` + libl.join(` `),
-                  command,
-                ], undefined, 1);
-                break;
+            case `qsh`:
+              commandResult = await connection.qshCommand([
+                `liblist -d ` + connection.defaultUserLibraries.join(` `),
+                `liblist -a ` + libl.join(` `),
+                command,
+              ], undefined, 1);
+              break;
 
-              case `ile`:
-              default:
-                command = `system ${connection.logCompileOutput ? `` : `-s`} "${command}"`;
-                commandResult = await connection.qshCommand([
-                  `liblist -d ` + connection.defaultUserLibraries.join(` `),
-                  `liblist -a ` + libl.join(` `),
-                  command,
-                ], undefined, 1);
-                break;
+            case `ile`:
+            default:
+              command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`;
+              commandResult = await connection.qshCommand([
+                `liblist -d ` + connection.defaultUserLibraries.join(` `),
+                `liblist -a ` + libl.join(` `),
+                command,
+              ], undefined, 1);
+              break;
             }
 
             if (commandResult.code === 0 || commandResult.code === null) {
