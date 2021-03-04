@@ -1,9 +1,7 @@
 const vscode = require(`vscode`);
 
-const path = require(`path`);
-const fs = require(`fs`);
-
 const IBMi = require(`../../api/IBMi`);
+const {CustomUI, Field} = require(`../../api/CustomUI`);
 
 let instance = require(`../../Instance`);
 
@@ -19,33 +17,24 @@ module.exports = class Login {
       if (!instance.disconnect()) return;
     }
 
-    const panel = vscode.window.createWebviewPanel(
-      `systemLogin`,
-      `IBM i Login`,
-      vscode.ViewColumn.Beside,
-      {
-        enableScripts: true
-      }
-    );
+    let ui = new CustomUI();
 
-    let LoginHTML = fs.readFileSync(path.join(__dirname, `login.html`), {encoding: `utf8`});
+    ui.addField(new Field(`input`, `host`, `Host or IP Address`));
+    ui.addField(new Field(`input`, `port`, `Host or IP Address`));
+    ui.fields[1].default = `22`;
+    ui.addField(new Field(`input`, `username`, `Username`));
+    ui.addField(new Field(`password`, `password`, `Password`));
+    ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
-    const onDiskPath = vscode.Uri.file(
-      path.join(context.extensionPath, `node_modules`, `@bendera`, `vscode-webview-elements`, `dist`, `vscwe.js`)
-    );
-    // And get the special URI to use with the webview
-    const onDiskSrc = panel.webview.asWebviewUri(onDiskPath);
-
-    //@ts-ignore
-    LoginHTML = LoginHTML.replace(new RegExp(`\\(onDiskSrc\\)`, `g`), onDiskSrc);
-
-    panel.webview.html = LoginHTML;
-
-    // Handle messages from the webview
-    panel.webview.onDidReceiveMessage(
-      async message => {
+    ui.loadPage(context, `IBM i Login`, 
+      /**
+       * Callback function from the load page.
+       * @param {vscode.WebviewPanel} panel 
+       * @param {{command: "clicked"|string, data: any}} message 
+       */
+      async (panel, message) => {
         switch (message.command) {
-        case `login`:
+        case `clicked`:
           message.data.port = Number(message.data.port);
 
           vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
@@ -83,8 +72,7 @@ module.exports = class Login {
 
           return;
         }
-      },
-      undefined,
+      }
     );
   }
 
