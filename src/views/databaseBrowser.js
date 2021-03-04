@@ -42,9 +42,13 @@ module.exports = class databaseBrowserProvider {
               const panel = vscode.window.createWebviewPanel(
                 `databaseResult`,
                 `Database Result`,
-                vscode.ViewColumn.Active
+                vscode.ViewColumn.Active,
+                {
+                  retainContextWhenHidden: true,
+                  enableFindWidget: true
+                }
               );
-              panel.webview.html = generateTable(data);
+              panel.webview.html = generateTable(statement, data);
             } catch (e) {
               if (typeof e === `string`) {
                 vscode.window.showErrorMessage(e);
@@ -104,7 +108,7 @@ module.exports = class databaseBrowserProvider {
             }
           }
 
-          return null; 
+          return null;
         }
       })
     )
@@ -129,14 +133,14 @@ module.exports = class databaseBrowserProvider {
   async getChildren(element) {
     let items = [], item;
 
-    if (element) { 
+    if (element) {
 
       if (element instanceof SchemaItem) {
         const objects = await Database.getObjects(element.path);
         schemaCache[element.path] = objects;
         items.push(...objects.map(object => new TableItem(object)));
-      } else 
-      
+      } else
+
       if (element instanceof TableItem) {
         items.push(...element.table.columns.map(column => new ColumnItem(column)));
       }
@@ -173,7 +177,7 @@ class SchemaItem extends vscode.TreeItem {
 
 class TableItem extends vscode.TreeItem {
   /**
-   * @param {Table} table 
+   * @param {Table} table
    */
   constructor(table) {
     super(table.name.toLowerCase());
@@ -197,8 +201,8 @@ class TableItem extends vscode.TreeItem {
 
 class ColumnItem extends vscode.TreeItem {
   /**
-   * 
-   * @param {Column} column 
+   *
+   * @param {Column} column
    */
   constructor(column) {
     super(column.name.toLowerCase(), vscode.TreeItemCollapsibleState.None);
@@ -219,7 +223,7 @@ const TABLE_ICONS = {
 }
 
 /**
- * @param {vscode.TextEditor} editor 
+ * @param {vscode.TextEditor} editor
  * @returns {string} Statement
  */
 function parseStatement(editor) {
@@ -227,7 +231,7 @@ function parseStatement(editor) {
 
   let text = document.getText(editor.selection).trim();
   let statement;
-  
+
   if (text.length > 0) {
     statement = text;
   } else {
@@ -244,7 +248,7 @@ function parseStatement(editor) {
         case `'`:
           inQuote = !inQuote;
           break;
-        
+
         case `;`:
           if (!inQuote) {
             statements.push({
@@ -276,23 +280,66 @@ function parseStatement(editor) {
 }
 
 /**
- * @param {any[]} array 
+ * @param {any[]} array
  * @returns {string} HTML
  */
-function generateTable(array) {
-  let html = ``;
+function generateTable(statement, array) {
+  // Setup basics of valid HTML5 document
+  let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset='utf-8'>
+      <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+      <title>Database Result</title>
+      <meta name='viewport' content='width=device-width, initial-scale=1'>
+      <style>
+        body {
+          font-family: var(--vscode-editor-font-family);
+          color: var(--vscode-editor-foreground);
+        }
+        table {
+          font-weight: var(--vscode-editor-font-weight);
+          font-size: var(--vscode-editor-font-size);
+          width: 100%;
+          border-collapse: collapse;
+        }
+        ::selection {
+          background-color: var(--vscode-editor-selectionBackground);
+          color: var(--vscode-editor-selectionForeground);
+        }
+        container {
+          overflow-x: auto;
+          white-space: nowrap;
+        }
+        tr:nth-child(even) {
+          background-color: var(--vscode-editor-selectionHighlightBackground);
+        }
+        table thead tr th {
+          border-bottom: 2px solid var(--vscode-editor-selectionHighlightBackground);
+        }
+      </style>
+    </head>
+    <body>
+      <h1>Query result</h1>
+      <pre>${statement}</pre>
+      <div class="container">
+        <table>
+          <thead>`;
 
   const keys = Object.keys(array[0]);
 
-  html += `<table style="width: 100%">`;
-  html += `<thead><tr>${keys.map(key => `<th>${key}</th>`).join(``)}</tr></thead>`;
-  
-  html += `<tbody>`;
+  html += `<tr>${keys.map(key => `<th>${key}</th>`).join(``)}</tr></thead><tbody>`;
   html += array.map(row => {
     return `<tr>` + keys.map(key => `<td>${row[key]}</td>`).join(``) + `</tr>`
   }).join(``);
-  html += `</tbody>`;
-  html += `</table>`;
+
+  html += `
+          </tbody>
+        </table>
+      </div>
+    </body>
+  </html>`;
 
   return html;
 }
