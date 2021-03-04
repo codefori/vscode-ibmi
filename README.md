@@ -74,5 +74,5 @@ You can click on a member to open and edit it. There is no member locking and th
 6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
    
 ## Detailed Documentation
-More detailed documentation is availalbe [here](https://halcyon-tech.github.io/code-for-ibmi/#/)
+More detailed documentation is available [here](https://halcyon-tech.github.io/code-for-ibmi/#/)
  
