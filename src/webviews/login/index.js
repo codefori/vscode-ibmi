@@ -7,8 +7,6 @@ const IBMi = require(`../../api/IBMi`);
 
 let instance = require(`../../Instance`);
 
-const LoginHTML = fs.readFileSync(path.join(__dirname, `login.html`), {encoding: `utf8`});
-
 module.exports = class Login {
 
   /**
@@ -24,11 +22,22 @@ module.exports = class Login {
     const panel = vscode.window.createWebviewPanel(
       `systemLogin`,
       `IBM i Login`,
-      vscode.ViewColumn.One,
+      vscode.ViewColumn.Beside,
       {
         enableScripts: true
       }
     );
+
+    let LoginHTML = fs.readFileSync(path.join(__dirname, `login.html`), {encoding: `utf8`});
+
+    const onDiskPath = vscode.Uri.file(
+      path.join(context.extensionPath, `node_modules`, `@bendera`, `vscode-webview-elements`, `dist`, `vscwe.js`)
+    );
+    // And get the special URI to use with the webview
+    const onDiskSrc = panel.webview.asWebviewUri(onDiskPath);
+
+    //@ts-ignore
+    LoginHTML = LoginHTML.replace(new RegExp(`\\(onDiskSrc\\)`, `g`), onDiskSrc);
 
     panel.webview.html = LoginHTML;
 

@@ -72,83 +72,76 @@
 					"type": "array",
 					"markdownDescription": "Configurations for different connections.",
 					"items": {
-							"type": "object",
-							"description": "Configuration for this connection",
-							"properties": {
-								"host": {
+						"type": "object",
+						"description": "Configuration for this connection",
+						"properties": {
+							"host": {
+								"type": "string",
+								"description": "Host for this configuration"
+							},
+							"sourceFileList": {
+								"type": "array",
+								"items": {
 									"type": "string",
-									"description": "Host for this configuration"
+									"title": "Library and source physical file"
 								},
-
-								"sourceFileList": {
-									"type": "array",
-									"items": {
-										"type": "string",
-										"title": "Library and source physical file"
-									},
-									"default": [
-										"QSYSINC/H"
-									],
-									"description": "As seen in the member browser"
-								},
-
-								"objectBrowserList": {
-									"type": "array",
-									"items": {
-										"type": "string",
-										"title": "Library name"
-									},
-									"default": [],
-									"description": "List of libraries to in the Object Browser"
-								},
-
-								"databaseBrowserList": {
-									"type": "array",
-									"items": {
-										"type": "string",
-										"title": "schema name"
-									},
-									"default": [],
-									"description": "List of schemas to in the Database Browser"
-								},
-
-								"libraryList": {
-									"type": "array",
-									"items": {
-										"type": "string",
-										"title": "Library and source physical file"
-									},
-									"default": [],
-									"description": "Library list. Used in actions. Highest first."
-								},
-
-								"homeDirectory": {
+								"default": [
+									"QSYSINC/H"
+								],
+								"description": "As seen in the member browser"
+							},
+							"objectBrowserList": {
+								"type": "array",
+								"items": {
 									"type": "string",
-									"default": ".",
-									"description": "Connection home directory"
+									"title": "Library name"
 								},
-
-								"tempLibrary": {
+								"default": [],
+								"description": "List of libraries to in the Object Browser"
+							},
+							"databaseBrowserList": {
+								"type": "array",
+								"items": {
 									"type": "string",
-									"default": "ILEDITOR",
-									"description": "Temporary library. Cannot be QTEMP."
+									"title": "schema name"
 								},
-
-								"buildLibrary": {
+								"default": [],
+								"description": "List of schemas to in the Database Browser"
+							},
+							"libraryList": {
+								"type": "array",
+								"items": {
 									"type": "string",
-									"default": "QTEMP",
-									"description": "Library used for &BUILDLIB when running actions from the IFS."
+									"title": "Library and source physical file"
 								},
-
-								"sourceASP": {
-									"type": ["string"],
-									"default": null,
-									"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise."
-								}
+								"default": [],
+								"description": "Library list. Used in actions. Highest first."
+							},
+							"homeDirectory": {
+								"type": "string",
+								"default": ".",
+								"description": "Connection home directory"
+							},
+							"tempLibrary": {
+								"type": "string",
+								"default": "ILEDITOR",
+								"description": "Temporary library. Cannot be QTEMP."
+							},
+							"buildLibrary": {
+								"type": "string",
+								"default": "QTEMP",
+								"description": "Library used for &BUILDLIB when running actions from the IFS."
+							},
+							"sourceASP": {
+								"type": [
+									"string"
+								],
+								"default": null,
+								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise."
 							}
+						}
 					}
 				},
-
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
 					"default": false,
@@ -743,6 +736,7 @@
 		"vscode-test": "^1.5.0"
 	},
 	"dependencies": {
+		"@bendera/vscode-webview-elements": "^0.1.9",
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1"
