@@ -10,12 +10,11 @@ class CustomUI {
   addField(field) {this.fields.push(field)};
 
   /**
-   * 
    * @param {vscode.ExtensionContext} context 
    * @param {string} title 
-   * @param {Function} onDidRecieveMessage `async (panel, data) => {...}`
+   * @returns {Promise<{panel: vscode.WebviewPanel, data: object}}
    */
-  loadPage(context, title, onDidRecieveMessage) {
+  loadPage(context, title) {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -27,11 +26,22 @@ class CustomUI {
 
     panel.webview.html = this.getHTML(panel, context);
 
-    panel.webview.onDidReceiveMessage(
-      message => {
-        onDidRecieveMessage(panel, message)
-      }
-    );
+    let didSubmit = false;
+
+    return new Promise((resolve, reject) => {
+      panel.webview.onDidReceiveMessage(
+        message => {
+          didSubmit = true;
+          resolve({panel, data: message});
+        }
+      );
+  
+      panel.onDidDispose(() => {
+        if (!didSubmit) resolve({panel, data: null});
+      });
+    })
+
+
   }
 
   getHTML(panel, context) {
@@ -78,18 +88,29 @@ class CustomUI {
             const submitButton = document.getElementById('${submitButton.id}');
             const fields = [${this.fields.filter(field => field.type !== `submit`).map(field => `'${field.id}'`).join(`,`)}];
     
-            submitButton.onclick = (event) => {
-                event.preventDefault();
+            const doDone = (event) => {
+                if (event)
+                    event.preventDefault();
     
                 var data = {};
     
                 for (const field of fields) data[field] = document.getElementById(field).value;
     
-                vscode.postMessage({
-                    command: 'clicked',
-                    data
-                })
+                vscode.postMessage(data)
             };
+
+            submitButton.onclick = doDone;
+            submitButton.onKeyDown = doDone;
+
+            for (const field of fields) {
+                document.getElementById(field)
+                    .addEventListener('keyup', function(event) {
+                      event.preventDefault();
+                      if (event.keyCode === 13) {
+                          doDone();
+                    }
+                });
+            }
         }())
     </script>
     

@@ -11,7 +11,7 @@ module.exports = class Login {
    * Called to log in to an IBM i
    * @param {vscode.ExtensionContext} context
    */
-  static show(context) {
+  static async show(context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
       if (!instance.disconnect()) return;
@@ -26,54 +26,47 @@ module.exports = class Login {
     ui.addField(new Field(`password`, `password`, `Password`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
-    ui.loadPage(context, `IBM i Login`, 
-      /**
-       * Callback function from the load page.
-       * @param {vscode.WebviewPanel} panel 
-       * @param {{command: "clicked"|string, data: any}} message 
-       */
-      async (panel, message) => {
-        switch (message.command) {
-        case `clicked`:
-          message.data.port = Number(message.data.port);
+    const {panel, data} = await ui.loadPage(context, `IBM i Login`);
 
-          vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
+    if (data) {
+      data.port = Number(data.port);
 
-          const connection = new IBMi();
+      vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
 
-          try {
-            const connected = await connection.connect(message.data);
-            if (connected.success) {
-              panel.dispose();
+      const connection = new IBMi();
 
-              vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
+      try {
+        const connected = await connection.connect(data);
+        if (connected.success) {
+          panel.dispose();
 
-              instance.setConnection(connection);
-              instance.loadAllofExtension(context);
+          vscode.window.showInformationMessage(`Connected to ${data.host}!`);
 
-              let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
-              let existingConnections = existingConnectionsConfig.get(`connections`);
-              if (!existingConnections.find(item => item.host === message.data.host)) {
-                existingConnections.push({
-                  host: message.data.host,
-                  port: message.data.port,
-                  username: message.data.username
-                });
-                await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
-              }
+          instance.setConnection(connection);
+          instance.loadAllofExtension(context);
 
-            } else {
-              vscode.window.showErrorMessage(`Not connected to ${message.data.host}! ${connected.error.message || connected.error}`);
-            }
-
-          } catch (e) {
-            vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);
+          let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
+          let existingConnections = existingConnectionsConfig.get(`connections`);
+          if (!existingConnections.find(item => item.host === data.host)) {
+            existingConnections.push({
+              host: data.host,
+              port: data.port,
+              username: data.username
+            });
+            await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
           }
 
-          return;
+        } else {
+          vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
         }
+
+      } catch (e) {
+        vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
       }
-    );
+    }
+
+    return;
+        
   }
 
   /**
