@@ -50,6 +50,7 @@
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
+		"onCommand:code-for-ibmi.createSourceFile",
 		"onCommand:code-for-ibmi.addLibraryToObjectBrowser",
 		"onCommand:code-for-ibmi.removeLibraryFromObjectBrowser",
 		"onView:databaseBrowser",
@@ -476,6 +477,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.createSourceFile",
+				"title": "Create Source File",
+				"category": "IBM i",
+				"icon": "$(new-file)" 
+			},
+			{
 				"command": "code-for-ibmi.addLibraryToObjectBrowser",
 				"title": "Add library to Object Browser",
 				"category": "IBM i",
@@ -602,6 +609,11 @@
 					"when": "view == objectBrowser"
 				},
 				{
+					"command": "code-for-ibmi.createSourceFile",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
 					"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
 					"group": "navigation",
 					"when": "view == databaseBrowser"
@@ -690,6 +702,11 @@
 				{
 					"command": "code-for-ibmi.refreshObjectList",
 					"when": "view == objectBrowser && viewItem == library"
+				},
+				{
+					"command": "code-for-ibmi.createSourceFile",
+					"when": "view == objectBrowser && viewItem == library",
+					"group": "1_LibActions@1"
 				},
 				{
 					"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
