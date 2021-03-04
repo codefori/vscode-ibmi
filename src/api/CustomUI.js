@@ -42,7 +42,7 @@ class CustomUI {
     }
 
     const onDiskPath = vscode.Uri.file(
-      path.join(context.extensionPath, `node_modules`, `@bendera`, `vscode-webview-elements`, `dist`, `vscwe.js`)
+      path.join(context.extensionPath, `src`, `webviews`, `extern`, `vscwe.js`)
     );
     // And get the special URI to use with the webview
     const onDiskSrc = panel.webview.asWebviewUri(onDiskPath);
