@@ -12,6 +12,13 @@ module.exports = class IBMi {
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
 
+    /**
+     * Used to store ASP numbers and their names
+     * THeir names usually maps up to a directory in
+     * the root of the IFS, thus why we store it.
+     */
+    this.aspInfo = {};
+
     /** @type {{[name: string]: string}} */
     this.remoteFeatures = {
       db2util: undefined,
@@ -133,6 +140,30 @@ module.exports = class IBMi {
         }
         
       } catch (e) {}
+
+      //This is mostly a nice to have. We grab the ASP info so user's do
+      //not have to provide the ASP in the settings. This only works if
+      //they have db2util installed, becuase we have to use SQL to get the
+      //data. I couldn't find an outfile for this information. :(
+      if (this.remoteFeatures.db2util) {
+        try {
+          const command = this.remoteFeatures.db2util;
+
+          const statement = `SELECT * FROM QSYS2.ASP_INFO`;
+          let output = await this.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
+    
+          if (typeof output === `string`) {
+            const rows = JSON.parse(output);
+            for (const row of rows) {
+              if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+              }
+            }
+          }
+        } catch (e) {
+          //Oh well
+        }
+      }
 
       return {
         success: true

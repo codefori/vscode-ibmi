@@ -212,7 +212,7 @@ module.exports = class IBMiContent {
   /**
    * @param {string} lib 
    * @param {string} spf
-   * @returns {Promise<{library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
+   * @returns {Promise<{asp?: string, library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
   async getMemberList(lib, spf) {
     lib = lib.toUpperCase();
@@ -230,7 +230,12 @@ module.exports = class IBMiContent {
       }
     }
 
+    if (results.length === 0) return [];
+
+    const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
+
     return results.map(result => ({
+      asp: asp,
       library: result.MBLIB,
       file: result.MBFILE,
       name: result.MBNAME,
