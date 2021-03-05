@@ -40,25 +40,12 @@ module.exports = class IBMi {
       this.currentPort = connectionObject.port;
       this.currentUser = connectionObject.username;
 
+      //Load existing config
       /** @type {Configuration} */
       this.config = await Configuration.load(this.currentHost);
 
-      //Perhaps load in existing config if it exists here.
-
-      //Continue with finding out info about system
-      if (this.config.homeDirectory === `.`) await this.config.set(`homeDirectory`, `/home/${connectionObject.username}`);
-
-      //Create home directory if it does not exist.
-      try {
-        await this.paseCommand(`mkdir ${this.config.homeDirectory}`);
-      } catch (e) {
-        //If the folder doesn't exist, then we need to reset the path
-        //because we need a valid path for the home directory.
-        if (e.indexOf(`File exists`) === -1) {
-          //An error message here also?
-          await this.config.set(`homeDirectory`, `.`);
-        }
-      }
+      //Get home directory if one isn't set
+      if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, await this.paseCommand(`pwd`, null))
 
       //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
       //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
