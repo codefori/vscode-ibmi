@@ -38,7 +38,6 @@ module.exports = class Login {
       try {
         const connected = await connection.connect(data);
         if (connected.success) {
-          panel.dispose();
 
           vscode.window.showInformationMessage(`Connected to ${data.host}!`);
 
@@ -59,6 +58,8 @@ module.exports = class Login {
         } else {
           vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
         }
+
+        panel.dispose();
 
       } catch (e) {
         vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
