@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.1.4",
+	"version": "0.2.8",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -20,7 +20,7 @@
 		"url": "https://github.com/halcyon-tech/code-for-ibmi"
 	},
 	"engines": {
-		"vscode": "^1.53.0"
+		"vscode": "^1.52.0"
 	},
 	"categories": [
 		"Other"
@@ -32,6 +32,8 @@
 		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
+		"onCommand:code-for-ibmi.selectForCompare",
+		"onCommand:code-for-ibmi.compareWithSelected",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
@@ -47,7 +49,15 @@
 		"onCommand:code-for-ibmi.moveIFS",
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onView:objectBrowser",
-		"onCommand:code-for-ibmi.refreshObjectList"
+		"onCommand:code-for-ibmi.refreshObjectList",
+		"onCommand:code-for-ibmi.createSourceFile",
+		"onCommand:code-for-ibmi.addLibraryToObjectBrowser",
+		"onCommand:code-for-ibmi.removeLibraryFromObjectBrowser",
+		"onView:databaseBrowser",
+		"onCommand:code-for-ibmi.refreshDatabaseBrowser",
+		"onCommand:code-for-ibmi.addSchemaToDatabaseBrowser",
+		"onCommand:code-for-ibmi.removeSchemaFromDatabaseBrowser",
+		"onCommand:code-for-ibmi.runEditorStatement"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -59,41 +69,79 @@
 		"configuration": {
 			"title": "Code for IBM i",
 			"properties": {
-				"code-for-ibmi.sourceFileList": {
+				"code-for-ibmi.connectionSettings": {
 					"type": "array",
+					"markdownDescription": "Configurations for different connections.",
 					"items": {
-						"type": "string",
-						"title": "Library and source physical file"
-					},
-					"default": [
-						"QSYSINC/H"
-					],
-					"description": "As seen in the member browser"
-				},
-				"code-for-ibmi.libraryList": {
-					"type": "string",
-					"default": "QSYS2,QSYSINC",
-					"description": "Comma delimited list for the library list"
-				},
-				"code-for-ibmi.homeDirectory": {
-					"type": "string",
-					"default": ".",
-					"description": "Connection home directory"
-				},
-				"code-for-ibmi.temporaryLibrary": {
-					"type": "string",
-					"default": "ILEDITOR",
-					"description": "Temporary library. Cannot be QTEMP."
-				},
-				"code-for-ibmi.buildLibrary": {
-					"type": "string",
-					"default": "QTEMP",
-					"description": "Library used for &BUILDLIB when running actions from the IFS."
-				},
-				"code-for-ibmi.sourceASP": {
-					"type": "string",
-					"default": "",
-					"description": "If source files live within a specific ASP, please specify it here. Leave blank otherwise."
+						"type": "object",
+						"description": "Configuration for this connection",
+						"properties": {
+							"host": {
+								"type": "string",
+								"description": "Host for this configuration"
+							},
+							"sourceFileList": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "Library and source physical file"
+								},
+								"default": [
+									"QSYSINC/H"
+								],
+								"description": "As seen in the member browser"
+							},
+							"objectBrowserList": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "Library name"
+								},
+								"default": [],
+								"description": "List of libraries to in the Object Browser"
+							},
+							"databaseBrowserList": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "schema name"
+								},
+								"default": [],
+								"description": "List of schemas to in the Database Browser"
+							},
+							"libraryList": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "Library and source physical file"
+								},
+								"default": [],
+								"description": "Library list. Used in actions. Highest first."
+							},
+							"homeDirectory": {
+								"type": "string",
+								"default": ".",
+								"description": "Connection home directory"
+							},
+							"tempLibrary": {
+								"type": "string",
+								"default": "ILEDITOR",
+								"description": "Temporary library. Cannot be QTEMP."
+							},
+							"buildLibrary": {
+								"type": "string",
+								"default": "QTEMP",
+								"description": "Library used for &BUILDLIB when running actions from the IFS."
+							},
+							"sourceASP": {
+								"type": [
+									"string", "null"
+								],
+								"default": null,
+								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` and have db2util installed, as Code for IBM i will fetch ASP information automatically."
+							}
+						}
+					}
 				},
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
@@ -141,7 +189,8 @@
 								"description": "Support type this action can use",
 								"enum": [
 									"member",
-									"streamfile"
+									"streamfile",
+									"object"
 								]
 							},
 							"environment": {
@@ -283,7 +332,7 @@
 								"GLOBAL"
 							],
 							"name": "Delete object",
-							"command": "DLTOBJ OBJ(&LIBRARY/&NAME) OBJTYPE(*&TYPE)"
+							"command": "?DLTOBJ OBJ(&LIBRARY/&NAME) OBJTYPE(*&TYPE)"
 						},
 						{
 							"type": "object",
@@ -291,7 +340,7 @@
 								"pgm"
 							],
 							"name": "Call program",
-							"command": "CALL &LIBRARY/&NAME"
+							"command": "?CALL &LIBRARY/&NAME"
 						}
 					]
 				}
@@ -311,6 +360,16 @@
 			{
 				"command": "code-for-ibmi.disconnect",
 				"title": "Disconnect from current connection.",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.selectForCompare",
+				"title": "Select for Compare",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareWithSelected",
+				"title": "Compare with Selected",
 				"category": "IBM i"
 			},
 			{
@@ -342,7 +401,7 @@
 			},
 			{
 				"command": "code-for-ibmi.removeSourceFile",
-				"title": "Remove Source File",
+				"title": "Remove source file from view",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
@@ -416,6 +475,48 @@
 				"title": "Refresh Object List",
 				"category": "IBM i",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.createSourceFile",
+				"title": "Create Source File",
+				"category": "IBM i",
+				"icon": "$(new-file)" 
+			},
+			{
+				"command": "code-for-ibmi.addLibraryToObjectBrowser",
+				"title": "Add library to Object Browser",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
+				"title": "Remove library from view",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
+				"command": "code-for-ibmi.refreshDatabaseBrowser",
+				"title": "Refresh Database Browser",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
+				"title": "Add Schema to Database Browser",
+				"category": "IBM i",
+				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",
+				"title": "Remove schema from view",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
+				"command": "code-for-ibmi.runEditorStatement",
+				"title": "Run selected statement",
+				"category": "IBM i",
+				"icon": "$(database)"
 			}
 		],
 		"keybindings": [
@@ -423,6 +524,11 @@
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
+			},
+			{
+				"command": "code-for-ibmi.runEditorStatement",
+				"key": "ctrl+r",
+				"mac": "cmd+r"
 			}
 		],
 		"viewsContainers": {
@@ -452,6 +558,11 @@
 					"id": "objectBrowser",
 					"name": "Object Browser",
 					"contextualTitle": "Object Browser"
+				},
+				{
+					"id": "databaseBrowser",
+					"name": "Database Browser",
+					"contextualTitle": "Database Browser"
 				}
 			]
 		},
@@ -488,12 +599,42 @@
 					"when": "view == ifsBrowser"
 				},
 				{
+					"command": "code-for-ibmi.addLibraryToObjectBrowser",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
 					"command": "code-for-ibmi.refreshObjectList",
 					"group": "navigation",
 					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createSourceFile",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
+					"group": "navigation",
+					"when": "view == databaseBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshDatabaseBrowser",
+					"group": "navigation",
+					"when": "view == databaseBrowser"
 				}
 			],
 			"view/item/context": [
+				{
+					"command": "code-for-ibmi.selectForCompare",
+					"when": "viewItem == member || viewItem == streamfile",
+					"group": "2_compare@1"
+				},
+				{
+					"command": "code-for-ibmi.compareWithSelected",
+					"when": "viewItem == member || viewItem == streamfile",
+					"group": "2_compare@2"
+				},
 				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == memberBrowser && viewItem == SPF",
@@ -563,9 +704,22 @@
 					"when": "view == objectBrowser && viewItem == library"
 				},
 				{
+					"command": "code-for-ibmi.createSourceFile",
+					"when": "view == objectBrowser && viewItem == library",
+					"group": "1_LibActions@1"
+				},
+				{
+					"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
+					"when": "view == objectBrowser && viewItem == library"
+				},
+				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == objectBrowser && viewItem == object",
 					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",
+					"when": "view == databaseBrowser && viewItem == schema"
 				}
 			]
 		},
@@ -588,7 +742,7 @@
 		"test": "node ./test/runTest.js"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.53.0",
+		"@types/vscode": "^1.52.0",
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.0.4",
 		"@types/node": "^12.11.7",

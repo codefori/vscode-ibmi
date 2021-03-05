@@ -1,10 +1,10 @@
-const IBMi = require('./IBMi');
+const IBMi = require(`./IBMi`);
 
-const path = require('path');
-const util = require('util');
-var fs = require('fs');
-const tmp = require('tmp');
-const parse = require('csv-parse/lib/sync');
+const path = require(`path`);
+const util = require(`util`);
+let fs = require(`fs`);
+const tmp = require(`tmp`);
+const parse = require(`csv-parse/lib/sync`);
 
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
@@ -24,16 +24,16 @@ module.exports = class IBMiContent {
   async downloadStreamfile(remotePath) {
     const client = this.ibmi.client;
 
-    var tmpobj = await tmpFile();
+    let tmpobj = await tmpFile();
     await client.getFile(tmpobj, remotePath);
-    return readFileAsync(tmpobj, 'utf8');
+    return readFileAsync(tmpobj, `utf8`);
   }
 
   async writeStreamfile(remotePath, content) {
     const client = this.ibmi.client;
     let tmpobj = await tmpFile();
 
-    await writeFileAsync(tmpobj, content, 'utf8');
+    await writeFileAsync(tmpobj, content, `utf8`);
     return client.putFile(tmpobj, remotePath); // assumes streamfile will be UTF8
   }
 
@@ -45,7 +45,7 @@ module.exports = class IBMiContent {
    * @param {string} mbr 
    */
   async downloadMemberContent(asp, lib, spf, mbr) {
-    if (!asp) asp = this.ibmi.sourceASP;
+    if (!asp) asp = this.ibmi.config.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
@@ -55,20 +55,20 @@ module.exports = class IBMiContent {
     const tmpobj = await tmpFile();
     const client = this.ibmi.client;
 
-    var retried = false;
-    var retry = 1;
+    let retried = false;
+    let retry = 1;
 
     while (retry > 0) {
       retry--;
       try {
         //If this command fails we need to try again after we delete the temp remote
         await this.ibmi.remoteCommand(
-          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208)`, '.'
+          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208)`, `.`
         );
       } catch (e) {
-        if (e.startsWith("CPDA08A")) {
+        if (e.startsWith(`CPDA08A`)) {
           if (!retried) {
-            await this.ibmi.paseCommand(`rm -f ` + tempRmt, '.');
+            await this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
             retry++;
             retried = true;
           } else {
@@ -79,7 +79,7 @@ module.exports = class IBMiContent {
     }
     
     await client.getFile(tmpobj, tempRmt);
-    var body = await readFileAsync(tmpobj, 'utf8');
+    let body = await readFileAsync(tmpobj, `utf8`);
 
     return body;
   }
@@ -93,7 +93,7 @@ module.exports = class IBMiContent {
    * @param {string} content 
    */
   async uploadMemberContent(asp, lib, spf, mbr, content) {
-    if (!asp) asp = this.ibmi.sourceASP;
+    if (!asp) asp = this.ibmi.config.sourceASP;
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
@@ -104,7 +104,7 @@ module.exports = class IBMiContent {
     const tmpobj = await tmpFile();
 
     try {
-      await writeFileAsync(tmpobj, content, 'utf8');
+      await writeFileAsync(tmpobj, content, `utf8`);
 
       await client.putFile(tmpobj, tempRmt);
       await this.ibmi.remoteCommand(
@@ -113,8 +113,38 @@ module.exports = class IBMiContent {
 
       return true;
     } catch (error) {
-      console.log('Failed uploading member: ' + error);
+      console.log(`Failed uploading member: ` + error);
       return Promise.reject(error);
+    }
+  }
+  
+  /**
+   * Run an SQL statement
+   * @param {string} statement 
+   * @returns {Promise<any[]>} Result set
+   */
+  async runSQL(statement) {
+    const command = this.ibmi.remoteFeatures.db2util;
+
+    if (command) {
+      statement = statement.replace(/"/g, `\\"`);
+      let output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
+
+      if (typeof output === `string`) {
+        //Little hack for db2util returns blanks where it should be null.
+        output = output.replace(new RegExp(`:,`, `g`), `:null,`);
+        output = output.replace(new RegExp(`:}`, `g`), `:null}`);
+        const rows = JSON.parse(output);
+        for (let row of rows)
+          for (let key in row)
+            if (typeof row[key] === `string`) row[key] = row[key].trim();
+
+        return rows;
+      } else {
+        return [];
+      }
+    } else {
+      throw new Error(`db2util not installed on remote server.`);
     }
   }
 
@@ -130,19 +160,19 @@ module.exports = class IBMiContent {
     const tempRmt = this.ibmi.getTempRemote(IBMi.qualifyPath(undefined, lib, file, mbr));
 
     await this.ibmi.remoteCommand(
-      'QSYS/CPYTOIMPF FROMFILE(' +
+      `QSYS/CPYTOIMPF FROMFILE(` +
         lib +
-        '/' +
+        `/` +
         file +
-        ' ' +
+        ` ` +
         mbr +
-        ') ' +
-        "TOSTMF('" +
+        `) ` +
+        `TOSTMF('` +
         tempRmt +
-        "') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) ",
+        `') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) `,
     );
 
-    var result = await this.downloadStreamfile(tempRmt);
+    let result = await this.downloadStreamfile(tempRmt);
 
     return parse(result, {
       columns: true,
@@ -158,14 +188,14 @@ module.exports = class IBMiContent {
   async getObjectList(lib) {
     lib = lib.toUpperCase();
 
-    const tempLib = this.ibmi.tempLibrary;
+    const tempLib = this.ibmi.config.tempLibrary;
     const TempName = IBMi.makeid();
 
     await this.ibmi.remoteCommand(`DSPOBJD OBJ(${lib}/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
     const results = await this.getTable(tempLib, TempName, TempName);
 
     if (results.length === 1) {
-      if (results[0].MBNAME.trim() === '') {
+      if (results[0].ODOBNM.trim() === ``) {
         return []
       }
     }
@@ -182,25 +212,30 @@ module.exports = class IBMiContent {
   /**
    * @param {string} lib 
    * @param {string} spf
-   * @returns {Promise<{library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
+   * @returns {Promise<{asp?: string, library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
   async getMemberList(lib, spf) {
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
 
-    const tempLib = this.ibmi.tempLibrary;
+    const tempLib = this.ibmi.config.tempLibrary;
     const TempName = IBMi.makeid();
 
     await this.ibmi.remoteCommand(`DSPFD FILE(${lib}/${spf}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
     const results = await this.getTable(tempLib, TempName, TempName);
 
     if (results.length === 1) {
-      if (results[0].MBNAME.trim() === '') {
+      if (results[0].MBNAME.trim() === ``) {
         return []
       }
     }
 
+    if (results.length === 0) return [];
+
+    const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
+
     return results.map(result => ({
+      asp: asp,
       library: result.MBLIB,
       file: result.MBFILE,
       name: result.MBNAME,
@@ -220,17 +255,17 @@ module.exports = class IBMiContent {
    * @return {Promise<{type: "directory"|"streamfile", name: string, path: string}[]>} Resulting list
    */
   async getFileList(remotePath) {
-    let results = await this.ibmi.paseCommand('ls -p ' + remotePath);
+    let results = await this.ibmi.paseCommand(`ls -p ` + remotePath);
 
-    if (typeof results === "string" && results !== "") {
-      let list = results.split('\n');
+    if (typeof results === `string` && results !== ``) {
+      let list = results.split(`\n`);
 
       const items = list.map(item => {
-        const type = ((item.substr(item.length - 1, 1) === '/') ? 'directory' : 'streamfile');
+        const type = ((item.substr(item.length - 1, 1) === `/`) ? `directory` : `streamfile`);
 
         return {
           type, 
-          name: (type === 'directory' ? item.substr(0, item.length - 1) : item),
+          name: (type === `directory` ? item.substr(0, item.length - 1) : item),
           path: path.posix.join(remotePath, item)
         };
       });

@@ -1,7 +1,7 @@
 
-const util = require('util');
-const vscode = require('vscode');
-var instance = require('../Instance');
+const util = require(`util`);
+const vscode = require(`vscode`);
+let instance = require(`../Instance`);
 
 module.exports = class qsysFs {
   constructor() {
@@ -19,7 +19,7 @@ module.exports = class qsysFs {
 
     const fileContent = await contentApi.downloadStreamfile(uri.path);
 
-    return new Uint8Array(Buffer.from(fileContent, 'utf8'));
+    return new Uint8Array(Buffer.from(fileContent, `utf8`));
   }
 
   /**
@@ -38,7 +38,7 @@ module.exports = class qsysFs {
   writeFile(uri, content, options) {
     const contentApi = instance.getContent();
 
-    return contentApi.writeStreamfile(uri.path, content.toString('utf8'));
+    return contentApi.writeStreamfile(uri.path, content.toString(`utf8`));
   }
 
   /**

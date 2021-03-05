@@ -1,7 +1,8 @@
 
-const vscode = require('vscode');
+const vscode = require(`vscode`);
 
-var instance = require('../Instance');
+let instance = require(`../Instance`);
+const Configuration = require("../api/Configuration");
 
 module.exports = class objectBrowserProvider {
   /**
@@ -13,28 +14,95 @@ module.exports = class objectBrowserProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     // used for targeted member list refreshes
-    this.targetLib = '*ALL';
+    this.targetLib = `*ALL`;
 
     /** @type {{[library: string]: Object[]}} */
     this.refreshCache = {};
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration("code-for-ibmi.libraryList");
-        if (affected) {
-          this.refresh();
-        }
-      }),
-
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectList`, async (library) => {
         if (library) {
-          if (typeof library === "string") {
+          if (typeof library === `string`) {
             this.refresh(library);
           } else if (library.path) {
             this.refresh(library.path);
           }
         } else {
           this.refresh();
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.addLibraryToObjectBrowser`, async () => {
+        const config = instance.getConfig();
+
+        let libraries = config.objectBrowserList;
+
+        const newLibrary = await vscode.window.showInputBox({
+          prompt: `Library to add to Object Browser`
+        });
+
+        if (newLibrary) {
+          if (newLibrary.length <= 10) {
+            libraries.push(newLibrary.toUpperCase());
+            await config.set(`objectBrowserList`, libraries);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } else {
+            vscode.window.showErrorMessage(`Library name too long.`);
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.removeLibraryFromObjectBrowser`, async (node) => {
+        if (node) {
+          //Running from right click
+          const config = instance.getConfig();
+
+          let libraries = config.objectBrowserList;
+
+          let index = libraries.findIndex(file => file.toUpperCase() === node.path)
+          if (index >= 0) {
+            libraries.splice(index, 1);
+          }
+
+          await config.set(`objectBrowserList`, libraries);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node) => {
+        if (node) {
+          //Running from right click
+          const fileName = await vscode.window.showInputBox({
+            prompt: `Name of new source file`
+          });
+
+          if (fileName) {
+            const connection = instance.getConnection();
+     
+            if (fileName !== undefined && fileName.length > 0 && fileName.length <= 10) {
+              try {
+                const library = node.path.toUpperCase();
+                const uriPath = `${library}/${fileName.toUpperCase()}`
+
+                vscode.window.showInformationMessage(`Creating source file ${uriPath}.`);
+
+                await connection.remoteCommand(
+                  `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`
+                );
+
+                if (Configuration.get(`autoRefresh`)) {
+                  this.refresh();
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error creating source file! ${e}`);
+              }
+            } else {
+              vscode.window.showErrorMessage(`Source filename must be 10 chars or less.`);
+            }
+          }
+
+        } else {
+          //Running from command
+          console.log(this);
         }
       })
     )
@@ -43,7 +111,7 @@ module.exports = class objectBrowserProvider {
   /**
    * @param {string} lib 
    */
-  refresh(lib = '*ALL') {
+  refresh(lib = `*ALL`) {
     this.targetLib = lib;
     this.emitter.fire();
   }
@@ -62,7 +130,7 @@ module.exports = class objectBrowserProvider {
    */
   async getChildren(element) {
     const content = instance.getContent();
-    var items = [], item;
+    let items = [], item;
 
     if (element) { //Chosen SPF
       //Fetch members
@@ -70,13 +138,13 @@ module.exports = class objectBrowserProvider {
       const lib = element.path;
 
       // init cache entry if not exists
-      var cacheExists = element.path in this.refreshCache;
+      let cacheExists = element.path in this.refreshCache;
       if (!cacheExists) {
         this.refreshCache[element.path] = []; // init cache entry
       }
 
       // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
-      if (!cacheExists || ([lib, '*ALL'].includes(this.targetLib))) {
+      if (!cacheExists || ([lib, `*ALL`].includes(this.targetLib))) {
         try {
           const objects = await content.getObjectList(lib);
           this.refreshCache[element.path] = []; // reset cache since we're getting new data
@@ -89,7 +157,7 @@ module.exports = class objectBrowserProvider {
           }
         } catch (e) {
           console.log(e);
-          item = new vscode.TreeItem("Error loading members.");
+          item = new vscode.TreeItem(`Error loading members.`);
           vscode.window.showErrorMessage(e);
           items = [item];
         }
@@ -100,10 +168,12 @@ module.exports = class objectBrowserProvider {
       }
     } else {
       const connection = instance.getConnection();
-      if (connection) {
-        const libraries = connection.libraryList;
 
-        for (var library of libraries) {
+      if (connection) {
+        const config = instance.getConfig();
+        const libraries = config.objectBrowserList;
+
+        for (let library of libraries) {
           library = library.toUpperCase();
           items.push(new Library(library));
         }
@@ -120,7 +190,7 @@ class Library extends vscode.TreeItem {
   constructor(label) {
     super(label, vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.contextValue = 'library';
+    this.contextValue = `library`;
     this.path = label.toUpperCase();
   }
 }
@@ -131,26 +201,26 @@ class Object extends vscode.TreeItem {
    * @param {{library: string, name: string, type: string, text: string}} objectInfo
    */
   constructor({library, name, type, text}) {
-    if (type.startsWith('*')) type = type.substring(1);
+    if (type.startsWith(`*`)) type = type.substring(1);
 
-    const icon = objectIcons[type] || objectIcons[''];
+    const icon = objectIcons[type] || objectIcons[``];
 
     super(`${name.toLowerCase()}.${type.toLowerCase()}`);
 
-    this.contextValue = 'object';
+    this.contextValue = `object`;
     this.path = `${library}/${name}`;
     this.type = type;
     this.description = text;
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.resourceUri = vscode.Uri.parse(`${library}/${name}.${type}`).with({scheme: 'object'})
+    this.resourceUri = vscode.Uri.parse(`${library}/${name}.${type}`).with({scheme: `object`})
   }
 }
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons = {
-  'FILE': 'database',
-  'CMD': 'terminal',
-  'MODULE': 'extensions',
-  'PGM': 'file-binary',
-  '': 'circle-large-outline'
+  'FILE': `database`,
+  'CMD': `terminal`,
+  'MODULE': `extensions`,
+  'PGM': `file-binary`,
+  '': `circle-large-outline`
 }

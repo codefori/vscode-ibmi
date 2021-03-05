@@ -111,8 +111,11 @@ Notice the special identifiers in the command begining with `&`. These identifie
 New actions can be added by defining a new action object in the settings like the snippet listed above.
 
 ### Auto Refresh
-When enabled, listings will refresh when items are interacted with (create, copy, delete, etc). If performance is bad, it is suggested to disable this option.
+When enabled, listings will refresh when items are interacted with (create, copy, delete, etc). If performance is bad, it is suggested you disable this option.
 
+### Log Compile Output
+When enabled, spool files will be logged from command execution.
+These spool files can be found under **OUTPUT** / **IBM i Compile Log**.
 ### Connections
 List of connection details from prior connections.
 
@@ -128,26 +131,50 @@ Here is a snippet of what the connection details look like:
 ],
 ```
 
-### Home Directory
-Home directory for user. This directory is also the root for the IFS browser.
+#### Connection Settings
 
-### Library List
-Comma delimited list for library list.
+An array of objects. Each object is unique by the host property and is used so different connections can have their own settings. **Note that connection properties can only be edited in the form of JSON, other than certain places in the UI**
 
-### Log Compile Output
-When enabled, spool files will be logged from command execution.
-These spool files can be found under **OUTPUT** / **IBM i Compile Log**.
+```json
+    "code-for-ibmi.connectionSettings": [
+        {
+            "host": "seiden.iinthecloud.com",
+            "sourceFileList": [
+                "QSYSINC/H",
+                "BARRY/QRPGLESRC",
+                "MYPROJ/QRPGLESRC"
+            ],
+            "libraryList": [
+                "QSYS2",
+                "QSYSINC",
+                "SAMPLE"
+            ],
+            "homeDirectory": "/home/alan3/apug",
+            "tempLibrary": "ILEDITOR",
+            "buildLibrary": "QTEMP",
+            "sourceASP": null
+        }
+    ]
+```
 
-### Source ASP
-If source files are located in a specific ASP, specify here. 
-Otherwise, leave blank.
-
-### Source File List
+#### Source File List
 Source files to be included in the member browser.
 
-### Temporary Library
-Temporary library used by extension. This cannot be QTEMP.
+#### Library List
+An array for the library list. Highest item of the library list goes first.
 
+#### Home Directory
+Home directory for user. This directory is also the root for the IFS browser.
+
+#### Temporary library
+Temporary library. Is used OUTPUT files. Cannot be QTEMP.
+
+#### Build library
+A library that can be defined/changes for IFS builds.
+
+#### Source ASP
+If source files are located in a specific ASP, specify here. 
+Otherwise, leave blank.
 
 ## Adding Source Files
 In order to make the member browser useful, source files need to be declared
@@ -179,6 +206,15 @@ it in the member list.
 
 ![assets/members_01.png](assets/members_01.png)
 
+## Comparing sources
+
+It is now possible to compare two sources, whether they are members or streamfiles.
+
+1. right click on either type, choose 'Select for compare'
+2. right click the other source you'd like to compare with and choose 'Compare with Selected'
+3. Profit ???
+
+![assets/compare_01.png](assets/compare_01.png)
 
 ## Compiling Sources
 Pressing <kbd>F1</kbd> and search for ```IBM i: Run Action```
@@ -206,6 +242,24 @@ This is what happens when a compiler error occurs.
 
 For compile command configuration, see [Settings/Actions](#actions)
 
+## Database Browser
+The database browser allows you browse tables in schemas on your connected system. The schema list comes from the defined library list.
+
+Clicking on a schema will load all tables, views, PFs, and LFs inside of the chosen schema. Click on any of those SQL objects will show you what columns are availabe. The tree view is primarily used for information purposes. When the schema has been opened, it will then add snippets to the editor when editing `.sql` sources. 
+
+### Hovering tables shows information it
+
+![assets/db_01.png](assets/db_01.png)
+
+### Editor will provide snippets to insert
+
+![assets/db_02.png](assets/db_02.png)
+
+### Viewing result sets
+
+It is also possible to run SQL statements right from the editor. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
+
+![assets/db_03.png](assets/db_03.png)
 
 ## Extension Development
 1. clone repo

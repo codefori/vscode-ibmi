@@ -1,7 +1,7 @@
 
-const util = require('util');
-const vscode = require('vscode');
-var instance = require('../Instance');
+const util = require(`util`);
+const vscode = require(`vscode`);
+let instance = require(`../Instance`);
 
 module.exports = class qsysFs {
   constructor() {
@@ -16,12 +16,26 @@ module.exports = class qsysFs {
    */
   async readFile(uri) {
     const contentApi = instance.getContent();
-    const [blank, lib, file, fullName] = uri.path.split('/');
-    const name = fullName.substring(0, fullName.lastIndexOf('.'));
 
-    const memberContent = await contentApi.downloadMemberContent(undefined, lib, file, name);
+    const path = uri.path.split(`/`);
+    let asp, lib, file, fullName;
 
-    return new Uint8Array(Buffer.from(memberContent, 'utf8'));
+    if (path.length === 4) {
+      lib = path[1];
+      file = path[2];
+      fullName = path[3];
+    } else {
+      asp = path[1];
+      lib = path[2];
+      file = path[3];
+      fullName = path[4];
+    }
+
+    const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+
+    const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+
+    return new Uint8Array(Buffer.from(memberContent, `utf8`));
   }
 
   /**
@@ -39,10 +53,23 @@ module.exports = class qsysFs {
    */
   writeFile(uri, content, options) {
     const contentApi = instance.getContent();
-    const [blank, lib, file, fullName] = uri.path.split('/');
-    const name = fullName.substring(0, fullName.lastIndexOf('.'));
+    const path = uri.path.split(`/`);
+    let asp, lib, file, fullName;
 
-    return contentApi.uploadMemberContent(undefined, lib, file, name, content.toString('utf8'));
+    if (path.length === 4) {
+      lib = path[1];
+      file = path[2];
+      fullName = path[3];
+    } else {
+      asp = path[1];
+      lib = path[2];
+      file = path[3];
+      fullName = path[4];
+    }
+
+    const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+
+    return contentApi.uploadMemberContent(asp, lib, file, name, content.toString(`utf8`));
   }
 
   /**

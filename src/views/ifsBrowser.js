@@ -1,8 +1,9 @@
 
-const { throws } = require('assert');
-const vscode = require('vscode');
+const { throws } = require(`assert`);
+const vscode = require(`vscode`);
 
-var instance = require('../Instance');
+let instance = require(`../Instance`);
+const Configuration = require(`../api/Configuration`);
 
 module.exports = class ifsBrowserProvider {
   /**
@@ -13,29 +14,26 @@ module.exports = class ifsBrowserProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeConfiguration(event => {
-        let affected = event.affectsConfiguration("code-for-ibmi.homeDirectory");
-        if (affected) {
-          this.refresh();
-        }
-      }),
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, async () => {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand('code-for-ibmi.changeHomeDirectory', async () => {
-        let config = vscode.workspace.getConfiguration('code-for-ibmi');
-        const homeDirectory = config.get('homeDirectory');
+      vscode.commands.registerCommand(`code-for-ibmi.changeHomeDirectory`, async () => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
+        const homeDirectory = config.homeDirectory;
 
         const newDirectory = await vscode.window.showInputBox({
-          prompt: 'Changing home directory',
+          prompt: `Changing home directory`,
           value: homeDirectory
         });
 
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
-            await config.update('homeDirectory', newDirectory, vscode.ConfigurationTarget.Global);
+            await config.set(`homeDirectory`, newDirectory);
+            
+            if (Configuration.get(`autoRefresh`)) this.refresh();
           }
         } catch (e) {
           console.log(e);
@@ -45,6 +43,7 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
         const connection = instance.getConnection();
+        const config = instance.getConfig();
         let root;
 
         if (node) {
@@ -52,11 +51,11 @@ module.exports = class ifsBrowserProvider {
           
           root = node.path;
         } else {
-          root = connection.homeDirectory;
+          root = config.homeDirectory;
         }
 
         const fullName = await vscode.window.showInputBox({
-          prompt: "Path of new folder",
+          prompt: `Path of new folder`,
           value: root
         });
 
@@ -65,7 +64,7 @@ module.exports = class ifsBrowserProvider {
           try {
             await connection.paseCommand(`mkdir ${fullName}`);
 
-            if (connection.autoRefresh) this.refresh();
+            if (Configuration.get(`autoRefresh`)) this.refresh();
 
           } catch (e) {
             vscode.window.showErrorMessage(`Error creating new directory! ${e}`);
@@ -75,6 +74,7 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.createStreamfile`, async (node) => {
         const connection = instance.getConnection();
+        const config = instance.getConfig();
         let root;
 
         if (node) {
@@ -82,11 +82,11 @@ module.exports = class ifsBrowserProvider {
           
           root = node.path;
         } else {
-          root = connection.homeDirectory;
+          root = config.homeDirectory;
         }
         
         const fullName = await vscode.window.showInputBox({
-          prompt: "Name of new streamfile",
+          prompt: `Name of new streamfile`,
           value: root
         });
 
@@ -100,7 +100,7 @@ module.exports = class ifsBrowserProvider {
 
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
 
-            if (connection.autoRefresh) this.refresh();
+            if (Configuration.get(`autoRefresh`)) this.refresh();
 
           } catch (e) {
             vscode.window.showErrorMessage(`Error creating new streamfile! ${e}`);
@@ -119,7 +119,7 @@ module.exports = class ifsBrowserProvider {
 
           } else {
             //Running from right click
-            var result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+            let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
             if (result === `Yes`) {
               const connection = instance.getConnection();
@@ -129,9 +129,9 @@ module.exports = class ifsBrowserProvider {
 
                 vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-                if (connection.autoRefresh) this.refresh();
+                if (Configuration.get(`autoRefresh`)) this.refresh();
               } catch (e) {
-                  vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
+                vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
               }
             }
 
@@ -152,7 +152,7 @@ module.exports = class ifsBrowserProvider {
 
           } else {
             const fullName = await vscode.window.showInputBox({
-              prompt: "Name of new path",
+              prompt: `Name of new path`,
               value: node.path
             });
 
@@ -161,7 +161,7 @@ module.exports = class ifsBrowserProvider {
 
               try {
                 await connection.paseCommand(`mv ${node.path} ${fullName}`);
-                if (connection.autoRefresh) this.refresh();
+                if (Configuration.get(`autoRefresh`)) this.refresh();
 
               } catch (e) {
                 vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
@@ -197,9 +197,11 @@ module.exports = class ifsBrowserProvider {
   async getChildren(element) {
     const connection = instance.getConnection();
     const content = instance.getContent();
-    var items = [], item;
+    let items = [], item;
 
     if (connection) {
+      const config = instance.getConfig();
+      
       if (element) { //Chosen SPF
         //Fetch members
         console.log(element.path);
@@ -213,15 +215,15 @@ module.exports = class ifsBrowserProvider {
 
         } catch (e) {
           console.log(e);
-          item = new vscode.TreeItem("Error loading members.");
+          item = new vscode.TreeItem(`Error loading members.`);
           vscode.window.showErrorMessage(e);
           items = [item];
         }
 
       } else {
-        const objects = await content.getFileList(connection.homeDirectory);
+        const objects = await content.getFileList(config.homeDirectory);
 
-        for (var object of objects) {
+        for (let object of objects) {
           items.push(new Object(object.type, object.name, object.path));
         }
       }
@@ -243,10 +245,10 @@ class Object extends vscode.TreeItem {
     this.contextValue = type;
     this.path = path;
 
-    if (type === 'directory') {
+    if (type === `directory`) {
       this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     } else {
-      this.resourceUri = vscode.Uri.parse(path).with({scheme: 'streamfile'});
+      this.resourceUri = vscode.Uri.parse(path).with({scheme: `streamfile`});
       this.command = {
         command: `code-for-ibmi.openEditable`,
         title: `Open Streamfile`,

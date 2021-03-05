@@ -1,13 +1,9 @@
-const vscode = require('vscode');
+const vscode = require(`vscode`);
 
-const path = require('path');
-const fs = require('fs');
+const IBMi = require(`../../api/IBMi`);
+const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-const IBMi = require('../../api/IBMi');
-
-var instance = require('../../Instance');
-
-const LoginHTML = fs.readFileSync(path.join(__dirname, 'login.html'), {encoding: 'utf8'});
+let instance = require(`../../Instance`);
 
 module.exports = class Login {
 
@@ -15,68 +11,63 @@ module.exports = class Login {
    * Called to log in to an IBM i
    * @param {vscode.ExtensionContext} context
    */
-  static show(context) {
+  static async show(context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
       if (!instance.disconnect()) return;
     }
 
-    const panel = vscode.window.createWebviewPanel(
-      'systemLogin',
-      'IBM i Login',
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true
-      }
-    );
+    let ui = new CustomUI();
 
-    panel.webview.html = LoginHTML;
+    ui.addField(new Field(`input`, `host`, `Host or IP Address`));
+    ui.addField(new Field(`input`, `port`, `Port`));
+    ui.fields[1].default = `22`;
+    ui.addField(new Field(`input`, `username`, `Username`));
+    ui.addField(new Field(`password`, `password`, `Password`));
+    ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
-    // Handle messages from the webview
-    panel.webview.onDidReceiveMessage(
-      async message => {
-        switch (message.command) {
-          case 'login':
-            message.data.port = Number(message.data.port);
+    const {panel, data} = await ui.loadPage(context, `IBM i Login`);
 
-            vscode.window.showInformationMessage(`Connecting to ${message.data.host}.`);
+    if (data) {
+      data.port = Number(data.port);
 
-            const connection = new IBMi();
+      vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
 
-            try {
-              const connected = await connection.connect(message.data);
-              if (connected) {
-                panel.dispose();
+      const connection = new IBMi();
 
-                vscode.window.showInformationMessage(`Connected to ${message.data.host}!`);
+      try {
+        const connected = await connection.connect(data);
+        if (connected.success) {
 
-                instance.setConnection(connection);
-                instance.loadAllofExtension(context);
+          vscode.window.showInformationMessage(`Connected to ${data.host}!`);
 
-                var existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');
-                var existingConnections = existingConnectionsConfig.get('connections');
-                if (!existingConnections.find(item => item.host === message.data.host)) {
-                  existingConnections.push({
-                    host: message.data.host,
-                    port: message.data.port,
-                    username: message.data.username
-                  });
-                  await existingConnectionsConfig.update('connections', existingConnections, vscode.ConfigurationTarget.Global);
-                }
+          instance.setConnection(connection);
+          instance.loadAllofExtension(context);
 
-              } else {
-                vscode.window.showErrorMessage(`Not connected to ${message.data.host}!`);
-              }
+          let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
+          let existingConnections = existingConnectionsConfig.get(`connections`);
+          if (!existingConnections.find(item => item.host === data.host)) {
+            existingConnections.push({
+              host: data.host,
+              port: data.port,
+              username: data.username
+            });
+            await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
+          }
 
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error connecting to ${message.data.host}! ${e.message}`);
-            }
-
-            return;
+        } else {
+          vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
         }
-      },
-      undefined,
-    );
+
+        panel.dispose();
+
+      } catch (e) {
+        vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
+      }
+    }
+
+    return;
+        
   }
 
   /**
@@ -89,15 +80,15 @@ module.exports = class Login {
       if (!instance.disconnect()) return;
     }
 
-    const existingConnectionsConfig = vscode.workspace.getConfiguration('code-for-ibmi');
-    const existingConnections = existingConnectionsConfig.get('connections');
+    const existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
+    const existingConnections = existingConnectionsConfig.get(`connections`);
     const items = existingConnections.map(item => `${item.username}@${item.host}:${item.port}`);
 
     const selected = await vscode.window.showQuickPick(items, {canPickMany: false});
 
     if (selected) {
-      const [username, hostname] = selected.split('@');
-      const [host, port] = hostname.split(':');
+      const [username, hostname] = selected.split(`@`);
+      const [host, port] = hostname.split(`:`);
 
       const password = await vscode.window.showInputBox({
         prompt: `Password for ${selected}`,
@@ -109,14 +100,14 @@ module.exports = class Login {
 
         try {
           const connected = await connection.connect({host, port: Number(port), username, password});
-          if (connected) {
+          if (connected.success) {
             vscode.window.showInformationMessage(`Connected to ${host}!`);
 
             instance.setConnection(connection);
             instance.loadAllofExtension(context);
 
           } else {
-            vscode.window.showErrorMessage(`Not connected to ${host}!`);
+            vscode.window.showErrorMessage(`Not connected to ${host}! ${connected.error.message || connected.error}`);
           }
         } catch (e) {
           vscode.window.showErrorMessage(`Error connecting to ${host}! ${e.message}`);
