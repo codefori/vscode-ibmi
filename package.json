@@ -328,6 +328,50 @@
 							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
 						},
 						{
+							"type": "streamfile",
+							"extensions": [
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create Bound RPG Program (CRTBNDRPG)",
+							"command": "CRTBNDRPG PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create RPG Module (CRTRPGMOD)",
+							"command": "?CRTRPGMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CLP",
+								"CLLE"
+							],
+							"name": "Create Bound CL Program (CRTBNDCL)",
+							"command": "?CRTBNDCL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Set CCSID to 1252",
+							"environment": "pase",
+							"command": "setccsid 1252 &FULLPATH"
+						},
+						{
 							"type": "object",
 							"extensions": [
 								"GLOBAL"
