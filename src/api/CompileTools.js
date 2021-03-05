@@ -40,13 +40,15 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {{lib: string, object: string, ext?: string}} evfeventInfo
+   * @param {{asp?: string, lib: string, object: string, ext?: string}} evfeventInfo
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => row.EVFEVENT);
+
+    const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
     const errors = errorHandler(lines);
 
@@ -82,7 +84,7 @@ module.exports = class CompileTools {
         if (file.startsWith(`/`))
           ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
         else
-          ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
+          ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
         
       }
 
@@ -98,7 +100,7 @@ module.exports = class CompileTools {
    * @param {vscode.Uri} uri 
    */
   static async RunAction(instance, uri) {
-    let evfeventInfo = {lib: ``, object: ``};
+    let evfeventInfo = {asp: undefined, lib: ``, object: ``};
 
     /** @type {IBMi} */
     const connection = instance.getConnection();
@@ -134,17 +136,29 @@ module.exports = class CompileTools {
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
-        let blank, lib, file, fullName;
+        let blank, asp, lib, file, fullName;
         let basename, name, ext;
 
         switch (uri.scheme) {
         case `member`:
-          [blank, lib, file, fullName] = uri.path.split(`/`);
+          const memberPath = uri.path.split(`/`);
+      
+          if (memberPath.length === 4) {
+            lib = memberPath[1];
+            file = memberPath[2];
+            fullName = memberPath[3];
+          } else {
+            asp = memberPath[1]
+            lib = memberPath[2];
+            file = memberPath[3];
+            fullName = memberPath[4];
+          }
           name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
           ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : undefined);
 
           evfeventInfo = {
+            asp,
             lib: lib,
             object: name,
             ext
@@ -163,6 +177,7 @@ module.exports = class CompileTools {
           ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
 
           evfeventInfo = {
+            asp: undefined,
             lib: config.buildLibrary,
             object: name,
             ext
@@ -180,6 +195,7 @@ module.exports = class CompileTools {
           name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
           evfeventInfo = {
+            asp: undefined,
             lib,
             object: name,
             extension
@@ -232,7 +248,7 @@ module.exports = class CompileTools {
             if (commandResult.code === 0 || commandResult.code === null) {
               executed = true;
               vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
-              if (connection.autoRefresh) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
+              if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
               
             } else {
               executed = false;
