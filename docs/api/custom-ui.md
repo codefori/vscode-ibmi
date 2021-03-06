@@ -18,9 +18,9 @@ You can find the source for this API at `src/api/CustomUI.js`.
 
 ### `Field` class
 
-* `constructor(type: "input"|"password"|"submit", id: string, label: string)` to create an instance of a field.
+* `constructor(type: "input"|"password"|"checkbox"|"submit", id: string, label: string)` to create an instance of a field.
 * `field.description` (`string`) can be used to set text about the field for information about the field.
-* `field.default` can be used to set the initial value of the field.
+* `field.default` can be used to set the initial value of the field. If the field is a checkbox, you can use the value of `checked` to have it checked by default.
 
 ## Example
 
