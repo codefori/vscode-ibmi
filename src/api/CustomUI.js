@@ -52,7 +52,7 @@ class CustomUI {
     }
 
     const onDiskPath = vscode.Uri.file(
-      path.join(context.extensionPath, `src`, `webviews`, `extern`, `vscwe.js`)
+      path.join(context.extensionPath, `node_modules`, `@bendera`, `vscode-webview-elements`, `dist`, `bundled.js`)
     );
     // And get the special URI to use with the webview
     const onDiskSrc = panel.webview.asWebviewUri(onDiskPath);
@@ -94,8 +94,16 @@ class CustomUI {
     
                 var data = {};
     
-                for (const field of fields) data[field] = document.getElementById(field).value;
-    
+                for (const field of fields) {
+                  var fieldType = document.getElementById(field).nodeName.toLowerCase();
+                   switch (fieldType) {
+                    case "vscode-checkbox"
+                    :data[field] = document.getElementById(field).checked;
+                    break;
+                    default
+                    :data[field] = document.getElementById(field).value;
+                  }
+                }
                 vscode.postMessage(data)
             };
 
@@ -120,7 +128,7 @@ class CustomUI {
 
 class Field  {
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"} */
+    /** @type {"input"|"password"|"submit"|"checkbox"}} */
     this.type = type;
 
     /** @type {string} */
@@ -140,7 +148,14 @@ class Field  {
     switch (this.type) {
     case `submit`:
       return `<vscode-button id="${this.id}">${this.label}</vscode-button>`;
-
+    case `checkbox`:
+      return `
+        <vscode-form-item>
+        <vscode-form-control>
+        <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
+        ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+        </vscode-form-control>
+        </vscode-form-item>`;
     case `input`:
       return `
       <vscode-form-item>
