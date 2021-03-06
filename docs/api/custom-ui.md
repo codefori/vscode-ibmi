@@ -12,7 +12,7 @@ You can find the source for this API at `src/api/CustomUI.js`.
 
 * `constructor()` creates an instances
 * `addField(Field)` adds a field to the CustomUI
-* `loadPage(context: vscode.ExtensionContext, title: string): Promise<{panel: vscode.WebviewPanel, data: {...}}` is called when you're ready to render the page. The context must come from the extension. The return object contains two pieces of data
+* `loadPage(title: string): Promise<{panel: vscode.WebviewPanel, data: {...}}` is called when you're ready to render the page.
   1. `panel: vscode.WebviewPanel` which is the panel being used to render the form.
   2. `data: {...}` which returns the form data, where the field ID's are the properties
 
@@ -35,7 +35,7 @@ context.subscriptions.push(
     ui.addField(new Field(`input`, `name`, `Your name`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
-    const {panel, data} = await ui.loadPage(context, `IBM i Login`)
+    const {panel, data} = await ui.loadPage(`IBM i Login`)
     if (data) {
       if (data.name.length > 0) {
         vscode.window.showInformationMessage(`Hello ${data.name}!`);
