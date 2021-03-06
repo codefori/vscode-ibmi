@@ -329,6 +329,12 @@
 						},
 						{
 							"type": "streamfile",
+							"extensions": ["rpgle"],
+							"name": "Create Bound RPG Program (CRTBNDRPG) with inputs",
+							"command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
 							"extensions": [
 								"RPGLE",
 								"RPG"
