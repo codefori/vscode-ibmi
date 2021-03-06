@@ -5,6 +5,7 @@ const path = require(`path`);
 const errorHandler = require(`./errorHandle`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
+const { CustomUI, Field } = require(`./CustomUI`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -209,6 +210,8 @@ module.exports = class CompileTools {
 
         if (command.startsWith(`?`)) {
           command = await vscode.window.showInputBox({prompt: `Run action`, value: command.substring(1)})
+        } else {
+          command = await CompileTools.showCustomInputs(chosenOptionName, command);
         }
 
         if (command) {
@@ -279,5 +282,69 @@ module.exports = class CompileTools {
       //No compile commands
       vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);
     }
+  }
+
+  /**
+   * @param {string} name Name of action 
+   * @param {string} command Command string
+   * @return {Promise<string>} new command
+   */
+  static async showCustomInputs(name, command) {
+    let loop = true, idx, start, end = 0, currentInput;
+
+    let components = [];
+
+    while (loop) {
+      idx = command.indexOf(`\${`, end);
+
+      if (idx >= 0) {
+        start = idx;
+        end = command.indexOf(`}`, start);
+
+        if (end >= 0) {
+          currentInput = command.substring(start+2, end);
+
+          const [name, label, initalValue] = currentInput.split(`|`);
+          components.push({
+            name,
+            label,
+            initalValue: initalValue || ``,
+            positions: [start, end+1]
+          });
+        } else {
+          loop = false;
+        }
+      } else {
+        loop = false;
+      }
+    }
+
+    if (components.length > 0) {
+      let commandUI = new CustomUI();
+      let field;
+
+      for (const component of components) {
+        field = new Field(`input`, component.name, component.label);
+        field.default = component.initalValue;
+        commandUI.addField(field);
+      }
+
+      commandUI.addField(new Field(`submit`, `execute`, `Execute`));
+
+      const {panel, data} = await commandUI.loadPage(name);
+
+      panel.dispose();
+      if (data) {
+        for (const component of components.reverse()) {
+          command = command.substr(0, component.positions[0]) + data[component.name] + command.substr(component.positions[1]);
+        }
+      } else {
+        command = undefined;
+      }
+
+    }
+
+    return command;
+  
   }
 }
