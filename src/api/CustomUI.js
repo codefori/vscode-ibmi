@@ -94,8 +94,16 @@ class CustomUI {
     
                 var data = {};
     
-                for (const field of fields) data[field] = document.getElementById(field).checked || document.getElementById(field).value;
-    
+                for (const field of fields) {
+                  var fieldType = document.getElementById(field).nodeName.toLowerCase();
+                   switch (fieldType) {
+                    case "vscode-checkbox"
+                    :data[field] = document.getElementById(field).checked;
+                    break;
+                    default
+                    :data[field] = document.getElementById(field).value;
+                  }
+                }
                 vscode.postMessage(data)
             };
 
@@ -144,7 +152,8 @@ class Field  {
       return `
         <vscode-form-item>
         <vscode-form-control>
-        <vscode-checkbox id="${this.id}" value="${this.default}">${this.label}</vscode-checkbox>
+        <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
+        ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
         </vscode-form-control>
         </vscode-form-item>`;
     case `input`:
