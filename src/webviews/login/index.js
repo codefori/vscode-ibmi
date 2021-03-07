@@ -26,7 +26,7 @@ module.exports = class Login {
     ui.addField(new Field(`password`, `password`, `Password`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
-    const {panel, data} = await ui.loadPage(context, `IBM i Login`);
+    const {panel, data} = await ui.loadPage(`IBM i Login`);
 
     if (data) {
       data.port = Number(data.port);

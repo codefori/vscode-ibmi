@@ -10,11 +10,10 @@ class CustomUI {
   addField(field) {this.fields.push(field)};
 
   /**
-   * @param {vscode.ExtensionContext} context 
    * @param {string} title 
-   * @returns {Promise<{panel: vscode.WebviewPanel, data: object}}
+   * @returns {Promise<{panel: vscode.WebviewPanel, data: object}>}
    */
-  loadPage(context, title) {
+  loadPage(title) {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -24,7 +23,7 @@ class CustomUI {
       }
     );
 
-    panel.webview.html = this.getHTML(panel, context);
+    panel.webview.html = this.getHTML(panel);
 
     let didSubmit = false;
 
@@ -44,15 +43,16 @@ class CustomUI {
 
   }
 
-  getHTML(panel, context) {
+  getHTML(panel) {
     const submitButton = this.fields.find(field => field.type === `submit`);
 
     if (!submitButton) {
       throw new Error(`Submit button required on CustomUI forms.`);
     }
 
+    const extensionPath = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).extensionPath;
     const onDiskPath = vscode.Uri.file(
-      path.join(context.extensionPath, `node_modules`, `@bendera`, `vscode-webview-elements`, `dist`, `bundled.js`)
+      path.join(extensionPath, `node_modules`, `@bendera`, `vscode-webview-elements`, `dist`, `bundled.js`)
     );
     // And get the special URI to use with the webview
     const onDiskSrc = panel.webview.asWebviewUri(onDiskPath);
