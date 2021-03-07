@@ -63,7 +63,7 @@ module.exports = class IBMiContent {
       try {
         //If this command fails we need to try again after we delete the temp remote
         await this.ibmi.remoteCommand(
-          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208)`, `.`
+          `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.ibmi.config.sourceFileCCSID})`, `.`
         );
       } catch (e) {
         if (e.startsWith(`CPDA08A`)) {
@@ -74,6 +74,8 @@ module.exports = class IBMiContent {
           } else {
             throw e;
           }
+        } else {
+          throw e;
         }
       }
     }
@@ -108,7 +110,7 @@ module.exports = class IBMiContent {
 
       await client.putFile(tmpobj, tempRmt);
       await this.ibmi.remoteCommand(
-        `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208)`,
+        `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.ibmi.config.sourceFileCCSID})`,
       );
 
       return true;
@@ -279,5 +281,21 @@ module.exports = class IBMiContent {
     } else {
       return [];
     }
+  }
+
+  /**
+   * @param {string} errorsString 
+   * @returns {{code: string, text: string}[]} errors
+   */
+  parseIBMiErrors(errorsString) {
+    let errors = [];
+
+    let code, text;
+    for (const error of errorsString.split(`\n`)) {
+      [code, text] = error.split(`:`);
+      errors.push({code, text});
+    }
+
+    return errors;
   }
 }

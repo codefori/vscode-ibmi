@@ -28,6 +28,9 @@ module.exports = class Configuration {
 
     /** @type {string|undefined} */
     this.sourceASP = base.sourceASP || undefined;
+
+    /** @type {string} */
+    this.sourceFileCCSID = base.sourceFileCCSID || `*FILE`;
   }
 
   /**
