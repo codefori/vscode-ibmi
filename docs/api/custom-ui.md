@@ -12,7 +12,7 @@ You can find the source for this API at `src/api/CustomUI.js`.
 
 * `constructor()` creates an instances
 * `addField(Field)` adds a field to the CustomUI
-* `loadPage(title: string): Promise<{panel: vscode.WebviewPanel, data: {...}}` is called when you're ready to render the page.
+* `loadPage(title: string): Promise<{panel: vscode.WebviewPanel, data: {...}}>` is called when you're ready to render the page.
   1. `panel: vscode.WebviewPanel` which is the panel being used to render the form.
   2. `data: {...}` which returns the form data, where the field ID's are the properties
 
