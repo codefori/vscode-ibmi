@@ -1,5 +1,7 @@
 const vscode = require(`vscode`);
-const path = require(`path`);
+
+//Webpack is returning this as a string
+const vscodeweb = require(`@bendera/vscode-webview-elements/dist/bundled`);
 
 class CustomUI {
   constructor() {
@@ -50,13 +52,6 @@ class CustomUI {
       throw new Error(`Submit button required on CustomUI forms.`);
     }
 
-    const extensionPath = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).extensionPath;
-    const onDiskPath = vscode.Uri.file(
-      path.join(extensionPath, `node_modules`, `@bendera`, `vscode-webview-elements`, `dist`, `bundled.js`)
-    );
-    // And get the special URI to use with the webview
-    const onDiskSrc = panel.webview.asWebviewUri(onDiskPath);
-
     return `
     <!DOCTYPE html>
     <html lang="en">
@@ -66,7 +61,7 @@ class CustomUI {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>IBM i Log in</title>
     
-        <script src="${onDiskSrc}" type="module"></script>
+        <script type="module">${vscodeweb}</script>
         <style>
             #laforma {
                 margin: 2em 2em 2em 2em;

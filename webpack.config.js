@@ -14,7 +14,7 @@ const config = {
     path: path.resolve(__dirname, `dist`),
     filename: `extension.js`,
     libraryTarget: `commonjs2`,
-    devtoolModuleFilenameTemplate: `../[resource-path]`
+    devtoolModuleFilenameTemplate: `../[resource-path]`,
   },
   devtool: `source-map`,
   externals: {
@@ -22,19 +22,16 @@ const config = {
   },
   resolve: {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
-    extensions: [`.ts`, `.js`, `.svg`]
+    extensions: [`.ts`, `.js`, `.svg`],
   },
   module: {
+    
     rules: [
-      // {
-      //   test: /\.ts$/,
-      //   // exclude: /node_modules/,
-      //   use: [
-      //     {
-      //       loader: `ts-loader`
-      //     }
-      //   ]
-      // }
+      {
+        test: /\.js$/,
+        include: path.resolve(__dirname, `node_modules/@bendera/vscode-webview-elements/dist`),
+        type: `asset/source`
+      }
     ]
   }
 };
