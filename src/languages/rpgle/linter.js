@@ -17,9 +17,13 @@ module.exports = class RPGLinter {
       linterDiagnostics,
 
       vscode.workspace.onDidChangeTextDocument((event) => {
-        if (event.document.languageId === 'rpgle') {
+        if (event.document.languageId === `rpgle`) {
           const text = event.document.getText();
-          linterDiagnostics.set(event.document.uri, RPGLinter.parseFreeFormatDocument(text, {indent: 2}));
+          if (text.startsWith(`**FREE`)) {
+            linterDiagnostics.set(event.document.uri, RPGLinter.parseFreeFormatDocument(text, {
+              indent: Number(vscode.window.activeTextEditor.options.tabSize)
+            }));
+          }
         }
       })
     )
@@ -29,7 +33,7 @@ module.exports = class RPGLinter {
   /**
    * 
    * @param {string} content 
-   * @param {{indent: number}} rules 
+   * @param {{indent?: number}} rules 
    */
   static parseFreeFormatDocument(content, rules) {
     /** @type {string[]} */
@@ -111,7 +115,13 @@ module.exports = class RPGLinter {
         if ([
           `IF`, `ELSE`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
         ].includes(pieces[0])) {
-          if (pieces[0] !== `DCL-DS` && !line.includes(`LIKEDS`)) 
+          if (pieces[0] == `DCL-DS` && line.includes(`LIKEDS`)) {
+            //No change
+          } 
+          else if (pieces[0] == `DCL-PI` && line.includes(`END-PI`)) {
+            //No change
+          }
+          else
             expectedIndent += indent; 
         }
 
