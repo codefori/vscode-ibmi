@@ -27,13 +27,16 @@ module.exports = class IBMi {
   }
 
   /**
-   * @param {{host: string, port: number, username: string, password: string, keepaliveInterval?: number}} connectionObject 
+   * @param {{host: string, port: number, username: string, password?: string,
+   *          privateKey?: string, keepaliveInterval?: number}} connectionObject
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
   async connect(connectionObject) {
     try {
       connectionObject.keepaliveInterval = 35000;
-
+      // Make sure we're not passing any blank strings, as node_ssh will try to validate it
+      if (!connectionObject.privateKey) (connectionObject.privateKey = null);
+      
       await this.client.connect(connectionObject);
 
       this.currentHost = connectionObject.host;
