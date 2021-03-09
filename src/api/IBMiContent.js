@@ -138,8 +138,10 @@ module.exports = class IBMiContent {
         output = output.replace(new RegExp(`:}`, `g`), `:null}`);
         const rows = JSON.parse(output);
         for (let row of rows)
-          for (let key in row)
+          for (let key in row) {
             if (typeof row[key] === `string`) row[key] = row[key].trim();
+            if (row[key] === `null`) row[key] = null;
+          }
 
         return rows;
       } else {
@@ -220,15 +222,34 @@ module.exports = class IBMiContent {
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
 
-    const tempLib = this.ibmi.config.tempLibrary;
-    const TempName = IBMi.makeid();
+    let results;
 
-    await this.ibmi.remoteCommand(`DSPFD FILE(${lib}/${spf}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-    const results = await this.getTable(tempLib, TempName, TempName);
+    if (this.ibmi.remoteFeatures.db2util) {
+      results = await this.runSQL(`
+        Select 
+          (Avgrowsize - 12) as MBMXRL, 
+          Iasp_Number as MBASP, 
+          System_Table_Member as MBNAME, 
+          Source_Type as MBSEU2, 
+          Partition_Text as MBMTXT
+        From Qsys2.Syspartitionstat, Qsys2.Sysschemas 
+        Where 
+          Table_Schema = '${lib}' And 
+          Table_Name = '${spf}' And 
+          Schema_Name = System_Table_Schema
+      `)
 
-    if (results.length === 1) {
-      if (results[0].MBNAME.trim() === ``) {
-        return []
+    } else {
+      const tempLib = this.ibmi.config.tempLibrary;
+      const TempName = IBMi.makeid();
+
+      await this.ibmi.remoteCommand(`DSPFD FILE(${lib}/${spf}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+      results = await this.getTable(tempLib, TempName, TempName);
+
+      if (results.length === 1) {
+        if (results[0].MBNAME.trim() === ``) {
+          return []
+        }
       }
     }
 
@@ -238,8 +259,8 @@ module.exports = class IBMiContent {
 
     return results.map(result => ({
       asp: asp,
-      library: result.MBLIB,
-      file: result.MBFILE,
+      library: lib,
+      file: spf,
       name: result.MBNAME,
       extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
