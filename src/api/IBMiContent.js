@@ -283,6 +283,9 @@ module.exports = class IBMiContent {
     if (typeof results === `string` && results !== ``) {
       let list = results.split(`\n`);
 
+      //Remove current and dir up.
+      list = list.filter(item => item !== `../` && item !== `./`);
+
       const items = list.map(item => {
         const type = ((item.substr(item.length - 1, 1) === `/`) ? `directory` : `streamfile`);
 
