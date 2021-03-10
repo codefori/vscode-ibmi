@@ -1,28 +1,90 @@
 
 const vscode = require(`vscode`);
 
-/** @type {vscode.DiagnosticCollection} */
-let linterDiagnostics;
-
 module.exports = class RPGLinter {
   /**
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
-    if (!linterDiagnostics) {
-      linterDiagnostics = vscode.languages.createDiagnosticCollection(`Lint`);
-    }
+    this.linterDiagnostics = vscode.languages.createDiagnosticCollection(`Lint`);
+
+    /** @type {Declaration[]} */
+    this.variables = [];
+    /** @type {Declaration[]} */
+    this.procedures = [];
+    /** @type {Declaration[]} */
+    this.structs = [];
 
     context.subscriptions.push(
-      linterDiagnostics,
+      this.linterDiagnostics,
 
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (event.document.languageId === `rpgle`) {
           const text = event.document.getText();
           if (text.startsWith(`**FREE`)) {
-            linterDiagnostics.set(event.document.uri, RPGLinter.parseFreeFormatDocument(text, {
+            this.linterDiagnostics.set(event.document.uri, this.parseFreeFormatDocument(text, {
               indent: Number(vscode.window.activeTextEditor.options.tabSize)
             }));
+          }
+        }
+      }),
+
+      vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
+        provideCompletionItems: (document, position) => {
+          /** @type vscode.CompletionItem[] */
+          let items = [];
+          let item;
+
+          // for (const variable of this.variables) {
+          //   item = new vscode.CompletionItem(variable.name, vscode.CompletionItemKind.Variable);
+          //   item.detail = variable.keywords.join(` `);
+          //   item.documentation = variable.comments;
+          //   items.push(item);
+          // }
+
+          // for (const struct of this.structs) {
+          //   const isDim = struct.keywords.find(keyword => keyword.startsWith(`DIM`));
+
+          //   item = new vscode.CompletionItem(`${struct.name}${isDim ? `(x)` : ``}`, vscode.CompletionItemKind.Struct);
+          //   item.insertText = `${struct.name}${isDim ? `(index)` : ``}$0`;
+          //   item.detail = struct.keywords.join(` `);
+          //   item.documentation = struct.comments;
+          //   items.push(item);
+
+          //   for (const subfield of struct.subItems) {
+          //     item = new vscode.CompletionItem(`${struct.name}${isDim ? `(x)` : ``}.${subfield.name}`, vscode.CompletionItemKind.Property);
+          //     item.insertText = `${struct.name}${isDim ? `(index)` : ``}.${subfield.name}$0`;
+          //     item.detail = subfield.keywords.join(` `);
+          //     item.documentation = subfield.comments;
+          //     items.push(item);
+          //   }
+          // }
+
+          for (const procedure of this.procedures) {
+            item = new vscode.CompletionItem(`${procedure.name}(${procedure.subItems.map((parm) => parm.name).join(`:`)})`, vscode.CompletionItemKind.Function);
+            item.detail = procedure.keywords.join(` `);
+            item.documentation = procedure.comments;
+            items.push(item);
+          }
+
+          return items;
+        }
+      }),
+
+      vscode.workspace.onDidSaveTextDocument((event) => {
+        if (event.languageId === `rpgle`) {
+          const text = event.getText();
+          if (text.startsWith(`**FREE`)) {
+            this.getDocs(text);
+          }
+        }
+      }),
+
+      vscode.workspace.onDidOpenTextDocument((event) => {
+        if (event.languageId === `rpgle`) {
+          const text = event.getText();
+          if (text.startsWith(`**FREE`)) {
+            this.getDocs(text);
           }
         }
       })
@@ -31,11 +93,132 @@ module.exports = class RPGLinter {
   }
 
   /**
+   * @param {string} content 
+   */
+  getDocs(content) {
+    const lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+    let currentComments = [], currentExample = [], currentItem, currentSub;
+
+    let parts, partsLower, pieces;
+
+    this.variables = [];
+    this.structs = [];
+    this.procedures = [];
+
+    for (let line of lines) {
+      line = line.trim();
+
+      if (line === ``) continue;
+
+      pieces = line.split(`;`);
+      parts = pieces[0].toUpperCase().split(` `).filter(piece => piece !== ``);
+      partsLower = pieces[0].split(` `).filter(piece => piece !== ``);
+
+      switch (parts[0]) {
+      case `DCL-S`:
+        if (!parts.includes(`TEMPLATE`)) {
+          currentItem = new Declaration(`variable`);
+          currentItem.name = partsLower[1];
+          currentItem.keywords = parts.slice(2);
+          currentItem.comments = currentComments.join(` `);
+          this.variables.push(currentItem);
+          currentItem = undefined;
+          currentComments = [];
+          currentExample = [];
+        }
+        break;
+
+      case `DCL-DS`:
+        if (!parts.includes(`TEMPLATE`)) {
+          currentItem = new Declaration(`struct`);
+          currentItem.name = partsLower[1];
+          currentItem.keywords = parts.slice(2);
+          currentItem.comments = currentComments.join(` `);
+          currentItem.example = currentExample;
+
+          currentComments = [];
+          currentExample = [];
+        }
+        break;
+
+      case `END-DS`:
+        if (currentItem) {
+          this.structs.push(currentItem);
+          currentItem = undefined;
+        }
+        break;
+        
+      case `DCL-PR`:
+        if (parts.find(element => element.startsWith(`EXTPROC`)) || parts.find(element => element.startsWith(`EXTPGM`))) {
+          currentItem = new Declaration(`procedure`);
+          currentItem.name = partsLower[1];
+          currentItem.keywords = parts.slice(2);
+          currentItem.comments = currentComments.join(` `);
+          currentItem.example = currentExample;
+
+          currentComments = [];
+          currentExample = [];
+        } else {
+          console.log(`Procedures require EXTPROC or EXTPGM`);
+        }
+        break;
+
+      case `DCL-PI`:
+        currentItem = new Declaration(`procedure`);
+        currentItem.name = partsLower[1];
+        currentItem.keywords = parts.slice(2);
+        currentItem.comments = currentComments.join(` `);
+        currentItem.example = currentExample;
+
+        currentComments = [];
+        currentExample = [];
+        break;
+
+      case `END-PR`:
+      case `END-PI`:
+        if (currentItem) {
+          this.procedures.push(currentItem);
+          currentItem = undefined;
+        }
+        break;
+
+      default:
+        if (line.startsWith(`//@`)) {
+          currentComments.push(line.substring(3).trim());
+
+        } else if (line.startsWith(`//-`)) {
+          if (line.length >= 4) {
+            currentExample.push(line.substring(4).trimEnd());
+          } else if (line.length === 3) {
+            currentExample.push(``);
+          }
+
+        } else {
+          if (currentItem) {
+            if (parts[0].startsWith(`DCL`))
+              parts.slice(1);
+
+            currentSub = new Declaration(`subitem`);
+            currentSub.name = partsLower[0];
+            currentSub.keywords = parts.slice(1);
+            currentSub.comments = currentComments.join(` `);
+
+            currentItem.subItems.push(currentSub);
+            currentSub = undefined;
+            currentComments = [];
+          }
+        }
+        break;
+      }
+    }
+  }
+
+  /**
    * 
    * @param {string} content 
    * @param {{indent?: number}} rules 
    */
-  static parseFreeFormatDocument(content, rules) {
+  parseFreeFormatDocument(content, rules) {
     /** @type {string[]} */
     const lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
 
@@ -89,6 +272,7 @@ module.exports = class RPGLinter {
 
         pieces = line.split(` `);
 
+
         if ([
           `ENDIF`, `ENDFOR`, `ENDDO`, `ELSE`, `ELSEIF`, `ON-ERROR`, `ENDMON`, `ENDSR`, `WHEN`, `OTHER`, `END-PROC`, `END-PI`, `END-PR`, `END-DS`
         ].includes(pieces[0])) {
@@ -101,7 +285,7 @@ module.exports = class RPGLinter {
         ].includes(pieces[0])) {
           expectedIndent -= (indent*2); 
         }
-        
+          
         if (currentIndent !== expectedIndent && !skipIndentCheck) {
           diagnostics.push(
             new vscode.Diagnostic(
@@ -130,9 +314,28 @@ module.exports = class RPGLinter {
         ].includes(pieces[0])) {
           expectedIndent += (indent*2);
         }
+          
       }
     }
 
     return diagnostics;
+  }
+}
+
+class Declaration {
+  /**
+   * 
+   * @param {"procedure"|"struct"|"subitem"|"variable"} type 
+   */
+  constructor(type) {
+    this.type = `procedure`;
+    this.name = ``;
+    this.keywords = [];
+    this.comments = ``;
+
+    //Not used in subitem:
+    /** @type {Declaration[]} */
+    this.subItems = [];
+    this.example = [];
   }
 }
