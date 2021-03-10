@@ -29,36 +29,30 @@ module.exports = class RPGLinter {
         }
       }),
 
+      vscode.languages.registerHoverProvider({language: `rpgle`}, {
+        provideHover: (document, position, token) => {
+          const range = document.getWordRangeAtPosition(position);
+          const word = document.getText(range).toUpperCase();
+
+          const procedure = this.procedures.find(proc => proc.name.toUpperCase() === word.toUpperCase());
+
+          if (procedure) {
+            return new vscode.Hover(
+              new vscode.MarkdownString(
+                `\`${procedure.keywords.join(` `)}\`\n${procedure.comments}\n\n${procedure.subItems.map(parm => `* \`${parm.name} ${parm.keywords.join(` `)}\` ${parm.comments}`).join(`\n`)}`
+              )
+            );
+          }
+
+          return null;
+        }
+      }),
+
       vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
         provideCompletionItems: (document, position) => {
           /** @type vscode.CompletionItem[] */
           let items = [];
           let item;
-
-          // for (const variable of this.variables) {
-          //   item = new vscode.CompletionItem(variable.name, vscode.CompletionItemKind.Variable);
-          //   item.detail = variable.keywords.join(` `);
-          //   item.documentation = variable.comments;
-          //   items.push(item);
-          // }
-
-          // for (const struct of this.structs) {
-          //   const isDim = struct.keywords.find(keyword => keyword.startsWith(`DIM`));
-
-          //   item = new vscode.CompletionItem(`${struct.name}${isDim ? `(x)` : ``}`, vscode.CompletionItemKind.Struct);
-          //   item.insertText = `${struct.name}${isDim ? `(index)` : ``}$0`;
-          //   item.detail = struct.keywords.join(` `);
-          //   item.documentation = struct.comments;
-          //   items.push(item);
-
-          //   for (const subfield of struct.subItems) {
-          //     item = new vscode.CompletionItem(`${struct.name}${isDim ? `(x)` : ``}.${subfield.name}`, vscode.CompletionItemKind.Property);
-          //     item.insertText = `${struct.name}${isDim ? `(index)` : ``}.${subfield.name}$0`;
-          //     item.detail = subfield.keywords.join(` `);
-          //     item.documentation = subfield.comments;
-          //     items.push(item);
-          //   }
-          // }
 
           for (const procedure of this.procedures) {
             item = new vscode.CompletionItem(`${procedure.name}(${procedure.subItems.map((parm) => parm.name).join(`:`)})`, vscode.CompletionItemKind.Function);
