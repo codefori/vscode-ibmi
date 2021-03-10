@@ -7,7 +7,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 ## Requirements
 
 - SSH Daemon must be started on IBM i.
-  ((Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.))
+  (Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
 - Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos). 
 
 ## Installation
