@@ -161,7 +161,8 @@ Here is a snippet of what the connection details look like:
   {
     "host": "DEV400",
     "port": 22,
-    "username": "OTTEB"
+    "username": "OTTEB",
+    "privateKey": null
   }
 ],
 ```
