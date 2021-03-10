@@ -24,7 +24,7 @@ module.exports = class Login {
     ui.fields[1].default = `22`;
     ui.addField(new Field(`input`, `username`, `Username`));
     ui.addField(new Field(`password`, `password`, `Password`));
-    ui.addField(new Field(`input`, `privateKey`, `Path to Private Key`));
+    ui.addField(new Field(`file`, `privateKey`, `Private Key`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
     const {panel, data} = await ui.loadPage(`IBM i Login`);

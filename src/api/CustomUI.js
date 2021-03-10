@@ -81,7 +81,8 @@ class CustomUI {
         (function () {
             const vscode = acquireVsCodeApi();
             const submitButton = document.getElementById('${submitButton.id}');
-            const fields = [${this.fields.filter(field => field.type !== `submit`).map(field => `'${field.id}'`).join(`,`)}];
+            const submitfields = [${this.fields.filter(field => field.type !== `submit`).map(field => `'${field.id}'`).join(`,`)}];
+            const filefields = [${this.fields.filter(field => field.type == `file`).map(field => `'${field.id}'`).join(`,`)}];
     
             const doDone = (event) => {
                 if (event)
@@ -89,7 +90,7 @@ class CustomUI {
     
                 var data = {};
     
-                for (const field of fields) {
+                for (const field of submitfields) {
                   var fieldType = document.getElementById(field).nodeName.toLowerCase();
                    switch (fieldType) {
                     case "vscode-checkbox"
@@ -105,7 +106,7 @@ class CustomUI {
             submitButton.onclick = doDone;
             submitButton.onKeyDown = doDone;
 
-            for (const field of fields) {
+            for (const field of submitfields) {
                 document.getElementById(field)
                     .addEventListener('keyup', function(event) {
                       event.preventDefault();
@@ -114,6 +115,23 @@ class CustomUI {
                     }
                 });
             }
+
+            for (const field of filefields) {
+              document.getElementById(field)
+                  .addEventListener('vsc-change', (e) => {
+                      const VirtualField = document.getElementById(e.target.id)
+                      let input = VirtualField.shadowRoot.querySelector("input");
+                      for (let file of Array.from(input.files)) {
+                          let reader = new FileReader();
+                          reader.addEventListener("load", () => {
+                            console.log(file.path);
+                            document.getElementById(e.target.id).setAttribute("value", file.path)   
+                          });
+                          reader.readAsText(file);
+                      }
+                  }
+                  )}
+
         }())
     </script>
     
@@ -123,7 +141,7 @@ class CustomUI {
 
 class Field  {
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"}} */
+    /** @type {"input"|"password"|"submit"|"checkbox"|"file"}} */
     this.type = type;
 
     /** @type {string} */
@@ -161,7 +179,16 @@ class Field  {
           </vscode-form-control>
       </vscode-form-item>
       `;
-
+    case `file`:
+      return `
+        <vscode-form-item>
+            <vscode-form-label>${this.label}</vscode-form-label>
+            ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+            <vscode-form-control>
+                <vscode-inputbox type="file" id="${this.id}" name="${this.id}"></vscode-inputbox>
+            </vscode-form-control>
+        </vscode-form-item>
+        `;
     case `password`:
       return `
       <vscode-form-item>
