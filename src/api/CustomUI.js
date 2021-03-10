@@ -124,7 +124,6 @@ class CustomUI {
                       for (let file of Array.from(input.files)) {
                           let reader = new FileReader();
                           reader.addEventListener("load", () => {
-                            console.log(file.path);
                             document.getElementById(e.target.id).setAttribute("value", file.path)   
                           });
                           reader.readAsText(file);
