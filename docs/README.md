@@ -4,20 +4,23 @@
 
 Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
-
-## Installation
-
-### Requirements
+## Requirements
 
 - SSH Daemon must be started on IBM i.
+  (Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
+- Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos). 
 
-### VS Code Marketplace
-[Install code-for-ibmi from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+## Installation
+From  VS Code Marketplace:
+
+[Code-for-ibmi from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+
+Or from the Extensions icon in the Activity Bar (on the left): 
+![assets/install_01,png](assets/install_01.png)
 
 ### Recommended Extensions
 
 - [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS
-
 
 ## Login
 Press <kbd>F1</kbd>, search for ```IBM i: Connect```, and press enter to arrive at the login form below.
@@ -43,6 +46,7 @@ of the IBM i system you are connected to.
 
 To adjust this extension's settings, press <kbd>F1</kbd> and 
 search for ```Preferences: Open Settings (UI)```. 
+![assets/settings_02.png](assets/settings_02.png)
 Settings for this extension will be under ```Code for IBM i```
 
 ![assets/settings_01.png](assets/settings_01.png)
