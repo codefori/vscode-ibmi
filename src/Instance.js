@@ -86,6 +86,8 @@ module.exports = class Instance {
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
+    const rpgleLinter = require(`./languages/rpgle/linter`);
+
     if (instance.connection) {
       CompileTools.register(context);
 
@@ -209,6 +211,7 @@ module.exports = class Instance {
           })
         );
         
+        new rpgleLinter(context);
 
         //********* Actions */
 
