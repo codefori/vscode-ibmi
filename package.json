@@ -34,6 +34,7 @@
 		"onCommand:code-for-ibmi.openEditable",
 		"onCommand:code-for-ibmi.selectForCompare",
 		"onCommand:code-for-ibmi.compareWithSelected",
+		"onCommand:code-for-ibmi.changeBuildLibrary",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
@@ -436,6 +437,11 @@
 			{
 				"command": "code-for-ibmi.compareWithSelected",
 				"title": "Compare with Selected",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.changeBuildLibrary",
+				"title": "Change build library",
 				"category": "IBM i"
 			},
 			{

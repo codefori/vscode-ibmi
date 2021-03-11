@@ -210,6 +210,26 @@ module.exports = class Instance {
             }
           })
         );
+
+        context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.changeBuildLibrary`, async () => {
+            const config = this.getConfig();
+            const buildLibrary = config.buildLibrary.toUpperCase();
+    
+            const newLibrary = await vscode.window.showInputBox({
+              prompt: `Changing build library`,
+              value: buildLibrary
+            });
+    
+            try {
+              if (newLibrary && newLibrary !== buildLibrary) {
+                await config.set(`buildLibrary`, newLibrary);
+              }
+            } catch (e) {
+              console.log(e);
+            }
+          })
+        );
         
         new rpgleLinter(context);
 
