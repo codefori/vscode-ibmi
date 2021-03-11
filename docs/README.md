@@ -102,12 +102,13 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &OPENSPF | Source file that member resides in |
 | &OPENMBR | Name of member                     |
 | &EXT     | Member extension                   |
+| &BUILDLIB | Values which comes from the connection settings |
 
 #### Streamfile variables
 
 | Variable  | Usage                                           |
 |-----------|-------------------------------------------------|
-| &BUILDLIB | Values which comes from Code for IBM i settings |
+| &BUILDLIB | Values which comes from the connection settings |
 | &FULLPATH | Path to the streamfile.                         |
 | &NAME     | Name of the streamfile with no extension        |
 | &EXT      | Extension of basename                           |
@@ -201,7 +202,15 @@ An array of objects. Each object is unique by the host property and is used so d
 Source files to be included in the member browser.
 
 #### Library List
-An array for the library list. Highest item of the library list goes first.
+An array for the library list. Highest item of the library list goes first. You are able to use `&BUILDLIB` in the library list, to make compiles dynamic.
+
+```json
+"libraryList": [
+    "&BUILDLIB",
+    "DATALIB",
+    "QSYSINC"
+]
+```
 
 #### Home Directory
 Home directory for user. This directory is also the root for the IFS browser.
@@ -210,7 +219,7 @@ Home directory for user. This directory is also the root for the IFS browser.
 Temporary library. Is used OUTPUT files. Cannot be QTEMP.
 
 #### Build library
-A library that can be defined/changes for IFS builds.
+A library that can be defined/changes for IFS builds. You can also change the build library with the 'Change build library' command (F1 -> Change build library).
 
 #### Source ASP
 If source files are located in a specific ASP, specify here. 
