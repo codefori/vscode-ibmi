@@ -137,6 +137,8 @@ module.exports = class CompileTools {
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
+        command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
+
         let blank, asp, lib, file, fullName;
         let basename, name, ext;
 
@@ -184,7 +186,6 @@ module.exports = class CompileTools {
             ext
           };
 
-          command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
           command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
           command = command.replace(new RegExp(`&NAME`, `g`), name);
           command = command.replace(new RegExp(`&EXT`, `g`), ext);
@@ -215,11 +216,22 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-          const libl = config.libraryList.slice(0).reverse();
           /** @type {any} */
           let commandResult, output;
           let executed = false;
 
+          //We have to reverse it because `liblist -a` adds the next item to the top always 
+          let libl = config.libraryList.slice(0).reverse();
+
+          libl = libl.map(library => {
+            //We use this for special variables in the libl
+            switch (library) {
+            case `&BUILDLIB`: return config.buildLibrary;
+            default: return library;
+            }
+          });
+
+          outputChannel.append(`Library list: ` + libl.reverse().join(` `) + `\n`);
           outputChannel.append(`Command: ` + command + `\n`);
 
           try {
