@@ -131,11 +131,16 @@ module.exports = class IBMi {
         
       } catch (e) {}
 
-      //This is mostly a nice to have. We grab the ASP info so user's do
-      //not have to provide the ASP in the settings. This only works if
-      //they have db2util installed, becuase we have to use SQL to get the
-      //data. I couldn't find an outfile for this information. :(
+      //Even if db2util is installed, but they have disabled it... then disable it
+      if (!this.config.enableSQL) {
+        this.remoteFeatures.db2util = undefined;
+      }
+
       if (this.remoteFeatures.db2util) {
+        //This is mostly a nice to have. We grab the ASP info so user's do
+        //not have to provide the ASP in the settings. This only works if
+        //they have db2util installed, becuase we have to use SQL to get the
+        //data. I couldn't find an outfile for this information. :(
         try {
           const command = this.remoteFeatures.db2util;
 

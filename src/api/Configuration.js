@@ -31,6 +31,9 @@ module.exports = class Configuration {
 
     /** @type {string} */
     this.sourceFileCCSID = base.sourceFileCCSID || `*FILE`;
+
+    /** @type {boolean} */
+    this.enableSQL = base.enableSQL;
   }
 
   /**
