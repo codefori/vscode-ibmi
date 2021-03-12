@@ -132,7 +132,7 @@ module.exports = class IBMi {
       } catch (e) {}
 
       //Even if db2util is installed, but they have disabled it... then disable it
-      if (!this.config.enableSQL) {
+      if (this.config.enableSQL === false) {
         this.remoteFeatures.db2util = undefined;
       }
 
