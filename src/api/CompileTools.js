@@ -138,6 +138,7 @@ module.exports = class CompileTools {
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
         command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
+        command = command.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
 
         let blank, asp, lib, file, fullName;
         let basename, name, ext;

@@ -103,6 +103,7 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &OPENMBR | Name of member                     |
 | &EXT     | Member extension                   |
 | &BUILDLIB | Values which comes from the connection settings |
+| &USERNAME | Username being used to connect to the current system |
 
 #### Streamfile variables
 
@@ -112,6 +113,7 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &FULLPATH | Path to the streamfile.                         |
 | &NAME     | Name of the streamfile with no extension        |
 | &EXT      | Extension of basename                           |
+| &USERNAME | Username being used to connect to the current system |
 
 #### Object variables
 
@@ -120,6 +122,8 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &LIBRARY  | Library which the object exists   |
 | &NAME     | Name of the object                |
 | &TYPE     | The object type (PGM, FILE, etc)  |
+| &BUILDLIB | Values which comes from the connection settings |
+| &USERNAME | Username being used to connect to the current system |
 
 #### Command fields
 
