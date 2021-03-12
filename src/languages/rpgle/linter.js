@@ -51,8 +51,8 @@ module.exports = class RPGLinter {
               if (retrunValue.length === 0) retrunValue = [`void`];
 
               const markdown = `\`\`\`vb\n${procedure.name}(\n  ${procedure.subItems.map(parm => `${parm.name}: ${parm.keywords.join(` `)}`).join(`,\n  `)}\n): ${retrunValue.join(` `)}\n\`\`\` \n` +
-              `\n\n` +
-              procedure.subItems.map(parm => `*@param* ${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)} ${parm.comments}`).join(`\n\n`) +
+              `\n\n${procedure.comments !== `` ? `${procedure.comments}\n\n` : ``}` +
+              procedure.subItems.map(parm => `*@param* \`${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)}\` ${parm.comments}`).join(`\n\n`) +
               `\n\n*@returns* ${retrunValue.join(` `)}`;
 
               return new vscode.Hover(
@@ -96,13 +96,23 @@ module.exports = class RPGLinter {
       }),
 
       vscode.workspace.onDidSaveTextDocument((event) => {
-        if (event.languageId === `rpgle`) {
-          if (Configuration.get(`rpgleContentAssistEnabled`)) {
-            const text = event.getText();
+        if (Configuration.get(`rpgleContentAssistEnabled`)) {
+          const {type, finishedPath} = this.getPathInfo(event.uri, path.basename(event.uri.path));
+          const text = event.getText();
+
+          if (this.copyBooks[finishedPath]) {
+            //Update stored copy book
+            const lines = text.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+            this.copyBooks[finishedPath] = lines;
+
+          }
+          else if (event.languageId === `rpgle`) {
+            //Else fetch new info from source being edited
             if (text.startsWith(`**FREE`)) {
               this.getDocs(event.uri, text);
             }
           }
+          
         }
       }),
 
@@ -122,7 +132,7 @@ module.exports = class RPGLinter {
 
   /**
    * @param {vscode.Uri} workingUri Path being worked with
-   * @param {string} getPath IFS or member path to fetch
+   * @param {string} getPath IFS or member path to fetch (in the format of an RPGLE copybook)
    */
   getPathInfo(workingUri, getPath) {
     const config = instance.getConfig();
@@ -136,7 +146,7 @@ module.exports = class RPGLinter {
     /** @type {"streamfile"|"member"|undefined} */
     let type = undefined;
 
-    if (getPath.includes(`/`) || getPath.includes(`.`)) {
+    if (workingUri.scheme === `streamfile`) {
       type = `streamfile`;
       //Fetch IFS
 
@@ -162,9 +172,11 @@ module.exports = class RPGLinter {
 
       if (workingPath.length === 4) { //ASP not included
         memberPath[1] = workingPath[1];
+        memberPath[2] = workingPath[2];
       } else {
         memberPath[0] = workingPath[1];
         memberPath[1] = workingPath[2];
+        memberPath[2] = workingPath[3];
       }
 
       switch (getMember.length) {
@@ -180,10 +192,16 @@ module.exports = class RPGLinter {
         memberPath[1] = getLib[0];
       }
 
+      if (memberPath[3].includes(`.`)) {
+        memberPath[3] = memberPath[3].substr(0, memberPath[3].lastIndexOf(`.`));
+      }
+
       finishedPath = memberPath.join(`/`);
 
       type = `member`;
     }
+
+    finishedPath = finishedPath.toUpperCase();
 
     return {type, memberPath, finishedPath};
   }
@@ -198,15 +216,6 @@ module.exports = class RPGLinter {
 
     let content;
     let lines = undefined;
-    
-    // /** @type {string} */
-    // let finishedPath = undefined;
-
-    // /** @type {string[]} */
-    // let memberPath = undefined;
-
-    // /** @type {"streamfile"|"member"|undefined} */
-    // let type = undefined;
 
     let {type, memberPath, finishedPath} = this.getPathInfo(workingUri, getPath);
 
