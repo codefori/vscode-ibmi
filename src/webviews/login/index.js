@@ -91,10 +91,10 @@ module.exports = class Login {
       }));
 
     let selected = undefined;
-    if (existingConnections.length = 1) { 
+    if (existingConnections.length === 1)
       selected = existingConnections[0];
-    } else 
-    {selected = await vscode.window.showQuickPick(existingConnections, {canPickMany: false});}
+    else
+      selected = await vscode.window.showQuickPick(existingConnections, {canPickMany: false});
  
     if (selected) {
       let connectionConfig = selected[`config`];
