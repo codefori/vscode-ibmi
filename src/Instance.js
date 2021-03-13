@@ -89,6 +89,8 @@ module.exports = class Instance {
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
+    const settingsUI = require(`./webviews/settings`);
+
     const rpgleLinter = require(`./languages/rpgle/linter`);
 
     if (instance.connection) {
@@ -97,9 +99,8 @@ module.exports = class Instance {
       if (!statusBar) {
         statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         statusBar.command = {
-          command: `workbench.action.openSettings`,
-          title: `Open Connection Settings`,
-          arguments: [`code-for-ibmi.connectionSettings`]
+          command: `code-for-ibmi.showAdditionalSettings`,
+          title: `Show Additional Connection Settings`,
         };
         context.subscriptions.push(statusBar);
       }
@@ -132,7 +133,9 @@ module.exports = class Instance {
           })
         );
 
-        //********* Member Browser */
+        settingsUI.init(context);
+
+        //********* Library list view */
 
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(

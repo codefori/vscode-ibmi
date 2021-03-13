@@ -34,6 +34,7 @@
 		"onCommand:code-for-ibmi.openEditable",
 		"onCommand:code-for-ibmi.selectForCompare",
 		"onCommand:code-for-ibmi.compareWithSelected",
+		"onCommand:code-for-ibmi.showAdditionalSettings",
 		"onCommand:code-for-ibmi.changeBuildLibrary",
 		"onView:libraryListView",
 		"onCommand:code-for-ibmi.refreshLibraryListView",
