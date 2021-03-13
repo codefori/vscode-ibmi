@@ -453,7 +453,8 @@
 			{
 				"command": "code-for-ibmi.changeBuildLibrary",
 				"title": "Change build library",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(root-folder)"
 			},
 			{
 				"command": "code-for-ibmi.runAction",
@@ -681,6 +682,11 @@
 		},
 		"menus": {
 			"view/title": [
+				{
+					"command": "code-for-ibmi.changeBuildLibrary",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
 				{
 					"command": "code-for-ibmi.addToLibraryList",
 					"group": "navigation",
