@@ -62,6 +62,7 @@ module.exports = class Instance {
 
 
       await Promise.all([
+        vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
         vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
         vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
         vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
@@ -77,6 +78,8 @@ module.exports = class Instance {
    * @param {vscode.ExtensionContext} context
    */
   static async loadAllofExtension(context) {
+    const libraryListView = require(`./views/libraryListView`);
+
     const memberBrowser = require(`./views/memberBrowser`);
     const qsysFs = new (require(`./views/qsysFs`));
     
@@ -107,6 +110,7 @@ module.exports = class Instance {
       //Update the status bar and that's that.
       if (initialisedBefore) {
         await Promise.all([
+          vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
@@ -132,9 +136,19 @@ module.exports = class Instance {
 
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
+            `libraryListView`,
+            new libraryListView(context)
+          )
+        );
+
+        //********* Member Browser */
+
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
             `memberBrowser`,
             new memberBrowser(context)
-          ));
+          )
+        );
 
 
         context.subscriptions.push(

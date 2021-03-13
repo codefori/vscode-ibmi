@@ -35,6 +35,12 @@
 		"onCommand:code-for-ibmi.selectForCompare",
 		"onCommand:code-for-ibmi.compareWithSelected",
 		"onCommand:code-for-ibmi.changeBuildLibrary",
+		"onView:libraryListView",
+		"onCommand:code-for-ibmi.refreshLibraryListView",
+		"onCommand:code-for-ibmi.addToLibraryList",
+		"onCommand:code-for-ibmi.removeFromLibraryList",
+		"onCommand:code-for-ibmi.moveLibraryUp",
+		"onCommand:code-for-ibmi.moveLibraryDown",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
@@ -455,6 +461,36 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.addToLibraryList",
+				"title": "Add to library list",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.refreshLibraryListView",
+				"title": "Remove from library list",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.removeFromLibraryList",
+				"title": "Remove from library list",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
+				"command": "code-for-ibmi.moveLibraryUp",
+				"title": "Move library up",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "code-for-ibmi.moveLibraryDown",
+				"title": "Move library down",
+				"category": "IBM i",
+				"icon": "$(arrow-down)"
+			},
+			{
 				"command": "code-for-ibmi.runActionFromView",
 				"title": "Run Action",
 				"category": "IBM i"
@@ -620,6 +656,10 @@
 		"views": {
 			"ibmi-explorer": [
 				{
+					"id": "libraryListView",
+					"name": "Library List"
+				},
+				{
 					"id": "memberBrowser",
 					"name": "Member Browser"
 				},
@@ -629,16 +669,28 @@
 				},
 				{
 					"id": "objectBrowser",
-					"name": "Object Browser"
+					"name": "Object Browser",
+					"visibility": "collapsed"
 				},
 				{
 					"id": "databaseBrowser",
-					"name": "Database Browser"
+					"name": "Database Browser",
+					"visibility": "collapsed"
 				}
 			]
 		},
 		"menus": {
 			"view/title": [
+				{
+					"command": "code-for-ibmi.addToLibraryList",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
+					"command": "code-for-ibmi.refreshLibraryListView",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
 				{
 					"command": "code-for-ibmi.addSourceFile",
 					"group": "navigation",
@@ -696,6 +748,21 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"command": "code-for-ibmi.moveLibraryUp",
+					"when": "viewItem == libraryListView || viewItem == library",
+					"group": "libraryMove@1"
+				},
+				{
+					"command": "code-for-ibmi.moveLibraryDown",
+					"when": "viewItem == libraryListView || viewItem == library",
+					"group": "libraryMove@2"
+				},
+				{
+					"command": "code-for-ibmi.removeFromLibraryList",
+					"when": "viewItem == libraryListView || viewItem == library",
+					"group": "libraryRemove@1"
+				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
 					"when": "viewItem == member || viewItem == streamfile",
@@ -796,7 +863,7 @@
 		},
 		"viewsWelcome": [
 			{
-				"view": "memberBrowser",
+				"view": "libraryListView",
 				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)",
 				"when": "code-for-ibmi:connected == false"
 			},
