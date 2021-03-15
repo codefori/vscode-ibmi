@@ -85,7 +85,8 @@ module.exports = class RPGLinter {
           let item;
 
           for (const procedure of this.procedures) {
-            item = new vscode.CompletionItem(`${procedure.name}(${procedure.subItems.map((parm) => parm.name).join(`:`)})`, vscode.CompletionItemKind.Function);
+            item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
+            item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
             item.detail = procedure.keywords.join(` `);
             item.documentation = procedure.comments;
             items.push(item);
