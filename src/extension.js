@@ -6,7 +6,7 @@ const vscode = require(`vscode`);
 // your extension is activated the very first time the command is executed
 
 let instance = require(`./Instance`);
-const Configuration = require(`./api/Configuration`);
+let {CustomUI, Field} = require(`./api/CustomUI`);
 
 const LoginPanel = require(`./webviews/login`);
 
@@ -46,6 +46,8 @@ function activate(context) {
       }
     })
   )
+
+  return {instance, CustomUI, Field};
 }
 
 // this method is called when your extension is deactivated
