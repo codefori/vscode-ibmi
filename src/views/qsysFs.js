@@ -1,5 +1,4 @@
 
-const util = require(`util`);
 const vscode = require(`vscode`);
 let instance = require(`../Instance`);
 
@@ -33,9 +32,15 @@ module.exports = class qsysFs {
 
     const name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-    const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+    try {
+      const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
 
-    return new Uint8Array(Buffer.from(memberContent, `utf8`));
+      return new Uint8Array(Buffer.from(memberContent, `utf8`));
+
+    } catch (e) {
+      vscode.window.showErrorMessage(e);
+    }
+
   }
 
   /**

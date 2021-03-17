@@ -12,15 +12,15 @@ You can find the source for this API at `src/api/CustomUI.js`.
 
 * `constructor()` creates an instances
 * `addField(Field)` adds a field to the CustomUI
-* `loadPage(context: vscode.ExtensionContext, title: string): Promise<{panel: vscode.WebviewPanel, data: {...}}` is called when you're ready to render the page. The context must come from the extension. The return object contains two pieces of data
+* `loadPage(title: string): Promise<{panel: vscode.WebviewPanel, data: {...}}>` is called when you're ready to render the page.
   1. `panel: vscode.WebviewPanel` which is the panel being used to render the form.
   2. `data: {...}` which returns the form data, where the field ID's are the properties
 
 ### `Field` class
 
-* `constructor(type: "input"|"password"|"submit", id: string, label: string)` to create an instance of a field.
+* `constructor(type: "input"|"password"|"checkbox"|"submit", id: string, label: string)` to create an instance of a field.
 * `field.description` (`string`) can be used to set text about the field for information about the field.
-* `field.default` can be used to set the initial value of the field.
+* `field.default` can be used to set the initial value of the field. If the field is a checkbox, you can use the value of `checked` to have it checked by default.
 
 ## Example
 
@@ -35,7 +35,7 @@ context.subscriptions.push(
     ui.addField(new Field(`input`, `name`, `Your name`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
-    const {panel, data} = await ui.loadPage(context, `IBM i Login`)
+    const {panel, data} = await ui.loadPage(`IBM i Login`)
     if (data) {
       if (data.name.length > 0) {
         vscode.window.showInformationMessage(`Hello ${data.name}!`);

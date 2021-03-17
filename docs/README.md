@@ -4,20 +4,23 @@
 
 Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
-
-## Installation
-
-### Requirements
+## Requirements
 
 - SSH Daemon must be started on IBM i.
+  (Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
+- Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos). 
 
-### VS Code Marketplace
-[Install code-for-ibmi from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+## Installation
+From  VS Code Marketplace:
+
+[Code-for-ibmi from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+
+Or from the Extensions icon in the Activity Bar (on the left): 
+![assets/install_01,png](assets/install_01.png)
 
 ### Recommended Extensions
 
 - [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS
-
 
 ## Login
 Press <kbd>F1</kbd>, search for ```IBM i: Connect```, and press enter to arrive at the login form below.
@@ -40,13 +43,15 @@ of the IBM i system you are connected to.
 ![assets/login_05.png](assets/login_05.png)
 
 ## Settings
+
 To adjust this extension's settings, press <kbd>F1</kbd> and 
 search for ```Preferences: Open Settings (UI)```. 
+![assets/settings_02.png](assets/settings_02.png)
 Settings for this extension will be under ```Code for IBM i```
 
 ![assets/settings_01.png](assets/settings_01.png)
 
-### Actions
+## Actions
 
 Actions can be used to perform tasks on members, streamfiles and eventually other types of objects too.
 
@@ -66,7 +71,7 @@ Here is an example of the action used to compile an RPG member:
 ]
 ```
 
-The two available `type` property values are:
+The available `type` property values are:
 
 * `member` for source members
 * `streamfile` for streamfiles
@@ -78,10 +83,17 @@ You can also use the `environment` property to run the action in a certain envir
 * `qsh` to run commands in QShell
 * `pase` to run commands in pase
 
-The `extensions` property is used to tie the action to certain types of files or objects. `name` is used to identify the action when selecting & running them. `command` is used to define what will be executed.
+Other important properties:
 
-Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Members and streamfiles have different variables.
+* `extensions` property is used to tie the action to certain types of files or objects. 
+* `name` is used to identify the action when selecting & running them. 
+* `command` is used to define what will be executed. Read about com mand below.
 
+### Command variables and fields
+
+> `CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)`
+
+Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Each `type` has different variables.
 #### Member variables
 
 | Variable | Usage                              |
@@ -90,15 +102,18 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &OPENSPF | Source file that member resides in |
 | &OPENMBR | Name of member                     |
 | &EXT     | Member extension                   |
+| &BUILDLIB | Values which comes from the connection settings |
+| &USERNAME | Username being used to connect to the current system |
 
 #### Streamfile variables
 
 | Variable  | Usage                                           |
 |-----------|-------------------------------------------------|
-| &BUILDLIB | Values which comes from Code for IBM i settings |
+| &BUILDLIB | Values which comes from the connection settings |
 | &FULLPATH | Path to the streamfile.                         |
 | &NAME     | Name of the streamfile with no extension        |
 | &EXT      | Extension of basename                           |
+| &USERNAME | Username being used to connect to the current system |
 
 #### Object variables
 
@@ -107,8 +122,37 @@ Notice the special identifiers in the command begining with `&`. These identifie
 | &LIBRARY  | Library which the object exists   |
 | &NAME     | Name of the object                |
 | &TYPE     | The object type (PGM, FILE, etc)  |
+| &BUILDLIB | Values which comes from the connection settings |
+| &USERNAME | Username being used to connect to the current system |
 
-New actions can be added by defining a new action object in the settings like the snippet listed above.
+#### Command fields
+
+It is possible to prompt the user specific fields with the custom UI functionality. The command string also accepts a variable format. It looks like this:
+
+```
+${NAME|LABEL|[DEFAULTVALUE]}
+${desc|Description}
+${objectName|Object name|&BUILDLIB}
+```
+
+It takes 3 different options:
+
+1. The ID of the input box. Also known as the name.
+2. The label which will show next to the input box.
+3. Default value in the text box. **optional**
+
+Example:
+
+```json
+{
+    "type": "streamfile",
+    "extensions": ["rpgle"],
+    "name": "Run CRTBNDRPG (inputs)",
+    "command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+},
+```
+
+![Panel to the right](assets/compile_04.png)
 
 ### Auto Refresh
 When enabled, listings will refresh when items are interacted with (create, copy, delete, etc). If performance is bad, it is suggested you disable this option.
@@ -126,7 +170,8 @@ Here is a snippet of what the connection details look like:
   {
     "host": "DEV400",
     "port": 22,
-    "username": "OTTEB"
+    "username": "OTTEB",
+    "privateKey": null
   }
 ],
 ```
@@ -161,7 +206,15 @@ An array of objects. Each object is unique by the host property and is used so d
 Source files to be included in the member browser.
 
 #### Library List
-An array for the library list. Highest item of the library list goes first.
+An array for the library list. Highest item of the library list goes first. You are able to use `&BUILDLIB` in the library list, to make compiles dynamic.
+
+```json
+"libraryList": [
+    "&BUILDLIB",
+    "DATALIB",
+    "QSYSINC"
+]
+```
 
 #### Home Directory
 Home directory for user. This directory is also the root for the IFS browser.
@@ -170,7 +223,7 @@ Home directory for user. This directory is also the root for the IFS browser.
 Temporary library. Is used OUTPUT files. Cannot be QTEMP.
 
 #### Build library
-A library that can be defined/changes for IFS builds.
+A library that can be defined/changes for IFS builds. You can also change the build library with the 'Change build library' command (F1 -> Change build library).
 
 #### Source ASP
 If source files are located in a specific ASP, specify here. 

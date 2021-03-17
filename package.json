@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.2.8",
+	"version": "0.4.1",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -34,6 +34,14 @@
 		"onCommand:code-for-ibmi.openEditable",
 		"onCommand:code-for-ibmi.selectForCompare",
 		"onCommand:code-for-ibmi.compareWithSelected",
+		"onCommand:code-for-ibmi.showAdditionalSettings",
+		"onCommand:code-for-ibmi.changeBuildLibrary",
+		"onView:libraryListView",
+		"onCommand:code-for-ibmi.refreshLibraryListView",
+		"onCommand:code-for-ibmi.addToLibraryList",
+		"onCommand:code-for-ibmi.removeFromLibraryList",
+		"onCommand:code-for-ibmi.moveLibraryUp",
+		"onCommand:code-for-ibmi.moveLibraryDown",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
@@ -60,7 +68,7 @@
 		"onCommand:code-for-ibmi.runEditorStatement",
 		"onCommand:code-for-ibmi.Debug"
 	],
-	"main": "./extension.js",
+	"main": "./dist/extension",
 	"contributes": {
 		"snippets": [
 			{
@@ -136,10 +144,21 @@
 							},
 							"sourceASP": {
 								"type": [
-									"string", "null"
+									"string",
+									"null"
 								],
 								"default": null,
 								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` and have db2util installed, as Code for IBM i will fetch ASP information automatically."
+							},
+							"sourceFileCCSID": {
+								"type": "string",
+								"default": "*FILE",
+								"description": "The CCSID of source files on your system. You should only change this setting from `*FILE` if you have a source file that is 65535 - otherwise use `*FILE`. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems."
+							},
+							"enableSQL": {
+								"type": "boolean",
+								"default": true,
+								"description": "Must be enabled to make the use of db2util and is enabled by default. If you find db2util isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
 							}
 						}
 					}
@@ -148,6 +167,16 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
+				},
+				"code-for-ibmi.rpgleIndentationEnabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "Experimental feature. When enabled, will provide indentation warnings for RPG sources. Supports total free RPG only."
+				},
+				"code-for-ibmi.rpgleContentAssistEnabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "Experimental feature. When enabled, will provide content assist for procedures inside of your RPG sources. Supports total free RPG only."
 				},
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
@@ -328,6 +357,56 @@
 							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
 						},
 						{
+							"type": "streamfile",
+							"extensions": ["rpgle"],
+							"name": "Create Bound RPG Program (CRTBNDRPG) with inputs",
+							"command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create Bound RPG Program (CRTBNDRPG)",
+							"command": "CRTBNDRPG PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"RPGLE",
+								"RPG"
+							],
+							"name": "Create RPG Module (CRTRPGMOD)",
+							"command": "?CRTRPGMOD MODULE(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"CLP",
+								"CLLE"
+							],
+							"name": "Create Bound CL Program (CRTBNDCL)",
+							"command": "?CRTBNDCL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Set CCSID to 1252",
+							"environment": "pase",
+							"command": "setccsid 1252 &FULLPATH"
+						},
+						{
 							"type": "object",
 							"extensions": [
 								"GLOBAL"
@@ -374,9 +453,45 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.changeBuildLibrary",
+				"title": "Change build library",
+				"category": "IBM i",
+				"icon": "$(root-folder)"
+			},
+			{
 				"command": "code-for-ibmi.runAction",
 				"title": "Run Action on Active Editor",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.addToLibraryList",
+				"title": "Add to library list",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.refreshLibraryListView",
+				"title": "Remove from library list",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.removeFromLibraryList",
+				"title": "Remove from library list",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
+				"command": "code-for-ibmi.moveLibraryUp",
+				"title": "Move library up",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "code-for-ibmi.moveLibraryDown",
+				"title": "Move library down",
+				"category": "IBM i",
+				"icon": "$(arrow-down)"
 			},
 			{
 				"command": "code-for-ibmi.runActionFromView",
@@ -481,7 +596,7 @@
 				"command": "code-for-ibmi.createSourceFile",
 				"title": "Create Source File",
 				"category": "IBM i",
-				"icon": "$(new-file)" 
+				"icon": "$(new-file)"
 			},
 			{
 				"command": "code-for-ibmi.addLibraryToObjectBrowser",
@@ -548,38 +663,53 @@
 				{
 					"id": "ibmi-explorer",
 					"title": "IBM i",
-					"icon": "media/server.svg"
+					"icon": "$(server-environment)"
 				}
 			]
 		},
 		"views": {
 			"ibmi-explorer": [
 				{
+					"id": "libraryListView",
+					"name": "Library List"
+				},
+				{
 					"id": "memberBrowser",
-					"name": "Member Browser",
-					"contextualTitle": "Member Browser",
-					"icon": "media/server.svg"
+					"name": "Member Browser"
 				},
 				{
 					"id": "ifsBrowser",
-					"name": "IFS Browser",
-					"contextualTitle": "IFS Browser",
-					"icon": "media/server.svg"
+					"name": "IFS Browser"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"contextualTitle": "Object Browser"
+					"visibility": "collapsed"
 				},
 				{
 					"id": "databaseBrowser",
 					"name": "Database Browser",
-					"contextualTitle": "Database Browser"
+					"visibility": "collapsed"
 				}
 			]
 		},
 		"menus": {
 			"view/title": [
+				{
+					"command": "code-for-ibmi.changeBuildLibrary",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
+					"command": "code-for-ibmi.addToLibraryList",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
+					"command": "code-for-ibmi.refreshLibraryListView",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
 				{
 					"command": "code-for-ibmi.addSourceFile",
 					"group": "navigation",
@@ -642,6 +772,21 @@
 				}
 			],
 			"view/item/context": [
+				{
+					"command": "code-for-ibmi.moveLibraryUp",
+					"when": "viewItem == libraryListView || viewItem == library",
+					"group": "libraryMove@1"
+				},
+				{
+					"command": "code-for-ibmi.moveLibraryDown",
+					"when": "viewItem == libraryListView || viewItem == library",
+					"group": "libraryMove@2"
+				},
+				{
+					"command": "code-for-ibmi.removeFromLibraryList",
+					"when": "viewItem == libraryListView || viewItem == library",
+					"group": "libraryRemove@1"
+				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
 					"when": "viewItem == member || viewItem == streamfile",
@@ -747,7 +892,7 @@
 		},
 		"viewsWelcome": [
 			{
-				"view": "memberBrowser",
+				"view": "libraryListView",
 				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)",
 				"when": "code-for-ibmi:connected == false"
 			},
@@ -761,20 +906,27 @@
 	"scripts": {
 		"lint": "eslint .",
 		"pretest": "npm run lint",
-		"test": "node ./test/runTest.js"
+		"test": "node ./test/runTest.js",
+		"package": "vsce package",
+		"vscode:prepublish": "webpack --mode production",
+		"webpack": "webpack --mode development",
+		"webpack-dev": "webpack --mode development --watch"
 	},
 	"devDependencies": {
-		"@types/vscode": "^1.52.0",
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.0.4",
 		"@types/node": "^12.11.7",
+		"@types/vscode": "^1.52.0",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"mocha": "^8.2.1",
 		"typescript": "^4.1.3",
-		"vscode-test": "^1.5.0"
+		"vscode-test": "^1.5.0",
+		"webpack": "^5.24.3",
+		"webpack-cli": "^4.5.0"
 	},
 	"dependencies": {
+		"@bendera/vscode-webview-elements": "^0.2.0",
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1"

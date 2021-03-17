@@ -9,3 +9,5 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 docs/**
 .github/**
+node_modules
+media
