@@ -192,16 +192,31 @@ module.exports = class IBMiContent {
   async getObjectList(lib) {
     lib = lib.toUpperCase();
 
+    let results;
+
+    if (this.ibmi.remoteFeatures.db2util) {
+      results = await this.runSQL(`
+      Select 
+        OBJNAME as ODOBNM , 
+        OBJTYPE as ODOBTP ,
+        OBJATTRIBUTE as ODOBAT ,
+        translate( OBJTEXT, ' ' , x'202122232425262728292A2B2C2D2E2F') as ODOBTX                                
+        from table(QSYS2/OBJECT_STATISTICS( '${lib}', '*ALL' , '*ALL')) as x
+      `)
+
+    } else {
+
     const tempLib = this.ibmi.config.tempLibrary;
     const TempName = IBMi.makeid();
 
     await this.ibmi.remoteCommand(`DSPOBJD OBJ(${lib}/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-    const results = await this.getTable(tempLib, TempName, TempName);
+    results = await this.getTable(tempLib, TempName, TempName);
 
     if (results.length === 1) {
       if (results[0].ODOBNM.trim() === ``) {
         return []
       }
+    }
     }
 
     return results.map(object => ({
@@ -209,7 +224,7 @@ module.exports = class IBMiContent {
       name: object.ODOBNM,
       type: object.ODOBTP,
       attribute: object.ODOBAT,
-      text: object.ODOBTX
+      text: object.ODOBTX         //.replace('','')
     }))
   }
 
