@@ -24,9 +24,10 @@ module.exports = class Login {
     ui.fields[1].default = `22`;
     ui.addField(new Field(`input`, `username`, `Username`));
     ui.addField(new Field(`password`, `password`, `Password`));
+    ui.addField(new Field(`file`, `privateKey`, `Private Key`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
-    const {panel, data} = await ui.loadPage(context, `IBM i Login`);
+    const {panel, data} = await ui.loadPage(`IBM i Login`);
 
     if (data) {
       data.port = Number(data.port);
@@ -50,7 +51,8 @@ module.exports = class Login {
             existingConnections.push({
               host: data.host,
               port: data.port,
-              username: data.username
+              username: data.username,
+              privateKey: data.privateKey
             });
             await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
           }
@@ -81,38 +83,50 @@ module.exports = class Login {
     }
 
     const existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
-    const existingConnections = existingConnectionsConfig.get(`connections`);
-    const items = existingConnections.map(item => `${item.username}@${item.host}:${item.port}`);
+    const existingConnections = existingConnectionsConfig
+      .get(`connections`)
+      .map(item => ({
+        label: `${item.username}@${item.host}:${item.port}`,
+        config: item
+      }));
 
-    const selected = await vscode.window.showQuickPick(items, {canPickMany: false});
-
+    let selected = undefined;
+    if (existingConnections.length === 1)
+      selected = existingConnections[0];
+    else
+      selected = await vscode.window.showQuickPick(existingConnections, {canPickMany: false});
+ 
     if (selected) {
-      const [username, hostname] = selected.split(`@`);
-      const [host, port] = hostname.split(`:`);
+      let connectionConfig = selected[`config`];
 
-      const password = await vscode.window.showInputBox({
-        prompt: `Password for ${selected}`,
-        password: true
-      });
-
-      if (password) {
-        const connection = new IBMi();
-
-        try {
-          const connected = await connection.connect({host, port: Number(port), username, password});
-          if (connected.success) {
-            vscode.window.showInformationMessage(`Connected to ${host}!`);
-
-            instance.setConnection(connection);
-            instance.loadAllofExtension(context);
-
-          } else {
-            vscode.window.showErrorMessage(`Not connected to ${host}! ${connected.error.message || connected.error}`);
-          }
-        } catch (e) {
-          vscode.window.showErrorMessage(`Error connecting to ${host}! ${e.message}`);
+      if (!connectionConfig.privateKey) {
+        connectionConfig.password = await vscode.window.showInputBox({
+          prompt: `Password for ${selected[`label`]}`,
+          password: true
+        });
+        
+        if (!connectionConfig.password) {
+          return;
         }
+      }
+
+      const connection = new IBMi();
+
+      try {
+        const connected = await connection.connect(connectionConfig);
+        if (connected.success) {
+          vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
+
+          instance.setConnection(connection);
+          instance.loadAllofExtension(context);
+
+        } else {
+          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
+        }
+      } catch (e) {
+        vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e.message}`);
       }
     }
   }
+  
 }

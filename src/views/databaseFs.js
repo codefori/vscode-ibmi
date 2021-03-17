@@ -14,7 +14,7 @@ class Database {
     schema = schema.toUpperCase();
 
     const [tablesResult, columnsResult] = await Promise.all([
-      content.runSQL(`select TABLE_NAME, TABLE_TYPE, TABLE_TEXT, BASE_TABLE_SCHEMA, BASE_TABLE_NAME from QSYS2.SYSTABLES where TABLE_SCHEMA = '${schema}'`),
+      content.runSQL(`select TABLE_NAME, TABLE_TYPE, TABLE_TEXT, BASE_TABLE_SCHEMA, BASE_TABLE_NAME from QSYS2.SYSTABLES where TABLE_SCHEMA = '${schema}' order by TABLE_NAME asc`),
       content.runSQL(`select * from QSYS2.SYSCOLUMNS where TABLE_SCHEMA = '${schema}' order by ORDINAL_POSITION asc`)
     ]);
 
