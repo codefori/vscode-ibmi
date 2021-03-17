@@ -57,7 +57,8 @@
 		"onCommand:code-for-ibmi.refreshDatabaseBrowser",
 		"onCommand:code-for-ibmi.addSchemaToDatabaseBrowser",
 		"onCommand:code-for-ibmi.removeSchemaFromDatabaseBrowser",
-		"onCommand:code-for-ibmi.runEditorStatement"
+		"onCommand:code-for-ibmi.runEditorStatement",
+		"onCommand:code-for-ibmi.Debug"
 	],
 	"main": "./extension.js",
 	"contributes": {
@@ -517,6 +518,12 @@
 				"title": "Run selected statement",
 				"category": "IBM i",
 				"icon": "$(database)"
+			},
+			{
+				"command": "code-for-ibmi.Debug",
+				"title": "Run ACS Debug",
+				"category": "IBM i"
+			
 			}
 		],
 		"keybindings": [
@@ -529,6 +536,11 @@
 				"command": "code-for-ibmi.runEditorStatement",
 				"key": "ctrl+r",
 				"mac": "cmd+r"
+			},
+			{
+				"command": "code-for-ibmi.Debug",
+				"key": "ctrl+d",
+				"mac": "cmd+d"
 			}
 		],
 		"viewsContainers": {
@@ -610,6 +622,11 @@
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.Debug",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
@@ -705,6 +722,11 @@
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
+					"when": "view == objectBrowser && viewItem == library",
+					"group": "1_LibActions@2"
+				},
+				{
+					"command": "code-for-ibmi.Debug",
 					"when": "view == objectBrowser && viewItem == library",
 					"group": "1_LibActions@1"
 				},

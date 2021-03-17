@@ -104,6 +104,9 @@ module.exports = class objectBrowserProvider {
           //Running from command
           console.log(this);
         }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.Debug`, async (node) => {
+        vscode.window.showInformationMessage("Ciao Debug");
       })
     )
   }
