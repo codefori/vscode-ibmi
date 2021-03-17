@@ -2,20 +2,24 @@
 
 > IBM i development extension for VS Code
 
-Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
+Maiintain and compile your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
+![intro_01.png](assets/intro_01.png)
+
+![intro_02.png](assets/intro_02.png)
 
 ## Requirements
 
 - SSH Daemon must be started on IBM i.
   (Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
-- Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos). 
+- Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos).
 
 ## Installation
+
 From  VS Code Marketplace:
 
 [Code-for-ibmi from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
 
-Or from the Extensions icon in the Activity Bar (on the left): 
+Or from the Extensions icon in the Activity Bar (on the left):
 ![assets/install_01,png](assets/install_01.png)
 
 ### Recommended Extensions
@@ -23,6 +27,7 @@ Or from the Extensions icon in the Activity Bar (on the left):
 - [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS
 
 ## Login
+
 Press <kbd>F1</kbd>, search for ```IBM i: Connect```, and press enter to arrive at the login form below.
 
 ![assets/login_01.png](assets/login_01.png)
@@ -43,9 +48,11 @@ of the IBM i system you are connected to.
 ![assets/login_05.png](assets/login_05.png)
 
 ## Settings
-To adjust this extension's settings, press <kbd>F1</kbd> and 
-search for ```Preferences: Open Settings (UI)```. 
+
+To adjust this extension's settings, press <kbd>F1</kbd> and
+search for ```Preferences: Open Settings (UI)```.
 ![assets/settings_02.png](assets/settings_02.png)
+
 Settings for this extension will be under ```Code for IBM i```
 
 ![assets/settings_01.png](assets/settings_01.png)
@@ -72,15 +79,15 @@ Here is an example of the action used to compile an RPG member:
 
 The two available `type` property values are:
 
-* `member` for source members
-* `streamfile` for streamfiles
-* `object` for objects
+- `member` for source members
+- `streamfile` for streamfiles
+- `object` for objects
 
 You can also use the `environment` property to run the action in a certain environment:
 
-* `ile` (default) to run CL commands in the ILE environment
-* `qsh` to run commands in QShell
-* `pase` to run commands in pase
+- `ile` (default) to run CL commands in the ILE environment
+- `qsh` to run commands in QShell
+- `pase` to run commands in pase
 
 The `extensions` property is used to tie the action to certain types of files or objects. `name` is used to identify the action when selecting & running them. `command` is used to define what will be executed.
 
@@ -115,12 +122,16 @@ Notice the special identifiers in the command begining with `&`. These identifie
 New actions can be added by defining a new action object in the settings like the snippet listed above.
 
 ### Auto Refresh
+
 When enabled, listings will refresh when items are interacted with (create, copy, delete, etc). If performance is bad, it is suggested you disable this option.
 
 ### Log Compile Output
+
 When enabled, spool files will be logged from command execution.
 These spool files can be found under **OUTPUT** / **IBM i Compile Log**.
+
 ### Connections
+
 List of connection details from prior connections.
 
 Here is a snippet of what the connection details look like:
@@ -162,25 +173,32 @@ An array of objects. Each object is unique by the host property and is used so d
 ```
 
 #### Source File List
+
 Source files to be included in the member browser.
 
 #### Library List
+
 An array for the library list. Highest item of the library list goes first.
 
 #### Home Directory
+
 Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
+
 Temporary library. Is used OUTPUT files. Cannot be QTEMP.
 
 #### Build library
+
 A library that can be defined/changes for IFS builds.
 
 #### Source ASP
-If source files are located in a specific ASP, specify here. 
+
+If source files are located in a specific ASP, specify here.
 Otherwise, leave blank.
 
 ## Adding Source Files
+
 In order to make the member browser useful, source files need to be declared
 in the ```Code for IBM i``` settings.
 
@@ -203,8 +221,8 @@ A source file can be refreshed by right clicking and selecting **Refresh Member 
 
 ![assets/srcflist_05.png](assets/srcflist_05.png)
 
-
 ## Opening Source Members
+
 After adding a source file, a source member can now be opened by selecting
 it in the member list.
 
@@ -221,6 +239,7 @@ It is now possible to compare two sources, whether they are members or streamfil
 ![assets/compare_01.png](assets/compare_01.png)
 
 ## Compiling Sources
+
 Pressing <kbd>F1</kbd> and search for ```IBM i: Run Action```
 will reveal two commands that can compile a source member.
 
@@ -233,7 +252,7 @@ To compile a source member, run the ```IBM i: Run Action on Active Editor``` com
 If there is more than one compile option available for the member type, it will prompt you.
 
 This will result in a message displaying whether the
-compilation was successful or not. 
+compilation was successful or not.
 
 If any compiler warnings or errors occurred, it will be listed under
 the **PROBLEMS** tab.
@@ -247,9 +266,10 @@ This is what happens when a compiler error occurs.
 For compile command configuration, see [Settings/Actions](#actions)
 
 ## Database Browser
+
 The database browser allows you browse tables in schemas on your connected system. The schema list comes from the defined library list.
 
-Clicking on a schema will load all tables, views, PFs, and LFs inside of the chosen schema. Click on any of those SQL objects will show you what columns are availabe. The tree view is primarily used for information purposes. When the schema has been opened, it will then add snippets to the editor when editing `.sql` sources. 
+Clicking on a schema will load all tables, views, PFs, and LFs inside of the chosen schema. Click on any of those SQL objects will show you what columns are availabe. The tree view is primarily used for information purposes. When the schema has been opened, it will then add snippets to the editor when editing `.sql` sources.
 
 ### Hovering tables shows information it
 
@@ -266,14 +286,15 @@ It is also possible to run SQL statements right from the editor. You can either 
 ![assets/db_03.png](assets/db_03.png)
 
 ## Extension Development
+
 1. clone repo
 2. ```npm i```
 3. 'Run extension' from VS Code debug.
 
-
 ### Documentation
 
 #### Getting Started
+
 - install docsify ```npm i docsify-cli -g```
 - run local with ```docsify serve docs/```
 - by default, runs on http://localhost:3000
