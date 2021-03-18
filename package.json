@@ -286,7 +286,7 @@
 								"CMD"
 							],
 							"name": "Create Command (CRTCMD)",
-							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPNLIB/&OPENMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
 							"type": "member",
@@ -294,7 +294,7 @@
 								"CMD"
 							],
 							"name": "Create Command (Allow Return Variables - CRTCMD)",
-							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPNLIB/&OPENMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
 							"type": "member",
