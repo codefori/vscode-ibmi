@@ -159,6 +159,11 @@
 								"type": "boolean",
 								"default": true,
 								"description": "Must be enabled to make the use of db2util and is enabled by default. If you find db2util isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
+							},
+							"debugPath": {
+								"type": "string",
+								"default": "C:/Debug/",
+								"description": "Debug directory is the working directory where tar.jar and jt400.jar must be present to enable debugging; Example C:/Debug/ "
 							}
 						}
 					}
@@ -358,7 +363,9 @@
 						},
 						{
 							"type": "streamfile",
-							"extensions": ["rpgle"],
+							"extensions": [
+								"rpgle"
+							],
 							"name": "Create Bound RPG Program (CRTBNDRPG) with inputs",
 							"command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
@@ -636,9 +643,8 @@
 			},
 			{
 				"command": "code-for-ibmi.Debug",
-				"title": "Run ACS Debug",
+				"title": "Debug Manager",
 				"category": "IBM i"
-			
 			}
 		],
 		"keybindings": [

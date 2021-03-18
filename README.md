@@ -62,6 +62,13 @@ You can click on a member to open and edit it. There is no member locking and th
 5. If you have more than one compile option available to you for the type of source, it will prompt you
 6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
 
+#### How do I debug my source code?
+
+1. Download tes.jar and jt400.jar from https://sourceforge.net/projects/jt400/ 
+2. Save the files on your PC in your prefered location, the default is C:/Debug/
+3. If you want change the default location edit the "debugPath" in the 'Code for IBM i' Settings 
+4. Use Ctrl+D to start debug manager, more documentation is available [here](https://www.itjungle.com/2020/06/08/guru-graphical-debugging-through-acs/)
+
 ## Detailed Documentation
 More detailed documentation is available [here](https://halcyon-tech.github.io/code-for-ibmi/#/)
 
