@@ -62,6 +62,7 @@ module.exports = class Instance {
 
 
       await Promise.all([
+        vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
         vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
         vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
         vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
@@ -77,6 +78,8 @@ module.exports = class Instance {
    * @param {vscode.ExtensionContext} context
    */
   static async loadAllofExtension(context) {
+    const libraryListView = require(`./views/libraryListView`);
+
     const memberBrowser = require(`./views/memberBrowser`);
     const qsysFs = new (require(`./views/qsysFs`));
     
@@ -86,15 +89,18 @@ module.exports = class Instance {
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
+    const settingsUI = require(`./webviews/settings`);
+
+    const rpgleLinter = require(`./languages/rpgle/linter`);
+
     if (instance.connection) {
       CompileTools.register(context);
 
       if (!statusBar) {
         statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
         statusBar.command = {
-          command: `workbench.action.openSettings`,
-          title: `Open Connection Settings`,
-          arguments: [`code-for-ibmi.connectionSettings`]
+          command: `code-for-ibmi.showAdditionalSettings`,
+          title: `Show Additional Connection Settings`,
         };
         context.subscriptions.push(statusBar);
       }
@@ -105,6 +111,7 @@ module.exports = class Instance {
       //Update the status bar and that's that.
       if (initialisedBefore) {
         await Promise.all([
+          vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
@@ -126,13 +133,25 @@ module.exports = class Instance {
           })
         );
 
+        settingsUI.init(context);
+
+        //********* Library list view */
+
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
+            `libraryListView`,
+            new libraryListView(context)
+          )
+        );
+
         //********* Member Browser */
 
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
             `memberBrowser`,
             new memberBrowser(context)
-          ));
+          )
+        );
 
 
         context.subscriptions.push(
@@ -208,7 +227,28 @@ module.exports = class Instance {
             }
           })
         );
+
+        context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.changeBuildLibrary`, async () => {
+            const config = this.getConfig();
+            const buildLibrary = config.buildLibrary.toUpperCase();
+    
+            const newLibrary = await vscode.window.showInputBox({
+              prompt: `Changing build library`,
+              value: buildLibrary
+            });
+    
+            try {
+              if (newLibrary && newLibrary !== buildLibrary) {
+                await config.set(`buildLibrary`, newLibrary);
+              }
+            } catch (e) {
+              console.log(e);
+            }
+          })
+        );
         
+        new rpgleLinter(context);
 
         //********* Actions */
 

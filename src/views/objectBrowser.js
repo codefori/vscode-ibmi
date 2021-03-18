@@ -67,6 +67,43 @@ module.exports = class objectBrowserProvider {
           await config.set(`objectBrowserList`, libraries);
           if (Configuration.get(`autoRefresh`)) this.refresh();
         }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node) => {
+        if (node) {
+          //Running from right click
+          const fileName = await vscode.window.showInputBox({
+            prompt: `Name of new source file`
+          });
+
+          if (fileName) {
+            const connection = instance.getConnection();
+     
+            if (fileName !== undefined && fileName.length > 0 && fileName.length <= 10) {
+              try {
+                const library = node.path.toUpperCase();
+                const uriPath = `${library}/${fileName.toUpperCase()}`
+
+                vscode.window.showInformationMessage(`Creating source file ${uriPath}.`);
+
+                await connection.remoteCommand(
+                  `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`
+                );
+
+                if (Configuration.get(`autoRefresh`)) {
+                  this.refresh();
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error creating source file! ${e}`);
+              }
+            } else {
+              vscode.window.showErrorMessage(`Source filename must be 10 chars or less.`);
+            }
+          }
+
+        } else {
+          //Running from command
+          console.log(this);
+        }
       })
     )
   }

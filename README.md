@@ -4,18 +4,6 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
 ![](media/image.png)
 
-## Contributors
-
-* [@connorholyday](https://github.com/connorholyday)
-* [@worksofliam](https://github.com/worksofliam)
-* [@alanseiden](https://github.com/alanseiden)
-* [@richardschoen](https://github.com/richardschoen)
-* [@barrettotte](https://github.com/barrettotte)
-* [@thebeardedgeek](https://github.com/thebeardedgeek)
-* [@dferrand](https://github.com/dferrand)
-* [@dariocs](https://github.com/dariocs)
-* [@priceaj](https://github.com/priceaj)
-
 ## Features
 
 * Member browser and editor
@@ -73,7 +61,21 @@ You can click on a member to open and edit it. There is no member locking and th
 4. Use Ctrl+E or Cmd+E to compile your source.
 5. If you have more than one compile option available to you for the type of source, it will prompt you
 6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
-   
+
 ## Detailed Documentation
 More detailed documentation is available [here](https://halcyon-tech.github.io/code-for-ibmi/#/)
- 
+
+## Contributors
+
+* [@connorholyday](https://github.com/connorholyday)
+* [@worksofliam](https://github.com/worksofliam)
+* [@alanseiden](https://github.com/alanseiden)
+* [@richardschoen](https://github.com/richardschoen)
+* [@barrettotte](https://github.com/barrettotte)
+* [@thebeardedgeek](https://github.com/thebeardedgeek)
+* [@dferrand](https://github.com/dferrand)
+* [@dariocs](https://github.com/dariocs)
+* [@priceaj](https://github.com/priceaj)
+* [@sgi495](https://github.com/sgi495)
+* [@SJLennon](https://github.com/SJLennon)
+* [@onewheelonly](https://github.com/onewheelonly)

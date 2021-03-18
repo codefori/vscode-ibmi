@@ -12,6 +12,13 @@ module.exports = class IBMi {
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
 
+    /**
+     * Used to store ASP numbers and their names
+     * THeir names usually maps up to a directory in
+     * the root of the IFS, thus why we store it.
+     */
+    this.aspInfo = {};
+
     /** @type {{[name: string]: string}} */
     this.remoteFeatures = {
       db2util: undefined,
@@ -20,38 +27,28 @@ module.exports = class IBMi {
   }
 
   /**
-   * @param {{host: string, port: number, username: string, password: string, keepaliveInterval?: number}} connectionObject 
+   * @param {{host: string, port: number, username: string, password?: string,
+   *          privateKey?: string, keepaliveInterval?: number}} connectionObject
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
   async connect(connectionObject) {
     try {
       connectionObject.keepaliveInterval = 35000;
-
+      // Make sure we're not passing any blank strings, as node_ssh will try to validate it
+      if (!connectionObject.privateKey) (connectionObject.privateKey = null);
+      
       await this.client.connect(connectionObject);
 
       this.currentHost = connectionObject.host;
       this.currentPort = connectionObject.port;
       this.currentUser = connectionObject.username;
 
+      //Load existing config
       /** @type {Configuration} */
       this.config = await Configuration.load(this.currentHost);
 
-      //Perhaps load in existing config if it exists here.
-
-      //Continue with finding out info about system
-      if (this.config.homeDirectory === `.`) await this.config.set(`homeDirectory`, `/home/${connectionObject.username}`);
-
-      //Create home directory if it does not exist.
-      try {
-        await this.paseCommand(`mkdir ${this.config.homeDirectory}`);
-      } catch (e) {
-        //If the folder doesn't exist, then we need to reset the path
-        //because we need a valid path for the home directory.
-        if (e.indexOf(`File exists`) === -1) {
-          //An error message here also?
-          await this.config.set(`homeDirectory`, `.`);
-        }
-      }
+      //Get home directory if one isn't set
+      if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, await this.paseCommand(`pwd`, null))
 
       //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
       //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
@@ -133,6 +130,35 @@ module.exports = class IBMi {
         }
         
       } catch (e) {}
+
+      //Even if db2util is installed, but they have disabled it... then disable it
+      if (this.config.enableSQL === false) {
+        this.remoteFeatures.db2util = undefined;
+      }
+
+      if (this.remoteFeatures.db2util) {
+        //This is mostly a nice to have. We grab the ASP info so user's do
+        //not have to provide the ASP in the settings. This only works if
+        //they have db2util installed, becuase we have to use SQL to get the
+        //data. I couldn't find an outfile for this information. :(
+        try {
+          const command = this.remoteFeatures.db2util;
+
+          const statement = `SELECT * FROM QSYS2.ASP_INFO`;
+          let output = await this.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
+    
+          if (typeof output === `string`) {
+            const rows = JSON.parse(output);
+            for (const row of rows) {
+              if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+              }
+            }
+          }
+        } catch (e) {
+          //Oh well
+        }
+      }
 
       return {
         success: true

@@ -5,6 +5,7 @@ const path = require(`path`);
 const errorHandler = require(`./errorHandle`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
+const { CustomUI, Field } = require(`./CustomUI`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -40,13 +41,15 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {{lib: string, object: string, ext?: string}} evfeventInfo
+   * @param {{asp?: string, lib: string, object: string, ext?: string}} evfeventInfo
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => row.EVFEVENT);
+
+    const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
     const errors = errorHandler(lines);
 
@@ -82,7 +85,7 @@ module.exports = class CompileTools {
         if (file.startsWith(`/`))
           ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
         else
-          ileDiagnostics.set(vscode.Uri.parse(`member:/${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
+          ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
         
       }
 
@@ -98,7 +101,7 @@ module.exports = class CompileTools {
    * @param {vscode.Uri} uri 
    */
   static async RunAction(instance, uri) {
-    let evfeventInfo = {lib: ``, object: ``};
+    let evfeventInfo = {asp: undefined, lib: ``, object: ``};
 
     /** @type {IBMi} */
     const connection = instance.getConnection();
@@ -134,17 +137,32 @@ module.exports = class CompileTools {
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
-        let blank, lib, file, fullName;
+        command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
+        command = command.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
+
+        let blank, asp, lib, file, fullName;
         let basename, name, ext;
 
         switch (uri.scheme) {
         case `member`:
-          [blank, lib, file, fullName] = uri.path.split(`/`);
+          const memberPath = uri.path.split(`/`);
+      
+          if (memberPath.length === 4) {
+            lib = memberPath[1];
+            file = memberPath[2];
+            fullName = memberPath[3];
+          } else {
+            asp = memberPath[1]
+            lib = memberPath[2];
+            file = memberPath[3];
+            fullName = memberPath[4];
+          }
           name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
           ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : undefined);
 
           evfeventInfo = {
+            asp,
             lib: lib,
             object: name,
             ext
@@ -163,12 +181,12 @@ module.exports = class CompileTools {
           ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
 
           evfeventInfo = {
+            asp: undefined,
             lib: config.buildLibrary,
             object: name,
             ext
           };
 
-          command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
           command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
           command = command.replace(new RegExp(`&NAME`, `g`), name);
           command = command.replace(new RegExp(`&EXT`, `g`), ext);
@@ -180,6 +198,7 @@ module.exports = class CompileTools {
           name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
           evfeventInfo = {
+            asp: undefined,
             lib,
             object: name,
             extension
@@ -193,14 +212,27 @@ module.exports = class CompileTools {
 
         if (command.startsWith(`?`)) {
           command = await vscode.window.showInputBox({prompt: `Run action`, value: command.substring(1)})
+        } else {
+          command = await CompileTools.showCustomInputs(chosenOptionName, command);
         }
 
         if (command) {
-          const libl = config.libraryList.slice(0).reverse();
           /** @type {any} */
           let commandResult, output;
           let executed = false;
 
+          //We have to reverse it because `liblist -a` adds the next item to the top always 
+          let libl = config.libraryList.slice(0).reverse();
+
+          libl = libl.map(library => {
+            //We use this for special variables in the libl
+            switch (library) {
+            case `&BUILDLIB`: return config.buildLibrary;
+            default: return library;
+            }
+          });
+
+          outputChannel.append(`Library list: ` + libl.reverse().join(` `) + `\n`);
           outputChannel.append(`Command: ` + command + `\n`);
 
           try {
@@ -232,7 +264,7 @@ module.exports = class CompileTools {
             if (commandResult.code === 0 || commandResult.code === null) {
               executed = true;
               vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
-              if (connection.autoRefresh) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
+              if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
               
             } else {
               executed = false;
@@ -263,5 +295,69 @@ module.exports = class CompileTools {
       //No compile commands
       vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);
     }
+  }
+
+  /**
+   * @param {string} name Name of action 
+   * @param {string} command Command string
+   * @return {Promise<string>} new command
+   */
+  static async showCustomInputs(name, command) {
+    let loop = true, idx, start, end = 0, currentInput;
+
+    let components = [];
+
+    while (loop) {
+      idx = command.indexOf(`\${`, end);
+
+      if (idx >= 0) {
+        start = idx;
+        end = command.indexOf(`}`, start);
+
+        if (end >= 0) {
+          currentInput = command.substring(start+2, end);
+
+          const [name, label, initalValue] = currentInput.split(`|`);
+          components.push({
+            name,
+            label,
+            initalValue: initalValue || ``,
+            positions: [start, end+1]
+          });
+        } else {
+          loop = false;
+        }
+      } else {
+        loop = false;
+      }
+    }
+
+    if (components.length > 0) {
+      let commandUI = new CustomUI();
+      let field;
+
+      for (const component of components) {
+        field = new Field(`input`, component.name, component.label);
+        field.default = component.initalValue;
+        commandUI.addField(field);
+      }
+
+      commandUI.addField(new Field(`submit`, `execute`, `Execute`));
+
+      const {panel, data} = await commandUI.loadPage(name);
+
+      panel.dispose();
+      if (data) {
+        for (const component of components.reverse()) {
+          command = command.substr(0, component.positions[0]) + data[component.name] + command.substr(component.positions[1]);
+        }
+      } else {
+        command = undefined;
+      }
+
+    }
+
+    return command;
+  
   }
 }
