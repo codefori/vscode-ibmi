@@ -286,7 +286,7 @@
 								"CMD"
 							],
 							"name": "Create Command (CRTCMD)",
-							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPENLIB/&OPENMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
 							"type": "member",
@@ -294,7 +294,7 @@
 								"CMD"
 							],
 							"name": "Create Command (Allow Return Variables - CRTCMD)",
-							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPENLIB/&OPENMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
 							"type": "member",
@@ -402,7 +402,7 @@
 								"cmd"
 							],
 							"name": "Create Command (CRTCMD)",
-							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAMEC) SRCSTMF('&FULLPATH') OPTION(*EVENTF)"
+							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF)"
 						},
 						{
 							"type": "streamfile",
@@ -410,7 +410,7 @@
 								"cmd"
 							],
 							"name": "Create Command (Allow Return Variables - CRTCMD)",
-							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAMEC) SRCSTMF('&FULLPATH') ALLOW(*BPGM *IPGM *BMOD *IMOD *BREXX *IREXX) OPTION(*EVENTF)"
+							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') ALLOW(*BPGM *IPGM *BMOD *IMOD *BREXX *IREXX) OPTION(*EVENTF)"
 						},
 						{
 							"type": "streamfile",
