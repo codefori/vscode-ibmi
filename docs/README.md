@@ -49,11 +49,7 @@ of the IBM i system you are connected to.
 
 ## Settings
 
-To adjust this extension's settings, press <kbd>F1</kbd> and
-search for ```Preferences: Open Settings (UI)```.
-=======
-To adjust this extension's settings, press <kbd>F1</kbd> and 
-search for ```Preferences: Open Settings (UI)```. 
+To adjust this extension's settings, press <kbd>F1</kbd> and search for ```Preferences: Open Settings (UI)```.
 
 ![assets/settings_02.png](assets/settings_02.png)
 
@@ -95,15 +91,16 @@ You can also use the `environment` property to run the action in a certain envir
 
 Other important properties:
 
-* `extensions` property is used to tie the action to certain types of files or objects. 
-* `name` is used to identify the action when selecting & running them. 
-* `command` is used to define what will be executed. Read about com mand below.
+- `extensions` property is used to tie the action to certain types of files or objects.
+- `name` is used to identify the action when selecting & running them.
+- `command` is used to define what will be executed. Read about com mand below.
 
 ### Command variables and fields
 
 > `CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)`
 
 Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Each `type` has different variables.
+
 #### Member variables
 
 | Variable | Usage                              |
@@ -222,8 +219,6 @@ Source files to be included in the member browser.
 
 #### Library List
 
-An array for the library list. Highest item of the library list goes first.
-=======
 An array for the library list. Highest item of the library list goes first. You are able to use `&BUILDLIB` in the library list, to make compiles dynamic.
 
 ```json
@@ -244,9 +239,7 @@ Temporary library. Is used OUTPUT files. Cannot be QTEMP.
 
 #### Build library
 
-A library that can be defined/changes for IFS builds.
-=======
-A library that can be defined/changes for IFS builds. You can also change the build library with the 'Change build library' command (F1 -> Change build library).
+A library that can be defined/changed for IFS builds. You can also change the build library with the 'Change build library' command (F1 -> Change build library).
 
 #### Source ASP
 
