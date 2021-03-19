@@ -350,6 +350,14 @@
 						{
 							"type": "member",
 							"extensions": [
+								"PNLGRP"
+							],
+							"name": "Create Panel Group (CRTPNLGRP)",
+							"command": "?CRTPNLGRP PNLGRP(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) OPTION(*EVENTF)"
+						},
+						{
+							"type": "member",
+							"extensions": [
 								"GLOBAL"
 							],
 							"name": "Create Program (CRTPGM)",
