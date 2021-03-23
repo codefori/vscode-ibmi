@@ -286,7 +286,7 @@
 								"CMD"
 							],
 							"name": "Create Command (CRTCMD)",
-							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
 							"type": "member",
@@ -294,7 +294,7 @@
 								"CMD"
 							],
 							"name": "Create Command (Allow Return Variables - CRTCMD)",
-							"command": "?CRTCMD CMD(&OPENLIB/&OPNMBR) PGM(&OPNLIB/&OPNMBRC) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
+							"command": "?CRTCMD CMD(&OPENLIB/&OPENMBR) PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) ALLOW(ALLOW(*BPGM *IPGM *BMOD *IMOD) ) CURLIB(*NOCHG) PRDLIB(*NOCHG)"
 						},
 						{
 							"type": "member",
@@ -403,6 +403,22 @@
 							],
 							"name": "Create Bound CL Program (CRTBNDCL)",
 							"command": "?CRTBNDCL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"cmd"
+							],
+							"name": "Create Command (CRTCMD)",
+							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"cmd"
+							],
+							"name": "Create Command (Allow Return Variables - CRTCMD)",
+							"command": "?CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') ALLOW(*BPGM *IPGM *BMOD *IMOD *BREXX *IREXX) OPTION(*EVENTF)"
 						},
 						{
 							"type": "streamfile",
