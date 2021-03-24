@@ -167,8 +167,11 @@ When enabled, listings will refresh when items are interacted with (create, copy
 
 ### Log Compile Output
 
-When enabled, spool files will be logged from command execution.
-These spool files can be found under **OUTPUT** / **IBM i Compile Log**.
+When enabled, spool files will be logged from the command execution.
+These spool files can be found under the **OUTPUT** tab (View->Output, or Ctrl + Shift + U). Select **IBM i Output** in the drop down on the right.
+![Panel on Right](assets/LogOutput_01.png)
+You can clear the OUTPUT tab using the **Clear Output** icon on the right.
+![Clear output](assets/LogOutput_02.png)
 
 ### Connections
 
@@ -235,7 +238,7 @@ Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
 
-Temporary library. Is used OUTPUT files. Cannot be QTEMP.
+Temporary library. Is used to OUTPUT files. Cannot be QTEMP.
 
 #### Build library
 
