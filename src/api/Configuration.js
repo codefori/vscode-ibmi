@@ -36,7 +36,7 @@ module.exports = class Configuration {
     this.enableSQL = base.enableSQL;
 
     /** @type {string} */
-    this.debugPath = base.debugPath || `C:/Debug/`;
+    this.debugPath = base.debugPath || ``;
   }
 
   /**
