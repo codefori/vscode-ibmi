@@ -162,7 +162,7 @@
 							},
 							"debugPath": {
 								"type": "string",
-								"default": "C:/Debug/",
+								"default": "",
 								"description": "Debug directory is the working directory where tar.jar and jt400.jar must be present to enable debugging; Example C:/Debug/ "
 							}
 						}
