@@ -19,9 +19,10 @@ module.exports = class Login {
 
     let ui = new CustomUI();
 
+    ui.addField(new Field(`input`, `name`, `Connection Name`));
     ui.addField(new Field(`input`, `host`, `Host or IP Address`));
     ui.addField(new Field(`input`, `port`, `Port`));
-    ui.fields[1].default = `22`;
+    ui.fields[2].default = `22`;
     ui.addField(new Field(`input`, `username`, `Username`));
     ui.addField(new Field(`password`, `password`, `Password`));
     ui.addField(new Field(`file`, `privateKey`, `Private Key`));
@@ -47,8 +48,9 @@ module.exports = class Login {
 
           let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
           let existingConnections = existingConnectionsConfig.get(`connections`);
-          if (!existingConnections.find(item => item.host === data.host)) {
+          if (!existingConnections.some(item => item.name === data.name)) {
             existingConnections.push({
+              name: data.name,
               host: data.host,
               port: data.port,
               username: data.username,
@@ -86,7 +88,7 @@ module.exports = class Login {
     const existingConnections = existingConnectionsConfig
       .get(`connections`)
       .map(item => ({
-        label: `${item.username}@${item.host}:${item.port}`,
+        label: `${item.name}`,
         config: item
       }));
 

@@ -182,6 +182,7 @@ Here is a snippet of what the connection details look like:
 ```json
 "code-for-ibmi.connections": [
   {
+    "name": "My IBMi Connection",
     "host": "DEV400",
     "port": 22,
     "username": "OTTEB",
@@ -197,6 +198,7 @@ An array of objects. Each object is unique by the host property and is used so d
 ```json
     "code-for-ibmi.connectionSettings": [
         {
+            "name": "My IBMi Connection",
             "host": "seiden.iinthecloud.com",
             "sourceFileList": [
                 "QSYSINC/H",
