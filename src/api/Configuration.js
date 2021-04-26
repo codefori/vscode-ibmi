@@ -3,6 +3,9 @@ const vscode = require(`vscode`);
 
 module.exports = class Configuration {
   constructor(base = {}) {
+    
+    this.name = base.name;
+
     this.host = base.host;
 
     /** @type {string[]} LIB/FILE, LIB/FILEs */
@@ -45,7 +48,7 @@ module.exports = class Configuration {
     const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
     let connections = globalData.get(`connectionSettings`);
 
-    const index = connections.findIndex(conn => conn.host === this.host);
+    const index = connections.findIndex(conn => conn.name === this.name);
 
     if (index >= 0) {
       connections[index][key] = value;
@@ -63,7 +66,7 @@ module.exports = class Configuration {
     const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
     let connections = globalData.get(`connectionSettings`);
 
-    const index = connections.findIndex(conn => conn.host === this.host);
+    const index = connections.findIndex(conn => conn.name === this.name);
 
     if (index >= 0) {
       for (const prop in props) {
@@ -79,7 +82,7 @@ module.exports = class Configuration {
   reload() {
     const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
     const connections = globalData.get(`connectionSettings`);
-    const index = connections.findIndex(conn => conn.host === this.host);
+    const index = connections.findIndex(conn => conn.name === this.name);
 
     if (index >= 0) {
       for (const key in connections[index]) {
@@ -90,21 +93,21 @@ module.exports = class Configuration {
 
   /**
    * Will load an existing config if it exists, otherwise will create it with default values.
-   * @param {string} host Host string for configuration
+   * @param {string} name Connection name string for configuration
    * @returns {Promise<Configuration>}
    */
-  static async load(host) {
+  static async load(name) {
     const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
 
     let connections = globalData.get(`connectionSettings`);
-    let existingConfig = connections.find(conn => conn.host === host);
+    let existingConfig = connections.find(conn => conn.name === name);
     let config;
 
     if (existingConfig) {
       config = new this(existingConfig);
 
     } else {
-      config = new this({host});
+      config = new this({name});
       connections.push(config);
 
       await globalData.update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);

@@ -27,7 +27,7 @@ module.exports = class IBMi {
   }
 
   /**
-   * @param {{host: string, port: number, username: string, password?: string,
+   * @param {{name: string, host: string, port: number, username: string, password?: string,
    *          privateKey?: string, keepaliveInterval?: number}} connectionObject
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
@@ -39,13 +39,14 @@ module.exports = class IBMi {
       
       await this.client.connect(connectionObject);
 
+      this.currentConnectionName = connectionObject.name;
       this.currentHost = connectionObject.host;
       this.currentPort = connectionObject.port;
       this.currentUser = connectionObject.username;
 
       //Load existing config
       /** @type {Configuration} */
-      this.config = await Configuration.load(this.currentHost);
+      this.config = await Configuration.load(this.currentConnectionName);
 
       //Get home directory if one isn't set
       if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, await this.paseCommand(`pwd`, null))

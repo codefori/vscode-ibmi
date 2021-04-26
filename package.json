@@ -84,6 +84,10 @@
 						"type": "object",
 						"description": "Configuration for this connection",
 						"properties": {
+							"name": {
+								"type": "string",
+								"description": "Connection name"
+							},
 							"host": {
 								"type": "string",
 								"description": "Host for this configuration"
@@ -188,6 +192,10 @@
 						"type": "object",
 						"title": "Connection details",
 						"properties": {
+							"name": {
+								"type": "string",
+								"description": "Connection name"
+							},
 							"host": {
 								"type": "string",
 								"description": "Host name or IP address"
