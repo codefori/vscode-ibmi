@@ -2,7 +2,7 @@
 
 Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
-![](media/image.png)
+![example screen](media/image.png)
 
 ## Features
 
@@ -14,15 +14,17 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 
 ## Requirements
 
-In order to use extension, the SSH Daemon must be started on IBM i. (Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
+In order to use extension, the SSH Daemon must be started on IBM i.
+
+(Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
 
 ## How to get running
 
-#### Install from VS Code
+### Install from VS Code
 
 [You can find the extension in the VS Code Marketplace!](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
 
-#### Run from local
+### Run from local
 
 1. clone repo
 2. `npm i`
@@ -30,11 +32,11 @@ In order to use extension, the SSH Daemon must be started on IBM i. (Licensed pr
 
 ## Quick Start Guide
 
-#### How do I get syntax highlighting?
+### How do I get syntax highlighting?
 
 Install [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) first! Thank you [@barrettotte](https://github.com/barrettotte).
 
-#### Make a connection
+### Make a connection
 
 1. Press F1
 2. Find 'IBM i: Connect'
@@ -43,7 +45,7 @@ Install [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=bar
 
 Tip: next time, try using 'IBM i: Connect to previous'
 
-#### Browse source members
+### Browse source members
 
 1. Connect to your system
 2. Find the member browser and hover your mouse over it until you see the folder with the plus icon
@@ -53,7 +55,7 @@ Tip: next time, try using 'IBM i: Connect to previous'
 
 You can click on a member to open and edit it. There is no member locking and the extension does not retain source dates.
 
-#### How do I compile my source code?
+### How do I compile my source code?
 
 1. Edit your library list in the 'Code for IBM i' Settings for your current connection (connections get their own settings now!)
 2. Edit the Actions in JSON format in the 'Code for IBM i' Settings too. You can define what commands to use for the compilations.
@@ -63,6 +65,7 @@ You can click on a member to open and edit it. There is no member locking and th
 6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
 
 ## Detailed Documentation
+
 More detailed documentation is available [here](https://halcyon-tech.github.io/code-for-ibmi/#/)
 
 ## Contributors

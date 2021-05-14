@@ -1,8 +1,8 @@
 # code-for-ibmi
 
-> IBM i development extension for VS Code
+## IBM i development extension for VS Code
 
-Maiintain and compile your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
+Maiintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
 ![intro_01.png](assets/intro_01.png)
 
 ![intro_02.png](assets/intro_02.png)
@@ -92,8 +92,8 @@ You can also use the `environment` property to run the action in a certain envir
 Other important properties:
 
 - `extensions` property is used to tie the action to certain types of files or objects.
-- `name` is used to identify the action when selecting & running them.
-- `command` is used to define what will be executed. Read about com mand below.
+- `name` is used to identify the action when selecting and running them.
+- `command` is used to define what will be executed. Read about command below.
 
 ### Command variables and fields
 
@@ -126,7 +126,7 @@ Notice the special identifiers in the command begining with `&`. These identifie
 
 | Variable  | Usage                             |
 |-----------|-----------------------------------|
-| &LIBRARY  | Library which the object exists   |
+| &LIBRARY  | Library in which the object exists|
 | &NAME     | Name of the object                |
 | &TYPE     | The object type (PGM, FILE, etc)  |
 | &BUILDLIB | Values which comes from the connection settings |
@@ -169,9 +169,19 @@ When enabled, listings will refresh when items are interacted with (create, copy
 
 When enabled, spool files will be logged from the command execution.
 These spool files can be found under the **OUTPUT** tab (View->Output, or Ctrl + Shift + U). Select **IBM i Output** in the drop down on the right.
+
 ![Panel on Right](assets/LogOutput_01.png)
+
 You can clear the OUTPUT tab using the **Clear Output** icon on the right.
 ![Clear output](assets/LogOutput_02.png)
+
+You can change the font size in the OUTPUT tab in your settings.json thus:
+
+````json
+"[Log]": {
+        "editor.fontSize": 11
+    },
+````
 
 ### Connections
 
@@ -338,6 +348,24 @@ Clicking on a schema will load all tables, views, PFs, and LFs inside of the cho
 It is also possible to run SQL statements right from the editor. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
 
 ![assets/db_03.png](assets/db_03.png)
+
+### db2Util Required
+
+A compatible version of [db2util](https://github.com/IBM/ibmi-db2util) needs to be installed on the IBM i for the Database Browser to work.
+
+If installed, db2util is also used to more quickly populate the MEMBER BROWSER list. However, incompatible versions of db2util may fail to populate the MEMBER BROWSER list. You can ignore db2util in connectionSettings like this:
+
+````json
+            "buildLibrary": "QTEMP",
+            "sourceFileCCSID": "*FILE",
+            "enableSQL": false,
+````
+
+## Tips & Tricks
+
+### Overtype
+
+VS Code  works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
 
 ## Extension Development
 
