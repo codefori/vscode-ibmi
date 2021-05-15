@@ -19,6 +19,7 @@
 	"repository": {
 		"url": "https://github.com/halcyon-tech/code-for-ibmi"
 	},
+	"license": "MIT",
 	"engines": {
 		"vscode": "^1.52.0"
 	},
@@ -373,7 +374,9 @@
 						},
 						{
 							"type": "streamfile",
-							"extensions": ["rpgle"],
+							"extensions": [
+								"rpgle"
+							],
 							"name": "Create Bound RPG Program (CRTBNDRPG) with inputs",
 							"command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
