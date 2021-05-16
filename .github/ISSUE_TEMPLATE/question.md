@@ -1,8 +1,7 @@
 ---
 name: Question
-about: Used for non-specific questions
+about: Question issue will be closed. Please start a thread in Discussions.
 title: ''
-labels: discussion
 assignees: ''
 
 ---
