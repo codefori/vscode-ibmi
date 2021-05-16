@@ -61,6 +61,10 @@ Settings for this extension will be under ```Code for IBM i```
 
 Actions can be used to perform tasks on members, streamfiles and eventually other types of objects too.
 
+As of 0.5, you can now edit the Actions from a UI.
+
+![assets/actions_01.png](assets/actions_01.png)
+
 Here is an example of the action used to compile an RPG member:
 
 ```json

@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 const vscode = require(`vscode`);
 
 //Webpack is returning this as a string
@@ -46,11 +47,10 @@ class CustomUI {
   }
 
   getHTML(panel) {
-    const submitButton = this.fields.find(field => field.type === `submit`);
+    const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
 
-    if (!submitButton) {
-      throw new Error(`Submit button required on CustomUI forms.`);
-    }
+    const notInputFields = [`submit`, `tree`];
+    const trees = this.fields.filter(field => field.type == `tree`);
 
     return `
     <!DOCTYPE html>
@@ -65,6 +65,10 @@ class CustomUI {
         <style>
             #laforma {
                 margin: 2em 2em 2em 2em;
+            }
+
+            vscode-tree {
+              width: 50em;
             }
         </style>
     </head>
@@ -81,7 +85,8 @@ class CustomUI {
         (function () {
             const vscode = acquireVsCodeApi();
             const submitButton = document.getElementById('${submitButton.id}');
-            const submitfields = [${this.fields.filter(field => field.type !== `submit`).map(field => `'${field.id}'`).join(`,`)}];
+            const submitfields = [${this.fields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
+            const trees = [${trees.map(field => `'${field.id}'`).join(`,`)}];
             const filefields = [${this.fields.filter(field => field.type == `file`).map(field => `'${field.id}'`).join(`,`)}];
     
             const doDone = (event) => {
@@ -103,8 +108,10 @@ class CustomUI {
                 vscode.postMessage(data)
             };
 
-            submitButton.onclick = doDone;
-            submitButton.onKeyDown = doDone;
+            if (submitButton) {
+              submitButton.onclick = doDone;
+              submitButton.onKeyDown = doDone;
+            }
 
             for (const field of submitfields) {
                 document.getElementById(field)
@@ -128,8 +135,22 @@ class CustomUI {
                           });
                           reader.readAsText(file);
                       }
-                  }
-                  )}
+                  })
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+              var currentTree;
+              ${trees.map(tree => { 
+                return `
+                  currentTree = document.getElementById('${tree.id}');
+                  currentTree.data = ${JSON.stringify(tree.items)};
+                  currentTree.addEventListener('vsc-select', (event) => {
+                    console.log(event.detail);
+                    vscode.postMessage({'${tree.id}': event.detail.value});
+                  });
+                  `
+              })}
+            });
 
         }())
     </script>
@@ -140,7 +161,7 @@ class CustomUI {
 
 class Field  {
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"|"file"}} */
+    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"}} */
     this.type = type;
 
     /** @type {string} */
@@ -154,6 +175,9 @@ class Field  {
 
     /** @type {string|undefined} */
     this.default = undefined;
+
+    /** @type {object[]|undefined} Used for tree and select type. */
+    this.items = undefined;
   }
 
   getHTML() {
@@ -198,6 +222,30 @@ class Field  {
           </vscode-form-control>
       </vscode-form-item>
       `;
+
+    case `tree`:
+      return `
+      <vscode-form-item>
+          <vscode-form-label>${this.label}</vscode-form-label>
+          ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+          <vscode-form-control>
+              <vscode-tree id="${this.id}"></vscode-tree>
+          </vscode-form-control>
+      </vscode-form-item>
+      `;
+
+    case `select`:
+      return `
+      <vscode-form-item>
+          <vscode-form-label>${this.label}</vscode-form-label>
+          ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+          <vscode-form-control>
+              <vscode-single-select id="${this.id}">
+                  ${this.items.map(item => `<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
+              </vscode-single-select>
+          </vscode-form-control>
+      </vscode-form-item>
+      `
 
     }
   }
