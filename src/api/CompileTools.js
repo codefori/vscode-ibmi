@@ -53,6 +53,9 @@ module.exports = class CompileTools {
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => row.EVFEVENT);
 
@@ -79,14 +82,16 @@ module.exports = class CompileTools {
             error.column = 0;
             error.toColumn = 100;
           }
-          
-          diagnostic = new vscode.Diagnostic(
-            new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
-            `${error.code}: ${error.text} (${error.sev})`,
-            diagnosticSeverity[error.sev]
-          );
 
-          diagnostics.push(diagnostic);
+          if (!config.hideCompileErrors.includes(error.code)) {
+            diagnostic = new vscode.Diagnostic(
+              new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
+              `${error.code}: ${error.text} (${error.sev})`,
+              diagnosticSeverity[error.sev]
+            );
+
+            diagnostics.push(diagnostic);
+          }
         }
 
         if (file.startsWith(`/`))

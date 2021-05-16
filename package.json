@@ -165,6 +165,15 @@
 								"type": "boolean",
 								"default": true,
 								"description": "Must be enabled to make the use of db2util and is enabled by default. If you find db2util isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
+							},
+							"hideCompileErrors": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "IBM i error code"
+								},
+								"default": [],
+								"description": "List of codes that will be hidden in the result of an action (from the EVFEVENT file)"
 							}
 						}
 					}

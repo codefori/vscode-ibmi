@@ -39,6 +39,11 @@ module.exports = class SettingsUI {
         field.description = `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`;
         ui.addField(field);
     
+        field = new Field(`input`, `hideCompileErrors`, `Errors to ignore`);
+        field.default = config.hideCompileErrors.join(`,`);
+        field.description = `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`;
+        ui.addField(field);
+    
         field = new Field(`submit`, `save`, `Save settings`);
         ui.addField(field);
     
@@ -53,6 +58,9 @@ module.exports = class SettingsUI {
             switch (key) {
             case `sourceASP`:
               if (data[key].trim() === ``) data[key] = null;
+              break;
+            case `hideCompileErrors`:
+              data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
               break;
             }
           }
