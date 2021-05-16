@@ -120,7 +120,7 @@ module.exports = class Instance {
         };
         context.subscriptions.push(actionsBarItem);
 
-        actionsBarItem.text = `IBM i Actions`;
+        actionsBarItem.text = `Actions`;
       }
 
       actionsBarItem.show();
