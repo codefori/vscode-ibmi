@@ -37,6 +37,9 @@ module.exports = class Configuration {
 
     /** @type {boolean} */
     this.enableSQL = base.enableSQL;
+
+    /** @type {string[]} */
+    this.hideCompileErrors = base.hideCompileErrors || [];
   }
 
   /**
