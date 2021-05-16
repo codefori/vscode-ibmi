@@ -53,8 +53,6 @@ module.exports = class SettingsUI {
       if (data.actions) {
         this.WorkAction(Number(data.actions));
       }
-
-      console.log(data);
     }
   }
 
