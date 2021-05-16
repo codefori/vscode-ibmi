@@ -36,16 +36,10 @@ module.exports = class SettingsUI {
     field.description = `Create or maintain Actions.`;
     field.items = [
       {
-        icons: {
-          leaf: `add`
-        },
         label: `New Action`,
         value: `-1`
       },
       ...allActions.map(action => ({
-        icons: {
-          leaf: `edit`
-        },
         label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
         value: String(action.id)
       }))
