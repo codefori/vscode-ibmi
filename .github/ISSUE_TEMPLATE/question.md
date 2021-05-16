@@ -1,6 +1,6 @@
 ---
 name: Question
-about: Question issue will be closed. Please start a thread in Discussions.
+about: Question issues will be closed. Please start a thread in Discussions.
 title: ''
 assignees: ''
 
