@@ -253,6 +253,12 @@ module.exports = class Instance {
         //********* Actions */
 
         context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
+            CompileTools.clearDiagnostics();
+          })
+        );
+
+        context.subscriptions.push(
           vscode.commands.registerCommand(`code-for-ibmi.runAction`, async () => {
             const editor = vscode.window.activeTextEditor;
             if (editor) {
