@@ -6,7 +6,10 @@ const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
 
 /** @type {vscode.StatusBarItem} */
-let statusBar;
+let connectedBarItem;
+
+/** @type {vscode.StatusBarItem} */
+let actionsBarItem;
 
 let initialisedBefore = false;
 
@@ -90,23 +93,37 @@ module.exports = class Instance {
     const databaseBrowser = require(`./views/databaseBrowser`);
 
     const settingsUI = require(`./webviews/settings`);
+    const actionsUI = require(`./webviews/actions`);
 
     const rpgleLinter = require(`./languages/rpgle/linter`);
 
     if (instance.connection) {
       CompileTools.register(context);
 
-      if (!statusBar) {
-        statusBar = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        statusBar.command = {
+      if (!connectedBarItem) {
+        connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        connectedBarItem.command = {
           command: `code-for-ibmi.showAdditionalSettings`,
           title: `Show Additional Connection Settings`,
         };
-        context.subscriptions.push(statusBar);
+        context.subscriptions.push(connectedBarItem);
       }
       
-      statusBar.text = `IBM i: ${instance.connection.currentHost}`;
-      statusBar.show();
+      connectedBarItem.text = `IBM i: ${instance.connection.currentHost}`;
+      connectedBarItem.show();
+
+      if (!actionsBarItem) {
+        actionsBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        actionsBarItem.command = {
+          command: `code-for-ibmi.showActionsMaintenance`,
+          title: `Show IBM i Actions`,
+        };
+        context.subscriptions.push(actionsBarItem);
+
+        actionsBarItem.text = `IBM i Actions`;
+      }
+
+      actionsBarItem.show();
 
       //Update the status bar and that's that.
       if (initialisedBefore) {
@@ -124,7 +141,8 @@ module.exports = class Instance {
         context.subscriptions.push(
           vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async () => {
             if (instance.connection) {
-              statusBar.hide();
+              connectedBarItem.hide();
+              actionsBarItem.hide();
               vscode.window.showInformationMessage(`Disconnecting from ${instance.connection.currentHost}.`);
               this.disconnect();
             } else {
@@ -134,6 +152,7 @@ module.exports = class Instance {
         );
 
         settingsUI.init(context);
+        actionsUI.init(context);
 
         //********* Library list view */
 

@@ -78,6 +78,16 @@ module.exports = class Configuration {
     }
   }
 
+  /**
+   * Set global extension config
+   * @param {string} key 
+   * @param {any} value 
+   */
+  static setGlobal(key, value) {
+    const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
+    return globalData.update(key, value, vscode.ConfigurationTarget.Global);
+  }
+
   /** Reload props from vscode settings */
   reload() {
     const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
