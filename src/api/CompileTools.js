@@ -38,6 +38,13 @@ module.exports = class CompileTools {
       context.subscriptions.push(outputChannel);
     }
   }
+
+  /**
+   * Does what it says on the tin.
+   */
+  static clearDiagnostics() {
+    ileDiagnostics.clear();
+  }
   
   /**
    * @param {*} instance

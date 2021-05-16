@@ -30,6 +30,7 @@
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.disconnect",
+		"onCommand:code-for-ibmi.clearDiagnostics",
 		"onCommand:code-for-ibmi.runAction",
 		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
@@ -491,6 +492,11 @@
 				"title": "Change build library",
 				"category": "IBM i",
 				"icon": "$(root-folder)"
+			},
+			{
+				"command": "code-for-ibmi.clearDiagnostics",
+				"title": "Clear diagnostics.",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.runAction",
