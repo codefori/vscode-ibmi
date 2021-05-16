@@ -143,7 +143,7 @@ class CustomUI {
               ${trees.map(tree => { 
                 return `
                   currentTree = document.getElementById('${tree.id}');
-                  currentTree.data = ${JSON.stringify(tree.treeItems)};
+                  currentTree.data = ${JSON.stringify(tree.items)};
                   currentTree.addEventListener('vsc-select', (event) => {
                     console.log(event.detail);
                     vscode.postMessage({'${tree.id}': event.detail.value});
@@ -161,7 +161,7 @@ class CustomUI {
 
 class Field  {
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"}} */
+    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"}} */
     this.type = type;
 
     /** @type {string} */
@@ -176,8 +176,8 @@ class Field  {
     /** @type {string|undefined} */
     this.default = undefined;
 
-    /** @type {object[]|undefined} Used for tree type. */
-    this.treeItems = undefined;
+    /** @type {object[]|undefined} Used for tree and select type. */
+    this.items = undefined;
   }
 
   getHTML() {
@@ -229,10 +229,23 @@ class Field  {
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
-            <vscode-tree id="${this.id}"></vscode-tree>
+              <vscode-tree id="${this.id}"></vscode-tree>
           </vscode-form-control>
       </vscode-form-item>
       `;
+
+    case `select`:
+      return `
+      <vscode-form-item>
+          <vscode-form-label>${this.label}</vscode-form-label>
+          ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+          <vscode-form-control>
+              <vscode-single-select id="${this.id}">
+                  ${this.items.map(item => `<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
+              </vscode-single-select>
+          </vscode-form-control>
+      </vscode-form-item>
+      `
 
     }
   }
