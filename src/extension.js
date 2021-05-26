@@ -69,7 +69,7 @@ function activate(context) {
     })
   )
 
-  return {instance, CustomUI, Field};
+  return {instance, CustomUI, Field, baseContext: context};
 }
 
 // this method is called when your extension is deactivated
