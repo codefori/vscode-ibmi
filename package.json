@@ -2,7 +2,7 @@
 	"name": "code-for-ibmi",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.4.6",
+	"version": "0.5.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
