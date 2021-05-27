@@ -19,12 +19,23 @@ let initialisedBefore = false;
 let selectedForCompare;
 
 module.exports = class Instance {
+  static setupEmitter() {
+    instance.emitter = new vscode.EventEmitter();
+    instance.events = [];
+
+    instance.emitter.event(e => {
+      const runEvents = instance.events.filter(event => event.event === e);
+      runEvents.forEach(event => event.func());
+    })
+  }
+
   /** 
    * @param {IBMi} conn
    */
   static setConnection(conn) {
     instance.connection = conn;
     instance.content = new IBMiContent(instance.connection);
+
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
   };
   
@@ -310,6 +321,20 @@ module.exports = class Instance {
         initialisedBefore = true;
       }
     }
+
+    instance.emitter.fire(`connected`);
+  }
+
+  /**
+   * Register event
+   * @param {string} event 
+   * @param {Function} func 
+   */
+  static on(event, func) {
+    instance.events.push({
+      event,
+      func
+    });
   }
 };
 
@@ -318,4 +343,8 @@ let instance = {
   connection: undefined,
   /** @type {IBMiContent} */
   content: undefined, //IBM,
+  /** @type {vscode.EventEmitter} */
+  emitter: undefined,
+  /** @type {{event: string, func: Function}[]} */
+  events: []
 };

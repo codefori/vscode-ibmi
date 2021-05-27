@@ -19,6 +19,9 @@ function activate(context) {
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
+  //We setup the event emitter.
+  instance.setupEmitter();
+
   // Upgrade existing configurations to have names
   // This is derived per host as per the current UI restrictions
   const configData = vscode.workspace.getConfiguration(`code-for-ibmi`);
