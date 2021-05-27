@@ -5,6 +5,8 @@ const IBMi = require(`./api/IBMi`);
 const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
 
+const Disposable = require(`./api/Disposable`);
+
 /** @type {vscode.StatusBarItem} */
 let connectedBarItem;
 
@@ -150,57 +152,74 @@ module.exports = class Instance {
         //********* Library list view */
 
         context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `libraryListView`,
-            new libraryListView(context)
+          Disposable(`libraryListView`, 
+            vscode.window.registerTreeDataProvider(
+              `libraryListView`,
+              new libraryListView(context)
+            )
           )
         );
 
         //********* Member Browser */
 
         context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `memberBrowser`,
-            new memberBrowser(context)
+          Disposable(`memberBrowser`,
+            vscode.window.registerTreeDataProvider(
+              `memberBrowser`,
+              new memberBrowser(context)
+            )
           )
         );
 
 
         context.subscriptions.push(
-          //@ts-ignore
-          vscode.workspace.registerFileSystemProvider(`member`, qsysFs, { 
-            isCaseSensitive: false
-          })
+          Disposable(`member`,
+            //@ts-ignore
+            vscode.workspace.registerFileSystemProvider(`member`, qsysFs, { 
+              isCaseSensitive: false
+            })
+          )
         );
 
         //********* IFS Browser */
 
         context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `ifsBrowser`,
-            new ifsBrowser(context)
-          ));
+          Disposable(`ifsBrowser`,
+            vscode.window.registerTreeDataProvider(
+              `ifsBrowser`,
+              new ifsBrowser(context)
+            )
+          )
+        );
   
         context.subscriptions.push(
-          //@ts-ignore
-          vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, { 
-            isCaseSensitive: false
-          })
+          Disposable(`streamfile`,
+            //@ts-ignore
+            vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, { 
+              isCaseSensitive: false
+            })
+          )
         );
 
         //********* Object Browser */
         
         context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `objectBrowser`,
-            new objectBrowser(context)
-          ));
+          Disposable(`objectBrowser`,
+            vscode.window.registerTreeDataProvider(
+              `objectBrowser`,
+              new objectBrowser(context)
+            )
+          )
+        );
         
         context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `databaseBrowser`,
-            new databaseBrowser(context)
-          ));
+          Disposable(`databaseBrowser`, 
+            vscode.window.registerTreeDataProvider(
+              `databaseBrowser`,
+              new databaseBrowser(context)
+            )
+          )
+        );
 
         //********* General editing */
   
