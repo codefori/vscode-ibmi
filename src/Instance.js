@@ -63,14 +63,7 @@ module.exports = class Instance {
         vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
       }
 
-
-      await Promise.all([
-        vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-        vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
-        vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-        vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
-        vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
-      ]);
+      vscode.commands.executeCommand(`workbench.action.reloadWindow`);
     }
 
     return doDisconnect;
