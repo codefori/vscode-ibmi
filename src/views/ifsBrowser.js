@@ -194,8 +194,11 @@ module.exports = class ifsBrowserProvider {
 
                 const resultDoc = Search.generateDocument(`streamfile`, content);
 
-                const textDoc = await vscode.workspace.openTextDocument({language: `text`, content: resultDoc});
+                const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
                 const editor = await vscode.window.showTextDocument(textDoc);
+                editor.edit(edit => {
+                  edit.insert(new vscode.Position(0, 0), resultDoc);
+                })
 
               } catch (e) {
                 vscode.window.showErrorMessage(`Error searching source members.`);
