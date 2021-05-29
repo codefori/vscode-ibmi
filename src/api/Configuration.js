@@ -27,7 +27,7 @@ module.exports = class Configuration {
     this.tempLibrary = base.tempLibrary || `ILEDITOR`;
 
     /** @type {string} */
-    this.buildLibrary = base.buildLibrary || `QTEMP`;
+    this.currentLibrary = base.currentLibrary || ``;
 
     /** @type {string|undefined} */
     this.sourceASP = base.sourceASP || undefined;

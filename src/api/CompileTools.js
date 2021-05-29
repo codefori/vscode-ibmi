@@ -149,7 +149,8 @@ module.exports = class CompileTools {
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
-        command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
+        command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.currentLibrary);
+        command = command.replace(new RegExp(`&CURLIB`, `g`), config.currentLibrary);
         command = command.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
         command = command.replace(new RegExp(`&HOME`, `g`), config.homeDirectory);
 
@@ -202,7 +203,7 @@ module.exports = class CompileTools {
 
           evfeventInfo = {
             asp: undefined,
-            lib: config.buildLibrary,
+            lib: config.currentLibrary,
             object: name,
             ext
           };
@@ -259,13 +260,15 @@ module.exports = class CompileTools {
           libl = libl.map(library => {
             //We use this for special variables in the libl
             switch (library) {
-            case `&BUILDLIB`: return config.buildLibrary;
+            case `&BUILDLIB`: return config.currentLibrary;
+            case `&CURLIB`: return config.currentLibrary;
             default: return library;
             }
           });
 
-          outputChannel.append(`Library list: ` + libl.reverse().join(` `) + `\n`);
-          outputChannel.append(`Command: ` + command + `\n`);
+          outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
+          outputChannel.append(`   Library list: ` + libl.reverse().join(` `) + `\n`);
+          outputChannel.append(`        Command: ` + command + `\n`);
 
           try {
 
@@ -277,6 +280,7 @@ module.exports = class CompileTools {
             case `qsh`:
               commandResult = await connection.qshCommand([
                 `liblist -d ` + connection.defaultUserLibraries.join(` `),
+                `liblist -c ` + config.currentLibrary,
                 `liblist -a ` + libl.join(` `),
                 command,
               ], undefined, 1);

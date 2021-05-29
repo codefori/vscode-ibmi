@@ -109,7 +109,8 @@ Notice the special identifiers in the command begining with `&`. These identifie
 
 | Variable | Usage                              |
 |----------|------------------------------------|
-| `&BUILDLIB` | Values which comes from the connection settings |
+| `&CURLIB` | Values which comes from the connection settings |
+| `&BUILDLIB` | The same as `&CURLIB` |
 | `&USERNAME` | Username being used to connect to the current system |
 | `&HOME` | Home directory configured for the connection |
 
@@ -247,16 +248,20 @@ Source files to be included in the member browser.
 
 #### Library List
 
-An array for the library list. Highest item of the library list goes first. You are able to use `&BUILDLIB` in the library list, to make compiles dynamic.
+An array for the user library list. Highest item of the library list goes first.
 
 ```json
 "libraryList": [
-    "&BUILDLIB",
     "DATALIB",
     "QSYSINC"
 ]
 ```
 
+#### Current library
+
+The library which will be set as the current library during compilation.
+
+You can change the current library with the 'Change build library' command (F1 -> Change build library).
 #### Home Directory
 
 Home directory for user. This directory is also the root for the IFS browser.
@@ -264,11 +269,6 @@ Home directory for user. This directory is also the root for the IFS browser.
 #### Temporary library
 
 Temporary library. Is used to OUTPUT files. Cannot be QTEMP.
-
-#### Build library
-
-A library that can be defined/changed for IFS builds. You can also change the build library with the 'Change build library' command (F1 -> Change build library).
-
 #### Source ASP
 
 If source files are located in a specific ASP, specify here.
