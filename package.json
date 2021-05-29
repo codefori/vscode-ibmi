@@ -60,6 +60,7 @@
 		"onCommand:code-for-ibmi.createStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
 		"onCommand:code-for-ibmi.deleteIFS",
+		"onCommand:code-for-ibmi.searchIFS",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
 		"onCommand:code-for-ibmi.createSourceFile",
@@ -631,6 +632,11 @@
 				"icon": "$(files)"
 			},
 			{
+				"command": "code-for-ibmi.searchIFS",
+				"title": "Search Directory",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.createDirectory",
 				"title": "Create directory",
 				"category": "IBM i",
@@ -904,6 +910,11 @@
 					"command": "code-for-ibmi.createStreamfile",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.searchIFS",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectList",

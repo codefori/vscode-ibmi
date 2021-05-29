@@ -1,9 +1,9 @@
 
-const { throws } = require(`assert`);
 const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
+const Search = require(`../api/Search`);
 
 module.exports = class ifsBrowserProvider {
   /**
@@ -173,6 +173,30 @@ module.exports = class ifsBrowserProvider {
         } else {
           //Running from command
           console.log(this);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node) => {
+        if (node) {
+          const path = node.path;
+
+          let searchTerm = await vscode.window.showInputBox({
+            prompt: `Search ${path}.`
+          });
+
+          if (searchTerm) {
+            try {
+              const content = await Search.searchIFS(instance, path, searchTerm);
+
+              console.log(content);
+
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error searching source members.`);
+            }
+          }
+
+        } else {
+          //Running from command.
         }
       })
     )
