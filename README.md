@@ -83,3 +83,4 @@ More detailed documentation is available [here](https://halcyon-tech.github.io/c
 * [@SJLennon](https://github.com/SJLennon)
 * [@onewheelonly](https://github.com/onewheelonly)
 * [@chrjorgensen](https://github.com/chrjorgensen)
+* [@szsascha](https://github.com/szsascha)
