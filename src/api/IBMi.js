@@ -90,7 +90,7 @@ module.exports = class IBMi {
           undefined,
         );
       } catch (e) {
-        let [errorcode] = e.split(`:`)[0];
+        let [errorcode, errortext] = e.split(`:`);
 
         switch (errorcode) {
         case `CPF2111`: //Already exists, hopefully ok :)
