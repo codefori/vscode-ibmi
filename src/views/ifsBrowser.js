@@ -178,24 +178,32 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node) => {
         if (node) {
-          const path = node.path;
+          const connection = instance.getConnection();
 
-          let searchTerm = await vscode.window.showInputBox({
-            prompt: `Search ${path}.`
-          });
+          if (connection.remoteFeatures.grep) {
 
-          if (searchTerm) {
-            try {
-              const content = await Search.searchIFS(instance, path, searchTerm);
+            const path = node.path;
 
-              const resultDoc = Search.generateDocument(`streamfile`, content);
+            let searchTerm = await vscode.window.showInputBox({
+              prompt: `Search ${path}.`
+            });
 
-              const textDoc = await vscode.workspace.openTextDocument({language: `text`, content: resultDoc});
-              const editor = await vscode.window.showTextDocument(textDoc);
+            if (searchTerm) {
+              try {
+                const content = await Search.searchIFS(instance, path, searchTerm);
 
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error searching source members.`);
+                const resultDoc = Search.generateDocument(`streamfile`, content);
+
+                const textDoc = await vscode.workspace.openTextDocument({language: `text`, content: resultDoc});
+                const editor = await vscode.window.showTextDocument(textDoc);
+
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error searching source members.`);
+              }
             }
+
+          } else {
+            vscode.window.showErrorMessage(`grep must be installed on the remote system for the IFS search.`);
           }
 
         } else {
