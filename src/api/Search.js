@@ -7,7 +7,7 @@ module.exports = class Search {
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} term 
-   * @return {Promise<{name: string, text: string, recordLength: number, lines: {number: string, content: string}[]}[]>}
+   * @return {Promise<{name: string, text: string, recordLength: number, lines: {number: number, content: string}[]}[]>}
    */
   static async searchMembers(instance, lib, spf, term) {
     /** @type {IBMi} */
@@ -78,7 +78,7 @@ module.exports = class Search {
    * @param {*} instance 
    * @param {string} path 
    * @param {string} term 
-   * @returns {Promise<{name: string, lines: {number: string, content: string}[]}[]>}
+   * @returns {Promise<{name: string, lines: {number: number, content: string}[]}[]>}
    */
   static async searchIFS(instance, path, term) {
     /** @type {IBMi} */
@@ -126,5 +126,39 @@ module.exports = class Search {
     } else {
       throw new Error(`Grep must be installed on the remote system.`);
     }
+  }
+
+  /**
+   * 
+   * @param {`member`|`streamfile`} scheme 
+   * @param {{name: string, text?: string, recordLength?: number, lines: {number: number, content: string}[]}[]} results 
+   * @return {string}
+   */
+  static generateDocument(scheme, results) {
+    const lines = [];
+
+    let totalResults = 0;
+
+    results.forEach(file => {
+      totalResults += file.lines.length;
+    })
+
+    lines.push(
+      ``,
+      `${totalResults} results - ${results.length} files`,
+      ``,
+    );
+
+    for (const file of results) {
+      lines.push(`${scheme}:${scheme === `member` ? `/` : ``}${file.name}`);
+
+      for (const hit of file.lines) {
+        lines.push(`${String(hit.number).padStart(6)} ${hit.content}`);
+      }
+
+      lines.push(``);
+    }
+
+    return lines.join(`\n`);
   }
 }

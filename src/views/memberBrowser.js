@@ -299,7 +299,10 @@ module.exports = class memberBrowserProvider {
             try {
               const content = await Search.searchMembers(instance, path[0], path[1], searchTerm);
 
-              console.log(content);
+              const resultDoc = Search.generateDocument(`member`, content);
+
+              const textDoc = await vscode.workspace.openTextDocument({language: `text`, content: resultDoc});
+              const editor = await vscode.window.showTextDocument(textDoc);
 
             } catch (e) {
               vscode.window.showErrorMessage(`Error searching source members.`);

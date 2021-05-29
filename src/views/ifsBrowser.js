@@ -188,7 +188,10 @@ module.exports = class ifsBrowserProvider {
             try {
               const content = await Search.searchIFS(instance, path, searchTerm);
 
-              console.log(content);
+              const resultDoc = Search.generateDocument(`streamfile`, content);
+
+              const textDoc = await vscode.workspace.openTextDocument({language: `text`, content: resultDoc});
+              const editor = await vscode.window.showTextDocument(textDoc);
 
             } catch (e) {
               vscode.window.showErrorMessage(`Error searching source members.`);
