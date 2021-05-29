@@ -1,6 +1,8 @@
 
 const { throws } = require(`assert`);
 const vscode = require(`vscode`);
+const os = require(`os`);
+const path = require(`path`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
@@ -173,6 +175,32 @@ module.exports = class ifsBrowserProvider {
         } else {
           //Running from command
           console.log(this);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.downloadIFS`, async (node) => {
+
+        if (node) {
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+
+          if (isStillOpen) {
+            //Be sure it's correctly saved
+            vscode.window.showInformationMessage(`Cannot download streamfile while it is open.`);
+
+          } else {
+            //Get filename from path on server
+            const filename = node.path.replace(/^.*[\\\/]/, '');
+
+            const remoteFilepath = path.join(os.homedir(), filename);
+
+            let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
+            
+            const content = instance.getContent();
+            content.downloadStreamfile(node.path, localFilepath.path);
+            vscode.window.showInformationMessage(`Download of file ${node.path} to ${localFilepath.path} started!`);
+          }
+        } else {
+          //Running from command.
         }
       })
     )
