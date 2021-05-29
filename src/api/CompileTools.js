@@ -369,9 +369,26 @@ module.exports = class CompileTools {
       let field;
 
       for (const component of components) {
-        field = new Field(`input`, component.name, component.label);
-        field.default = component.initalValue;
+        if (component.initalValue.includes(`,`)) {
+          //Select box
+          field = new Field(`select`, component.name, component.label);
+          field.items = component.initalValue.split(`,`).map((value, index) => (
+            {
+              selected: index === 0,
+              value,
+              description: value,
+              text: `Select ${value}`,
+            }
+          ));
+
+        } else {
+          //Input box
+          field = new Field(`input`, component.name, component.label);
+          field.default = component.initalValue;
+        }
+
         commandUI.addField(field);
+
       }
 
       commandUI.addField(new Field(`submit`, `execute`, `Execute`));
