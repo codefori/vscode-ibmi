@@ -80,6 +80,7 @@ module.exports = class IBMi {
         if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
         if (this.config.objectBrowserList.length === 0) await this.config.set(`objectBrowserList`, this.defaultUserLibraries);
         if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
+        if (!this.config.buildLibrary || this.config.buildLibrary.length === 0 || this.config.buildLibrary == `QTEMP`) await this.config.set(`buildLibrary`, currentLibrary);
       }
 
       //Next, we need to check the temp lib (where temp outfile data lives) exists
