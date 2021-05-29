@@ -243,7 +243,7 @@ module.exports = class ifsBrowserProvider {
 
           } else {
             //Get filename from path on server
-            const filename = node.path.replace(/^.*[\\\/]/, '');
+            const filename = node.path.replace(/^.*[\\\/]/, ``);
 
             const remoteFilepath = path.join(os.homedir(), filename);
 
