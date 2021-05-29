@@ -3,6 +3,7 @@ const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
+const Search = require(`../api/Search`);
 
 module.exports = class memberBrowserProvider {
   /**
@@ -281,6 +282,30 @@ module.exports = class memberBrowserProvider {
           }
 
           
+        } else {
+          //Running from command.
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node) => {
+        if (node) {
+          const path = node.path.split(`/`);
+
+          let searchTerm = await vscode.window.showInputBox({
+            prompt: `Search ${node.path}.`
+          });
+
+          if (searchTerm) {
+            try {
+              const content = await Search.searchMembers(instance, path[0], path[1], searchTerm);
+
+              console.log(content);
+
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error searching source members.`);
+            }
+          }
+
         } else {
           //Running from command.
         }

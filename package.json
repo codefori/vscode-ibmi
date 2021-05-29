@@ -52,6 +52,7 @@
 		"onCommand:code-for-ibmi.deleteMember",
 		"onCommand:code-for-ibmi.updateMemberText",
 		"onCommand:code-for-ibmi.renameMember",
+		"onCommand:code-for-ibmi.searchSourceFile",
 		"onView:ifsBrowser",
 		"onCommand:code-for-ibmi.refreshIFSBrowser",
 		"onCommand:code-for-ibmi.changeHomeDirectory",
@@ -555,6 +556,11 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.searchSourceFile",
+				"title": "Search Source File",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.addSourceFile",
 				"title": "Add Source File",
 				"category": "IBM i",
@@ -843,6 +849,10 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshSourceFile",
+					"when": "view == memberBrowser && viewItem == SPF"
+				},
+				{
+					"command": "code-for-ibmi.searchSourceFile",
 					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{

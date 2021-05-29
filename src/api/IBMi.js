@@ -22,7 +22,8 @@ module.exports = class IBMi {
     /** @type {{[name: string]: string}} */
     this.remoteFeatures = {
       db2util: undefined,
-      git: undefined
+      git: undefined,
+      grep: undefined,
     };
   }
 
