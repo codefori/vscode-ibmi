@@ -105,36 +105,45 @@ Other important properties:
 
 Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Each `type` has different variables.
 
-#### Member variables
+#### Variables in all types
 
 | Variable | Usage                              |
 |----------|------------------------------------|
-| &OPENLIB | Library that member resides in     |
-| &OPENSPF | Source file that member resides in |
-| &OPENMBR | Name of member                     |
-| &EXT     | Member extension                   |
-| &BUILDLIB | Values which comes from the connection settings |
-| &USERNAME | Username being used to connect to the current system |
+| `&BUILDLIB` | Values which comes from the connection settings |
+| `&USERNAME` | Username being used to connect to the current system |
+| `&HOME` | Home directory configured for the connection |
+
+#### Member variables
+
+For all member variables, you can end the variable with `L` for the lowercase of it. E.g. `&OPENMBR` for the uppercase or `&OPENMBRL` for the lowercase.
+
+| Variable | Usage                              |
+|----------|------------------------------------|
+| `&OPENLIB` | Library that member resides in     |
+| `&OPENSPF` | Source file that member resides in |
+| `&OPENMBR` | Name of member                     |
+| `&EXT`     | Member extension                   |
 
 #### Streamfile variables
 
 | Variable  | Usage                                           |
 |-----------|-------------------------------------------------|
-| &BUILDLIB | Values which comes from the connection settings |
-| &FULLPATH | Path to the streamfile.                         |
-| &NAME     | Name of the streamfile with no extension        |
-| &EXT      | Extension of basename                           |
-| &USERNAME | Username being used to connect to the current system |
+| `&FULLPATH` | Path to the streamfile.                         |
+| `&NAME`     | Name of the streamfile with no extension        |
+| `&NAMEL`    | The same as `&NAME`, but lowercase.             |
+| `&EXT`      | Extension of basename                           |
+| `&EXTL`      | The same as `&EXT`, but lowercase. |
 
 #### Object variables
 
+For all object variables, you can end the variable with `L` for the lowercase of it. E.g. `&NAME` for the uppercase or `&NAMEL` for the lowercase.
+
 | Variable  | Usage                             |
 |-----------|-----------------------------------|
-| &LIBRARY  | Library in which the object exists|
-| &NAME     | Name of the object                |
-| &TYPE     | The object type (PGM, FILE, etc)  |
-| &BUILDLIB | Values which comes from the connection settings |
-| &USERNAME | Username being used to connect to the current system |
+| `&LIBRARY`  | Library in which the object exists|
+| `&NAME`     | Name of the object                |
+| `&TYPE`     | The object type (PGM, FILE, etc)  |
+| `&EXT`     | The same as `&TYPE`  |
 
 #### Command fields
 

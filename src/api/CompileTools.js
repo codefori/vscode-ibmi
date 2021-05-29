@@ -151,6 +151,7 @@ module.exports = class CompileTools {
 
         command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.buildLibrary);
         command = command.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
+        command = command.replace(new RegExp(`&HOME`, `g`), config.homeDirectory);
 
         let blank, asp, lib, file, fullName;
         let basename, name, ext;
@@ -180,9 +181,16 @@ module.exports = class CompileTools {
             ext
           };
 
+          command = command.replace(new RegExp(`&OPENLIBL`, `g`), lib.toLowerCase());
           command = command.replace(new RegExp(`&OPENLIB`, `g`), lib);
+
+          command = command.replace(new RegExp(`&OPENSPFL`, `g`), file.toLowerCase());
           command = command.replace(new RegExp(`&OPENSPF`, `g`), file);
+
+          command = command.replace(new RegExp(`&OPENMBRL`, `g`), name.toLowerCase());
           command = command.replace(new RegExp(`&OPENMBR`, `g`), name);
+
+          command = command.replace(new RegExp(`&EXTL`, `g`), ext.toLowerCase());
           command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
           break;
@@ -200,7 +208,11 @@ module.exports = class CompileTools {
           };
 
           command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
+
+          command = command.replace(new RegExp(`&NAMEL`, `g`), name.toLowerCase());
           command = command.replace(new RegExp(`&NAME`, `g`), name);
+
+          command = command.replace(new RegExp(`&EXTL`, `g`), ext.toLowerCase());
           command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
           break;
@@ -216,9 +228,17 @@ module.exports = class CompileTools {
             extension
           };
 
+          command = command.replace(new RegExp(`&LIBRARYL`, `g`), lib.toLowerCase());
           command = command.replace(new RegExp(`&LIBRARY`, `g`), lib);
+
+          command = command.replace(new RegExp(`&NAMEL`, `g`), name.toLowerCase());
           command = command.replace(new RegExp(`&NAME`, `g`), name);
+
+          command = command.replace(new RegExp(`&TYPEL`, `g`), extension.toLowerCase());
           command = command.replace(new RegExp(`&TYPE`, `g`), extension);
+
+          command = command.replace(new RegExp(`&EXTL`, `g`), extension.toLowerCase());
+          command = command.replace(new RegExp(`&EXT`, `g`), extension);
           break;
         }
 
