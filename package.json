@@ -38,7 +38,7 @@
 		"onCommand:code-for-ibmi.compareWithSelected",
 		"onCommand:code-for-ibmi.showAdditionalSettings",
 		"onCommand:code-for-ibmi.showActionsMaintenance",
-		"onCommand:code-for-ibmi.changeBuildLibrary",
+		"onCommand:code-for-ibmi.changeCurrentLibrary",
 		"onView:libraryListView",
 		"onCommand:code-for-ibmi.refreshLibraryListView",
 		"onCommand:code-for-ibmi.addToLibraryList",
@@ -145,10 +145,10 @@
 								"default": "ILEDITOR",
 								"description": "Temporary library. Cannot be QTEMP."
 							},
-							"buildLibrary": {
+							"currentLibrary": {
 								"type": "string",
 								"default": "QTEMP",
-								"description": "Library used for &BUILDLIB when running actions from the IFS."
+								"description": "Library used as the current library and &CURLIB variable when running actions."
 							},
 							"sourceASP": {
 								"type": [
@@ -500,8 +500,8 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.changeBuildLibrary",
-				"title": "Change build library",
+				"command": "code-for-ibmi.changeCurrentLibrary",
+				"title": "Change current library",
 				"category": "IBM i",
 				"icon": "$(root-folder)"
 			},
@@ -722,7 +722,7 @@
 			"ibmi-explorer": [
 				{
 					"id": "libraryListView",
-					"name": "Library List"
+					"name": "User Library List"
 				},
 				{
 					"id": "memberBrowser",
@@ -747,7 +747,7 @@
 		"menus": {
 			"view/title": [
 				{
-					"command": "code-for-ibmi.changeBuildLibrary",
+					"command": "code-for-ibmi.changeCurrentLibrary",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},

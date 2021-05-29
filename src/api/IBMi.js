@@ -54,7 +54,7 @@ module.exports = class IBMi {
 
       //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
       //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-      let currentLibrary = `QGPL`;
+      let currentLibrary;
       this.defaultUserLibraries = [];
       let libraryListString = await this.qshCommand(`liblist`);
       if (typeof libraryListString === `string` && libraryListString !== ``) {
@@ -77,6 +77,7 @@ module.exports = class IBMi {
         }
 
         //If this is the first time the config is made, then these arrays will be empty
+        if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
         if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
         if (this.config.objectBrowserList.length === 0) await this.config.set(`objectBrowserList`, this.defaultUserLibraries);
         if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
