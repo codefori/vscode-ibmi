@@ -70,6 +70,7 @@ module.exports = class IBMi {
             break;
               
           case `CUR`:
+            this.defaultUserLibraries.push(lib);
             currentLibrary = lib;
             break;
           }
