@@ -57,6 +57,7 @@
 		"onCommand:code-for-ibmi.changeHomeDirectory",
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
+		"onCommand:code-for-ibmi.uploadStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onCommand:code-for-ibmi.downloadIFS",
@@ -643,6 +644,12 @@
 				"icon": "$(new-file)"
 			},
 			{
+				"command": "code-for-ibmi.uploadStreamfile",
+				"title": "Upload",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)"
+			},
+			{
 				"command": "code-for-ibmi.refreshObjectList",
 				"title": "Refresh Object List",
 				"category": "IBM i",
@@ -776,6 +783,11 @@
 					"when": "view == ifsBrowser"
 				},
 				{
+					"command": "code-for-ibmi.uploadStreamfile",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
 					"command": "code-for-ibmi.changeHomeDirectory",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
@@ -905,6 +917,11 @@
 					"command": "code-for-ibmi.downloadIFS",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "3_ifsTransfer@1"
+				},
+				{
+					"command": "code-for-ibmi.uploadStreamfile",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsTransfer@2"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectList",

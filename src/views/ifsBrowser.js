@@ -3,6 +3,7 @@ const { throws } = require(`assert`);
 const vscode = require(`vscode`);
 const os = require(`os`);
 const path = require(`path`);
+const fs = require(`fs`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
@@ -107,6 +108,59 @@ module.exports = class ifsBrowserProvider {
           } catch (e) {
             vscode.window.showErrorMessage(`Error creating new streamfile! ${e}`);
           }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node) => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
+        let root;
+
+        if (node) {
+          //Running from right click
+          
+          root = node.path;
+        } else {
+          root = config.homeDirectory;
+        }
+
+        let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
+        let filname = originPath[0].fsPath.replace(/^.*[\\\/]/, ``);
+        let destPathSuggestion = root;
+        if (!destPathSuggestion.endsWith(`/`)) destPathSuggestion += `/`;
+        destPathSuggestion += filname;
+
+        const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === originPath[0].fsPath);
+
+        if (isStillOpen) {
+          //Be sure it's correctly saved
+          vscode.window.showInformationMessage(`Cannot upload streamfile while it is open.`);
+        } else {
+          const destinationPath = await vscode.window.showInputBox({
+            prompt: `Name of new streamfile`,
+            value: destPathSuggestion
+          });
+
+          try {
+            vscode.window.showInformationMessage(`Creating and uploading streamfile ${destinationPath}.`);
+
+            await connection.paseCommand(`echo "" > ${destinationPath}`);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error uploading streamfile! ${e}`);
+            return;
+          }
+
+          let data;
+          try {
+            data = fs.readFileSync(originPath[0].fsPath, `utf8`)
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
+            return;
+          }
+            
+          const content = instance.getContent();
+          content.writeStreamfile(destinationPath, data);
         }
       }),
 
