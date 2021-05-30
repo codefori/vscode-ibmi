@@ -7,70 +7,55 @@ module.exports = class Search {
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} term 
-   * @return {Promise<{name: string, text: string, recordLength: number, lines: {number: number, content: string}[]}[]>}
+   * @return {Promise<{path: string, text: string, recordLength: number, lines: {number: number, content: string}[]}[]>}
    */
   static async searchMembers(instance, lib, spf, term) {
     /** @type {IBMi} */
     const connection = instance.getConnection();
     
-    const standardOut = await connection.remoteCommand(`FNDSTRPDM STRING('${term}') FILE(${lib}/${spf}) MBR(*ALL) OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS('*ALL ' *CHAR *NOMARK *TRUNCATE)`, `.`);
+    term = term.replace(/'/g, `\\'`);
+    //const standardOut = await connection.remoteCommand(`FNDSTRPDM STRING('${term}') FILE(${lib}/${spf}) MBR(*ALL) OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS('*ALL ' *CHAR *NOMARK *TRUNCATE)`, `.`);
+    const standardOut = await connection.qshCommand(`/usr/bin/grep -in '${term}' /QSYS.LIB/${lib}.LIB/${spf}.FILE/*`);
       
+    if (standardOut === ``) return [];
+    
+    let files = {};
+  
     /** @type {string[]} */ //@ts-ignore
     const output = standardOut.split(`\n`);
+  
+    let parts, currentFile, currentLine;
+    for (const line of output) {
+      if (line.startsWith(`Binary`)) continue;
+  
+      parts = line.split(`:`);
+      currentFile = parts[0].substr(10); //Remove '/QSYS.LIB/'
+      currentFile = `/` + currentFile.replace(`.LIB`, ``).replace(`.FILE`, ``).replace(`.MBR`, ``);
 
-    let members = [];
-    let currentMember;
-  
-    let reading = false,
-      parts = [],
-      line;
-    for (const index in output) {
-      line = output[index];
-      parts = line.split(` `).filter(x => x !== ``);
-  
-      switch (parts[0]) {
-      case `Member`:
-        currentMember = {
-          name: lib + `/` + spf + `/` + parts[9],
-          text: ``,
-          recordLength: 0,
+      currentLine = Number(parts[1]);
+
+      if (!files[currentFile]) {
+        files[currentFile] = {
+          path: currentFile,
           lines: []
         };
-        break;
-      case `Type`:
-        currentMember.name += `.` + parts[10].toLowerCase();
-        break;
-  
-      case `Text`:
-        currentMember.text = line.substr(26, 50).trimRight();
-        break;
-      case `Record`:
-        if (parts[1] === `length`)
-          currentMember.recordLength = Number(parts[7]) - 12;
-        break;
-  
-      case `SEQNBR`:
-        reading = true;
-        break;
-      case `Number`:
-        if (reading) {
-          members.push(currentMember);
-          reading = false;
-        }
-        break;
-  
-      default:
-        if (reading) {
-          currentMember.lines.push({
-            number: Number(line.substring(4, 10)),
-            content: line.substr(12, 100).trimRight()
-          })
-        }
-  
       }
+  
+      files[currentFile].lines.push({
+        number: currentLine,
+        content: parts[2] 
+      })
+      
     }
   
-    return members;
+    let list = [];
+
+    for (const file in files) {
+      list.push(files[file]);
+    }
+  
+    return list;
+
   }
 
   /**
@@ -78,7 +63,7 @@ module.exports = class Search {
    * @param {*} instance 
    * @param {string} path 
    * @param {string} term 
-   * @returns {Promise<{name: string, lines: {number: number, content: string}[]}[]>}
+   * @returns {Promise<{path: string, lines: {number: number, content: string}[]}[]>}
    */
   static async searchIFS(instance, path, term) {
     /** @type {IBMi} */
@@ -103,7 +88,7 @@ module.exports = class Search {
         parts = line.split(`:`);
         if (!files[parts[0]]) {
           files[parts[0]] = {
-            name: parts[0],
+            path: parts[0],
             lines: []
           };
         }
@@ -131,7 +116,7 @@ module.exports = class Search {
   /**
    * 
    * @param {`member`|`streamfile`} scheme 
-   * @param {{name: string, text?: string, recordLength?: number, lines: {number: number, content: string}[]}[]} results 
+   * @param {{path: string, text?: string, recordLength?: number, lines: {number: number, content: string}[]}[]} results 
    * @return {string}
    */
   static generateDocument(scheme, results) {
@@ -150,7 +135,7 @@ module.exports = class Search {
     );
 
     for (const file of results) {
-      lines.push(`${scheme}:${scheme === `member` ? `/` : ``}${file.name}`);
+      lines.push(`${scheme}:${file.path}`);
 
       for (const hit of file.lines) {
         lines.push(`${String(hit.number).padStart(6)} ${hit.content}`);
