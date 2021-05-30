@@ -291,6 +291,7 @@ module.exports = class CompileTools {
               command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`;
               commandResult = await connection.qshCommand([
                 `liblist -d ` + connection.defaultUserLibraries.join(` `),
+                `liblist -c ` + config.currentLibrary,
                 `liblist -a ` + libl.join(` `),
                 command,
               ], undefined, 1);
