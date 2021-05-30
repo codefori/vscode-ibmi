@@ -46,7 +46,7 @@ module.exports = class Configuration {
    * Get a host config prop
    * @param {string} key 
    */
-  async get(key) {
+  get(key) {
     const globalData = vscode.workspace.getConfiguration(`code-for-ibmi`);
     let connections = globalData.get(`connectionSettings`);
 
