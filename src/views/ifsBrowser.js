@@ -140,6 +140,7 @@ module.exports = class ifsBrowserProvider {
             prompt: `Name of new streamfile`,
             value: destPathSuggestion
           });
+          if(!destinationPath) return;
 
           try {
             vscode.window.showInformationMessage(`Creating and uploading streamfile ${destinationPath}.`);
