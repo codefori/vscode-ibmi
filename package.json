@@ -60,7 +60,7 @@
 		"onCommand:code-for-ibmi.uploadStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
 		"onCommand:code-for-ibmi.deleteIFS",
-		"onCommand:code-for-ibmi.downloadIFS",
+		"onCommand:code-for-ibmi.downloadStreamfile",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
 		"onCommand:code-for-ibmi.createSourceFile",
@@ -621,7 +621,7 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.downloadIFS",
+				"command": "code-for-ibmi.downloadStreamfile",
 				"title": "Download",
 				"category": "IBM i"
 			},
@@ -914,7 +914,7 @@
 					"group": "2_ifsStuff@1"
 				},
 				{
-					"command": "code-for-ibmi.downloadIFS",
+					"command": "code-for-ibmi.downloadStreamfile",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "3_ifsTransfer@1"
 				},

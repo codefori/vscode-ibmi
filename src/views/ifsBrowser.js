@@ -221,7 +221,7 @@ module.exports = class ifsBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.downloadIFS`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node) => {
         const connection = instance.getConnection();
         const client = connection.client;
         const content = instance.getContent();
