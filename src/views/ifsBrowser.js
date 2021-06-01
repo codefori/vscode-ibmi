@@ -1,9 +1,7 @@
 
-const { throws } = require(`assert`);
 const vscode = require(`vscode`);
 const os = require(`os`);
 const path = require(`path`);
-const fs = require(`fs`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
@@ -113,7 +111,9 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node) => {
         const connection = instance.getConnection();
+        const client = connection.client;
         const config = instance.getConfig();
+
         let root;
 
         if (node) {
@@ -140,28 +140,16 @@ module.exports = class ifsBrowserProvider {
             prompt: `Name of new streamfile`,
             value: destPathSuggestion
           });
-          if(!destinationPath) return;
 
-          try {
-            vscode.window.showInformationMessage(`Creating and uploading streamfile ${destinationPath}.`);
-
-            await connection.paseCommand(`echo "" > ${destinationPath}`);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
-          } catch (e) {
-            vscode.window.showErrorMessage(`Error uploading streamfile! ${e}`);
-            return;
+          if (destinationPath) {
+            try {
+              await client.putFile(originPath[0].fsPath, destinationPath);
+              vscode.window.showInformationMessage(`File was uploaded.`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
+            }
           }
 
-          let data;
-          try {
-            data = fs.readFileSync(originPath[0].fsPath, `utf8`)
-          } catch (e) {
-            vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
-            return;
-          }
-            
-          const content = instance.getContent();
-          content.writeStreamfile(destinationPath, data);
         }
       }),
 
@@ -234,6 +222,9 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.downloadIFS`, async (node) => {
+        const connection = instance.getConnection();
+        const client = connection.client;
+        const content = instance.getContent();
 
         if (node) {
           const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
@@ -249,10 +240,15 @@ module.exports = class ifsBrowserProvider {
             const remoteFilepath = path.join(os.homedir(), filename);
 
             let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
-            
-            const content = instance.getContent();
-            content.downloadStreamfile(node.path, localFilepath.path);
-            vscode.window.showInformationMessage(`Download of file ${node.path} to ${localFilepath.path} started!`);
+
+            if (localFilepath) {
+              try {
+                await client.getFile(localFilepath.path, node.path);
+                vscode.window.showInformationMessage(`File was downloaded.`);
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error downloading streamfile! ${e}`);
+              }
+            }
           }
         } else {
           //Running from command.
