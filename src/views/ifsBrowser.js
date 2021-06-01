@@ -1,6 +1,9 @@
 
 const { throws } = require(`assert`);
 const vscode = require(`vscode`);
+const os = require(`os`);
+const path = require(`path`);
+const fs = require(`fs`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
@@ -108,6 +111,60 @@ module.exports = class ifsBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node) => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
+        let root;
+
+        if (node) {
+          //Running from right click
+          
+          root = node.path;
+        } else {
+          root = config.homeDirectory;
+        }
+
+        let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
+        let filname = originPath[0].fsPath.replace(/^.*[\\\/]/, ``);
+        let destPathSuggestion = root;
+        if (!destPathSuggestion.endsWith(`/`)) destPathSuggestion += `/`;
+        destPathSuggestion += filname;
+
+        const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === originPath[0].fsPath);
+
+        if (isStillOpen) {
+          //Be sure it's correctly saved
+          vscode.window.showInformationMessage(`Cannot upload streamfile while it is open.`);
+        } else {
+          const destinationPath = await vscode.window.showInputBox({
+            prompt: `Name of new streamfile`,
+            value: destPathSuggestion
+          });
+          if(!destinationPath) return;
+
+          try {
+            vscode.window.showInformationMessage(`Creating and uploading streamfile ${destinationPath}.`);
+
+            await connection.paseCommand(`echo "" > ${destinationPath}`);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error uploading streamfile! ${e}`);
+            return;
+          }
+
+          let data;
+          try {
+            data = fs.readFileSync(originPath[0].fsPath, `utf8`)
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
+            return;
+          }
+            
+          const content = instance.getContent();
+          content.writeStreamfile(destinationPath, data);
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
 
         if (node) {
@@ -173,6 +230,32 @@ module.exports = class ifsBrowserProvider {
         } else {
           //Running from command
           console.log(this);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.downloadIFS`, async (node) => {
+
+        if (node) {
+          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+
+          if (isStillOpen) {
+            //Be sure it's correctly saved
+            vscode.window.showInformationMessage(`Cannot download streamfile while it is open.`);
+
+          } else {
+            //Get filename from path on server
+            const filename = node.path.replace(/^.*[\\\/]/, ``);
+
+            const remoteFilepath = path.join(os.homedir(), filename);
+
+            let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
+            
+            const content = instance.getContent();
+            content.downloadStreamfile(node.path, localFilepath.path);
+            vscode.window.showInformationMessage(`Download of file ${node.path} to ${localFilepath.path} started!`);
+          }
+        } else {
+          //Running from command.
         }
       })
     )
