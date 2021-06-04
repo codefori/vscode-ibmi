@@ -1,4 +1,6 @@
 
+const vscode = require(`vscode`);
+
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 
@@ -11,6 +13,12 @@ module.exports = class IBMi {
     
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
+
+    /** @type {vscode.OutputChannel} */
+    this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i`);
+
+    /** @type {vscode.Disposable[]} List of vscode disposables */
+    this.subscriptions = [this.outputChannel];
 
     /**
      * Used to store ASP numbers and their names
@@ -217,9 +225,14 @@ module.exports = class IBMi {
   async paseCommand(command, directory = this.config.homeDirectory, returnType = 0) {
     command = command.replace(/\$/g, `\\$`);
 
-    let result = await this.client.execCommand(command, {
+    this.outputChannel.append(`${directory}: ${command}\n`);
+
+    const result = await this.client.execCommand(command, {
       cwd: directory,
     });
+
+    this.outputChannel.append(JSON.stringify(result, null, 4) + `\n`);
+    this.outputChannel.append(`\n`);
 
     if (returnType === 0) {
       if (result.code === 0 || result.code === null) return Promise.resolve(result.stdout);
