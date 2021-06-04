@@ -70,6 +70,9 @@ module.exports = class Instance {
     }
 
     if (doDisconnect) {
+      //Dispose of any vscode related internals.
+      instance.connection.subscriptions.forEach(subscription => subscription.dispose());
+
       if (instance.connection) {
         instance.connection.client.dispose();
         instance.connection = undefined;
