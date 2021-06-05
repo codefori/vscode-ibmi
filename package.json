@@ -634,7 +634,8 @@
 			{
 				"command": "code-for-ibmi.searchIFS",
 				"title": "Search Directory",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(search)"
 			},
 			{
 				"command": "code-for-ibmi.createDirectory",
@@ -783,6 +784,11 @@
 				},
 				{
 					"command": "code-for-ibmi.changeHomeDirectory",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.searchIFS",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},

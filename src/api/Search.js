@@ -72,7 +72,15 @@ module.exports = class Search {
     const grep = connection.remoteFeatures.grep;
 
     if (grep) {
-      const standardOut = await connection.paseCommand(`${grep} -nr "${term}" ${path}`);
+      let standardOut = ``;
+
+      try {
+        //@ts-ignore
+        standardOut = await connection.paseCommand(`${grep} -nr "${term}" ${path}`);
+      } catch (e) {
+        if (e === ``) standardOut = e //Means no results were found.
+        else throw e;
+      }
 
       if (standardOut === ``) return [];
     

@@ -177,41 +177,42 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node) => {
-        if (node) {
-          const connection = instance.getConnection();
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
 
-          if (connection.remoteFeatures.grep) {
+        if (connection.remoteFeatures.grep) {
 
-            const path = node.path;
+          let path;
+          if (node)
+            path = node.path;
+          else
+            path = config.homeDirectory;
 
-            let searchTerm = await vscode.window.showInputBox({
-              prompt: `Search ${path}.`
-            });
+          let searchTerm = await vscode.window.showInputBox({
+            prompt: `Search ${path}.`
+          });
 
-            if (searchTerm) {
-              try {
-                const content = await Search.searchIFS(instance, path, searchTerm);
+          if (searchTerm) {
+            try {
+              const content = await Search.searchIFS(instance, path, searchTerm);
 
-                const resultDoc = Search.generateDocument(`streamfile`, content);
+              const resultDoc = Search.generateDocument(`streamfile`, content);
 
-                const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
-                const editor = await vscode.window.showTextDocument(textDoc);
-                editor.edit(edit => {
-                  edit.insert(new vscode.Position(0, 0), resultDoc);
-                })
+              const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
+              const editor = await vscode.window.showTextDocument(textDoc);
+              editor.edit(edit => {
+                edit.insert(new vscode.Position(0, 0), resultDoc);
+              })
 
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error searching source members.`);
-              }
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error searching streamfiles.`);
             }
-
-          } else {
-            vscode.window.showErrorMessage(`grep must be installed on the remote system for the IFS search.`);
           }
 
         } else {
-          //Running from command.
+          vscode.window.showErrorMessage(`grep must be installed on the remote system for the IFS search.`);
         }
+
       })
     )
   }
