@@ -274,7 +274,9 @@ Temporary library. Is used to OUTPUT files. Cannot be QTEMP.
 If source files are located in a specific ASP, specify here.
 Otherwise, leave blank.
 
-## Adding Source Files
+## Source files
+
+### Adding Source Files
 
 In order to make the member browser useful, source files need to be declared
 in the ```Code for IBM i``` settings.
@@ -298,14 +300,14 @@ A source file can be refreshed by right clicking and selecting **Refresh Member 
 
 ![assets/srcflist_05.png](assets/srcflist_05.png)
 
-## Opening Source Members
+### Opening Source Members
 
 After adding a source file, a source member can now be opened by selecting
 it in the member list.
 
 ![assets/members_01.png](assets/members_01.png)
 
-## Comparing sources
+### Comparing sources
 
 It is now possible to compare two sources, whether they are members or streamfiles.
 
@@ -315,7 +317,7 @@ It is now possible to compare two sources, whether they are members or streamfil
 
 ![assets/compare_01.png](assets/compare_01.png)
 
-## Compiling Sources
+### Compiling Sources
 
 Pressing <kbd>F1</kbd> and search for ```IBM i: Run Action```
 will reveal two commands that can compile a source member.
@@ -375,6 +377,10 @@ If installed, db2util is also used to more quickly populate the MEMBER BROWSER l
 ````
 
 ## Tips & Tricks
+
+### Search source files and IFS directories
+
+You can now right click and click 'Search' on IFS directories and source files to search through the content of streamfiles and source members.
 
 ### Overtype
 
