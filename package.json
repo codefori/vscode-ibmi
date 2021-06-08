@@ -53,6 +53,7 @@
 		"onCommand:code-for-ibmi.deleteMember",
 		"onCommand:code-for-ibmi.updateMemberText",
 		"onCommand:code-for-ibmi.renameMember",
+		"onCommand:code-for-ibmi.searchSourceFile",
 		"onView:ifsBrowser",
 		"onCommand:code-for-ibmi.refreshIFSBrowser",
 		"onCommand:code-for-ibmi.changeHomeDirectory",
@@ -61,6 +62,7 @@
 		"onCommand:code-for-ibmi.uploadStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
 		"onCommand:code-for-ibmi.deleteIFS",
+		"onCommand:code-for-ibmi.searchIFS",
 		"onCommand:code-for-ibmi.downloadStreamfile",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
@@ -558,6 +560,11 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.searchSourceFile",
+				"title": "Search Source File",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.addSourceFile",
 				"title": "Add Source File",
 				"category": "IBM i",
@@ -631,6 +638,12 @@
 				"title": "Move object",
 				"category": "IBM i",
 				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.searchIFS",
+				"title": "Search Directory",
+				"category": "IBM i",
+				"icon": "$(search)"
 			},
 			{
 				"command": "code-for-ibmi.createDirectory",
@@ -794,6 +807,11 @@
 					"when": "view == ifsBrowser"
 				},
 				{
+					"command": "code-for-ibmi.searchIFS",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
 					"command": "code-for-ibmi.refreshIFSBrowser",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
@@ -865,6 +883,10 @@
 					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{
+					"command": "code-for-ibmi.searchSourceFile",
+					"when": "view == memberBrowser && viewItem == SPF"
+				},
+				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == memberBrowser && viewItem == member",
 					"group": "1_workspace@1"
@@ -913,6 +935,11 @@
 					"command": "code-for-ibmi.createStreamfile",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.searchIFS",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",

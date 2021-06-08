@@ -3,6 +3,7 @@ const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
+const Search = require(`../api/Search`);
 
 module.exports = class memberBrowserProvider {
   /**
@@ -16,7 +17,9 @@ module.exports = class memberBrowserProvider {
     // used for targeted member list refreshes
     this.targetLib = `*ALL`;
     this.targetSpf = `*ALL`;
-    this.refreshCache = {}; // cache entries of format 'LIB/SPF': members[]
+    
+    /** @type {{[path: string]: any[]}} */
+    this.refreshCache = {};
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.refreshMemberBrowser`, async () => {
@@ -284,6 +287,59 @@ module.exports = class memberBrowserProvider {
         } else {
           //Running from command.
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node) => {
+        if (node) {
+          const content = instance.getContent();
+
+          const path = node.path.split(`/`);
+
+          let searchTerm = await vscode.window.showInputBox({
+            prompt: `Search ${node.path}.`
+          });
+
+          if (searchTerm) {
+            vscode.window.showInformationMessage(`Starting search for '${searchTerm}' in ${node.path}..`);
+            
+            try {
+              let members = [];
+
+              if (!(node.path in this.refreshCache)) {
+                this.refreshCache[node.path] = await content.getMemberList(path[0], path[1]);
+              }
+
+              members = this.refreshCache[node.path];
+
+              if (members.length > 0) {
+                const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
+
+                results.forEach(result => {
+                  const resultPath = result.path.split(`/`);
+                  const resultName = resultPath[resultPath.length-1];
+                  result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
+                });
+
+                const resultDoc = Search.generateDocument(`member`, results);
+  
+                const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
+                const editor = await vscode.window.showTextDocument(textDoc);
+                editor.edit(edit => {
+                  edit.insert(new vscode.Position(0, 0), resultDoc);
+                })
+
+              } else {
+                vscode.window.showErrorMessage(`No members to search.`);
+              }
+
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error searching source members.`);
+            }
+          }
+
+        } else {
+          //Running from command.
+        }
       })
     )
   }
@@ -325,23 +381,21 @@ module.exports = class memberBrowserProvider {
       if(!cacheExists || ([lib, `*ALL`].includes(this.targetLib) && [spf, `*ALL`].includes(this.targetSpf))){
         try {
           const members = await content.getMemberList(lib, spf);
-          this.refreshCache[element.path] = []; // reset cache since we're getting new data
+          this.refreshCache[element.path] = members; // reset cache since we're getting new data
 
-          for (const member of members) {
-            items.push(new Member(member));
-            this.refreshCache[element.path].push(new Member(member));
-          }
+          items.push(...members.map(member => new Member(member)));
+
         } catch (e) {
           console.log(e);
           item = new vscode.TreeItem(`Error loading members.`);
           vscode.window.showErrorMessage(e);
           items = [item];
         }
-      } else{
+
+      } else {
         // add cached items to tree
-        for (const cacheEntry of this.refreshCache[element.path]) {
-          items.push(cacheEntry);
-        }
+        const members = this.refreshCache[element.path];
+        items.push(...members.map(member => new Member(member)));
       }
     } else {
       const connection = instance.getConnection();
