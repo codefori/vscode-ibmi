@@ -1,8 +1,9 @@
 {
 	"name": "code-for-ibmi",
+	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.5.0",
+	"version": "0.5.2",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -58,9 +59,11 @@
 		"onCommand:code-for-ibmi.changeHomeDirectory",
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
+		"onCommand:code-for-ibmi.uploadStreamfile",
 		"onCommand:code-for-ibmi.moveIFS",
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onCommand:code-for-ibmi.searchIFS",
+		"onCommand:code-for-ibmi.downloadStreamfile",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
 		"onCommand:code-for-ibmi.createSourceFile",
@@ -626,6 +629,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.downloadStreamfile",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.moveIFS",
 				"title": "Move object",
 				"category": "IBM i",
@@ -648,6 +656,12 @@
 				"title": "Create streamfile",
 				"category": "IBM i",
 				"icon": "$(new-file)"
+			},
+			{
+				"command": "code-for-ibmi.uploadStreamfile",
+				"title": "Upload",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)"
 			},
 			{
 				"command": "code-for-ibmi.refreshObjectList",
@@ -779,6 +793,11 @@
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.uploadStreamfile",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
@@ -921,6 +940,16 @@
 					"command": "code-for-ibmi.searchIFS",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "3_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.downloadStreamfile",
+					"when": "view == ifsBrowser && viewItem == streamfile",
+					"group": "3_ifsTransfer@1"
+				},
+				{
+					"command": "code-for-ibmi.uploadStreamfile",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsTransfer@2"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectList",
