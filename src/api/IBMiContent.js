@@ -281,10 +281,13 @@ module.exports = class IBMiContent {
    * @return {Promise<{type: "directory"|"streamfile", name: string, path: string}[]>} Resulting list
    */
   async getFileList(remotePath) {
-    let results = await this.ibmi.paseCommand(`ls -a -p ` + remotePath);
+    const result = await this.ibmi.paseCommand(`ls -a -p ` + remotePath, undefined, 1);
 
-    if (typeof results === `string` && results !== ``) {
-      let list = results.split(`\n`);
+    //@ts-ignore
+    const fileList = result.stdout;
+
+    if (typeof fileList === `string` && fileList !== ``) {
+      let list = fileList.split(`\n`);
 
       //Remove current and dir up.
       list = list.filter(item => item !== `../` && item !== `./`);
