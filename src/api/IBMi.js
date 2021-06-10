@@ -222,6 +222,7 @@ module.exports = class IBMi {
    * @param {string} command 
    * @param {null|string} [directory] If null/not passed, will default to home directory
    * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
+   * @returns {Promise<string|{code: number, stdout: string, stderr: string}>}
    */
   async paseCommand(command, directory = this.config.homeDirectory, returnType = 0) {
     command = command.replace(/\$/g, `\\$`);
