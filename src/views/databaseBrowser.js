@@ -185,7 +185,7 @@ module.exports = class databaseBrowserProvider {
             items.push(new SchemaItem(library));
           }
         } else {
-          items.push(new vscode.TreeItem(`'db2util' not installed on system.`, vscode.TreeItemCollapsibleState.None));
+          items.push(new vscode.TreeItem(`'db2util' not installed on system or is disabled in the settings.`, vscode.TreeItemCollapsibleState.None));
         }
       }
     }
