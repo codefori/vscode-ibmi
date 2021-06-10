@@ -14,6 +14,8 @@ module.exports = class Search {
     const connection = instance.getConnection();
     
     term = term.replace(/'/g, `\\'`);
+    term = term.replace(/\\/g, `\\\\"`);
+
     //const standardOut = await connection.remoteCommand(`FNDSTRPDM STRING('${term}') FILE(${lib}/${spf}) MBR(*ALL) OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS('*ALL ' *CHAR *NOMARK *TRUNCATE)`, `.`);
     const standardOut = await connection.qshCommand(`/usr/bin/grep -in '${term}' /QSYS.LIB/${lib}.LIB/${spf}.FILE/*`);
       
@@ -73,6 +75,9 @@ module.exports = class Search {
 
     if (grep) {
       let standardOut = ``;
+
+      term = term.replace(/'/g, `\\'`);
+      term = term.replace(/\\/g, `\\\\"`);
 
       try {
         //@ts-ignore
