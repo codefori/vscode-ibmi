@@ -343,11 +343,6 @@ module.exports = class memberBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.openMemberByPath`, async () => {
-        const connection = instance.getConnection();
-        const config = instance.getConfig();
-
-        let sourceFiles = config.sourceFileList;
-
         const searchFor = await vscode.window.showInputBox({
           prompt: `Enter source path (Format: LIB/SPF/NAME.ext)`
         });
@@ -356,11 +351,7 @@ module.exports = class memberBrowserProvider {
           const [path] = searchFor.match(/\w+\/\w+\/\w+\.\w+/);
           if (path) {
 
-            vscode.command = {
-              command: `code-for-ibmi.openEditable`,
-              title: `Open Member`,
-              arguments: [path]
-            };
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, path);
           } else {
             vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
           }
