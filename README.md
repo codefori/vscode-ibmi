@@ -66,7 +66,7 @@ You can click on a member to open and edit it. There is no member locking and th
 
 ## Detailed Documentation
 
-More detailed documentation is available [here](https://halcyon-tech.github.io/code-for-ibmi/#/)
+More detailed documentation is available [here](https://halcyon-tech.github.io/vscode-ibmi/#/)
 
 ## Contributors
 
