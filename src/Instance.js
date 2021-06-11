@@ -243,9 +243,9 @@ module.exports = class Instance {
             let uri;
             if (path.startsWith(`/`)) {
               //IFS
-              uri = vscode.Uri.parse(path).with({scheme: `streamfile`});
+              uri = vscode.Uri.parse(path).with({scheme: `streamfile`, path});
             } else {
-              uri = vscode.Uri.parse(path).with({scheme: `member`});
+              uri = vscode.Uri.parse(path).with({scheme: `member`, path: `/${path}`});
             }
   
             try {

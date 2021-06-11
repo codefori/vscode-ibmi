@@ -436,7 +436,7 @@ class Member extends vscode.TreeItem {
     this.contextValue = `member`;
     this.description = member.text;
     this.path = path;
-    this.resourceUri = vscode.Uri.parse(path).with({scheme: `member`});
+    this.resourceUri = vscode.Uri.parse(path).with({scheme: `member`, path: `/${path}`});
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open Member`,

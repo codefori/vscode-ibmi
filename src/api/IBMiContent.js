@@ -227,17 +227,19 @@ module.exports = class IBMiContent {
 
     if (this.ibmi.remoteFeatures.db2util) {
       results = await this.runSQL(`
-        Select 
-          (Avgrowsize - 12) as MBMXRL, 
-          Iasp_Number as MBASP, 
-          System_Table_Member as MBNAME, 
-          Source_Type as MBSEU2, 
-          Partition_Text as MBMTXT
-        From Qsys2.Syspartitionstat, Qsys2.Sysschemas 
-        Where 
-          Table_Schema = '${lib}' And 
-          Table_Name = '${spf}' And 
-          Schema_Name = System_Table_Schema
+        SELECT
+          (b.avgrowsize - 12) as MBMXRL,
+          a.iasp_number as MBASP,
+          b.system_table_member as MBNAME,
+          b.source_type as MBSEU2,
+          b.partition_text as MBMTXT
+        FROM qsys2.systables AS a
+          JOIN qsys2.syspartitionstat AS b
+            ON b.table_schema = a.table_schema AND
+              b.table_name = a.table_name
+        WHERE
+          a.table_schema = '${lib}' And
+          a.table_name = '${spf}'
       `)
 
     } else {
@@ -279,10 +281,13 @@ module.exports = class IBMiContent {
    * @return {Promise<{type: "directory"|"streamfile", name: string, path: string}[]>} Resulting list
    */
   async getFileList(remotePath) {
-    let results = await this.ibmi.paseCommand(`ls -a -p ` + remotePath);
+    const result = await this.ibmi.paseCommand(`ls -a -p ` + remotePath, undefined, 1);
 
-    if (typeof results === `string` && results !== ``) {
-      let list = results.split(`\n`);
+    //@ts-ignore
+    const fileList = result.stdout;
+
+    if (typeof fileList === `string` && fileList !== ``) {
+      let list = fileList.split(`\n`);
 
       //Remove current and dir up.
       list = list.filter(item => item !== `../` && item !== `./`);
