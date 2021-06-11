@@ -1,9 +1,16 @@
 
-const path = require("path");
+const path = require(`path`);
 const vscode = require(`vscode`);
 
 const instance = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
+
+const ColumnData = require(`./columnData`);
+
+const currentArea = vscode.window.createTextEditorDecorationType({
+  backgroundColor: `rgba(242, 242, 109, 0.2)`,
+  border: `1px solid grey`,
+})
 
 module.exports = class RPGLinter {
   /**
@@ -24,6 +31,37 @@ module.exports = class RPGLinter {
 
     context.subscriptions.push(
       this.linterDiagnostics,
+
+      vscode.window.onDidChangeTextEditorSelection(e => {
+        if (Configuration.get(`rpgleColumnAssistEnabled`)) {
+          const editor = e.textEditor;
+          const document = editor.document;
+
+          if (document.languageId === `rpgle`) {
+            if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) { 
+              const position = editor.selection.active;
+              const lineNumber = editor.selection.start.line;
+              const positionIndex = editor.selection.start.character;
+
+              const positionData = ColumnData.getInfoFromLine(
+                document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
+                positionIndex
+              );
+
+              if (positionData) {
+                editor.setDecorations(currentArea, [
+                  {
+                    hoverMessage: positionData.name,
+                    range: new vscode.Range(lineNumber, positionData.start, lineNumber, positionData.end+1)
+                  }
+                ]);
+              } else {
+                editor.setDecorations(currentArea, []);
+              }
+            }
+          }
+        }
+      }),
 
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (Configuration.get(`rpgleIndentationEnabled`)) {
