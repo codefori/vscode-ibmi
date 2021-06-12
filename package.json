@@ -39,6 +39,7 @@
 		"onCommand:code-for-ibmi.compareWithSelected",
 		"onCommand:code-for-ibmi.showAdditionalSettings",
 		"onCommand:code-for-ibmi.showActionsMaintenance",
+		"onCommand:code-for-ibmi.rpgleColumnAssistant",
 		"onCommand:code-for-ibmi.changeCurrentLibrary",
 		"onView:libraryListView",
 		"onCommand:code-for-ibmi.refreshLibraryListView",
@@ -505,6 +506,11 @@
 			{
 				"command": "code-for-ibmi.compareWithSelected",
 				"title": "Compare with Selected",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.rpgleColumnAssistant",
+				"title": "Launch Column Assistant",
 				"category": "IBM i"
 			},
 			{

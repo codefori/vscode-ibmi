@@ -37,14 +37,36 @@ module.exports = class RPGLinter {
     context.subscriptions.push(
       this.linterDiagnostics,
 
+      vscode.commands.registerCommand(`code-for-ibmi.rpgleColumnAssistant`, async () => {
+        if (Configuration.get(`rpgleColumnAssistEnabled`)) {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            const document = editor.document;
+
+            if (document.languageId === `rpgle`) {
+              if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) { 
+                const lineNumber = editor.selection.start.line;
+                const positionIndex = editor.selection.start.character;
+
+                const positionsData = await ColumnData.promptLine(
+                  document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
+                  positionIndex
+                );
+              }
+            }
+          }
+        } else {
+          vscode.window.showInformationMessage(`Column assist disabled.`);
+        }
+      }),
+
       vscode.window.onDidChangeTextEditorSelection(e => {
         if (Configuration.get(`rpgleColumnAssistEnabled`)) {
           const editor = e.textEditor;
           const document = editor.document;
 
           if (document.languageId === `rpgle`) {
-            if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) { 
-              const position = editor.selection.active;
+            if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) {
               const lineNumber = editor.selection.start.line;
               const positionIndex = editor.selection.start.character;
 

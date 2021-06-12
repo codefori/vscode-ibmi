@@ -1,4 +1,5 @@
-const vscode = require(`vscode`);
+
+const {CustomUI, Field} = require(`../../api/CustomUI`);
 
 const specs = {
   C: [
@@ -51,10 +52,10 @@ const specs = {
     {start: 21, end: 21, name: `External Description`, id: `externalDescription`},
     {start: 22, end: 22, name: `Type of Data Structure`, id: `typeOfDs`},
     {start: 23, end: 24, name: `Definition Type`, id: `definitionType`},
-    {start: 25, end: 31, name: `From Position`, id: `fromPosition`},
-    {start: 32, end: 38, name: `To Position / Length`, id: `toPosition`},
+    {start: 25, end: 31, name: `From Position`, id: `fromPosition`, padStart: true},
+    {start: 32, end: 38, name: `To Position / Length`, id: `toPosition`, padStart: true},
     {start: 39, end: 39, name: `Internal Data Type`, id: `internalDataType`},
-    {start: 40, end: 41, name: `Decimal Positions`, id: `decimalPositions`},
+    {start: 40, end: 41, name: `Decimal Positions`, id: `decimalPositions`, padStart: true},
     {start: 43, end: 79, name: `Keywords`, id: `keywords`}
   ],
   F: [
@@ -124,7 +125,63 @@ const getAreasForLine = (line, index) => {
   }
 }
 
+/**
+ * @param {string} line 
+ * @param {number} index The current piece the cursor is over
+ * @returns {Promise<string|undefined>} New line
+ */
+const promptLine = async (line, index) => {
+  if (line.length < 6) return undefined;
+  if (line[6] === `*`) return undefined;
+  line = line.padEnd(80);
+  
+  const specLetter = line[5].toUpperCase();
+  if (specs[specLetter]) {
+    const specification = specs[specLetter];
+
+    let parts = [];
+
+    specification.forEach(box => {
+      parts.push({
+        id: box.id,
+        text: box.name,
+        content: line.substring(box.start, box.end+1).trim()
+      });
+    });
+
+    let ui = new CustomUI();
+
+    parts.forEach((box, index) => {
+      ui.addField(new Field(`input`, box.id, box.text));
+      ui.fields[index].default = box.content;
+    });
+
+    ui.addField(new Field(`submit`, `submitButton`, `Update`));
+
+    const {panel, data} = await ui.loadPage(`Column Assistant`);
+
+    if (data) {
+      panel.dispose();
+
+      let spot, length;
+      for (const key in data) {
+        spot = specification.find(box => box.id === key);
+        length = (spot.end+1)-spot.start;
+
+        if (data[key].length > length) data[key] = data[key].substr(0, length);
+
+        line = line.substring(0, spot.start) + (spot.padStart ? data[key].padStart(length) : data[key].padEnd(length)) + line.substring(spot.end+1);
+      }
+    }
+
+    return undefined;
+  } else {
+    return undefined;
+  }
+}
+
 module.exports = {
   getInfoFromLine,
-  getAreasForLine
+  getAreasForLine,
+  promptLine
 };
