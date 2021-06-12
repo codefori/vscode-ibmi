@@ -348,11 +348,12 @@ module.exports = class memberBrowserProvider {
         });
 
         if (searchFor) {
-          const [path] = searchFor.match(/\w+\/\w+\/\w+\.\w+/);
-          if (path) {
-
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, path);
-          } else {
+          try { //The reason for the try is because match throws an error.
+            const [path] = searchFor.match(/\w+\/\w+\/\w+\.\w+/);
+            if (path) {
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, path);
+            }
+          } catch (e) {
             vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
           }
         }
