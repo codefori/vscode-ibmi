@@ -118,7 +118,7 @@ module.exports = class Instance {
         context.subscriptions.push(connectedBarItem);
       }
       
-      connectedBarItem.text = `IBM i: ${instance.connection.currentHost}`;
+      connectedBarItem.text = `Settings: ${instance.connection.currentHost}`;
       connectedBarItem.show();
 
       if (!actionsBarItem) {
