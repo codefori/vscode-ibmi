@@ -54,6 +54,7 @@
 		"onCommand:code-for-ibmi.updateMemberText",
 		"onCommand:code-for-ibmi.renameMember",
 		"onCommand:code-for-ibmi.searchSourceFile",
+		"onCommand:code-for-ibmi.openMemberByPath",
 		"onView:ifsBrowser",
 		"onCommand:code-for-ibmi.refreshIFSBrowser",
 		"onCommand:code-for-ibmi.changeHomeDirectory",
@@ -563,6 +564,12 @@
 				"command": "code-for-ibmi.searchSourceFile",
 				"title": "Search Source File",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openMemberByPath",
+				"title": "Open Source Member",
+				"category": "IBM i",
+				"icon": "$(files)"
 			},
 			{
 				"command": "code-for-ibmi.addSourceFile",
