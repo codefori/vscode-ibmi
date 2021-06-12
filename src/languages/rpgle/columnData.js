@@ -51,10 +51,55 @@ const specs = {
     {start: 6, end: 20, name: `Name`, id: `name`},
     {start: 21, end: 21, name: `External Description`, id: `externalDescription`},
     {start: 22, end: 22, name: `Type of Data Structure`, id: `typeOfDs`},
-    {start: 23, end: 24, name: `Definition Type`, id: `definitionType`},
+    {start: 23, end: 24, name: `Definition Type`, id: `definitionType`, values: [
+      { value: ``,
+        text: `The specification defines either a data structure subfield or a parameter within a prototype or procedure interface definition.`},
+      { value: `C`,
+        text: `The specification defines a constant. Position 25 must be blank.`},
+      { value: `DS`,
+        text: `The specification defines a data structure.`},
+      { value: `PR`,
+        text: `The specification defines a prototype and the return value, if any.`},
+      { value: `PI`,
+        text: `The specification defines a procedure interface, and the return value if any.`},
+      { value: `S`,
+        text: `The specification defines a standalone field, array or table. Position 25 must be blank.`},
+    ]},
     {start: 25, end: 31, name: `From Position`, id: `fromPosition`, padStart: true},
     {start: 32, end: 38, name: `To Position / Length`, id: `toPosition`, padStart: true},
-    {start: 39, end: 39, name: `Internal Data Type`, id: `internalDataType`},
+    {start: 39, end: 39, name: `Internal Data Type`, id: `internalDataType`, values: [
+      { value: `A`,
+        text: `Character (Fixed or Variable-length format)`},
+      { value: `B`,
+        text: `Numeric (Binary format)`},
+      { value: `C`,
+        text: `UCS-2 (Fixed or Variable-length format)`},
+      { value: `D`,
+        text: `Date`},
+      { value: `F`,
+        text: `Numeric (Float format)`},
+      { value: `G`,
+        text: `Graphic (Fixed or Variable-length format)`},
+      { value: `I`,
+        text: `Numeric (Integer format)`},
+      { value: `N`,
+        text: `Character (Indicator format)`},
+      { value: `O`,
+        text: `Object`},
+      { value: `P`,
+        text: `Numeric (Packed decimal format)`},
+      { value: `S`,
+        text: `Numeric (Zoned format)`},
+      { value: `T`,
+        text: `Time`},
+      { value: `U`,
+        text: `Numeric (Unsigned format)`},
+      { value: `Z`,
+        text: `Timestamp`},
+      { value: `*`,
+        text: `Basing pointer or procedure pointer`},
+      { value: ``, text: `Blank (Character, Packed or Zoned)`}
+    ]},
     {start: 40, end: 41, name: `Decimal Positions`, id: `decimalPositions`, padStart: true},
     {start: 43, end: 79, name: `Keywords`, id: `keywords`}
   ],
@@ -145,15 +190,29 @@ const promptLine = async (line, index) => {
       parts.push({
         id: box.id,
         text: box.name,
-        content: line.substring(box.start, box.end+1).trim()
+        content: line.substring(box.start, box.end+1).trim(),
+        values: box.values
       });
     });
 
     let ui = new CustomUI();
 
     parts.forEach((box, index) => {
-      ui.addField(new Field(`input`, box.id, box.text));
-      ui.fields[index].default = box.content;
+      if (box.values) {
+        //Select box
+        ui.addField(new Field(`select`, box.id, box.text));
+        ui.fields[index].items = box.values.map(item => ({
+          selected: item.value.toUpperCase() === box.content.toUpperCase(),
+          value: item.value,
+          description: item.value,
+          text: item.text
+        }));
+
+      } else {
+        //Input field
+        ui.addField(new Field(`input`, box.id, box.text));
+        ui.fields[index].default = box.content;
+      }
     });
 
     ui.addField(new Field(`submit`, `submitButton`, `Update`));
