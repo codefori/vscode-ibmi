@@ -274,6 +274,33 @@ module.exports = class Instance {
         );
 
         context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.openFileByPath`, async () => {
+            const searchFor = await vscode.window.showInputBox({
+              prompt: `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`
+            });
+
+            if (searchFor) {
+              let isValid = true;
+
+              if (!searchFor.startsWith(`/`)) {
+                try { //The reason for the try is because match throws an error.
+                  const [path] = searchFor.match(/\w+\/\w+\/\w+\.\w+/);
+                  if (path) isValid = true;
+                } catch (e) {
+                  isValid = false;
+                }
+              }
+
+              if (isValid) {
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, searchFor);
+              } else {
+                vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
+              }
+            }
+          })
+        )
+
+        context.subscriptions.push(
           vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
             const config = this.getConfig();
             const currentLibrary = config.currentLibrary.toUpperCase();
