@@ -567,7 +567,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openMemberByPath",
-				"title": "Open Source File",
+				"title": "Open Source Member",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
