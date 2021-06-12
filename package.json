@@ -28,6 +28,7 @@
 		"Other"
 	],
 	"activationEvents": [
+		"onStartupFinished",
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.disconnect",
@@ -182,6 +183,10 @@
 							}
 						}
 					}
+				},
+				"code-for-ibmi.vscode-ibmi-connection": {
+					"type": "string",
+					"description": "The default connection for this workspace. Not to be used at a global level."
 				},
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",

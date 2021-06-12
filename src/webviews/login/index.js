@@ -1,6 +1,7 @@
 const vscode = require(`vscode`);
 
 const IBMi = require(`../../api/IBMi`);
+const Configuration = require(`../../api/Configuration`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
 let instance = require(`../../Instance`);
@@ -46,8 +47,8 @@ module.exports = class Login {
           instance.setConnection(connection);
           instance.loadAllofExtension(context);
 
-          let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
-          let existingConnections = existingConnectionsConfig.get(`connections`);
+          ;
+          let existingConnections = Configuration.get(`connections`);
           if (!existingConnections.some(item => item.name === data.name)) {
             existingConnections.push({
               name: data.name,
@@ -56,7 +57,7 @@ module.exports = class Login {
               username: data.username,
               privateKey: data.privateKey
             });
-            await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
+            await Configuration.setGlobal(`connections`, existingConnections)
           }
 
         } else {
@@ -84,8 +85,7 @@ module.exports = class Login {
       if (!instance.disconnect()) return;
     }
 
-    const existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
-    const existingConnections = existingConnectionsConfig
+    const existingConnections = Configuration
       .get(`connections`)
       .map(item => ({
         label: `${item.name}`,
@@ -101,34 +101,68 @@ module.exports = class Login {
     if (selected) {
       let connectionConfig = selected[`config`];
 
-      if (!connectionConfig.privateKey) {
-        connectionConfig.password = await vscode.window.showInputBox({
-          prompt: `Password for ${selected[`label`]}`,
-          password: true
-        });
-        
-        if (!connectionConfig.password) {
-          return;
-        }
-      }
-
-      const connection = new IBMi();
-
-      try {
-        const connected = await connection.connect(connectionConfig);
-        if (connected.success) {
-          vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
-
-          instance.setConnection(connection);
-          instance.loadAllofExtension(context);
-
-        } else {
-          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
-        }
-      } catch (e) {
-        vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e.message}`);
-      }
+      await this.login(context, connectionConfig);
     }
   }
   
+  /**
+   * Log into an existing connection by name
+   * @param {vscode.ExtensionContext} context
+   * @param {string} name Connection name 
+   */
+  static async LoginByName(context, name) {
+    const existingConnections = Configuration.get(`connections`);
+
+    const connectionConfig = existingConnections.find(conn => conn.name === name);
+
+    if (connectionConfig) {
+      await this.login(context, connectionConfig);
+
+    } else {
+      vscode.window.showErrorMessage(`Connection ${name} was not found.`);
+    }
+  }
+
+  static async login(context, connectionConfig) {
+    if (!connectionConfig.privateKey) {
+      connectionConfig.password = await vscode.window.showInputBox({
+        prompt: `Password for ${connectionConfig.name}`,
+        password: true
+      });
+      
+      if (!connectionConfig.password) {
+        return;
+      }
+    }
+
+    const connection = new IBMi();
+
+    try {
+      const connected = await connection.connect(connectionConfig);
+      if (connected.success) {
+        vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
+
+        instance.setConnection(connection);
+        instance.loadAllofExtension(context);
+
+        if (vscode.workspace.workspaceFile) {
+          if (vscode.workspace.workspaceFile.scheme !== `untitled`) {
+            const workspaceConnection = Configuration.get(`vscode-ibmi-connection`);
+            if (!workspaceConnection) {
+              let result = await vscode.window.showWarningMessage(`Do you always want to connect to ${connectionConfig.name} when opening this workspace?`, `Yes`, `No`);
+
+              if (result === `Yes`) {
+                await Configuration.setWorkspace(`vscode-ibmi-connection`, connectionConfig.name);
+              }
+            }
+          }
+        }
+
+      } else {
+        vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
+      }
+    } catch (e) {
+      vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e.message}`);
+    }
+  }
 }

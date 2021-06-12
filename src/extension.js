@@ -7,6 +7,7 @@ const vscode = require(`vscode`);
 
 let instance = require(`./Instance`);
 let {CustomUI, Field} = require(`./api/CustomUI`);
+const Configuration = require(`./api/Configuration`);
 
 const LoginPanel = require(`./webviews/login`);
 
@@ -71,6 +72,13 @@ function activate(context) {
       }
     })
   )
+
+  if (vscode.workspace.workspaceFile) {
+    const workspaceConnection = Configuration.get(`vscode-ibmi-connection`);
+    if (workspaceConnection) {
+      LoginPanel.LoginByName(context, workspaceConnection);
+    }
+  }
 
   return {instance, CustomUI, Field, baseContext: context};
 }
