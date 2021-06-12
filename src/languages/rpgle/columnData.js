@@ -44,19 +44,50 @@ const specs = {
       start: 70,
       end: 75
     }
+  ],
+
+  D: [
+    {start: 6, end: 20, name: `Name`, id: `name`},
+    {start: 21, end: 21, name: `External Description`, id: `externalDescription`},
+    {start: 22, end: 22, name: `Type of Data Structure`, id: `typeOfDs`},
+    {start: 23, end: 24, name: `Definition Type`, id: `definitionType`},
+    {start: 25, end: 31, name: `From Position`, id: `fromPosition`},
+    {start: 32, end: 38, name: `To Position / Length`, id: `toPosition`},
+    {start: 39, end: 39, name: `Internal Data Type`, id: `internalDataType`},
+    {start: 40, end: 41, name: `Decimal Positions`, id: `decimalPositions`},
+    {start: 43, end: 79, name: `Keywords`, id: `keywords`}
+  ],
+  F: [
+    {start: 6, end: 15, name: `File Name`, id: `fileName`},
+    {start: 16, end: 16, name: `File Type`, id: `fileType`},
+    {start: 17, end: 17, name: `File Designation`, id: `fileDesignation`},
+    {start: 18, end: 18, name: `End of File`, id: `endOfFile`},
+    {start: 19, end: 19, name: `File Addition`, id: `fileAddition`},
+    {start: 20, end: 20, name: `Sequence`, id: `sequence`},
+    {start: 21, end: 21, name: `File Format`, id: `fileFormat`},
+    {start: 22, end: 26, name: `Record Length`, id: `recordLength`},
+    {start: 27, end: 27, name: `Limits Processing`, id: `limitsProcessing`},
+    {start: 28, end: 32, name: `Length of Key or Record Address`, id: `keyLength`},
+    {start: 33, end: 33, name: `Record Address Type`, id: `addressType`},
+    {start: 34, end: 34, name: `File Organization`, id: `fileOrg`},
+    {start: 35, end: 41, name: `Device`, id: `device`},
+    {start: 43, end: 79, name: `Keywords`, id: `keywords`}
+  ],
+  P: [
+    {start: 6, end: 20, name: `Name`, id: `name`},
+    {start: 23, end: 23, name: `Begin/End Procedure`, id: `proc`},
+    {start: 43, end: 79, name: `Keywords`, id: `keywords`}
   ]
 }
 
 /**
- * 
  * @param {string} line 
  * @param {number} index 
  * @returns {{id, name, start, end}|undefined}
  */
 const getInfoFromLine = (line, index) => {
-  if (line[6] === `*`) {
-    return undefined;
-  }
+  if (line.length < 6) return undefined;
+  if (line[6] === `*`) return undefined;
 
   const specLetter = line[5].toUpperCase();
   if (specs[specLetter]) {
@@ -71,6 +102,29 @@ const getInfoFromLine = (line, index) => {
   return undefined;
 }
 
+/**
+ * @param {string} line 
+ * @param {number} index The current piece the cursor is over
+ * @returns {{specification: {id, name, start, end}[], active?: number}}|undefined}
+ */
+const getAreasForLine = (line, index) => {
+  if (line.length < 6) return undefined;
+  if (line[6] === `*`) return undefined;
+  
+  const specLetter = line[5].toUpperCase();
+  if (specs[specLetter]) {
+    const specification = specs[specLetter];
+
+    const active = specification.findIndex(box => index >= box.start && index <= box.end);
+
+    return {
+      specification,
+      active
+    };
+  }
+}
+
 module.exports = {
-  getInfoFromLine
+  getInfoFromLine,
+  getAreasForLine
 };
