@@ -8,7 +8,12 @@ const Configuration = require(`../../api/Configuration`);
 const ColumnData = require(`./columnData`);
 
 const currentArea = vscode.window.createTextEditorDecorationType({
-  backgroundColor: `rgba(242, 242, 109, 0.2)`,
+  backgroundColor: `rgba(242, 242, 109, 0.3)`,
+  border: `1px solid grey`,
+})
+
+const notCurrentArea = vscode.window.createTextEditorDecorationType({
+  backgroundColor: `rgba(242, 242, 109, 0.1)`,
   border: `1px solid grey`,
 })
 
@@ -43,20 +48,34 @@ module.exports = class RPGLinter {
               const lineNumber = editor.selection.start.line;
               const positionIndex = editor.selection.start.character;
 
-              const positionData = ColumnData.getInfoFromLine(
+              const positionsData = ColumnData.getAreasForLine(
                 document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
                 positionIndex
               );
 
-              if (positionData) {
-                editor.setDecorations(currentArea, [
-                  {
-                    hoverMessage: positionData.name,
-                    range: new vscode.Range(lineNumber, positionData.start, lineNumber, positionData.end+1)
+              if (positionsData) {
+                let decorations = [];
+
+                positionsData.specification.forEach((box, index) => {
+                  if (index === positionsData.active) {
+                    //There should only be one current.
+                    editor.setDecorations(currentArea, [{
+                      hoverMessage: box.name,
+                      range: new vscode.Range(lineNumber, box.start, lineNumber, box.end+1)
+                    }]);
+
+                  } else {
+                    decorations.push({
+                      hoverMessage: box.name,
+                      range: new vscode.Range(lineNumber, box.start, lineNumber, box.end+1)
+                    })
                   }
-                ]);
+                });
+                editor.setDecorations(notCurrentArea, decorations);
+
               } else {
                 editor.setDecorations(currentArea, []);
+                editor.setDecorations(notCurrentArea, []);
               }
             }
           }
