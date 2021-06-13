@@ -274,15 +274,22 @@ module.exports = class ifsBrowserProvider {
 
           } else {
             //Get filename from path on server
-            const filename = node.path.replace(/^.*[\\\/]/, ``);
+            const filename = path.basename(node.path);
 
             const remoteFilepath = path.join(os.homedir(), filename);
 
             let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
 
             if (localFilepath) {
+              let localPath = localFilepath.path;
+              if (process.platform === `win32`) {
+                //Issue with getFile not working propertly on Windows
+                //when there was a / at the start.
+                if (localPath[0] === `/`) localPath = localPath.substr(1);
+              }
+
               try {
-                await client.getFile(localFilepath.path, node.path);
+                await client.getFile(localPath, node.path);
                 vscode.window.showInformationMessage(`File was downloaded.`);
               } catch (e) {
                 vscode.window.showErrorMessage(`Error downloading streamfile! ${e}`);
