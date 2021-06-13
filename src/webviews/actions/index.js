@@ -21,14 +21,6 @@ module.exports = class SettingsUI {
   static async MainMenu() {
     let allActions = Configuration.get(`actions`);
 
-    //Since we add a sort, we need to retain the index for editing.
-    allActions.forEach((action, index) => {
-      action.id = index;
-    });
-
-    //Sort by name
-    allActions.sort((a, b) => a.name.localeCompare(b.name));
-
     let ui = new CustomUI();
     let field;
 
@@ -39,10 +31,10 @@ module.exports = class SettingsUI {
         label: `New Action`,
         value: `-1`
       },
-      ...allActions.map(action => ({
+      ...allActions.map((action, index) => ({
         label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
-        value: String(action.id)
-      }))
+        value: String(index)
+      })).sort((a, b) => a.label.localeCompare(b.label))
     ];
     
     ui.addField(field);
