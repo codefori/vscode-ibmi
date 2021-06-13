@@ -18,12 +18,13 @@ You can find the source for this API at `src/api/CustomUI.js`.
 
 ### `Field` class
 
-* `constructor(type: "input"|"password"|"checkbox"|"submit"|"tree"|"select", id: string, label: string)` to create an instance of a field.
+* `constructor(type: "input"|"password"|"checkbox"|"submit"|"tree"|"select"|"paragraph", id: string, label: string)` to create an instance of a field.
 * `field.description` (`string`) can be used to set text about the field for information about the field.
 * `field.default` can be used to set the initial value of the field. If the field is a checkbox, you can use the value of `checked` to have it checked by default.
 * `field.items` is used only by `tree` and `select`
   * for `tree`: `{label: string, value: string}[]`. The chosen `value` is passed back in the `loadPage` result. Note that `tree` is mostly used for a list. See `src/webviews/actions/index.js` for an example.
   * for `select`: `{selected?: boolean, value: string, description: string, text}[]`. Used for the user to select an item from a dropdown list.
+* `field.readonly` can be usd with `input` only, allowing a readonly, not editable field.
 
 ## Example
 

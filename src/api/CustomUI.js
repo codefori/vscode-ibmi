@@ -161,7 +161,7 @@ class CustomUI {
 
 class Field  {
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"}} */
+    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"}} */
     this.type = type;
 
     /** @type {string} */
@@ -175,6 +175,12 @@ class Field  {
 
     /** @type {string|undefined} */
     this.default = undefined;
+
+    /** 
+     * Used only for `input` type
+     * @type {boolean|undefined} 
+    */
+    this.readonly = undefined;
 
     /** @type {object[]|undefined} Used for tree and select type. */
     this.items = undefined;
@@ -198,8 +204,14 @@ class Field  {
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
-              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``}></vscode-inputbox>
+              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``}></vscode-inputbox>
           </vscode-form-control>
+      </vscode-form-item>
+      `;
+    case `paragraph`:
+      return `
+      <vscode-form-item>
+          <vscode-form-description>${this.label}</vscode-form-description>
       </vscode-form-item>
       `;
     case `file`:
