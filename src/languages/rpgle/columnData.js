@@ -37,7 +37,7 @@ const specs = {
       id: `decimalPositions`,
       name: `Decimal Positions`,
       start: 68,
-      end: 79
+      end: 69
     },
     {
       id: `resultingIndicators`,
@@ -231,6 +231,8 @@ const promptLine = async (line, index) => {
 
         line = line.substring(0, spot.start) + (spot.padStart ? data[key].padStart(length) : data[key].padEnd(length)) + line.substring(spot.end+1);
       }
+
+      return line.trimEnd();
     }
 
     return undefined;

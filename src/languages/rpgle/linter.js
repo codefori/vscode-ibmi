@@ -52,6 +52,12 @@ module.exports = class RPGLinter {
                   document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
                   positionIndex
                 );
+
+                if (positionsData) {
+                  editor.edit(editBuilder => {
+                    editBuilder.replace(new vscode.Range(lineNumber, 0, lineNumber, positionsData.length), positionsData);
+                  });
+                }
               }
             }
           }
