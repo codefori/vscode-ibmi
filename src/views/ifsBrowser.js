@@ -131,56 +131,39 @@ module.exports = class ifsBrowserProvider {
         if (!destPathSuggestion.endsWith(`/`)) destPathSuggestion += `/`;
         destPathSuggestion += filname;
 
-        const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === originPath[0].fsPath);
+        const destinationPath = await vscode.window.showInputBox({
+          prompt: `Name of new streamfile`,
+          value: destPathSuggestion
+        });
 
-        if (isStillOpen) {
-          //Be sure it's correctly saved
-          vscode.window.showInformationMessage(`Cannot upload streamfile while it is open.`);
-        } else {
-          const destinationPath = await vscode.window.showInputBox({
-            prompt: `Name of new streamfile`,
-            value: destPathSuggestion
-          });
-
-          if (destinationPath) {
-            try {
-              await client.putFile(originPath[0].fsPath, destinationPath);
-              vscode.window.showInformationMessage(`File was uploaded.`);
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
-            }
+        if (destinationPath) {
+          try {
+            await client.putFile(originPath[0].fsPath, destinationPath);
+            vscode.window.showInformationMessage(`File was uploaded.`);
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
           }
-
         }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+          //Running from right click
+          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
-          if (isStillOpen) {
-            //Since there is no easy way to close a file.
-            vscode.window.showInformationMessage(`Cannot delete streamfile while it is open.`);
+          if (result === `Yes`) {
+            const connection = instance.getConnection();
 
-          } else {
-            //Running from right click
-            let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+            try {
+              await connection.paseCommand(`rm -rf ${node.path}`)
 
-            if (result === `Yes`) {
-              const connection = instance.getConnection();
+              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-              try {
-                await connection.paseCommand(`rm -rf ${node.path}`)
-
-                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
-
-                if (Configuration.get(`autoRefresh`)) this.refresh();
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
-              }
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
             }
-
           }
         } else {
           //Running from command.
@@ -190,30 +173,22 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
         if (node) {
           //Running from right click
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+          
+          const fullName = await vscode.window.showInputBox({
+            prompt: `Name of new path`,
+            value: node.path
+          });
 
-          if (isStillOpen) {
-            //Since there is no easy way to close a file.
-            vscode.window.showInformationMessage(`Cannot delete streamfile while it is open.`);
+          if (fullName) {
+            const connection = instance.getConnection();
 
-          } else {
-            const fullName = await vscode.window.showInputBox({
-              prompt: `Name of new path`,
-              value: node.path
-            });
+            try {
+              await connection.paseCommand(`mv ${node.path} ${fullName}`);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
 
-            if (fullName) {
-              const connection = instance.getConnection();
-
-              try {
-                await connection.paseCommand(`mv ${node.path} ${fullName}`);
-                if (Configuration.get(`autoRefresh`)) this.refresh();
-
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
-              }
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
             }
-
           }
 
         } else {
@@ -266,36 +241,29 @@ module.exports = class ifsBrowserProvider {
         const content = instance.getContent();
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+          //Get filename from path on server
+          const filename = path.basename(node.path);
 
-          if (isStillOpen) {
-            //Be sure it's correctly saved
-            vscode.window.showInformationMessage(`Cannot download streamfile while it is open.`);
+          const remoteFilepath = path.join(os.homedir(), filename);
 
-          } else {
-            //Get filename from path on server
-            const filename = path.basename(node.path);
+          let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
 
-            const remoteFilepath = path.join(os.homedir(), filename);
+          if (localFilepath) {
+            let localPath = localFilepath.path;
+            if (process.platform === `win32`) {
+              //Issue with getFile not working propertly on Windows
+              //when there was a / at the start.
+              if (localPath[0] === `/`) localPath = localPath.substr(1);
+            }
 
-            let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
-
-            if (localFilepath) {
-              let localPath = localFilepath.path;
-              if (process.platform === `win32`) {
-                //Issue with getFile not working propertly on Windows
-                //when there was a / at the start.
-                if (localPath[0] === `/`) localPath = localPath.substr(1);
-              }
-
-              try {
-                await client.getFile(localPath, node.path);
-                vscode.window.showInformationMessage(`File was downloaded.`);
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error downloading streamfile! ${e}`);
-              }
+            try {
+              await client.getFile(localPath, node.path);
+              vscode.window.showInformationMessage(`File was downloaded.`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error downloading streamfile! ${e}`);
             }
           }
+
         } else {
           //Running from command.
         }

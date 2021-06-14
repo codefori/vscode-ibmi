@@ -163,38 +163,29 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === `/` + node.path);
+          //Running from right click
+          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
-          if (isStillOpen) {
-            //Since there is no easy way to close a file.
-            vscode.window.showInformationMessage(`Cannot delete member while it is open.`);
+          if (result === `Yes`) {
+            const connection = instance.getConnection();
+            const path = node.path.split(`/`);
+            const name = path[2].substring(0, path[2].lastIndexOf(`.`));
 
-          } else {
-            //Running from right click
-            let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+            try {
+              await connection.remoteCommand(
+                `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+              );
 
-            if (result === `Yes`) {
-              const connection = instance.getConnection();
-              const path = node.path.split(`/`);
-              const name = path[2].substring(0, path[2].lastIndexOf(`.`));
+              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-              try {
-                await connection.remoteCommand(
-                  `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
-                );
-
-                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
-
-                if (Configuration.get(`autoRefresh`)) {
-                  this.refresh(path[0], path[1]);
-                }
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+              if (Configuration.get(`autoRefresh`)) {
+                this.refresh(path[0], path[1]);
               }
-
-              //Not sure how to remove the item from the list. Must refresh - but that might be slow?
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting member! ${e}`);
             }
 
+            //Not sure how to remove the item from the list. Must refresh - but that might be slow?
           }
         } else {
           //Running from command.
@@ -207,7 +198,7 @@ module.exports = class memberBrowserProvider {
         if (node) {
           const newText = await vscode.window.showInputBox({
             value: node.description,
-            prompt: `Update ${path[3]} text`
+            prompt: `Update ${name} text`
           });
 
           if (newText && newText !== node.description) {
@@ -236,50 +227,44 @@ module.exports = class memberBrowserProvider {
         const oldExtension = path[2].substring(path[2].lastIndexOf(`.`)+1);
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === `/` + node.path);
-          if (isStillOpen) {
-            vscode.window.showInformationMessage(`Cannot rename member while it is open.`);
-          } else {
+          let newName = await vscode.window.showInputBox({
+            value: path[2],
+            prompt: `Rename ${path[2]}`
+          });
 
-            let newName = await vscode.window.showInputBox({
-              value: path[2],
-              prompt: `Rename ${path[2]}`
-            });
-
-            newName = newName.toUpperCase();
+          newName = newName.toUpperCase();
   
-            if (newName && newName.toUpperCase() !== path[2]) {
-              const connection = instance.getConnection();
-              const newNameParts = newName.split(`.`);
-              let renameHappened = false;
+          if (newName && newName.toUpperCase() !== path[2]) {
+            const connection = instance.getConnection();
+            const newNameParts = newName.split(`.`);
+            let renameHappened = false;
 
-              if (newNameParts.length === 2) {
-                try {
+            if (newNameParts.length === 2) {
+              try {
 
-                  if (newNameParts[0] !== oldName) {
-                    await connection.remoteCommand(
-                      `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
-                    );
+                if (newNameParts[0] !== oldName) {
+                  await connection.remoteCommand(
+                    `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
+                  );
 
-                    renameHappened = true;
-                  }
-
-                  if (newNameParts[1] !== oldExtension) {
-                    await connection.remoteCommand(
-                      `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${renameHappened ? newNameParts[0] : oldName}) SRCTYPE(${newNameParts[1]})`,
-                    );
-                  }
-    
-                  if (Configuration.get(`autoRefresh`)) {
-                    this.refresh(path[0], path[1]);
-                  }
-                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
-                } catch (e) {
-                  vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+                  renameHappened = true;
                 }
-              } else {
-                vscode.window.showErrorMessage(`New name format incorrect. 'NAME.EXTENTION' required.`);
+
+                if (newNameParts[1] !== oldExtension) {
+                  await connection.remoteCommand(
+                    `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${renameHappened ? newNameParts[0] : oldName}) SRCTYPE(${newNameParts[1]})`,
+                  );
+                }
+    
+                if (Configuration.get(`autoRefresh`)) {
+                  this.refresh(path[0], path[1]);
+                }
+                else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error renaming member! ${e}`);
               }
+            } else {
+              vscode.window.showErrorMessage(`New name format incorrect. 'NAME.EXTENTION' required.`);
             }
           }
 
