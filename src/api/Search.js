@@ -26,7 +26,7 @@ module.exports = class Search {
     /** @type {string[]} */ //@ts-ignore
     const output = standardOut.split(`\n`);
   
-    let parts, currentFile, currentLine;
+    let parts, currentFile, currentLine, contentIndex, content;
     for (const line of output) {
       if (line.startsWith(`Binary`)) continue;
   
@@ -42,11 +42,17 @@ module.exports = class Search {
           lines: []
         };
       }
+
+      contentIndex = nthIndex(line, `:`, 2);
+      
+      if (contentIndex >= 0) {
+        content = line.substr(contentIndex+1);
   
-      files[currentFile].lines.push({
-        number: currentLine,
-        content: parts[2] 
-      })
+        files[currentFile].lines.push({
+          number: currentLine,
+          content 
+        })
+      }
       
     }
   
@@ -94,7 +100,7 @@ module.exports = class Search {
       /** @type {string[]} */ //@ts-ignore
       const output = standardOut.split(`\n`);
   
-      let parts;
+      let parts, contentIndex, content;
       for (const line of output) {
         if (line.startsWith(`Binary`)) continue;
   
@@ -106,10 +112,16 @@ module.exports = class Search {
           };
         }
   
-        files[parts[0]].lines.push({
-          number: Number(parts[1]),
-          content: parts[2] 
-        })
+        contentIndex = nthIndex(line, `:`, 2);
+      
+        if (contentIndex >= 0) {
+          content = line.substr(contentIndex+1);
+    
+          files[parts[0]].lines.push({
+            number: Number(parts[1]),
+            content
+          })
+        }
       
       }
   
@@ -159,4 +171,13 @@ module.exports = class Search {
 
     return lines.join(`\n`);
   }
+}
+
+function nthIndex(str, pat, n){
+  let L = str.length, i = -1;
+  while(n-- && i++<L){
+    i= str.indexOf(pat, i);
+    if (i < 0) break;
+  }
+  return i;
 }
