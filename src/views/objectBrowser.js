@@ -157,7 +157,7 @@ module.exports = class objectBrowserProvider {
           }
         } catch (e) {
           console.log(e);
-          item = new vscode.TreeItem(`Error loading members.`);
+          item = new vscode.TreeItem(`Error loading objects.`);
           vscode.window.showErrorMessage(e);
           items = [item];
         }
