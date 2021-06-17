@@ -92,6 +92,13 @@ module.exports = class objectBrowserProvider {
                 if (Configuration.get(`autoRefresh`)) {
                   this.refresh();
                 }
+
+                let result = await vscode.window.showWarningMessage(`Do you want to add ${uriPath} to the Member Browser?`, `Yes`, `No`);
+
+                if (result === `Yes`) {
+                  vscode.commands.executeCommand(`code-for-ibmi.addSourceFile`, uriPath);
+                }
+
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating source file! ${e}`);
               }

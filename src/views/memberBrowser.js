@@ -26,15 +26,17 @@ module.exports = class memberBrowserProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async () => {
-        const connection = instance.getConnection();
+      vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async (newSourceFile) => {
         const config = instance.getConfig();
 
         let sourceFiles = config.sourceFileList;
 
-        const newSourceFile = await vscode.window.showInputBox({
-          prompt: `Source file to add (Format: LIB/FILE)`
-        });
+        if (!newSourceFile) {
+          //If no paramater is passed, we prompt the user for input
+          newSourceFile = await vscode.window.showInputBox({
+            prompt: `Source file to add (Format: LIB/FILE)`
+          });
+        }
 
         if (newSourceFile) {
           if (newSourceFile.includes(`/`)) {
