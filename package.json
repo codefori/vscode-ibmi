@@ -834,11 +834,6 @@
 					"when": "view == objectBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createSourceFile",
-					"group": "navigation",
-					"when": "view == objectBrowser"
-				},
-				{
 					"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
 					"group": "navigation",
 					"when": "view == databaseBrowser"
