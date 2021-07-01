@@ -46,134 +46,167 @@ module.exports = class IBMi {
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
       if (!connectionObject.privateKey) (connectionObject.privateKey = null);
       
-      await this.client.connect(connectionObject);
+      return await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: `Connecting`,
+      }, async progress => {
+        progress.report({
+          message: `Connecting via SSH.`
+        });
 
-      this.currentConnectionName = connectionObject.name;
-      this.currentHost = connectionObject.host;
-      this.currentPort = connectionObject.port;
-      this.currentUser = connectionObject.username;
+        await this.client.connect(connectionObject);
 
-      //Load existing config
-      /** @type {Configuration} */
-      this.config = await Configuration.load(this.currentConnectionName);
+        this.currentConnectionName = connectionObject.name;
+        this.currentHost = connectionObject.host;
+        this.currentPort = connectionObject.port;
+        this.currentUser = connectionObject.username;
 
-      //Get home directory if one isn't set
-      if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, await this.paseCommand(`pwd`, null))
+        progress.report({
+          message: `Loading configuration.`
+        });
 
-      //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
-      //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-      let currentLibrary;
-      this.defaultUserLibraries = [];
-      let libraryListString = await this.qshCommand(`liblist`);
-      if (typeof libraryListString === `string` && libraryListString !== ``) {
-        const libraryList = libraryListString.split(`\n`);
+        //Load existing config
+        /** @type {Configuration} */
+        this.config = await Configuration.load(this.currentConnectionName);
 
-        let lib, type;
-        for (const line of libraryList) {
-          lib = line.substr(0, 10).trim();
-          type = line.substr(12);
+        progress.report({
+          message: `Checking home directory.`
+        });
 
-          switch (type) {
-          case `USR`:
-            this.defaultUserLibraries.push(lib);
-            break;
-              
-          case `CUR`:
-            currentLibrary = lib;
-            break;
-          }
-        }
+        //Get home directory if one isn't set
+        if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, await this.paseCommand(`pwd`, null))
 
-        //If this is the first time the config is made, then these arrays will be empty
-        if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
-        if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
-        if (this.config.objectBrowserList.length === 0) await this.config.set(`objectBrowserList`, this.defaultUserLibraries);
-        if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
-      }
+        progress.report({
+          message: `Checking library list configuration.`
+        });
 
-      //Next, we need to check the temp lib (where temp outfile data lives) exists
-      try {
-        await this.remoteCommand(
-          `CRTLIB ` + this.config.tempLibrary,
-          undefined,
-        );
-      } catch (e) {
-        let [errorcode, errortext] = e.split(`:`);
+        //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
+        //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
+        let currentLibrary;
+        this.defaultUserLibraries = [];
+        let libraryListString = await this.qshCommand(`liblist`);
+        if (typeof libraryListString === `string` && libraryListString !== ``) {
+          const libraryList = libraryListString.split(`\n`);
 
-        switch (errorcode) {
-        case `CPF2111`: //Already exists, hopefully ok :)
-          break;
-          
-        case `CPD0032`: //Can't use CRTLIB
-          try {
-            await this.remoteCommand(
-              `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-              undefined
-            );
+          let lib, type;
+          for (const line of libraryList) {
+            lib = line.substr(0, 10).trim();
+            type = line.substr(12);
 
-            //We're all good if no errors
-          } catch (e) {
-            if (currentLibrary.startsWith(`Q`)) {
-              //Temporary library not created. Some parts of the extension will not run without a temporary library.
-            } else {
-              this.config.tempLibrary = currentLibrary;
-
-              //Using ${currentLibrary} as the temporary library for temporary data.
-              await this.config.set(`tempLibrary`, currentLibrary);
+            switch (type) {
+            case `USR`:
+              this.defaultUserLibraries.push(lib);
+              break;
+                
+            case `CUR`:
+              currentLibrary = lib;
+              break;
             }
           }
-          break;
+
+          //If this is the first time the config is made, then these arrays will be empty
+          if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
+          if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
+          if (this.config.objectBrowserList.length === 0) await this.config.set(`objectBrowserList`, this.defaultUserLibraries);
+          if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
         }
 
-        console.log(e);
-      }
+        progress.report({
+          message: `Checking temporary library configuration.`
+        });
 
-      //Next, we see what pase features are available (installed via yum)
-      const packagesPath = `/QOpenSys/pkgs/bin/`;
-      try {
-        //This may enable certain features in the future.
-        const call = await this.paseCommand(`ls -p ${packagesPath}`);
-        if (typeof call === `string`) {
-          const files = call.split(`\n`);
-          for (const feature of Object.keys(this.remoteFeatures))
-            if (files.includes(feature))
-              this.remoteFeatures[feature] = packagesPath + feature;
-        }
-        
-      } catch (e) {}
-
-      //Even if db2util is installed, but they have disabled it... then disable it
-      if (this.config.enableSQL !== true) {
-        this.remoteFeatures.db2util = undefined;
-      }
-
-      if (this.remoteFeatures.db2util) {
-        //This is mostly a nice to have. We grab the ASP info so user's do
-        //not have to provide the ASP in the settings. This only works if
-        //they have db2util installed, becuase we have to use SQL to get the
-        //data. I couldn't find an outfile for this information. :(
+        //Next, we need to check the temp lib (where temp outfile data lives) exists
         try {
-          const command = this.remoteFeatures.db2util;
+          await this.remoteCommand(
+            `CRTLIB ` + this.config.tempLibrary,
+            undefined,
+          );
+        } catch (e) {
+          let [errorcode, errortext] = e.split(`:`);
 
-          const statement = `SELECT * FROM QSYS2.ASP_INFO`;
-          let output = await this.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
-    
-          if (typeof output === `string`) {
-            const rows = JSON.parse(output);
-            for (const row of rows) {
-              if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+          switch (errorcode) {
+          case `CPF2111`: //Already exists, hopefully ok :)
+            break;
+            
+          case `CPD0032`: //Can't use CRTLIB
+            try {
+              await this.remoteCommand(
+                `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+                undefined
+              );
+
+              //We're all good if no errors
+            } catch (e) {
+              if (currentLibrary.startsWith(`Q`)) {
+                //Temporary library not created. Some parts of the extension will not run without a temporary library.
+              } else {
+                this.config.tempLibrary = currentLibrary;
+
+                //Using ${currentLibrary} as the temporary library for temporary data.
+                await this.config.set(`tempLibrary`, currentLibrary);
               }
             }
+            break;
           }
-        } catch (e) {
-          //Oh well
-        }
-      }
 
-      return {
-        success: true
-      };
+          console.log(e);
+        }
+
+        progress.report({
+          message: `Checking installed components on host IBM i.`
+        });
+
+        //Next, we see what pase features are available (installed via yum)
+        const packagesPath = `/QOpenSys/pkgs/bin/`;
+        try {
+          //This may enable certain features in the future.
+          const call = await this.paseCommand(`ls -p ${packagesPath}`);
+          if (typeof call === `string`) {
+            const files = call.split(`\n`);
+            for (const feature of Object.keys(this.remoteFeatures))
+              if (files.includes(feature))
+                this.remoteFeatures[feature] = packagesPath + feature;
+          }
+          
+        } catch (e) {}
+
+        //Even if db2util is installed, but they have disabled it... then disable it
+        if (this.config.enableSQL !== true) {
+          this.remoteFeatures.db2util = undefined;
+        }
+
+        if (this.remoteFeatures.db2util) {
+          progress.report({
+            message: `db2util is enabled, so checking for ASP information.`
+          });
+
+          //This is mostly a nice to have. We grab the ASP info so user's do
+          //not have to provide the ASP in the settings. This only works if
+          //they have db2util installed, becuase we have to use SQL to get the
+          //data. I couldn't find an outfile for this information. :(
+          try {
+            const command = this.remoteFeatures.db2util;
+
+            const statement = `SELECT * FROM QSYS2.ASP_INFO`;
+            let output = await this.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
+      
+            if (typeof output === `string`) {
+              const rows = JSON.parse(output);
+              for (const row of rows) {
+                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                  this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+                }
+              }
+            }
+          } catch (e) {
+            //Oh well
+          }
+        }
+
+        return {
+          success: true
+        };
+      });
 
     } catch (e) {
 
