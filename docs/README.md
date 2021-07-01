@@ -257,11 +257,20 @@ An array for the user library list. Highest item of the library list goes first.
 ]
 ```
 
+##### Library list profiles
+
+It is possible to save a library list's current state, so you can change and revert back to it later. We call that state a 'library list profile'.
+
+You can save the current library list into a profile by using the save button on the Library List view. You can provide it with a unique name, or use an existing one to overwrite an existing profile.
+
+To load a profile, which would set the library list, you can use the list/load button on the Library List view.
+
 #### Current library
 
 The library which will be set as the current library during compilation.
 
 You can change the current library with the 'Change build library' command (F1 -> Change build library).
+
 #### Home Directory
 
 Home directory for user. This directory is also the root for the IFS browser.
@@ -384,7 +393,7 @@ You can now right click and click 'Search' on IFS directories and source files t
 
 ### Overtype
 
-VS Code  works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
+VS Code works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
 
 ## Extension Development
 
