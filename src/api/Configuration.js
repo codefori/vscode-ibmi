@@ -20,6 +20,9 @@ module.exports = class Configuration {
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];
 
+    /** @type {{name: string, list: string[]}[]} */
+    this.libraryListProfiles = base.libraryListProfiles || [];
+
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 

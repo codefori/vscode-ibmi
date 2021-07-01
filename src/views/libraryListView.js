@@ -99,6 +99,55 @@ module.exports = class memberBrowserProvider {
 
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.saveLibraryListProfile`, async () => {
+        const config = instance.getConfig();
+
+        const libraryList = config.libraryList;
+        let currentProfiles = config.libraryListProfiles;
+
+        const profileName = await vscode.window.showInputBox({
+          prompt: `Name of library list profile`
+        });
+
+        if (profileName) {
+          const existingIndex = currentProfiles.findIndex(profile => profile.name.toUpperCase() === profileName.toUpperCase());
+
+          if (existingIndex >= 0) {
+            currentProfiles[existingIndex].list = libraryList;
+          } else {
+            currentProfiles.push({
+              name: profileName,
+              list: libraryList
+            });
+          }
+
+          await config.set(`libraryListProfiles`, currentProfiles);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.loadLibraryListProfile`, async () => {
+        const config = instance.getConfig();
+
+        const currentProfiles = config.libraryListProfiles;
+        const availableProfiles = currentProfiles.map(profile => profile.name);
+
+        if (availableProfiles.length > 0) {
+          const chosenProfile = await vscode.window.showQuickPick(availableProfiles);
+
+          if (chosenProfile) {
+            const libraryList = currentProfiles.find(profile => profile.name === chosenProfile);
+
+            if (libraryList) {
+              await config.set(`libraryList`, libraryList.list);
+              this.refresh();
+            }
+          }
+
+        } else {
+          vscode.window.showInformationMessage(`No library list profiles exist for this system.`);
+        }
+      })
     )
   }
 
