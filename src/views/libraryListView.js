@@ -132,15 +132,20 @@ module.exports = class memberBrowserProvider {
         const currentProfiles = config.libraryListProfiles;
         const availableProfiles = currentProfiles.map(profile => profile.name);
 
-        const chosenProfile = await vscode.window.showQuickPick(availableProfiles);
+        if (availableProfiles.length > 0) {
+          const chosenProfile = await vscode.window.showQuickPick(availableProfiles);
 
-        if (chosenProfile) {
-          const libraryList = currentProfiles.find(profile => profile.name === chosenProfile);
+          if (chosenProfile) {
+            const libraryList = currentProfiles.find(profile => profile.name === chosenProfile);
 
-          if (libraryList) {
-            await config.set(`libraryList`, libraryList.list);
-            this.refresh();
+            if (libraryList) {
+              await config.set(`libraryList`, libraryList.list);
+              this.refresh();
+            }
           }
+
+        } else {
+          vscode.window.showInformationMessage(`No library list profiles exist for this system.`);
         }
       })
     )
