@@ -333,11 +333,23 @@ module.exports = class Instance {
         context.subscriptions.push(
           vscode.commands.registerCommand(`code-for-ibmi.runAction`, async () => {
             const editor = vscode.window.activeTextEditor;
+            let willRun = false;
+
             if (editor) {
-              if (editor.document.isDirty)
-                vscode.window.showInformationMessage(`Cannot run action while file is not saved.`);
-              else
-                CompileTools.RunAction(this, editor.document.uri);
+              willRun = true;
+              if (editor.document.isDirty) {
+                let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Cancel`);
+
+                if (result === `Save`) {
+                  await editor.document.save();
+                } else {
+                  willRun = false;
+                }
+              }
+            }
+
+            if (willRun) {
+              CompileTools.RunAction(this, editor.document.uri);
             }
           })
         );
