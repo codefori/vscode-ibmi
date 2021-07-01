@@ -40,6 +40,7 @@
 		"onCommand:code-for-ibmi.showAdditionalSettings",
 		"onCommand:code-for-ibmi.showActionsMaintenance",
 		"onCommand:code-for-ibmi.changeCurrentLibrary",
+		"onCommand:code-for-ibmi.rpgleOpenInclude",
 		"onView:libraryListView",
 		"onCommand:code-for-ibmi.refreshLibraryListView",
 		"onCommand:code-for-ibmi.addToLibraryList",
@@ -510,6 +511,11 @@
 				"icon": "$(root-folder)"
 			},
 			{
+				"command": "code-for-ibmi.rpgleOpenInclude",
+				"title": "Open include at cursor",
+				"category": "IBM i (RPGLE)"
+			},
+			{
 				"command": "code-for-ibmi.clearDiagnostics",
 				"title": "Clear diagnostics.",
 				"category": "IBM i"
@@ -729,6 +735,12 @@
 				"command": "code-for-ibmi.runEditorStatement",
 				"key": "ctrl+r",
 				"mac": "cmd+r"
+			},
+			{
+				"command": "code-for-ibmi.rpgleOpenInclude",
+        "key": "shift+f12",
+        "mac": "shift+f12",
+        "when": "editorLangId == rpgle"
 			}
 		],
 		"viewsContainers": {

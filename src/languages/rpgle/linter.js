@@ -1,5 +1,5 @@
 
-const path = require("path");
+const path = require(`path`);
 const vscode = require(`vscode`);
 
 const instance = require(`../../Instance`);
@@ -33,6 +33,33 @@ module.exports = class RPGLinter {
               this.linterDiagnostics.set(event.document.uri, this.parseFreeFormatDocument(text, {
                 indent: Number(vscode.window.activeTextEditor.options.tabSize)
               }));
+            }
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.rpgleOpenInclude`, async => {
+        if (Configuration.get(`rpgleContentAssistEnabled`)) {
+          const editor = vscode.window.activeTextEditor;
+          
+          if (editor) {
+            const document = editor.document;
+            const position = editor.selection.active;
+            if (document.languageId === `rpgle`) {
+              const linePieces = document.lineAt(position.line).text.trim().split(` `);
+              if ([`/COPY`, `/INCLUDE`].includes(linePieces[0].toUpperCase())) {
+                const {finishedPath, type} = this.getPathInfo(document.uri, linePieces[1]);
+
+                switch (type) {
+                case `member`:
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, `${finishedPath.substr(1)}.rpgle`);
+                  break;
+
+                case `streamfile`:
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, finishedPath);
+                  break;
+                }
+              }
             }
           }
         }
