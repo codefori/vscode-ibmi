@@ -445,7 +445,15 @@ module.exports = class RPGLinter {
           continuedStatement = false;
 
         } else {
-          continuedStatement = true;
+
+          const semiIndex = line.lastIndexOf(`;`);
+          const commentIndex = line.lastIndexOf(`//`);
+
+          if (commentIndex > semiIndex) {
+            line = line.substr(0, semiIndex);
+          } else {
+            continuedStatement = true;
+          }
         }
 
         pieces = line.split(` `);
