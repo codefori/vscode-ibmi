@@ -226,6 +226,10 @@ module.exports = class RPGLinter {
 
       finishedPath = memberPath.join(`/`);
 
+      if (workingPath.length === 5) {
+        finishedPath = `/${finishedPath}`;
+      }
+
       type = `member`;
     }
 
