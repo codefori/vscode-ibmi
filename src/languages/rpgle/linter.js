@@ -17,6 +17,8 @@ module.exports = class RPGLinter {
     /** @type {Declaration[]} */
     this.procedures = [];
     /** @type {Declaration[]} */
+    this.subroutines = [];
+    /** @type {Declaration[]} */
     this.structs = [];
 
     /** @type {{[path: string]: string[]}} */
@@ -105,6 +107,35 @@ module.exports = class RPGLinter {
         }
       }),
 
+      vscode.languages.registerDocumentSymbolProvider({ language: `rpgle` }, 
+        {
+          provideDocumentSymbols: async (document, token) => {
+            if (Configuration.get(`rpgleContentAssistEnabled`)) {
+              const text = document.getText();
+              if (text.startsWith(`**FREE`)) {
+                await this.getDocs(document.uri, text);
+
+                const currentPath = document.uri.path;
+
+                /** @type vscode.SymbolInformation[] */
+                let currentDefs = [
+                  ...this.procedures.filter(proc => proc.position && proc.position.path === currentPath),
+                  ...this.subroutines.filter(sub => sub.position && sub.position.path === currentPath),
+                ].map(def => new vscode.SymbolInformation(
+                  def.name,
+                  vscode.SymbolKind.Function,
+                  new vscode.Range(def.position.line, 0, def.position.line, 0),
+                  document.uri
+                ));
+
+                return currentDefs;
+              }
+            }
+
+            return [];
+          }
+        }),
+
       vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
         provideCompletionItems: (document, position) => {
           /** @type vscode.CompletionItem[] */
@@ -116,6 +147,13 @@ module.exports = class RPGLinter {
             item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
             item.detail = procedure.keywords.join(` `);
             item.documentation = procedure.comments;
+            items.push(item);
+          }
+
+          for (const subroutine of this.subroutines) {
+            item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
+            item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
+            item.documentation = subroutine.comments;
             items.push(item);
           }
 
@@ -132,7 +170,6 @@ module.exports = class RPGLinter {
             //Update stored copy book
             const lines = text.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
             this.copyBooks[finishedPath] = lines;
-
           }
           else if (event.languageId === `rpgle`) {
             //Else fetch new info from source being edited
@@ -285,75 +322,64 @@ module.exports = class RPGLinter {
    * @param {string} content 
    */
   async getDocs(workingUri, content) {
-    let lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+    let files = {};
+    let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
     let currentComments = [], currentExample = [], currentItem, currentSub;
 
-    let parts, partsLower, pieces;
+    let lineNumber, parts, partsLower, pieces;
 
     this.variables = [];
     this.structs = [];
     this.procedures = [];
+    this.subroutines = [];
+
+    files[workingUri.path] = baseLines;
 
     //First loop is for copy/include statements
-    for (let i = lines.length - 1; i >= 0; i--) {
-      let line = lines[i].trim(); //Paths are case insensitive so it's okay
+    for (let i = baseLines.length - 1; i >= 0; i--) {
+      let line = baseLines[i].trim(); //Paths are case insensitive so it's okay
       if (line === ``) continue;
 
       pieces = line.split(` `).filter(piece => piece !== ``);
 
       if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
-        lines.splice(i, 1, ...(await this.getContent(workingUri, pieces[1])));
+        files[pieces[1]] = (await this.getContent(workingUri, pieces[1]));
       }
     }
 
     //Now the real work
-    for (let line of lines) {
-      line = line.trim();
+    for (const file in files) {
+      lineNumber = -1;
+      for (let line of files[file]) {
+        lineNumber += 1;
 
-      if (line === ``) continue;
+        line = line.trim();
 
-      pieces = line.split(`;`);
-      parts = pieces[0].toUpperCase().split(` `).filter(piece => piece !== ``);
-      partsLower = pieces[0].split(` `).filter(piece => piece !== ``);
+        if (line === ``) continue;
 
-      switch (parts[0]) {
-      case `DCL-S`:
-        if (!parts.includes(`TEMPLATE`)) {
-          currentItem = new Declaration(`variable`);
-          currentItem.name = partsLower[1];
-          currentItem.keywords = parts.slice(2);
-          currentItem.comments = currentComments.join(` `);
-          this.variables.push(currentItem);
-          currentItem = undefined;
-          currentComments = [];
-          currentExample = [];
-        }
-        break;
+        pieces = line.split(`;`);
+        parts = pieces[0].toUpperCase().split(` `).filter(piece => piece !== ``);
+        partsLower = pieces[0].split(` `).filter(piece => piece !== ``);
 
-      case `DCL-DS`:
-        if (!parts.includes(`TEMPLATE`)) {
-          currentItem = new Declaration(`struct`);
-          currentItem.name = partsLower[1];
-          currentItem.keywords = parts.slice(2);
-          currentItem.comments = currentComments.join(` `);
-          currentItem.example = currentExample;
+        switch (parts[0]) {
+        case `DCL-S`:
+          if (currentItem === undefined) {
+            if (!parts.includes(`TEMPLATE`)) {
+              currentItem = new Declaration(`variable`);
+              currentItem.name = partsLower[1];
+              currentItem.keywords = parts.slice(2);
+              currentItem.comments = currentComments.join(` `);
+              this.variables.push(currentItem);
+              currentItem = undefined;
+              currentComments = [];
+              currentExample = [];
+            }
+          }
+          break;
 
-          currentComments = [];
-          currentExample = [];
-        }
-        break;
-
-      case `END-DS`:
-        if (currentItem) {
-          this.structs.push(currentItem);
-          currentItem = undefined;
-        }
-        break;
-        
-      case `DCL-PR`:
-        if (parts.find(element => element.startsWith(`EXTPROC`)) || parts.find(element => element.startsWith(`EXTPGM`))) {
-          if (!this.procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
-            currentItem = new Declaration(`procedure`);
+        case `DCL-DS`:
+          if (!parts.includes(`TEMPLATE`)) {
+            currentItem = new Declaration(`struct`);
             currentItem.name = partsLower[1];
             currentItem.keywords = parts.slice(2);
             currentItem.comments = currentComments.join(` `);
@@ -362,62 +388,117 @@ module.exports = class RPGLinter {
             currentComments = [];
             currentExample = [];
           }
-        } else {
-          console.log(`Procedures require EXTPROC or EXTPGM`);
-        }
-        break;
+          break;
 
-      case `DCL-PI`:
-        if (!this.procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
-          currentItem = new Declaration(`procedure`);
-          currentItem.name = partsLower[1];
-          currentItem.keywords = parts.slice(2);
-          currentItem.comments = currentComments.join(` `);
-          currentItem.example = currentExample;
-
-          currentComments = [];
-          currentExample = [];
-        }
-        break;
-
-      case `END-PR`:
-      case `END-PI`:
-        if (currentItem) {
-          this.procedures.push(currentItem);
-          currentItem = undefined;
-        }
-        break;
-
-      default:
-        if (line.startsWith(`//@`)) {
-          currentComments.push(line.substring(3).trim());
-
-        } else if (line.startsWith(`//-`)) {
-          if (line.length >= 4) {
-            currentExample.push(line.substring(4).trimEnd());
-          } else if (line.length === 3) {
-            currentExample.push(``);
+        case `END-DS`:
+          if (currentItem) {
+            this.structs.push(currentItem);
+            currentItem = undefined;
           }
+          break;
+        
+        case `DCL-PROC`:
+        case `DCL-PR`:
+          if (!this.procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
+            currentItem = new Declaration(`procedure`);
+            currentItem.name = partsLower[1];
+            currentItem.keywords = parts.slice(2);
+            currentItem.comments = currentComments.join(` `);
+            currentItem.example = currentExample;
 
-        } else if (line.startsWith(`//`)) {
+            currentItem.position = {
+              path: file,
+              line: lineNumber
+            }
+
+            if (parts[0] === `DCL-PR`) currentItem.readParms = true;
+
+            currentComments = [];
+            currentExample = [];
+          }
+          break;
+
+        case `DCL-PI`:
+          if (!this.procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
+            currentItem = new Declaration(`procedure`);
+            currentItem.name = partsLower[1];
+            currentItem.keywords = parts.slice(2);
+            currentItem.comments = currentComments.join(` `);
+            currentItem.example = currentExample;
+            currentItem.readParms = true;
+
+            currentComments = [];
+            currentExample = [];
+          }
+          break;
+
+        case `END-PROC`:
+        case `END-PR`:
+        case `END-PI`:
+          if (currentItem) {
+            this.procedures.push(currentItem);
+            currentItem = undefined;
+          }
+          break;
+
+        case `BEGSR`:
+          if (!this.subroutines.find(sub => sub.name.toUpperCase() === parts[1])) {
+            currentItem = new Declaration(`subroutine`);
+            currentItem.name = partsLower[1];
+            currentItem.comments = currentComments.join(` `);
+            currentItem.example = currentExample;
+
+            currentItem.position = {
+              path: file,
+              line: lineNumber
+            }
+
+            currentComments = [];
+            currentExample = [];
+          }
+          break;
+    
+        case `ENDSR`:
+          if (currentItem) {
+            this.subroutines.push(currentItem);
+            currentItem = undefined;
+          }
+          break;
+
+        default:
+          if (line.startsWith(`//@`)) {
+            currentComments.push(line.substring(3).trim());
+
+          } else if (line.startsWith(`//-`)) {
+            if (line.length >= 4) {
+              currentExample.push(line.substring(4).trimEnd());
+            } else if (line.length === 3) {
+              currentExample.push(``);
+            }
+
+          } else if (line.startsWith(`//`)) {
           //Do nothing. Because it's a comment.
 
-        } else {
-          if (currentItem) {
-            if (parts[0].startsWith(`DCL`))
-              parts.slice(1);
+          } else {
+            if (currentItem && currentItem.type === `procedure`) {
+              if (currentItem.readParms) {
+                if (parts[0].startsWith(`DCL`))
+                  parts.slice(1);
 
-            currentSub = new Declaration(`subitem`);
-            currentSub.name = (parts[0] === `*N` ? `parm${currentItem.subItems.length+1}` : partsLower[0]) ;
-            currentSub.keywords = parts.slice(1);
-            currentSub.comments = currentComments.join(` `);
+                currentSub = new Declaration(`subitem`);
+                currentSub.name = (parts[0] === `*N` ? `parm${currentItem.subItems.length+1}` : partsLower[0]) ;
+                currentSub.keywords = parts.slice(1);
+                currentSub.comments = currentComments.join(` `);
 
-            currentItem.subItems.push(currentSub);
-            currentSub = undefined;
-            currentComments = [];
+                currentItem.subItems.push(currentSub);
+                currentSub = undefined;
+                currentComments = [];
+              }
+            }
           }
+          break;
         }
-        break;
+      
       }
     }
   }
@@ -542,17 +623,23 @@ module.exports = class RPGLinter {
 class Declaration {
   /**
    * 
-   * @param {"procedure"|"struct"|"subitem"|"variable"} type 
+   * @param {"procedure"|"subroutine"|"struct"|"subitem"|"variable"} type 
    */
   constructor(type) {
-    this.type = `procedure`;
+    this.type = type;
     this.name = ``;
     this.keywords = [];
     this.comments = ``;
+
+    /** @type {{path: string, line: number}} */
+    this.position = undefined;
 
     //Not used in subitem:
     /** @type {Declaration[]} */
     this.subItems = [];
     this.example = [];
+
+    //Only used in procedure
+    this.readParms = false;
   }
 }
