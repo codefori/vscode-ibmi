@@ -14,8 +14,10 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * Member browser and editor
 * IFS Browser and editor
 * Object browser
-* Settings: Compilation, library list, etc,
+* Settings: Compilation, library list, etc
 * Error listing
+* Run SQL inline
+* Experimental RPGLE content assist and outline view
 
 ## How to get running
 
