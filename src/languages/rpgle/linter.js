@@ -12,17 +12,11 @@ module.exports = class RPGLinter {
   constructor(context) {
     this.linterDiagnostics = vscode.languages.createDiagnosticCollection(`Lint`);
 
-    /** @type {Declaration[]} */
-    this.variables = [];
-    /** @type {Declaration[]} */
-    this.procedures = [];
-    /** @type {Declaration[]} */
-    this.subroutines = [];
-    /** @type {Declaration[]} */
-    this.structs = [];
-
     /** @type {{[path: string]: string[]}} */
     this.copyBooks = {};
+
+    /** @type {{[path: string]: {subroutines, procedures, variables, structs}}} */
+    this.parsedCache = {};
 
     context.subscriptions.push(
       this.linterDiagnostics,
@@ -68,12 +62,14 @@ module.exports = class RPGLinter {
       }),
 
       vscode.languages.registerHoverProvider({language: `rpgle`}, {
-        provideHover: (document, position, token) => {
+        provideHover: async (document, position, token) => {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
+            const text = document.getText();
+            const doc = await this.getDocs(document.uri, text);
             const range = document.getWordRangeAtPosition(position);
             const word = document.getText(range).toUpperCase();
 
-            const procedure = this.procedures.find(proc => proc.name.toUpperCase() === word.toUpperCase());
+            const procedure = doc.procedures.find(proc => proc.name.toUpperCase() === word.toUpperCase());
 
             if (procedure) {
               let retrunValue = procedure.keywords.filter(keyword => keyword !== `EXTPROC`);
@@ -113,14 +109,14 @@ module.exports = class RPGLinter {
             if (Configuration.get(`rpgleContentAssistEnabled`)) {
               const text = document.getText();
               if (text.startsWith(`**FREE`)) {
-                await this.getDocs(document.uri, text);
+                const doc = await this.getDocs(document.uri, text);
 
                 const currentPath = document.uri.path;
 
                 /** @type vscode.SymbolInformation[] */
                 let currentDefs = [
-                  ...this.procedures.filter(proc => proc.position && proc.position.path === currentPath),
-                  ...this.subroutines.filter(sub => sub.position && sub.position.path === currentPath),
+                  ...doc.procedures.filter(proc => proc.position && proc.position.path === currentPath),
+                  ...doc.subroutines.filter(sub => sub.position && sub.position.path === currentPath),
                 ].map(def => new vscode.SymbolInformation(
                   def.name,
                   vscode.SymbolKind.Function,
@@ -137,27 +133,34 @@ module.exports = class RPGLinter {
         }),
 
       vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
-        provideCompletionItems: (document, position) => {
-          /** @type vscode.CompletionItem[] */
-          let items = [];
-          let item;
+        provideCompletionItems: async (document, position) => {
+          if (Configuration.get(`rpgleContentAssistEnabled`)) {
+            const text = document.getText();
+            if (text.startsWith(`**FREE`)) {
+              const doc = await this.getDocs(document.uri, text);
 
-          for (const procedure of this.procedures) {
-            item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
-            item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
-            item.detail = procedure.keywords.join(` `);
-            item.documentation = procedure.comments;
-            items.push(item);
+              /** @type vscode.CompletionItem[] */
+              let items = [];
+              let item;
+
+              for (const procedure of doc.procedures) {
+                item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
+                item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
+                item.detail = procedure.keywords.join(` `);
+                item.documentation = procedure.comments;
+                items.push(item);
+              }
+
+              for (const subroutine of doc.subroutines) {
+                item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
+                item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
+                item.documentation = subroutine.comments;
+                items.push(item);
+              }
+
+              return items;
+            }
           }
-
-          for (const subroutine of this.subroutines) {
-            item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
-            item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
-            item.documentation = subroutine.comments;
-            items.push(item);
-          }
-
-          return items;
         }
       }),
 
@@ -174,7 +177,7 @@ module.exports = class RPGLinter {
           else if (event.languageId === `rpgle`) {
             //Else fetch new info from source being edited
             if (text.startsWith(`**FREE`)) {
-              this.getDocs(event.uri, text);
+              this.updateCopybookCache(event.uri, text);
             }
           }
           
@@ -186,7 +189,7 @@ module.exports = class RPGLinter {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
             const text = event.getText();
             if (text.startsWith(`**FREE`)) {
-              this.getDocs(event.uri, text);
+              this.updateCopybookCache(event.uri, text);
             }
           }
         }
@@ -321,29 +324,64 @@ module.exports = class RPGLinter {
    * @param {vscode.Uri} workingUri
    * @param {string} content 
    */
-  async getDocs(workingUri, content) {
+  async updateCopybookCache(workingUri, content) {
+    this.parsedCache[workingUri.path] = undefined; //Clear parsed data
+
+    let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+
+    //First loop is for copy/include statements
+    for (let i = baseLines.length - 1; i >= 0; i--) {
+      const line = baseLines[i].trim(); //Paths are case insensitive so it's okay
+      if (line === ``) continue;
+
+      const pieces = line.split(` `).filter(piece => piece !== ``);
+
+      if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
+        await this.getContent(workingUri, pieces[1]);
+      }
+    }
+  }
+
+  /**
+   * @param {vscode.Uri} workingUri
+   * @param {string} content 
+   * @param {boolean} [withIncludes] To make sure include statements are parsed
+   * @returns {Promise<{
+   *   variables: Declaration[],
+   *   structs: Declaration[],
+   *   procedures: Declaration[],
+   *   subroutines: Declaration[]
+   * }>}
+   */
+  async getDocs(workingUri, content, withIncludes = true) {
+    if (this.parsedCache[workingUri.path]) {
+      return this.parsedCache[workingUri.path];
+    };
+
     let files = {};
     let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
     let currentComments = [], currentExample = [], currentItem, currentSub;
 
     let lineNumber, parts, partsLower, pieces;
 
-    this.variables = [];
-    this.structs = [];
-    this.procedures = [];
-    this.subroutines = [];
+    const variables = [];
+    const structs = [];
+    const procedures = [];
+    const subroutines = [];
 
     files[workingUri.path] = baseLines;
 
+    if (withIncludes) {
     //First loop is for copy/include statements
-    for (let i = baseLines.length - 1; i >= 0; i--) {
-      let line = baseLines[i].trim(); //Paths are case insensitive so it's okay
-      if (line === ``) continue;
+      for (let i = baseLines.length - 1; i >= 0; i--) {
+        let line = baseLines[i].trim(); //Paths are case insensitive so it's okay
+        if (line === ``) continue;
 
-      pieces = line.split(` `).filter(piece => piece !== ``);
+        pieces = line.split(` `).filter(piece => piece !== ``);
 
-      if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
-        files[pieces[1]] = (await this.getContent(workingUri, pieces[1]));
+        if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
+          files[pieces[1]] = (await this.getContent(workingUri, pieces[1]));
+        }
       }
     }
 
@@ -369,7 +407,7 @@ module.exports = class RPGLinter {
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
               currentItem.comments = currentComments.join(` `);
-              this.variables.push(currentItem);
+              variables.push(currentItem);
               currentItem = undefined;
               currentComments = [];
               currentExample = [];
@@ -392,14 +430,13 @@ module.exports = class RPGLinter {
 
         case `END-DS`:
           if (currentItem) {
-            this.structs.push(currentItem);
+            structs.push(currentItem);
             currentItem = undefined;
           }
           break;
         
-        case `DCL-PROC`:
         case `DCL-PR`:
-          if (!this.procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
+          if (!procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
             currentItem = new Declaration(`procedure`);
             currentItem.name = partsLower[1];
             currentItem.keywords = parts.slice(2);
@@ -411,20 +448,37 @@ module.exports = class RPGLinter {
               line: lineNumber
             }
 
-            if (parts[0] === `DCL-PR`) currentItem.readParms = true;
+            currentItem.readParms = true;
 
             currentComments = [];
             currentExample = [];
           }
           break;
 
+        
+        case `DCL-PROC`:
+          //We can overwrite it.. it might have been a PR before.
+          currentItem = procedures.find(proc => proc.name.toUpperCase() === parts[1]) || new Declaration(`procedure`);
+
+          currentItem.name = partsLower[1];
+          currentItem.keywords = parts.slice(2);
+          currentItem.comments = currentComments.join(` `);
+          currentItem.example = currentExample;
+
+          currentItem.position = {
+            path: file,
+            line: lineNumber
+          }
+
+          currentItem.readParms = false;
+
+          currentComments = [];
+          currentExample = [];
+          break;
+
         case `DCL-PI`:
-          if (!this.procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
-            currentItem = new Declaration(`procedure`);
-            currentItem.name = partsLower[1];
+          if (currentItem) {
             currentItem.keywords = parts.slice(2);
-            currentItem.comments = currentComments.join(` `);
-            currentItem.example = currentExample;
             currentItem.readParms = true;
 
             currentComments = [];
@@ -436,13 +490,13 @@ module.exports = class RPGLinter {
         case `END-PR`:
         case `END-PI`:
           if (currentItem) {
-            this.procedures.push(currentItem);
+            procedures.push(currentItem);
             currentItem = undefined;
           }
           break;
 
         case `BEGSR`:
-          if (!this.subroutines.find(sub => sub.name.toUpperCase() === parts[1])) {
+          if (!subroutines.find(sub => sub.name.toUpperCase() === parts[1])) {
             currentItem = new Declaration(`subroutine`);
             currentItem.name = partsLower[1];
             currentItem.comments = currentComments.join(` `);
@@ -460,7 +514,7 @@ module.exports = class RPGLinter {
     
         case `ENDSR`:
           if (currentItem) {
-            this.subroutines.push(currentItem);
+            subroutines.push(currentItem);
             currentItem = undefined;
           }
           break;
@@ -501,6 +555,17 @@ module.exports = class RPGLinter {
       
       }
     }
+
+    const parsedData = {
+      procedures,
+      structs,
+      subroutines,
+      variables
+    };
+
+    this.parsedCache[workingUri.path] = parsedData
+
+    return parsedData;
   }
 
   /**
@@ -545,7 +610,7 @@ module.exports = class RPGLinter {
             diagnostics.push(
               new vscode.Diagnostic(
                 new vscode.Range(lineNumber, 0, lineNumber, currentIndent), 
-                `Incorrect indentation. Expectedat least ${expectedIndent}, got ${currentIndent}`, 
+                `Incorrect indentation. Expected ${expectedIndent}, got ${currentIndent}`, 
                 vscode.DiagnosticSeverity.Warning
               )
             );
