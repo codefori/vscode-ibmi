@@ -24,8 +24,9 @@ module.exports = class RPGLinter {
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (Configuration.get(`rpgleIndentationEnabled`)) {
           if (event.document.languageId === `rpgle`) {
+            const isFree = (event.document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
             const text = event.document.getText();
-            if (text.startsWith(`**FREE`)) {
+            if (isFree) {
               this.linterDiagnostics.set(event.document.uri, this.parseFreeFormatDocument(text, {
                 indent: Number(vscode.window.activeTextEditor.options.tabSize)
               }));
@@ -75,10 +76,19 @@ module.exports = class RPGLinter {
               let retrunValue = procedure.keywords.filter(keyword => keyword !== `EXTPROC`);
               if (retrunValue.length === 0) retrunValue = [`void`];
 
-              const markdown = `\`\`\`vb\n${procedure.name}(\n  ${procedure.subItems.map(parm => `${parm.name}: ${parm.keywords.join(` `)}`).join(`,\n  `)}\n): ${retrunValue.join(` `)}\n\`\`\` \n` +
-              `\n\n${procedure.comments !== `` ? `${procedure.comments}\n\n` : ``}` +
-              procedure.subItems.map(parm => `*@param* \`${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)}\` ${parm.comments}`).join(`\n\n`) +
-              `\n\n*@returns* ${retrunValue.join(` `)}`;
+              let markdown = `\`\`\`vb\n${procedure.name}(`;
+
+              if (procedure.subItems.length > 0) {
+                markdown += `\n  ${procedure.subItems.map(parm => `${parm.name}: ${parm.keywords.join(` `)}`).join(`,\n  `)}\n`;
+              }
+
+              markdown += `): ${retrunValue.join(` `)}\n\`\`\` \n`;
+              markdown += procedure.subItems.map(parm => `*@param* \`${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)}\` ${parm.comments}`).join(`\n\n`);
+              markdown += `\n\n*@returns* ${retrunValue.join(` `)}`;
+
+              if (procedure.position) {
+                markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.line}\``;
+              }
 
               return new vscode.Hover(
                 new vscode.MarkdownString(
@@ -107,8 +117,10 @@ module.exports = class RPGLinter {
         {
           provideDocumentSymbols: async (document, token) => {
             if (Configuration.get(`rpgleContentAssistEnabled`)) {
+              const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+              
               const text = document.getText();
-              if (text.startsWith(`**FREE`)) {
+              if (isFree) {
                 const doc = await this.getDocs(document.uri, text);
 
                 const currentPath = document.uri.path;
@@ -135,8 +147,9 @@ module.exports = class RPGLinter {
       vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
         provideCompletionItems: async (document, position) => {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
+            const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
             const text = document.getText();
-            if (text.startsWith(`**FREE`)) {
+            if (isFree) {
               const doc = await this.getDocs(document.uri, text);
 
               /** @type vscode.CompletionItem[] */
@@ -164,32 +177,34 @@ module.exports = class RPGLinter {
         }
       }),
 
-      vscode.workspace.onDidSaveTextDocument((event) => {
+      vscode.workspace.onDidSaveTextDocument((document) => {
         if (Configuration.get(`rpgleContentAssistEnabled`)) {
-          const {type, finishedPath} = this.getPathInfo(event.uri, path.basename(event.uri.path));
-          const text = event.getText();
+          const {type, finishedPath} = this.getPathInfo(document.uri, path.basename(document.uri.path));
+          const text = document.getText();
+          const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
 
           if (this.copyBooks[finishedPath]) {
             //Update stored copy book
             const lines = text.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
             this.copyBooks[finishedPath] = lines;
           }
-          else if (event.languageId === `rpgle`) {
+          else if (document.languageId === `rpgle`) {
             //Else fetch new info from source being edited
-            if (text.startsWith(`**FREE`)) {
-              this.updateCopybookCache(event.uri, text);
+            if (isFree) {
+              this.updateCopybookCache(document.uri, text);
             }
           }
           
         }
       }),
 
-      vscode.workspace.onDidOpenTextDocument((event) => {
-        if (event.languageId === `rpgle`) {
+      vscode.workspace.onDidOpenTextDocument((document) => {
+        if (document.languageId === `rpgle`) {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
-            const text = event.getText();
-            if (text.startsWith(`**FREE`)) {
-              this.updateCopybookCache(event.uri, text);
+            const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+            const text = document.getText();
+            if (isFree) {
+              this.updateCopybookCache(document.uri, text);
             }
           }
         }
