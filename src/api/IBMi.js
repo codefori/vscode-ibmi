@@ -62,6 +62,16 @@ module.exports = class IBMi {
         this.currentUser = connectionObject.username;
 
         let tempLibrarySet = false;
+        
+        this.client.connection.once(`timeout`, async () => {
+          const choice = await vscode.window.showWarningMessage(`Connection to ${this.currentConnectionName} has timed out. Would you like to reconnect?`, `Yes`, `No`);
+
+          if (choice === `Yes`) {
+            this.connect(connectionObject);
+          } else {
+            vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
+          };
+        });
 
         progress.report({
           message: `Loading configuration.`
