@@ -267,7 +267,7 @@ module.exports = class CompileTools {
           });
 
           outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-          outputChannel.append(`   Library list: ` + libl.reverse().join(` `) + `\n`);
+          outputChannel.append(`   Library list: ` + config.libraryList.join(` `) + `\n`);
           outputChannel.append(`        Command: ` + command + `\n`);
 
           try {
