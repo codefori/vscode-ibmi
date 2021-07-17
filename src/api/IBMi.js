@@ -61,6 +61,8 @@ module.exports = class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
+        let tempLibrarySet = false;
+
         progress.report({
           message: `Loading configuration.`
         });
@@ -121,11 +123,15 @@ module.exports = class IBMi {
             `CRTLIB ` + this.config.tempLibrary,
             undefined,
           );
+
+          tempLibrarySet = true;
+
         } catch (e) {
           let [errorcode, errortext] = e.split(`:`);
 
           switch (errorcode) {
           case `CPF2111`: //Already exists, hopefully ok :)
+            tempLibrarySet = true;
             break;
             
           case `CPD0032`: //Can't use CRTLIB
@@ -136,14 +142,19 @@ module.exports = class IBMi {
               );
 
               //We're all good if no errors
+              tempLibrarySet = true;
             } catch (e) {
-              if (currentLibrary.startsWith(`Q`)) {
-                //Temporary library not created. Some parts of the extension will not run without a temporary library.
-              } else {
-                this.config.tempLibrary = currentLibrary;
+              if (currentLibrary) {
+                if (currentLibrary.startsWith(`Q`)) {
+                  //Temporary library not created. Some parts of the extension will not run without a temporary library.
+                } else {
+                  this.config.tempLibrary = currentLibrary;
 
-                //Using ${currentLibrary} as the temporary library for temporary data.
-                await this.config.set(`tempLibrary`, currentLibrary);
+                  //Using ${currentLibrary} as the temporary library for temporary data.
+                  await this.config.set(`tempLibrary`, currentLibrary);
+
+                  tempLibrarySet = true;
+                }
               }
             }
             break;
@@ -201,6 +212,17 @@ module.exports = class IBMi {
           } catch (e) {
             //Oh well
           }
+        }
+
+        if (!tempLibrarySet) {
+          vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
+            .then(result => {
+              switch (result) {
+              case `Open Settings`:
+                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                break;
+              }
+            });
         }
 
         return {
