@@ -61,6 +61,7 @@ module.exports = class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
+        let homeDirSet = true;
         let tempLibrarySet = false;
         
         this.client.connection.once(`timeout`, async () => {
@@ -86,7 +87,14 @@ module.exports = class IBMi {
         });
 
         //Get home directory if one isn't set
-        if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, await this.paseCommand(`pwd`, null))
+        let commandResult = await this.paseCommand(`pwd`, null, 1);
+        if (typeof commandResult === `object`) {
+          if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, commandResult.stdout.trim());
+
+          if (commandResult.stderr) {
+            homeDirSet = false;
+          }
+        }
 
         progress.report({
           message: `Checking library list configuration.`
@@ -224,15 +232,19 @@ module.exports = class IBMi {
           }
         }
 
-        if (!tempLibrarySet) {
-          vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
-            .then(result => {
-              switch (result) {
-              case `Open Settings`:
-                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
-                break;
-              }
-            });
+        if (homeDirSet) {
+          if (!tempLibrarySet) {
+            vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
+              .then(result => {
+                switch (result) {
+                case `Open Settings`:
+                  vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                  break;
+                }
+              });
+          }
+        } else {
+          vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}').`);
         }
 
         return {
