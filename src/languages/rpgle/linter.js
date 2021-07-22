@@ -686,12 +686,6 @@ module.exports = class RPGLinter {
           else
             expectedIndent += indent; 
         }
-
-        if ([
-          `SELECT`
-        ].includes(pieces[0])) {
-          expectedIndent += (indent*2);
-        }
           
       }
     }
