@@ -15,7 +15,7 @@ module.exports = class RPGLinter {
     /** @type {{[path: string]: string[]}} */
     this.copyBooks = {};
 
-    /** @type {{[path: string]: {subroutines, procedures, variables, structs}}} */
+    /** @type {{[path: string]: {subroutines, procedures, variables, structs, constants}}} */
     this.parsedCache = {};
 
     context.subscriptions.push(
@@ -126,15 +126,52 @@ module.exports = class RPGLinter {
                 const currentPath = document.uri.path;
 
                 /** @type vscode.SymbolInformation[] */
-                let currentDefs = [
-                  ...doc.procedures.filter(proc => proc.position && proc.position.path === currentPath),
-                  ...doc.subroutines.filter(sub => sub.position && sub.position.path === currentPath),
-                ].map(def => new vscode.SymbolInformation(
-                  def.name,
-                  vscode.SymbolKind.Function,
-                  new vscode.Range(def.position.line, 0, def.position.line, 0),
-                  document.uri
-                ));
+                let currentDefs = [];
+
+                currentDefs.push(
+                  ...[
+                    ...doc.procedures.filter(proc => proc.position && proc.position.path === currentPath),
+                    ...doc.subroutines.filter(sub => sub.position && sub.position.path === currentPath),
+                  ].map(def => new vscode.SymbolInformation(
+                    def.name,
+                    vscode.SymbolKind.Function,
+                    new vscode.Range(def.position.line, 0, def.position.line, 0),
+                    document.uri
+                  ))
+                );
+
+                currentDefs.push(
+                  ...doc.variables
+                    .filter(variable => variable.position && variable.position.path === currentPath)
+                    .map(def => new vscode.SymbolInformation(
+                      def.name,
+                      vscode.SymbolKind.Variable,
+                      new vscode.Range(def.position.line, 0, def.position.line, 0),
+                      document.uri
+                    ))
+                );
+
+                currentDefs.push(
+                  ...doc.structs
+                    .filter(struct => struct.position && struct.position.path === currentPath)
+                    .map(def => new vscode.SymbolInformation(
+                      def.name,
+                      vscode.SymbolKind.Struct,
+                      new vscode.Range(def.position.line, 0, def.position.line, 0),
+                      document.uri
+                    ))
+                );
+
+                currentDefs.push(
+                  ...doc.constants
+                    .filter(constant => constant.position && constant.position.path === currentPath)
+                    .map(def => new vscode.SymbolInformation(
+                      def.name,
+                      vscode.SymbolKind.Constant,
+                      new vscode.Range(def.position.line, 0, def.position.line, 0),
+                      document.uri
+                    ))
+                );
 
                 return currentDefs;
               }
@@ -365,7 +402,8 @@ module.exports = class RPGLinter {
    *   variables: Declaration[],
    *   structs: Declaration[],
    *   procedures: Declaration[],
-   *   subroutines: Declaration[]
+   *   subroutines: Declaration[],
+   *   constants: Declaration[]
    * }>}
    */
   async getDocs(workingUri, content, withIncludes = true) {
@@ -379,6 +417,7 @@ module.exports = class RPGLinter {
 
     let lineNumber, parts, partsLower, pieces;
 
+    const constants = [];
     const variables = [];
     const structs = [];
     const procedures = [];
@@ -415,6 +454,25 @@ module.exports = class RPGLinter {
         partsLower = pieces[0].split(` `).filter(piece => piece !== ``);
 
         switch (parts[0]) {
+        case `DCL-C`:
+          if (currentItem === undefined) {
+            currentItem = new Declaration(`constant`);
+            currentItem.name = partsLower[1];
+            currentItem.keywords = parts.slice(2);
+            currentItem.comments = currentComments.join(` `);
+
+            currentItem.position = {
+              path: file,
+              line: lineNumber
+            }
+
+            constants.push(currentItem);
+            currentItem = undefined;
+            currentComments = [];
+            currentExample = [];
+          }
+          break;
+
         case `DCL-S`:
           if (currentItem === undefined) {
             if (!parts.includes(`TEMPLATE`)) {
@@ -422,6 +480,12 @@ module.exports = class RPGLinter {
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
               currentItem.comments = currentComments.join(` `);
+
+              currentItem.position = {
+                path: file,
+                line: lineNumber
+              }
+
               variables.push(currentItem);
               currentItem = undefined;
               currentComments = [];
@@ -431,45 +495,60 @@ module.exports = class RPGLinter {
           break;
 
         case `DCL-DS`:
-          if (!parts.includes(`TEMPLATE`)) {
-            currentItem = new Declaration(`struct`);
-            currentItem.name = partsLower[1];
-            currentItem.keywords = parts.slice(2);
-            currentItem.comments = currentComments.join(` `);
-            currentItem.example = currentExample;
+          if (currentItem === undefined) {
+            if (!parts.includes(`TEMPLATE`)) {
+              currentItem = new Declaration(`struct`);
+              currentItem.name = partsLower[1];
+              currentItem.keywords = parts.slice(2);
+              currentItem.comments = currentComments.join(` `);
+              currentItem.example = currentExample;
 
-            currentComments = [];
-            currentExample = [];
+              currentItem.position = {
+                path: file,
+                line: lineNumber
+              }
+
+              currentComments = [];
+              currentExample = [];
+            }
           }
           break;
 
         case `END-DS`:
-          if (currentItem) {
+          if (currentItem && currentItem.type === `struct`) {
             structs.push(currentItem);
             currentItem = undefined;
           }
           break;
         
         case `DCL-PR`:
-          if (!procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
-            currentItem = new Declaration(`procedure`);
-            currentItem.name = partsLower[1];
-            currentItem.keywords = parts.slice(2);
-            currentItem.comments = currentComments.join(` `);
-            currentItem.example = currentExample;
+          if (currentItem === undefined) {
+            if (!procedures.find(proc => proc.name.toUpperCase() === parts[1])) {
+              currentItem = new Declaration(`procedure`);
+              currentItem.name = partsLower[1];
+              currentItem.keywords = parts.slice(2);
+              currentItem.comments = currentComments.join(` `);
+              currentItem.example = currentExample;
 
-            currentItem.position = {
-              path: file,
-              line: lineNumber
+              currentItem.position = {
+                path: file,
+                line: lineNumber
+              }
+
+              currentItem.readParms = true;
+
+              currentComments = [];
+              currentExample = [];
             }
-
-            currentItem.readParms = true;
-
-            currentComments = [];
-            currentExample = [];
           }
           break;
 
+        case `END-PR`:
+          if (currentItem && currentItem.type === `procedure`) {
+            procedures.push(currentItem);
+            currentItem = undefined;
+          }
+          break;
         
         case `DCL-PROC`:
           //We can overwrite it.. it might have been a PR before.
@@ -502,9 +581,7 @@ module.exports = class RPGLinter {
           break;
 
         case `END-PROC`:
-        case `END-PR`:
-        case `END-PI`:
-          if (currentItem) {
+          if (currentItem && currentItem.type === `procedure`) {
             procedures.push(currentItem);
             currentItem = undefined;
           }
@@ -528,7 +605,7 @@ module.exports = class RPGLinter {
           break;
     
         case `ENDSR`:
-          if (currentItem) {
+          if (currentItem && currentItem.type === `subroutine`) {
             subroutines.push(currentItem);
             currentItem = undefined;
           }
@@ -575,10 +652,11 @@ module.exports = class RPGLinter {
       procedures,
       structs,
       subroutines,
-      variables
+      variables,
+      constants
     };
 
-    this.parsedCache[workingUri.path] = parsedData
+    this.parsedCache[workingUri.path] = parsedData;
 
     return parsedData;
   }
@@ -697,7 +775,7 @@ module.exports = class RPGLinter {
 class Declaration {
   /**
    * 
-   * @param {"procedure"|"subroutine"|"struct"|"subitem"|"variable"} type 
+   * @param {"procedure"|"subroutine"|"struct"|"subitem"|"variable"|"constant"} type 
    */
   constructor(type) {
     this.type = type;
