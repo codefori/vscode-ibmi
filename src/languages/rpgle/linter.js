@@ -581,6 +581,11 @@ module.exports = class RPGLinter {
           break;
 
         case `END-PI`:
+          if (currentItem && currentItem.type === `procedure`) {
+            currentItem.readParms = false;
+          }
+          break;
+
         case `END-PROC`:
           if (currentItem && currentItem.type === `procedure`) {
             procedures.push(currentItem);
