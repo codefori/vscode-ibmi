@@ -776,9 +776,9 @@
 			},
 			{
 				"command": "code-for-ibmi.rpgleOpenInclude",
-        "key": "shift+f12",
-        "mac": "shift+f12",
-        "when": "editorLangId == rpgle"
+				"key": "shift+f12",
+				"mac": "shift+f12",
+				"when": "editorLangId == rpgle"
 			}
 		],
 		"viewsContainers": {
@@ -1076,7 +1076,8 @@
 		"@bendera/vscode-webview-elements": "^0.3.0",
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
-		"tmp": "^0.2.1"
+		"tmp": "^0.2.1",
+		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages"
