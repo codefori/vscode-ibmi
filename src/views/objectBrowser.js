@@ -68,6 +68,37 @@ module.exports = class objectBrowserProvider {
           if (Configuration.get(`autoRefresh`)) this.refresh();
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.createLibrary`, async () => {
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+
+        const newLibrary = await vscode.window.showInputBox({
+          prompt: `Name of new library`
+        });
+
+        if (!newLibrary) return; 
+
+        let libraries = config.objectBrowserList;
+
+        try {
+          await connection.remoteCommand(
+            `CRTLIB LIB(${newLibrary})`
+          );
+        } catch (e) {
+          vscode.window.showErrorMessage(`Cannot create library "${newLibrary}": ${e}`);
+          return;
+        }
+        
+        if (newLibrary.length <= 10) {
+          libraries.push(newLibrary.toUpperCase());
+          await config.set(`objectBrowserList`, libraries);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        } else {
+          vscode.window.showErrorMessage(`Library name too long.`);
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node) => {
         if (node) {
           //Running from right click
