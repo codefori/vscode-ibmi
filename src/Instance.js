@@ -105,7 +105,7 @@ module.exports = class Instance {
     const actionsUI = require(`./webviews/actions`);
 
     const rpgleLinter = require(`./languages/rpgle/linter`);
-    const Commands = require(`./languages/clle/commands`);
+    const CLCommands = require(`./languages/clle/clCommands`);
 
     if (instance.connection) {
       CompileTools.register(context);
@@ -322,6 +322,8 @@ module.exports = class Instance {
         );
         
         new rpgleLinter(context);
+        const clInstance = new CLCommands(context);
+        clInstance.init();
 
         //********* Actions */
 
@@ -361,33 +363,7 @@ module.exports = class Instance {
           })
         );
 
-        // ********* CL tools */
-        try {
-          const clComponentsInstalled = await Commands.checkRequirements();
-
-          if (clComponentsInstalled) {
-            const data = await Commands.genDefinition(`CHKOBJ`);
-            console.log(data);
-
-          } else {
-            //We need to install the CL components
-            vscode.window.showInformationMessage(`Would you like to install the CL prompting tools onto your system?`, `Yes`, `No`)
-              .then(async result => {
-                switch (result) {
-                case `Yes`:
-                  try {
-                    await Commands.install();
-                    vscode.window.showInformationMessage(`CL components installed.`);
-                  } catch (e) {
-                    vscode.window.showInformationMessage(`Failed to install CL components.`);
-                  }
-                  break;
-                }
-              });
-          }
-        } catch (e) {
-          console.log(e);
-        }
+        
 
         initialisedBefore = true;
       }
