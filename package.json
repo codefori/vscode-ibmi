@@ -663,6 +663,16 @@
 				"icon": "$(files)"
 			},
 			{
+				"command": "code-for-ibmi.downloadMemberAsFile",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+				"title": "Upload and replace",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.refreshIFSBrowser",
 				"title": "Refresh IFS List",
 				"category": "IBM i",
@@ -972,6 +982,16 @@
 					"command": "code-for-ibmi.renameMember",
 					"when": "view == memberBrowser && viewItem == member",
 					"group": "2_memberStuff@3"
+				},
+				{
+					"command": "code-for-ibmi.downloadMemberAsFile",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "3_memberTransfer@1"
+				},
+				{
+					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "3_memberTransfer@2"
 				},
 				{
 					"command": "code-for-ibmi.runActionFromView",
