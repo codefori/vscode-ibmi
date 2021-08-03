@@ -93,10 +93,10 @@ module.exports = class Instance {
     const libraryListView = require(`./views/libraryListView`);
 
     const memberBrowser = require(`./views/memberBrowser`);
-    const qsysFs = new (require(`./views/qsysFs`));
+    const qsysFs = new (require(`./filesystems/qsysFs`));
     
     const ifsBrowser = require(`./views/ifsBrowser`);
-    const ifs = new (require(`./views/ifs`));
+    const ifs = new (require(`./filesystems/ifs`));
 
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);

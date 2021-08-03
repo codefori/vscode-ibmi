@@ -2,7 +2,7 @@
 const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
-const Configuration = require("../api/Configuration");
+const Configuration = require(`../api/Configuration`);
 
 module.exports = class objectBrowserProvider {
   /**
