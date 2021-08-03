@@ -309,7 +309,7 @@ module.exports = class memberBrowserProvider {
             contentApi.uploadMemberContent(asp, lib, file, name, data);
             vscode.window.showInformationMessage(`Member was uploaded.`);
           } catch (e) {
-            vscode.window.showErrorMessage(`Error reading file! ${e}`);
+            vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
           }
         }
   
@@ -350,7 +350,7 @@ module.exports = class memberBrowserProvider {
               await writeFileAsync(localPath, memberContent, `utf8`);
               vscode.window.showInformationMessage(`Member was downloaded.`);
             } catch (e) {
-              vscode.window.showErrorMessage(`Error downloading streamfile! ${e}`);
+              vscode.window.showErrorMessage(`Error downloading member! ${e}`);
             }
           }
 
