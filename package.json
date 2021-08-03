@@ -71,6 +71,7 @@
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
 		"onCommand:code-for-ibmi.createSourceFile",
+		"onCommand:code-for-ibmi.createLibrary",
 		"onCommand:code-for-ibmi.addLibraryToObjectBrowser",
 		"onCommand:code-for-ibmi.removeLibraryFromObjectBrowser",
 		"onView:databaseBrowser",
@@ -733,6 +734,12 @@
 				"icon": "$(new-folder)"
 			},
 			{
+				"command": "code-for-ibmi.createLibrary",
+				"title": "Create new library",
+				"category": "IBM i",
+				"icon": "$(repo-create)"
+			},
+			{
 				"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
 				"title": "Remove library from view",
 				"category": "IBM i",
@@ -885,6 +892,11 @@
 				},
 				{
 					"command": "code-for-ibmi.addLibraryToObjectBrowser",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createLibrary",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
