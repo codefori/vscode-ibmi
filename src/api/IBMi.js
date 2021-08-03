@@ -102,7 +102,7 @@ module.exports = class IBMi {
 
         //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
         //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-        let currentLibrary;
+        let currentLibrary = `QGPL`;
         this.defaultUserLibraries = [];
         let libraryListString = await this.qshCommand(`liblist`);
         if (typeof libraryListString === `string` && libraryListString !== ``) {
