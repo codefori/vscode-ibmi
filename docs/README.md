@@ -308,7 +308,7 @@ Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
 
-Temporary library. Is used to OUTPUT files. Cannot be QTEMP.
+Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP.
 #### Source ASP
 
 If source files are located in a specific ASP, specify here.
