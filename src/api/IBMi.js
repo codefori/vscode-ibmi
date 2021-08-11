@@ -138,7 +138,7 @@ module.exports = class IBMi {
         //Next, we need to check the temp lib (where temp outfile data lives) exists
         try {
           await this.remoteCommand(
-            `CRTLIB ` + this.config.tempLibrary,
+            `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
             undefined,
           );
 
