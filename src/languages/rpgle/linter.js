@@ -759,7 +759,7 @@ module.exports = class RPGLinter {
         }
 
         if ([
-          `IF`, `ELSE`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
+          `IF`, `ELSE`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
         ].includes(pieces[0])) {
           if (pieces[0] == `DCL-DS` && line.includes(`LIKEDS`)) {
             //No change
@@ -767,8 +767,12 @@ module.exports = class RPGLinter {
           else if (pieces[0] == `DCL-PI` && line.includes(`END-PI`)) {
             //No change
           }
-          else
+          else if (pieces[0] == `SELECT`) {
+            if (skipIndentCheck === false) expectedIndent += (indent*2); 
+          }
+          else {
             expectedIndent += indent; 
+          }
         }
           
       }
