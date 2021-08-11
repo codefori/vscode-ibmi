@@ -1,9 +1,14 @@
 
 const vscode = require(`vscode`);
+const os = require(`os`);
+let fs = require(`fs`);
+const util = require(`util`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 const Search = require(`../api/Search`);
+
+const writeFileAsync = util.promisify(fs.writeFile);
 
 module.exports = class memberBrowserProvider {
   /**
@@ -271,6 +276,84 @@ module.exports = class memberBrowserProvider {
           }
 
           
+        } else {
+          //Running from command.
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node) => {
+        const contentApi = instance.getContent();
+
+        let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
+ 
+        if (originPath) {
+          const path = node.path.split(`/`);
+          let asp, lib, file, fullName;
+      
+          if (path.length === 3) {
+            lib = path[0];
+            file = path[1];
+            fullName = path[2];
+          } else {
+            asp = path[0];
+            lib = path[1];
+            file = path[2];
+            fullName = path[3];
+          }
+
+          const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+
+          const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
+          
+          try {
+            contentApi.uploadMemberContent(asp, lib, file, name, data);
+            vscode.window.showInformationMessage(`Member was uploaded.`);
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
+          }
+        }
+  
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
+        const contentApi = instance.getContent();
+
+        const path = node.path.split(`/`);
+        let asp, lib, file, fullName;
+    
+        if (path.length === 3) {
+          lib = path[0];
+          file = path[1];
+          fullName = path[2];
+        } else {
+          asp = path[0];
+          lib = path[1];
+          file = path[2];
+          fullName = path[3];
+        }
+    
+        const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+        const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+
+        if (node) {
+          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + fullName) });
+
+          if (localFilepath) {
+            let localPath = localFilepath.path;
+            if (process.platform === `win32`) {
+              //Issue with getFile not working propertly on Windows
+              //when there was a / at the start.
+              if (localPath[0] === `/`) localPath = localPath.substr(1);
+            }
+
+            try {
+              await writeFileAsync(localPath, memberContent, `utf8`);
+              vscode.window.showInformationMessage(`Member was downloaded.`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error downloading member! ${e}`);
+            }
+          }
+
         } else {
           //Running from command.
         }
