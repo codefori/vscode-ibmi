@@ -2,7 +2,7 @@
 
 ## IBM i development extension for VS Code
 
-Maiintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
+Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
 ![intro_01.png](assets/intro_01.png)
 
 ![intro_02.png](assets/intro_02.png)
