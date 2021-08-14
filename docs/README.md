@@ -308,7 +308,11 @@ Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
 
-Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP.
+Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP. 
+Default value: ILEDITOR.
+Note: If your IBM i runs replication software, there is no need to replicate the temporary library. Your sysadmin may add it to the list of objects to be ignored.
+
+
 #### Source ASP
 
 If source files are located in a specific ASP, specify here.
