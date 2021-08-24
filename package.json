@@ -1111,6 +1111,7 @@
 		"tmp": "^0.2.1"
 	},
 	"extensionDependencies": [
-		"barrettotte.ibmi-languages"
+		"barrettotte.ibmi-languages",
+		"HalcyonTechLtd.vscode-ibmi-walkthroughs"
 	]
 }
