@@ -697,7 +697,7 @@
 			},
 			{
 				"command": "code-for-ibmi.moveIFS",
-				"title": "Move object",
+				"title": "Rename or Move object",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
