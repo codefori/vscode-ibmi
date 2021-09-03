@@ -77,6 +77,38 @@ module.exports = class ifsBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node) => {
+        const config = instance.getConfig();
+
+        let removeDir;
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          removeDir = node.path;
+        } else {
+          removeDir = await vscode.window.showQuickPick(shortcuts, {
+            placeHolder: `Select IFS directory to remove`,
+          });
+        }
+
+        try {
+          if (removeDir) {
+            removeDir = removeDir.trim();
+
+            const inx = shortcuts.indexOf(removeDir);
+            
+            if (inx >= 0) {
+              shortcuts.splice(inx, 1);
+              await config.set(`ifsShortcuts`, shortcuts);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            }
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
         const connection = instance.getConnection();
         const config = instance.getConfig();

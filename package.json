@@ -737,9 +737,15 @@
 			},
 			{
 				"command": "code-for-ibmi.addIFSShortcut",
-				"title": "Add shortcut",
+				"title": "Add IFS shortcut",
 				"category": "IBM i",
 				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.removeIFSShortcut",
+				"title": "Remove IFS shortcut",
+				"category": "IBM i",
+				"icon": "$(remove)"
 			},
 			{
 				"command": "code-for-ibmi.refreshObjectList",
@@ -893,6 +899,11 @@
 				},
 				{
 					"command": "code-for-ibmi.addIFSShortcut",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.removeIFSShortcut",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
