@@ -96,6 +96,16 @@ module.exports = class IBMi {
           }
         }
 
+        //Set a default IFS listing
+        if (this.config.ifsShortcuts.length === 0) {
+          if (homeDirSet) {
+            await this.config.set(`ifsShortcuts`, [this.config.homeDirectory]);
+          } else {
+            await this.config.set(`ifsShortcuts`, [`/`]);
+          }
+        }
+
+
         progress.report({
           message: `Checking library list configuration.`
         });

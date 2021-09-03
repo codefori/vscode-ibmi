@@ -60,7 +60,7 @@
 		"onCommand:code-for-ibmi.openFileByPath",
 		"onView:ifsBrowser",
 		"onCommand:code-for-ibmi.refreshIFSBrowser",
-		"onCommand:code-for-ibmi.changeHomeDirectory",
+		"onCommand:code-for-ibmi.changeWorkingDirectory",
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
 		"onCommand:code-for-ibmi.uploadStreamfile",
@@ -68,6 +68,7 @@
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onCommand:code-for-ibmi.searchIFS",
 		"onCommand:code-for-ibmi.downloadStreamfile",
+		"onCommand:code-for-ibmi.addShortcut",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
 		"onCommand:code-for-ibmi.createSourceFile",
@@ -166,6 +167,15 @@
 								},
 								"default": [],
 								"description": "A collection of library lists to easily switch between them on this system."
+							},
+							"ifsShortcuts": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "Path to directory"
+								},
+								"default": [],
+								"description": "List of directories shown in IFS Browser"
 							},
 							"homeDirectory": {
 								"type": "string",
@@ -680,8 +690,8 @@
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "code-for-ibmi.changeHomeDirectory",
-				"title": "Change directory",
+				"command": "code-for-ibmi.changeWorkingDirectory",
+				"title": "Change working directory",
 				"category": "IBM i",
 				"icon": "$(root-folder)"
 			},
@@ -724,6 +734,12 @@
 				"title": "Upload",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "code-for-ibmi.addIFSShortcut",
+				"title": "Add shortcut",
+				"category": "IBM i",
+				"icon": "$(add)"
 			},
 			{
 				"command": "code-for-ibmi.refreshObjectList",
@@ -871,27 +887,12 @@
 					"when": "view == memberBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createDirectory",
+					"command": "code-for-ibmi.changeWorkingDirectory",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createStreamfile",
-					"group": "navigation",
-					"when": "view == ifsBrowser"
-				},
-				{
-					"command": "code-for-ibmi.uploadStreamfile",
-					"group": "navigation",
-					"when": "view == ifsBrowser"
-				},
-				{
-					"command": "code-for-ibmi.changeHomeDirectory",
-					"group": "navigation",
-					"when": "view == ifsBrowser"
-				},
-				{
-					"command": "code-for-ibmi.searchIFS",
+					"command": "code-for-ibmi.addIFSShortcut",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
@@ -1034,6 +1035,16 @@
 					"command": "code-for-ibmi.searchIFS",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "3_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.addIFSShortcut",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.changeWorkingDirectory",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
