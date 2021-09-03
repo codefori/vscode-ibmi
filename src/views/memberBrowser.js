@@ -84,14 +84,34 @@ module.exports = class memberBrowserProvider {
       
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
         if (node) {
+          let fullName;
+          let path = node.path.split(`/`);
+          const requiresSPF = path[1] === `*ALL`;
+
           //Running from right click
-          const fullName = await vscode.window.showInputBox({
-            prompt: `Name of new source member`
+          fullName = await vscode.window.showInputBox({
+            prompt: `Name of new source member (${requiresSPF ? `file/member.ext` : `member.ext`})`
           });
 
           if (fullName) {
+            if (requiresSPF) {
+              const spfSplit = fullName.indexOf(`/`);
+
+              if (spfSplit > 0) {
+                path[1] = fullName.substring(0, spfSplit).trim().toUpperCase();
+                fullName = fullName.substring(spfSplit + 1);
+
+                if (path[1].length === 0) {
+                  vscode.window.showErrorMessage(`Source file required in path.`);
+                  return;
+                }
+              } else {
+                vscode.window.showErrorMessage(`Source file required in path.`);
+                return;
+              }
+            }
+
             const connection = instance.getConnection();
-            const path = node.path.split(`/`);
             const [name, extension] = fullName.split(`.`);
 
             if (extension !== undefined && extension.length > 0) {
