@@ -230,6 +230,7 @@ module.exports = class IBMiContent {
         SELECT
           (b.avgrowsize - 12) as MBMXRL,
           a.iasp_number as MBASP,
+          a.table_name AS MBFILE,
           b.system_table_member as MBNAME,
           b.source_type as MBSEU2,
           b.partition_text as MBMTXT
@@ -238,8 +239,8 @@ module.exports = class IBMiContent {
             ON b.table_schema = a.table_schema AND
               b.table_name = a.table_name
         WHERE
-          a.table_schema = '${lib}' And
-          a.table_name = '${spf}'
+          a.table_schema = '${lib}' 
+          ${spf !== `*ALL` ? `AND a.table_name = '${spf}'` : ``}
       `)
 
     } else {
@@ -263,11 +264,11 @@ module.exports = class IBMiContent {
     return results.map(result => ({
       asp: asp,
       library: lib,
-      file: spf,
+      file: result.MBFILE,
       name: result.MBNAME,
       extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
-      text: result.MBMTXT
+      text: `${result.MBMTXT || ``}${spf === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
     })).sort((a, b) => {
       if (a.name < b.name) { return -1; }
       if (a.name > b.name) { return 1; }
