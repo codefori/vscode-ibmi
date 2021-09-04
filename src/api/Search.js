@@ -85,9 +85,17 @@ module.exports = class Search {
       term = term.replace(/'/g, `\\'`);
       term = term.replace(/\\/g, `\\\\"`);
 
+      /** @type {string[]} */
+      const dirsToIgnore = Configuration.get(`grepIgnoreDirs`);
+      let ignoreString = ``;
+
+      if (dirsToIgnore.length > 0) {
+        ignoreString = dirsToIgnore.map(dir => `--exclude-dir=${dir}`).join(` `);
+      }
+
       try {
         //@ts-ignore
-        standardOut = await connection.paseCommand(`${grep} -nr "${term}" ${path}`);
+        standardOut = await connection.paseCommand(`${grep} -nr ${ignoreString} "${term}" "${path}"`);
       } catch (e) {
         if (e === ``) standardOut = e //Means no results were found.
         else throw e;

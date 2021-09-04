@@ -222,6 +222,15 @@
 						}
 					}
 				},
+				"code-for-ibmi.grepIgnoreDirs": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"title": "IFS directory"
+					},
+					"default": ["node_modules", ".git", "vendor"],
+					"description": "List of directories that will be ignored when searching the IFS."
+				},
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
 					"default": false,
