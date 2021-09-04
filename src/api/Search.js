@@ -90,7 +90,7 @@ module.exports = class Search {
       let ignoreString = ``;
 
       if (dirsToIgnore.length > 0) {
-        ignoreString = `--exclude-dir={${dirsToIgnore.join(`,`)}}`;
+        ignoreString = dirsToIgnore.map(dir => `--exclude-dir=${dir}`).join(` `);
       }
 
       try {
