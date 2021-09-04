@@ -228,7 +228,7 @@
 						"type": "string",
 						"title": "IFS directory"
 					},
-					"default": ["node_modules", ".git", "vendor"],
+					"default": ["node_modules", ".git", "vendor", "__pycache__"],
 					"description": "List of directories that will be ignored when searching the IFS."
 				},
 				"code-for-ibmi.logCompileOutput": {
