@@ -46,6 +46,12 @@ module.exports = class Configuration {
 
     /** @type {string[]} */
     this.hideCompileErrors = base.hideCompileErrors || [];
+
+    /** @type {boolean} */
+    this.enableSourceDates = (base.enableSourceDates === true);
+
+    /** @type {boolean} Undefined means not created, so default to on */
+    this.showSourceDates = (base.showSourceDates === true || base.showSourceDates === undefined);
   }
 
   /**

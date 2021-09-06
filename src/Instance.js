@@ -90,10 +90,12 @@ module.exports = class Instance {
    * @param {vscode.ExtensionContext} context
    */
   static async loadAllofExtension(context) {
+    const connection = this.getConnection();
+    const config = this.getConfig();
+
     const libraryListView = require(`./views/libraryListView`);
 
     const memberBrowser = require(`./views/memberBrowser`);
-    const qsysFs = new (require(`./filesystems/qsysFs`));
     
     const ifsBrowser = require(`./views/ifsBrowser`);
     const ifs = new (require(`./filesystems/ifs`));
@@ -185,6 +187,20 @@ module.exports = class Instance {
           )
         );
 
+        let qsysFs, basicMemberEditing = true;
+        if (config.enableSourceDates) {
+          if (connection.remoteFeatures.db2util) {
+            basicMemberEditing = false;
+            require(`./filesystems/qsys/complex/handler`).begin(context);
+            qsysFs = new (require(`./filesystems/qsys/complex`));
+          } else {
+            vscode.window.showWarningMessage(`Source date support is disabled due to SQL being disabled.`);
+          }
+        }
+
+        if (basicMemberEditing) {
+          qsysFs = new (require(`./filesystems/qsys/basic`));
+        }
 
         context.subscriptions.push(
           Disposable(`member`,
