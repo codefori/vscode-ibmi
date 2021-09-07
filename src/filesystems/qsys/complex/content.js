@@ -1,3 +1,4 @@
+let IBMi = require(`../../../api/IBMi`);
 let instance = require(`../../../Instance`);
 
 const util = require(`util`);
@@ -13,42 +14,35 @@ module.exports = class IBMiContent {
   /**
    * Download the contents of a source member using SQL.
    * This option also stores the source dates internally.
+   * @param {string|undefined} asp
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} mbr 
    */
-  static async downloadMemberContentWithDates(lib, spf, mbr) {
+  static async downloadMemberContentWithDates(asp, lib, spf, mbr) {
     const connection = instance.getConnection();
-    const content = instance.getContent();
-    const usingDb2 = connection.remoteFeatures.db2util;
+    const rfile = connection.remoteFeatures.Rfile;
 
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
 
-    if (usingDb2) {
-      const tempLib = connection.config.tempLibrary;
+    if (rfile) {
       const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
-      const aliasPath = `${tempLib}.${alias}`;
   
-      try {
-        await content.runSQL(`CREATE ALIAS ${aliasPath} for ${lib}.${spf}("${mbr}")`);
-      } catch (e) {}
-  
-      let rows = await content.runSQL(
-        `select srcdat, REPLACE(rtrim(srcdta), ' ', '.+') as srcdta from ${aliasPath}`,
+      const path = IBMi.qualifyPath(asp, lib, spf, mbr);
+
+      /** @type {string} */
+      // @ts-ignore
+      const data = await connection.paseCommand(
+        `${rfile} -sr ${path}`
       );
 
-      if (rows.length === 0) {
-        rows.push({
-          SRCDAT: 0,
-          SRCDTA: ``,
-        });
-      }
+      const rows = data.split(`\n`);
   
-      const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
+      const sourceDates = rows.map(row => row.substr(6, 6));
       const body = rows
-        .map(row => row.SRCDTA.replace(/\.\+/g, ` `))
+        .map(row => row.substr(12))
         .join(`\n`);
 
       allSourceDates[alias] = sourceDates;
@@ -56,30 +50,31 @@ module.exports = class IBMiContent {
       return body;
 
     } else {
-      throw new Error(`db2util not installed on remote server.`);
+      throw new Error(`rfile not installed on remote server.`);
     }
   }
 
   /**
    * Upload to a member with source dates 
+   * @param {string|undefined} asp 
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} mbr 
    * @param {string} body 
    */
-  static async uploadMemberContentWithDates(lib, spf, mbr, body) {
+  static async uploadMemberContentWithDates(asp, lib, spf, mbr, body) {
     const connection = instance.getConnection();
-    const usingDb2 = connection.remoteFeatures.db2util;
+    const rfile = connection.remoteFeatures.Rfile;
 
-    if (usingDb2) {
-      const tempLib = connection.config.tempLibrary;
+    if (rfile) {
       const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
-      const aliasPath = `${tempLib}.${alias}`;
       const sourceDates = allSourceDates[alias];
 
       const client = connection.client;
       const tempRmt = connection.getTempRemote(lib + spf + mbr);
       const tmpobj = await tmpFile();
+  
+      const path = IBMi.qualifyPath(asp, lib, spf, mbr);
 
       const sourceData = body.split(`\n`);
 
@@ -88,48 +83,20 @@ module.exports = class IBMiContent {
       for (let i = 0; i < sourceData.length; i++) {
         sequence = i + 1;
         rows.push(
-          `(${sequence}, ${Number(sourceDates[i])}, '${this.escapeString(sourceData[i])}')`,
+          `${String(sequence).padStart(6, `0`)}${sourceDates[i]}${sourceData[i]}`
         );
       }
 
-      //We assume the alias still exists....
-      const query = `insert into ${aliasPath} values ${rows.join(`,`)};`;
-
-      await writeFileAsync(tmpobj, query, `utf8`);
+      await writeFileAsync(tmpobj, rows.join(`\n`), `utf8`);
       await client.putFile(tmpobj, tempRmt);
 
-      await connection.remoteCommand(`CLRPFM FILE(${lib}/${spf}) MBR(${mbr})`);
-      await connection.remoteCommand(
-        `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+      //await connection.remoteCommand(`CLRPFM FILE(${lib}/${spf}) MBR(${mbr})`);
+      await connection.paseCommand(
+        `${rfile} -sw ${path} < ${tempRmt}`,
       );
   
     } else {
       throw new Error(`db2util not installed on remote server.`);
     }
-  }
-
-  static escapeString(val) {
-    val = val.replace(/[\0\n\r\b\t'\x1a]/g, function (s) {
-      switch (s) {
-      case `\0`:
-        return `\\0`;
-      case `\n`:
-        return `\\n`;
-      case `\r`:
-        return `\\r`;
-      case `\b`:
-        return `\\b`;
-      case `\t`:
-        return `\\t`;
-      case `\x1a`:
-        return `\\Z`;
-      case `'`:
-        return `''`;
-      default:
-        return `\\` + s;
-      }
-    });
-  
-    return val;
   }
 }

@@ -189,12 +189,12 @@ module.exports = class Instance {
 
         let qsysFs, basicMemberEditing = true;
         if (config.enableSourceDates) {
-          if (connection.remoteFeatures.db2util) {
+          if (connection.remoteFeatures.Rfile) {
             basicMemberEditing = false;
             require(`./filesystems/qsys/complex/handler`).begin(context);
             qsysFs = new (require(`./filesystems/qsys/complex`));
           } else {
-            vscode.window.showWarningMessage(`Source date support is disabled due to SQL being disabled.`);
+            vscode.window.showWarningMessage(`Source date support is disabled. Rfile is missing.`);
           }
         }
 

@@ -49,7 +49,7 @@ module.exports = class SettingsUI {
     
         field = new Field(`checkbox`, `enableSourceDates`, `Enable Source Dates`);
         field.default = (config.enableSourceDates ? `checked` : ``);
-        field.description = `When enabled, source dates will be retained and updated when editing source members. SQL must be enabled for this feature. Requires restart when changed.`;
+        field.description = `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`;
         ui.addField(field);
     
         field = new Field(`checkbox`, `showSourceDates`, `Show Source Dates`);
