@@ -40,6 +40,8 @@ module.exports = class CLCommands {
             const parts = content.trim().split(` `).filter(part => part.length > 0);
 
             if (parts.length >= 1) {
+              /** @type {string|undefined} */
+              let currentParameter = undefined;
               let nameIndex = -1;
               
               for (let i = parts.length - 1; i >= 0; i--) {
@@ -49,8 +51,11 @@ module.exports = class CLCommands {
                 }
               }
 
+              let parmIdx = parts[parts.length-1].indexOf(`(`);
+              if (parmIdx > -1 && parts[parts.length-1].includes(`)`) === false) currentParameter = parts[parts.length-1].substr(0, parmIdx);
+
               if (nameIndex > -1) {
-                const name = parts[nameIndex];
+                const name = parts[nameIndex].toUpperCase();
                 const existingParms = parts.slice(nameIndex).map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)) : undefined);
 
                 let docs;
@@ -68,31 +73,55 @@ module.exports = class CLCommands {
                 let parms = paramaters.map(parm => {
                   const info = parm[`$`];
                   const qual = parm.Qual;
+                  const spcVal = parm.SpcVal;
+
+                  let specialValues = [];
+
+                  if (spcVal && spcVal.length > 0) {
+                    const opts = spcVal[0].Value;
+
+                    specialValues = opts.map(value => value[`$`].Val);
+                  }
 
                   return {
                     keyword: info.Kwd,
                     prompt: info.Prompt,
+                    choice: info.Choice,
                     type: info.Type,
                     position: Number(info.PosNbr),
+                    specialValues
                   }
                 });
 
-                parms = parms.filter(parm => existingParms.includes(parm.keyword) === false);
-
                 let item;
 
-                if (parms.length > 0) {
-                  item = new vscode.CompletionItem(`All parameters`, vscode.CompletionItemKind.Interface);
-                  item.insertText = new vscode.SnippetString(parms.map((parm, idx) => `${parm.keyword}(\${${idx+1}:x})`).join(` `) + `\$0`);
-                  item.detail = commandInfo.Prompt;
-                  items.push(item);
-                }
+                if (currentParameter) {
+                  parms = parms.find(parm => parm.keyword === currentParameter);
+                  if (parms) {
+                    //@ts-ignore
+                    for (const parm of parms.specialValues) {
+                      item = new vscode.CompletionItem(parm, vscode.CompletionItemKind.Property);
+                      item.insertText = new vscode.SnippetString(`${parm}\$0`);
+                      items.push(item);
+                    }
+                  }
 
-                for (const parm of parms) {
-                  item = new vscode.CompletionItem(parm.keyword, vscode.CompletionItemKind.TypeParameter);
-                  item.insertText = new vscode.SnippetString(`${parm.keyword}(\${1:value})\$0`);
-                  item.detail = parm.prompt + ` ${parm.type ? `(${parm.type})` : ``}`.trimEnd();
-                  items.push(item);
+                } else {
+                  parms = parms.filter(parm => existingParms.includes(parm.keyword) === false);
+  
+                  if (parms.length > 0) {
+                    item = new vscode.CompletionItem(`All parameters`, vscode.CompletionItemKind.Interface);
+                    item.insertText = new vscode.SnippetString(parms.map((parm, idx) => `${parm.keyword}(\${${idx+1}:})`).join(` `) + `\$0`);
+                    item.detail = commandInfo.Prompt;
+                    items.push(item);
+                  }
+  
+                  for (const parm of parms) {
+                    item = new vscode.CompletionItem(parm.keyword, vscode.CompletionItemKind.TypeParameter);
+                    item.insertText = new vscode.SnippetString(`${parm.keyword}(\${1:})\$0`);
+                    item.detail = parm.prompt + ` ${parm.type ? `(${parm.choice || parm.type})` : ``}`.trimEnd();
+                    items.push(item);
+                  }
                 }
 
                 return items;
