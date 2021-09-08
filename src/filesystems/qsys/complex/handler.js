@@ -40,6 +40,9 @@ module.exports = class {
               
               const startLineNumber = change.range.start.line;
               const endLineNumber = change.range.end.line;
+
+              const startChar = change.range.start.character;
+              const endChar = change.range.end.character;
               const line = startLineNumber;
 
               const currentDate = this.currentStamp();
@@ -48,14 +51,21 @@ module.exports = class {
               if (change.text.trim() === ``) {
               // Removing a line
                 if (startLineNumber < endLineNumber) {
-                  const lineCount =
-              endLineNumber - startLineNumber;
-                  sourceDates.splice(line, lineCount);
+                  const lineCount = endLineNumber - startLineNumber;
+                  sourceDates.splice(line+1, lineCount);
+                  return;
+
                 } else if (
                   startLineNumber !== endLineNumber
                 ) {
-                // Backspace within a line
+                  // Backspace within a line
                   sourceDates.splice(line, 0, currentDate);
+                  return;
+                } else if (
+                  startLineNumber === endLineNumber && startChar < endChar
+                ) {
+                  //backspace
+                  sourceDates[line] = currentDate;
                   return;
                 }
               } else {
@@ -72,7 +82,7 @@ module.exports = class {
   
                 // Multiple newlines
                 const newSourceDates = Array(len).fill(currentDate);
-                sourceDates.splice(line, 0, ...newSourceDates);
+                sourceDates.splice(line+1, 0, ...newSourceDates);
               }
             }
           }
