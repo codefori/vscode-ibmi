@@ -314,7 +314,7 @@
 							"CBLLE",
 							"CBL"
 						    ],
-						    "name": "Create ALL-in-one PGM CBLLE (CRTBNDCBL)",
+						    "name": "Create Bound COBOL Program (CRTBNDCBL)",
 						    "command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
 						},
 						{
