@@ -218,6 +218,16 @@
 								},
 								"default": [],
 								"description": "List of codes that will be hidden in the result of an action (from the EVFEVENT file)"
+							},
+							"enableSourceDates": {
+								"type": "boolean",
+								"default": false,
+								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
+							},
+							"showSourceDates": {
+								"type": "boolean",
+								"default": true,
+								"description": "When enabled, show the source date of the current line being edited in the source member. Requires source dates to be enabled."
 							}
 						}
 					}

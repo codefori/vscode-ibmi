@@ -4,6 +4,17 @@ const vscode = require(`vscode`);
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 
+const remoteApps = [
+  {
+    path: `/QOpenSys/pkgs/bin/`,
+    names: [`db2util`, `git`, `grep`]
+  },
+  {
+    path: `/usr/bin/`,
+    names: [`Rfile`]
+  }
+];
+
 module.exports = class IBMi {
   constructor() {
     this.client = new node_ssh.NodeSSH;
@@ -32,6 +43,7 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined,
       grep: undefined,
+      Rfile: undefined,
     };
   }
 
@@ -196,15 +208,16 @@ module.exports = class IBMi {
         });
 
         //Next, we see what pase features are available (installed via yum)
-        const packagesPath = `/QOpenSys/pkgs/bin/`;
         try {
           //This may enable certain features in the future.
-          const call = await this.paseCommand(`ls -p ${packagesPath}`);
-          if (typeof call === `string`) {
-            const files = call.split(`\n`);
-            for (const feature of Object.keys(this.remoteFeatures))
-              if (files.includes(feature))
-                this.remoteFeatures[feature] = packagesPath + feature;
+          for (const feature of remoteApps) {
+            const call = await this.paseCommand(`ls -p ${feature.path}`);
+            if (typeof call === `string`) {
+              const files = call.split(`\n`);
+              for (const name of feature.names)
+                if (files.includes(name))
+                  this.remoteFeatures[name] = feature.path + name;
+            }
           }
           
         } catch (e) {}

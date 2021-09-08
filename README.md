@@ -16,6 +16,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * Object browser
 * Settings: Compilation, library list, etc
 * Error listing
+* Source date support
 * Compare: Member to member or IFS, IFS to IFS or member
 * Upload/download: Between local file system and member or IFS
 * Run SQL inline
