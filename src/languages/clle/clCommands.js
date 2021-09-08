@@ -23,50 +23,80 @@ module.exports = class CLCommands {
       vscode.languages.registerCompletionItemProvider({language: `cl`}, {
         provideCompletionItems: async (document, position) => {
           if (this.enabled) {
+            const eol = (document.eol === vscode.EndOfLine.LF ? `\n` : `\r\n`);
+
             /** @type vscode.CompletionItem[] */
             let items = [];
 
-            const line = document.getText(new vscode.Range(position.line, 0, 100, position.line)).toUpperCase();
-            const parts = line.trim().split(` `);
-            const existingParms = parts.map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)) : undefined);
+            let content = document.getText(new vscode.Range(new vscode.Position(0, 0), position));
+            const commentIndex = content.lastIndexOf(`*/`);
+
+            if (commentIndex > -1) {
+              content = content.substring(commentIndex + 2);
+            }
+
+            content = content.split(`\n`).join(` `);
+
+            const parts = content.trim().split(` `).filter(part => part.length > 0);
 
             if (parts.length >= 1) {
-              const name = parts[0];
-
-              let docs;
-              if (this.commands[name]) {
-                docs = this.commands[name];
-              } else {
-                this.commands[name] = await CLCommands.genDefinition(parts[0]);
-                docs = this.commands[name];
-              }
-
-              const commandInfo = docs.QcdCLCmd.Cmd[0][`$`];
-              const paramaters = docs.QcdCLCmd.Cmd[0].Parm;
-
-              let parms = paramaters.map(parm => {
-                const info = parm[`$`];
-                const qual = parm.Qual;
-
-                return {
-                  keyword: info.Kwd,
-                  prompt: info.Prompt,
-                  type: info.Type,
-                  position: Number(info.PosNbr),
+              let nameIndex = -1;
+              
+              for (let i = parts.length - 1; i >= 0; i--) {
+                if (parts[i].includes(`(`) === false && parts[i].includes(`)`) === false) {
+                  nameIndex = i;
+                  break;
                 }
-              });
-
-              parms = parms.filter(parm => existingParms.includes(parm.keyword) === false);
-
-              let item;
-              for (const parm of parms) {
-                item = new vscode.CompletionItem(parm.keyword, vscode.CompletionItemKind.TypeParameter);
-                item.insertText = new vscode.SnippetString(`${parm.keyword}(\${1:value})\$0`)
-                item.detail = parm.prompt + ` ${parm.type ? `(${parm.type})` : ``}`.trimEnd();
-                items.push(item);
               }
 
-              return items;
+              if (nameIndex > -1) {
+                const name = parts[nameIndex];
+                const existingParms = parts.slice(nameIndex).map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)) : undefined);
+
+                let docs;
+                if (this.commands[name]) {
+                  docs = this.commands[name];
+                } else {
+                  this.commands[name] = await CLCommands.genDefinition(name);
+                  docs = this.commands[name];
+                }
+
+                const commandInfo = docs.QcdCLCmd.Cmd[0][`$`];
+                const paramaters = docs.QcdCLCmd.Cmd[0].Parm;
+
+                /** @type {any[]} */
+                let parms = paramaters.map(parm => {
+                  const info = parm[`$`];
+                  const qual = parm.Qual;
+
+                  return {
+                    keyword: info.Kwd,
+                    prompt: info.Prompt,
+                    type: info.Type,
+                    position: Number(info.PosNbr),
+                  }
+                });
+
+                parms = parms.filter(parm => existingParms.includes(parm.keyword) === false);
+
+                let item;
+
+                if (parms.length > 0) {
+                  item = new vscode.CompletionItem(`All parameters`, vscode.CompletionItemKind.Interface);
+                  item.insertText = new vscode.SnippetString(parms.map((parm, idx) => `${parm.keyword}(\${${idx+1}:x})`).join(` `) + `\$0`);
+                  item.detail = commandInfo.Prompt;
+                  items.push(item);
+                }
+
+                for (const parm of parms) {
+                  item = new vscode.CompletionItem(parm.keyword, vscode.CompletionItemKind.TypeParameter);
+                  item.insertText = new vscode.SnippetString(`${parm.keyword}(\${1:value})\$0`);
+                  item.detail = parm.prompt + ` ${parm.type ? `(${parm.type})` : ``}`.trimEnd();
+                  items.push(item);
+                }
+
+                return items;
+              }
             }
 
           }
