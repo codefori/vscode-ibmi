@@ -27,6 +27,7 @@ module.exports = class CLCommands {
             /** @type vscode.CompletionItem[] */
             let items = [];
 
+            // We get the parts of the CL document because we need to find the command we're working with
             const parts = CLCommands.getCLParts(document, new vscode.Range(new vscode.Position(0, 0), position));
 
             if (parts.length >= 1) {
@@ -34,6 +35,7 @@ module.exports = class CLCommands {
               let currentParameter = undefined;
               let nameIndex = -1;
               
+              // We find the command by checking for words without brackets
               for (let i = parts.length - 1; i >= 0; i--) {
                 if (parts[i].includes(`(`) === false && parts[i].includes(`)`) === false) {
                   nameIndex = i;
@@ -41,13 +43,18 @@ module.exports = class CLCommands {
                 }
               }
 
+              // Determine if we're prompting a paramater vs a command
               let parmIdx = parts[parts.length-1].indexOf(`(`);
               if (parmIdx > -1 && parts[parts.length-1].includes(`)`) === false) currentParameter = parts[parts.length-1].substr(0, parmIdx);
 
+              // If we found a command..
               if (nameIndex > -1) {
                 const name = parts[nameIndex].toUpperCase();
+
+                // get the parms we already have defined in the document
                 const existingParms = parts.slice(nameIndex).map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)) : undefined);
 
+                // get the command definition
                 const docs = await this.getCommand(name);
                 
                 if (docs) {
@@ -55,6 +62,7 @@ module.exports = class CLCommands {
                   let item;
 
                   if (currentParameter) {
+                    // If we're prompting a parameter, we show the available options for that parm
                     const singleParm = parms.find(parm => parm.keyword === currentParameter);
                     if (singleParm) {
                       for (const parm of singleParm.specialValues) {
@@ -65,6 +73,7 @@ module.exports = class CLCommands {
                     }
 
                   } else {
+                    // If we're only prompt for command parms, then we show those instead
                     parms = parms.filter(parm => existingParms.includes(parm.keyword) === false);
   
                     if (parms.length > 0) {
@@ -99,14 +108,17 @@ module.exports = class CLCommands {
             let possibleParm = document.getText(new vscode.Range(range.start.line, range.start.character, range.end.line, range.end.character + 1));
 
             if (possibleParm.endsWith(`(`)) {
+              //If the word we're highlighting is a paramater name, we need to find the command that uses it 
               possibleParm = possibleParm.substr(0, possibleParm.length - 1);
 
+              // get the document in parts
               const parts = CLCommands.getCLParts(document, new vscode.Range(new vscode.Position(0, 0), position));
   
               if (parts.length >= 1) {
                 let nameIndex = -1;
                 
-                //We minus two here to not include the highlighed word
+                // Get the command name
+                // We minus two here to not include the highlighed word
                 for (let i = parts.length - 2; i >= 0; i--) {
                   if (parts[i].includes(`(`) === false && parts[i].includes(`)`) === false) {
                     nameIndex = i;
@@ -114,6 +126,7 @@ module.exports = class CLCommands {
                   }
                 }
 
+                // If we found the name, then show the deets
                 if (nameIndex > -1) {
                   command = parts[nameIndex].toUpperCase();
                   const docs = await this.getCommand(command);
@@ -145,6 +158,7 @@ module.exports = class CLCommands {
               }
 
             } else {
+              // If we're not highlighting a paramater, we just show the command info - much easier 
               const docs = await this.getCommand(command);
 
               if (docs) {
