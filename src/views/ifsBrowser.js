@@ -21,27 +21,93 @@ module.exports = class ifsBrowserProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.changeHomeDirectory`, async () => {
-        const connection = instance.getConnection();
+      vscode.commands.registerCommand(`code-for-ibmi.changeWorkingDirectory`, async (node) => {
         const config = instance.getConfig();
         const homeDirectory = config.homeDirectory;
 
-        const newDirectory = await vscode.window.showInputBox({
-          prompt: `Changing home directory`,
-          value: homeDirectory
-        });
+        let newDirectory;
+
+        if (node) {
+          newDirectory = node.path;
+        } else {
+          newDirectory = await vscode.window.showInputBox({
+            prompt: `Changing working directory`,
+            value: homeDirectory
+          });
+        }
 
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
             await config.set(`homeDirectory`, newDirectory);
-            
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+
+            vscode.window.showInformationMessage(`Working directory changed to ${newDirectory}.`);
           }
         } catch (e) {
           console.log(e);
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.addIFSShortcut`, async (node) => {
+        const config = instance.getConfig();
+
+        let newDirectory;
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          newDirectory = node.path;
+        } else {
+          newDirectory = await vscode.window.showInputBox({
+            prompt: `Path to IFS directory`,
+          });
+        }
+
+        try {
+          if (newDirectory) {
+            newDirectory = newDirectory.trim();
+            
+            if (!shortcuts.includes(newDirectory)) {
+              shortcuts.push(newDirectory);
+              await config.set(`ifsShortcuts`, shortcuts);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            }
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node) => {
+        const config = instance.getConfig();
+
+        let removeDir;
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          removeDir = node.path;
+        } else {
+          removeDir = await vscode.window.showQuickPick(shortcuts, {
+            placeHolder: `Select IFS directory to remove`,
+          });
+        }
+
+        try {
+          if (removeDir) {
+            removeDir = removeDir.trim();
+
+            const inx = shortcuts.indexOf(removeDir);
+            
+            if (inx >= 0) {
+              shortcuts.splice(inx, 1);
+              await config.set(`ifsShortcuts`, shortcuts);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            }
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
         const connection = instance.getConnection();
@@ -295,7 +361,7 @@ module.exports = class ifsBrowserProvider {
     if (connection) {
       const config = instance.getConfig();
       
-      if (element) { //Chosen SPF
+      if (element) { //Chosen directory
         //Fetch members
         console.log(element.path);
 
@@ -314,11 +380,12 @@ module.exports = class ifsBrowserProvider {
         }
 
       } else {
-        const objects = await content.getFileList(config.homeDirectory);
+        items = config.ifsShortcuts.map(directory => new Object(`directory`, directory, directory));
+        // const objects = await content.getFileList(config.homeDirectory);
 
-        for (let object of objects) {
-          items.push(new Object(object.type, object.name, object.path));
-        }
+        // for (let object of objects) {
+        //   items.push(new Object(object.type, object.name, object.path));
+        // }
       }
     }
 

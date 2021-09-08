@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.6.6",
+	"version": "0.7.1",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -60,7 +60,7 @@
 		"onCommand:code-for-ibmi.openFileByPath",
 		"onView:ifsBrowser",
 		"onCommand:code-for-ibmi.refreshIFSBrowser",
-		"onCommand:code-for-ibmi.changeHomeDirectory",
+		"onCommand:code-for-ibmi.changeWorkingDirectory",
 		"onCommand:code-for-ibmi.createDirectory",
 		"onCommand:code-for-ibmi.createStreamfile",
 		"onCommand:code-for-ibmi.uploadStreamfile",
@@ -68,9 +68,11 @@
 		"onCommand:code-for-ibmi.deleteIFS",
 		"onCommand:code-for-ibmi.searchIFS",
 		"onCommand:code-for-ibmi.downloadStreamfile",
+		"onCommand:code-for-ibmi.addShortcut",
 		"onView:objectBrowser",
 		"onCommand:code-for-ibmi.refreshObjectList",
 		"onCommand:code-for-ibmi.createSourceFile",
+		"onCommand:code-for-ibmi.createLibrary",
 		"onCommand:code-for-ibmi.addLibraryToObjectBrowser",
 		"onCommand:code-for-ibmi.removeLibraryFromObjectBrowser",
 		"onView:databaseBrowser",
@@ -166,6 +168,15 @@
 								"default": [],
 								"description": "A collection of library lists to easily switch between them on this system."
 							},
+							"ifsShortcuts": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "Path to directory"
+								},
+								"default": [],
+								"description": "List of directories shown in IFS Browser"
+							},
 							"homeDirectory": {
 								"type": "string",
 								"default": ".",
@@ -207,9 +218,28 @@
 								},
 								"default": [],
 								"description": "List of codes that will be hidden in the result of an action (from the EVFEVENT file)"
+							},
+							"enableSourceDates": {
+								"type": "boolean",
+								"default": false,
+								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
+							},
+							"showSourceDates": {
+								"type": "boolean",
+								"default": true,
+								"description": "When enabled, show the source date of the current line being edited in the source member. Requires source dates to be enabled."
 							}
 						}
 					}
+				},
+				"code-for-ibmi.grepIgnoreDirs": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"title": "IFS directory"
+					},
+					"default": ["node_modules", ".git", "vendor", "__pycache__"],
+					"description": "List of directories that will be ignored when searching the IFS."
 				},
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
@@ -307,6 +337,24 @@
 						}
 					},
 					"default": [
+						{
+						    "type": "member",
+						    "extensions": [
+							"CBLLE",
+							"CBL"
+						    ],
+						    "name": "Create Bound COBOL Program (CRTBNDCBL)",
+						    "command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+						},
+						{
+						    "type": "member",
+						    "extensions": [
+							"CBLLE",
+							"CBL"
+						    ],
+						    "name": "Create Module CBLLE (CRTCBLMOD)",
+						    "command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+						},
 						{
 							"type": "member",
 							"extensions": [
@@ -663,14 +711,24 @@
 				"icon": "$(files)"
 			},
 			{
+				"command": "code-for-ibmi.downloadMemberAsFile",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+				"title": "Upload and replace",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.refreshIFSBrowser",
 				"title": "Refresh IFS List",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "code-for-ibmi.changeHomeDirectory",
-				"title": "Change directory",
+				"command": "code-for-ibmi.changeWorkingDirectory",
+				"title": "Change working directory",
 				"category": "IBM i",
 				"icon": "$(root-folder)"
 			},
@@ -686,7 +744,7 @@
 			},
 			{
 				"command": "code-for-ibmi.moveIFS",
-				"title": "Move object",
+				"title": "Rename or Move object",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
@@ -715,6 +773,18 @@
 				"icon": "$(cloud-upload)"
 			},
 			{
+				"command": "code-for-ibmi.addIFSShortcut",
+				"title": "Add IFS shortcut",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.removeIFSShortcut",
+				"title": "Remove IFS shortcut",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.refreshObjectList",
 				"title": "Refresh Object List",
 				"category": "IBM i",
@@ -731,6 +801,12 @@
 				"title": "Add library to Object Browser",
 				"category": "IBM i",
 				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.createLibrary",
+				"title": "Create new library",
+				"category": "IBM i",
+				"icon": "$(repo-create)"
 			},
 			{
 				"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
@@ -854,27 +930,17 @@
 					"when": "view == memberBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createDirectory",
+					"command": "code-for-ibmi.changeWorkingDirectory",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createStreamfile",
+					"command": "code-for-ibmi.addIFSShortcut",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.uploadStreamfile",
-					"group": "navigation",
-					"when": "view == ifsBrowser"
-				},
-				{
-					"command": "code-for-ibmi.changeHomeDirectory",
-					"group": "navigation",
-					"when": "view == ifsBrowser"
-				},
-				{
-					"command": "code-for-ibmi.searchIFS",
+					"command": "code-for-ibmi.removeIFSShortcut",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
@@ -885,6 +951,11 @@
 				},
 				{
 					"command": "code-for-ibmi.addLibraryToObjectBrowser",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createLibrary",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
@@ -974,6 +1045,16 @@
 					"group": "2_memberStuff@3"
 				},
 				{
+					"command": "code-for-ibmi.downloadMemberAsFile",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "3_memberTransfer@1"
+				},
+				{
+					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "3_memberTransfer@2"
+				},
+				{
 					"command": "code-for-ibmi.runActionFromView",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "1_workspace@1"
@@ -1002,6 +1083,16 @@
 					"command": "code-for-ibmi.searchIFS",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "3_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.addIFSShortcut",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.changeWorkingDirectory",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
@@ -1080,6 +1171,7 @@
 		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
-		"barrettotte.ibmi-languages"
+		"barrettotte.ibmi-languages",
+		"HalcyonTechLtd.vscode-ibmi-walkthroughs"
 	]
 }

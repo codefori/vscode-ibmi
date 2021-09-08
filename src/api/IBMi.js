@@ -4,6 +4,17 @@ const vscode = require(`vscode`);
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 
+const remoteApps = [
+  {
+    path: `/QOpenSys/pkgs/bin/`,
+    names: [`db2util`, `git`, `grep`]
+  },
+  {
+    path: `/usr/bin/`,
+    names: [`Rfile`]
+  }
+];
+
 module.exports = class IBMi {
   constructor() {
     this.client = new node_ssh.NodeSSH;
@@ -32,6 +43,7 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined,
       grep: undefined,
+      Rfile: undefined,
     };
   }
 
@@ -96,13 +108,23 @@ module.exports = class IBMi {
           }
         }
 
+        //Set a default IFS listing
+        if (this.config.ifsShortcuts.length === 0) {
+          if (homeDirSet) {
+            await this.config.set(`ifsShortcuts`, [this.config.homeDirectory]);
+          } else {
+            await this.config.set(`ifsShortcuts`, [`/`]);
+          }
+        }
+
+
         progress.report({
           message: `Checking library list configuration.`
         });
 
         //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
         //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-        let currentLibrary;
+        let currentLibrary = `QGPL`;
         this.defaultUserLibraries = [];
         let libraryListString = await this.qshCommand(`liblist`);
         if (typeof libraryListString === `string` && libraryListString !== ``) {
@@ -138,7 +160,7 @@ module.exports = class IBMi {
         //Next, we need to check the temp lib (where temp outfile data lives) exists
         try {
           await this.remoteCommand(
-            `CRTLIB ` + this.config.tempLibrary,
+            `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
             undefined,
           );
 
@@ -186,15 +208,16 @@ module.exports = class IBMi {
         });
 
         //Next, we see what pase features are available (installed via yum)
-        const packagesPath = `/QOpenSys/pkgs/bin/`;
         try {
           //This may enable certain features in the future.
-          const call = await this.paseCommand(`ls -p ${packagesPath}`);
-          if (typeof call === `string`) {
-            const files = call.split(`\n`);
-            for (const feature of Object.keys(this.remoteFeatures))
-              if (files.includes(feature))
-                this.remoteFeatures[feature] = packagesPath + feature;
+          for (const feature of remoteApps) {
+            const call = await this.paseCommand(`ls -p ${feature.path}`);
+            if (typeof call === `string`) {
+              const files = call.split(`\n`);
+              for (const name of feature.names)
+                if (files.includes(name))
+                  this.remoteFeatures[name] = feature.path + name;
+            }
           }
           
         } catch (e) {}

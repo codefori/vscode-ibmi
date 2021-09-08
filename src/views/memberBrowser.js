@@ -1,9 +1,14 @@
 
 const vscode = require(`vscode`);
+const os = require(`os`);
+let fs = require(`fs`);
+const util = require(`util`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 const Search = require(`../api/Search`);
+
+const writeFileAsync = util.promisify(fs.writeFile);
 
 module.exports = class memberBrowserProvider {
   /**
@@ -79,14 +84,34 @@ module.exports = class memberBrowserProvider {
       
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
         if (node) {
+          let fullName;
+          let path = node.path.split(`/`);
+          const requiresSPF = path[1] === `*ALL`;
+
           //Running from right click
-          const fullName = await vscode.window.showInputBox({
-            prompt: `Name of new source member`
+          fullName = await vscode.window.showInputBox({
+            prompt: `Name of new source member (${requiresSPF ? `file/member.ext` : `member.ext`})`
           });
 
           if (fullName) {
+            if (requiresSPF) {
+              const spfSplit = fullName.indexOf(`/`);
+
+              if (spfSplit > 0) {
+                path[1] = fullName.substring(0, spfSplit).trim().toUpperCase();
+                fullName = fullName.substring(spfSplit + 1);
+
+                if (path[1].length === 0) {
+                  vscode.window.showErrorMessage(`Source file required in path.`);
+                  return;
+                }
+              } else {
+                vscode.window.showErrorMessage(`Source file required in path.`);
+                return;
+              }
+            }
+
             const connection = instance.getConnection();
-            const path = node.path.split(`/`);
             const [name, extension] = fullName.split(`.`);
 
             if (extension !== undefined && extension.length > 0) {
@@ -276,52 +301,134 @@ module.exports = class memberBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node) => {
+        const contentApi = instance.getContent();
+
+        let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
+ 
+        if (originPath) {
+          const path = node.path.split(`/`);
+          let asp, lib, file, fullName;
+      
+          if (path.length === 3) {
+            lib = path[0];
+            file = path[1];
+            fullName = path[2];
+          } else {
+            asp = path[0];
+            lib = path[1];
+            file = path[2];
+            fullName = path[3];
+          }
+
+          const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+
+          const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
+          
+          try {
+            contentApi.uploadMemberContent(asp, lib, file, name, data);
+            vscode.window.showInformationMessage(`Member was uploaded.`);
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
+          }
+        }
+  
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
+        const contentApi = instance.getContent();
+
+        const path = node.path.split(`/`);
+        let asp, lib, file, fullName;
+    
+        if (path.length === 3) {
+          lib = path[0];
+          file = path[1];
+          fullName = path[2];
+        } else {
+          asp = path[0];
+          lib = path[1];
+          file = path[2];
+          fullName = path[3];
+        }
+    
+        const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+        const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+
+        if (node) {
+          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + fullName) });
+
+          if (localFilepath) {
+            let localPath = localFilepath.path;
+            if (process.platform === `win32`) {
+              //Issue with getFile not working propertly on Windows
+              //when there was a / at the start.
+              if (localPath[0] === `/`) localPath = localPath.substr(1);
+            }
+
+            try {
+              await writeFileAsync(localPath, memberContent, `utf8`);
+              vscode.window.showInformationMessage(`Member was downloaded.`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error downloading member! ${e}`);
+            }
+          }
+
+        } else {
+          //Running from command.
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node) => {
         if (node) {
           const content = instance.getContent();
 
           const path = node.path.split(`/`);
 
-          let searchTerm = await vscode.window.showInputBox({
-            prompt: `Search ${node.path}.`
-          });
+          if (path[1] !== `*ALL`) {
+            let searchTerm = await vscode.window.showInputBox({
+              prompt: `Search ${node.path}.`
+            });
 
-          if (searchTerm) {
-            vscode.window.showInformationMessage(`Starting search for '${searchTerm}' in ${node.path}..`);
+            if (searchTerm) {
+              vscode.window.showInformationMessage(`Starting search for '${searchTerm}' in ${node.path}..`);
             
-            try {
-              let members = [];
+              try {
+                let members = [];
 
-              if (!(node.path in this.refreshCache)) {
-                this.refreshCache[node.path] = await content.getMemberList(path[0], path[1]);
-              }
+                if (!(node.path in this.refreshCache)) {
+                  this.refreshCache[node.path] = await content.getMemberList(path[0], path[1]);
+                }
 
-              members = this.refreshCache[node.path];
+                members = this.refreshCache[node.path];
 
-              if (members.length > 0) {
-                const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
+                if (members.length > 0) {
+                  const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
 
-                results.forEach(result => {
-                  const resultPath = result.path.split(`/`);
-                  const resultName = resultPath[resultPath.length-1];
-                  result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
-                });
+                  results.forEach(result => {
+                    const resultPath = result.path.split(`/`);
+                    const resultName = resultPath[resultPath.length-1];
+                    result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
+                  });
 
-                const resultDoc = Search.generateDocument(`member`, results);
+                  const resultDoc = Search.generateDocument(`member`, results);
   
-                const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
-                const editor = await vscode.window.showTextDocument(textDoc);
-                editor.edit(edit => {
-                  edit.insert(new vscode.Position(0, 0), resultDoc);
-                })
+                  const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
+                  const editor = await vscode.window.showTextDocument(textDoc);
+                  editor.edit(edit => {
+                    edit.insert(new vscode.Position(0, 0), resultDoc);
+                  })
 
-              } else {
-                vscode.window.showErrorMessage(`No members to search.`);
+                } else {
+                  vscode.window.showErrorMessage(`No members to search.`);
+                }
+
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error searching source members.`);
               }
-
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error searching source members.`);
             }
+          } else {
+            vscode.window.showErrorMessage(`Cannot search listings using *ALL.`);
           }
 
         } else {

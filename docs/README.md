@@ -2,7 +2,7 @@
 
 ## IBM i development extension for VS Code
 
-Maiintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
+Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
 ![intro_01.png](assets/intro_01.png)
 
 ![intro_02.png](assets/intro_02.png)
@@ -308,7 +308,11 @@ Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
 
-Temporary library. Is used to OUTPUT files. Cannot be QTEMP.
+Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP. 
+Default value: ILEDITOR.
+Note: If your IBM i runs replication software, there is no need to replicate the temporary library. Your sysadmin may add it to the list of objects to be ignored.
+
+
 #### Source ASP
 
 If source files are located in a specific ASP, specify here.

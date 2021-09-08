@@ -16,6 +16,9 @@ module.exports = class SettingsUI {
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async () => {
         const config = instance.getConfig();
 
+        const restartFields = [`enableSQL`, `enableSourceDates`, `showSourceDates`];
+        let restart = false;
+
         let ui = new CustomUI();
         let field;
     
@@ -44,6 +47,16 @@ module.exports = class SettingsUI {
         field.description = `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`;
         ui.addField(field);
     
+        field = new Field(`checkbox`, `enableSourceDates`, `Enable Source Dates`);
+        field.default = (config.enableSourceDates ? `checked` : ``);
+        field.description = `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`;
+        ui.addField(field);
+    
+        field = new Field(`checkbox`, `showSourceDates`, `Show Source Dates`);
+        field.default = (config.showSourceDates ? `checked` : ``);
+        field.description = `Show the source date of the current line being edited in the source member. Requires source dates to be enabled. Requires restart when changed.`;
+        ui.addField(field);
+    
         field = new Field(`submit`, `save`, `Save settings`);
         ui.addField(field);
     
@@ -64,8 +77,21 @@ module.exports = class SettingsUI {
               break;
             }
           }
+
+          if (restartFields.some(item => data[item] !== config[item])) {
+            restart = true;
+          }
           
-          config.setMany(data);
+          await config.setMany(data);
+
+          if (restart) {
+            vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+              .then(async (value) => {
+                if (value === `Reload`) {
+                  await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                }
+              });
+          }
         }
       })
     )

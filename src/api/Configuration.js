@@ -23,6 +23,9 @@ module.exports = class Configuration {
     /** @type {{name: string, list: string[]}[]} */
     this.libraryListProfiles = base.libraryListProfiles || [];
 
+    /** @type {string[]} */
+    this.ifsShortcuts = base.ifsShortcuts || [];
+
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
@@ -38,11 +41,17 @@ module.exports = class Configuration {
     /** @type {string} */
     this.sourceFileCCSID = base.sourceFileCCSID || `*FILE`;
 
-    /** @type {boolean} */
-    this.enableSQL = base.enableSQL || false;
+    /** @type {boolean} Undefined means not created, so default to on */
+    this.enableSQL = (base.enableSQL === true || base.enableSQL === undefined);
 
     /** @type {string[]} */
     this.hideCompileErrors = base.hideCompileErrors || [];
+
+    /** @type {boolean} */
+    this.enableSourceDates = (base.enableSourceDates === true);
+
+    /** @type {boolean} Undefined means not created, so default to on */
+    this.showSourceDates = (base.showSourceDates === true || base.showSourceDates === undefined);
   }
 
   /**
