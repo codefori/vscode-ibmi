@@ -338,6 +338,24 @@
 					},
 					"default": [
 						{
+						    "type": "member",
+						    "extensions": [
+							"CBLLE",
+							"CBL"
+						    ],
+						    "name": "Create Bound COBOL Program (CRTBNDCBL)",
+						    "command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+						},
+						{
+						    "type": "member",
+						    "extensions": [
+							"CBLLE",
+							"CBL"
+						    ],
+						    "name": "Create Module CBLLE (CRTCBLMOD)",
+						    "command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+						},
+						{
 							"type": "member",
 							"extensions": [
 								"RPGLE",
