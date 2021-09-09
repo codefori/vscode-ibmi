@@ -338,8 +338,11 @@ module.exports = class Instance {
         );
         
         new rpgleLinter(context);
-        const clInstance = new CLCommands(context);
-        clInstance.init();
+
+        if (config.clContentAssistEnabled) {
+          const clInstance = new CLCommands(context);
+          clInstance.init();
+        }
 
         //********* Actions */
 

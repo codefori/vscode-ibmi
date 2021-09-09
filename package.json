@@ -228,6 +228,11 @@
 								"type": "boolean",
 								"default": true,
 								"description": "When enabled, show the source date of the current line being edited in the source member. Requires source dates to be enabled."
+							},
+							"clContentAssistEnabled": {
+								"type": "boolean",
+								"default": false,
+								"description": "Enables the CL content assist and hover support."
 							}
 						}
 					}

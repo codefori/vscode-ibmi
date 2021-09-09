@@ -52,6 +52,9 @@ module.exports = class Configuration {
 
     /** @type {boolean} Undefined means not created, so default to on */
     this.showSourceDates = (base.showSourceDates === true || base.showSourceDates === undefined);
+
+    /** @type {boolean} */
+    this.clContentAssistEnabled = (base.clContentAssistEnabled === true);
   }
 
   /**

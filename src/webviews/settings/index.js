@@ -16,7 +16,7 @@ module.exports = class SettingsUI {
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async () => {
         const config = instance.getConfig();
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `showSourceDates`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `showSourceDates`, `clContentAssistEnabled`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -55,6 +55,11 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `showSourceDates`, `Show Source Dates`);
         field.default = (config.showSourceDates ? `checked` : ``);
         field.description = `Show the source date of the current line being edited in the source member. Requires source dates to be enabled. Requires restart when changed.`;
+        ui.addField(field);
+    
+        field = new Field(`checkbox`, `clContentAssistEnabled`, `CL Content Assist enabled`);
+        field.default = (config.clContentAssistEnabled ? `checked` : ``);
+        field.description = `Enable CL content assist and hover support. After enabled and restarted, Code for IBM i will ask you to install the required tools for the feature to work. This will install programs into your temporary library.`;
         ui.addField(field);
     
         field = new Field(`submit`, `save`, `Save settings`);
