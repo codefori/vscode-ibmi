@@ -15,6 +15,13 @@ module.exports = class {
   static begin(context) {
     const config = instance.getConfig();
 
+    let sourceDateBarItem;
+    if (config.sourceDateLocation === `bar`) {
+      sourceDateBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+      sourceDateBarItem.text = `$(clock)`;
+      sourceDateBarItem.show();
+    }
+
     context.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document.uri.scheme === `member`) {
@@ -90,14 +97,11 @@ module.exports = class {
       })
     );
 
-    if (config.showSourceDates) {
+    if (config.sourceDateLocation !== `none`) {
       context.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection(event => {
           if (event.textEditor.document.uri.scheme === `member`) {
             const editor = event.textEditor;
-
-            /** @type {vscode.DecorationOptions[]} */
-            let annotations = [];
 
             const line = event.selections[0].active.line;
 
@@ -120,25 +124,47 @@ module.exports = class {
             const sourceDates = allSourceDates[alias];
 
             if (sourceDates && sourceDates[line]) {
-              annotations.push({
-                range: new vscode.Range(
-                  new vscode.Position(line, Number.MAX_SAFE_INTEGER),
-                  new vscode.Position(line, Number.MAX_SAFE_INTEGER)
-                ),
-                renderOptions: {
-                  after: {
-                    color: new vscode.ThemeColor(`editorLineNumber.foreground`),
-                    contentText: sourceDates[line],
-                    fontWeight: `normal`,
-                    fontStyle: `normal`,
-                    // Pull the decoration out of the document flow if we want to be scrollable
-                    textDecoration: `position: absolute;`,
+
+              switch (config.sourceDateLocation) {
+              case `bar`:
+                sourceDateBarItem.text = `$(calendar) ${sourceDates[line]}`;
+                break;
+                
+              case `inline`:
+                /** @type {vscode.DecorationOptions[]} */
+                let annotations = [];
+
+                annotations.push({
+                  range: new vscode.Range(
+                    new vscode.Position(line, Number.MAX_SAFE_INTEGER),
+                    new vscode.Position(line, Number.MAX_SAFE_INTEGER)
+                  ),
+                  renderOptions: {
+                    after: {
+                      color: new vscode.ThemeColor(`editorLineNumber.foreground`),
+                      contentText: sourceDates[line],
+                      fontWeight: `normal`,
+                      fontStyle: `normal`,
+                      // Pull the decoration out of the document flow if we want to be scrollable
+                      textDecoration: `position: absolute;`,
+                    },
                   },
-                },
-              });
+                });
+
+
+                editor.setDecorations(annotationDecoration, annotations);
+                break;
+              }
+            } else {
+              if (sourceDateBarItem) {
+                sourceDateBarItem.text = `$(clock)`;
+              }
             }
 
-            editor.setDecorations(annotationDecoration, annotations);
+          } else {
+            if (sourceDateBarItem) {
+              sourceDateBarItem.text = `$(clock)`;
+            }
           }
         })
       );
