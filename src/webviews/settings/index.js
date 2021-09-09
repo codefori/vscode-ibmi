@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
         ui.addField(field);
     
         field = new Field(`input`, `hideCompileErrors`, `Errors to ignore`);
-        field.default = config.hideCompileErrors.join(`,`);
+        field.default = config.hideCompileErrors.join(`, `);
         field.description = `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`;
         ui.addField(field);
     
@@ -57,7 +57,7 @@ module.exports = class SettingsUI {
         field.description = `Show the source date of the current line being edited in the source member. Requires source dates to be enabled. Requires restart when changed.`;
         ui.addField(field);
     
-        field = new Field(`checkbox`, `clContentAssistEnabled`, `CL Content Assist enabled`);
+        field = new Field(`checkbox`, `clContentAssistEnabled`, `Enable CL Content Assist`);
         field.default = (config.clContentAssistEnabled ? `checked` : ``);
         field.description = `Enable CL content assist and hover support. After enabled and restarted, Code for IBM i will ask you to install the required tools for the feature to work. This will install programs into your temporary library.`;
         ui.addField(field);
