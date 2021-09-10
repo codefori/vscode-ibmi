@@ -18,7 +18,8 @@ module.exports = class {
     let sourceDateBarItem;
     if (config.sourceDateLocation === `bar`) {
       sourceDateBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
-      sourceDateBarItem.text = `$(clock)`;
+      sourceDateBarItem.text = `$(calendar)`;
+      sourceDateBarItem.tooltip = `Source date`;
       sourceDateBarItem.show();
     }
 
@@ -105,7 +106,8 @@ module.exports = class {
 
             const line = event.selections[0].active.line;
 
-            const path = event.textEditor.document.uri.path.split(`/`);
+            const normalPath = event.textEditor.document.uri.path;
+            const path = normalPath.split(`/`);
             let lib, file, fullName;
 
             if (path.length === 4) {
@@ -128,6 +130,7 @@ module.exports = class {
               switch (config.sourceDateLocation) {
               case `bar`:
                 sourceDateBarItem.text = `$(calendar) ${sourceDates[line]}`;
+                sourceDateBarItem.tooltip = `Line ${line+1} ${normalPath}`;
                 break;
                 
               case `inline`:
@@ -157,14 +160,11 @@ module.exports = class {
               }
             } else {
               if (sourceDateBarItem) {
-                sourceDateBarItem.text = `$(clock)`;
+                sourceDateBarItem.text = `$(calendar)`;
+                sourceDateBarItem.tooltip = `Source date`;
               }
             }
 
-          } else {
-            if (sourceDateBarItem) {
-              sourceDateBarItem.text = `$(clock)`;
-            }
           }
         })
       );
