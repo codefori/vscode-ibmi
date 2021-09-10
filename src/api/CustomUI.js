@@ -49,7 +49,7 @@ class CustomUI {
   getHTML(panel) {
     const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
 
-    const notInputFields = [`submit`, `tree`, `hr`];
+    const notInputFields = [`submit`, `tree`, `hr`, `paragraph`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     return `

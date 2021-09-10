@@ -4,6 +4,7 @@ const vscode = require(`vscode`);
 const Configuration = require(`../api/Configuration`);
 
 const LoginPanel = require(`../webviews/login`);
+const settingsUI = require(`../webviews/settings`);
 
 module.exports = class objectBrowserProvider {
   /**
@@ -12,6 +13,8 @@ module.exports = class objectBrowserProvider {
   constructor(context) {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
+
+    settingsUI.init(context);
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.connect`, () => {

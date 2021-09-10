@@ -103,7 +103,6 @@ module.exports = class Instance {
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
-    const settingsUI = require(`./webviews/settings`);
     const actionsUI = require(`./webviews/actions`);
 
     const rpgleLinter = require(`./languages/rpgle/linter`);
@@ -121,7 +120,7 @@ module.exports = class Instance {
         context.subscriptions.push(connectedBarItem);
       }
       
-      connectedBarItem.text = `Settings: ${instance.connection.currentHost}`;
+      connectedBarItem.text = `Settings: ${config.name}`;
       connectedBarItem.show();
 
       if (!actionsBarItem) {
@@ -163,7 +162,6 @@ module.exports = class Instance {
           })
         );
 
-        settingsUI.init(context);
         actionsUI.init(context);
 
         //********* Library list view */

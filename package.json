@@ -35,7 +35,6 @@
 		"onCommand:code-for-ibmi.openEditable",
 		"onCommand:code-for-ibmi.selectForCompare",
 		"onCommand:code-for-ibmi.compareWithSelected",
-		"onCommand:code-for-ibmi.showAdditionalSettings",
 		"onCommand:code-for-ibmi.showActionsMaintenance",
 		"onCommand:code-for-ibmi.changeCurrentLibrary",
 		"onCommand:code-for-ibmi.rpgleOpenInclude",
@@ -43,6 +42,7 @@
 		"onCommand:code-for-ibmi.connect",
 		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.refreshConnections",
+		"onCommand:code-for-ibmi.showAdditionalSettings",
 		"onView:libraryListView",
 		"onCommand:code-for-ibmi.refreshLibraryListView",
 		"onCommand:code-for-ibmi.addToLibraryList",
@@ -580,6 +580,11 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.showAdditionalSettings",
+				"title": "Connection settings",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete connection",
 				"category": "IBM i"
@@ -1019,6 +1024,10 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.deleteConnection",
+					"when": "view == connectionBrowser && viewItem == server"
+				},
+				{
+					"command": "code-for-ibmi.showAdditionalSettings",
 					"when": "view == connectionBrowser && viewItem == server"
 				},
 				{

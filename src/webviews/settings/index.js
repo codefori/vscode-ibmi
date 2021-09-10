@@ -2,6 +2,7 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
+const Configuration = require(`../../api/Configuration`);
 let instance = require(`../../Instance`);
 
 module.exports = class SettingsUI {
@@ -13,8 +14,34 @@ module.exports = class SettingsUI {
   static init(context) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async () => {
-        const config = instance.getConfig();
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server) => {
+        const connectionSettings = Configuration.get(`connectionSettings`);
+        const connection = instance.getConnection();
+
+        let name;
+        let existingConfigIndex;
+        let config;
+
+        if (server) {
+          name = server.name;
+          existingConfigIndex = connectionSettings.findIndex(connection => connection.name === name);
+
+          if (existingConfigIndex >= 0) {
+            config = connectionSettings[existingConfigIndex];
+          } else {
+            vscode.window.showErrorMessage(`Connection ${name} not found`);
+            return;
+          }
+
+        } else {
+          if (connection) {
+            config = await instance.getConfig();
+            name = config.name;
+          } else {
+            vscode.window.showErrorMessage(`No connection is active.`);
+            return;
+          }
+        }
 
         const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
         let restart = false;
@@ -90,7 +117,7 @@ module.exports = class SettingsUI {
         field = new Field(`submit`, `save`, `Save settings`);
         ui.addField(field);
     
-        let {panel, data} = await ui.loadPage(`Additional settings`);
+        let {panel, data} = await ui.loadPage(`Settings: ${name}`);
     
         if (data) {
           panel.dispose();
@@ -108,11 +135,25 @@ module.exports = class SettingsUI {
             }
           }
 
-          if (restartFields.some(item => data[item] !== config[item])) {
-            restart = true;
+          if (server) {
+            if (existingConfigIndex >= 0) {
+              config = {
+                ...config,
+                ...data,
+              };
+
+              connectionSettings[existingConfigIndex] = config;
+              await Configuration.setGlobal(`connectionSettings`, connectionSettings);
+            }
+          } else {
+            if (connection) {
+              if (restartFields.some(item => data[item] !== config[item])) {
+                restart = true;
+              }
+              
+              await config.setMany(data);
+            }
           }
-          
-          await config.setMany(data);
 
           if (restart) {
             vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
