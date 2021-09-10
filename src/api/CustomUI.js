@@ -49,7 +49,7 @@ class CustomUI {
   getHTML(panel) {
     const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
 
-    const notInputFields = [`submit`, `tree`];
+    const notInputFields = [`submit`, `tree`, `hr`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     return `
@@ -162,12 +162,12 @@ class CustomUI {
 class Field  {
   /**
    * 
-   * @param {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"} type 
-   * @param {string} id 
-   * @param {string} label 
+   * @param {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} type 
+   * @param {string} [id] 
+   * @param {string} [label] 
    */
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"} */
+    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} */
     this.type = type;
 
     /** @type {string} */
@@ -196,13 +196,15 @@ class Field  {
     switch (this.type) {
     case `submit`:
       return `<vscode-button id="${this.id}">${this.label}</vscode-button>`;
+    case `hr`:
+      return `<hr />`;
     case `checkbox`:
       return `
         <vscode-form-item>
-        <vscode-form-control>
-        <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
-        ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
-        </vscode-form-control>
+          <vscode-form-control>
+          <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
+          ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+          </vscode-form-control>
         </vscode-form-item>`;
     case `input`:
       return `
