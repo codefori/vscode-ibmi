@@ -17,6 +17,8 @@ module.exports = class Login {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
       if (!instance.disconnect()) return;
     }
+    
+    let existingConnections = Configuration.get(`connections`);
 
     let ui = new CustomUI();
 
@@ -32,41 +34,51 @@ module.exports = class Login {
     const {panel, data} = await ui.loadPage(`IBM i Login`);
 
     if (data) {
+      panel.dispose();
+
       data.port = Number(data.port);
 
-      vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
+      if (data.name) {
+        const existingConnection = existingConnections.find(item => item.name === data.name);
 
-      const connection = new IBMi();
+        if (existingConnection) {
+          vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
+        } else {
+          vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
 
-      try {
-        const connected = await connection.connect(data);
-        if (connected.success) {
-
-          vscode.window.showInformationMessage(`Connected to ${data.host}!`);
-
-          instance.setConnection(connection);
-          instance.loadAllofExtension(context);
-
-          let existingConnections = Configuration.get(`connections`);
-          if (!existingConnections.some(item => item.name === data.name)) {
-            existingConnections.push({
-              name: data.name,
-              host: data.host,
-              port: data.port,
-              username: data.username,
-              privateKey: data.privateKey
-            });
-            await Configuration.setGlobal(`connections`, existingConnections);
+          const connection = new IBMi();
+    
+          try {
+            const connected = await connection.connect(data);
+            if (connected.success) {
+    
+              vscode.window.showInformationMessage(`Connected to ${data.host}!`);
+    
+              instance.setConnection(connection);
+              instance.loadAllofExtension(context);
+    
+              if (!existingConnections.some(item => item.name === data.name)) {
+                existingConnections.push({
+                  name: data.name,
+                  host: data.host,
+                  port: data.port,
+                  username: data.username,
+                  privateKey: data.privateKey
+                });
+                await Configuration.setGlobal(`connections`, existingConnections);
+              }
+    
+            } else {
+              vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
+            }
+    
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
           }
 
-        } else {
-          vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
         }
-
-        panel.dispose();
-
-      } catch (e) {
-        vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
+      } else {
+        vscode.window.showErrorMessage(`Connection name is required.`);
       }
     }
 
