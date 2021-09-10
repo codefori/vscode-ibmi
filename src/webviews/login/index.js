@@ -2,13 +2,14 @@ const vscode = require(`vscode`);
 
 const IBMi = require(`../../api/IBMi`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
+const Configuration = require(`../../api/Configuration`);
 
 let instance = require(`../../Instance`);
 
 module.exports = class Login {
 
   /**
-   * Called to log in to an IBM i
+   * Called when logging into a brand new system
    * @param {vscode.ExtensionContext} context
    */
   static async show(context) {
@@ -46,8 +47,7 @@ module.exports = class Login {
           instance.setConnection(connection);
           instance.loadAllofExtension(context);
 
-          let existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
-          let existingConnections = existingConnectionsConfig.get(`connections`);
+          let existingConnections = Configuration.get(`connections`);
           if (!existingConnections.some(item => item.name === data.name)) {
             existingConnections.push({
               name: data.name,
@@ -56,7 +56,7 @@ module.exports = class Login {
               username: data.username,
               privateKey: data.privateKey
             });
-            await existingConnectionsConfig.update(`connections`, existingConnections, vscode.ConfigurationTarget.Global);
+            await Configuration.setGlobal(`connections`, existingConnections);
           }
 
         } else {
@@ -75,35 +75,23 @@ module.exports = class Login {
   }
 
   /**
-   * Shows window which will let the user pick from previous connections
+   * Start the login process to connect to a system
+   * @param {string} name Connection name
    * @param {vscode.ExtensionContext} context
    */
-  static async LoginToPrevious(context) {
+  static async LoginToPrevious(name, context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
       if (!instance.disconnect()) return;
     }
 
-    const existingConnectionsConfig = vscode.workspace.getConfiguration(`code-for-ibmi`);
-    const existingConnections = existingConnectionsConfig
-      .get(`connections`)
-      .map(item => ({
-        label: `${item.name}`,
-        config: item
-      }));
-
-    let selected = undefined;
-    if (existingConnections.length === 1)
-      selected = existingConnections[0];
-    else
-      selected = await vscode.window.showQuickPick(existingConnections, {canPickMany: false});
+    const existingConnections = Configuration.get(`connections`);
+    const connectionConfig = existingConnections.find(item => item.name === name);
  
-    if (selected) {
-      let connectionConfig = selected[`config`];
-
+    if (connectionConfig) {
       if (!connectionConfig.privateKey) {
         connectionConfig.password = await vscode.window.showInputBox({
-          prompt: `Password for ${selected[`label`]}`,
+          prompt: `Password for ${connectionConfig.name}`,
           password: true
         });
         
