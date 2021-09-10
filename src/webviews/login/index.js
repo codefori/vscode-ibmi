@@ -17,7 +17,7 @@ module.exports = class Login {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
       if (!instance.disconnect()) return;
     }
-    
+
     let existingConnections = Configuration.get(`connections`);
 
     let ui = new CustomUI();
@@ -27,6 +27,7 @@ module.exports = class Login {
     ui.addField(new Field(`input`, `port`, `Port`));
     ui.fields[2].default = `22`;
     ui.addField(new Field(`input`, `username`, `Username`));
+    ui.addField(new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`));
     ui.addField(new Field(`password`, `password`, `Password`));
     ui.addField(new Field(`file`, `privateKey`, `Private Key`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));

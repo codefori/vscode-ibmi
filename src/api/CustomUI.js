@@ -160,8 +160,14 @@ class CustomUI {
 }
 
 class Field  {
+  /**
+   * 
+   * @param {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"} type 
+   * @param {string} id 
+   * @param {string} label 
+   */
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"}} */
+    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"} */
     this.type = type;
 
     /** @type {string} */
