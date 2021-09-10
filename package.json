@@ -28,8 +28,6 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:code-for-ibmi.connect",
-		"onCommand:code-for-ibmi.connectPrevious",
 		"onCommand:code-for-ibmi.disconnect",
 		"onCommand:code-for-ibmi.clearDiagnostics",
 		"onCommand:code-for-ibmi.runAction",
@@ -41,6 +39,10 @@
 		"onCommand:code-for-ibmi.showActionsMaintenance",
 		"onCommand:code-for-ibmi.changeCurrentLibrary",
 		"onCommand:code-for-ibmi.rpgleOpenInclude",
+		"onView:connectionBrowser",
+		"onCommand:code-for-ibmi.connect",
+		"onCommand:code-for-ibmi.connectPrevious",
+		"onCommand:code-for-ibmi.refreshConnections",
 		"onView:libraryListView",
 		"onCommand:code-for-ibmi.refreshLibraryListView",
 		"onCommand:code-for-ibmi.addToLibraryList",
@@ -224,11 +226,16 @@
 								"default": false,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
-							"config.sourceDateLocation": {
+							"sourceDateLocation": {
 								"type": "string",
 								"default": "none",
 								"enum": ["none", "bar", "inline"],
 								"description": "The location of the source date of the current line will be displayed."
+							},
+							"clContentAssistEnabled": {
+								"type": "boolean",
+								"default": false,
+								"description": "Enables the CL content assist and hover support."
 							}
 						}
 					}
@@ -556,12 +563,24 @@
 		"commands": [
 			{
 				"command": "code-for-ibmi.connect",
-				"title": "Connect",
-				"category": "IBM i"
+				"title": "New Connection",
+				"category": "IBM i",
+				"icon": "$(add)"
 			},
 			{
 				"command": "code-for-ibmi.connectPrevious",
 				"title": "Connect to previous",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.refreshConnections",
+				"title": "Refresh connections",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.deleteConnection",
+				"title": "Delete connection",
 				"category": "IBM i"
 			},
 			{
@@ -608,7 +627,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshLibraryListView",
-				"title": "Remove from library list",
+				"title": "Refresh library list view",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -853,9 +872,9 @@
 			},
 			{
 				"command": "code-for-ibmi.rpgleOpenInclude",
-        "key": "shift+f12",
-        "mac": "shift+f12",
-        "when": "editorLangId == rpgle"
+				"key": "shift+f12",
+				"mac": "shift+f12",
+				"when": "editorLangId == rpgle"
 			}
 		],
 		"viewsContainers": {
@@ -870,31 +889,51 @@
 		"views": {
 			"ibmi-explorer": [
 				{
+					"id": "connectionBrowser",
+					"name": "Servers",
+					"when": "code-for-ibmi:connected == false"
+				},
+				{
 					"id": "libraryListView",
-					"name": "User Library List"
+					"name": "User Library List",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "memberBrowser",
-					"name": "Member Browser"
+					"name": "Member Browser",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "ifsBrowser",
-					"name": "IFS Browser"
+					"name": "IFS Browser",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"visibility": "collapsed"
+					"visibility": "collapsed",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "databaseBrowser",
 					"name": "Database Browser",
-					"visibility": "collapsed"
+					"visibility": "collapsed",
+					"when": "code-for-ibmi:connected == true"
 				}
 			]
 		},
 		"menus": {
 			"view/title": [
+				{
+					"command": "code-for-ibmi.connect",
+					"group": "navigation",
+					"when": "view == connectionBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshConnections",
+					"group": "navigation",
+					"when": "view == connectionBrowser"
+				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
 					"group": "navigation",
@@ -978,18 +1017,22 @@
 			],
 			"view/item/context": [
 				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "view == connectionBrowser && viewItem == server"
+				},
+				{
 					"command": "code-for-ibmi.moveLibraryUp",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryMove@1"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryDown",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryMove@2"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryRemove@1"
 				},
 				{
@@ -1131,14 +1174,8 @@
 		},
 		"viewsWelcome": [
 			{
-				"view": "libraryListView",
-				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)",
-				"when": "code-for-ibmi:connected == false"
-			},
-			{
-				"view": "memberBrowser",
-				"contents": "No source file",
-				"when": "code-for-ibmi:connected == true"
+				"view": "connectionBrowser",
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
 			}
 		]
 	},
@@ -1168,7 +1205,8 @@
 		"@bendera/vscode-webview-elements": "^0.3.0",
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
-		"tmp": "^0.2.1"
+		"tmp": "^0.2.1",
+		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",

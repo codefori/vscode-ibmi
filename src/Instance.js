@@ -107,6 +107,7 @@ module.exports = class Instance {
     const actionsUI = require(`./webviews/actions`);
 
     const rpgleLinter = require(`./languages/rpgle/linter`);
+    const CLCommands = require(`./languages/clle/clCommands`);
 
     if (instance.connection) {
       CompileTools.register(context);
@@ -338,6 +339,11 @@ module.exports = class Instance {
         
         new rpgleLinter(context);
 
+        if (config.clContentAssistEnabled) {
+          const clInstance = new CLCommands(context);
+          clInstance.init();
+        }
+
         //********* Actions */
 
         context.subscriptions.push(
@@ -375,6 +381,8 @@ module.exports = class Instance {
             CompileTools.RunAction(this, node.resourceUri);
           })
         );
+
+        
 
         initialisedBefore = true;
       }

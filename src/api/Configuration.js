@@ -52,6 +52,9 @@ module.exports = class Configuration {
 
     /** @type {"none"|"bar"|"inline"} */
     this.sourceDateLocation = base.sourceDateLocation || `none`;
+
+    /** @type {boolean} */
+    this.clContentAssistEnabled = (base.clContentAssistEnabled === true);
   }
 
   /**

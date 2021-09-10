@@ -453,58 +453,101 @@ module.exports = class memberBrowserProvider {
   }
 
   /**
-   * @param {SPF?} element
+   * @param {SPF|Library} element
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
-    const content = instance.getContent();
+    const connection = instance.getConnection();
     let items = [], item;
 
-    if (element) { //Chosen SPF
-      //Fetch members
-      console.log(element.path);
-      const [lib, spf] = element.path.split(`/`);
+    if (connection) {
+      const content = instance.getContent();
+      const config = instance.getConfig();
+      const shortcuts = config.sourceFileList;
 
-      // init cache entry if not exists
-      let cacheExists = element.path in this.refreshCache;
-      if(!cacheExists){
-        this.refreshCache[element.path] = []; // init cache entry
-      }
+      if (element) {
+        switch (element.contextValue) {
+        case `SPF`:
+        //Fetch members
+          console.log(element.path);
+          const [lib, spf] = element.path.split(`/`);
 
-      // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
-      if(!cacheExists || ([lib, `*ALL`].includes(this.targetLib) && [spf, `*ALL`].includes(this.targetSpf))){
-        try {
-          const members = await content.getMemberList(lib, spf);
-          this.refreshCache[element.path] = members; // reset cache since we're getting new data
+          // init cache entry if not exists
+          let cacheExists = element.path in this.refreshCache;
+          if(!cacheExists){
+            this.refreshCache[element.path] = []; // init cache entry
+          }
 
-          items.push(...members.map(member => new Member(member)));
+          // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
+          if(!cacheExists || ([lib, `*ALL`].includes(this.targetLib) && [spf, `*ALL`].includes(this.targetSpf))){
+            try {
+              const members = await content.getMemberList(lib, spf);
+              this.refreshCache[element.path] = members; // reset cache since we're getting new data
 
-        } catch (e) {
-          console.log(e);
-          item = new vscode.TreeItem(`Error loading members.`);
-          vscode.window.showErrorMessage(e);
-          items = [item];
+              items.push(...members.map(member => new Member(member)));
+
+            } catch (e) {
+              console.log(e);
+              item = new vscode.TreeItem(`Error loading members.`);
+              vscode.window.showErrorMessage(e);
+              items = [item];
+            }
+
+          } else {
+            // add cached items to tree
+            const members = this.refreshCache[element.path];
+            items.push(...members.map(member => new Member(member)));
+          }
+          break;
+
+        case `library`:
+          //Fetch source files in library
+          for (let shortcut of shortcuts) {
+            shortcut = shortcut.toUpperCase();
+            const path = shortcut.split(`/`);
+  
+            if (path[0] === element.path) {
+              items.push(new SPF(path[1], shortcut));
+            }
+          }
+          break;
         }
 
       } else {
-        // add cached items to tree
-        const members = this.refreshCache[element.path];
-        items.push(...members.map(member => new Member(member)));
-      }
-    } else {
-      const connection = instance.getConnection();
-
-      if (connection) {
-        const config = instance.getConfig();
-        const shortcuts = config.sourceFileList;
-
+        let libs = [];
         for (let shortcut of shortcuts) {
           shortcut = shortcut.toUpperCase();
-          items.push(new SPF(shortcut, shortcut));
+          const path = shortcut.split(`/`);
+
+          if (path[1] === `*ALL`) {
+            items.push(new SPF(shortcut, shortcut));
+          } else {
+            if (!libs.includes(path[0])) {
+              libs.push(path[0]);
+              items.push(new Library(path[0], path[0]));
+            }
+          }
         }
       }
     }
+    
     return items;
+  }
+}
+
+class Library extends vscode.TreeItem {
+  /**
+   * 
+   * @param {string} label 
+   * @param {string} library 
+   */
+  constructor(label, library) {
+    super(label, vscode.TreeItemCollapsibleState.Collapsed);
+
+    this.contextValue = `library`;
+    this.path = library;
+
+    this.iconPath = new vscode.ThemeIcon(`library`);
   }
 }
 
@@ -518,6 +561,8 @@ class SPF extends vscode.TreeItem {
 
     this.contextValue = `SPF`;
     this.path = path;
+
+    this.iconPath = new vscode.ThemeIcon(`file-directory`);
   }
 }
 
