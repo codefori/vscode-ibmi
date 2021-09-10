@@ -15,6 +15,14 @@ module.exports = class {
   static begin(context) {
     const config = instance.getConfig();
 
+    let sourceDateBarItem;
+    if (config.sourceDateLocation === `bar`) {
+      sourceDateBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+      sourceDateBarItem.text = `$(calendar)`;
+      sourceDateBarItem.tooltip = `Source date`;
+      sourceDateBarItem.show();
+    }
+
     context.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document.uri.scheme === `member`) {
@@ -90,18 +98,16 @@ module.exports = class {
       })
     );
 
-    if (config.showSourceDates) {
+    if (config.sourceDateLocation !== `none`) {
       context.subscriptions.push(
         vscode.window.onDidChangeTextEditorSelection(event => {
           if (event.textEditor.document.uri.scheme === `member`) {
             const editor = event.textEditor;
 
-            /** @type {vscode.DecorationOptions[]} */
-            let annotations = [];
-
             const line = event.selections[0].active.line;
 
-            const path = event.textEditor.document.uri.path.split(`/`);
+            const normalPath = event.textEditor.document.uri.path;
+            const path = normalPath.split(`/`);
             let lib, file, fullName;
 
             if (path.length === 4) {
@@ -120,25 +126,45 @@ module.exports = class {
             const sourceDates = allSourceDates[alias];
 
             if (sourceDates && sourceDates[line]) {
-              annotations.push({
-                range: new vscode.Range(
-                  new vscode.Position(line, Number.MAX_SAFE_INTEGER),
-                  new vscode.Position(line, Number.MAX_SAFE_INTEGER)
-                ),
-                renderOptions: {
-                  after: {
-                    color: new vscode.ThemeColor(`editorLineNumber.foreground`),
-                    contentText: sourceDates[line],
-                    fontWeight: `normal`,
-                    fontStyle: `normal`,
-                    // Pull the decoration out of the document flow if we want to be scrollable
-                    textDecoration: `position: absolute;`,
+
+              switch (config.sourceDateLocation) {
+              case `bar`:
+                sourceDateBarItem.text = `$(calendar) ${sourceDates[line]}`;
+                sourceDateBarItem.tooltip = `Line ${line+1} ${normalPath}`;
+                break;
+                
+              case `inline`:
+                /** @type {vscode.DecorationOptions[]} */
+                let annotations = [];
+
+                annotations.push({
+                  range: new vscode.Range(
+                    new vscode.Position(line, Number.MAX_SAFE_INTEGER),
+                    new vscode.Position(line, Number.MAX_SAFE_INTEGER)
+                  ),
+                  renderOptions: {
+                    after: {
+                      color: new vscode.ThemeColor(`editorLineNumber.foreground`),
+                      contentText: sourceDates[line],
+                      fontWeight: `normal`,
+                      fontStyle: `normal`,
+                      // Pull the decoration out of the document flow if we want to be scrollable
+                      textDecoration: `position: absolute;`,
+                    },
                   },
-                },
-              });
+                });
+
+
+                editor.setDecorations(annotationDecoration, annotations);
+                break;
+              }
+            } else {
+              if (sourceDateBarItem) {
+                sourceDateBarItem.text = `$(calendar)`;
+                sourceDateBarItem.tooltip = `Source date`;
+              }
             }
 
-            editor.setDecorations(annotationDecoration, annotations);
           }
         })
       );

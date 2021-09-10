@@ -16,7 +16,7 @@ module.exports = class SettingsUI {
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async () => {
         const config = instance.getConfig();
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `showSourceDates`, `clContentAssistEnabled`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -51,10 +51,29 @@ module.exports = class SettingsUI {
         field.default = (config.enableSourceDates ? `checked` : ``);
         field.description = `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`;
         ui.addField(field);
-    
-        field = new Field(`checkbox`, `showSourceDates`, `Show Source Dates`);
-        field.default = (config.showSourceDates ? `checked` : ``);
-        field.description = `Show the source date of the current line being edited in the source member. Requires source dates to be enabled. Requires restart when changed.`;
+
+        field = new Field(`select`, `sourceDateLocation`, `Source Date Location`);
+        field.description = `The location of the source date of the current line will be displayed.`;
+        field.items = [
+          {
+            selected: config.sourceDateLocation === `none`,
+            value: `none`,
+            description: `Hidden`,
+            text: `Source date is not shown.`,
+          },
+          {
+            selected: config.sourceDateLocation === `inline`,
+            value: `inline`,
+            description: `Inline`,
+            text: `Source date is show on same line being edited.`,
+          },
+          {
+            selected: config.sourceDateLocation === `bar`,
+            value: `bar`,
+            description: `Bar`,
+            text: `Source date is shown on the VS Code status bar.`,
+          }
+        ];
         ui.addField(field);
     
         field = new Field(`checkbox`, `clContentAssistEnabled`, `Enable CL Content Assist`);

@@ -226,10 +226,11 @@
 								"default": false,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
-							"showSourceDates": {
-								"type": "boolean",
-								"default": true,
-								"description": "When enabled, show the source date of the current line being edited in the source member. Requires source dates to be enabled."
+							"sourceDateLocation": {
+								"type": "string",
+								"default": "none",
+								"enum": ["none", "bar", "inline"],
+								"description": "The location of the source date of the current line will be displayed."
 							},
 							"clContentAssistEnabled": {
 								"type": "boolean",
