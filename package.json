@@ -228,6 +228,11 @@
 								"type": "boolean",
 								"default": true,
 								"description": "When enabled, show the source date of the current line being edited in the source member. Requires source dates to be enabled."
+							},
+							"clContentAssistEnabled": {
+								"type": "boolean",
+								"default": false,
+								"description": "Enables the CL content assist and hover support."
 							}
 						}
 					}
@@ -852,9 +857,9 @@
 			},
 			{
 				"command": "code-for-ibmi.rpgleOpenInclude",
-        "key": "shift+f12",
-        "mac": "shift+f12",
-        "when": "editorLangId == rpgle"
+				"key": "shift+f12",
+				"mac": "shift+f12",
+				"when": "editorLangId == rpgle"
 			}
 		],
 		"viewsContainers": {
@@ -1167,7 +1172,8 @@
 		"@bendera/vscode-webview-elements": "^0.3.0",
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
-		"tmp": "^0.2.1"
+		"tmp": "^0.2.1",
+		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
