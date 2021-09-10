@@ -8,7 +8,7 @@ const vscode = require(`vscode`);
 let instance = require(`./Instance`);
 let {CustomUI, Field} = require(`./api/CustomUI`);
 
-const LoginPanel = require(`./webviews/login`);
+const connectionBrowser = require(`./views/connectionBrowser`);
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -22,41 +22,11 @@ function activate(context) {
   //We setup the event emitter.
   instance.setupEmitter();
 
-  // Upgrade existing configurations to have names
-  // This is derived per host as per the current UI restrictions
-  const configData = vscode.workspace.getConfiguration(`code-for-ibmi`);
-  let connections = configData.get(`connections`);
-  let connectionSettings = configData.get(`connectionSettings`);
-
-  for (let connection of connections) {
-    if (!connection.name) {
-      connection.name = `${connection.username}@${connection.host}:${connection.port}`;
-
-      const index = connectionSettings.findIndex(conn => conn.host === connection.host);
-
-      if (index >= 0) {
-        connectionSettings[index][`name`] = connection.name;
-      }
-
-      configData.update(`connections`, connections, vscode.ConfigurationTarget.Global);
-      configData.update(`connectionSettings`, connectionSettings, vscode.ConfigurationTarget.Global);
-    }
-    
-  };
-
-  // The command has been defined in the package.json file
-  // Now provide the implementation of the command with  registerCommand
-  // The commandId parameter must match the command field in package.json
   context.subscriptions.push(
-    vscode.commands.registerCommand(`code-for-ibmi.connect`, function () {
-      LoginPanel.show(context);
-    })
-  );
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand(`code-for-ibmi.connectPrevious`, function () {
-      LoginPanel.LoginToPrevious(context);
-    })
+    vscode.window.registerTreeDataProvider(
+      `connectionBrowser`,
+      new connectionBrowser(context)
+    )
   );
 
   context.subscriptions.push(
