@@ -570,7 +570,8 @@
 			{
 				"command": "code-for-ibmi.connectPrevious",
 				"title": "Connect to previous",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(debug-start)"
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
@@ -1019,6 +1020,11 @@
 				{
 					"command": "code-for-ibmi.deleteConnection",
 					"when": "view == connectionBrowser && viewItem == server"
+				},
+				{
+					"command": "code-for-ibmi.connectPrevious",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryUp",

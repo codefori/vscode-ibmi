@@ -19,7 +19,17 @@ module.exports = class objectBrowserProvider {
       }),
       
       vscode.commands.registerCommand(`code-for-ibmi.connectPrevious`, (name) => {
-        LoginPanel.LoginToPrevious(name, context);
+        switch (typeof name) {
+        case `string`:
+          LoginPanel.LoginToPrevious(name, context);
+          break;
+        case `object`:
+          LoginPanel.LoginToPrevious(name.name, context);
+          break;
+        default:
+          vscode.window.showErrorMessage(`Use the Server Browser to select which system to connect to.`);
+          break;
+        }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshConnections`, () => {
@@ -83,6 +93,7 @@ class Server extends vscode.TreeItem {
   constructor(name, user, host) {
     super(name, vscode.TreeItemCollapsibleState.None);
 
+    this.name = name;
     this.contextValue = `server`;
     this.description = `${user}@${host}`;
     this.iconPath = new vscode.ThemeIcon(`remote`);
