@@ -612,7 +612,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshLibraryListView",
-				"title": "Remove from library list",
+				"title": "Refresh library list view",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -983,17 +983,17 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.moveLibraryUp",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryMove@1"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryDown",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryMove@2"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryRemove@1"
 				},
 				{
