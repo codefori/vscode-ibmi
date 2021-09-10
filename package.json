@@ -978,17 +978,17 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.moveLibraryUp",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "viewItem == libraryListView && viewItem == library",
 					"group": "libraryMove@1"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryDown",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "viewItem == libraryListView && viewItem == library",
 					"group": "libraryMove@2"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "viewItem == libraryListView && viewItem == library",
 					"group": "libraryRemove@1"
 				},
 				{
