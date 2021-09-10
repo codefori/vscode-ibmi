@@ -22,28 +22,6 @@ function activate(context) {
   //We setup the event emitter.
   instance.setupEmitter();
 
-  // Upgrade existing configurations to have names
-  // This is derived per host as per the current UI restrictions
-  const configData = vscode.workspace.getConfiguration(`code-for-ibmi`);
-  let connections = configData.get(`connections`);
-  let connectionSettings = configData.get(`connectionSettings`);
-
-  for (let connection of connections) {
-    if (!connection.name) {
-      connection.name = `${connection.username}@${connection.host}:${connection.port}`;
-
-      const index = connectionSettings.findIndex(conn => conn.host === connection.host);
-
-      if (index >= 0) {
-        connectionSettings[index][`name`] = connection.name;
-      }
-
-      configData.update(`connections`, connections, vscode.ConfigurationTarget.Global);
-      configData.update(`connectionSettings`, connectionSettings, vscode.ConfigurationTarget.Global);
-    }
-    
-  };
-
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(
       `connectionBrowser`,
