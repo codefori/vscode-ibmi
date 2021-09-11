@@ -21,6 +21,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 * Upload/download: Between local file system and member or IFS
 * Run SQL inline
 * Experimental RPGLE content assist and outline view
+* CL content assist
 
 ## How to get running
 
