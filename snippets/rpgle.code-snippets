@@ -1,0 +1,744 @@
+{
+	// Place your snippets for rpgle here. Each snippet is defined under a snippet name and has a prefix, body and 
+	// description. The prefix is what is used to trigger the snippet and the body will be expanded and inserted. Possible variables are:
+	// $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. Placeholders with the 
+	// same ids are connected.
+	// Example:
+	// "Print to console": {
+	// 	"prefix": "log",
+	// 	"body": [
+	// 		"console.log('$1');",
+	// 		"$2"
+	// 	],
+	// 	"description": "Log output to console"
+	// }
+	"%abs": {
+		"prefix": "%abs",
+		"body": [
+			"%abs(${1:numeric expression})"
+		],
+		"description": "%ABS returns the absolute value of the numeric expression specified as the parameter. If the value of the numeric expression is non-negative, the value is returned unchanged. If the value is negative, the value returned is the value of the expression but with the negative sign removed."
+	},
+	"%addr": {
+		"prefix": "%addr",
+		"body": [
+			"%addr(${1:variable} :${2:(optional) *DATA})"
+		],
+		"description": "%ADDR returns a value of type basing pointer. The value is the address of the specified variable. It may only be compared with and assigned to items of type basing pointer. %ADDR returns the address of the data portion of a variable-length field when *DATA is specified as the second parameter of %ADDR."
+	},
+	"%alloc": {
+		"prefix": "%alloc",
+		"body": [
+			"%alloc(${1:numeric})"
+		],
+		"description": "%ALLOC returns a pointer to newly allocated heap storage of the length specified. The newly allocated storage is uninitialized."
+	},
+	"%bitand": {
+		"prefix": "%bitand",
+		"body": [
+			"%bitand(${1:expression} :${2:expression} :${3:(optional) expression} ... )"
+		],
+		"description": "%BITAND returns the bit-wise ANDing of the bits of all the arguments. That is, the result bit is ON when all of the corresponding bits in the arguments are ON, and OFF otherwise."
+	},
+	"%bitnot": {
+		"prefix": "%bitnot",
+		"body": [
+			"%bitnot(${1:expression})"
+		],
+		"description": "%BITNOT returns the bit-wise inverse of the bits of the argument. That is, the result bit is ON when the corresponding bit in the argument is OFF, and OFF otherwise."
+	},
+	"%bitor": {
+		"prefix": "%bitor",
+		"body": [
+			"%bitor(${1:expression} :${2:expression} :${3:(optional) expression} ... )"
+		],
+		"description": "%BITOR returns the bit-wise ORing of the bits of all the arguments. That is, the result bit is ON when any of the corresponding bits in the arguments are ON, and OFF otherwise."
+	},
+	"%bitxor": {
+		"prefix": "%bitxor",
+		"body": [
+			"%bitxor(${1:expression} :${2:expression})"
+		],
+		"description": "%BITXOR returns the bit-wise exclusive ORing of the bits of the two arguments. That is, the result bit is ON when just one of the corresponding bits in the arguments are ON, and OFF otherwise."
+	},
+	"%char-character-graphic-UCS2": {
+		"prefix": "%char-character-graphic-UCS2",
+		"body": [
+			"%char(${1:character, graphic or UCS2} :${2:(optional) ccsid})"
+		],
+		"description": "%CHAR can convert the value of a character, graphic, or UCS-2 expression to type character with a specific character CCSID. "
+	},
+	"%char-date-time-timestamp": {
+		"prefix": "%char-date-time-timestamp",
+		"body": [
+			"%char(${1:date, time or timestamp} :${2:(optional) to format})"
+		],
+		"description": "%CHAR can convert the value of a date, time, or timestamp expression to character."
+	},
+	"%char-numeric": {
+		"prefix": "%char-numeric",
+		"body": [
+			"%char(${1:numeric})"
+		],
+		"description": "%CHAR can convert the value of a numeric expression to type character."
+	},
+	"%check": {
+		"prefix": "%check",
+		"body": [
+			"%check(${1:comparator} :${2:base} :${3:(optional) start})"
+		],
+		"description": "%CHECK returns the first position of the string base that contains a character that does not appear in string comparator. If all of the characters in base also appear in comparator, the function returns 0."
+	},
+	"%checkr": {
+		"prefix": "%checkr",
+		"body": [
+			"%checkr(${1:comparator} :${2:base} :${3:(optional) start})"
+		],
+		"description": "%CHECKR returns the last position of the string base that contains a character that does not appear in string comparator. If all of the characters in base also appear in comparator, the function returns 0."
+	},
+	"%data": {
+		"prefix": "%data",
+		"body": [
+			"%data(${1:document} :${2:(optional) data-into-options})"
+		],
+		"description": "%DATA is used as the second operand of the DATA-INTO and DATA-GEN operations. %DATA does not return a value, and it cannot be specified anywhere other than for the DATA-INTO and DATA-GEN operation codes."
+	},
+	"data-gen-options": {
+		"prefix": "data-gen-options",
+		"body": [
+			"countprefix=${1:prefix of subfield} doc=${2|string,file|} fileccsid=${3|utf8,utf16,job, ccsid number|} name=${4:name of top level document) output=${5|append,clear,continue|} renameprefix=${6:prefix of subfield} trim=${9|all,none|}"
+		],
+		"description": "Data gen Options"
+	},
+	"data-into-options": {
+		"prefix": "data-into-options",
+		"body": [
+			"allowextra=${1|no,yes|} allowmissing=${2|no,yes|} case=${3|lower,upper,any,convert|} ccsid=${4|best,job,ucs2,ccsid|} countprefix=${5:prefix of subfield} datasubf=${6:subfield} doc=${7|string,file|} path=${8:path in document with forward slash seperator} trim=${9|all,none|}"
+		],
+		"description": "Data into Options"
+	},
+	"%date": {
+		"prefix": "%date",
+		"body": [
+			"%date(${1:expression} :${2:(optional) date-format})"
+		],
+		"description": "%DATE converts the value of the expression from character, numeric, or timestamp data to type date. The converted value remains unchanged, but is returned as a date."
+	},
+	"%days": {
+		"prefix": "%days",
+		"body": [
+			"%days(${1:number})"
+		],
+		"description": "%DAYS converts a number into a duration that can be added to a date or timestamp value. %DAYS can only follow the plus or minus sign in an addition or subtraction expression. The value before the plus or minus sign must be a date or timestamp. The result is a date or timestamp value with the appropriate number of days added or subtracted. For a date, the resulting value is in *ISO format."
+	},
+	"%dec": {
+		"prefix": "%dec",
+		"body": [
+			"%dec(${1:number or character expression} :${2:(optional) precision} :${3:(optional) decimal places})"
+		],
+		"description": "%DEC converts the value of the first parameter to decimal (packed) format. When the first parameter is a numeric or character expression, the result has precision digits and decimal places decimal positions."
+	},
+	"%dec-date": {
+		"prefix": "%dec-date",
+		"body": [
+			"%dec(${1:date time or timestamp expression} :${2:(optional) format})"
+		],
+		"description": "When the first parameter is a date time or timestamp expression, the optional format parameter specifies the format of the value returned. The converted decimal value will have the number of digits that a value of that format can have, and zero decimal positions. For example, if the first parameter is a date, and the format is *YMD, the decimal value will have six digits."
+	},
+	"%dech": {
+		"prefix": "%dech",
+		"body": [
+			"%dech(${1:number or character expression} :${2:(optional) precision} :${3:(optional) decimal places})"
+		],
+		"description": "%DECH is the same as %DEC except that if the expression is a decimal or float value, half adjust is applied to the value of the expression when converting to the desired precision."
+	},
+	"%decpos": {
+		"prefix": "%decpos",
+		"body": [
+			"%decpos(${1:numeric expression})"
+		],
+		"description": "%DECPOS returns the number of decimal positions of the numeric variable or expression."
+	},
+	"%diff": {
+		"prefix": "%diff",
+		"body": [
+			"%diff(${1:date or time} :${2:date or time} :${3|*MSECONDS, *SECONDS, *MINUTES, *HOURS, *DAYS, *MONTHS, *YEARS|} :${4:(optional) frac})"
+		],
+		"description": "%DIFF produces the difference (duration) between two date or time values."
+	},
+	"%div": {
+		"prefix": "%div",
+		"body": [
+			"%div(${1:numeric} :${2:numeric divisor})"
+		],
+		"description": "%DIV returns the integer portion of the quotient that results from dividing operands."
+	},
+	"%editc": {
+		"prefix": "%editc",
+		"body": [
+			"%editc(${1:numeric} :'${2|A,B,C,D,J,K,L,M,N,O,P,Q,X,Y,X,1,2,3,4,5,6,7,8,9|}' :${3|(optional) *ASTFILL,(optional) *CURSYM,(optional) 'currency-symbol'|})"
+		],
+		"description": "%EDITC returns a character result representing the numeric value edited according to the edit code."
+	},
+	"%editflt": {
+		"prefix": "%editflt",
+		"body": [
+			"%editflt(${1:numeric expression})"
+		],
+		"description": "%EDITFLT converts the value of the numeric expression to the character external display representation of float."
+	},
+	"%editw": {
+		"prefix": "%editw",
+		"body": [
+			"%editw(${1:numeric expression} :${2:editword})"
+		],
+		"description": "%EDITW returns a character result representing the numeric value edited according to the edit word."
+	},
+	"%elem": {
+		"prefix": "%elem",
+		"body": [
+			"%elem(${1:table or array or multiple occurs data structure})"
+		],
+		"description": "%ELEM returns the number of elements in the specified array, table, or multiple-occurrence data structure."
+	},
+	"%elem-array": {
+		"prefix": "%elem-array",
+		"body": [
+			"%elem(${1:array_name} :${2|*ALLOC,*KEEP,*MAX|})"
+		],
+		"description": "%ELEM returns the number of elements in the specified array, table, or multiple-occurrence data structure. *ALLOC The number of elements allocated to the array is returned. *MAX The maximum number of elements for the array is returned."
+	},
+	"%eof": {
+		"prefix": "%eof",
+		"body": [
+			"%eof(${1:(optional) file_name})"
+		],
+		"description": "%EOF returns '1' if the most recent read operation or write to a subfile ended in an end of file or beginning of file condition; otherwise, it returns '0'."
+	},
+	"%equal": {
+		"prefix": "%equal",
+		"body": [
+			"%equal(${1:(optional) file_name})"
+		],
+		"description": "%EQUAL returns '1' if the most recent relevant operation found an exact match; otherwise, it returns '0'. The operations that set %EQUAL are SETLL or LOOKUP."
+	},
+	"%error": {
+		"prefix": "%error",
+		"body": [
+			"%error"
+		],
+		"description": "%ERROR returns '1' if the most recent operation with extender 'E' specified resulted in an error condition."
+	},
+	"%fields": {
+		"prefix": "%fields",
+		"body": [
+			"%fields(${1:name} :${2:(optional) name}...)"
+		],
+		"description": "A list of fields can be specified as the final argument to Input/Output operation UPDATE coded in a freeform group. Only the fields specified are updated into the Input/Output buffer."
+	},
+	"%float": {
+		"prefix": "%float",
+		"body": [
+			"%float(${1:numeric or character expression})"
+		],
+		"description": "%FLOAT converts the value of the expression to float format. This built-in function may only be used in expressions."
+	},
+	"%found": {
+		"prefix": "%found",
+		"body": [
+			"%found(${1:(optional) file name})"
+		],
+		"description": "%FOUND returns '1' if the most recent relevant file operation found a record, a string operation found a match, or a search operation found an element. Otherwise, this function returns '0'."
+	},
+	"%gen": {
+		"prefix": "%gen",
+		"body": [
+			"%gen(${1:generator} :${2:(optional) data-gen-options})"
+		],
+		"description": "%GEN is used as the third operand of the DATA-GEN operation code to specify the program or procedure to generate the document, and any options supported by the generator."
+	},
+	"%graph": {
+		"prefix": "%graph",
+		"body": [
+			"%graph(${1|character expression,graphic expression, UCS-2-expression|} :${2:(optional) ccsid})"
+		],
+		"description": "%GRAPH converts the value of the expression from character, graphic, or UCS-2 and returns a graphic value. The result is varying length if the parameter is varying length."
+	},
+	"%handler": {
+		"prefix": "%handler",
+		"body": [
+			"%handler(${1:handling procedure} :${2:communication area})"
+		],
+		"description": "%HANDLER is used to identify a procedure to handle an event or a series of events. %HANDLER does not return a value, and it can only be specified as the first operand of XML-SAX, XML-INTO and DATA-INTO."
+	},
+	"%hours": {
+		"prefix": "%hours",
+		"body": [
+			"%hours(${1:number})"
+		],
+		"description": "%HOURS converts a number into a duration that can be added to a date or timestamp value. %HOURS can only follow the plus or minus sign in an addition or subtraction expression. The value before the plus or minus sign must be a date or timestamp. The result is a date or timestamp value with the appropriate number of hours added or subtracted. For a date, the resulting value is in *ISO format."
+	},
+	"%int": {
+		"prefix": "%int",
+		"body": [
+			"%int(${1:numeric or character expression})"
+		],
+		"description": "%INT converts the value of the expression to integer. Any decimal digits are truncated."
+	},
+	"%inth": {
+		"prefix": "%inth",
+		"body": [
+			"%inth(${1:numeric or character expression})"
+		],
+		"description": "%INTH is the same as %INT except that if the expression is a decimal, float or character value, half adjust is applied to the value of the expression when converting to integer type."
+	},
+	"%kds": {
+		"prefix": "%kds",
+		"body": [
+			"%kds(${1:numeric or character expression} :${2:(optional) number of keys})"
+		],
+		"description": "%KDS is allowed as the search argument for any keyed Input/Output operation (CHAIN, DELETE, READE, READPE, SETGT, SETLL) coded in a free-form group."
+	},
+	"%len": {
+		"prefix": "%len",
+		"body": [
+			"%len(${1:data structure name} :${2:number of keys})"
+		],
+		"description": "%LEN can be used to get the length of a variable expression, to set the current length of a variable-length field."
+	},
+	"%len-varying": {
+		"prefix": "%len-varying",
+		"body": [
+			"%len(${1:expression} :*MAX)"
+		],
+		"description": "%LEN can be used to get the maximum length of a varying-length expression."
+	},
+	"%list": {
+		"prefix": "%list",
+		"body": [
+			"%list(${1:item} :${2:(optional) item} ...)"
+		],
+		"description": "%LIST returns a temporary array whose elements have the values of the items listed in its operands."
+	},
+	"%lookup": {
+		"prefix": "%lookup",
+		"body": [
+			"%lookup(${1:argument} :${2|array or keyed array data structure|} :${3:(optional) start index} :${4:(optional) number of elements})"
+		],
+		"description": "%LOOKUP returns the array index of the item in the array that is an exact match to the argument. %LOOKUP can also be used to return the array index of the item in a keyed array data structure."
+	},
+	"%lookuplt": {
+		"prefix": "%lookuplt",
+		"body": [
+			"%lookuplt(${1:argument} :${2:array} :${3:(optional) start index} :${4:(optional) number of elements})"
+		],
+		"description": "%LOOKUPLT returns the array index of the item in the array that is closest to argument but less than argument."
+	},
+	"%lookuple": {
+		"prefix": "%lookuple",
+		"body": [
+			"%lookuple(${1:argument} :${2:array} :${3:(optional) start index} :${4:(optional) number of elements})"
+		],
+		"description": "%LOOKUPLE returns the array index of the item in the array that is an exact match, or the value that is closest to argument but less than argument."
+	},
+	"%lookupgt": {
+		"prefix": "%lookupgt",
+		"body": [
+			"%lookupgt(${1:argument} :${2:array} :${3:(optional) start index} :${4:(optional) number of elements})"
+		],
+		"description": "%LOOKUPGT returns the array index of the item in the array that is closest to argument but greater than argument."
+	},
+	"%lookupge": {
+		"prefix": "%lookupge",
+		"body": [
+			"%lookupge(${1:argument} :${2:array} :${3:(optional) start index} :${4:(optional) number of elements})"
+		],
+		"description": "%LOOKUPGE returns the array index of the item in the array that is an exact match, or the value that is closest to argument but greater than argument."
+	},
+	"%lower": {
+		"prefix": "%lower",
+		"body": [
+			"%lower(${1:string} :${2:(optional) start} :${3:(optional) length})"
+		],
+		"description": "%LOWER returns the string operand converted to lower case."
+	},
+	"%max": {
+		"prefix": "%max",
+		"body": [
+			"%max(${1:item} :${2:item} :${3:(optional) item}...)"
+		],
+		"description": "%MAX returns the maximum value of its operands."
+	},
+	"%min": {
+		"prefix": "%min",
+		"body": [
+			"%min(${1:item} :${2:item} :${3:(optional) item}...)"
+		],
+		"description": "%MIN returns the minimum value of its operands."
+	},
+	"%minutes": {
+		"prefix": "%minutes",
+		"body": [
+			"%minutes(${1:number})"
+		],
+		"description": "%MINUTES converts a number into a duration that can be added to a time or timestamp value. %MINUTES can only follow the plus or minus sign in an addition or subtraction expression. The value before the plus or minus sign must be a time or timestamp. The result is a time or timestamp value with the appropriate number of minutes added or subtracted. For a time, the resulting value is in *ISO format."
+	},
+	"%months": {
+		"prefix": "%months",
+		"body": [
+			"%months(${1:number})"
+		],
+		"description": "%MONTHS converts a number into a duration that can be added to a time or timestamp value. %MONTHS can only follow the plus or minus sign in an addition or subtraction expression. The value before the plus or minus sign must be a time or timestamp. The result is a time or timestamp value with the appropriate number of months added or subtracted. For a time, the resulting value is in *ISO format."
+	},
+	"%mseconds": {
+		"prefix": "%mseconds",
+		"body": [
+			"%mseconds(${1:number})"
+		],
+		"description": "%MSECONDS converts a number into a duration that can be added to a time or timestamp value. %MSECONDS can only follow the plus or minus sign in an addition or subtraction expression. The value before the plus or minus sign must be a time or timestamp. The result is a time or timestamp value with the appropriate number of microseconds added or subtracted. For a time, the resulting value is in *ISO format."
+	},
+	"%nullind": {
+		"prefix": "%nullind",
+		"body": [
+			"%nullind(${1:fieldname})"
+		],
+		"description": "The %NULLIND built-in function can be used to query or set the null indicator for null-capable fields."
+	},
+	"%occur": {
+		"prefix": "%occur",
+		"body": [
+			"%occur(${1:multiple-occurrence data structure})"
+		],
+		"description": "%OCCUR gets or sets the current position of a multiple-occurrence data structure."
+	},
+	"%open": {
+		"prefix": "%open",
+		"body": [
+			"%open(${1:file name})"
+		],
+		"description": "%OPEN returns '1' if the specified file is open."
+	},
+	"%paddr": {
+		"prefix": "%paddr",
+		"body": [
+			"%paddr(${1|string,prototype|})"
+		],
+		"description": "%PADDR returns a value of type procedure pointer. The value is the address of the entry point identified by the argument."
+	},
+	"%parms": {
+		"prefix": "%parms",
+		"body": [
+			"%parms()"
+		],
+		"description": "%PARMS returns the number of parameters that were passed to the procedure in which %PARMS is used. For a cycle-main procedure, %PARMS is the same as *PARMS in the program status data structure."
+	},
+	"%parmnum": {
+		"prefix": "%parmnum",
+		"body": [
+			"%parmnum()"
+		],
+		"description": "%PARMNUM returns the number of the parameter in the parameter list."
+	},
+	"%parser": {
+		"prefix": "%parser",
+		"body": [
+			"%parser(${1:parser} :${2:(optional) options})"
+		],
+		"description": "%PARSER is used as the third operand of the DATA-INTO operation code to specify the program or procedure to do the parsing, and any options supported by the parser."
+	},
+	"%proc": {
+		"prefix": "%proc",
+		"body": [
+			"%proc()"
+		],
+		"description": "%PROC returns the external name of the current procedure."
+	},
+	"%range": {
+		"prefix": "%range",
+		"body": [
+			"IN %range(${1:lower limit} :${2:upper limit})"
+		],
+		"description": "%RANGE is used with the IN operator. %RANGE does not return a value, and it cannot be specified anywhere other than following the IN operator."
+	},
+	"%realloc": {
+		"prefix": "%realloc",
+		"body": [
+			"%realloc(${1:pointer} :${2:length})"
+		],
+		"description": "%REALLOC changes the heap storage pointed to by the first parameter to be the length specified in the second parameter."
+	},
+	"%rem": {
+		"prefix": "%rem",
+		"body": [
+			"%rem(${1:numeric} :${2:numeric divisor})"
+		],
+		"description": "%REM returns the remainder that results from dividing operands."
+	},
+	"%replace": {
+		"prefix": "%replace",
+		"body": [
+			"%replace(${1:replacement string} :${2:source string} :${3:(optional) start position} :${4:(optional) source length to replace})"
+		],
+		"description": "%REPLACE returns the character string produced by inserting a replacement string into the source string, starting at the start position and replacing the specified number of characters."
+	},
+	"%scan": {
+		"prefix": "%scan",
+		"body": [
+			"%scan(${1:search argument} :${2:source string} :${3:(optional) start position} :${4:(optional) source length to scan})"
+		],
+		"description": "%SCAN returns the first position of the search argument in the source string, or 0 if it was not found."
+	},
+	"%scanr": {
+		"prefix": "%scanr",
+		"body": [
+			"%scanr(${1:search argument} :${2:source string} :${3:(optional) start position} :${4:(optional) source length to scan})"
+		],
+		"description": "%SCANR returns the last position of the search argument in the source string, or 0 if it was not found."
+	},
+	"%scanrpl": {
+		"prefix": "%scanrpl",
+		"body": [
+			"%scanrpl(${1:search argument} :${2:replacement string} :${3:source string} :${4:(optional) start position} :${5:(optional) source length to scan})"
+		],
+		"description": "%SCANRPL returns the string produced by replacing all occurrences of the scan string in the source string with the replacement string."
+	},
+	"%seconds": {
+		"prefix": "%seconds",
+		"body": [
+			"%seconds(${1:number})"
+		],
+		"description": "%SECONDS converts a number into a duration that can be added to a time or timestamp value. %SECONDS can only follow the plus or minus sign in an addition or subtraction expression. The value before the plus or minus sign must be a time or timestamp. The result is a time or timestamp value with the appropriate number of seconds added or subtracted. For a time, the resulting value is in *ISO format."
+	},
+	"%shtdn": {
+		"prefix": "%shtdn",
+		"body": [
+			"%shtdn()"
+		],
+		"description": "%SHTDN returns '1' if the system operator has requested shutdown; otherwise, it returns '0'."
+	},
+	"%size": {
+		"prefix": "%size",
+		"body": [
+			"%size(${1:varible, literal, array, table or multiple-occurance data structure} :${2:(optional) *All})"
+		],
+		"description": "%SIZE returns the number of bytes occupied by a literal, a named constant, a data structure, a data structure subfield, a field, an array or a table name. If *ALL is specified as the second parameter for %SIZE, the value returned is the storage taken up by all elements or occurrences."
+	},
+	"%split": {
+		"prefix": "%split",
+		"body": [
+			"%split(${1:string} :${2:(optional) separators})"
+		],
+		"description": "%SPLIT splits a string into an array of substrings.If no separators are specified then it is split on blanks."
+	},
+	"%sqrt": {
+		"prefix": "%sqrt",
+		"body": [
+			"%sqrt(${1:numeric expression})"
+		],
+		"description": "%SQRT returns the square root of the specified numeric expression."
+	},
+	"%status": {
+		"prefix": "%status",
+		"body": [
+			"%status(${1:(optional) file name})"
+		],
+		"description": "%STATUS returns the most recent value set for the program or file status."
+	},
+	
+	"%str": {
+		"prefix": "%str",
+		"body": [
+			"%str(${1:basing pointer} :${2:(optional) max length})"
+		],
+		"description": "%STR is used to create or use null-terminated character strings."
+	},
+	"%subarr": {
+		"prefix": "%subarr",
+		"body": [
+			"%subarr(${1:array} :${2:start index} :${3:(optional) number of elements})"
+		],
+		"description": "%SUBARR returns a section of the specified array starting at start-index. The number of elements returned is specified by the optional number-of-elements parameter. If not specified, the number-of-elements defaults to the remainder of the array."
+	},
+	"%subdt": {
+		"prefix": "%subdt",
+		"body": [
+			"%subdt(${1:value} :${2|*MSECONDS, *SECONDS, *MINUTES, *HOURS, *DAYS, *MONTHS, *YEARS|} :${3:(optional) digits returned} :${4:(optional) decimal places})"
+		],
+		"description": "%SUBDT extracts a portion of the information in a date, time, or timestamp value. It returns an unsigned numeric value."
+	},
+	"%subst": {
+		"prefix": "%subst",
+		"body": [
+			"%subst(${1:string} :${2:start position} :${3:(optional) length})"
+		],
+		"description": "%SUBST returns a portion of argument string."
+	},
+	"%this": {
+		"prefix": "%this",
+		"body": [
+			"%this()"
+		],
+		"description": "%THIS returns an Object value that contains a reference to the class instance on whose behalf the native method is being called."
+	},
+	"%time": {
+		"prefix": "%time",
+		"body": [
+			"%time(${1:expression} :${2:(optional) time format})"
+		],
+		"description": "%TIME converts the value of the expression from character, numeric, or timestamp data to type time."
+	},
+	"%timestamp": {
+		"prefix": "%timestamp",
+		"body": [
+			"%timestamp()"
+		],
+		"description": "%TIMESTAMP returns the current system timestamp, accurate to microsecond precision."
+	},
+	"%timestamp-expression": {
+		"prefix": "%timestamp-expression",
+		"body": [
+			"%timestamp(${1:character or numeric expression} :${2|*ISO,*ISO0|} :${3:(optional) fractional seconds})"
+		],
+		"description": "%TIMESTAMP returns the a timestamp of the character or numeric expression in *ISO format. The second parameter specifies the format of the first parameter. The optional third parameter is the number of fractional seconds in the returned timestamp. The number of fractional seconds can be between 0 and 12. It defaults to 6 fractional seconds."
+	},
+	"%timestamp-date-timestamp-expression": {
+		"prefix": "%timestamp-date-timestamp-expression",
+		"body": [
+			"%timestamp(${1:date or timestamp expression} :${2:(optional) fractional seconds})"
+		],
+		"description": "%TIMESTAMP returns the a timestamp of the date or timestamp expression. The optional second parameter is the number of fractional seconds in the returned timestamp. The number of fractional seconds can be between 0 and 12. It defaults to 6 fractional seconds."
+	},
+	"%timestamp-sys": {
+		"prefix": "%timestamp-sys",
+		"body": [
+			"%timestamp(*SYS :${1:(optional) fractional seconds})"
+		],
+		"description": "%TIMESTAMP returns the current system timestamp, accurate to microsecond precision. The optional second parameter is the number of fractional seconds in the returned timestamp. The number of fractional seconds can be between 0 and 12. It defaults to 6 fractional seconds."
+	},
+	"%timestamp-unique": {
+		"prefix": "%timestamp-unique",
+		"body": [
+			"%timestamp(*UNIQUE)"
+		],
+		"description": "%TIMESTAMP returns the current system timestamp, accurate to microsecond precision. The first six digits of the fractional seconds portion of the timestamp are set to the microseconds portion of the timestamp. The remaining six fractional seconds are set to a value which makes the resulting timestamp unique."
+	},
+	"%tlookup": {
+		"prefix": "%tlookup",
+		"body": [
+			"%tlookup(${1:argument} :${2:search table} :${3:(optional) alt table})"
+		],
+		"description": "%TLOOKUP returns the current table element for the search table is set to the element that is an exact match to the argument and the function returns *ON otherwise *OFF is returned."
+	},
+	"%tlookuplt": {
+		"prefix": "%tlookuplt",
+		"body": [
+			"%tlookuplt(${1:argument} :${2:search table} :${3:(optional) alt table})"
+		],
+		"description": "%TLOOKUPLT returns the current table element for the search table is set to the element that is closest to argument but less than argument and the function returns *ON otherwise *OFF is returned."
+	},
+	"%tlookuple": {
+		"prefix": "%tlookuple",
+		"body": [
+			"%tlookuple(${1:argument} :${2:search table} :${3:(optional) alt table})"
+		],
+		"description": "%TLOOKUPLE returns the current table element for the search table is set to the element that is an exact match or is closest to argument but less than argument and the function returns *ON otherwise *OFF is returned."
+	},
+	"%tlookupgt": {
+		"prefix": "%tlookupgt",
+		"body": [
+			"%tlookupgt(${1:argument} :${2:search table} :${3:(optional) alt table})"
+		],
+		"description": "%TLOOKUPGT returns the current table element for the search table is set to the element that is closest to argument but greater than argument and the function returns *ON otherwise *OFF is returned."
+	},
+	"%tlookupge": {
+		"prefix": "%tlookupge",
+		"body": [
+			"%tlookupge(${1:argument} :${2:search table} :${3:(optional) alt table})"
+		],
+		"description": "%TLOOKUPGE returns the current table element for the search table is set to the element that is an exact match or is closest to argument but greater than argument and the function returns *ON otherwise *OFF is returned."
+	},
+	"%trim": {
+		"prefix": "%trim",
+		"body": [
+			"%trim(${1:string} :${2:(optional) characters to trim})"
+		],
+		"description": "%TRIM with only one parameter returns the given string with any leading and trailing blanks removed. %TRIM with two parameters returns the given string with any leading and trailing characters that are in the characters to trim parameter removed."
+	},
+	"%triml": {
+		"prefix": "%triml",
+		"body": [
+			"%triml(${1:string} :${2:(optional) characters to trim})"
+		],
+		"description": "%TRIML with only one parameter returns the given string with any leading removed. %TRIML with two parameters returns the given string with any leading characters that are in the characters to trim parameter removed."
+	},
+	"%trimr": {
+		"prefix": "%trimr",
+		"body": [
+			"%trimr(${1:string} :${2:(optional) characters to trim})"
+		],
+		"description": "%TRIMR with only one parameter returns the given string with any trailing removed. %TRIMR with two parameters returns the given string with any trailing characters that are in the characters to trim parameter removed."
+	},
+	"%ucs2": {
+		"prefix": "%ucs2",
+		"body": [
+			"%ucs2(${1:character, graphic or UCS-2})"
+		],
+		"description": "%UCS2 converts the value of the expression from character, graphic, or UCS-2 and returns a UCS-2 value."
+	},
+	"%uns": {
+		"prefix": "%uns",
+		"body": [
+			"%uns(${1:numeric or character expression})"
+		],
+		"description": "%UNS converts the value of the expression to unsigned format."
+	},
+	"%unsh": {
+		"prefix": "%unsh",
+		"body": [
+			"%unsh(${1:numeric or character expression})"
+		],
+		"description": "%UNSH converts the value of the expression to unsigned format, half adjusted."
+	},
+	"%upper": {
+		"prefix": "%upper",
+		"body": [
+			"%upper(${1:string} :${2:(optional) start} :${3:(optional) length})"
+		],
+		"description": "%UPPER returns the string operand converted to upper case."
+	},
+	"%xfoot": {
+		"prefix": "%xfoot",
+		"body": [
+			"%xfoot(${1:array expression})"
+		],
+		"description": "%XFOOT results in the sum of all elements of the specified numeric array expression."
+	},
+	"%xlate": {
+		"prefix": "%xlate",
+		"body": [
+			"%xfoot(${1:from characters} :${2:to characters} :${3:source string} :${4:(optional) start position})"
+		],
+		"description": "%XLATE translates source string according to the values of from characters, to characters, and start position."
+	},
+	"%xml": {
+		"prefix": "%xml",
+		"body": [
+			"%xml(${1:xml document} :${2:(optional) xml-into-options})"
+		],
+		"description": "%XML is used as the second operand of the XML-SAX and XML-INTO operation codes to specify the XML document to be parsed, and the options to control how the document is parsed."
+	},
+	"xml-into-options": {
+		"prefix": "xml-into-options",
+		"body": [
+			"allowextra=${1|no,yes|} allowmissing=${2|no,yes|} case=${3|lower,upper,any,convert|} ccsid=${4|best,job,ucs2,ccsid|} countprefix=${5:prefix of subfield} datasubf=${6:subfield} doc=${7|string,file|} ns=${8|keep,remove,merge|} nsprefix=${9:namespace} path=${10:path in document with forward slash seperator} trim=${11|all,none|}"
+		],
+		"description": "XML into Options"
+	},
+	"%years": {
+		"prefix": "%years",
+		"body": [
+			"%years(${1:number})"
+		],
+		"description": "%YEARS converts a number into a duration that can be added to a time or timestamp value. %YEARS can only follow the plus or minus sign in an addition or subtraction expression. The value before the plus or minus sign must be a time or timestamp. The result is a time or timestamp value with the appropriate number of years added or subtracted. For a time, the resulting value is in *ISO format."
+	}
+}
