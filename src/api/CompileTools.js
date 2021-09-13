@@ -283,9 +283,9 @@ module.exports = class CompileTools {
             }
           });
 
-          outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-          outputChannel.append(`   Library list: ` + config.libraryList.join(` `) + `\n`);
-          outputChannel.append(`        Command: ` + command + `\n`);
+          this.appendToOutputChannel(`Current library: ` + config.currentLibrary + `\n`);
+          this.appendToOutputChannel(`   Library list: ` + config.libraryList.join(` `) + `\n`);
+          this.appendToOutputChannel(`        Command: ` + command + `\n`);
 
           try {
 
@@ -336,7 +336,7 @@ module.exports = class CompileTools {
             vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
 
-          outputChannel.append(output);
+          this.appendToOutputChannel(output);
 
           if (command.includes(`*EVENTF`)) {
             this.refreshDiagnostics(instance, evfeventInfo);
@@ -349,6 +349,10 @@ module.exports = class CompileTools {
       //No compile commands
       vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);
     }
+  }
+
+  static async appendToOutputChannel(content) {
+    outputChannel.append(content);
   }
 
   /**

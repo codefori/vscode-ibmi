@@ -220,6 +220,24 @@ module.exports = class LocalProject {
 
     if (projectEnabled) {
       const pathInfo = path.parse(documentUri.fsPath);
+      const folder = path.basename(pathInfo.dir); // Get the parent directory name
+      const name = pathInfo.name.toUpperCase();
+      const ext = pathInfo.ext.substring(1);
+
+      if (folder.length > 10) {
+        vscode.window.showErrorMessage(`The folder name ${folder} is too long to map to an IBM i source file. (10 characters max)`);
+        return;
+      }
+
+      if (name.length > 10) {
+        vscode.window.showErrorMessage(`The file name ${name} is too long to map to an IBM i source member. (10 characters max)`);
+        return;
+      }
+
+      if (ext.length > 6) {
+        vscode.window.showErrorMessage(`The extension for ${name}.${ext} is too long to map to a source type. (6 characters max)`);
+        return;
+      }
 
       const configExists = await LocalProject.configExists();
 
@@ -229,7 +247,7 @@ module.exports = class LocalProject {
         if (await LocalProject.configValid(projConfig)) {
 
           const availableActions = projConfig.actions
-            .filter(action => action.extensions === undefined || (action.extensions.length > 0 && action.extensions.includes(pathInfo.ext.substring(1))))
+            .filter(action => action.extensions === undefined || (action.extensions.length > 0 && action.extensions.includes(ext)))
             .map(action => action.name)
           const chosenOptionName = await vscode.window.showQuickPick(availableActions);
 
@@ -253,6 +271,8 @@ module.exports = class LocalProject {
             });
 
             // 2. We upload all the files
+            CompileTools.appendToOutputChannel(`Uploading ${allUploads.length} files...\n`);
+            CompileTools.appendToOutputChannel(allUploads.map(file => `\t` + path.basename(file.fsPath)).join(`\n`) + `\n\n`);
 
             try {
               switch (action.fileSystem) {
@@ -262,18 +282,17 @@ module.exports = class LocalProject {
               }
             } catch (e) {
               vscode.window.showErrorMessage(`Failed to upload files to system.`);
+              return;
             }
 
             // 3. We build the command and the library list
 
-            const folder = path.basename(pathInfo.dir); //Get the parent directory name
-
             let command = action.command;
 
             command = command.replace(new RegExp(`&BUILDLIB`, `g`), projConfig.buildLibrary.toUpperCase());
-            command = command.replace(new RegExp(`&FOLDER`, `g`), folder.toUpperCase());
-            command = command.replace(new RegExp(`&NAME`, `g`), pathInfo.name.toUpperCase());
-            command = command.replace(new RegExp(`&EXT`, `g`), pathInfo.ext);
+            command = command.replace(new RegExp(`&FOLDER`, `g`), folder);
+            command = command.replace(new RegExp(`&NAME`, `g`), name);
+            command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
             const compileInfo = {
               lib: projConfig.buildLibrary.toUpperCase(),
@@ -292,10 +311,15 @@ module.exports = class LocalProject {
               }
             });
 
+
+            CompileTools.appendToOutputChannel(`Current library: ` + config.currentLibrary + `\n`);
+            CompileTools.appendToOutputChannel(`   Library list: ` + config.libraryList.join(` `) + `\n`);
+            CompileTools.appendToOutputChannel(`        Command: ` + command + `\n`);
+
             // 4. We run the command
 
             /** @type {any} */
-            let commandResult;
+            let commandResult, output = ``;
 
             try {
               switch (action.commandEnvironment) {
@@ -323,10 +347,15 @@ module.exports = class LocalProject {
                 vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${compileInfo.lib}/${compileInfo.object} was not successful.`);
               }
 
+              if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
+              if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
+
             } catch (e) {
+              output = `${e}\n`;
               vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${compileInfo.lib}/${compileInfo.object} failed. (internal error).`);
             }
 
+            CompileTools.appendToOutputChannel(output);
 
             if (command.includes(`*EVENTF`)) {
               CompileTools.refreshDiagnostics(instance, compileInfo);

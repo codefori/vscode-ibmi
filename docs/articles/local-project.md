@@ -45,6 +45,10 @@ Commands have access to the following variables:
 * `&NAME`: the name of the file you are compiling
 * `&EXT`: the extension of the file you are compiling
 
+You can also specify which file system the source code should be uploaded to, though right now Code for IBM i only supports `qsys`. This means when using include/copy statements in your source code, it should be in the format for copying in members.
+
+Additionally, you can specify which environment the command should run in. Although, we only support `qsys` right now. `pase` and `qsh` support will be added in the future.
+
 ## Compiling code
 
 Compiling code works as it normally would in Code for IBM i - using the Control / Command + E shortcut. It is also possible to right-click on a file in the Explorer and 'Run Action' from there. Since ILE languages have the ability to copy/include source from other files, Actions will automatically detect dependencies and copy them in. Running an Action consists of:
