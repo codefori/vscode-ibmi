@@ -35,7 +35,7 @@ module.exports = class RPGLinter {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.rpgleOpenInclude`, async => {
+      vscode.commands.registerCommand(`code-for-ibmi.rpgleOpenInclude`, async () => {
         if (Configuration.get(`rpgleContentAssistEnabled`)) {
           const editor = vscode.window.activeTextEditor;
           
@@ -45,9 +45,15 @@ module.exports = class RPGLinter {
             if (document.languageId === `rpgle`) {
               const linePieces = document.lineAt(position.line).text.trim().split(` `);
               if ([`/COPY`, `/INCLUDE`].includes(linePieces[0].toUpperCase())) {
-                const {finishedPath, type} = this.getPathInfo(document.uri, linePieces[1]);
+                const {finishedPath, type} = await this.getPathInfo(document.uri, linePieces[1]);
 
                 switch (type) {
+                case `file`:
+                  vscode.workspace.openTextDocument(finishedPath).then(doc => {
+                    vscode.window.showTextDocument(doc);
+                  });
+                  break;
+
                 case `member`:
                   vscode.commands.executeCommand(`code-for-ibmi.openEditable`, `${finishedPath.substr(1)}.rpgle`);
                   break;
@@ -99,7 +105,7 @@ module.exports = class RPGLinter {
 
             const linePieces = document.lineAt(position.line).text.trim().split(` `);
             if ([`/COPY`, `/INCLUDE`].includes(linePieces[0].toUpperCase())) {
-              const {type, memberPath, finishedPath} = this.getPathInfo(document.uri, linePieces[1]);
+              const {type, memberPath, finishedPath} = await this.getPathInfo(document.uri, linePieces[1]);
 
               return new vscode.Hover(
                 new vscode.MarkdownString(
@@ -214,9 +220,9 @@ module.exports = class RPGLinter {
         }
       }),
 
-      vscode.workspace.onDidSaveTextDocument((document) => {
+      vscode.workspace.onDidSaveTextDocument(async (document) => {
         if (Configuration.get(`rpgleContentAssistEnabled`)) {
-          const {type, finishedPath} = this.getPathInfo(document.uri, path.basename(document.uri.path));
+          const {type, finishedPath} = await this.getPathInfo(document.uri, path.basename(document.uri.path));
           const text = document.getText();
           const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
 
@@ -254,7 +260,7 @@ module.exports = class RPGLinter {
    * @param {vscode.Uri} workingUri Path being worked with
    * @param {string} getPath IFS or member path to fetch (in the format of an RPGLE copybook)
    */
-  getPathInfo(workingUri, getPath) {
+  async getPathInfo(workingUri, getPath) {
     const config = instance.getConfig();
 
     /** @type {string} */
@@ -263,10 +269,38 @@ module.exports = class RPGLinter {
     /** @type {string[]} */
     let memberPath = undefined;
 
-    /** @type {"streamfile"|"member"|undefined} */
+    /** @type {"streamfile"|"member"|"file"|undefined} */
     let type = undefined;
 
-    if (workingUri.scheme === `streamfile`) {
+    switch (workingUri.scheme) {
+    case `file`:
+      const pathInfo = path.parse(workingUri.path);
+      const parentInfo = path.parse(pathInfo.dir);
+      const parent = parentInfo.name;
+
+      const fullPath = getPath.split(`/`).pop();
+      const parts = fullPath.split(`,`);
+
+      switch (parts.length) {
+      case 2:
+        finishedPath = parts.join(`/`);
+        break;
+      case 1:
+        finishedPath = `${parent}/${parts[0]}`;
+        break;
+      }
+      
+      const potentialFiles = await vscode.workspace.findFiles(`**/${finishedPath}.*`);
+
+      if (potentialFiles.length > 0) {
+        finishedPath = potentialFiles[0].path;
+      }
+
+      type = `file`;
+
+      break;
+
+    case `streamfile`:
       type = `streamfile`;
       //Fetch IFS
 
@@ -282,8 +316,9 @@ module.exports = class RPGLinter {
       } else {
         finishedPath = path.posix.join(path.posix.dirname(workingUri.path), getPath);
       }
+      break;
 
-    } else {
+    case `member`:
       //Fetch member
       const getLib = getPath.split(`/`);
       const getMember = getLib[getLib.length-1].split(`,`);
@@ -341,10 +376,21 @@ module.exports = class RPGLinter {
     let content;
     let lines = undefined;
 
-    let {type, memberPath, finishedPath} = this.getPathInfo(workingUri, getPath);
+    let {type, memberPath, finishedPath} = await this.getPathInfo(workingUri, getPath);
 
     try {
       switch (type) {
+      case `file`:
+        if (this.copyBooks[finishedPath]) {
+          lines = this.copyBooks[finishedPath];
+        } else {
+          content = await vscode.workspace.fs.readFile(vscode.Uri.file(finishedPath));
+          content = Buffer.from(content).toString(`utf8`);
+          lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+          this.copyBooks[finishedPath] = lines;
+        }
+        break;
+
       case `member`:
         if (this.copyBooks[finishedPath]) {
           lines = this.copyBooks[finishedPath];
