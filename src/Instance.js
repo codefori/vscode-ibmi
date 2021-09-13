@@ -354,46 +354,51 @@ module.exports = class Instance {
         );
 
         context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.runAction`, async () => {
-            const editor = vscode.window.activeTextEditor;
-            let willRun = false;
+          vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
+            if (node) {
+              const uri = node.resourceUri || node;
+              const scheme = uri.scheme;
 
-            if (editor) {
-              willRun = true;
-              if (editor.document.isDirty) {
-                let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Cancel`);
+              if (scheme === `file`) {
+                CompileTools.RunAction(this, uri);
+              } else {
+                CompileTools.RunAction(this, uri);
+              }
 
-                if (result === `Save`) {
-                  await editor.document.save();
-                } else {
-                  willRun = false;
+            } else {
+              const editor = vscode.window.activeTextEditor;
+              const uri = editor.document.uri;
+              let willRun = false;
+
+              if (editor) {
+                willRun = true;
+                if (editor.document.isDirty) {
+                  let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Cancel`);
+
+                  if (result === `Save`) {
+                    await editor.document.save();
+                  } else {
+                    willRun = false;
+                  }
+                }
+              }
+
+              if (willRun) {
+                const scheme = uri.scheme;
+                switch (scheme) {
+                case `member`:
+                case `streamfile`:
+                  CompileTools.RunAction(this, uri);
+                  break;
+
+                default:
+                  LocalProject.RunAction(this, uri);
+                  break;
                 }
               }
             }
-
-            if (willRun) {
-              const scheme = editor.document.uri.scheme;
-              switch (scheme) {
-              case `member`:
-              case `streamfile`:
-                CompileTools.RunAction(this, editor.document.uri);
-                break;
-
-              default:
-                LocalProject.RunAction(this, editor.document)
-                break;
-              }
-            }
           })
         );
-        
-        context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.runActionFromView`, async (node) => {
-            CompileTools.RunAction(this, node.resourceUri);
-          })
-        );
-
-        
 
         initialisedBefore = true;
       }
