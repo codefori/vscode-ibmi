@@ -360,7 +360,7 @@ module.exports = class Instance {
               const scheme = uri.scheme;
 
               if (scheme === `file`) {
-                CompileTools.RunAction(this, uri);
+                LocalProject.RunAction(this, uri);
               } else {
                 CompileTools.RunAction(this, uri);
               }

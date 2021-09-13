@@ -77,7 +77,7 @@ module.exports = class LocalProject {
    * Before calling this, call hasWorkspace() first.
    * @returns {Promise<{
    *    buildLibrary: string, 
-   *    actions: {name: string, command: string, fileSystem: "qsys"|"ifs", commandEnvironment: "qsys"}[]
+   *    actions: {name: string, command: string, fileSystem: "qsys"|"ifs", commandEnvironment: "qsys", extensions: string[]}[]
    * }>}
    */
   static async getConfig() {
@@ -136,11 +136,53 @@ module.exports = class LocalProject {
       buildLibrary: `BUILDLIB`,
       actions: [
         {
+          name: `Compile: CRTSQLRPGI (Program)`,
+          command: `CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)`,
+          fileSystem: `qsys`,
+          commandEnvironment: `qsys`,
+          extensions: [`sqlrpgle`]
+        },
+        {
           name: `Compile: CRTBNDRPG`,
           command: `CRTBNDRPG PGM(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`,
-        }
+          extensions: [`rpgle`]
+        },
+        {
+          name: `Compile: CRTRPGMOD`,
+          command: `CRTRPGMOD MOD(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+          fileSystem: `qsys`,
+          commandEnvironment: `qsys`,
+          extensions: [`rpgle`]
+        },
+        {
+          name: `Compile: CRTBNDCBL`,
+          command: `CRTBNDCBL (&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) OPTION(*SOURCE *EVENTF) DBGVIEW(*SOURCE)`,
+          fileSystem: `qsys`,
+          commandEnvironment: `qsys`,
+          extensions: [`cbl`, `cbble`, `cob`]
+        },
+        {
+          name: `Compile: CRTCMD`,
+          command: `CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)`,
+          fileSystem: `qsys`,
+          commandEnvironment: `qsys`,
+          extensions: [`cmd`]
+        },
+        {
+          name: `Compile: CRTBNDCL`,
+          command: `CRTBNDCL PGM(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+          fileSystem: `qsys`,
+          commandEnvironment: `qsys`,
+          extensions: [`cl`, `clle`]
+        },
+        {
+          name: `Compile: CRTPGM`,
+          command: `CRTPGM PGM(&BUILDLIB/&NAME) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)`,
+          fileSystem: `qsys`,
+          commandEnvironment: `qsys`
+        },
       ]
     };
 
@@ -177,6 +219,8 @@ module.exports = class LocalProject {
     const config = instance.getConfig();
 
     if (projectEnabled) {
+      const pathInfo = path.parse(documentUri.fsPath);
+
       const configExists = await LocalProject.configExists();
 
       if (configExists) {
@@ -184,7 +228,10 @@ module.exports = class LocalProject {
 
         if (await LocalProject.configValid(projConfig)) {
 
-          const chosenOptionName = await vscode.window.showQuickPick(projConfig.actions.map(action => action.name));
+          const availableActions = projConfig.actions
+            .filter(action => action.extensions === undefined || (action.extensions.length > 0 && action.extensions.includes(pathInfo.ext.substring(1))))
+            .map(action => action.name)
+          const chosenOptionName = await vscode.window.showQuickPick(availableActions);
 
           if (chosenOptionName) {
             const action = projConfig.actions.find(action => action.name === chosenOptionName);
@@ -193,7 +240,7 @@ module.exports = class LocalProject {
             const fileList = await vscode.workspace.findFiles(`**/*.*`);
 
             const docBytes = await vscode.workspace.fs.readFile(documentUri);
-            const content = Buffer.from(docBytes).toString(`utf8`);
+            const content = Buffer.from(docBytes).toString(`utf8`).toUpperCase();
         
             /** @type {vscode.Uri[]} */
             let allUploads = [documentUri];
@@ -219,7 +266,6 @@ module.exports = class LocalProject {
 
             // 3. We build the command and the library list
 
-            const pathInfo = path.parse(documentUri.fsPath);
             const folder = path.basename(pathInfo.dir); //Get the parent directory name
 
             let command = action.command;

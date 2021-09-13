@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "http://example.com/example.json",
+  "type": "object",
+  "title": "IBM i Project Configuration",
+  "description": "Configuration for an IBM i ILE project (RPG, COBOL, C, CL). This file is usually checked into a git repository and rarely changed.",
+  "default": {},
+  "required": [
+      "buildLibrary",
+      "actions"
+  ],
+  "properties": {
+      "buildLibrary": {
+          "$id": "#/properties/buildLibrary",
+          "type": "string",
+          "title": "Build library",
+          "description": "Where your application will build. You may refererence variables in the `.env` file. Maps to `&BUILDLIB` in commands.",
+          "default": "BUILDLIB"
+      },
+      "actions": {
+          "$id": "#/properties/actions",
+          "type": "array",
+          "title": "Actions",
+          "description": "List of Actions that apply to this project. Actions may be used to compile code on the remote system.",
+          "default": [],
+          "additionalItems": true,
+          "items": {
+              "$id": "#/properties/actions/items",
+              "anyOf": [
+                  {
+                      "$id": "#/properties/actions/items/anyOf/0",
+                      "type": "object",
+                      "title": "Action",
+                      "description": "A single Action.",
+                      "default": {},
+                      "required": [
+                          "name",
+                          "command",
+                          "fileSystem",
+                          "commandEnvironment"
+                      ],
+                      "properties": {
+                          "name": {
+                              "$id": "#/properties/actions/items/anyOf/0/properties/name",
+                              "type": "string",
+                              "title": "Name",
+                              "description": "The name of the Action. Used when running the Action."
+                          },
+                          "command": {
+                              "$id": "#/properties/actions/items/anyOf/0/properties/command",
+                              "type": "string",
+                              "title": "Command",
+                              "description": "The command that will be run when executing this Action.",
+                              "default": ""
+                          },
+                          "fileSystem": {
+                              "$id": "#/properties/actions/items/anyOf/0/properties/fileSystem",
+                              "type": "string",
+                              "title": "File System",
+                              "description": "Which file system will be used when uploading sources when the Action is run.",
+                              "default": "qsys",
+                              "enum": ["qsys"]
+                          },
+                          "commandEnvironment": {
+                              "$id": "#/properties/actions/items/anyOf/0/properties/commandEnvironment",
+                              "type": "string",
+                              "title": "Command Environment",
+                              "description": "Which environment the command will run in.",
+                              "default": "qsys",
+                              "enum": ["qsys"]
+                          },
+                          "extensions": {
+                              "$id": "#/properties/actions/items/anyOf/0/properties/extensions",
+                              "type": "array",
+                              "title": "Extensions",
+                              "description": "Extensions which support this Action.",
+                              "default": [],
+                              "items": {
+                                "type": "string",
+                                "title": "Lowercase extension."
+                              }
+                          }
+                      },
+                      "additionalProperties": true
+                  }
+              ]
+          }
+      }
+  },
+  "additionalProperties": true
+}

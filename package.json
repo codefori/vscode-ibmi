@@ -1193,7 +1193,11 @@
 				"view": "connectionBrowser",
 				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
 			}
-		]
+		],
+		"jsonValidation": [{
+			"fileMatch": "ibmi.json",
+			"url": "./src/api/schemas/localProject.json"
+		}]
 	},
 	"scripts": {
 		"lint": "eslint .",
