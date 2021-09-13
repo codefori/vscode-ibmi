@@ -4,6 +4,7 @@ const vscode = require(`vscode`);
 const IBMi = require(`./api/IBMi`);
 const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
+const LocalProject = require(`./api/LocalProject`);
 
 const Disposable = require(`./api/Disposable`);
 
@@ -342,6 +343,8 @@ module.exports = class Instance {
           clInstance.init();
         }
 
+        LocalProject.init();
+
         //********* Actions */
 
         context.subscriptions.push(
@@ -369,7 +372,17 @@ module.exports = class Instance {
             }
 
             if (willRun) {
-              CompileTools.RunAction(this, editor.document.uri);
+              const scheme = editor.document.uri.scheme;
+              switch (scheme) {
+              case `member`:
+              case `streamfile`:
+                CompileTools.RunAction(this, editor.document.uri);
+                break;
+
+              default:
+                LocalProject.RunAction(this, editor.document)
+                break;
+              }
             }
           })
         );

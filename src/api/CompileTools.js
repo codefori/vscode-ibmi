@@ -48,18 +48,18 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {{asp?: string, lib: string, object: string, ext?: string}} evfeventInfo
+   * @param {{asp?: string, lib: string, object: string, ext?: string, localFiles?: vscode.Uri[]}} compileInfo
    */
-  static async refreshDiagnostics(instance, evfeventInfo) {
+  static async refreshDiagnostics(instance, compileInfo) {
     const content = instance.getContent();
 
     /** @type {Configuration} */
     const config = instance.getConfig();
 
-    const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
+    const tableData = await content.getTable(compileInfo.lib, `EVFEVENT`, compileInfo.object);
     const lines = tableData.map(row => row.EVFEVENT);
 
-    const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
+    const asp = compileInfo.asp ? `${compileInfo.asp}/` : ``;
 
     const errors = errorHandler(lines);
 
@@ -88,17 +88,34 @@ module.exports = class CompileTools {
               new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
               `${error.code}: ${error.text} (${error.sev})`,
               diagnosticSeverity[error.sev]
-            );
+            ); 
 
             diagnostics.push(diagnostic);
           }
         }
 
-        if (file.startsWith(`/`))
-          ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
-        else
-          ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
-        
+        if (compileInfo.localFiles && compileInfo.localFiles.length > 0) {
+          for (const localFile of compileInfo.localFiles) {
+            if (file.startsWith(`/`)) {
+              //IFS path
+              //TODO: xx
+            } else {
+              //QSYS path
+              const remotePath = file.split(`/`).slice(1).join(`/`);
+              if (localFile.fsPath.toUpperCase().includes(remotePath)) {
+                ileDiagnostics.set(vscode.Uri.file(localFile.fsPath), diagnostics);
+              }
+            }
+
+          }
+
+        } else {
+          if (file.startsWith(`/`))
+            ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+          else
+            ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${compileInfo.ext ? `.` + compileInfo.ext : ``}`), diagnostics);
+          
+        }
       }
 
     } else {
