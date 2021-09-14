@@ -28,6 +28,7 @@
 		"Other"
 	],
 	"activationEvents": [
+		"onStartupFinished",
 		"onCommand:code-for-ibmi.disconnect",
 		"onCommand:code-for-ibmi.clearDiagnostics",
 		"onCommand:code-for-ibmi.runAction",

@@ -49,9 +49,11 @@ module.exports = class RPGLinter {
 
                 switch (type) {
                 case `file`:
-                  vscode.workspace.openTextDocument(finishedPath).then(doc => {
-                    vscode.window.showTextDocument(doc);
-                  });
+                  if (finishedPath) {
+                    vscode.workspace.openTextDocument(finishedPath).then(doc => {
+                      vscode.window.showTextDocument(doc);
+                    });
+                  }
                   break;
 
                 case `member`:
@@ -107,11 +109,13 @@ module.exports = class RPGLinter {
             if ([`/COPY`, `/INCLUDE`].includes(linePieces[0].toUpperCase())) {
               const {type, memberPath, finishedPath} = await this.getPathInfo(document.uri, linePieces[1]);
 
-              return new vscode.Hover(
-                new vscode.MarkdownString(
-                  `\`'${finishedPath}'\` (${type})`
+              if (finishedPath) {
+                return new vscode.Hover(
+                  new vscode.MarkdownString(
+                    `\`'${finishedPath}'\` (${type})`
+                  )
                 )
-              )
+              }
             }
           }
 
@@ -261,8 +265,6 @@ module.exports = class RPGLinter {
    * @param {string} getPath IFS or member path to fetch (in the format of an RPGLE copybook)
    */
   async getPathInfo(workingUri, getPath) {
-    const config = instance.getConfig();
-
     /** @type {string} */
     let finishedPath = undefined;
 
@@ -301,6 +303,7 @@ module.exports = class RPGLinter {
       break;
 
     case `streamfile`:
+      const config = instance.getConfig();
       type = `streamfile`;
       //Fetch IFS
 
@@ -371,7 +374,7 @@ module.exports = class RPGLinter {
    * @returns {Promise<string[]>}
    */
   async getContent(workingUri, getPath) {
-    const contentApi = instance.getContent();
+    let contentApi = (instance ? instance.getContent() : undefined);
 
     let content;
     let lines = undefined;
@@ -381,13 +384,15 @@ module.exports = class RPGLinter {
     try {
       switch (type) {
       case `file`:
-        if (this.copyBooks[finishedPath]) {
-          lines = this.copyBooks[finishedPath];
-        } else {
-          content = await vscode.workspace.fs.readFile(vscode.Uri.file(finishedPath));
-          content = Buffer.from(content).toString(`utf8`);
-          lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
-          this.copyBooks[finishedPath] = lines;
+        if (finishedPath) {
+          if (this.copyBooks[finishedPath]) {
+            lines = this.copyBooks[finishedPath];
+          } else {
+            content = await vscode.workspace.fs.readFile(vscode.Uri.file(finishedPath));
+            content = Buffer.from(content).toString(`utf8`);
+            lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+            this.copyBooks[finishedPath] = lines;
+          }
         }
         break;
 

@@ -8,6 +8,8 @@ const vscode = require(`vscode`);
 let instance = require(`./Instance`);
 let {CustomUI, Field} = require(`./api/CustomUI`);
 
+const rpgleLinter = require(`./languages/rpgle/linter`);
+
 const connectionBrowser = require(`./views/connectionBrowser`);
 
 /**
@@ -40,7 +42,9 @@ function activate(context) {
         }
       }
     })
-  )
+  );
+
+  new rpgleLinter(context);
 
   return {instance, CustomUI, Field, baseContext: context};
 }
