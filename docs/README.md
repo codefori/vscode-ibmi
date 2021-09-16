@@ -75,7 +75,7 @@ Alternatively, press <kbd>F1</kbd>, search for ```IBM i: New Connection```, and 
 
 ### Connect Subsequent
 
-If you have already connected to an IBM i system, click on the conection in the IBM i SERVERS browser.
+If you have already connected to an IBM i system, click on the conection in the IBM i: SERVERS browser.
 
 ![](assets/connect_04.png)
 
