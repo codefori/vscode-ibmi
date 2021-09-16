@@ -73,6 +73,7 @@ module.exports = class IBMiContent {
   static async uploadMemberContentWithDates(asp, lib, spf, mbr, body) {
     const connection = instance.getConnection();
     const db2 = connection.remoteFeatures.db2util;
+    const setccsid = connection.remoteFeatures.setccsid;
 
     if (db2) {
       const tempLib = connection.config.tempLibrary;
@@ -102,6 +103,7 @@ module.exports = class IBMiContent {
       await client.putFile(tmpobj, tempRmt);
 
       await connection.remoteCommand(`CLRPFM FILE(${lib}/${spf}) MBR(${mbr})`);
+      if (setccsid) await connection.paseCommand(`${setccsid} 1208 ${tempRmt}`);
       await connection.remoteCommand(
         `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
       );
