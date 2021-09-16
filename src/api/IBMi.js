@@ -8,6 +8,10 @@ const remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
     names: [`db2util`, `git`, `grep`]
+  },
+  {
+    path: `/usr/bin/`,
+    names: [`setccsid`]
   }
 ];
 
@@ -38,7 +42,8 @@ module.exports = class IBMi {
     this.remoteFeatures = {
       db2util: undefined,
       git: undefined,
-      grep: undefined
+      grep: undefined,
+      setccsid: undefined
     };
   }
 
