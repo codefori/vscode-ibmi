@@ -1,4 +1,4 @@
-# code-for-ibmi
+# Code for IBM i
 
 ## IBM i development extension for VS Code
 
@@ -31,7 +31,7 @@ Or from the Extensions icon in the Activity Bar (on the left):
 ### Make a connection
 
 1. Press F1
-2. Find 'IBM i: Connect'
+2. Find 'IBM i: New Connection'
 3. Enter in your connection details in the window that opens
 4. Hit connect
 
@@ -45,38 +45,48 @@ Tip: next time, try using 'IBM i: Connect to previous'
 4. After you've entered your chosen source file, hit enter.
 5. Source file should appear in member browser.
 
-You can click on a member to open and edit it. There is no member locking and the extension does not retain source dates.
+You can click on a member to open and edit it. There is no member locking and the extension defaults to not retaining source dates.
 
 ### How do I compile my source code?
 
-1. Edit your library list in the 'Code for IBM i' Settings for your current connection (connections get their own settings now!)
-2. Edit the Actions in JSON format in the 'Code for IBM i' Settings too. You can define what commands to use for the compilations.
-3. Open the source you want to compile
-4. Use Ctrl+E or Cmd+E to compile your source.
-5. If you have more than one compile option available to you for the type of source, it will prompt you
-6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
-
+1. Edit your library list in the 'USER LIBRARY LIST' browser. (Each connection has its own library list.)
+2. Open the source you want to compile.
+3. Use Ctrl+E or Cmd+E to compile your source.
+4. If you have more than one compile option available to you for the type of source, select the appropriate one.
+5. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
 
 ## Login
 
-Press <kbd>F1</kbd>, search for ```IBM i: Connect```, and press enter to arrive at the login form below.
+### Connect First Time
 
-![assets/login_01.png](assets/login_01.png)
+Click the IBM i icon.
 
-![assets/login_04.png](assets/login_04.png)
+![](assets/connect_01.png)
 
-If you have already connected to an IBM i system, you can use ```IBM i: Connect to previous``` to reconnect and save time typing.
+Click 'Connect to an IBM i'
 
-![assets/login_02.png](assets/login_02.png)
+![](assets/connect_02.png)
 
-Alternatively, use the sidebar button to reach the same two connect options and the subsequent login form.
+Complete this form. (You need either a password or a private key)
 
-![assets/login_03.png](assets/login_03.png)
+![](assets/connect_03.png)
+
+Alternatively, press <kbd>F1</kbd>, search for ```IBM i: New Connection```, and complete the above form.
+
+### Connect Subsequent
+
+If you have already connected to an IBM i system, click on the conection in the IBM i: SERVERS browser.
+
+![](assets/connect_04.png)
 
 After logging in, a status bar item will appear showing the name
 of the IBM i system you are connected to.
 
 ![assets/login_05.png](assets/login_05.png)
+
+### Logout (Disconnect)
+
+To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: Disconnect from current connection```
 
 ## Settings
 
@@ -320,10 +330,9 @@ Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
 
-Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP. 
+Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP.
 Default value: ILEDITOR.
 Note: If your IBM i runs replication software, there is no need to replicate the temporary library. Your sysadmin may add it to the list of objects to be ignored.
-
 
 #### Source ASP
 
