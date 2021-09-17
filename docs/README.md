@@ -288,13 +288,25 @@ An array for the user library list. Highest item of the library list goes first.
 ]
 ```
 
-##### Library list profiles
+##### Connection profiles
 
-It is possible to save a library list's current state, so you can change and revert back to it later. We call that state a 'library list profile'.
+It is possible to save the connection settings state, so you can change and revert back to it later. We call that state a 'connection profile'.
 
-You can save the current library list into a profile by using the save button on the Library List view. You can provide it with a unique name, or use an existing one to overwrite an existing profile.
+You can save a magnitude of settings into a profile by using the save button on the Library List view. You can provide it with a unique name, or use an existing one to overwrite an existing profile.
 
-To load a profile, which would set the library list, you can use the list/load button on the Library List view.
+To load a profile, which would update the settings, you can use the list/load button on the Library List view.
+
+The settings stored into a profile are the following:
+
+* Home / working directory
+* Current library
+* Library list
+* Source file list
+* IFS shortcuts
+* Object browser list
+* Database browser list
+
+You might use this if you use a single box to manage many different applications that have different source files and/or library lists.
 
 #### Current library
 

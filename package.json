@@ -48,8 +48,8 @@
 		"onCommand:code-for-ibmi.removeFromLibraryList",
 		"onCommand:code-for-ibmi.moveLibraryUp",
 		"onCommand:code-for-ibmi.moveLibraryDown",
-		"onCommand:code-for-ibmi.saveLibraryListProfile",
-		"onCommand:code-for-ibmi.loadLibraryListProfile",
+		"onCommand:code-for-ibmi.saveConnectionProfile",
+		"onCommand:code-for-ibmi.loadConnectionProfile",
 		"onView:memberBrowser",
 		"onCommand:code-for-ibmi.refreshMemberBrowser",
 		"onCommand:code-for-ibmi.createMember",
@@ -145,7 +145,7 @@
 								"default": [],
 								"description": "Library list. Used in actions. Highest first."
 							},
-							"libraryListProfiles": {
+							"connectionProfiles": {
 								"type": "array",
 								"items": {
 									"type": "object",
@@ -154,15 +154,6 @@
 										"name": {
 											"type": "string",
 											"description": "Library list profile name"
-										},
-										"list": {
-											"type": "array",
-											"items": {
-												"type": "string",
-												"title": "Library"
-											},
-											"default": [],
-											"description": "Library list. Highest first."
 										}
 									}
 								},
@@ -655,14 +646,14 @@
 				"icon": "$(arrow-down)"
 			},
 			{
-				"command": "code-for-ibmi.saveLibraryListProfile",
-				"title": "Save current library list into profile",
+				"command": "code-for-ibmi.saveConnectionProfile",
+				"title": "Save current settings into profile",
 				"category": "IBM i",
 				"icon": "$(save-as)"
 			},
 			{
-				"command": "code-for-ibmi.loadLibraryListProfile",
-				"title": "Set library list to profile",
+				"command": "code-for-ibmi.loadConnectionProfile",
+				"title": "Set active profile",
 				"category": "IBM i",
 				"icon": "$(list-tree)"
 			},
@@ -950,12 +941,12 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.saveLibraryListProfile",
+					"command": "code-for-ibmi.saveConnectionProfile",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.loadLibraryListProfile",
+					"command": "code-for-ibmi.loadConnectionProfile",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
