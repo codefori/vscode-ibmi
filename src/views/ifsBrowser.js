@@ -206,6 +206,7 @@ module.exports = class ifsBrowserProvider {
           try {
             await client.putFile(originPath[0].fsPath, destinationPath);
             vscode.window.showInformationMessage(`File was uploaded.`);
+            this.refresh();
           } catch (e) {
             vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
           }
