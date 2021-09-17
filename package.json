@@ -31,7 +31,6 @@
 		"onCommand:code-for-ibmi.disconnect",
 		"onCommand:code-for-ibmi.clearDiagnostics",
 		"onCommand:code-for-ibmi.runAction",
-		"onCommand:code-for-ibmi.runActionFromView",
 		"onCommand:code-for-ibmi.openEditable",
 		"onCommand:code-for-ibmi.selectForCompare",
 		"onCommand:code-for-ibmi.compareWithSelected",
@@ -622,7 +621,7 @@
 			},
 			{
 				"command": "code-for-ibmi.runAction",
-				"title": "Run Action on Active Editor",
+				"title": "Run Action",
 				"category": "IBM i"
 			},
 			{
@@ -666,11 +665,6 @@
 				"title": "Set library list to profile",
 				"category": "IBM i",
 				"icon": "$(list-tree)"
-			},
-			{
-				"command": "code-for-ibmi.runActionFromView",
-				"title": "Run Action",
-				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
@@ -1079,7 +1073,7 @@
 					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{
-					"command": "code-for-ibmi.runActionFromView",
+					"command": "code-for-ibmi.runAction",
 					"when": "view == memberBrowser && viewItem == member",
 					"group": "1_workspace@1"
 				},
@@ -1114,7 +1108,7 @@
 					"group": "3_memberTransfer@2"
 				},
 				{
-					"command": "code-for-ibmi.runActionFromView",
+					"command": "code-for-ibmi.runAction",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "1_workspace@1"
 				},
@@ -1177,7 +1171,7 @@
 					"when": "view == objectBrowser && viewItem == library"
 				},
 				{
-					"command": "code-for-ibmi.runActionFromView",
+					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && viewItem == object",
 					"group": "1_workspace@1"
 				},
