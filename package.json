@@ -972,12 +972,12 @@
 				{
 					"command": "code-for-ibmi.moveLibraryUp",
 					"when": "view == libraryListView && viewItem == library",
-					"group": "libraryMove@1"
+					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryDown",
 					"when": "view == libraryListView && viewItem == library",
-					"group": "libraryMove@2"
+					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",
