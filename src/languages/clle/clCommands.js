@@ -20,7 +20,7 @@ module.exports = class CLCommands {
     this.commands = {};
 
     context.subscriptions.push(
-      vscode.languages.registerCompletionItemProvider({language: `cl`}, {
+      vscode.languages.registerCompletionItemProvider([{language: `cl`}, {language: `cmd`}], {
         provideCompletionItems: async (document, position) => {
           if (this.enabled) {
 
@@ -52,7 +52,9 @@ module.exports = class CLCommands {
                 const name = parts[nameIndex].toUpperCase();
 
                 // get the parms we already have defined in the document
-                const existingParms = parts.slice(nameIndex).map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)) : undefined);
+                const existingParms = parts
+                  .slice(nameIndex)
+                  .map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)).toUpperCase() : undefined);
 
                 // get the command definition
                 const docs = await this.getCommand(name);
@@ -100,7 +102,7 @@ module.exports = class CLCommands {
         }
       }),
 
-      vscode.languages.registerHoverProvider({language: `cl`}, {
+      vscode.languages.registerHoverProvider([{language: `cl`}, {language: `cmd`}], {
         provideHover: async (document, position, token) => {
           if (this.enabled) {
             const range = document.getWordRangeAtPosition(position);
