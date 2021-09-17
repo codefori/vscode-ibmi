@@ -20,6 +20,12 @@ module.exports = class Configuration {
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];
 
+    /** @type {{name: string, homeDirectory: string, currentLibrary: string, libraryList: string[], sourceFileList: string[], objectBrowserList: string[], databaseBrowserList: string[], ifsShortcuts: string[] }[]} */
+    this.connectionProfiles = base.connectionProfiles || [];
+
+    /** @type {string[]} */
+    this.ifsShortcuts = base.ifsShortcuts || [];
+
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
@@ -35,11 +41,20 @@ module.exports = class Configuration {
     /** @type {string} */
     this.sourceFileCCSID = base.sourceFileCCSID || `*FILE`;
 
-    /** @type {boolean} */
-    this.enableSQL = base.enableSQL || false;
+    /** @type {boolean} Undefined means not created, so default to on */
+    this.enableSQL = (base.enableSQL === true || base.enableSQL === undefined);
 
     /** @type {string[]} */
     this.hideCompileErrors = base.hideCompileErrors || [];
+
+    /** @type {boolean} */
+    this.enableSourceDates = (base.enableSourceDates === true);
+
+    /** @type {"none"|"bar"|"inline"} */
+    this.sourceDateLocation = base.sourceDateLocation || `none`;
+
+    /** @type {boolean} */
+    this.clContentAssistEnabled = (base.clContentAssistEnabled === true);
   }
 
   /**

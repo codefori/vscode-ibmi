@@ -1,9 +1,14 @@
 
 const vscode = require(`vscode`);
+const os = require(`os`);
+let fs = require(`fs`);
+const util = require(`util`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 const Search = require(`../api/Search`);
+
+const writeFileAsync = util.promisify(fs.writeFile);
 
 module.exports = class memberBrowserProvider {
   /**
@@ -26,15 +31,17 @@ module.exports = class memberBrowserProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async () => {
-        const connection = instance.getConnection();
+      vscode.commands.registerCommand(`code-for-ibmi.addSourceFile`, async (newSourceFile) => {
         const config = instance.getConfig();
 
         let sourceFiles = config.sourceFileList;
 
-        const newSourceFile = await vscode.window.showInputBox({
-          prompt: `Source file to add (Format: LIB/FILE)`
-        });
+        if (!newSourceFile) {
+          //If no paramater is passed, we prompt the user for input
+          newSourceFile = await vscode.window.showInputBox({
+            prompt: `Source file to add (Format: LIB/FILE)`
+          });
+        }
 
         if (newSourceFile) {
           if (newSourceFile.includes(`/`)) {
@@ -77,14 +84,34 @@ module.exports = class memberBrowserProvider {
       
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
         if (node) {
+          let fullName;
+          let path = node.path.split(`/`);
+          const requiresSPF = path[1] === `*ALL`;
+
           //Running from right click
-          const fullName = await vscode.window.showInputBox({
-            prompt: `Name of new source member`
+          fullName = await vscode.window.showInputBox({
+            prompt: `Name of new source member (${requiresSPF ? `file/member.ext` : `member.ext`})`
           });
 
           if (fullName) {
+            if (requiresSPF) {
+              const spfSplit = fullName.indexOf(`/`);
+
+              if (spfSplit > 0) {
+                path[1] = fullName.substring(0, spfSplit).trim().toUpperCase();
+                fullName = fullName.substring(spfSplit + 1);
+
+                if (path[1].length === 0) {
+                  vscode.window.showErrorMessage(`Source file required in path.`);
+                  return;
+                }
+              } else {
+                vscode.window.showErrorMessage(`Source file required in path.`);
+                return;
+              }
+            }
+
             const connection = instance.getConnection();
-            const path = node.path.split(`/`);
             const [name, extension] = fullName.split(`.`);
 
             if (extension !== undefined && extension.length > 0) {
@@ -163,38 +190,29 @@ module.exports = class memberBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === `/` + node.path);
+          //Running from right click
+          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
-          if (isStillOpen) {
-            //Since there is no easy way to close a file.
-            vscode.window.showInformationMessage(`Cannot delete member while it is open.`);
+          if (result === `Yes`) {
+            const connection = instance.getConnection();
+            const path = node.path.split(`/`);
+            const name = path[2].substring(0, path[2].lastIndexOf(`.`));
 
-          } else {
-            //Running from right click
-            let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+            try {
+              await connection.remoteCommand(
+                `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+              );
 
-            if (result === `Yes`) {
-              const connection = instance.getConnection();
-              const path = node.path.split(`/`);
-              const name = path[2].substring(0, path[2].lastIndexOf(`.`));
+              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-              try {
-                await connection.remoteCommand(
-                  `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
-                );
-
-                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
-
-                if (Configuration.get(`autoRefresh`)) {
-                  this.refresh(path[0], path[1]);
-                }
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+              if (Configuration.get(`autoRefresh`)) {
+                this.refresh(path[0], path[1]);
               }
-
-              //Not sure how to remove the item from the list. Must refresh - but that might be slow?
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting member! ${e}`);
             }
 
+            //Not sure how to remove the item from the list. Must refresh - but that might be slow?
           }
         } else {
           //Running from command.
@@ -207,7 +225,7 @@ module.exports = class memberBrowserProvider {
         if (node) {
           const newText = await vscode.window.showInputBox({
             value: node.description,
-            prompt: `Update ${path[3]} text`
+            prompt: `Update ${name} text`
           });
 
           if (newText && newText !== node.description) {
@@ -236,54 +254,126 @@ module.exports = class memberBrowserProvider {
         const oldExtension = path[2].substring(path[2].lastIndexOf(`.`)+1);
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === `/` + node.path);
-          if (isStillOpen) {
-            vscode.window.showInformationMessage(`Cannot rename member while it is open.`);
-          } else {
+          let newName = await vscode.window.showInputBox({
+            value: path[2],
+            prompt: `Rename ${path[2]}`
+          });
 
-            let newName = await vscode.window.showInputBox({
-              value: path[2],
-              prompt: `Rename ${path[2]}`
-            });
-
-            newName = newName.toUpperCase();
+          newName = newName.toUpperCase();
   
-            if (newName && newName.toUpperCase() !== path[2]) {
-              const connection = instance.getConnection();
-              const newNameParts = newName.split(`.`);
-              let renameHappened = false;
+          if (newName && newName.toUpperCase() !== path[2]) {
+            const connection = instance.getConnection();
+            const newNameParts = newName.split(`.`);
+            let renameHappened = false;
 
-              if (newNameParts.length === 2) {
-                try {
+            if (newNameParts.length === 2) {
+              try {
 
-                  if (newNameParts[0] !== oldName) {
-                    await connection.remoteCommand(
-                      `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
-                    );
+                if (newNameParts[0] !== oldName) {
+                  await connection.remoteCommand(
+                    `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
+                  );
 
-                    renameHappened = true;
-                  }
-
-                  if (newNameParts[1] !== oldExtension) {
-                    await connection.remoteCommand(
-                      `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${renameHappened ? newNameParts[0] : oldName}) SRCTYPE(${newNameParts[1]})`,
-                    );
-                  }
-    
-                  if (Configuration.get(`autoRefresh`)) {
-                    this.refresh(path[0], path[1]);
-                  }
-                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
-                } catch (e) {
-                  vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+                  renameHappened = true;
                 }
-              } else {
-                vscode.window.showErrorMessage(`New name format incorrect. 'NAME.EXTENTION' required.`);
+
+                if (newNameParts[1] !== oldExtension) {
+                  await connection.remoteCommand(
+                    `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${renameHappened ? newNameParts[0] : oldName}) SRCTYPE(${newNameParts[1]})`,
+                  );
+                }
+    
+                if (Configuration.get(`autoRefresh`)) {
+                  this.refresh(path[0], path[1]);
+                }
+                else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error renaming member! ${e}`);
               }
+            } else {
+              vscode.window.showErrorMessage(`New name format incorrect. 'NAME.EXTENTION' required.`);
             }
           }
 
           
+        } else {
+          //Running from command.
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node) => {
+        const contentApi = instance.getContent();
+
+        let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
+ 
+        if (originPath) {
+          const path = node.path.split(`/`);
+          let asp, lib, file, fullName;
+      
+          if (path.length === 3) {
+            lib = path[0];
+            file = path[1];
+            fullName = path[2];
+          } else {
+            asp = path[0];
+            lib = path[1];
+            file = path[2];
+            fullName = path[3];
+          }
+
+          const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+
+          const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
+          
+          try {
+            contentApi.uploadMemberContent(asp, lib, file, name, data);
+            vscode.window.showInformationMessage(`Member was uploaded.`);
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
+          }
+        }
+  
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
+        const contentApi = instance.getContent();
+
+        const path = node.path.split(`/`);
+        let asp, lib, file, fullName;
+    
+        if (path.length === 3) {
+          lib = path[0];
+          file = path[1];
+          fullName = path[2];
+        } else {
+          asp = path[0];
+          lib = path[1];
+          file = path[2];
+          fullName = path[3];
+        }
+    
+        const name = fullName.substring(0, fullName.lastIndexOf(`.`));
+        const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+
+        if (node) {
+          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + fullName) });
+
+          if (localFilepath) {
+            let localPath = localFilepath.path;
+            if (process.platform === `win32`) {
+              //Issue with getFile not working propertly on Windows
+              //when there was a / at the start.
+              if (localPath[0] === `/`) localPath = localPath.substr(1);
+            }
+
+            try {
+              await writeFileAsync(localPath, memberContent, `utf8`);
+              vscode.window.showInformationMessage(`Member was downloaded.`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error downloading member! ${e}`);
+            }
+          }
+
         } else {
           //Running from command.
         }
@@ -295,52 +385,56 @@ module.exports = class memberBrowserProvider {
 
           const path = node.path.split(`/`);
 
-          let searchTerm = await vscode.window.showInputBox({
-            prompt: `Search ${node.path}.`
-          });
+          if (path[1] !== `*ALL`) {
+            let searchTerm = await vscode.window.showInputBox({
+              prompt: `Search ${node.path}.`
+            });
 
-          if (searchTerm) {
-            vscode.window.showInformationMessage(`Starting search for '${searchTerm}' in ${node.path}..`);
+            if (searchTerm) {
+              vscode.window.showInformationMessage(`Starting search for '${searchTerm}' in ${node.path}..`);
             
-            try {
-              let members = [];
+              try {
+                let members = [];
 
-              if (!(node.path in this.refreshCache)) {
-                this.refreshCache[node.path] = await content.getMemberList(path[0], path[1]);
-              }
+                if (!(node.path in this.refreshCache)) {
+                  this.refreshCache[node.path] = await content.getMemberList(path[0], path[1]);
+                }
 
-              members = this.refreshCache[node.path];
+                members = this.refreshCache[node.path];
 
-              if (members.length > 0) {
-                const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
+                if (members.length > 0) {
+                  const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
 
-                results.forEach(result => {
-                  const resultPath = result.path.split(`/`);
-                  const resultName = resultPath[resultPath.length-1];
-                  result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
-                });
+                  results.forEach(result => {
+                    const resultPath = result.path.split(`/`);
+                    const resultName = resultPath[resultPath.length-1];
+                    result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
+                  });
 
-                const resultDoc = Search.generateDocument(`member`, results);
+                  const resultDoc = Search.generateDocument(`member`, results);
   
-                const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
-                const editor = await vscode.window.showTextDocument(textDoc);
-                editor.edit(edit => {
-                  edit.insert(new vscode.Position(0, 0), resultDoc);
-                })
+                  const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
+                  const editor = await vscode.window.showTextDocument(textDoc);
+                  editor.edit(edit => {
+                    edit.insert(new vscode.Position(0, 0), resultDoc);
+                  })
 
-              } else {
-                vscode.window.showErrorMessage(`No members to search.`);
+                } else {
+                  vscode.window.showErrorMessage(`No members to search.`);
+                }
+
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error searching source members.`);
               }
-
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error searching source members.`);
             }
+          } else {
+            vscode.window.showErrorMessage(`Cannot search listings using *ALL.`);
           }
 
         } else {
           //Running from command.
         }
-      })
+      }),
     )
   }
 
@@ -359,58 +453,101 @@ module.exports = class memberBrowserProvider {
   }
 
   /**
-   * @param {SPF?} element
+   * @param {SPF|Library} element
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
-    const content = instance.getContent();
+    const connection = instance.getConnection();
     let items = [], item;
 
-    if (element) { //Chosen SPF
-      //Fetch members
-      console.log(element.path);
-      const [lib, spf] = element.path.split(`/`);
+    if (connection) {
+      const content = instance.getContent();
+      const config = instance.getConfig();
+      const shortcuts = config.sourceFileList;
 
-      // init cache entry if not exists
-      let cacheExists = element.path in this.refreshCache;
-      if(!cacheExists){
-        this.refreshCache[element.path] = []; // init cache entry
-      }
+      if (element) {
+        switch (element.contextValue) {
+        case `SPF`:
+        //Fetch members
+          console.log(element.path);
+          const [lib, spf] = element.path.split(`/`);
 
-      // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
-      if(!cacheExists || ([lib, `*ALL`].includes(this.targetLib) && [spf, `*ALL`].includes(this.targetSpf))){
-        try {
-          const members = await content.getMemberList(lib, spf);
-          this.refreshCache[element.path] = members; // reset cache since we're getting new data
+          // init cache entry if not exists
+          let cacheExists = element.path in this.refreshCache;
+          if(!cacheExists){
+            this.refreshCache[element.path] = []; // init cache entry
+          }
 
-          items.push(...members.map(member => new Member(member)));
+          // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
+          if(!cacheExists || ([lib, `*ALL`].includes(this.targetLib) && [spf, `*ALL`].includes(this.targetSpf))){
+            try {
+              const members = await content.getMemberList(lib, spf);
+              this.refreshCache[element.path] = members; // reset cache since we're getting new data
 
-        } catch (e) {
-          console.log(e);
-          item = new vscode.TreeItem(`Error loading members.`);
-          vscode.window.showErrorMessage(e);
-          items = [item];
+              items.push(...members.map(member => new Member(member)));
+
+            } catch (e) {
+              console.log(e);
+              item = new vscode.TreeItem(`Error loading members.`);
+              vscode.window.showErrorMessage(e);
+              items = [item];
+            }
+
+          } else {
+            // add cached items to tree
+            const members = this.refreshCache[element.path];
+            items.push(...members.map(member => new Member(member)));
+          }
+          break;
+
+        case `library`:
+          //Fetch source files in library
+          for (let shortcut of shortcuts) {
+            shortcut = shortcut.toUpperCase();
+            const path = shortcut.split(`/`);
+  
+            if (path[0] === element.path) {
+              items.push(new SPF(path[1], shortcut));
+            }
+          }
+          break;
         }
 
       } else {
-        // add cached items to tree
-        const members = this.refreshCache[element.path];
-        items.push(...members.map(member => new Member(member)));
-      }
-    } else {
-      const connection = instance.getConnection();
-
-      if (connection) {
-        const config = instance.getConfig();
-        const shortcuts = config.sourceFileList;
-
+        let libs = [];
         for (let shortcut of shortcuts) {
           shortcut = shortcut.toUpperCase();
-          items.push(new SPF(shortcut, shortcut));
+          const path = shortcut.split(`/`);
+
+          if (path[1] === `*ALL`) {
+            items.push(new SPF(shortcut, shortcut));
+          } else {
+            if (!libs.includes(path[0])) {
+              libs.push(path[0]);
+              items.push(new Library(path[0], path[0]));
+            }
+          }
         }
       }
     }
+    
     return items;
+  }
+}
+
+class Library extends vscode.TreeItem {
+  /**
+   * 
+   * @param {string} label 
+   * @param {string} library 
+   */
+  constructor(label, library) {
+    super(label, vscode.TreeItemCollapsibleState.Collapsed);
+
+    this.contextValue = `library`;
+    this.path = library;
+
+    this.iconPath = new vscode.ThemeIcon(`library`);
   }
 }
 
@@ -424,6 +561,8 @@ class SPF extends vscode.TreeItem {
 
     this.contextValue = `SPF`;
     this.path = path;
+
+    this.iconPath = new vscode.ThemeIcon(`file-directory`);
   }
 }
 

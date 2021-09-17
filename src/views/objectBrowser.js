@@ -2,7 +2,7 @@
 const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
-const Configuration = require("../api/Configuration");
+const Configuration = require(`../api/Configuration`);
 
 module.exports = class objectBrowserProvider {
   /**
@@ -68,6 +68,37 @@ module.exports = class objectBrowserProvider {
           if (Configuration.get(`autoRefresh`)) this.refresh();
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.createLibrary`, async () => {
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+
+        const newLibrary = await vscode.window.showInputBox({
+          prompt: `Name of new library`
+        });
+
+        if (!newLibrary) return; 
+
+        let libraries = config.objectBrowserList;
+
+        try {
+          await connection.remoteCommand(
+            `CRTLIB LIB(${newLibrary})`
+          );
+        } catch (e) {
+          vscode.window.showErrorMessage(`Cannot create library "${newLibrary}": ${e}`);
+          return;
+        }
+        
+        if (newLibrary.length <= 10) {
+          libraries.push(newLibrary.toUpperCase());
+          await config.set(`objectBrowserList`, libraries);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        } else {
+          vscode.window.showErrorMessage(`Library name too long.`);
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node) => {
         if (node) {
           //Running from right click
@@ -92,6 +123,13 @@ module.exports = class objectBrowserProvider {
                 if (Configuration.get(`autoRefresh`)) {
                   this.refresh();
                 }
+
+                let result = await vscode.window.showWarningMessage(`Do you want to add ${uriPath} to the Member Browser?`, `Yes`, `No`);
+
+                if (result === `Yes`) {
+                  vscode.commands.executeCommand(`code-for-ibmi.addSourceFile`, uriPath);
+                }
+
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating source file! ${e}`);
               }
@@ -157,7 +195,7 @@ module.exports = class objectBrowserProvider {
           }
         } catch (e) {
           console.log(e);
-          item = new vscode.TreeItem(`Error loading members.`);
+          item = new vscode.TreeItem(`Error loading objects.`);
           vscode.window.showErrorMessage(e);
           items = [item];
         }

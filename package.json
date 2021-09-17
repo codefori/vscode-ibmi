@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.5.6",
+	"version": "0.7.6",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -28,53 +28,8 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:code-for-ibmi.connect",
-		"onCommand:code-for-ibmi.connectPrevious",
-		"onCommand:code-for-ibmi.disconnect",
-		"onCommand:code-for-ibmi.clearDiagnostics",
-		"onCommand:code-for-ibmi.runAction",
-		"onCommand:code-for-ibmi.runActionFromView",
-		"onCommand:code-for-ibmi.openEditable",
-		"onCommand:code-for-ibmi.selectForCompare",
-		"onCommand:code-for-ibmi.compareWithSelected",
-		"onCommand:code-for-ibmi.showAdditionalSettings",
-		"onCommand:code-for-ibmi.showActionsMaintenance",
-		"onCommand:code-for-ibmi.rpgleColumnAssistant",
-		"onCommand:code-for-ibmi.changeCurrentLibrary",
-		"onView:libraryListView",
-		"onCommand:code-for-ibmi.refreshLibraryListView",
-		"onCommand:code-for-ibmi.addToLibraryList",
-		"onCommand:code-for-ibmi.removeFromLibraryList",
-		"onCommand:code-for-ibmi.moveLibraryUp",
-		"onCommand:code-for-ibmi.moveLibraryDown",
-		"onView:memberBrowser",
-		"onCommand:code-for-ibmi.refreshMemberBrowser",
-		"onCommand:code-for-ibmi.createMember",
-		"onCommand:code-for-ibmi.copyMember",
-		"onCommand:code-for-ibmi.deleteMember",
-		"onCommand:code-for-ibmi.updateMemberText",
-		"onCommand:code-for-ibmi.renameMember",
-		"onCommand:code-for-ibmi.searchSourceFile",
-		"onView:ifsBrowser",
-		"onCommand:code-for-ibmi.refreshIFSBrowser",
-		"onCommand:code-for-ibmi.changeHomeDirectory",
-		"onCommand:code-for-ibmi.createDirectory",
-		"onCommand:code-for-ibmi.createStreamfile",
-		"onCommand:code-for-ibmi.uploadStreamfile",
-		"onCommand:code-for-ibmi.moveIFS",
-		"onCommand:code-for-ibmi.deleteIFS",
-		"onCommand:code-for-ibmi.searchIFS",
-		"onCommand:code-for-ibmi.downloadStreamfile",
-		"onView:objectBrowser",
-		"onCommand:code-for-ibmi.refreshObjectList",
-		"onCommand:code-for-ibmi.createSourceFile",
-		"onCommand:code-for-ibmi.addLibraryToObjectBrowser",
-		"onCommand:code-for-ibmi.removeLibraryFromObjectBrowser",
-		"onView:databaseBrowser",
-		"onCommand:code-for-ibmi.refreshDatabaseBrowser",
-		"onCommand:code-for-ibmi.addSchemaToDatabaseBrowser",
-		"onCommand:code-for-ibmi.removeSchemaFromDatabaseBrowser",
-		"onCommand:code-for-ibmi.runEditorStatement"
+		"onView:connectionBrowser",
+		"onCommand:code-for-ibmi.connect"
 	],
 	"main": "./dist/extension",
 	"contributes": {
@@ -139,6 +94,30 @@
 								"default": [],
 								"description": "Library list. Used in actions. Highest first."
 							},
+							"connectionProfiles": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"title": "Library list profile",
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "Library list profile name"
+										}
+									}
+								},
+								"default": [],
+								"description": "A collection of library lists to easily switch between them on this system."
+							},
+							"ifsShortcuts": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"title": "Path to directory"
+								},
+								"default": [],
+								"description": "List of directories shown in IFS Browser"
+							},
 							"homeDirectory": {
 								"type": "string",
 								"default": ".",
@@ -180,9 +159,34 @@
 								},
 								"default": [],
 								"description": "List of codes that will be hidden in the result of an action (from the EVFEVENT file)"
+							},
+							"enableSourceDates": {
+								"type": "boolean",
+								"default": false,
+								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
+							},
+							"sourceDateLocation": {
+								"type": "string",
+								"default": "none",
+								"enum": ["none", "bar", "inline"],
+								"description": "The location of the source date of the current line will be displayed."
+							},
+							"clContentAssistEnabled": {
+								"type": "boolean",
+								"default": false,
+								"description": "Enables the CL content assist and hover support."
 							}
 						}
 					}
+				},
+				"code-for-ibmi.grepIgnoreDirs": {
+					"type": "array",
+					"items": {
+						"type": "string",
+						"title": "IFS directory"
+					},
+					"default": ["node_modules", ".git", "vendor", "__pycache__"],
+					"description": "List of directories that will be ignored when searching the IFS."
 				},
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
@@ -285,6 +289,24 @@
 						}
 					},
 					"default": [
+						{
+						    "type": "member",
+						    "extensions": [
+							"CBLLE",
+							"CBL"
+						    ],
+						    "name": "Create Bound COBOL Program (CRTBNDCBL)",
+						    "command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+						},
+						{
+						    "type": "member",
+						    "extensions": [
+							"CBLLE",
+							"CBL"
+						    ],
+						    "name": "Create Module CBLLE (CRTCBLMOD)",
+						    "command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+						},
 						{
 							"type": "member",
 							"extensions": [
@@ -485,12 +507,30 @@
 		"commands": [
 			{
 				"command": "code-for-ibmi.connect",
-				"title": "Connect",
-				"category": "IBM i"
+				"title": "New Connection",
+				"category": "IBM i",
+				"icon": "$(add)"
 			},
 			{
 				"command": "code-for-ibmi.connectPrevious",
 				"title": "Connect to previous",
+				"category": "IBM i",
+				"icon": "$(debug-start)"
+			},
+			{
+				"command": "code-for-ibmi.refreshConnections",
+				"title": "Refresh connections",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.showAdditionalSettings",
+				"title": "Connection settings",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.deleteConnection",
+				"title": "Delete connection",
 				"category": "IBM i"
 			},
 			{
@@ -520,13 +560,18 @@
 				"icon": "$(root-folder)"
 			},
 			{
+				"command": "code-for-ibmi.rpgleOpenInclude",
+				"title": "Open include at cursor",
+				"category": "IBM i (RPGLE)"
+			},
+			{
 				"command": "code-for-ibmi.clearDiagnostics",
 				"title": "Clear diagnostics.",
 				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.runAction",
-				"title": "Run Action on Active Editor",
+				"title": "Run Action",
 				"category": "IBM i"
 			},
 			{
@@ -537,7 +582,7 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshLibraryListView",
-				"title": "Remove from library list",
+				"title": "Refresh library list view",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -560,9 +605,16 @@
 				"icon": "$(arrow-down)"
 			},
 			{
-				"command": "code-for-ibmi.runActionFromView",
-				"title": "Run Action",
-				"category": "IBM i"
+				"command": "code-for-ibmi.saveConnectionProfile",
+				"title": "Save current settings into profile",
+				"category": "IBM i",
+				"icon": "$(save-as)"
+			},
+			{
+				"command": "code-for-ibmi.loadConnectionProfile",
+				"title": "Set active profile",
+				"category": "IBM i",
+				"icon": "$(list-tree)"
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
@@ -574,6 +626,12 @@
 				"command": "code-for-ibmi.searchSourceFile",
 				"title": "Search Source File",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openFileByPath",
+				"title": "Open File",
+				"category": "IBM i",
+				"icon": "$(files)"
 			},
 			{
 				"command": "code-for-ibmi.addSourceFile",
@@ -623,14 +681,24 @@
 				"icon": "$(files)"
 			},
 			{
+				"command": "code-for-ibmi.downloadMemberAsFile",
+				"title": "Download",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+				"title": "Upload and replace",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.refreshIFSBrowser",
 				"title": "Refresh IFS List",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "code-for-ibmi.changeHomeDirectory",
-				"title": "Change directory",
+				"command": "code-for-ibmi.changeWorkingDirectory",
+				"title": "Change working directory",
 				"category": "IBM i",
 				"icon": "$(root-folder)"
 			},
@@ -646,7 +714,7 @@
 			},
 			{
 				"command": "code-for-ibmi.moveIFS",
-				"title": "Move object",
+				"title": "Rename or Move object",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
@@ -675,6 +743,18 @@
 				"icon": "$(cloud-upload)"
 			},
 			{
+				"command": "code-for-ibmi.addIFSShortcut",
+				"title": "Add IFS shortcut",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.removeIFSShortcut",
+				"title": "Remove IFS shortcut",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.refreshObjectList",
 				"title": "Refresh Object List",
 				"category": "IBM i",
@@ -691,6 +771,12 @@
 				"title": "Add library to Object Browser",
 				"category": "IBM i",
 				"icon": "$(new-folder)"
+			},
+			{
+				"command": "code-for-ibmi.createLibrary",
+				"title": "Create new library",
+				"category": "IBM i",
+				"icon": "$(repo-create)"
 			},
 			{
 				"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
@@ -733,6 +819,12 @@
 				"command": "code-for-ibmi.runEditorStatement",
 				"key": "ctrl+r",
 				"mac": "cmd+r"
+			},
+			{
+				"command": "code-for-ibmi.rpgleOpenInclude",
+				"key": "shift+f12",
+				"mac": "shift+f12",
+				"when": "editorLangId == rpgle"
 			}
 		],
 		"viewsContainers": {
@@ -747,31 +839,51 @@
 		"views": {
 			"ibmi-explorer": [
 				{
+					"id": "connectionBrowser",
+					"name": "Servers",
+					"when": "code-for-ibmi:connected == false"
+				},
+				{
 					"id": "libraryListView",
-					"name": "User Library List"
+					"name": "User Library List",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "memberBrowser",
-					"name": "Member Browser"
+					"name": "Member Browser",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "ifsBrowser",
-					"name": "IFS Browser"
+					"name": "IFS Browser",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"visibility": "collapsed"
+					"visibility": "collapsed",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "databaseBrowser",
 					"name": "Database Browser",
-					"visibility": "collapsed"
+					"visibility": "collapsed",
+					"when": "code-for-ibmi:connected == true"
 				}
 			]
 		},
 		"menus": {
 			"view/title": [
+				{
+					"command": "code-for-ibmi.connect",
+					"group": "navigation",
+					"when": "view == connectionBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshConnections",
+					"group": "navigation",
+					"when": "view == connectionBrowser"
+				},
 				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
 					"group": "navigation",
@@ -788,6 +900,16 @@
 					"when": "view == libraryListView"
 				},
 				{
+					"command": "code-for-ibmi.saveConnectionProfile",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
+					"command": "code-for-ibmi.loadConnectionProfile",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
 					"command": "code-for-ibmi.addSourceFile",
 					"group": "navigation",
 					"when": "view == memberBrowser"
@@ -798,27 +920,17 @@
 					"when": "view == memberBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createDirectory",
+					"command": "code-for-ibmi.changeWorkingDirectory",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createStreamfile",
+					"command": "code-for-ibmi.addIFSShortcut",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.uploadStreamfile",
-					"group": "navigation",
-					"when": "view == ifsBrowser"
-				},
-				{
-					"command": "code-for-ibmi.changeHomeDirectory",
-					"group": "navigation",
-					"when": "view == ifsBrowser"
-				},
-				{
-					"command": "code-for-ibmi.searchIFS",
+					"command": "code-for-ibmi.removeIFSShortcut",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
@@ -833,12 +945,12 @@
 					"when": "view == objectBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshObjectList",
+					"command": "code-for-ibmi.createLibrary",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
 				{
-					"command": "code-for-ibmi.createSourceFile",
+					"command": "code-for-ibmi.refreshObjectList",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
@@ -855,18 +967,31 @@
 			],
 			"view/item/context": [
 				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "view == connectionBrowser && viewItem == server"
+				},
+				{
+					"command": "code-for-ibmi.showAdditionalSettings",
+					"when": "view == connectionBrowser && viewItem == server"
+				},
+				{
+					"command": "code-for-ibmi.connectPrevious",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "inline"
+				},
+				{
 					"command": "code-for-ibmi.moveLibraryUp",
-					"when": "viewItem == libraryListView || viewItem == library",
-					"group": "libraryMove@1"
+					"when": "view == libraryListView && viewItem == library",
+					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryDown",
-					"when": "viewItem == libraryListView || viewItem == library",
-					"group": "libraryMove@2"
+					"when": "view == libraryListView && viewItem == library",
+					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",
-					"when": "viewItem == libraryListView || viewItem == library",
+					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryRemove@1"
 				},
 				{
@@ -898,7 +1023,7 @@
 					"when": "view == memberBrowser && viewItem == SPF"
 				},
 				{
-					"command": "code-for-ibmi.runActionFromView",
+					"command": "code-for-ibmi.runAction",
 					"when": "view == memberBrowser && viewItem == member",
 					"group": "1_workspace@1"
 				},
@@ -923,7 +1048,17 @@
 					"group": "2_memberStuff@3"
 				},
 				{
-					"command": "code-for-ibmi.runActionFromView",
+					"command": "code-for-ibmi.downloadMemberAsFile",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "3_memberTransfer@1"
+				},
+				{
+					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+					"when": "view == memberBrowser && viewItem == member",
+					"group": "3_memberTransfer@2"
+				},
+				{
+					"command": "code-for-ibmi.runAction",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "1_workspace@1"
 				},
@@ -953,6 +1088,16 @@
 					"group": "3_ifsStuff@1"
 				},
 				{
+					"command": "code-for-ibmi.addIFSShortcut",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.changeWorkingDirectory",
+					"when": "view == ifsBrowser && viewItem == directory",
+					"group": "3_ifsStuff@3"
+				},
+				{
 					"command": "code-for-ibmi.downloadStreamfile",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "3_ifsTransfer@1"
@@ -976,7 +1121,7 @@
 					"when": "view == objectBrowser && viewItem == library"
 				},
 				{
-					"command": "code-for-ibmi.runActionFromView",
+					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && viewItem == object",
 					"group": "1_workspace@1"
 				},
@@ -988,14 +1133,8 @@
 		},
 		"viewsWelcome": [
 			{
-				"view": "libraryListView",
-				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)\n[Connect to previous IBM i](command:code-for-ibmi.connectPrevious)",
-				"when": "code-for-ibmi:connected == false"
-			},
-			{
-				"view": "memberBrowser",
-				"contents": "No source file",
-				"when": "code-for-ibmi:connected == true"
+				"view": "connectionBrowser",
+				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
 			}
 		]
 	},
@@ -1025,9 +1164,11 @@
 		"@bendera/vscode-webview-elements": "^0.3.0",
 		"csv-parse": "^4.15.1",
 		"node-ssh": "^11.1.1",
-		"tmp": "^0.2.1"
+		"tmp": "^0.2.1",
+		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
-		"barrettotte.ibmi-languages"
+		"barrettotte.ibmi-languages",
+		"HalcyonTechLtd.vscode-ibmi-walkthroughs"
 	]
 }

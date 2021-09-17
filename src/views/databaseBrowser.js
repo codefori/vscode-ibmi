@@ -4,7 +4,7 @@ const vscode = require(`vscode`);
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
-const {Database, Table, Column} = require(`./databaseFs`);
+const {Database, Table, Column} = require(`../filesystems/databaseFs`);
 
 /** @type {{[SCHEMA: string]: Table[]}} */
 let schemaCache = {};

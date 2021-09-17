@@ -21,27 +21,93 @@ module.exports = class ifsBrowserProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.changeHomeDirectory`, async () => {
-        const connection = instance.getConnection();
+      vscode.commands.registerCommand(`code-for-ibmi.changeWorkingDirectory`, async (node) => {
         const config = instance.getConfig();
         const homeDirectory = config.homeDirectory;
 
-        const newDirectory = await vscode.window.showInputBox({
-          prompt: `Changing home directory`,
-          value: homeDirectory
-        });
+        let newDirectory;
+
+        if (node) {
+          newDirectory = node.path;
+        } else {
+          newDirectory = await vscode.window.showInputBox({
+            prompt: `Changing working directory`,
+            value: homeDirectory
+          });
+        }
 
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
             await config.set(`homeDirectory`, newDirectory);
-            
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+
+            vscode.window.showInformationMessage(`Working directory changed to ${newDirectory}.`);
           }
         } catch (e) {
           console.log(e);
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.addIFSShortcut`, async (node) => {
+        const config = instance.getConfig();
+
+        let newDirectory;
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          newDirectory = node.path;
+        } else {
+          newDirectory = await vscode.window.showInputBox({
+            prompt: `Path to IFS directory`,
+          });
+        }
+
+        try {
+          if (newDirectory) {
+            newDirectory = newDirectory.trim();
+            
+            if (!shortcuts.includes(newDirectory)) {
+              shortcuts.push(newDirectory);
+              await config.set(`ifsShortcuts`, shortcuts);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            }
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node) => {
+        const config = instance.getConfig();
+
+        let removeDir;
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          removeDir = node.path;
+        } else {
+          removeDir = await vscode.window.showQuickPick(shortcuts, {
+            placeHolder: `Select IFS directory to remove`,
+          });
+        }
+
+        try {
+          if (removeDir) {
+            removeDir = removeDir.trim();
+
+            const inx = shortcuts.indexOf(removeDir);
+            
+            if (inx >= 0) {
+              shortcuts.splice(inx, 1);
+              await config.set(`ifsShortcuts`, shortcuts);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            }
+          }
+        } catch (e) {
+          console.log(e);
+        }
+      }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
         const connection = instance.getConnection();
@@ -131,56 +197,40 @@ module.exports = class ifsBrowserProvider {
         if (!destPathSuggestion.endsWith(`/`)) destPathSuggestion += `/`;
         destPathSuggestion += filname;
 
-        const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === originPath[0].fsPath);
+        const destinationPath = await vscode.window.showInputBox({
+          prompt: `Name of new streamfile`,
+          value: destPathSuggestion
+        });
 
-        if (isStillOpen) {
-          //Be sure it's correctly saved
-          vscode.window.showInformationMessage(`Cannot upload streamfile while it is open.`);
-        } else {
-          const destinationPath = await vscode.window.showInputBox({
-            prompt: `Name of new streamfile`,
-            value: destPathSuggestion
-          });
-
-          if (destinationPath) {
-            try {
-              await client.putFile(originPath[0].fsPath, destinationPath);
-              vscode.window.showInformationMessage(`File was uploaded.`);
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
-            }
+        if (destinationPath) {
+          try {
+            await client.putFile(originPath[0].fsPath, destinationPath);
+            vscode.window.showInformationMessage(`File was uploaded.`);
+            this.refresh();
+          } catch (e) {
+            vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
           }
-
         }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+          //Running from right click
+          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
-          if (isStillOpen) {
-            //Since there is no easy way to close a file.
-            vscode.window.showInformationMessage(`Cannot delete streamfile while it is open.`);
+          if (result === `Yes`) {
+            const connection = instance.getConnection();
 
-          } else {
-            //Running from right click
-            let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+            try {
+              await connection.paseCommand(`rm -rf ${node.path}`)
 
-            if (result === `Yes`) {
-              const connection = instance.getConnection();
+              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-              try {
-                await connection.paseCommand(`rm -rf ${node.path}`)
-
-                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
-
-                if (Configuration.get(`autoRefresh`)) this.refresh();
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
-              }
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
             }
-
           }
         } else {
           //Running from command.
@@ -190,30 +240,22 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
         if (node) {
           //Running from right click
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+          
+          const fullName = await vscode.window.showInputBox({
+            prompt: `Name of new path`,
+            value: node.path
+          });
 
-          if (isStillOpen) {
-            //Since there is no easy way to close a file.
-            vscode.window.showInformationMessage(`Cannot delete streamfile while it is open.`);
+          if (fullName) {
+            const connection = instance.getConnection();
 
-          } else {
-            const fullName = await vscode.window.showInputBox({
-              prompt: `Name of new path`,
-              value: node.path
-            });
+            try {
+              await connection.paseCommand(`mv ${node.path} ${fullName}`);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
 
-            if (fullName) {
-              const connection = instance.getConnection();
-
-              try {
-                await connection.paseCommand(`mv ${node.path} ${fullName}`);
-                if (Configuration.get(`autoRefresh`)) this.refresh();
-
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
-              }
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
             }
-
           }
 
         } else {
@@ -266,29 +308,29 @@ module.exports = class ifsBrowserProvider {
         const content = instance.getContent();
 
         if (node) {
-          const isStillOpen = vscode.workspace.textDocuments.find(document => document.uri.path === node.path);
+          //Get filename from path on server
+          const filename = path.basename(node.path);
 
-          if (isStillOpen) {
-            //Be sure it's correctly saved
-            vscode.window.showInformationMessage(`Cannot download streamfile while it is open.`);
+          const remoteFilepath = path.join(os.homedir(), filename);
 
-          } else {
-            //Get filename from path on server
-            const filename = node.path.replace(/^.*[\\\/]/, ``);
+          let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
 
-            const remoteFilepath = path.join(os.homedir(), filename);
+          if (localFilepath) {
+            let localPath = localFilepath.path;
+            if (process.platform === `win32`) {
+              //Issue with getFile not working propertly on Windows
+              //when there was a / at the start.
+              if (localPath[0] === `/`) localPath = localPath.substr(1);
+            }
 
-            let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
-
-            if (localFilepath) {
-              try {
-                await client.getFile(localFilepath.path, node.path);
-                vscode.window.showInformationMessage(`File was downloaded.`);
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error downloading streamfile! ${e}`);
-              }
+            try {
+              await client.getFile(localPath, node.path);
+              vscode.window.showInformationMessage(`File was downloaded.`);
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error downloading streamfile! ${e}`);
             }
           }
+
         } else {
           //Running from command.
         }
@@ -320,7 +362,7 @@ module.exports = class ifsBrowserProvider {
     if (connection) {
       const config = instance.getConfig();
       
-      if (element) { //Chosen SPF
+      if (element) { //Chosen directory
         //Fetch members
         console.log(element.path);
 
@@ -339,11 +381,12 @@ module.exports = class ifsBrowserProvider {
         }
 
       } else {
-        const objects = await content.getFileList(config.homeDirectory);
+        items = config.ifsShortcuts.map(directory => new Object(`directory`, directory, directory));
+        // const objects = await content.getFileList(config.homeDirectory);
 
-        for (let object of objects) {
-          items.push(new Object(object.type, object.name, object.path));
-        }
+        // for (let object of objects) {
+        //   items.push(new Object(object.type, object.name, object.path));
+        // }
       }
     }
 

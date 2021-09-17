@@ -49,7 +49,7 @@ class CustomUI {
   getHTML(panel) {
     const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
 
-    const notInputFields = [`submit`, `tree`];
+    const notInputFields = [`submit`, `tree`, `hr`, `paragraph`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     return `
@@ -160,8 +160,14 @@ class CustomUI {
 }
 
 class Field  {
+  /**
+   * 
+   * @param {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} type 
+   * @param {string} [id] 
+   * @param {string} [label] 
+   */
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"}} */
+    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} */
     this.type = type;
 
     /** @type {string} */
@@ -176,6 +182,12 @@ class Field  {
     /** @type {string|undefined} */
     this.default = undefined;
 
+    /** 
+     * Used only for `input` type
+     * @type {boolean|undefined} 
+    */
+    this.readonly = undefined;
+
     /** @type {object[]|undefined} Used for tree and select type. */
     this.items = undefined;
   }
@@ -184,13 +196,15 @@ class Field  {
     switch (this.type) {
     case `submit`:
       return `<vscode-button id="${this.id}">${this.label}</vscode-button>`;
+    case `hr`:
+      return `<hr />`;
     case `checkbox`:
       return `
         <vscode-form-item>
-        <vscode-form-control>
-        <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
-        ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
-        </vscode-form-control>
+          <vscode-form-control>
+          <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
+          ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+          </vscode-form-control>
         </vscode-form-item>`;
     case `input`:
       return `
@@ -198,8 +212,14 @@ class Field  {
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
-              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``}></vscode-inputbox>
+              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``}></vscode-inputbox>
           </vscode-form-control>
+      </vscode-form-item>
+      `;
+    case `paragraph`:
+      return `
+      <vscode-form-item>
+          <vscode-form-description>${this.label}</vscode-form-description>
       </vscode-form-item>
       `;
     case `file`:

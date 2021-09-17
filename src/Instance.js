@@ -90,21 +90,23 @@ module.exports = class Instance {
    * @param {vscode.ExtensionContext} context
    */
   static async loadAllofExtension(context) {
+    const connection = this.getConnection();
+    const config = this.getConfig();
+
     const libraryListView = require(`./views/libraryListView`);
 
     const memberBrowser = require(`./views/memberBrowser`);
-    const qsysFs = new (require(`./views/qsysFs`));
     
     const ifsBrowser = require(`./views/ifsBrowser`);
-    const ifs = new (require(`./views/ifs`));
+    const ifs = new (require(`./filesystems/ifs`));
 
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
-    const settingsUI = require(`./webviews/settings`);
     const actionsUI = require(`./webviews/actions`);
 
     const rpgleLinter = require(`./languages/rpgle/linter`);
+    const CLCommands = require(`./languages/clle/clCommands`);
 
     if (instance.connection) {
       CompileTools.register(context);
@@ -118,7 +120,7 @@ module.exports = class Instance {
         context.subscriptions.push(connectedBarItem);
       }
       
-      connectedBarItem.text = `IBM i: ${instance.connection.currentHost}`;
+      connectedBarItem.text = `Settings: ${config.name}`;
       connectedBarItem.show();
 
       if (!actionsBarItem) {
@@ -160,7 +162,6 @@ module.exports = class Instance {
           })
         );
 
-        settingsUI.init(context);
         actionsUI.init(context);
 
         //********* Library list view */
@@ -185,6 +186,20 @@ module.exports = class Instance {
           )
         );
 
+        let qsysFs, basicMemberEditing = true;
+        if (config.enableSourceDates) {
+          if (connection.remoteFeatures.db2util) {
+            basicMemberEditing = false;
+            require(`./filesystems/qsys/complex/handler`).begin(context);
+            qsysFs = new (require(`./filesystems/qsys/complex`));
+          } else {
+            vscode.window.showWarningMessage(`Source date support is disabled. SQL must be enabled.`);
+          }
+        }
+
+        if (basicMemberEditing) {
+          qsysFs = new (require(`./filesystems/qsys/basic`));
+        }
 
         context.subscriptions.push(
           Disposable(`member`,
@@ -274,6 +289,33 @@ module.exports = class Instance {
         );
 
         context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.openFileByPath`, async () => {
+            const searchFor = await vscode.window.showInputBox({
+              prompt: `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`
+            });
+
+            if (searchFor) {
+              let isValid = true;
+
+              if (!searchFor.startsWith(`/`)) {
+                try { //The reason for the try is because match throws an error.
+                  const [path] = searchFor.match(/\w+\/\w+\/\w+\.\w+/);
+                  if (path) isValid = true;
+                } catch (e) {
+                  isValid = false;
+                }
+              }
+
+              if (isValid) {
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, searchFor);
+              } else {
+                vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
+              }
+            }
+          })
+        )
+
+        context.subscriptions.push(
           vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
             const config = this.getConfig();
             const currentLibrary = config.currentLibrary.toUpperCase();
@@ -295,6 +337,11 @@ module.exports = class Instance {
         
         new rpgleLinter(context);
 
+        if (config.clContentAssistEnabled) {
+          const clInstance = new CLCommands(context);
+          clInstance.init();
+        }
+
         //********* Actions */
 
         context.subscriptions.push(
@@ -304,22 +351,44 @@ module.exports = class Instance {
         );
 
         context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.runAction`, async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-              if (editor.document.isDirty)
-                vscode.window.showInformationMessage(`Cannot run action while file is not saved.`);
-              else
-                CompileTools.RunAction(this, editor.document.uri);
+          vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
+            if (node) {
+              const uri = node.resourceUri || node;
+
+              CompileTools.RunAction(this, uri);
+
+            } else {
+              const editor = vscode.window.activeTextEditor;
+              const uri = editor.document.uri;
+              let willRun = false;
+
+              if (editor) {
+                willRun = true;
+                if (editor.document.isDirty) {
+                  let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Cancel`);
+
+                  if (result === `Save`) {
+                    await editor.document.save();
+                  } else {
+                    willRun = false;
+                  }
+                }
+              }
+
+              if (willRun) {
+                const scheme = uri.scheme;
+                switch (scheme) {
+                case `member`:
+                case `streamfile`:
+                  CompileTools.RunAction(this, uri);
+                  break;
+                }
+              }
             }
           })
         );
+
         
-        context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.runActionFromView`, async (node) => {
-            CompileTools.RunAction(this, node.resourceUri);
-          })
-        );
 
         initialisedBefore = true;
       }

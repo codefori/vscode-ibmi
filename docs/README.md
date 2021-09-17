@@ -1,8 +1,8 @@
-# code-for-ibmi
+# Code for IBM i
 
 ## IBM i development extension for VS Code
 
-Maiintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
+Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
 ![intro_01.png](assets/intro_01.png)
 
 ![intro_02.png](assets/intro_02.png)
@@ -24,28 +24,69 @@ Or from the Extensions icon in the Activity Bar (on the left):
 
 ### Recommended Extensions
 
-- [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS
+- [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS. Is usually installed automatically.
+
+## Quick Start Guide
+
+### Make a connection
+
+1. Press F1
+2. Find 'IBM i: New Connection'
+3. Enter in your connection details in the window that opens
+4. Hit connect
+
+Tip: next time, try using 'IBM i: Connect to previous'
+
+### Browse source members
+
+1. Connect to your system
+2. Find the member browser and hover your mouse over it until you see the folder with the plus icon
+3. Click the icon. A window will appear to add a path to a source physical file you'd like to browse (format: `LIB/FILE`)
+4. After you've entered your chosen source file, hit enter.
+5. Source file should appear in member browser.
+
+You can click on a member to open and edit it. There is no member locking and the extension defaults to not retaining source dates.
+
+### How do I compile my source code?
+
+1. Edit your library list in the 'USER LIBRARY LIST' browser. (Each connection has its own library list.)
+2. Open the source you want to compile.
+3. Use Ctrl+E or Cmd+E to compile your source.
+4. If you have more than one compile option available to you for the type of source, select the appropriate one.
+5. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
 
 ## Login
 
-Press <kbd>F1</kbd>, search for ```IBM i: Connect```, and press enter to arrive at the login form below.
+### Connect First Time
 
-![assets/login_01.png](assets/login_01.png)
+Click the IBM i icon.
 
-![assets/login_04.png](assets/login_04.png)
+![](assets/connect_01.png)
 
-If you have already connected to an IBM i system, you can use ```IBM i: Connect to previous``` to reconnect and save time typing.
+Click 'Connect to an IBM i'
 
-![assets/login_02.png](assets/login_02.png)
+![](assets/connect_02.png)
 
-Alternatively, use the sidebar button to reach the same two connect options and the subsequent login form.
+Complete this form. (You need either a password or a private key)
 
-![assets/login_03.png](assets/login_03.png)
+![](assets/connect_03.png)
+
+Alternatively, press <kbd>F1</kbd>, search for ```IBM i: New Connection```, and complete the above form.
+
+### Connect Subsequent
+
+If you have already connected to an IBM i system, click on the conection in the IBM i: SERVERS browser.
+
+![](assets/connect_04.png)
 
 After logging in, a status bar item will appear showing the name
 of the IBM i system you are connected to.
 
 ![assets/login_05.png](assets/login_05.png)
+
+### Logout (Disconnect)
+
+To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: Disconnect from current connection```
 
 ## Settings
 
@@ -257,18 +298,42 @@ An array for the user library list. Highest item of the library list goes first.
 ]
 ```
 
+##### Connection profiles
+
+It is possible to save the connection settings state, so you can change and revert back to it later. We call that state a 'connection profile'.
+
+You can save a magnitude of settings into a profile by using the save button on the Library List view. You can provide it with a unique name, or use an existing one to overwrite an existing profile.
+
+To load a profile, which would update the settings, you can use the list/load button on the Library List view.
+
+The settings stored into a profile are the following:
+
+* Home / working directory
+* Current library
+* Library list
+* Source file list
+* IFS shortcuts
+* Object browser list
+* Database browser list
+
+You might use this if you use a single box to manage many different applications that have different source files and/or library lists.
+
 #### Current library
 
 The library which will be set as the current library during compilation.
 
 You can change the current library with the 'Change build library' command (F1 -> Change build library).
+
 #### Home Directory
 
 Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
 
-Temporary library. Is used to OUTPUT files. Cannot be QTEMP.
+Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP.
+Default value: ILEDITOR.
+Note: If your IBM i runs replication software, there is no need to replicate the temporary library. Your sysadmin may add it to the list of objects to be ignored.
+
 #### Source ASP
 
 If source files are located in a specific ASP, specify here.
@@ -384,7 +449,7 @@ You can now right click and click 'Search' on IFS directories and source files t
 
 ### Overtype
 
-VS Code  works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
+VS Code works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
 
 ## Extension Development
 

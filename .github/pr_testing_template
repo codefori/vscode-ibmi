@@ -1,0 +1,21 @@
+# Want to help test this PR?
+
+Attached is the `vsix` for the PR. Install it, test out the feature, and post some feedback.
+
+VSIX contained in this zip: UPLOAD GITHUB ZIP LINK HERE
+
+### How to install
+
+1. Uninstall your current version of the extension from VS Code.
+   * you can do this from the extension panel
+   * your configuration will not be lost
+2. Download the `.vsix` to your machine
+3. Press F1 / Command + Shift + P and select 'Install from VSIX...'
+4. Select the `.vsix` from this PR.
+5. Test out the feature!
+
+### When you're done
+
+* post the feedback on this PR
+* uninstall the extension from the extension panel
+* re-install the extension from the Marketplace
