@@ -282,7 +282,10 @@ module.exports = class CLCommands {
 
     content = content.split(eol).join(` `);
 
-    return content.trim().split(` `).filter(part => part.length > 0);
+    return content
+      .trim()
+      .split(` `)
+      .filter(part => part.length > 0 && part.trim() !== `+`);
   }
 
   static async checkRequirements() {
