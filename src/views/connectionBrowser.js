@@ -51,6 +51,9 @@ module.exports = class objectBrowserProvider {
 
               await Configuration.setGlobal(`connections`, newConnections);
 
+              context.secrets.delete(`${element.label}_password`);
+              context.secrets.delete(`${element.label}_privateKey`);
+            
               this.refresh();
             }
           });

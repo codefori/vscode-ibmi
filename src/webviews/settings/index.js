@@ -70,7 +70,9 @@ module.exports = class SettingsUI {
         ui.addField(field);
     
         field = new Field(`input`, `hideCompileErrors`, `Errors to ignore`);
-        field.default = config.hideCompileErrors.join(`, `);
+        if (config.hideCompileErrors) {
+          field.default = config.hideCompileErrors.join(`, `);
+        };
         field.description = `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`;
         ui.addField(field);
 
