@@ -30,6 +30,7 @@ module.exports = class Login {
     ui.addField(new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`));
     ui.addField(new Field(`password`, `password`, `Password`));
     ui.addField(new Field(`file`, `privateKey`, `Private Key`));
+    ui.addField(new Field(`checkbox`,`savepass`,`Store auth credential`));
     ui.addField(new Field(`submit`, `submitButton`, `Connect`));
 
     const {panel, data} = await ui.loadPage(`IBM i Login`);
@@ -63,9 +64,17 @@ module.exports = class Login {
                   name: data.name,
                   host: data.host,
                   port: data.port,
-                  username: data.username,
-                  privateKey: data.privateKey
+                  username: data.username
                 });
+                
+                if(data.savepass){
+                  if(data.privateKey){
+                    context.secrets.store(`${data.name}_privateKey`, `${data.privateKey}`);
+                  } else if (data.password)
+                  {context.secrets.store(`${data.name}_password`, `${data.password}`);}
+                  
+                };
+
                 await Configuration.setGlobal(`connections`, existingConnections);
               }
     
@@ -99,15 +108,19 @@ module.exports = class Login {
     }
 
     const existingConnections = Configuration.get(`connections`);
-    const connectionConfig = existingConnections.find(item => item.name === name);
- 
+    let connectionConfig = existingConnections.find(item => item.name === name);
+    
     if (connectionConfig) {
+      connectionConfig.privateKey = await context.secrets.get(`${connectionConfig.name}_privateKey`);
       if (!connectionConfig.privateKey) {
-        connectionConfig.password = await vscode.window.showInputBox({
-          prompt: `Password for ${connectionConfig.name}`,
-          password: true
-        });
-        
+        connectionConfig.password = await context.secrets.get(`${connectionConfig.name}_password`);
+        if (!connectionConfig.password){
+          connectionConfig.password = await vscode.window.showInputBox({
+            prompt: `Password for ${connectionConfig.name}`,
+            password: true
+          });
+        };
+
         if (!connectionConfig.password) {
           return;
         }
