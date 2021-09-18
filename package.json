@@ -565,6 +565,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.generateCreateTableSQL",
+				"title": "Generate CREATE TABLE SQL",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.addToLibraryList",
 				"title": "Add to library list",
 				"category": "IBM i",
@@ -1114,6 +1119,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && viewItem == object",
 					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.generateCreateTableSQL",
+					"when": "view == objectBrowser && viewItem == object",
+					"group": "2_workspace@1"
 				},
 				{
 					"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",

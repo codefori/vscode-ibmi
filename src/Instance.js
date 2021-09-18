@@ -388,6 +388,37 @@ module.exports = class Instance {
           })
         );
 
+        context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.generateCreateTableSQL`, async (node) => {
+            if(!node) return;
+
+            if (node.type != `FILE`) {
+              vscode.window.showErrorMessage(`CREATE TABLE can only be generated for file's.`);
+              return;
+            }
+
+            let lib = node.path.split(`/`)[0];
+            let file = node.path.split(`/`)[1];
+            
+            vscode.window.showInformationMessage(`Generating CREATE TABLE statement...`);
+            let result = await this.getContent().runSQL(`CALL QSYS2.GENERATE_SQL ('${file}', '${lib}', 'TABLE')`);
+
+            let resultString = ``;
+            result.forEach(element => resultString += element.SRCDTA + `\r\n`);
+
+            try {
+              const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Generated SQL`));
+              const editor = await vscode.window.showTextDocument(textDoc);
+              editor.edit(edit => {
+                edit.insert(new vscode.Position(0, 0), resultString);
+              })
+
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error generating CREATE TABLE statement.`);
+            }
+          })
+        );
+
         
 
         initialisedBefore = true;
