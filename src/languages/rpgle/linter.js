@@ -218,7 +218,7 @@ module.exports = class RPGLinter {
 
               if (currentLine.startsWith(`//`)) {
                 for (const tag in possibleTags) {
-                  item = new vscode.CompletionItem(`${tag}`, vscode.CompletionItemKind.Property);
+                  item = new vscode.CompletionItem(`@${tag}`, vscode.CompletionItemKind.Property);
                   item.insertText = new vscode.SnippetString(`@${tag} $0`);
                   item.detail = possibleTags[tag];
                   items.push(item);
