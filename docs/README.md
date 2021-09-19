@@ -451,6 +451,16 @@ You can now right click and click 'Search' on IFS directories and source files t
 
 VS Code works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
 
+### Variant Characters
+
+Use of variant characters, for example, '£', in your file names or source code is not a good practice. If it is causing problems in Code for IBM i, likely the IBM i PASE environment language is not set correctly. This is controlled by system environment settings (``WRKENVVAR LEVEL(*SYS)``)
+
+This setting alone may resolve the problem: ``QIBM_PASE_CCSID '1208'``
+
+If not, you may also need to set the appropriate locale/language, e.g., ``PASE_LANG 'IT_IT'``
+
+If your problem still exists, you may need to restart your IBM i for these setting to take effect.
+
 ## Extension Development
 
 1. clone repo
