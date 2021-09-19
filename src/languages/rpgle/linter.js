@@ -5,6 +5,8 @@ const vscode = require(`vscode`);
 const instance = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
 
+const possibleTags = require(`./tags`);
+
 module.exports = class RPGLinter {
   /**
    * @param {vscode.ExtensionContext} context
@@ -73,18 +75,38 @@ module.exports = class RPGLinter {
             const procedure = doc.procedures.find(proc => proc.name.toUpperCase() === word.toUpperCase());
 
             if (procedure) {
+              let markdown = ``;
               let retrunValue = procedure.keywords.filter(keyword => keyword !== `EXTPROC`);
               if (retrunValue.length === 0) retrunValue = [`void`];
 
-              let markdown = `\`\`\`vb\n${procedure.name}(`;
+              const returnTag = procedure.tags.find(tag => tag.tag === `return`);
+              const deprecatedTag = procedure.tags.find(tag => tag.tag === `deprecated`);
+
+              // Deprecated notice
+              if (deprecatedTag) {
+                markdown += `**Deprecated:** ${deprecatedTag.content}\n\n`;
+              }
+
+              // Formatted code
+              markdown += `\`\`\`vb\n${procedure.name}(`;
 
               if (procedure.subItems.length > 0) {
                 markdown += `\n  ${procedure.subItems.map(parm => `${parm.name}: ${parm.keywords.join(` `)}`).join(`,\n  `)}\n`;
               }
 
               markdown += `): ${retrunValue.join(` `)}\n\`\`\` \n`;
-              markdown += procedure.subItems.map(parm => `*@param* \`${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)}\` ${parm.comments}`).join(`\n\n`);
-              markdown += `\n\n*@returns* ${retrunValue.join(` `)}`;
+
+              // Description
+              if (procedure.description)
+                markdown += `${procedure.description}\n\n`;
+
+              // Params
+              markdown += procedure.subItems.map(parm => `*@param* \`${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)}\` ${parm.description}`).join(`\n\n`);
+
+              // Return value
+              if (returnTag) {
+                markdown += `\n\n*@returns* ${returnTag.content}`;
+              }
 
               if (procedure.position) {
                 markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.line}\``;
@@ -187,25 +209,36 @@ module.exports = class RPGLinter {
             const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
             const text = document.getText();
             if (isFree) {
+              const currentLine = document.getText(new vscode.Range(position.line, 0, position.line, position.character));
               const doc = await this.getDocs(document.uri, text);
 
               /** @type vscode.CompletionItem[] */
               let items = [];
               let item;
 
-              for (const procedure of doc.procedures) {
-                item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
-                item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
-                item.detail = procedure.keywords.join(` `);
-                item.documentation = procedure.comments;
-                items.push(item);
-              }
+              if (currentLine.startsWith(`//`)) {
+                for (const tag in possibleTags) {
+                  item = new vscode.CompletionItem(`${tag}`, vscode.CompletionItemKind.Property);
+                  item.insertText = new vscode.SnippetString(`@${tag} $0`);
+                  item.detail = possibleTags[tag];
+                  items.push(item);
+                }
 
-              for (const subroutine of doc.subroutines) {
-                item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
-                item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
-                item.documentation = subroutine.comments;
-                items.push(item);
+              } else {
+                for (const procedure of doc.procedures) {
+                  item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
+                  item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
+                  item.detail = procedure.keywords.join(` `);
+                  item.documentation = procedure.description;
+                  items.push(item);
+                }
+
+                for (const subroutine of doc.subroutines) {
+                  item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
+                  item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
+                  item.documentation = subroutine.description;
+                  items.push(item);
+                }
               }
 
               return items;
@@ -413,8 +446,14 @@ module.exports = class RPGLinter {
 
     let files = {};
     let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
-    let currentComments = [], currentExample = [], currentItem, currentSub;
 
+    let currentTitle = undefined, currentDescription = [];
+    /** @type {{tag: string, content: string}[]} */
+    let currentTags = [];
+
+    let currentItem, currentSub;
+
+    let docs = false; // If section is for ILEDocs
     let lineNumber, parts, partsLower, pieces;
 
     const constants = [];
@@ -459,7 +498,7 @@ module.exports = class RPGLinter {
             currentItem = new Declaration(`constant`);
             currentItem.name = partsLower[1];
             currentItem.keywords = parts.slice(2);
-            currentItem.comments = currentComments.join(` `);
+            currentItem.description = currentDescription.join(` `);
 
             currentItem.position = {
               path: file,
@@ -468,8 +507,7 @@ module.exports = class RPGLinter {
 
             constants.push(currentItem);
             currentItem = undefined;
-            currentComments = [];
-            currentExample = [];
+            currentDescription = [];
           }
           break;
 
@@ -479,7 +517,8 @@ module.exports = class RPGLinter {
               currentItem = new Declaration(`variable`);
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
-              currentItem.comments = currentComments.join(` `);
+              currentItem.description = currentDescription.join(` `);
+              currentItem.tags = currentTags;
 
               currentItem.position = {
                 path: file,
@@ -488,8 +527,7 @@ module.exports = class RPGLinter {
 
               variables.push(currentItem);
               currentItem = undefined;
-              currentComments = [];
-              currentExample = [];
+              currentDescription = [];
             }
           }
           break;
@@ -500,16 +538,15 @@ module.exports = class RPGLinter {
               currentItem = new Declaration(`struct`);
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
-              currentItem.comments = currentComments.join(` `);
-              currentItem.example = currentExample;
+              currentItem.description = currentDescription.join(` `);
+              currentItem.tags = currentTags;
 
               currentItem.position = {
                 path: file,
                 line: lineNumber
               }
 
-              currentComments = [];
-              currentExample = [];
+              currentDescription = [];
             }
           }
           break;
@@ -527,8 +564,8 @@ module.exports = class RPGLinter {
               currentItem = new Declaration(`procedure`);
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
-              currentItem.comments = currentComments.join(` `);
-              currentItem.example = currentExample;
+              currentItem.description = currentDescription.join(` `);
+              currentItem.tags = currentTags;
 
               currentItem.position = {
                 path: file,
@@ -537,8 +574,7 @@ module.exports = class RPGLinter {
 
               currentItem.readParms = true;
 
-              currentComments = [];
-              currentExample = [];
+              currentDescription = [];
             }
           }
           break;
@@ -556,8 +592,8 @@ module.exports = class RPGLinter {
 
           currentItem.name = partsLower[1];
           currentItem.keywords = parts.slice(2);
-          currentItem.comments = currentComments.join(` `);
-          currentItem.example = currentExample;
+          currentItem.description = currentDescription.join(` `);
+          currentItem.tags = currentTags;
 
           currentItem.position = {
             path: file,
@@ -566,8 +602,7 @@ module.exports = class RPGLinter {
 
           currentItem.readParms = false;
 
-          currentComments = [];
-          currentExample = [];
+          currentDescription = [];
           break;
 
         case `DCL-PI`:
@@ -575,8 +610,7 @@ module.exports = class RPGLinter {
             currentItem.keywords = parts.slice(2);
             currentItem.readParms = true;
 
-            currentComments = [];
-            currentExample = [];
+            currentDescription = [];
           }
           break;
 
@@ -597,16 +631,14 @@ module.exports = class RPGLinter {
           if (!subroutines.find(sub => sub.name.toUpperCase() === parts[1])) {
             currentItem = new Declaration(`subroutine`);
             currentItem.name = partsLower[1];
-            currentItem.comments = currentComments.join(` `);
-            currentItem.example = currentExample;
+            currentItem.description = currentDescription.join(` `);
 
             currentItem.position = {
               path: file,
               line: lineNumber
             }
 
-            currentComments = [];
-            currentExample = [];
+            currentDescription = [];
           }
           break;
     
@@ -617,19 +649,45 @@ module.exports = class RPGLinter {
           }
           break;
 
+        case `///`:
+          docs = !docs;
+          
+          // When enabled
+          if (docs === true) {
+            currentTitle = undefined;
+            currentDescription = [];
+            currentTags = [];
+          }
+          break;
+
         default:
-          if (line.startsWith(`//@`)) {
-            currentComments.push(line.substring(3).trim());
+          if (line.startsWith(`//`)) {
+            if (docs) {
+              const content = line.substring(2).trim();
+              if (content.length > 0) {
+                if (content.startsWith(`@`)) {
+                  const lineData = content.substring(1).split(` `);
+                  currentTags.push({
+                    tag: lineData[0],
+                    content: lineData.slice(1).join(` `)
+                  });
+                } else {
+                  if (currentTags.length > 0) {
+                    currentTags[currentTags.length - 1].content += ` ${content}`;
 
-          } else if (line.startsWith(`//-`)) {
-            if (line.length >= 4) {
-              currentExample.push(line.substring(4).trimEnd());
-            } else if (line.length === 3) {
-              currentExample.push(``);
+                  } else {
+                    if (currentTitle === undefined) {
+                      currentTitle = content;
+                    } else {
+                      currentDescription.push(content);
+                    }
+                  }
+                }
+              }
+
+            } else {
+              //Do nothing because it's a regular comment
             }
-
-          } else if (line.startsWith(`//`)) {
-          //Do nothing. Because it's a comment.
 
           } else {
             if (currentItem && currentItem.type === `procedure`) {
@@ -640,11 +698,15 @@ module.exports = class RPGLinter {
                 currentSub = new Declaration(`subitem`);
                 currentSub.name = (parts[0] === `*N` ? `parm${currentItem.subItems.length+1}` : partsLower[0]) ;
                 currentSub.keywords = parts.slice(1);
-                currentSub.comments = currentComments.join(` `);
+
+                const paramTags = currentTags.filter(tag => tag.tag === `param`);
+                const paramTag = paramTags.length > currentItem.subItems.length ? paramTags[currentItem.subItems.length] : undefined;
+                if (paramTag) {
+                  currentSub.description = paramTag.content;
+                }
 
                 currentItem.subItems.push(currentSub);
                 currentSub = undefined;
-                currentComments = [];
               }
             }
           }
@@ -791,7 +853,10 @@ class Declaration {
     this.type = type;
     this.name = ``;
     this.keywords = [];
-    this.comments = ``;
+    this.description = ``;
+
+    /** @type {{tag: string, content: string}[]} */
+    this.tags = [];
 
     /** @type {{path: string, line: number}} */
     this.position = undefined;
@@ -799,7 +864,6 @@ class Declaration {
     //Not used in subitem:
     /** @type {Declaration[]} */
     this.subItems = [];
-    this.example = [];
 
     //Only used in procedure
     this.readParms = false;
