@@ -55,6 +55,57 @@ module.exports = class databaseBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.generateCreateTableSQLFromDatabaseBrowser`, async (node) => {
+        if(!node) return;
+
+        let type = null;
+        switch (node.table._type) {
+        case `A`:
+          type = `ALIAS`;
+          break;
+        case `L`:
+          type = `VIEW`;
+          break;
+        case `M`:
+          type = `VIEW`;
+          break;
+        case `P`:
+          type = `TABLE`
+          break;
+        case `T`:
+          type = `TABLE`
+          break;   
+        case `V`:
+          type = `VIEW`
+          break;      
+        }
+
+        if (type == null) {
+          vscode.window.showErrorMessage(`CREATE TABLE cannot be generated for ${node.table.type}`);
+          return;
+        }
+
+        let lib = node.table.schema.toUpperCase();
+        let file = node.table.name.toUpperCase();
+          
+        vscode.window.showInformationMessage(`Generating CREATE TABLE statement...`);
+        let result = await instance.getContent().runSQL(`CALL QSYS2.GENERATE_SQL ('${file}', '${lib}', '${type}')`);
+
+        let resultString = ``;
+        result.forEach(element => resultString += element.SRCDTA + `\r\n`);
+
+        try {
+          const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Generated SQL`));
+          const editor = await vscode.window.showTextDocument(textDoc);
+          editor.edit(edit => {
+            edit.insert(new vscode.Position(0, 0), resultString);
+          })
+
+        } catch (e) {
+          vscode.window.showErrorMessage(`Error generating CREATE TABLE statement.`);
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
         const connection = instance.getConnection();
         const content = instance.getContent();

@@ -21,7 +21,7 @@ class Database {
     /** @type {Table[]} */
     let tables = [];
 
-    tables = tablesResult.map(row => new Table(row));
+    tables = tablesResult.map(row => new Table(row, schema));
 
     let currentColumns;
     for (const table of tables) {
@@ -43,11 +43,12 @@ const TABLE_TYPES = {
 }
 
 class Table {
-  constructor(row) {
+  constructor(row, schema) {
     this.name = row.TABLE_NAME;
     this._type = row.TABLE_TYPE;
     this.type = TABLE_TYPES[row.TABLE_TYPE];
     this.text = row.TABLE_TEXT;
+    this.schema = schema;
 
     if (this._type === `A`) {
       //Is ALIAS
