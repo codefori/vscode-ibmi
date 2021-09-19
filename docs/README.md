@@ -82,7 +82,7 @@ If you have already connected to an IBM i system, click on the conection in the 
 After logging in, a status bar item will appear showing the name
 of the IBM i system you are connected to.
 
-![assets/login_05.png](assets/login_05.png)
+![assets/connect_05.png](assets/connect_05.png)
 
 ### Logout (Disconnect)
 
