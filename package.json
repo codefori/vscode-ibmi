@@ -524,6 +524,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showLoginSettings",
+				"title": "Login settings",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete connection",
 				"category": "IBM i"
@@ -958,11 +963,18 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.deleteConnection",
-					"when": "view == connectionBrowser && viewItem == server"
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "2_delete@1"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
-					"when": "view == connectionBrowser && viewItem == server"
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "1_manage@1"
+				},
+				{
+					"command": "code-for-ibmi.showLoginSettings",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "1_manage@2"
 				},
 				{
 					"command": "code-for-ibmi.connectPrevious",
