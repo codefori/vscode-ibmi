@@ -250,8 +250,7 @@ Here is a snippet of what the connection details look like:
     "name": "My IBMi Connection",
     "host": "DEV400",
     "port": 22,
-    "username": "OTTEB",
-    "privateKey": null
+    "username": "OTTEB"
   }
 ],
 ```
