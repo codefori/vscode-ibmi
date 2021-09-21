@@ -190,10 +190,16 @@ module.exports = class SettingsUI {
           field = new Field(`input`, `username`, `Username`);
           field.default = connection.username;
           ui.addField(field);
+   
+          field = new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`);
+          ui.addField(field);
+
+          field = new Field(`password`, `password`, `Password`);
+          field.description = `Only provide a password if you want to update from the existing one or set one.`
+          ui.addField(field);
 
           field = new Field(`file`, `privateKey`, `Private Key`);
           field.description = `Only provide a private key if you want to update from the existing one or set one.`
-          field.default = connection.privateKey;
           ui.addField(field);
 
           ui.addField(new Field(`submit`, `submitButton`, `Save`));
@@ -204,8 +210,18 @@ module.exports = class SettingsUI {
             panel.dispose();
       
             data.port = Number(data.port);
-            if (data.privateKey === ``) data.privateKey = connection.privateKey;
 
+            if (data.password !== ``){
+              context.secrets.delete(`${data.name}_password`);
+              context.secrets.store(`${data.name}_password`, `${data.password}`)
+            };
+
+            if (data.privateKey !== ``) {
+              context.secrets.delete(`${data.name}_privateKey`);
+              context.secrets.store(`${data.name}_privateKey`, `${data.privateKey}`)
+            };
+
+            // overlay the new data values on existing connection 
             connection = {
               ...connection,
               ...data
