@@ -22,6 +22,24 @@ function activate(context) {
   //We setup the event emitter.
   instance.setupEmitter();
 
+  
+  let MigrateConfig =  function(){
+    const configData = vscode.workspace.getConfiguration(`code-for-ibmi`);
+    let connections = configData.get(`connections`);
+
+    // Migrate existing SSH Keys into secure storage
+    for(let connection of connections) {
+      if (connection.privateKey){
+        context.secrets.store(`${connection.name}_privateKey`, `${connection.privateKey}`);
+        delete connection.privateKey;
+      }
+    }
+   
+    configData.update(`connections`,connections,vscode.ConfigurationTarget.Global);
+  };
+  
+  MigrateConfig();
+
   context.subscriptions.push(
     vscode.window.registerTreeDataProvider(
       `connectionBrowser`,
