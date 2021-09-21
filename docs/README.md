@@ -453,13 +453,21 @@ VS Code works in "insert" mode. This can be annoying when editing a fixed mode s
 
 ### Variant Characters
 
-Use of variant characters, for example, '£', in your file names or source code is not a good practice. If it is causing problems in Code for IBM i, likely the IBM i PASE environment language is not set correctly. This is controlled by system environment settings (``WRKENVVAR LEVEL(*SYS)``)
+Use of variant characters, for example, '£', in your file names or source code is not a good practice. If it is causing problems in Code for IBM i, likely the IBM i PASE environment locale is not set correctly. You can find infomation on PASE for i Locales [here](https://www.ibm.com/docs/en/i/7.4?topic=ssw_ibm_i_74/apis/pase_locales.htm)
 
-This setting alone may resolve the problem: ``QIBM_PASE_CCSID '1208'``
+To ensure that the locale is set corretly:
 
-If not, you may also need to set the appropriate locale/language, e.g., ``PASE_LANG 'IT_IT'``
+- OS 7.4 or greater:
 
-If your problem still exists, you may need to restart your IBM i for these setting to take effect.
+  The language defaults to UTF-8 and there should be no issue.
+
+- OS 7.3 or earlier:
+
+  The SSH daemon must start with the correct PASE_LANG environment variable set. Note you probably want to use a locale that defaults to CCSID 1208. Note also case sensitivity: FR_FR is different from fr_FR.
+
+  - Change just once by USING ``WRKENVVAR LEVEL(*JOB)`` to set the appropriate locale/language, e.g., ``PASE_LANG 'IT_IT'``.  **Restart** the SSH daemon.
+  
+  - Change the PASE language *system wide* by using ``WRKENVVAR LEVEL(*SYS)`` to set the appropriate locale/language, e.g., ``PASE_LANG 'FR_FR'``.  **Restart** the SSH daemon.
 
 ## Extension Development
 
