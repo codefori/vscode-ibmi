@@ -216,6 +216,7 @@ module.exports = class SettingsUI {
               context.secrets.store(`${name}_password`, `${data.password}`)
             };
 
+            delete data.password;
 
             connection = {
               ...connection,
