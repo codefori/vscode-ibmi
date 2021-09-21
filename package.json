@@ -714,6 +714,12 @@
 				"icon": "$(files)"
 			},
 			{
+				"command": "code-for-ibmi.copyIFS",
+				"title": "Copy file",
+				"category": "IBM i",
+				"icon": "$(files)"
+			},
+			{
 				"command": "code-for-ibmi.searchIFS",
 				"title": "Search Directory",
 				"category": "IBM i",
@@ -1072,6 +1078,11 @@
 				{
 					"command": "code-for-ibmi.moveIFS",
 					"when": "view == ifsBrowser",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.copyIFS",
+					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "2_ifsStuff@2"
 				},
 				{
