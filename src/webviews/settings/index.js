@@ -189,6 +189,13 @@ module.exports = class SettingsUI {
           field.default = connection.username;
           ui.addField(field);
 
+          field = new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`);
+          ui.addField(field);
+
+          field = new Field(`password`, `password`, `Password`);
+          field.description = `Only provide a password if you want to update an existing one or set a new one.`
+          ui.addField(field);
+
           field = new Field(`file`, `privateKey`, `Private Key`);
           field.description = `Only provide a private key if you want to update from the existing one or set one.`
           field.default = connection.privateKey;
@@ -203,6 +210,12 @@ module.exports = class SettingsUI {
       
             data.port = Number(data.port);
             if (data.privateKey === ``) data.privateKey = connection.privateKey;
+
+            if(data.password && !data.privateKey) {
+              context.secrets.delete(`${name}_password`);
+              context.secrets.store(`${name}_password`, `${data.password}`)
+            };
+
 
             connection = {
               ...connection,
