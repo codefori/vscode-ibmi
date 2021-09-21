@@ -4,6 +4,18 @@ const {CustomUI, Field} = require(`../../api/CustomUI`);
 const specs = {
   C: [
     {
+      id: `controlLevel`,
+      name: `Control Level`,
+      start: 6,
+      end: 7,
+    },
+    {
+      id: `indicators`,
+      name: `Indicators`,
+      start: 8,
+      end: 10,
+    },
+    {
       id: `factor1`,
       name: `Factor 1`,
       start: 11,
