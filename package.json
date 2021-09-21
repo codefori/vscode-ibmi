@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.7.6",
+	"version": "0.7.7",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -529,6 +529,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showLoginSettings",
+				"title": "Login settings",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete connection",
 				"category": "IBM i"
@@ -715,6 +720,12 @@
 			{
 				"command": "code-for-ibmi.moveIFS",
 				"title": "Rename or Move object",
+				"category": "IBM i",
+				"icon": "$(files)"
+			},
+			{
+				"command": "code-for-ibmi.copyIFS",
+				"title": "Copy file",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
@@ -968,11 +979,18 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.deleteConnection",
-					"when": "view == connectionBrowser && viewItem == server"
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "2_delete@1"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
-					"when": "view == connectionBrowser && viewItem == server"
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "1_manage@1"
+				},
+				{
+					"command": "code-for-ibmi.showLoginSettings",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "1_manage@2"
 				},
 				{
 					"command": "code-for-ibmi.connectPrevious",
@@ -1070,6 +1088,11 @@
 				{
 					"command": "code-for-ibmi.moveIFS",
 					"when": "view == ifsBrowser",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.copyIFS",
+					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "2_ifsStuff@2"
 				},
 				{
