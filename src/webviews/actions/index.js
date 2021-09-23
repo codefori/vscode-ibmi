@@ -23,6 +23,7 @@ module.exports = class SettingsUI {
 
     let ui = new CustomUI();
     let field;
+    
 
     field = new Field(`tree`, `actions`, `Work with Actions`);
     field.description = `Create or maintain Actions.`;
@@ -30,6 +31,14 @@ module.exports = class SettingsUI {
       {
         label: `New Action`,
         value: `-1`
+      },
+      {
+        label: `Duplicate Action`,
+        value: `-2`
+      },
+      {
+        label: `-`,
+        value: `-2`
       },
       ...allActions.map((action, index) => ({
         label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
@@ -45,9 +54,49 @@ module.exports = class SettingsUI {
       panel.dispose();
 
       if (data.actions) {
-        this.WorkAction(Number(data.actions));
+        switch (data.actions) {
+        case `-1`: //New
+          this.WorkAction(-1);
+          break;
+        case `-2`: //Duplicate
+          this.DuplicateAction();
+          break;
+        default:
+          this.WorkAction(Number(data.actions));
+          break;
+        }
       }
     }
+  }
+
+  /**
+   * Show item picker to duplicate an existing action
+   */
+  static async DuplicateAction() {
+    let actions = Configuration.get(`actions`);
+  
+    vscode.window.showQuickPick(
+      actions.map((action, index) => ({
+        label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
+        value: index
+      })).sort((a, b) => a.label.localeCompare(b.label)),
+      {
+        placeHolder: `Select an action to duplicate`
+      }
+    ).then(async (action) => {
+      if (action) {
+        //@ts-ignore
+        const index = action.value;
+
+        const newAction = {...actions[index]};
+        actions.push(newAction);
+        await Configuration.setGlobal(`actions`, actions);
+        this.WorkAction(actions.length - 1);
+      } else {
+        this.MainMenu();
+      }
+  
+    });
   }
 
   /**
@@ -159,9 +208,9 @@ module.exports = class SettingsUI {
       }
 
       await Configuration.setGlobal(`actions`, allActions);
-
-      this.MainMenu();
     }
+
+    this.MainMenu();
   }
 
 }
