@@ -203,6 +203,11 @@
 					"default": false,
 					"description": "Experimental feature. When enabled, will provide content assist for procedures inside of your RPG sources. Supports total free RPG only."
 				},
+				"code-for-ibmi.rpgleColumnAssistEnabled": {
+					"type": "boolean",
+					"default": false,
+					"description": "Experimental feature. When enabled, will provide column assist for writing fixed format RPGLE (RPG3 and RPGIV)."
+				},
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
 					"default": true,
@@ -549,6 +554,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.rpgleColumnAssistant",
+				"title": "Launch Column Assistant",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.changeCurrentLibrary",
 				"title": "Change current library",
 				"category": "IBM i",
@@ -825,6 +835,12 @@
 				"command": "code-for-ibmi.rpgleOpenInclude",
 				"key": "shift+f12",
 				"mac": "shift+f12",
+				"when": "editorLangId == rpgle"
+			},
+			{
+				"command": "code-for-ibmi.rpgleColumnAssistant",
+				"key": "shift+f4",
+				"mac": "shift+f4",
 				"when": "editorLangId == rpgle"
 			}
 		],

@@ -5,6 +5,18 @@ const vscode = require(`vscode`);
 const instance = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
 
+const ColumnData = require(`./columnData`);
+
+const currentArea = vscode.window.createTextEditorDecorationType({
+  backgroundColor: `rgba(242, 242, 109, 0.3)`,
+  border: `1px solid grey`,
+});
+
+const notCurrentArea = vscode.window.createTextEditorDecorationType({
+  backgroundColor: `rgba(242, 242, 109, 0.1)`,
+  border: `1px solid grey`,
+});
+
 const possibleTags = require(`./tags`);
 
 module.exports = class RPGLinter {
@@ -22,6 +34,79 @@ module.exports = class RPGLinter {
 
     context.subscriptions.push(
       this.linterDiagnostics,
+
+      vscode.commands.registerCommand(`code-for-ibmi.rpgleColumnAssistant`, async () => {
+        if (Configuration.get(`rpgleColumnAssistEnabled`)) {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            const document = editor.document;
+
+            if (document.languageId === `rpgle`) {
+              if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) { 
+                const lineNumber = editor.selection.start.line;
+                const positionIndex = editor.selection.start.character;
+
+                const positionsData = await ColumnData.promptLine(
+                  document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
+                  positionIndex
+                );
+
+                if (positionsData) {
+                  editor.edit(editBuilder => {
+                    editBuilder.replace(new vscode.Range(lineNumber, 0, lineNumber, positionsData.length), positionsData);
+                  });
+                }
+              }
+            }
+          }
+        } else {
+          vscode.window.showInformationMessage(`Column assist disabled.`);
+        }
+      }),
+
+      vscode.window.onDidChangeTextEditorSelection(e => {
+        if (Configuration.get(`rpgleColumnAssistEnabled`)) {
+          const editor = e.textEditor;
+          const document = editor.document;
+
+          if (document.languageId === `rpgle`) {
+            if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) {
+              const lineNumber = editor.selection.start.line;
+              const positionIndex = editor.selection.start.character;
+
+              const positionsData = ColumnData.getAreasForLine(
+                document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
+                positionIndex
+              );
+
+              if (positionsData) {
+                let decorations = [];
+
+                positionsData.specification.forEach((box, index) => {
+                  if (index === positionsData.active) {
+                    //There should only be one current.
+                    editor.setDecorations(currentArea, [{
+                      hoverMessage: box.name,
+                      range: new vscode.Range(lineNumber, box.start, lineNumber, box.end+1)
+                    }]);
+
+                  } else {
+                    decorations.push({
+                      hoverMessage: box.name,
+                      range: new vscode.Range(lineNumber, box.start, lineNumber, box.end+1)
+                    })
+                  }
+                });
+                editor.setDecorations(notCurrentArea, decorations);
+
+              } else {
+                editor.setDecorations(currentArea, []);
+                editor.setDecorations(notCurrentArea, []);
+              }
+            }
+          }
+        }
+      }),
 
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (Configuration.get(`rpgleIndentationEnabled`)) {
