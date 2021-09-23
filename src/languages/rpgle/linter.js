@@ -538,6 +538,7 @@ module.exports = class RPGLinter {
 
     let currentItem, currentSub;
 
+    let resetDefinition = false; //Set to true when you're done defining a new item
     let docs = false; // If section is for ILEDocs
     let lineNumber, parts, partsLower, pieces;
 
@@ -591,8 +592,7 @@ module.exports = class RPGLinter {
             }
 
             constants.push(currentItem);
-            currentItem = undefined;
-            currentDescription = [];
+            resetDefinition = true;
           }
           break;
 
@@ -611,8 +611,7 @@ module.exports = class RPGLinter {
               }
 
               variables.push(currentItem);
-              currentItem = undefined;
-              currentDescription = [];
+              resetDefinition = true;
             }
           }
           break;
@@ -639,7 +638,7 @@ module.exports = class RPGLinter {
         case `END-DS`:
           if (currentItem && currentItem.type === `struct`) {
             structs.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
           }
           break;
         
@@ -667,7 +666,7 @@ module.exports = class RPGLinter {
         case `END-PR`:
           if (currentItem && currentItem.type === `procedure`) {
             procedures.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
           }
           break;
         
@@ -708,7 +707,7 @@ module.exports = class RPGLinter {
         case `END-PROC`:
           if (currentItem && currentItem.type === `procedure`) {
             procedures.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
           }
           break;
 
@@ -730,7 +729,7 @@ module.exports = class RPGLinter {
         case `ENDSR`:
           if (currentItem && currentItem.type === `subroutine`) {
             subroutines.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
           }
           break;
 
@@ -796,6 +795,14 @@ module.exports = class RPGLinter {
             }
           }
           break;
+        }
+
+        if (resetDefinition) {
+          currentItem = undefined;
+          currentTitle = undefined;
+          currentDescription = [];
+          currentTags = [];
+          resetDefinition = false;
         }
       
       }
