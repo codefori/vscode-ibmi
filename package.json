@@ -836,6 +836,12 @@
 				"key": "shift+f12",
 				"mac": "shift+f12",
 				"when": "editorLangId == rpgle"
+			},
+			{
+				"command": "code-for-ibmi.rpgleColumnAssistant",
+				"key": "shift+f4",
+				"mac": "shift+f4",
+				"when": "editorLangId == rpgle"
 			}
 		],
 		"viewsContainers": {
