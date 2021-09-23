@@ -9,6 +9,7 @@ const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 let allSourceDates = require(`./sourceDates`);
+let recordLengths = {};
 
 module.exports = class IBMiContent {
   /**
@@ -36,6 +37,15 @@ module.exports = class IBMiContent {
       try {
         await content.runSQL(`CREATE ALIAS ${aliasPath} for ${lib}.${spf}("${mbr}")`);
       } catch (e) {}
+
+      if (recordLengths[alias] === undefined) {
+        const result = await content.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
+        if (result.length > 0) {
+          recordLengths[alias] = result[0].LENGTH;
+        } else {
+          recordLengths[alias] = 80;
+        }
+      }
   
       let rows = await content.runSQL(
         `select srcdat, REPLACE(rtrim(srcdta), ' ', '.+') as srcdta from ${aliasPath}`,
@@ -91,6 +101,10 @@ module.exports = class IBMiContent {
         sequence = 0;
       for (let i = 0; i < sourceData.length; i++) {
         sequence = i + 1;
+        if (sourceData[i].length > recordLengths[alias]) {
+          sourceData[i] = sourceData[i].substring(0, recordLengths[alias]);
+        }
+        
         rows.push(
           `(${sequence}, ${Number(sourceDates[i])}, '${this.escapeString(sourceData[i])}')`,
         );
