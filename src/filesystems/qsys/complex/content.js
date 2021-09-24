@@ -140,7 +140,7 @@ module.exports = class IBMiContent {
       case `\n`:
         return `\\n`;
       case `\r`:
-        return `\\r`;
+        return ``;
       case `\b`:
         return `\\b`;
       case `\t`:
