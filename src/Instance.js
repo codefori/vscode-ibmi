@@ -144,7 +144,7 @@ module.exports = class Instance {
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
-        ]);
+        ]); //Ignore
         return;
 
       } else {
