@@ -8,6 +8,7 @@ const tmp = require(`tmp`);
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
+const DEFAULT_RECORD_LENGTH = 80;
 let allSourceDates = require(`./sourceDates`);
 let recordLengths = {};
 
@@ -43,7 +44,7 @@ module.exports = class IBMiContent {
         if (result.length > 0) {
           recordLengths[alias] = result[0].LENGTH;
         } else {
-          recordLengths[alias] = 80;
+          recordLengths[alias] = DEFAULT_RECORD_LENGTH;
         }
       }
   
@@ -96,13 +97,14 @@ module.exports = class IBMiContent {
       const tmpobj = await tmpFile();
 
       const sourceData = body.split(`\n`);
+      const recordLength = recordLengths[alias] || DEFAULT_RECORD_LENGTH;
 
       let rows = [],
         sequence = 0;
       for (let i = 0; i < sourceData.length; i++) {
         sequence = i + 1;
-        if (sourceData[i].length > recordLengths[alias]) {
-          sourceData[i] = sourceData[i].substring(0, recordLengths[alias]);
+        if (sourceData[i].length > recordLength) {
+          sourceData[i] = sourceData[i].substring(0, recordLength);
         }
         
         rows.push(
