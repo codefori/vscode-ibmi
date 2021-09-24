@@ -1,0 +1,12 @@
+on: pull_request
+    
+jobs:
+  release:
+    name: Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - run: npm install
+      - run: node ./node_modules/eslint/bin/eslint src/** --quiet
