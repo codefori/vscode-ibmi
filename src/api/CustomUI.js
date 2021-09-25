@@ -27,7 +27,7 @@ class CustomUI {
    * If no callback is provided, a Promise will be returned
    * @param {string} title 
    * @param {Function} [callback] ({panel, data}) => {}
-   * @returns {Promise<{panel: vscode.WebviewPanel, data: object}>|void}
+   * @returns {Promise<{panel: vscode.WebviewPanel, data: object}>}
    */
   loadPage(title, callback) {
     const panel = vscode.window.createWebviewPanel(
