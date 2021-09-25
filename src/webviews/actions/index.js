@@ -28,18 +28,6 @@ module.exports = class SettingsUI {
     field = new Field(`tree`, `actions`, `Work with Actions`);
     field.description = `Create or maintain Actions.`;
     field.items = [
-      // {
-      //   label: `New Action`,
-      //   value: `-1`
-      // },
-      // {
-      //   label: `Duplicate Action`,
-      //   value: `-2`
-      // },
-      // {
-      //   label: `-`,
-      //   value: `-2`
-      // },
       ...allActions.map((action, index) => ({
         label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
         value: String(index)
@@ -146,6 +134,7 @@ module.exports = class SettingsUI {
 
     ui.addField(new Field(`input`, `command`, `Command to run`));
     ui.fields[1].default = currentAction.command;
+    ui.fields[1].multiline = true;
 
     ui.addField(new Field(`input`, `extensions`, `Extensions`));
     ui.fields[2].default = currentAction.extensions.join(`, `);

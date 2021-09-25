@@ -244,6 +244,12 @@ class Field  {
     */
     this.readonly = undefined;
 
+    /** 
+     * Used only for `input` type
+     * @type {boolean|undefined} 
+    */
+    this.multiline = undefined;
+
     /** @type {{label: string, value: string}[]|{selected?: boolean, value: string, description: string, text: string}[]|{label: string, id: string}[]|undefined} Used for tree, select & button types. */
     this.items = undefined;
   }
@@ -270,13 +276,14 @@ class Field  {
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           </vscode-form-control>
         </vscode-form-item>`;
+
     case `input`:
       return `
       <vscode-form-item>
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
-              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``}></vscode-inputbox>
+              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
           </vscode-form-control>
       </vscode-form-item>
       `;
