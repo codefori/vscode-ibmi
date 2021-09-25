@@ -98,16 +98,16 @@
 								"type": "array",
 								"items": {
 									"type": "object",
-									"title": "Library list profile",
+									"title": "Connection profile profile",
 									"properties": {
 										"name": {
 											"type": "string",
-											"description": "Library list profile name"
+											"description": "Profile name"
 										}
 									}
 								},
 								"default": [],
-								"description": "A collection of library lists to easily switch between them on this system."
+								"description": "A collection of connection settings to easily switch between them on this system."
 							},
 							"ifsShortcuts": {
 								"type": "array",
