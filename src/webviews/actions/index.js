@@ -2,7 +2,10 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
+const instance = require(`../../Instance`);
+
 const Configuration = require(`../../api/Configuration`);
+const Variables = require(`./varinfo`);
 
 module.exports = class SettingsUI {
 
@@ -103,6 +106,7 @@ module.exports = class SettingsUI {
    * @param {number} id Existing action index, or -1 for a brand new index
    */
   static async WorkAction(id) {
+    const config = instance.getConfig();
     let allActions = Configuration.get(`actions`);
     let currentAction;
     
@@ -127,22 +131,57 @@ module.exports = class SettingsUI {
 
     if (currentAction.environment === undefined) currentAction.environment = `ile`;
 
+    // Our custom variables as HTML
+    const custom = config.customVariables.map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
+
     let ui = new CustomUI();
 
     ui.addField(new Field(`input`, `name`, `Action name`));
     ui.fields[0].default = currentAction.name;
 
+    ui.addField(new Field(`hr`));
+
     ui.addField(new Field(`input`, `command`, `Command to run`));
-    ui.fields[1].default = currentAction.command;
-    ui.fields[1].multiline = true;
+    ui.fields[2].description = `Below are available variables based on the Type you have select below.`;
+    ui.fields[2].default = currentAction.command;
+    ui.fields[2].multiline = true;
+
+    ui.addField(new Field(`tabs`));
+    switch (currentAction.type) {
+    case `member`:
+      ui.fields[3].default = `0`;
+      break;
+    case `streamfile`:
+      ui.fields[3].default = `1`;
+      break;
+    case `object`:
+      ui.fields[3].default = `2`;
+      break;
+    }
+    ui.fields[3].items = [
+      {
+        label: `Member`,
+        value: `<ul>${Variables.Member.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+      },
+      {
+        label: `Streamfile`,
+        value: `<ul>${Variables.Streamfile.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+      },
+      {
+        label: `Object`,
+        value: `<ul>${Variables.Object.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+      }
+    ];
+
+    ui.addField(new Field(`hr`));
 
     ui.addField(new Field(`input`, `extensions`, `Extensions`));
-    ui.fields[2].default = currentAction.extensions.join(`, `);
-    ui.fields[2].description = `A comma delimited list of extensions for this actions.`;
+    ui.fields[5].default = currentAction.extensions.join(`, `);
+    ui.fields[5].description = `A comma delimited list of extensions for this actions.`;
 
     ui.addField(new Field(`select`, `type`, `Types`));
-    ui.fields[3].description = `The types of files this action can support.`;
-    ui.fields[3].items = [
+    ui.fields[6].description = `The types of files this action can support.`;
+    ui.fields[6].items = [
       {
         selected: currentAction.type === `member`,
         value: `member`,
@@ -164,8 +203,8 @@ module.exports = class SettingsUI {
     ];
 
     ui.addField(new Field(`select`, `environment`, `Environment`));
-    ui.fields[4].description = `Environment for command to be executed in.`;
-    ui.fields[4].items = [
+    ui.fields[7].description = `Environment for command to be executed in.`;
+    ui.fields[7].items = [
       {
         selected: currentAction.environment === `ile`,
         value: `ile`,
