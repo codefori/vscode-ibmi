@@ -74,7 +74,7 @@ class CustomUI {
   getHTML(panel) {
     const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
 
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     return `
@@ -218,12 +218,12 @@ class CustomUI {
 class Field  {
   /**
    * 
-   * @param {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} type 
+   * @param {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
    * @param {string} [id] 
    * @param {string} [label] 
    */
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} */
+    /** @type {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} */
     this.type = type;
 
     /** @type {string} */
@@ -277,6 +277,20 @@ class Field  {
           </vscode-form-control>
         </vscode-form-item>`;
 
+    case `tabs`:
+      return `
+        <vscode-tabs selectedIndex="${this.default || 0}">
+          ${this.items.map(item => 
+            `
+            <header slot="${item.label}">Lorem</header>
+            <section>
+              ${item.value}
+            </section>
+            `
+          )}
+        </vscode-tabs>
+      `
+
     case `input`:
       return `
       <vscode-form-item>
@@ -287,6 +301,7 @@ class Field  {
           </vscode-form-control>
       </vscode-form-item>
       `;
+      
     case `paragraph`:
       return `
       <vscode-form-item>
