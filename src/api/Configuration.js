@@ -20,7 +20,10 @@ module.exports = class Configuration {
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];
 
-    /** @type {{name: string, homeDirectory: string, currentLibrary: string, libraryList: string[], sourceFileList: string[], objectBrowserList: string[], databaseBrowserList: string[], ifsShortcuts: string[] }[]} */
+    /** @type {{name: string, value: string}[]} */
+    this.customVariables = base.customVariables || [];
+
+    /** @type {{name: string, homeDirectory: string, currentLibrary: string, libraryList: string[], sourceFileList: string[], objectBrowserList: string[], databaseBrowserList: string[], ifsShortcuts: string[], customVariables: {name, value}[] }[]} */
     this.connectionProfiles = base.connectionProfiles || [];
 
     /** @type {string[]} */
