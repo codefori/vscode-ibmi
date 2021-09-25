@@ -45,7 +45,7 @@ module.exports = class SettingsUI {
     ];
     ui.addField(field);
 
-    let {panel, data} = await ui.loadPage(`Work with Actions`);
+    let {panel, data} = await ui.loadPage(`Work with Variables`);
 
     if (data) {
       panel.dispose();
