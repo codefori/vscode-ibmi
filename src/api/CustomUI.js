@@ -24,10 +24,12 @@ class CustomUI {
   };
 
   /**
+   * If no callback is provided, a Promise will be returned
    * @param {string} title 
-   * @returns {Promise<{panel: vscode.WebviewPanel, data: object}>}
+   * @param {Function} [callback] ({panel, data}) => {}
+   * @returns {Promise<{panel: vscode.WebviewPanel, data: object}>|void}
    */
-  loadPage(title) {
+  loadPage(title, callback) {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -41,20 +43,32 @@ class CustomUI {
 
     let didSubmit = false;
 
-    return new Promise((resolve, reject) => {
+    if (callback) {
       panel.webview.onDidReceiveMessage(
         message => {
           didSubmit = true;
-          resolve({panel, data: message});
+          callback({panel, data: message});
         }
       );
   
       panel.onDidDispose(() => {
-        if (!didSubmit) resolve({panel, data: null});
+        if (!didSubmit) callback({panel, data: null});
       });
-    })
 
-
+    } else {
+      return new Promise((resolve, reject) => {
+        panel.webview.onDidReceiveMessage(
+          message => {
+            didSubmit = true;
+            resolve({panel, data: message});
+          }
+        );
+    
+        panel.onDidDispose(() => {
+          if (!didSubmit) resolve({panel, data: null});
+        });
+      });
+    }
   }
 
   getHTML(panel) {
