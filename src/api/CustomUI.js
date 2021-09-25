@@ -282,12 +282,12 @@ class Field  {
         <vscode-tabs selectedIndex="${this.default || 0}">
           ${this.items.map(item => 
             `
-            <header slot="${item.label}">Lorem</header>
+            <header slot="header">${item.label}</header>
             <section>
               ${item.value}
             </section>
             `
-          )}
+          ).join(``)}
         </vscode-tabs>
       `
 
