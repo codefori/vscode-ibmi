@@ -35,6 +35,9 @@ module.exports = class Configuration {
     /** @type {string} */
     this.currentLibrary = base.currentLibrary || ``;
 
+    /** @type {number} */
+    this.defaultWait = base.defaultWait || 0;
+
     /** @type {string|undefined} */
     this.sourceASP = base.sourceASP || undefined;
 

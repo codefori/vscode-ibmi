@@ -11,7 +11,7 @@ const remoteApps = [
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`]
+    names: [`setccsid`, `getjobid`]
   }
 ];
 
@@ -21,8 +21,13 @@ module.exports = class IBMi {
     this.currentHost = ``;
     this.currentPort = 22;
     this.currentUser = ``;
+
+    /** @type {string|undefined} */
+    this.jobId = undefined;
     
     this.tempRemoteFiles = {};
+
+    /** @type {string[]} */
     this.defaultUserLibraries = [];
 
     /** @type {vscode.OutputChannel} */
@@ -43,7 +48,8 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined,
       grep: undefined,
-      setccsid: undefined
+      setccsid: undefined,
+      getjobid: undefined
     };
   }
 
@@ -255,6 +261,49 @@ module.exports = class IBMi {
           }
         }
 
+        if (this.remoteFeatures.getjobid) {
+          progress.report({
+            message: `getjobid found. Fetching connection job ID.`
+          });
+
+          const command = this.remoteFeatures.getjobid;
+
+          try {
+            let jobId;
+            jobId = await this.paseCommand(`echo $$`);
+            jobId = await this.paseCommand(`echo $$`);
+            jobId = await this.paseCommand(`${command} -s $$`);
+            jobId = await this.paseCommand(`${command} -s $$`);
+            if (typeof jobId === `string`) {
+              this.jobId = jobId.trim();
+            }
+          } catch (e) {
+            progress.report({
+              message: `Unasble to get job ID.`
+            });
+          }
+        }
+
+        if (this.jobId) {
+          const defaultWait = this.config.defaultWait;
+          if (this.config.defaultWait && this.config.defaultWait > 0) {
+            progress.report({
+              message: `Setting default wait time.`
+            });
+
+            try {
+              await this.remoteCommand(
+                `CHGJOB JOB(${this.jobId}) DFTWAIT(${defaultWait})`
+              );
+              
+            } catch (e) {
+              progress.report({
+                message: `Failed to set default wait time`
+              });
+            }
+          }
+        }
+
         if (homeDirSet) {
           if (!tempLibrarySet) {
             vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
@@ -294,7 +343,7 @@ module.exports = class IBMi {
    * @param {string} [directory] If not passed, will use current home directory
    */
   remoteCommand(command, directory) {
-    //execCommand does not crash..
+    command = command.replace(/\$/g, `\\$`);
     return this.paseCommand(`system "` + command + `"`, directory);
   }
 
@@ -305,12 +354,12 @@ module.exports = class IBMi {
    * @param {number} [returnType] 
    */
   qshCommand(command, directory = this.config.homeDirectory, returnType = 0) {
-
     if (Array.isArray(command)) {
       command = command.join(`;`);
     }
 
     command = command.replace(/"/g, `\\"`);
+    command = command.replace(/\$/g, `\\$`);
 
     command = `echo "` + command + `" | /QOpenSys/usr/bin/qsh`;
 
@@ -325,8 +374,6 @@ module.exports = class IBMi {
    * @returns {Promise<string|{code: number, stdout: string, stderr: string}>}
    */
   async paseCommand(command, directory = this.config.homeDirectory, returnType = 0) {
-    command = command.replace(/\$/g, `\\$`);
-
     this.outputChannel.append(`${directory}: ${command}\n`);
 
     const result = await this.client.execCommand(command, {

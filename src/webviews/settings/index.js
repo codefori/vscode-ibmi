@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `defaultWait`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -114,6 +114,11 @@ module.exports = class SettingsUI {
 
         ui.addField(new Field(`hr`));
     
+        field = new Field(`input`, `defaultWait`, `Default wait (seconds)`);
+        field.default = String(config.defaultWait);
+        field.description = `Specifies the default maximum time (in seconds) that a thread in the job waits for a system instruction, such as the LOCK machine interface (MI) instruction, to acquire a resource. When zero, will use job default.`;
+        ui.addField(field);
+    
         field = new Field(`submit`, `save`, `Save settings`);
         ui.addField(field);
     
@@ -131,6 +136,9 @@ module.exports = class SettingsUI {
               break;
             case `hideCompileErrors`:
               data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
+              break;
+            case `defaultWait`:
+              data[key] = Number(data[key]) || 0;
               break;
             }
           }

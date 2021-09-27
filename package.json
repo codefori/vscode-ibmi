@@ -128,6 +128,11 @@
 								"default": "ILEDITOR",
 								"description": "Temporary library. Cannot be QTEMP."
 							},
+							"defaultWait": {
+								"type": "number",
+								"default": 0,
+								"description": "The default wait for any commands executed in this connection."
+							},
 							"currentLibrary": {
 								"type": "string",
 								"default": "QTEMP",
