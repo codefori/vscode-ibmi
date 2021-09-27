@@ -1,1 +1,1 @@
-- [code-for-ibmi](/)
+- [Code for IBM i](/)

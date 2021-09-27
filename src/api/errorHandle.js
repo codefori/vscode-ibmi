@@ -36,86 +36,86 @@ module.exports = function(lines) {
     tempFileID = undefined;
 
     switch (curtype) {
-      case `FILEID`:
-        if ((_FileID in _FileIDs) === false) {
-          if (pieces[5].endsWith(`)`))
-            _FileIDs[_FileID] = formatName(pieces[5]);
-          else
-            _FileIDs[_FileID] = formatIFS(pieces[5]);
+    case `FILEID`:
+      if ((_FileID in _FileIDs) === false) {
+        if (pieces[5].endsWith(`)`))
+          _FileIDs[_FileID] = formatName(pieces[5]);
+        else
+          _FileIDs[_FileID] = formatIFS(pieces[5]);
 
-          /** @type {Error[]} */
-          _Errors[_FileID] = [];
-          _Expansions[_FileID] = [];
+        /** @type {Error[]} */
+        _Errors[_FileID] = [];
+        _Expansions[_FileID] = [];
 
-          //000000 check means that the current FILEID is not an include
-          _TrackCopies[_FileID] = (line.substr(17, 6) != `000000`);
-          ranges.push(new expRange(Number(pieces[3]), 0));
-        } else {
-          ranges.push(new expRange(Number(pieces[3]), 0));
-        }
+        //000000 check means that the current FILEID is not an include
+        _TrackCopies[_FileID] = (line.substr(17, 6) != `000000`);
+        ranges.push(new expRange(Number(pieces[3]), 0));
+      } else {
+        ranges.push(new expRange(Number(pieces[3]), 0));
+      }
 
-        fileParents.push(_FileID);
-        break;
+      fileParents.push(_FileID);
+      break;
 
-      case `FILEEND`:
-        fileParents.pop();
+    case `FILEEND`:
+      fileParents.pop();
         
-        if (_FileID in _TrackCopies) {
-          copyRange = ranges.pop();
-          copyRange.high(copyRange._low + Number(pieces[3]) - 1);
-          copyRange.file = _FileID;
+      if (_FileID in _TrackCopies) {
+        copyRange = ranges.pop();
+        copyRange.high(copyRange._low + Number(pieces[3]) - 1);
+        copyRange.file = _FileID;
 
-          if (999 in _Expansions)
-            if (fileParents.length >= 2)
-              _Expansions[fileParents[fileParents.length-1]].push(copyRange);
-        }
-        break;
+        if (999 in _Expansions)
+          if (fileParents.length >= 2)
+            _Expansions[fileParents[fileParents.length-1]].push(copyRange);
+      }
+      break;
 
-      case `EXPANSION`:
-        _Expansions[_FileID].push(new expRange(Number(pieces[6]), Number(pieces[7])));
-        break;
+    case `EXPANSION`:
+      _Expansions[_FileID].push(new expRange(Number(pieces[6]), Number(pieces[7])));
+      break;
         
-      case `ERROR`:
-        let sev = Number(line.substr(58, 2));
-        let linenum = Number(line.substr(37, 6));
-        let column = Number(line.substr(33, 3));
-        let toColumn = Number(line.substr(44, 3)) ;
-        let text = line.substr(65).trim();
-        let code = line.substr(48, 7).trim();
-        let  sqldiff = 0;
+    case `ERROR`:
+      let sev = Number(line.substr(58, 2));
+      let linenum = Number(line.substr(37, 6));
+      let column = Number(line.substr(33, 3));
+      let toColumn = Number(line.substr(44, 3)) ;
+      let text = line.substr(65).trim();
+      let code = line.substr(48, 7).trim();
+      let  sqldiff = 0;
 
-        if (!text.includes(`name or indicator SQ`)) {
-          if (!code.startsWith(`SQL`)) {
-            for (let key in _Expansions[_FileID]) {
-              range = _Expansions[_FileID][key];
-              if (range.afterRange(linenum)) {
-                if (range.inFileRange(linenum)) {
-                  sqldiff += range.high() - linenum;
-                } else {
-                  sqldiff += range.getVal();
-                }
-              } else if (range.inFileRange(linenum)) {
-                sqldiff += range._low;
-                tempFileID = range.file;
-                break;
+      if (!text.includes(`name or indicator SQ`)) {
+        if (!code.startsWith(`SQL`)) {
+          for (let key in _Expansions[_FileID]) {
+            range = _Expansions[_FileID][key];
+            if (range.afterRange(linenum)) {
+              if (range.inFileRange(linenum)) {
+                sqldiff += range.high() - linenum;
+              } else {
+                sqldiff += range.getVal();
               }
+            } else if (range.inFileRange(linenum)) {
+              sqldiff += range._low;
+              tempFileID = range.file;
+              break;
             }
           }
-
-          if (sqldiff > 0) {
-            linenum -= sqldiff;
-          }
-
-          _Errors[tempFileID || _FileID].push({
-            sev,
-            linenum,
-            column,
-            toColumn,
-            text,
-            code
-          });
         }
-        break;
+
+        if (sqldiff > 0) {
+          linenum -= sqldiff;
+        }
+
+        _Errors[tempFileID || _FileID].push({
+          sev,
+          linenum,
+          column,
+          toColumn,
+          text,
+          code
+        });
+      }
+      break;
     }
   }
 
@@ -153,8 +153,8 @@ function formatName(input) {
 }
 
 function formatIFS(path) {
-  let pieces = path.split(`/`);
-  var path = pieces.filter(x => x !== `.`);
+  const pieces = path.split(`/`);
+  const newPath = pieces.filter(x => x !== `.`);
 
-  return path.join(`/`);
+  return newPath.join(`/`);
 }

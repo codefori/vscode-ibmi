@@ -164,6 +164,69 @@ module.exports = class SettingsUI {
               });
           }
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server) => {
+        if (server) {
+          const connections = Configuration.get(`connections`);
+          const name = server.name;
+
+          const connectionIdx = connections.findIndex(item => item.name === name);
+          let connection = connections[connectionIdx];
+
+          let ui = new CustomUI();
+          let field;
+
+          field = new Field(`input`, `host`, `Host or IP Address`);
+          field.default = connection.host;
+          ui.addField(field);
+
+          field = new Field(`input`, `port`, `Port`);
+          field.default = connection.port;
+          ui.addField(field);
+
+          field = new Field(`input`, `username`, `Username`);
+          field.default = connection.username;
+          ui.addField(field);
+
+          field = new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`);
+          ui.addField(field);
+
+          field = new Field(`password`, `password`, `Password`);
+          field.description = `Only provide a password if you want to update an existing one or set a new one.`
+          ui.addField(field);
+
+          field = new Field(`file`, `privateKey`, `Private Key`);
+          field.description = `Only provide a private key if you want to update from the existing one or set one.`
+          field.default = connection.privateKey;
+          ui.addField(field);
+
+          ui.addField(new Field(`submit`, `submitButton`, `Save`));
+
+          const {panel, data} = await ui.loadPage(`Login Settings: ${name}`);
+
+          if (data) {
+            panel.dispose();
+      
+            data.port = Number(data.port);
+            if (data.privateKey === ``) data.privateKey = connection.privateKey;
+
+            if(data.password && !data.privateKey) {
+              context.secrets.delete(`${name}_password`);
+              context.secrets.store(`${name}_password`, `${data.password}`)
+            };
+
+            delete data.password;
+
+            connection = {
+              ...connection,
+              ...data
+            };
+
+            connections[connectionIdx] = connection;
+            await Configuration.setGlobal(`connections`, connections);
+          }
+        }
       })
     )
 

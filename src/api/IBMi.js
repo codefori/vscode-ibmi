@@ -11,7 +11,7 @@ const remoteApps = [
   },
   {
     path: `/usr/bin/`,
-    names: [`Rfile`]
+    names: [`setccsid`]
   }
 ];
 
@@ -43,7 +43,7 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined,
       grep: undefined,
-      Rfile: undefined,
+      setccsid: undefined
     };
   }
 

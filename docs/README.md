@@ -1,4 +1,4 @@
-# code-for-ibmi
+# Code for IBM i
 
 ## IBM i development extension for VS Code
 
@@ -31,7 +31,7 @@ Or from the Extensions icon in the Activity Bar (on the left):
 ### Make a connection
 
 1. Press F1
-2. Find 'IBM i: Connect'
+2. Find 'IBM i: New Connection'
 3. Enter in your connection details in the window that opens
 4. Hit connect
 
@@ -45,38 +45,48 @@ Tip: next time, try using 'IBM i: Connect to previous'
 4. After you've entered your chosen source file, hit enter.
 5. Source file should appear in member browser.
 
-You can click on a member to open and edit it. There is no member locking and the extension does not retain source dates.
+You can click on a member to open and edit it. There is no member locking and the extension defaults to not retaining source dates.
 
 ### How do I compile my source code?
 
-1. Edit your library list in the 'Code for IBM i' Settings for your current connection (connections get their own settings now!)
-2. Edit the Actions in JSON format in the 'Code for IBM i' Settings too. You can define what commands to use for the compilations.
-3. Open the source you want to compile
-4. Use Ctrl+E or Cmd+E to compile your source.
-5. If you have more than one compile option available to you for the type of source, it will prompt you
-6. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
-
+1. Edit your library list in the 'USER LIBRARY LIST' browser. (Each connection has its own library list.)
+2. Open the source you want to compile.
+3. Use Ctrl+E or Cmd+E to compile your source.
+4. If you have more than one compile option available to you for the type of source, select the appropriate one.
+5. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
 
 ## Login
 
-Press <kbd>F1</kbd>, search for ```IBM i: Connect```, and press enter to arrive at the login form below.
+### Connect First Time
 
-![assets/login_01.png](assets/login_01.png)
+Click the IBM i icon.
 
-![assets/login_04.png](assets/login_04.png)
+![](assets/connect_01.png)
 
-If you have already connected to an IBM i system, you can use ```IBM i: Connect to previous``` to reconnect and save time typing.
+Click 'Connect to an IBM i'
 
-![assets/login_02.png](assets/login_02.png)
+![](assets/connect_02.png)
 
-Alternatively, use the sidebar button to reach the same two connect options and the subsequent login form.
+Complete this form. (You need either a password or a private key)
 
-![assets/login_03.png](assets/login_03.png)
+![](assets/connect_03.png)
+
+Alternatively, press <kbd>F1</kbd>, search for ```IBM i: New Connection```, and complete the above form.
+
+### Connect Subsequent
+
+If you have already connected to an IBM i system, click on the conection in the IBM i: SERVERS browser.
+
+![](assets/connect_04.png)
 
 After logging in, a status bar item will appear showing the name
 of the IBM i system you are connected to.
 
-![assets/login_05.png](assets/login_05.png)
+![assets/connect_05.png](assets/connect_05.png)
+
+### Logout (Disconnect)
+
+To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: Disconnect from current connection```
 
 ## Settings
 
@@ -288,13 +298,25 @@ An array for the user library list. Highest item of the library list goes first.
 ]
 ```
 
-##### Library list profiles
+##### Connection profiles
 
-It is possible to save a library list's current state, so you can change and revert back to it later. We call that state a 'library list profile'.
+It is possible to save the connection settings state, so you can change and revert back to it later. We call that state a 'connection profile'.
 
-You can save the current library list into a profile by using the save button on the Library List view. You can provide it with a unique name, or use an existing one to overwrite an existing profile.
+You can save a magnitude of settings into a profile by using the save button on the Library List view. You can provide it with a unique name, or use an existing one to overwrite an existing profile.
 
-To load a profile, which would set the library list, you can use the list/load button on the Library List view.
+To load a profile, which would update the settings, you can use the list/load button on the Library List view.
+
+The settings stored into a profile are the following:
+
+* Home / working directory
+* Current library
+* Library list
+* Source file list
+* IFS shortcuts
+* Object browser list
+* Database browser list
+
+You might use this if you use a single box to manage many different applications that have different source files and/or library lists.
 
 #### Current library
 
@@ -308,10 +330,9 @@ Home directory for user. This directory is also the root for the IFS browser.
 
 #### Temporary library
 
-Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP. 
+Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP.
 Default value: ILEDITOR.
 Note: If your IBM i runs replication software, there is no need to replicate the temporary library. Your sysadmin may add it to the list of objects to be ignored.
-
 
 #### Source ASP
 
@@ -429,6 +450,33 @@ You can now right click and click 'Search' on IFS directories and source files t
 ### Overtype
 
 VS Code works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
+
+### Variant Characters/CCSID Issues
+
+Use of variant characters, for example, '£', in your file names or source code may cause files not to open or characters to display incorrectly in Code for IBM i. If you are experiencing such issues, it is likely the IBM i PASE environment locale is not set correctly.
+To ensure that the locale is set corretly:
+
+- OS 7.4 or greater:
+
+  It defaults to UTF-8 and there should be no issue.
+
+- OS 7.3 or earlier:
+
+  The SSH daemon must start with the correct PASE_LANG environment variable set. Note you probably want to use a locale that defaults to CCSID 1208. Note also case sensitivity: FR_FR is different from fr_FR.
+
+  - Change just once by USING ``WRKENVVAR LEVEL(*JOB)`` to set the appropriate locale/language, e.g., ``PASE_LANG 'IT_IT'``.  **Restart** the SSH daemon.
+  
+  - Change the PASE language *system wide* by using ``WRKENVVAR LEVEL(*SYS)`` to set the appropriate locale/language, e.g., ``PASE_LANG 'FR_FR'``.  **Restart** the SSH daemon.
+
+You can find infomation on PASE for i Locales [here](https://www.ibm.com/docs/en/i/7.4?topic=ssw_ibm_i_74/apis/pase_locales.htm)
+
+Some links to pages which containing information on variant characters:
+
+- [IBM definition of Variant characters](https://www.ibm.com/docs/en/db2-for-zos/11?topic=ccsids-variant-characters)
+
+- [IBM Support](https://www.ibm.com/support/pages/what-impact-changing-qccsid-shipped-65535-another-ccsid)
+
+- [Wikipedia](https://en.wikipedia.org/wiki/EBCDIC)
 
 ## Extension Development
 

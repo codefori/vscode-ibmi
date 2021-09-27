@@ -206,6 +206,7 @@ module.exports = class ifsBrowserProvider {
           try {
             await client.putFile(originPath[0].fsPath, destinationPath);
             vscode.window.showInformationMessage(`File was uploaded.`);
+            this.refresh();
           } catch (e) {
             vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
           }
@@ -262,7 +263,33 @@ module.exports = class ifsBrowserProvider {
           console.log(this);
         }
       }),
+      vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node) => {
+        if (node) {
+          //Running from right click
+          
+          const fullName = await vscode.window.showInputBox({
+            prompt: `Name of new path`,
+            value: node.path
+          });
 
+          if (fullName) {
+            const connection = instance.getConnection();
+
+            try {
+              await connection.paseCommand(`cp ${node.path} ${fullName}`);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
+            }
+          }
+
+        } else {
+          //Running from command
+          console.log(this);
+        }
+      }),
+      
       vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node) => {
         const connection = instance.getConnection();
         const config = instance.getConfig();
