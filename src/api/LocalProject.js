@@ -9,6 +9,9 @@ const CompileTools = require(`./CompileTools`);
 
 let projectEnabled = false;
 
+/** @type {{[path: string]: number}} */
+let versions = {};
+
 module.exports = class LocalProject {
   static async init() {
     if (LocalProject.hasWorkspace()) {
@@ -411,7 +414,8 @@ module.exports = class LocalProject {
    * @param {*} instance 
    */
   static async uploadQsys(config, files, instance) {
-    let creations = [];
+    let sourceFiles = [];
+    let sourceMembers = [];
     let uploads = [];
 
     /** @type {IBMi} */
@@ -425,19 +429,33 @@ module.exports = class LocalProject {
     const fs = vscode.workspace.fs;
 
     for (const file of files) {
-      const pathInfo = path.parse(file.fsPath);
-      const name = pathInfo.name; //Member name
-      const folder = path.basename(pathInfo.dir); //Get the parent directory name
-      const extension = pathInfo.ext;
+      const document = await workspace.openTextDocument(file);
+      const version = document.version;
 
-      const bytes = await fs.readFile(file);
+      if (version !== versions[file.fsPath]) {
 
-      creations.push(connection.paseCommand(`system -s "ADDPFM FILE(${config.objlib}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1));
-      uploads.push(content.uploadMemberContent(undefined, config.objlib, folder, name, Buffer.from(bytes).toString(`utf8`)));
+        const pathInfo = path.parse(file.fsPath);
+        const name = pathInfo.name; //Member name
+        const folder = path.basename(pathInfo.dir); //Get the parent directory name
+        const extension = pathInfo.ext;
+
+        const bytes = await fs.readFile(file);
+
+        // Indicates that the file has not yet been uploaded this session
+        // So we create a new source file & member incase it does not exist.
+        if (versions[file.fsPath] === undefined) {
+          sourceFiles.push(connection.paseCommand(`system -s "CRTSRCPF FILE(${config.objlib}/${folder}) RCDLEN(112)"`, undefined, 1));
+          sourceMembers.push(connection.paseCommand(`system -s "ADDPFM FILE(${config.objlib}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1));
+        }
+
+        uploads.push(content.uploadMemberContent(undefined, config.objlib, folder, name, Buffer.from(bytes).toString(`utf8`)));
+        versions[file.fsPath] = version;
+      }
     }
 
-    await Promise.all(creations);
-    await Promise.all(uploads);
+    if (sourceFiles.length > 0) await Promise.all(sourceFiles);
+    if (sourceMembers.length > 0) await Promise.all(sourceMembers);
+    if (uploads.length > 0) await Promise.all(uploads);
   }
   
 }
