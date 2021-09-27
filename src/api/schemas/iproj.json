@@ -1,0 +1,177 @@
+{
+    "$schema":"http://json-schema.org/draft-07/schema",
+    "$id":"http://example.com/example.json",
+    "type":"object",
+    "title":"IBM i Project Configuration",
+    "description":"Configuration for an IBM i ILE project (RPG, COBOL, C, CL). This file is usually checked into a git repository and rarely changed. You may refererence variables in the `.env` file.",
+    "default":{
+      
+    },
+    "required":[
+      "objlib",
+      "actions"
+    ],
+    "properties":{
+      "version":{
+        "$id":"#/properties/version",
+        "type":"string",
+        "title":"Project version.",
+        "description":"Version of the project.",
+        "default":"0.0.1"
+      },
+      "description":{
+        "$id":"#/properties/description",
+        "type":"string",
+        "title":"Project description.",
+        "description":"Project description.",
+        "default":"My IBM i Project"
+      },
+      "repository":{
+        "$id":"#/properties/description",
+        "type":"string",
+        "title":"Project repository.",
+        "description":"A link to the project repository.",
+        "default":""
+      },
+      "objlib":{
+        "$id":"#/properties/objlib",
+        "type":"string",
+        "title":"Object library",
+        "description":"Where your application will build. Maps to `&OBJLIB` in commands.",
+        "default":"&OBJLIB"
+      },
+      "curlib":{
+        "$id":"#/properties/curlib",
+        "type":"string",
+        "title":"Build Current Library",
+        "description":"The current library that should be used when building the project. Code for IBM i does not use this and will instead use the current library in the Library List settings.",
+        "default":"&CURLIB"
+      },
+      "includePath":{
+        "$id":"#/properties/curlib",
+        "type":"array",
+        "title":"Build Include Path",
+        "description":"The include path should be used on all ILE compilers when building the project. Code for IBM i does not use this.",
+        "default":[],
+        "items":{
+          "$id":"#/properties/includePath/items",
+          "type":"string",
+          "title":"Include Path"
+        }
+      },
+      "preUsrlibl":{
+        "$id":"#/properties/curlib",
+        "type":"array",
+        "title":"Prepended User Library",
+        "description":"A list of libraries to be prepended to the library list when building the project. Code for IBM i does not use this.",
+        "default":[],
+        "items":{
+          "$id":"#/properties/includePath/items",
+          "type":"string",
+          "title":"Library"
+        }
+      },
+      "postUsrlibl":{
+        "$id":"#/properties/curlib",
+        "type":"array",
+        "title":"Append User Library",
+        "description":"A list of libraries to be append to the library list when building the project. Code for IBM i does not use this.",
+        "default":[],
+        "items":{
+          "$id":"#/properties/includePath/items",
+          "type":"string",
+          "title":"Library"
+        }
+      },
+      "setIBMiEnvCmd":{
+        "$id":"#/properties/curlib",
+        "type":"array",
+        "title":"Append User Library",
+        "description":"A list of CL commands to be executed before building the project. Code for IBM i does not use this.",
+        "default":[],
+        "items":{
+          "$id":"#/properties/includePath/items",
+          "type":"string",
+          "title":"Command"
+        }
+      },
+      "actions":{
+        "$id":"#/properties/actions",
+        "type":"array",
+        "title":"Actions",
+        "description":"List of Actions that apply to this project. Actions may be used to compile code on the remote system.",
+        "default":[],
+        "additionalItems":true,
+        "items":{
+          "$id":"#/properties/actions/items",
+          "anyOf":[
+            {
+              "$id":"#/properties/actions/items/anyOf/0",
+              "type":"object",
+              "title":"Action",
+              "description":"A single Action.",
+              "default":{
+                
+              },
+              "required":[
+                "name",
+                "command",
+                "fileSystem",
+                "commandEnvironment"
+              ],
+              "properties":{
+                "name":{
+                  "$id":"#/properties/actions/items/anyOf/0/properties/name",
+                  "type":"string",
+                  "title":"Name",
+                  "description":"The name of the Action. Used when running the Action."
+                },
+                "command":{
+                  "$id":"#/properties/actions/items/anyOf/0/properties/command",
+                  "type":"string",
+                  "title":"Command",
+                  "description":"The command that will be run when executing this Action.",
+                  "default":""
+                },
+                "fileSystem":{
+                  "$id":"#/properties/actions/items/anyOf/0/properties/fileSystem",
+                  "type":"string",
+                  "title":"File System",
+                  "description":"Which file system will be used when uploading sources when the Action is run.",
+                  "default":"qsys",
+                  "enum":[
+                    "qsys"
+                  ]
+                },
+                "commandEnvironment":{
+                  "$id":"#/properties/actions/items/anyOf/0/properties/commandEnvironment",
+                  "type":"string",
+                  "title":"Command Environment",
+                  "description":"Which environment the command will run in.",
+                  "default":"qsys",
+                  "enum":[
+                    "qsys"
+                  ]
+                },
+                "extensions":{
+                  "$id":"#/properties/actions/items/anyOf/0/properties/extensions",
+                  "type":"array",
+                  "title":"Extensions",
+                  "description":"Extensions which support this Action.",
+                  "default":[
+                    
+                  ],
+                  "items":{
+                    "type":"string",
+                    "title":"Lowercase extension."
+                  }
+                }
+              },
+              "additionalProperties":true
+            }
+          ]
+        }
+      }
+    },
+    "additionalProperties":true
+  }

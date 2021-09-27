@@ -40,7 +40,7 @@ module.exports = class LocalProject {
   }
 
   static async configValid(config) {
-    if (config.buildLibrary && config.actions && config.actions.length > 0) {
+    if (config.objlib && config.actions && config.actions.length > 0) {
       return true;
     }
 
@@ -50,7 +50,7 @@ module.exports = class LocalProject {
   static async configExists() {
     const workspace = LocalProject.getWorkspaceFolder();
     const folderUri = workspace.uri;
-    const jsonUri = folderUri.with({ path: path.join(folderUri.path, `.vscode`, `ibmi.json`) });
+    const jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
 
     try {
       await vscode.workspace.fs.stat(jsonUri);
@@ -76,7 +76,7 @@ module.exports = class LocalProject {
   /**
    * Before calling this, call hasWorkspace() first.
    * @returns {Promise<{
-   *    buildLibrary: string, 
+   *    objlib: string, 
    *    actions: {name: string, command: string, fileSystem: "qsys"|"ifs", commandEnvironment: "qsys", extensions: string[]}[]
    * }>}
    */
@@ -89,97 +89,120 @@ module.exports = class LocalProject {
 
     if (await LocalProject.configExists()) {
     // First we get the json configuration for the local project
-      const jsonUri = folderUri.with({ path: path.join(folderUri.path, `.vscode`, `ibmi.json`) });
+      const jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
 
       readData = await vscode.workspace.fs.readFile(jsonUri);
       readStr = Buffer.from(readData).toString(`utf8`);
-      config = JSON.parse(readStr);
+
+      const env = await this.getEnvConfig();
+
+      for (const envVar in env) {
+        readStr = readStr.replace(new RegExp(`&${envVar.toUpperCase()}`, `g`), env[envVar]);
+      }
+
+      try {
+        config = JSON.parse(readStr);
+      } catch (e) {
+        vscode.window.showErrorMessage(`The configuration file is not valid JSON.`);
+        config = {};
+      }
     }
 
+    return config;
+  }
+
+  /** @returns {Promise<{[name: string]: string}>} */
+  static async getEnvConfig() {
+    let env = {};
+
     if (await this.envExists()) {
+      const workspace = LocalProject.getWorkspaceFolder();
+      const folderUri = workspace.uri;
+      let readData, readStr;
 
       // Then we get the local .env file
       const envUri = folderUri.with({ path: path.join(folderUri.path, `.env`) });
       readData = await vscode.workspace.fs.readFile(envUri);
       readStr = Buffer.from(readData).toString(`utf8`);
 
-      const envLines = readStr.split(`\n`);
+      const envLines = readStr.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
 
-      // Parse out the fileSystem lines
-      const env = {};
+      // Parse out the env lines
       envLines.forEach(line => {
         if (!line.startsWith(`#`)) {
           const [key, value] = line.split(`=`);
-          env[key] = value;
+          if (key.length > 0 && value.length > 0) {
+            env[key] = value;
+          }
         }
       });
-
-      // Then we replace the fileSystem variables in the config
-      for (const key in config) {
-        const value = config[key];
-        if (env[value]) {
-          config[key] = env[value];
-        }
-      }
-
     }
 
-    return config;
+    // @ts-ignore
+    return env;
   }
 
   static async createConfig() {
     const workspace = LocalProject.getWorkspaceFolder();
     const folderUri = workspace.uri;
-    const jsonUri = folderUri.with({ path: path.join(folderUri.path, `.vscode`, `ibmi.json`) });
+    const jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
 
     const config = {
-      buildLibrary: `BUILDLIB`,
+      version: `0.0.1`,
+      description: `IBM i Project`,
+      repository: ``,
+      objlib: `&DEVLIB`,
+      curlib: `&DEVLIB`,
+      includePath: [],
+      preUsrlibl: [],
+      postUsrlibl: [],
+      setIBMiEnvCmd: [],
       actions: [
         {
           name: `Compile: CRTSQLRPGI (Program)`,
-          command: `CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)`,
+          command: `CRTSQLRPGI OBJ(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`,
           extensions: [`sqlrpgle`]
         },
         {
           name: `Compile: CRTBNDRPG`,
-          command: `CRTBNDRPG PGM(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+          command: `CRTBNDRPG PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`,
           extensions: [`rpgle`]
         },
         {
           name: `Compile: CRTRPGMOD`,
-          command: `CRTRPGMOD MOD(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+          command: `CRTRPGMOD MOD(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`,
           extensions: [`rpgle`]
         },
         {
           name: `Compile: CRTBNDCBL`,
-          command: `CRTBNDCBL (&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) OPTION(*SOURCE *EVENTF) DBGVIEW(*SOURCE)`,
+          command: `CRTBNDCBL (&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*SOURCE *EVENTF) DBGVIEW(*SOURCE)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`,
           extensions: [`cbl`, `cbble`, `cob`]
         },
         {
           name: `Compile: CRTCMD`,
-          command: `CRTCMD CMD(&BUILDLIB/&NAME) PGM(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)`,
+          command: `CRTCMD CMD(&OBJLIB/&NAME) PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`,
           extensions: [`cmd`]
         },
         {
           name: `Compile: CRTBNDCL`,
-          command: `CRTBNDCL PGM(&BUILDLIB/&NAME) SRCFILE(&BUILDLIB/&FOLDER) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+          command: `CRTBNDCL PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`,
           extensions: [`cl`, `clle`]
         },
         {
           name: `Compile: CRTPGM`,
-          command: `CRTPGM PGM(&BUILDLIB/&NAME) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)`,
+          command: `CRTPGM PGM(&OBJLIB/&NAME) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)`,
           fileSystem: `qsys`,
           commandEnvironment: `qsys`
         },
@@ -198,9 +221,9 @@ module.exports = class LocalProject {
         `# Variables for the local IBM i project`,
         `# This file is automatically generated by Code for IBM i`,
         ``,
-        `# BUILDLIB is referenced in the .vscode/ibmi.json config file.`,
+        `# DEVLIB is referenced in the ./iproj.json config file.`,
         `# .env allows developers to each configure where to build their objects`,
-        `BUILDLIB=DEVLIB`
+        `DEVLIB=DEVLIB`
       ].join(`\n`);
 
       await vscode.workspace.fs.writeFile(folderUri.with({ path: path.join(folderUri.path, `.env`) }), Buffer.from(envContent, `utf8`));
@@ -243,6 +266,7 @@ module.exports = class LocalProject {
 
       if (configExists) {
         const projConfig = await LocalProject.getConfig();
+        const env = await LocalProject.getEnvConfig();
 
         if (await LocalProject.configValid(projConfig)) {
 
@@ -289,13 +313,17 @@ module.exports = class LocalProject {
 
             let command = action.command;
 
-            command = command.replace(new RegExp(`&BUILDLIB`, `g`), projConfig.buildLibrary.toUpperCase());
+            command = command.replace(new RegExp(`&OBJLIB`, `g`), projConfig.objlib.toUpperCase());
             command = command.replace(new RegExp(`&FOLDER`, `g`), folder);
             command = command.replace(new RegExp(`&NAME`, `g`), name);
             command = command.replace(new RegExp(`&EXT`, `g`), ext);
 
+            for (const envVar in env) {
+              command = command.replace(new RegExp(`&${envVar.toUpperCase()}`, `g`), env[envVar]);
+            }
+
             const compileInfo = {
-              lib: projConfig.buildLibrary.toUpperCase(),
+              lib: projConfig.objlib.toUpperCase(),
               object: pathInfo.name.toUpperCase(),
               localFiles: allUploads
             };
@@ -305,7 +333,7 @@ module.exports = class LocalProject {
             libl = libl.map(library => {
             //We use this for special variables in the libl
               switch (library) {
-              case `&BUILDLIB`: return projConfig.buildLibrary;
+              case `&DEVLIB`: return projConfig.objlib;
               case `&CURLIB`: return config.currentLibrary;
               default: return library;
               }
@@ -363,11 +391,11 @@ module.exports = class LocalProject {
           }
 
         } else {
-          vscode.window.showWarningMessage(`ibmi.json configuration is incorrect.`);
+          vscode.window.showWarningMessage(`iproj.json configuration is incorrect.`);
         }
         
       } else {
-        vscode.window.showInformationMessage(`No ibmi.json file found. Would you like to create one?`, `Yes`).then(async result => {
+        vscode.window.showInformationMessage(`No iproj.json file found. Would you like to create one?`, `Yes`).then(async result => {
           if (result === `Yes`) {
             await LocalProject.createConfig();
           }
@@ -378,7 +406,7 @@ module.exports = class LocalProject {
 
   /**
    * Uploads a set of files to the IBM i to the qsys env
-   * @param {{buildLibrary: string}} config
+   * @param {{objlib: string}} config
    * @param {vscode.Uri[]} files 
    * @param {*} instance 
    */
@@ -392,6 +420,8 @@ module.exports = class LocalProject {
     /** @type {IBMiContent} */
     const content = instance.getContent();
 
+    const workspace = vscode.workspace;
+
     const fs = vscode.workspace.fs;
 
     for (const file of files) {
@@ -402,8 +432,8 @@ module.exports = class LocalProject {
 
       const bytes = await fs.readFile(file);
 
-      creations.push(connection.paseCommand(`system -s "ADDPFM FILE(${config.buildLibrary}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1));
-      uploads.push(content.uploadMemberContent(undefined, config.buildLibrary, folder, name, Buffer.from(bytes).toString(`utf8`)));
+      creations.push(connection.paseCommand(`system -s "ADDPFM FILE(${config.objlib}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1));
+      uploads.push(content.uploadMemberContent(undefined, config.objlib, folder, name, Buffer.from(bytes).toString(`utf8`)));
     }
 
     await Promise.all(creations);
