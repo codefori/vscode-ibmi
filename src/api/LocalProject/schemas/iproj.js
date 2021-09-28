@@ -58,6 +58,13 @@ module.exports = {
       fileSystem: `qsys`,
       commandEnvironment: `qsys`,
       extensions: [`sql`, `table`, `view`, `sqlprc`, `sqlseq`, `sqludf`, `trg`, `index`]
+    },
+    {
+      name: `CRTDSPF`,
+      command: `CRTDSPF FILE(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF)`,
+      fileSystem: `qsys`,
+      commandEnvironment: `qsys`,
+      extensions: [`dspf`]
     }
   ]
 }
