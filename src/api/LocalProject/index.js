@@ -225,11 +225,6 @@ module.exports = class LocalProject {
         return;
       }
 
-      if (ext.length > 6) {
-        vscode.window.showErrorMessage(`The extension for ${name}.${ext} is too long to map to a source type. (6 characters max)`);
-        return;
-      }
-
       const configExists = await LocalProject.configExists();
 
       if (configExists) {
