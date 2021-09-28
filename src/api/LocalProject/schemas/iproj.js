@@ -3,11 +3,6 @@ module.exports = {
   description: `IBM i Project`,
   repository: ``,
   objlib: `&DEVLIB`,
-  curlib: `&DEVLIB`,
-  includePath: [],
-  preUsrlibl: [],
-  postUsrlibl: [],
-  setIBMiEnvCmd: [],
   actions: [
     {
       name: `Compile: CRTSQLRPGI (Program)`,
