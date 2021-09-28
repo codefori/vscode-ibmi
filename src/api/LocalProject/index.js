@@ -27,7 +27,6 @@ module.exports = class LocalProject {
         if (isProject === `Yes`) {
           projectEnabled = true;
 
-          vscode.window.showInformationMessage(`Creating default configuration file.`);
           await LocalProject.createConfig();
         }
       }
@@ -172,7 +171,21 @@ module.exports = class LocalProject {
     const folderUri = workspace.uri;
     const jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
 
-    const jsonStr = JSON.stringify(defaultConfig, null, 2);
+    const type = await vscode.window.showInformationMessage(`What is the project type?`, `QSYS (Default)`, `IFS`);
+
+    let config;
+    switch (type) {
+    case `QSYS (Default)`:
+      config = defaultConfig(`qsys`);
+      break;
+    case `IFS`:
+      config = defaultConfig(`ifs`);
+      break;
+    default:
+      return;
+    }
+
+    const jsonStr = JSON.stringify(config, null, 2);
 
     await vscode.workspace.fs.writeFile(jsonUri, Buffer.from(jsonStr, `utf8`));
 

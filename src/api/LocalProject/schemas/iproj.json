@@ -139,7 +139,8 @@
                   "default":"qsys",
                   "enum":[
                     "qsys", 
-                    "ifs"
+                    "ifs",
+                    "none"
                   ]
                 },
                 "commandEnvironment":{

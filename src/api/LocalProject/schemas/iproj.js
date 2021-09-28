@@ -1,37 +1,12 @@
-module.exports = {
+const qsys = require(`./actions/qsys`);
+const ifs = require(`./actions/ifs`);
+
+const defaultConfig = {
   version: `0.0.1`,
   description: `IBM i Project`,
   repository: ``,
   objlib: `&DEVLIB`,
   actions: [
-    {
-      name: `Compile: CRTSQLRPGI (Program)`,
-      command: `CRTSQLRPGI OBJ(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)`,
-      fileSystem: `qsys`,
-      commandEnvironment: `qsys`,
-      extensions: [`sqlrpgle`]
-    },
-    {
-      name: `Compile: CRTBNDRPG`,
-      command: `CRTBNDRPG PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
-      fileSystem: `qsys`,
-      commandEnvironment: `qsys`,
-      extensions: [`rpgle`]
-    },
-    {
-      name: `Compile: CRTRPGMOD`,
-      command: `CRTRPGMOD MODULE(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
-      fileSystem: `qsys`,
-      commandEnvironment: `qsys`,
-      extensions: [`rpgle`]
-    },
-    {
-      name: `Compile: CRTBNDCBL`,
-      command: `CRTBNDCBL PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*SOURCE *EVENTF) DBGVIEW(*SOURCE)`,
-      fileSystem: `qsys`,
-      commandEnvironment: `qsys`,
-      extensions: [`cbl`, `cbble`, `cob`]
-    },
     {
       name: `Compile: CRTCMD`,
       command: `CRTCMD CMD(&OBJLIB/&NAME) PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)`,
@@ -40,11 +15,11 @@ module.exports = {
       extensions: [`cmd`]
     },
     {
-      name: `Compile: CRTBNDCL`,
-      command: `CRTBNDCL PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      name: `CRTDSPF`,
+      command: `CRTDSPF FILE(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF)`,
       fileSystem: `qsys`,
       commandEnvironment: `qsys`,
-      extensions: [`cl`, `clle`]
+      extensions: [`dspf`]
     },
     {
       name: `Compile: CRTPGM`,
@@ -52,19 +27,32 @@ module.exports = {
       fileSystem: `qsys`,
       commandEnvironment: `qsys`
     },
-    {
-      name: `RUNSQLSTM`,
-      command: `RUNSQLSTM SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) COMMIT(*NONE) NAMING(*SYS)`,
-      fileSystem: `qsys`,
-      commandEnvironment: `qsys`,
-      extensions: [`sql`, `table`, `view`, `sqlprc`, `sqlseq`, `sqludf`, `trg`, `index`]
-    },
-    {
-      name: `CRTDSPF`,
-      command: `CRTDSPF FILE(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF)`,
-      fileSystem: `qsys`,
-      commandEnvironment: `qsys`,
-      extensions: [`dspf`]
-    }
   ]
-}
+};
+
+/**
+ * 
+ * @param {"qsys"|"ifs"} type 
+ * @returns {object} default config
+ */
+module.exports = (type) => {
+  switch (type) {
+  case `qsys`:
+    return {
+      ...defaultConfig,
+      actions: [
+        ...qsys,
+        ...defaultConfig.actions,
+      ]
+    };
+    
+  case `ifs`:
+    return {
+      ...defaultConfig,
+      actions: [
+        ...ifs,
+        ...defaultConfig.actions,
+      ]
+    };
+  }
+};
