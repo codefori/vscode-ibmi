@@ -398,8 +398,24 @@ module.exports = class RPGLinter {
       const parentInfo = path.parse(pathInfo.dir);
       const parent = parentInfo.name;
 
-      const fullPath = getPath.split(`/`).pop();
-      const parts = fullPath.split(`,`);
+      let parts = [];
+      if (getPath.includes(`,`)) {
+        const fullPath = getPath.split(`/`).pop();
+        parts = fullPath.split(`,`);
+
+      } else {
+        if (getPath.startsWith(`'`)) getPath = getPath.substring(1);
+        if (getPath.endsWith(`'`)) getPath = getPath.substring(0, getPath.length - 1);
+
+        parts = getPath.split(`/`);
+
+        if (parts.length > 2) parts = parts.slice(0, parts.length - 1);
+
+        const fullName = parts[parts.length-1];
+        if (fullName.includes(`.`)) {
+          parts[parts.length-1] = fullName.substring(0, fullName.lastIndexOf(`.`));
+        }
+      }
 
       switch (parts.length) {
       case 2:
@@ -410,7 +426,7 @@ module.exports = class RPGLinter {
         break;
       }
       
-      const potentialFiles = await vscode.workspace.findFiles(`**/${finishedPath}.*`);
+      const potentialFiles = await vscode.workspace.findFiles(`**/${finishedPath}.*`, undefined, 1);
 
       if (potentialFiles.length > 0) {
         finishedPath = potentialFiles[0].path;

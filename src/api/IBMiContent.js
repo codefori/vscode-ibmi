@@ -38,6 +38,11 @@ module.exports = class IBMiContent {
     return client.putFile(tmpobj, remotePath); // assumes streamfile will be UTF8
   }
 
+  uploadFile(remotePath, localPath) {
+    const client = this.ibmi.client;
+    return client.putFile(localPath, remotePath);
+  }
+
   /**
    * Download the contents of a source member
    * @param {string|undefined} asp 

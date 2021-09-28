@@ -211,8 +211,9 @@ module.exports = class LocalProject {
       const ext = pathInfo.ext.substring(1);
 
       name = name.toUpperCase();
-      
       if (description) description = description.replace(new RegExp(`_`, `g`), ` `)
+
+      const fullIfsPath = path.posix.join(connection.config.homeDirectory, folder, `${name}.${ext}`);
 
       if (folder.length > 10) {
         vscode.window.showErrorMessage(`The folder name ${folder} is too long to map to an IBM i source file. (10 characters max)`);
@@ -267,8 +268,9 @@ module.exports = class LocalProject {
 
             try {
               switch (action.fileSystem) {
+              case `ifs`:
               case `qsys`:
-                await LocalProject.uploadQsys(projConfig, allUploads, instance);
+                await LocalProject.uploadSources(action.fileSystem, projConfig, allUploads, instance);
                 break;
               }
             } catch (e) {
@@ -285,6 +287,7 @@ module.exports = class LocalProject {
             command = command.replace(new RegExp(`&NAME`, `g`), name);
             command = command.replace(new RegExp(`&EXT`, `g`), ext);
             command = command.replace(new RegExp(`&DESC`, `g`), description || ``);
+            command = command.replace(new RegExp(`&SRCSTMF`, `g`), fullIfsPath);
 
             for (const envVar in env) {
               command = command.replace(new RegExp(`&${envVar.toUpperCase()}`, `g`), env[envVar]);
@@ -374,11 +377,12 @@ module.exports = class LocalProject {
 
   /**
    * Uploads a set of files to the IBM i to the qsys env
+   * @param {"qsys"|"ifs"} fileSystem
    * @param {{objlib: string}} config
    * @param {vscode.Uri[]} files 
    * @param {*} instance 
    */
-  static async uploadQsys(config, files, instance) {
+  static async uploadSources(fileSystem, config, files, instance) {
     let sourceFiles = [];
     let sourceMembers = [];
     let uploads = [];
@@ -389,17 +393,17 @@ module.exports = class LocalProject {
     /** @type {IBMiContent} */
     const content = instance.getContent();
 
+    const setccsid = connection.remoteFeatures.setccsid;
     const workspace = vscode.workspace;
-
     const fs = vscode.workspace.fs;
 
     for (const file of files) {
       const document = await workspace.openTextDocument(file);
       const version = document.version;
+      const localPath = `${file.scheme}:${file.fsPath}`;
 
-      if (version !== versions[file.fsPath]) {
-
-        const pathInfo = path.parse(file.fsPath);
+      if (version !== versions[localPath]) {
+        const pathInfo = path.parse(localPath);
         const [name] = pathInfo.name.split(`-`); //Member name
         const folder = path.basename(pathInfo.dir); //Get the parent directory name
         let extension = pathInfo.ext || ``;
@@ -407,30 +411,44 @@ module.exports = class LocalProject {
         if (folder.length > 10) continue; // We can't upload these to source files
         if (extension.startsWith(`.`)) extension = extension.substr(1);
 
-        const bytes = await fs.readFile(file);
+        switch (fileSystem) {
+        case `qsys`:
+          const bytes = await fs.readFile(file);
 
-        // Indicates that the file has not yet been uploaded this session
-        // So we create a new source file & member incase it does not exist.
+          // Indicates that the file has not yet been uploaded this session
+          // So we create a new source file & member incase it does not exist.
+          if (versions[`${config.objlib}/${folder}`] === undefined) {
+            let ccsid;
 
-        if (versions[`${config.objlib}/${folder}`] === undefined) {
-          let ccsid;
+            // We get the ccsid from the folder configuration
+            const dirConfig = await this.getConfig(folder);
+            if (dirConfig.build && dirConfig.build.tgtCcsid) {
+              ccsid = dirConfig.build.tgtCcsid;
+            }
 
-          // We get the ccsid from the folder configuration
-          const dirConfig = await this.getConfig(folder);
-          if (dirConfig.build && dirConfig.build.tgtCcsid) {
-            ccsid = dirConfig.build.tgtCcsid;
+            await connection.paseCommand(`system -s "CRTSRCPF FILE(${config.objlib}/${folder}) RCDLEN(112) CCSID(${ccsid || `*JOB`})"`, undefined, 1);
+            versions[`${config.objlib}/${folder}`] = 1;
           }
 
-          await connection.paseCommand(`system -s "CRTSRCPF FILE(${config.objlib}/${folder}) RCDLEN(112) CCSID(${ccsid || `*JOB`})"`, undefined, 1);
-          versions[`${config.objlib}/${folder}`] = 1;
+          await content.uploadMemberContent(undefined, config.objlib, folder, name, Buffer.from(bytes).toString(`utf8`));
+          break;
+
+        case `ifs`:
+          const fullDir = path.posix.join(connection.config.homeDirectory, folder);
+          const fullPath = path.posix.join(fullDir, `${name}.${extension}`);
+
+          // maybe create the folder if it does not exist?
+          if (versions[fullDir] === undefined) {
+            connection.paseCommand(`mkdir -p "${fullDir}"`, undefined, 1);
+            versions[fullDir] = 1;
+          }
+
+          await content.uploadFile(fullPath, file.path);
+          if (setccsid) await connection.paseCommand(`${setccsid} 1252 ${fullPath}`);
+          break;
         }
 
-        // if (versions[file.fsPath] === undefined) {
-        //   await connection.paseCommand(`system -s "ADDPFM FILE(${config.objlib}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1);
-        // }
-
-        await content.uploadMemberContent(undefined, config.objlib, folder, name, Buffer.from(bytes).toString(`utf8`));
-        versions[file.fsPath] = version;
+        versions[localPath] = version;
       }
     }
   }
