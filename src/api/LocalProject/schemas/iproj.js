@@ -24,7 +24,7 @@ const defaultConfig = {
     {
       name: `Compile: CRTPGM`,
       command: `CRTPGM PGM(&OBJLIB/&NAME) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)`,
-      fileSystem: `qsys`,
+      fileSystem: `none`,
       commandEnvironment: `qsys`
     },
   ]

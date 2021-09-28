@@ -54,7 +54,8 @@ Commands have access to the following variables:
 You can also specify which file system the source code should be uploaded to wth the `fileSystem` property:
 
 * `qsys`: local sources are uploaded to source members. Your commands should use `SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME)` and includes/copy statements should generally point to other members.
-* `ifs`: local sources are uploaded to ifs streamfiles. You should make sure your working directory (home directory) in Code for IBM i is set to where you want sources uploaded to. Your commands should use `SRCSTMF(&SRCSTMF)` and includes/copy statements should generally point to other streamfiles. 
+* `ifs`: local sources are uploaded to ifs streamfiles. You should make sure your working directory (home directory) in Code for IBM i is set to where you want sources uploaded to. Your commands should use `SRCSTMF(&SRCSTMF)` and includes/copy statements should generally point to other streamfiles.
+* `none`: no sources will be uploaded and on the command will be executed.
 
 Additionally, you can specify which environment the command should run in. Although, we only support `qsys` right now. `pase` and `qsh` support will be added in the future.
 

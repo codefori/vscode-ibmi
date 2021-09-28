@@ -254,30 +254,31 @@ module.exports = class LocalProject {
           if (chosenOptionName) {
             const action = projConfig.actions.find(action => action.name === chosenOptionName);
 
-            // 1. We find all the possible deps in the active editor
-            const fileList = await vscode.workspace.findFiles(`**/*.*`);
-
-            const docBytes = await vscode.workspace.fs.readFile(documentUri);
-            const content = Buffer.from(docBytes).toString(`utf8`).toUpperCase();
         
             /** @type {vscode.Uri[]} */
             let allUploads = [documentUri];
-
-            fileList.forEach(file => {
-              const basename = path.parse(file.fsPath).name.toUpperCase();
-              if (content.includes(basename)) {
-                allUploads.push(file);
-              }
-            });
-
-            // 2. We upload all the files
-            CompileTools.appendToOutputChannel(`Uploading ${allUploads.length} files...\n`);
-            CompileTools.appendToOutputChannel(allUploads.map(file => `\t` + path.basename(file.fsPath)).join(`\n`) + `\n\n`);
 
             try {
               switch (action.fileSystem) {
               case `ifs`:
               case `qsys`:
+                // 1. We find all the possible deps in the active editor
+                const fileList = await vscode.workspace.findFiles(`**/*.*`);
+                const docBytes = await vscode.workspace.fs.readFile(documentUri);
+                const content = Buffer.from(docBytes).toString(`utf8`).toUpperCase();
+    
+                fileList.forEach(file => {
+                  const basename = path.parse(file.fsPath).name.toUpperCase();
+                  if (content.includes(basename)) {
+                    allUploads.push(file);
+                  }
+                });
+    
+                // 2. Write to output
+                CompileTools.appendToOutputChannel(`Uploading ${allUploads.length} files...\n`);
+                CompileTools.appendToOutputChannel(allUploads.map(file => `\t` + path.basename(file.fsPath)).join(`\n`) + `\n\n`);
+
+                // 3. We upload the files
                 await LocalProject.uploadSources(action.fileSystem, projConfig, allUploads, instance);
                 break;
               }
