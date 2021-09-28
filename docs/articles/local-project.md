@@ -6,6 +6,8 @@ To open a local project, open the folder in VS Code (File -> Open Folder) - this
 
 To compile code from your local project, you should connect to an IBM i. This method is the same as always; though the Code for IBM i extension.
 
+Sources in a Local Project should use the same formats as working in source members when making use of copy and include statements (since most Actions only support `qsys` as of now).
+
 ## Project file
 
 When you connect to a system with a workspace open for the first time, it will ask the user if it is an IBM i project. You will only see this notice if the `./iproj.json` file does not exist. This is the projects configuration file. **You should check `iproj.json` into git** as all developers will need it. When it creates the default config, it may also create a `.env` file. **`.env` should be added to the `.gitignore`** because each developer should have their own version of it.
