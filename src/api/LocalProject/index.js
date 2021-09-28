@@ -1,11 +1,13 @@
 
 const vscode = require(`vscode`);
 const path = require(`path`);
-const IBMi = require(`./IBMi`);
-const IBMiContent = require(`./IBMiContent`);
-const Configuration = require(`./Configuration`);
 
-const CompileTools = require(`./CompileTools`);
+const IBMi = require(`../IBMi`);
+const IBMiContent = require(`../IBMiContent`);
+const Configuration = require(`../Configuration`);
+const CompileTools = require(`../CompileTools`);
+
+const defaultConfig = require(`./schemas/iproj`);
 
 let projectEnabled = false;
 
@@ -50,10 +52,21 @@ module.exports = class LocalProject {
     return false;
   }
 
-  static async configExists() {
+  /**
+   * Returns config for entire workspace or config for specific folder if provided.
+   * @param {string} [subfolder] 
+   * @returns 
+   */
+  static async configExists(subfolder) {
     const workspace = LocalProject.getWorkspaceFolder();
     const folderUri = workspace.uri;
-    const jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
+    let jsonUri;
+    
+    if (subfolder) {
+      jsonUri = folderUri.with({ path: path.join(folderUri.path, subfolder, `.ibmi.json`) });
+    } else {
+      jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
+    }
 
     try {
       await vscode.workspace.fs.stat(jsonUri);
@@ -78,21 +91,29 @@ module.exports = class LocalProject {
 
   /**
    * Before calling this, call hasWorkspace() first.
+   * tgtCcsid is only returned when a subfolder is provided.
    * @returns {Promise<{
    *    objlib: string, 
-   *    actions: {name: string, command: string, fileSystem: "qsys"|"ifs", commandEnvironment: "qsys", extensions: string[]}[]
+   *    actions: {name: string, command: string, fileSystem: "qsys"|"ifs", commandEnvironment: "qsys", extensions: string[]}[],
+   *    build?: {tgtCcsid?: string}
    * }>}
    */
-  static async getConfig() {
+  static async getConfig(subfolder) {
     const workspace = LocalProject.getWorkspaceFolder();
     const folderUri = workspace.uri;
     let readData, readStr;
 
     let config;
 
-    if (await LocalProject.configExists()) {
+    if (await LocalProject.configExists(subfolder)) {
     // First we get the json configuration for the local project
-      const jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
+      let jsonUri;
+
+      if (subfolder) {
+        jsonUri = folderUri.with({ path: path.join(folderUri.path, subfolder, `.ibmi.json`) });
+      } else {
+        jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
+      }
 
       readData = await vscode.workspace.fs.readFile(jsonUri);
       readStr = Buffer.from(readData).toString(`utf8`);
@@ -150,69 +171,7 @@ module.exports = class LocalProject {
     const folderUri = workspace.uri;
     const jsonUri = folderUri.with({ path: path.join(folderUri.path, `iproj.json`) });
 
-    const config = {
-      version: `0.0.1`,
-      description: `IBM i Project`,
-      repository: ``,
-      objlib: `&DEVLIB`,
-      curlib: `&DEVLIB`,
-      includePath: [],
-      preUsrlibl: [],
-      postUsrlibl: [],
-      setIBMiEnvCmd: [],
-      actions: [
-        {
-          name: `Compile: CRTSQLRPGI (Program)`,
-          command: `CRTSQLRPGI OBJ(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)`,
-          fileSystem: `qsys`,
-          commandEnvironment: `qsys`,
-          extensions: [`sqlrpgle`]
-        },
-        {
-          name: `Compile: CRTBNDRPG`,
-          command: `CRTBNDRPG PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
-          fileSystem: `qsys`,
-          commandEnvironment: `qsys`,
-          extensions: [`rpgle`]
-        },
-        {
-          name: `Compile: CRTRPGMOD`,
-          command: `CRTRPGMOD MOD(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
-          fileSystem: `qsys`,
-          commandEnvironment: `qsys`,
-          extensions: [`rpgle`]
-        },
-        {
-          name: `Compile: CRTBNDCBL`,
-          command: `CRTBNDCBL (&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*SOURCE *EVENTF) DBGVIEW(*SOURCE)`,
-          fileSystem: `qsys`,
-          commandEnvironment: `qsys`,
-          extensions: [`cbl`, `cbble`, `cob`]
-        },
-        {
-          name: `Compile: CRTCMD`,
-          command: `CRTCMD CMD(&OBJLIB/&NAME) PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) ALLOW(*ALL) CURLIB(*NOCHG) PRDLIB(*NOCHG)`,
-          fileSystem: `qsys`,
-          commandEnvironment: `qsys`,
-          extensions: [`cmd`]
-        },
-        {
-          name: `Compile: CRTBNDCL`,
-          command: `CRTBNDCL PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
-          fileSystem: `qsys`,
-          commandEnvironment: `qsys`,
-          extensions: [`cl`, `clle`]
-        },
-        {
-          name: `Compile: CRTPGM`,
-          command: `CRTPGM PGM(&OBJLIB/&NAME) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)`,
-          fileSystem: `qsys`,
-          commandEnvironment: `qsys`
-        },
-      ]
-    };
-
-    const jsonStr = JSON.stringify(config, null, 2);
+    const jsonStr = JSON.stringify(defaultConfig, null, 2);
 
     await vscode.workspace.fs.writeFile(jsonUri, Buffer.from(jsonStr, `utf8`));
 
@@ -444,7 +403,15 @@ module.exports = class LocalProject {
         // Indicates that the file has not yet been uploaded this session
         // So we create a new source file & member incase it does not exist.
         if (versions[file.fsPath] === undefined) {
-          sourceFiles.push(connection.paseCommand(`system -s "CRTSRCPF FILE(${config.objlib}/${folder}) RCDLEN(112)"`, undefined, 1));
+          let ccsid;
+
+          // We get the ccsid from the folder configuration
+          const dirConfig = await this.getConfig(folder);
+          if (dirConfig.build && dirConfig.build.tgtCcsid) {
+            ccsid = dirConfig.build.tgtCcsid;
+          }
+
+          sourceFiles.push(connection.paseCommand(`system -s "CRTSRCPF FILE(${config.objlib}/${folder}) RCDLEN(112) CCSID(${ccsid || `*JOB`})"`, undefined, 1));
           sourceMembers.push(connection.paseCommand(`system -s "ADDPFM FILE(${config.objlib}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1));
         }
 
