@@ -1175,7 +1175,7 @@
 		],
 		"jsonValidation": [{
 			"fileMatch": "iproj.json",
-			"url": "./src/api/schemas/iproj.json"
+			"url": "./src/api/LocalProject/schemas/iproj.json"
 		}]
 	},
 	"scripts": {

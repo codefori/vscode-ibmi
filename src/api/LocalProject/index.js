@@ -103,7 +103,7 @@ module.exports = class LocalProject {
     const folderUri = workspace.uri;
     let readData, readStr;
 
-    let config;
+    let config = {};
 
     if (await LocalProject.configExists(subfolder)) {
     // First we get the json configuration for the local project
@@ -132,6 +132,7 @@ module.exports = class LocalProject {
       }
     }
 
+    // @ts-ignore
     return config;
   }
 
@@ -206,8 +207,12 @@ module.exports = class LocalProject {
     if (projectEnabled) {
       const pathInfo = path.parse(documentUri.fsPath);
       const folder = path.basename(pathInfo.dir); // Get the parent directory name
-      const name = pathInfo.name.toUpperCase();
+      let [name, description] = pathInfo.name.split(`-`);
       const ext = pathInfo.ext.substring(1);
+
+      name = name.toUpperCase();
+      
+      if (description) description = description.replace(new RegExp(`_`, `g`), ` `)
 
       if (folder.length > 10) {
         vscode.window.showErrorMessage(`The folder name ${folder} is too long to map to an IBM i source file. (10 characters max)`);
@@ -233,7 +238,7 @@ module.exports = class LocalProject {
         if (await LocalProject.configValid(projConfig)) {
 
           const availableActions = projConfig.actions
-            .filter(action => action.extensions === undefined || (action.extensions.length > 0 && action.extensions.includes(ext)))
+            .filter(action => action.extensions === undefined || (action.extensions.length > 0 && action.extensions.includes(ext.toLowerCase())))
             .map(action => action.name)
           const chosenOptionName = await vscode.window.showQuickPick(availableActions);
 
@@ -279,6 +284,7 @@ module.exports = class LocalProject {
             command = command.replace(new RegExp(`&FOLDER`, `g`), folder);
             command = command.replace(new RegExp(`&NAME`, `g`), name);
             command = command.replace(new RegExp(`&EXT`, `g`), ext);
+            command = command.replace(new RegExp(`&DESC`, `g`), description || ``);
 
             for (const envVar in env) {
               command = command.replace(new RegExp(`&${envVar.toUpperCase()}`, `g`), env[envVar]);
@@ -286,7 +292,7 @@ module.exports = class LocalProject {
 
             const compileInfo = {
               lib: projConfig.objlib.toUpperCase(),
-              object: pathInfo.name.toUpperCase(),
+              object: name.toUpperCase(),
               localFiles: allUploads
             };
 
@@ -394,15 +400,19 @@ module.exports = class LocalProject {
       if (version !== versions[file.fsPath]) {
 
         const pathInfo = path.parse(file.fsPath);
-        const name = pathInfo.name; //Member name
+        const [name] = pathInfo.name.split(`-`); //Member name
         const folder = path.basename(pathInfo.dir); //Get the parent directory name
-        const extension = pathInfo.ext;
+        let extension = pathInfo.ext || ``;
+
+        if (folder.length > 10) continue; // We can't upload these to source files
+        if (extension.startsWith(`.`)) extension = extension.substr(1);
 
         const bytes = await fs.readFile(file);
 
         // Indicates that the file has not yet been uploaded this session
         // So we create a new source file & member incase it does not exist.
-        if (versions[file.fsPath] === undefined) {
+
+        if (versions[`${config.objlib}/${folder}`] === undefined) {
           let ccsid;
 
           // We get the ccsid from the folder configuration
@@ -411,18 +421,18 @@ module.exports = class LocalProject {
             ccsid = dirConfig.build.tgtCcsid;
           }
 
-          sourceFiles.push(connection.paseCommand(`system -s "CRTSRCPF FILE(${config.objlib}/${folder}) RCDLEN(112) CCSID(${ccsid || `*JOB`})"`, undefined, 1));
-          sourceMembers.push(connection.paseCommand(`system -s "ADDPFM FILE(${config.objlib}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1));
+          await connection.paseCommand(`system -s "CRTSRCPF FILE(${config.objlib}/${folder}) RCDLEN(112) CCSID(${ccsid || `*JOB`})"`, undefined, 1);
+          versions[`${config.objlib}/${folder}`] = 1;
         }
 
-        uploads.push(content.uploadMemberContent(undefined, config.objlib, folder, name, Buffer.from(bytes).toString(`utf8`)));
+        // if (versions[file.fsPath] === undefined) {
+        //   await connection.paseCommand(`system -s "ADDPFM FILE(${config.objlib}/${folder}) MBR(${name}) SRCTYPE(${extension})"`, undefined, 1);
+        // }
+
+        await content.uploadMemberContent(undefined, config.objlib, folder, name, Buffer.from(bytes).toString(`utf8`));
         versions[file.fsPath] = version;
       }
     }
-
-    if (sourceFiles.length > 0) await Promise.all(sourceFiles);
-    if (sourceMembers.length > 0) await Promise.all(sourceMembers);
-    if (uploads.length > 0) await Promise.all(uploads);
   }
   
 }

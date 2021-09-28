@@ -110,9 +110,7 @@
               "type":"object",
               "title":"Action",
               "description":"A single Action.",
-              "default":{
-                
-              },
+              "default":{},
               "required":[
                 "name",
                 "command",

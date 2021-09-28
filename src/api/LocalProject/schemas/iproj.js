@@ -25,14 +25,14 @@ module.exports = {
     },
     {
       name: `Compile: CRTRPGMOD`,
-      command: `CRTRPGMOD MOD(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      command: `CRTRPGMOD MODULE(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
       fileSystem: `qsys`,
       commandEnvironment: `qsys`,
       extensions: [`rpgle`]
     },
     {
       name: `Compile: CRTBNDCBL`,
-      command: `CRTBNDCBL (&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*SOURCE *EVENTF) DBGVIEW(*SOURCE)`,
+      command: `CRTBNDCBL PGM(&OBJLIB/&NAME) SRCFILE(&OBJLIB/&FOLDER) OPTION(*SOURCE *EVENTF) DBGVIEW(*SOURCE)`,
       fileSystem: `qsys`,
       commandEnvironment: `qsys`,
       extensions: [`cbl`, `cbble`, `cob`]
@@ -61,7 +61,8 @@ module.exports = {
       name: `RUNSQLSTM`,
       command: `RUNSQLSTM SRCFILE(&OBJLIB/&FOLDER) SRCMBR(&NAME) COMMIT(*NONE) NAMING(*SYS)`,
       fileSystem: `qsys`,
-      commandEnvironment: `qsys`
+      commandEnvironment: `qsys`,
+      extensions: [`sql`, `table`, `view`, `sqlprc`, `sqlseq`, `sqludf`, `trg`, `index`]
     }
   ]
 }
