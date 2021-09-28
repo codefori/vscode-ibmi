@@ -98,7 +98,12 @@ module.exports = class CompileTools {
           for (const localFile of compileInfo.localFiles) {
             if (file.startsWith(`/`)) {
               //IFS path
-              //TODO: xx
+              const remoteNameInfo = path.parse(file);
+              const remotePath = `${path.basename(remoteNameInfo.dir)}/${remoteNameInfo.name}`.toUpperCase();
+              if (localFile.fsPath.toUpperCase().includes(remotePath)) {
+                ileDiagnostics.set(vscode.Uri.file(localFile.fsPath), diagnostics);
+              }
+
             } else {
               //QSYS path
               const remotePath = file.split(`/`).slice(1).join(`/`);
