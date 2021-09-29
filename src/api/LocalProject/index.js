@@ -407,7 +407,14 @@ module.exports = class LocalProject {
     const fs = vscode.workspace.fs;
 
     for (const file of files) {
-      const document = await workspace.openTextDocument(file);
+      let document;
+      try {
+        document = await workspace.openTextDocument(file);
+      } catch (e) {
+        //Indicates a binary file usually...
+        continue;
+      }
+
       const version = document.version;
       const localPath = `${file.scheme}:${file.fsPath}`;
 

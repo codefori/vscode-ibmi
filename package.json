@@ -29,7 +29,8 @@
 	],
 	"activationEvents": [
 		"onView:connectionBrowser",
-		"onCommand:code-for-ibmi.connect"
+		"onCommand:code-for-ibmi.connect",
+		"onLanguage:rpgle"
 	],
 	"main": "./dist/extension",
 	"contributes": {

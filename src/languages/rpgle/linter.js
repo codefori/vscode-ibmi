@@ -409,7 +409,7 @@ module.exports = class RPGLinter {
 
         parts = getPath.split(`/`);
 
-        if (parts.length > 2) parts = parts.slice(0, parts.length - 1);
+        if (parts.length > 2) parts = parts.slice(parts.length - 2);
 
         const fullName = parts[parts.length-1];
         if (fullName.includes(`.`)) {
@@ -433,7 +433,6 @@ module.exports = class RPGLinter {
       }
 
       type = `file`;
-
       break;
 
     case `streamfile`:
@@ -453,6 +452,8 @@ module.exports = class RPGLinter {
       } else {
         finishedPath = path.posix.join(path.posix.dirname(workingUri.path), getPath);
       }
+
+      finishedPath = finishedPath.toUpperCase();
       break;
 
     case `member`:
@@ -495,9 +496,9 @@ module.exports = class RPGLinter {
       }
 
       type = `member`;
-    }
 
-    finishedPath = finishedPath.toUpperCase();
+      finishedPath = finishedPath.toUpperCase();
+    }
 
     return {type, memberPath, finishedPath};
   }
