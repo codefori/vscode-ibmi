@@ -98,16 +98,16 @@
 								"type": "array",
 								"items": {
 									"type": "object",
-									"title": "Library list profile",
+									"title": "Connection profile profile",
 									"properties": {
 										"name": {
 											"type": "string",
-											"description": "Library list profile name"
+											"description": "Profile name"
 										}
 									}
 								},
 								"default": [],
-								"description": "A collection of library lists to easily switch between them on this system."
+								"description": "A collection of connection settings to easily switch between them on this system."
 							},
 							"ifsShortcuts": {
 								"type": "array",
@@ -175,6 +175,25 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Enables the CL content assist and hover support."
+							},
+							"customVariables": {
+								"type": "array",
+								"description": "Custom variables for Actions",
+								"items": {
+									"type": "object",
+									"description": "Variable",
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "Variable name. Will be forced uppercase."
+										},
+										"value": {
+											"type": "string",
+											"description": "Variable value"
+										}
+									}
+								},
+								"default": []
 							}
 						}
 					}
@@ -542,6 +561,12 @@
 				"command": "code-for-ibmi.disconnect",
 				"title": "Disconnect from current connection.",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.showVariableMaintenance",
+				"title": "Maintain custom variables",
+				"category": "IBM i",
+				"icon": "$(variable)"
 			},
 			{
 				"command": "code-for-ibmi.selectForCompare",
@@ -923,6 +948,11 @@
 				},
 				{
 					"command": "code-for-ibmi.loadConnectionProfile",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
+					"command": "code-for-ibmi.showVariableMaintenance",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},

@@ -4,7 +4,7 @@ const vscode = require(`vscode`);
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
-const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `sourceFileList`, `objectBrowserList`, `databaseBrowserList`, `ifsShortcuts`];
+const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `sourceFileList`, `objectBrowserList`, `databaseBrowserList`, `ifsShortcuts`, `customVariables`];
 
 module.exports = class memberBrowserProvider {
   /**

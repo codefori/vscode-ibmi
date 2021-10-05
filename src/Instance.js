@@ -104,6 +104,7 @@ module.exports = class Instance {
     const databaseBrowser = require(`./views/databaseBrowser`);
 
     const actionsUI = require(`./webviews/actions`);
+    const variablesUI = require(`./webviews/variables`);
 
     const rpgleLinter = require(`./languages/rpgle/linter`);
     const CLCommands = require(`./languages/clle/clCommands`);
@@ -163,6 +164,7 @@ module.exports = class Instance {
         );
 
         actionsUI.init(context);
+        variablesUI.init(context);
 
         //********* Library list view */
 
