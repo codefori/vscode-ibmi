@@ -194,7 +194,7 @@ module.exports = class RPGLinter {
               }
 
               if (procedure.position) {
-                markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.line}\``;
+                markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.line+1}\``;
               }
 
               return new vscode.Hover(
