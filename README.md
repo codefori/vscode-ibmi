@@ -1,6 +1,15 @@
 # Code for IBM i
 
-Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
+<img src="https://user-images.githubusercontent.com/3708366/136115951-90750f32-a267-42fb-8627-d15140ff5903.png" align="right">
+
+Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Edit and compile all ILE languages, view errors inline, content assist for RPGLE and CL, source date support, and much more. Code for IBM i has hundreds of daily users and almost 3000 downloads. We strive on being open-source so we can best support our community.
+
+* [Support the project financially](https://code.ileditor.dev/home)
+* [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+* [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases)
+* Build from source (see below!)
+* [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/)
+* [Use our IBM i API in your own extension](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/readme.md)
 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/v/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/i/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
@@ -9,37 +18,16 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.
 ![](https://img.shields.io/github/issues-pr/halcyon-tech/vscode-ibmi?style=flat-square) 
 ![https://github.com/halcyon-tech/vscode-ibmi/issues](https://img.shields.io/github/issues/halcyon-tech/vscode-ibmi?style=flat-square)
 
-## Features
+---
 
-* Member browser and editor
-* IFS Browser and editor
-* Object browser
-* Settings: Compilation, library list, etc
-* Error listing
-* Source date support
-* Compare: Member to member or IFS, IFS to IFS or member
-* Upload/download: Between local file system and member or IFS
-* Run SQL inline
-* Experimental RPGLE content assist and outline view
-* CL content assist
+### Building from source
 
-## How to get running
+1. This project requires VS Code and Node.js.
+2. fork & clone repo
+3. `npm i`
+4. 'Run Extension' from vscode debug.
 
-### Install from Marketplace
-
-[You can find the extension in the VS Code Marketplace!](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
-
-### Run from local
-
-1. clone repo
-2. `npm i`
-3. 'Run Extension' from vscode debug.
-
-## Detailed Documentation
-
-Documentation is available [here](https://halcyon-tech.github.io/vscode-ibmi/#/)
-
-## Contributors
+### Contributors
 
 * [@connorholyday](https://github.com/connorholyday)
 * [@worksofliam](https://github.com/worksofliam)
