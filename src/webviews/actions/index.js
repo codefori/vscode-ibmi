@@ -28,18 +28,6 @@ module.exports = class SettingsUI {
     field = new Field(`tree`, `actions`, `Work with Actions`);
     field.description = `Create or maintain Actions.`;
     field.items = [
-      {
-        label: `New Action`,
-        value: `-1`
-      },
-      {
-        label: `Duplicate Action`,
-        value: `-2`
-      },
-      {
-        label: `-`,
-        value: `-2`
-      },
       ...allActions.map((action, index) => ({
         label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
         value: String(index)
@@ -48,23 +36,34 @@ module.exports = class SettingsUI {
     
     ui.addField(field);
 
+    field = new Field(`buttons`);
+    field.items = [
+      {
+        id: `newAction`,
+        label: `New Action`,
+      },
+      {
+        id: `duplicateAction`,
+        label: `Duplicate`,
+      }
+    ];
+    ui.addField(field);
+
     let {panel, data} = await ui.loadPage(`Work with Actions`);
 
     if (data) {
       panel.dispose();
 
-      if (data.actions) {
-        switch (data.actions) {
-        case `-1`: //New
-          this.WorkAction(-1);
-          break;
-        case `-2`: //Duplicate
-          this.DuplicateAction();
-          break;
-        default:
-          this.WorkAction(Number(data.actions));
-          break;
-        }
+      switch (data.buttons) {
+      case `newAction`:
+        this.WorkAction(-1);
+        break;
+      case `duplicateAction`:
+        this.DuplicateAction();
+        break;
+      default:
+        this.WorkAction(Number(data.actions));
+        break;
       }
     }
   }
@@ -135,6 +134,7 @@ module.exports = class SettingsUI {
 
     ui.addField(new Field(`input`, `command`, `Command to run`));
     ui.fields[1].default = currentAction.command;
+    ui.fields[1].multiline = true;
 
     ui.addField(new Field(`input`, `extensions`, `Extensions`));
     ui.fields[2].default = currentAction.extensions.join(`, `);

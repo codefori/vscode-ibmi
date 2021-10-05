@@ -10,13 +10,26 @@ class CustomUI {
     this.fields = [];
   }
 
-  addField(field) {this.fields.push(field)};
+  /** 
+   * @param {Field} field
+   */
+  addField(field) {
+    switch (field.type) {
+      case `submit`:
+        console.warn(`Submit fields are no longer supported. Consider using buttons instead.`);
+        break;
+    }
+
+    this.fields.push(field)
+  };
 
   /**
+   * If no callback is provided, a Promise will be returned
    * @param {string} title 
+   * @param {Function} [callback] ({panel, data}) => {}
    * @returns {Promise<{panel: vscode.WebviewPanel, data: object}>}
    */
-  loadPage(title) {
+  loadPage(title, callback) {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -30,26 +43,38 @@ class CustomUI {
 
     let didSubmit = false;
 
-    return new Promise((resolve, reject) => {
+    if (callback) {
       panel.webview.onDidReceiveMessage(
         message => {
           didSubmit = true;
-          resolve({panel, data: message});
+          callback({panel, data: message});
         }
       );
   
       panel.onDidDispose(() => {
-        if (!didSubmit) resolve({panel, data: null});
+        if (!didSubmit) callback({panel, data: null});
       });
-    })
 
-
+    } else {
+      return new Promise((resolve, reject) => {
+        panel.webview.onDidReceiveMessage(
+          message => {
+            didSubmit = true;
+            resolve({panel, data: message});
+          }
+        );
+    
+        panel.onDidDispose(() => {
+          if (!didSubmit) resolve({panel, data: null});
+        });
+      });
+    }
   }
 
   getHTML(panel) {
     const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
 
-    const notInputFields = [`submit`, `tree`, `hr`, `paragraph`];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     return `
@@ -84,16 +109,32 @@ class CustomUI {
     <script>
         (function () {
             const vscode = acquireVsCodeApi();
+
+            // Legacy: single submit button
             const submitButton = document.getElementById('${submitButton.id}');
-            const submitfields = [${this.fields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
+
+            // New: many button that can be pressed to submit
+            const groupButtons = [${[...(this.fields.filter(field => field.type == `buttons`).map(field => field.items.map(item => `'${item.id}'`)))].join(`, `)}];
+
+            // Available trees in the fields, though only one is supported.
             const trees = [${trees.map(field => `'${field.id}'`).join(`,`)}];
+
+            // Fields which required a file path
             const filefields = [${this.fields.filter(field => field.type == `file`).map(field => `'${field.id}'`).join(`,`)}];
+
+            // Fields that have value which can be returned
+            const submitfields = [${this.fields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
     
-            const doDone = (event) => {
+            const doDone = (event, buttonValue) => {
+                console.log('submit now!!', buttonValue)
                 if (event)
                     event.preventDefault();
     
                 var data = {};
+
+                if (buttonValue) {
+                  data['buttons'] = buttonValue;
+                }
     
                 for (const field of submitfields) {
                   var fieldType = document.getElementById(field).nodeName.toLowerCase();
@@ -105,22 +146,37 @@ class CustomUI {
                     :data[field] = document.getElementById(field).value;
                   }
                 }
-                vscode.postMessage(data)
+
+                vscode.postMessage(data);
             };
 
+            // Legacy: when only one button was supported
             if (submitButton) {
               submitButton.onclick = doDone;
               submitButton.onKeyDown = doDone;
             }
 
+            console.log(groupButtons);
+            // Now many buttons can be pressed to submit
+            for (const field of groupButtons) {
+                console.log('group button', field, document.getElementById(field));
+                var button = document.getElementById(field);
+                button.onclick = (event) => {
+                    doDone(event, field);
+                };
+                button.onKeyDown = (event) => {
+                    doDone(event, field);
+                };
+            }
+
             for (const field of submitfields) {
                 document.getElementById(field)
                     .addEventListener('keyup', function(event) {
-                      event.preventDefault();
-                      if (event.keyCode === 13) {
-                          doDone();
-                    }
-                });
+                        event.preventDefault();
+                        if (event.keyCode === 13) {
+                           doDone();
+                        }
+                    });
             }
 
             for (const field of filefields) {
@@ -162,12 +218,12 @@ class CustomUI {
 class Field  {
   /**
    * 
-   * @param {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} type 
+   * @param {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
    * @param {string} [id] 
    * @param {string} [label] 
    */
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"checkbox"|"file"|"tree"|"select"|"paragraph"|"hr"} */
+    /** @type {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} */
     this.type = type;
 
     /** @type {string} */
@@ -188,7 +244,13 @@ class Field  {
     */
     this.readonly = undefined;
 
-    /** @type {object[]|undefined} Used for tree and select type. */
+    /** 
+     * Used only for `input` type
+     * @type {boolean|undefined} 
+    */
+    this.multiline = undefined;
+
+    /** @type {{label: string, value: string}[]|{selected?: boolean, value: string, description: string, text: string}[]|{label: string, id: string}[]|undefined} Used for tree, select & button types. */
     this.items = undefined;
   }
 
@@ -196,8 +258,16 @@ class Field  {
     switch (this.type) {
     case `submit`:
       return `<vscode-button id="${this.id}">${this.label}</vscode-button>`;
+
+    case `buttons`:
+      return `
+        <vscode-form-item>
+          ${this.items.map(item => `<vscode-button id="${item.id}" style="margin:3px">${item.label}</vscode-button>`).join(``)}
+        </vscode-form-item>`;
+
     case `hr`:
       return `<hr />`;
+
     case `checkbox`:
       return `
         <vscode-form-item>
@@ -206,16 +276,32 @@ class Field  {
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           </vscode-form-control>
         </vscode-form-item>`;
+
+    case `tabs`:
+      return `
+        <vscode-tabs selectedIndex="${this.default || 0}">
+          ${this.items.map(item => 
+            `
+            <header slot="header">${item.label}</header>
+            <section>
+              ${item.value}
+            </section>
+            `
+          ).join(``)}
+        </vscode-tabs>
+      `
+
     case `input`:
       return `
       <vscode-form-item>
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
-              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``}></vscode-inputbox>
+              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
           </vscode-form-control>
       </vscode-form-item>
       `;
+      
     case `paragraph`:
       return `
       <vscode-form-item>
