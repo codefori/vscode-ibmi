@@ -4,12 +4,13 @@
 
 Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Edit and compile all ILE languages, view errors inline, content assist for RPGLE and CL, source date support, and much more. Code for IBM i has hundreds of daily users and almost 3000 downloads. We strive on being open-source so we can best support our community.
 
-* [Support the project financially](https://code.ileditor.dev/home)
-* [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
-* [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases)
-* Build from source (see below!)
-* [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/)
-* [Use our IBM i API in your own extension](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/readme.md)
+* [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) :desktop_computer:
+* [Support the project financially](https://code.ileditor.dev/home) :handshake:
+* [Watch some tutorials](https://www.youtube.com/playlist?list=PLNl31cqBafCp-ml8WqPeriHWLD1bkg7KL) 	:tv:
+* [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/) :blue_book:
+* [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases) :mag_right:
+* Build from source (see below!) :hammer:
+* [Use our IBM i API in your own extension](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/extending.md) :hammer_and_wrench:
 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/v/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/i/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
