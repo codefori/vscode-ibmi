@@ -82,7 +82,7 @@ If you have already connected to an IBM i system, click on the conection in the 
 After logging in, a status bar item will appear showing the name
 of the IBM i system you are connected to.
 
-![assets/login_05.png](assets/login_05.png)
+![assets/connect_05.png](assets/connect_05.png)
 
 ### Logout (Disconnect)
 
@@ -450,6 +450,33 @@ You can now right click and click 'Search' on IFS directories and source files t
 ### Overtype
 
 VS Code works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
+
+### Variant Characters/CCSID Issues
+
+Use of variant characters, for example, '£', in your file names or source code may cause files not to open or characters to display incorrectly in Code for IBM i. If you are experiencing such issues, it is likely the IBM i PASE environment locale is not set correctly.
+To ensure that the locale is set corretly:
+
+- OS 7.4 or greater:
+
+  It defaults to UTF-8 and there should be no issue.
+
+- OS 7.3 or earlier:
+
+  The SSH daemon must start with the correct PASE_LANG environment variable set. Note you probably want to use a locale that defaults to CCSID 1208. Note also case sensitivity: FR_FR is different from fr_FR.
+
+  - Change just once by USING ``WRKENVVAR LEVEL(*JOB)`` to set the appropriate locale/language, e.g., ``PASE_LANG 'IT_IT'``.  **Restart** the SSH daemon.
+  
+  - Change the PASE language *system wide* by using ``WRKENVVAR LEVEL(*SYS)`` to set the appropriate locale/language, e.g., ``PASE_LANG 'FR_FR'``.  **Restart** the SSH daemon.
+
+You can find infomation on PASE for i Locales [here](https://www.ibm.com/docs/en/i/7.4?topic=ssw_ibm_i_74/apis/pase_locales.htm)
+
+Some links to pages which containing information on variant characters:
+
+- [IBM definition of Variant characters](https://www.ibm.com/docs/en/db2-for-zos/11?topic=ccsids-variant-characters)
+
+- [IBM Support](https://www.ibm.com/support/pages/what-impact-changing-qccsid-shipped-65535-another-ccsid)
+
+- [Wikipedia](https://en.wikipedia.org/wiki/EBCDIC)
 
 ## Extension Development
 
