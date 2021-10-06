@@ -915,7 +915,7 @@ module.exports = class RPGLinter {
         if ([
           `IF`, `ELSE`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
         ].includes(pieces[0])) {
-          if (pieces[0] == `DCL-DS` && line.includes(`LIKEDS`)) {
+          if (pieces[0] == `DCL-DS` && (line.includes(`LIKEDS`) || line.includes(`END-DS`))) {
             //No change
           } 
           else if (pieces[0] == `DCL-PI` && line.includes(`END-PI`)) {
