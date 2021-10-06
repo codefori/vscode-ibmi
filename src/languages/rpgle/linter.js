@@ -157,7 +157,7 @@ module.exports = class RPGLinter {
             const range = document.getWordRangeAtPosition(position);
             const word = document.getText(range).toUpperCase();
 
-            const procedure = doc.procedures.find(proc => proc.name.toUpperCase() === word.toUpperCase());
+            const procedure = doc.procedures.find(proc => proc.name.toUpperCase() === word);
 
             if (procedure) {
               let markdown = ``;
@@ -288,6 +288,35 @@ module.exports = class RPGLinter {
           }
         }),
 
+      vscode.languages.registerDefinitionProvider({ language: `rpgle` }, {
+        provideDefinition: async (document, position, token) => {
+          if (Configuration.get(`rpgleContentAssistEnabled`)) {
+            const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+            const doc = await this.getDocs(document.uri);
+            const range = document.getWordRangeAtPosition(position);
+            const word = document.getText(range).toUpperCase();
+
+            if (doc) {
+              const types = Object.keys(doc);
+              const type = types.find(type => doc[type].find(def => def.name.toUpperCase() === word));
+              if (doc[type]) {
+                const def = doc[type].find(def => def.name.toUpperCase() === word);
+                if (def) {
+                  let {finishedPath, type} = this.getPathInfo(document.uri, def.position.path);
+                  if (type === `member`) {
+                    finishedPath = `${finishedPath}.rpgle`;
+                  }
+
+                  return new vscode.Location(
+                    vscode.Uri.parse(finishedPath).with({scheme: type, path: finishedPath}),
+                    new vscode.Range(def.position.line, 0, def.position.line, 0)
+                  );
+                }
+              }
+            }
+          }
+        }}),
+
       vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
         provideCompletionItems: async (document, position) => {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
@@ -328,6 +357,17 @@ module.exports = class RPGLinter {
 
               return items;
             }
+          }
+        }
+      }),
+
+      vscode.window.onDidChangeActiveTextEditor(async (e) => {
+        if (e.document.languageId === `rpgle`) {
+          const document = e.document;
+          const text = document.getText();
+          const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+          if (isFree) {
+            this.updateCopybookCache(document.uri, text);
           }
         }
       }),
@@ -495,26 +535,28 @@ module.exports = class RPGLinter {
    * @param {string} content 
    */
   async updateCopybookCache(workingUri, content) {
-    this.parsedCache[workingUri.path] = undefined; //Clear parsed data
+    if (this.parsedCache[workingUri.path]) {
+      this.parsedCache[workingUri.path] = undefined; //Clear parsed data
 
-    let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+      let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
 
-    //First loop is for copy/include statements
-    for (let i = baseLines.length - 1; i >= 0; i--) {
-      const line = baseLines[i].trim(); //Paths are case insensitive so it's okay
-      if (line === ``) continue;
+      //First loop is for copy/include statements
+      for (let i = baseLines.length - 1; i >= 0; i--) {
+        const line = baseLines[i].trim(); //Paths are case insensitive so it's okay
+        if (line === ``) continue;
 
-      const pieces = line.split(` `).filter(piece => piece !== ``);
+        const pieces = line.split(` `).filter(piece => piece !== ``);
 
-      if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
-        await this.getContent(workingUri, pieces[1]);
+        if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
+          await this.getContent(workingUri, pieces[1]);
+        }
       }
     }
   }
 
   /**
    * @param {vscode.Uri} workingUri
-   * @param {string} content 
+   * @param {string|} content 
    * @param {boolean} [withIncludes] To make sure include statements are parsed
    * @returns {Promise<{
    *   variables: Declaration[],
@@ -522,12 +564,14 @@ module.exports = class RPGLinter {
    *   procedures: Declaration[],
    *   subroutines: Declaration[],
    *   constants: Declaration[]
-   * }>}
+   * }|null>}
    */
   async getDocs(workingUri, content, withIncludes = true) {
     if (this.parsedCache[workingUri.path]) {
       return this.parsedCache[workingUri.path];
     };
+
+    if (!content) return null;
 
     let files = {};
     let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
