@@ -435,10 +435,9 @@ module.exports = class RPGLinter {
         //Get from root
         finishedPath = getPath;
       } 
-      else if (getPath.startsWith(`.`)) {
+
+      else {
         finishedPath = path.posix.join(config.homeDirectory, getPath);
-      } else {
-        finishedPath = path.posix.join(path.posix.dirname(workingUri.path), getPath);
       }
 
     } else {
