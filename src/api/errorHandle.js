@@ -7,10 +7,10 @@ let expRange = require(`./expRange`);
  * @returns {{[FILE: string]: { sev: number, linenum: number, column: number, toColumn: number, text: string, code: string }[]}} Errors object
  */
 module.exports = function(lines) {
-  let _FileIDs = {};
-  let _Errors = {};
-  let _Expansions = {};
-  let _TrackCopies = {};
+  let _FileIDs = {0: []};
+  let _Errors = {0: []};
+  let _Expansions = {0: []};
+  let _TrackCopies = {0: []};
 
   let fileParents = []
 
