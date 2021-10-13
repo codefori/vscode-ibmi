@@ -555,7 +555,7 @@ module.exports = class RPGLinter {
 
   /**
    * @param {vscode.Uri} workingUri
-   * @param {string|} content 
+   * @param {string} [content] 
    * @param {boolean} [withIncludes] To make sure include statements are parsed
    * @returns {Promise<{
    *   variables: Declaration[],
