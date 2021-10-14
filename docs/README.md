@@ -33,19 +33,20 @@ Or from the Extensions icon in the Activity Bar (on the left):
 1. Press F1
 2. Find 'IBM i: New Connection'
 3. Enter in your connection details in the window that opens
-4. Hit connect
+4. Hit Connect
 
 Tip: next time, try using 'IBM i: Connect to previous'
 
-### Browse source members
+### Browse/Edit source members
 
 1. Connect to your system
-2. Find the member browser and hover your mouse over it until you see the folder with the plus icon
-3. Click the icon. A window will appear to add a path to a source physical file you'd like to browse (format: `LIB/FILE`)
-4. After you've entered your chosen source file, hit enter.
-5. Source file should appear in member browser.
-
-You can click on a member to open and edit it. There is no member locking and the extension defaults to not retaining source dates.
+2. Find the MEMBER BROWSER and click on it to expand it.
+3. Hover over it and click the + icon. A window will appear to add the path to a source physical file you'd like to browse or edit.
+4. Key the path in `LIB/FILE` format and hit enter.
+5. The library will show up in the MEMBER BROWSER. Click on it and the source file will display.
+6. Click on the source file to display the list of members.
+7. Click on a member to open it.
+ **Note:** There is no member locking and the extension defaults to not retaining source dates.
 
 ### How do I compile my source code?
 
@@ -53,7 +54,7 @@ You can click on a member to open and edit it. There is no member locking and th
 2. Open the source you want to compile.
 3. Use Ctrl+E or Cmd+E to compile your source.
 4. If you have more than one compile option available to you for the type of source, select the appropriate one.
-5. If you are using `*EVENTF`, it should automatically load the error listing in the Problems tab.
+5. If you are using `*EVENTF`, the error listing should automatically load in the PROBLEMS tab.
 
 ## Login
 
@@ -88,25 +89,30 @@ of the IBM i system you are connected to.
 
 To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: Disconnect from current connection```
 
-## Settings
-
-To adjust this extension's settings, press <kbd>F1</kbd> and search for ```Preferences: Open Settings (UI)```.
-
-![assets/settings_02.png](assets/settings_02.png)
-
-Settings for this extension will be under ```Code for IBM i```
-
-![assets/settings_01.png](assets/settings_01.png)
-
 ## Actions
 
-Actions can be used to perform tasks on members, streamfiles and eventually other types of objects too.
-
-As of 0.4.5, you can now edit the Actions from a UI.
-
+Actions are used to perform tasks on members, streamfiles and other types of objects.
+You can edit Actions in this UI:
 ![assets/actions_01.png](assets/actions_01.png)
 
-Here is an example of the action used to compile an RPG member:
+- Add actions with New Action.
+- Copy an existing action and modify it with Duplicate.
+- Click on an action to change it.
+
+Adding or changing, you see this same UI:
+
+![assets/actions_02.png](assets/actions_02.png)
+
+In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We can change any of the properties.
+
+- '**Command to run**' is the command that will be executed. Notice it has portions of text that start with an `&` (ampersand) - such text is a "variable" that will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified.
+- '**Extensions**' defines the list of extensions that can use this Action. For `CRTBNDRPG`, that usually means only `RPGLE` and `RPG`, so we would enter: `RPGLE, RPG`.
+- '**Types**' determines which type of object can run this action. For example, if your Action only applies to source members, then choose 'Member' from the dropdown.
+- '**Environment**' determine where the command should be run. In this case, `CRTBNDRPG` needs to run in the ILE environment since it's an ILE command. You also have the option to run commands through PASE or QShell.
+
+When complete, **click Save**. If you simply close the tab, nothing will be saved.
+
+Internally, the command information is saved similar to this in settings.json:
 
 ```json
 "code-for-ibmi.actions": [
@@ -122,13 +128,13 @@ Here is an example of the action used to compile an RPG member:
 ]
 ```
 
-The available `type` property values are:
+The  `type` property values are:
 
 - `member` for source members
 - `streamfile` for streamfiles
 - `object` for objects
 
-You can also use the `environment` property to run the action in a certain environment:
+Use the `environment` property to run the action in a specific environment:
 
 - `ile` (default) to run CL commands in the ILE environment
 - `qsh` to run commands in QShell
@@ -144,7 +150,7 @@ Other important properties:
 
 > `CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)`
 
-Notice the special identifiers in the command begining with `&`. These identifiers correspond to values of whichever member is currently open in the extension. Each `type` has different variables.
+The command variable is the command that will be executed on the IBM i. Notice it has portions of text that start with an & (ampersand) - such text will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified.
 
 #### Variables in all types
 
@@ -215,6 +221,17 @@ Example:
 ```
 
 ![Panel to the right](assets/compile_04.png)
+
+## Settings
+
+To adjust this extension's settings, press <kbd>F1</kbd> and search for ```Preferences: Open Settings (UI)```.
+
+![assets/settings_02.png](assets/settings_02.png)
+
+Settings for this extension will be under ```Code for IBM i```
+
+![assets/settings_01.png](assets/settings_01.png)
+
 
 ### Auto Refresh
 
