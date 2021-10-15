@@ -105,14 +105,14 @@ Adding or changing, you see this same UI:
 
 In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We can change any of the properties.
 
-- '**Command to run**' is the command that will be executed. Notice it has portions of text that start with an `&` (ampersand) - such text is a "variable" that will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified.
+- '**Command to run**' is the command that will be executed. Notice it has portions of text that start with an `&` (ampersand) - such text is a "variable" that will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified. Note that in addition to the supplied variables, you can create your own variables.  See "Custom Variables", below.
 - '**Extensions**' defines the list of extensions that can use this Action. For `CRTBNDRPG`, that usually means only `RPGLE` and `RPG`, so we would enter: `RPGLE, RPG`.
 - '**Types**' determines which type of object can run this action. For example, if your Action only applies to source members, then choose 'Member' from the dropdown.
 - '**Environment**' determine where the command should be run. In this case, `CRTBNDRPG` needs to run in the ILE environment since it's an ILE command. You also have the option to run commands through PASE or QShell.
 
 When complete, **click Save**. If you simply close the tab, nothing will be saved.
-
-Internally, the command information is saved similar to this in settings.json:
+<!-- Left in, just in case we need it again. -->
+<!-- Internally, the command information is saved similar to this in settings.json:
 
 ```json
 "code-for-ibmi.actions": [
@@ -192,35 +192,117 @@ For all object variables, you can end the variable with `L` for the lowercase of
 | `&NAME`     | Name of the object                |
 | `&TYPE`     | The object type (PGM, FILE, etc)  |
 | `&EXT`     | The same as `&TYPE`  |
+ -->
+## Action Execution
 
-#### Command fields
+There are three varieties of Actions. They can:
 
-It is possible to prompt the user specific fields with the custom UI functionality. The command string also accepts a variable format. It looks like this:
+- execute immediately,
+- or they can be displayed for modification,
+- or they can be prompted through the user interface.
 
-```
-${NAME|LABEL|[DEFAULTVALUE]}
-${desc|Description}
-${objectName|Object name|&BUILDLIB}
-```
+### Execute Immediately
 
-It takes 3 different options:
+If we have a "**Call program**" command with a "Command to run" string like this:
 
-1. The ID of the input box. Also known as the name.
-2. The label which will show next to the input box.
-3. Default value in the text box. **optional**
+`CALL &LIBRARY/&NAME`  
 
-Example:
+It will execute immediatly it is selected.
 
-```json
-{
-    "type": "streamfile",
-    "extensions": ["rpgle"],
-    "name": "Run CRTBNDRPG (inputs)",
-    "command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-},
-```
+### Display for modification
+
+If the "Command to run" string has a leading "?", e.g., like this:
+
+`?CALL &LIBRARY/&NAME`  
+
+It is displayed and you can edit it as needed.
+
+![](assets/actions_exec_01.png)
+
+For example, you might want to add **PARM('Douglas' 'Adams')** to the end.
+
+![](assets/actions_exec_02.png)
+
+### Prompted
+
+Rather than using the "?", you can have the Action prompt for values.
+The "Command to run" string can have embedded prompt string(s) to invoke prompting.
+
+A "prompt string" has the format ``${NAME|LABEL|[DEFAULTVALUE]}`` where:
+
+- NAME is an arbitrary name for the prompt field, but must be unique for this action.
+- LABEL is the text to describe the prompt field.
+- [DEFAULTVALUE] is an **optional** value to pre-populate the prompt field.
+
+#### *Example 1*
+
+Suppose we have a "**Call program, prompt for parms**" action with the "Command to run" defined like this:
+
+``CALL &LIBRARY/&NAME PARM('${AAA|First name|Your name}' '${xyz|Last Name}')``
+
+If we run the action it prompts like this:
+
+![](assets/actions_exec_03.png)
+
+If we complete the screen like this:
+
+![](assets/actions_exec_04.png)
+
+and click **Execute** a command like this is executed;
+
+``CALL LENNONS1/ATEST PARM('Douglas' 'Adams')``
+
+#### *Example 2*
+
+You can also use variables in the prompt string. If an action is defined like this:
+
+``CALL &LIBRARY/&NAME PARM('${AAA|Library|&CURLIB}' '${xyz|Report Name}')``
+
+&CURLIB will be substituted and the prompt will look like this when executed:
+
+![](assets/actions_exec_05.png)
+
+#### *Example 3*
+
+Here's a more complex example of a "**Run CRTBNDRPG (inputs)**" action.
+The 'Command to run" string is defined like this:
+
+``CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)``
+
+When executed, it prompts like this: 
 
 ![Panel to the right](assets/compile_04.png)
+
+### Custom Variables
+
+You can create custom variable to use in your "Command to run" strings. To access custom variables:
+ Use <kbd>F1</kbd>, then search for "IBM i Custom variables":
+
+ ![](assets/actions_custom_01.png)
+ 
+ Or from the User Library List browser:
+
+![](assets/actions_custom_01a.png)
+
+In the **Work with Variables** tab, click on **New Variable** to add your variable:
+
+ ![](assets/actions_custom_02.png)
+ 
+ Here we are adding a variable named &TARGET_RLSE.
+
+ ![](assets/actions_custom_03.png)
+
+Press Save and the list of custom variables is show:
+
+![](assets/actions_custom_04.png)
+
+Click on a custom variable to change it or delete it.
+
+An example of usage might be in all the  CRTBNDxxx actions to add TGTRLS(&TARGET_RLSE), like this:
+
+`?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)  TGTRLS(&TARGET_RLSE)`
+
+Now a change to the TARGET_RLSE custom variable can impact all the CRTBNDxxx actions.
 
 ## Settings
 
