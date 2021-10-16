@@ -86,6 +86,9 @@
 		"snippets": [
 			{
 				"path": "./snippets/cl.code-snippets"
+			},
+			{
+				"path": "./snippets/rple.code-snippets"
 			}
 		],
 		"configuration": {
