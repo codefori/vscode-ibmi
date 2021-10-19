@@ -348,6 +348,10 @@ module.exports = class CompileTools {
     }
   }
 
+  static appendOutput(output) {
+    outputChannel.append(output);
+  }
+
   /**
    * @param {string} name Name of action 
    * @param {string} command Command string

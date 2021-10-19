@@ -2,6 +2,7 @@
 const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
+const CompileTools = require(`../api/CompileTools`);
 const Configuration = require(`../api/Configuration`);
 
 const {Database, Table, Column} = require(`../filesystems/databaseFs`);
@@ -58,6 +59,7 @@ module.exports = class databaseBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
         const connection = instance.getConnection();
         const content = instance.getContent();
+        const config = instance.getConfig();
         const editor = vscode.window.activeTextEditor;
 
         if (editor.document.languageId === `sql`) {
@@ -65,18 +67,63 @@ module.exports = class databaseBrowserProvider {
             const statement = parseStatement(editor);
 
             try {
-              const data = await content.runSQL(statement);
+              switch (statement.type) {
+              case `sql`:
+                const data = await content.runSQL(statement.content);
 
-              const panel = vscode.window.createWebviewPanel(
-                `databaseResult`,
-                `Database Result`,
-                vscode.ViewColumn.Active,
-                {
-                  retainContextWhenHidden: true,
-                  enableFindWidget: true
+                const panel = vscode.window.createWebviewPanel(
+                  `databaseResult`,
+                  `Database Result`,
+                  vscode.ViewColumn.Active,
+                  {
+                    retainContextWhenHidden: true,
+                    enableFindWidget: true
+                  }
+                );
+                panel.webview.html = generateTable(statement.content, data);
+                break;
+
+              case `cl`:
+                //We have to reverse it because `liblist -a` adds the next item to the top always 
+                let libl = config.libraryList.slice(0).reverse();
+
+                libl = libl.map(library => {
+                  //We use this for special variables in the libl
+                  switch (library) {
+                  case `&BUILDLIB`: return config.currentLibrary;
+                  case `&CURLIB`: return config.currentLibrary;
+                  default: return library;
+                  }
+                });
+
+                CompileTools.appendOutput(`Current library: ` + config.currentLibrary + `\n`);
+                CompileTools.appendOutput(`   Library list: ` + config.libraryList.join(` `) + `\n`);
+                CompileTools.appendOutput(`        Command: ` + statement.content + `\n`);
+
+                const command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${statement.content}"`;
+
+                /** @type {object} */
+                const commandResult = await connection.qshCommand([
+                  `liblist -d ` + connection.defaultUserLibraries.join(` `),
+                  `liblist -c ` + config.currentLibrary,
+                  `liblist -a ` + libl.join(` `),
+                  command,
+                ], undefined, 1);
+
+                if (commandResult.code === 0 || commandResult.code === null) {
+                  vscode.window.showInformationMessage(`Command executed successfuly.`);
+                } else {
+                  vscode.window.showErrorMessage(`Command failed to run.`);
                 }
-              );
-              panel.webview.html = generateTable(statement, data);
+
+                let output = ``;
+                if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
+                if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
+
+                CompileTools.appendOutput(output);
+                break;
+              }
+
             } catch (e) {
               if (typeof e === `string`) {
                 vscode.window.showErrorMessage(e);
@@ -254,16 +301,20 @@ const TABLE_ICONS = {
 
 /**
  * @param {vscode.TextEditor} editor
- * @returns {string} Statement
+ * @returns {{type: "sql"|"cl", content: string}} Statement
  */
 function parseStatement(editor) {
   const document = editor.document;
+  const eol = (document.eol === vscode.EndOfLine.LF ? `\n` : `\r\n`);
 
   let text = document.getText(editor.selection).trim();
-  let statement;
+  let content;
+
+  /** @type {"sql"|"cl"} */
+  let type = `sql`;
 
   if (text.length > 0) {
-    statement = text;
+    content = text;
   } else {
     const cursor = editor.document.offsetAt(editor.selection.active);
     text = document.getText();
@@ -302,11 +353,25 @@ function parseStatement(editor) {
     });
 
     let statementData = statements.find(range => cursor >= range.start && cursor <= range.end);
-    statement = statementData.text;
+    content = statementData.text;
+
     editor.selection = new vscode.Selection(editor.document.positionAt(statementData.start), editor.document.positionAt(statementData.end));
+
+    if (content.includes(`CL:`)) {
+      let lines = content.split(eol);
+      let startIndex = lines.findIndex(line => line.startsWith(`CL:`));
+      lines = lines.slice(startIndex);
+      lines[0] = lines[0].substring(3).trim();
+
+      content = lines.join(` `);
+      type = `cl`;
+    }
   }
 
-  return statement;
+  return {
+    type,
+    content
+  };
 }
 
 /**
@@ -351,8 +416,6 @@ function generateTable(statement, array) {
       </style>
     </head>
     <body>
-      <h1>Query result</h1>
-      <pre>${statement}</pre>
       <div class="container">
         <table>
           <thead>`;
