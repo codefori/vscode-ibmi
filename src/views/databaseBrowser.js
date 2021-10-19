@@ -416,8 +416,6 @@ function generateTable(statement, array) {
       </style>
     </head>
     <body>
-      <h1>Query result</h1>
-      <pre>${statement}</pre>
       <div class="container">
         <table>
           <thead>`;
