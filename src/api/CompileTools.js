@@ -104,8 +104,25 @@ module.exports = class CompileTools {
     } else {
       ileDiagnostics.clear();
     }
+  }
 
+  static handleDefaultVariables(instance, string) {
+    /** @type {IBMi} */
+    const connection = instance.getConnection();
 
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+
+    string = string.replace(new RegExp(`&BUILDLIB`, `g`), config.currentLibrary);
+    string = string.replace(new RegExp(`&CURLIB`, `g`), config.currentLibrary);
+    string = string.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
+    string = string.replace(new RegExp(`&HOME`, `g`), config.homeDirectory);
+
+    for (const variable of config.customVariables) {
+      string = string.replace(new RegExp(`&${variable.name}`, `g`), variable.value);
+    }
+
+    return string;
   }
 
   /**
@@ -149,10 +166,7 @@ module.exports = class CompileTools {
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
-        command = command.replace(new RegExp(`&BUILDLIB`, `g`), config.currentLibrary);
-        command = command.replace(new RegExp(`&CURLIB`, `g`), config.currentLibrary);
-        command = command.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
-        command = command.replace(new RegExp(`&HOME`, `g`), config.homeDirectory);
+        command = this.handleDefaultVariables(instance, command);
 
         let blank, asp, lib, file, fullName;
         let basename, name, ext;
@@ -332,6 +346,10 @@ module.exports = class CompileTools {
       //No compile commands
       vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);
     }
+  }
+
+  static appendOutput(output) {
+    outputChannel.append(output);
   }
 
   /**

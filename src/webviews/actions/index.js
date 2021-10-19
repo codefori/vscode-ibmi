@@ -2,7 +2,10 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
+const instance = require(`../../Instance`);
+
 const Configuration = require(`../../api/Configuration`);
+const Variables = require(`./varinfo`);
 
 module.exports = class SettingsUI {
 
@@ -23,14 +26,11 @@ module.exports = class SettingsUI {
 
     let ui = new CustomUI();
     let field;
+    
 
     field = new Field(`tree`, `actions`, `Work with Actions`);
     field.description = `Create or maintain Actions.`;
     field.items = [
-      {
-        label: `New Action`,
-        value: `-1`
-      },
       ...allActions.map((action, index) => ({
         label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
         value: String(index)
@@ -39,15 +39,66 @@ module.exports = class SettingsUI {
     
     ui.addField(field);
 
+    field = new Field(`buttons`);
+    field.items = [
+      {
+        id: `newAction`,
+        label: `New Action`,
+      },
+      {
+        id: `duplicateAction`,
+        label: `Duplicate`,
+      }
+    ];
+    ui.addField(field);
+
     let {panel, data} = await ui.loadPage(`Work with Actions`);
 
     if (data) {
       panel.dispose();
 
-      if (data.actions) {
+      switch (data.buttons) {
+      case `newAction`:
+        this.WorkAction(-1);
+        break;
+      case `duplicateAction`:
+        this.DuplicateAction();
+        break;
+      default:
         this.WorkAction(Number(data.actions));
+        break;
       }
     }
+  }
+
+  /**
+   * Show item picker to duplicate an existing action
+   */
+  static async DuplicateAction() {
+    let actions = Configuration.get(`actions`);
+  
+    vscode.window.showQuickPick(
+      actions.map((action, index) => ({
+        label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
+        value: index
+      })).sort((a, b) => a.label.localeCompare(b.label)),
+      {
+        placeHolder: `Select an action to duplicate`
+      }
+    ).then(async (action) => {
+      if (action) {
+        //@ts-ignore
+        const index = action.value;
+
+        const newAction = {...actions[index]};
+        actions.push(newAction);
+        await Configuration.setGlobal(`actions`, actions);
+        this.WorkAction(actions.length - 1);
+      } else {
+        this.MainMenu();
+      }
+  
+    });
   }
 
   /**
@@ -55,6 +106,7 @@ module.exports = class SettingsUI {
    * @param {number} id Existing action index, or -1 for a brand new index
    */
   static async WorkAction(id) {
+    const config = instance.getConfig();
     let allActions = Configuration.get(`actions`);
     let currentAction;
     
@@ -79,21 +131,56 @@ module.exports = class SettingsUI {
 
     if (currentAction.environment === undefined) currentAction.environment = `ile`;
 
+    // Our custom variables as HTML
+    const custom = config.customVariables.map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
+
     let ui = new CustomUI();
 
     ui.addField(new Field(`input`, `name`, `Action name`));
     ui.fields[0].default = currentAction.name;
 
+    ui.addField(new Field(`hr`));
+
     ui.addField(new Field(`input`, `command`, `Command to run`));
-    ui.fields[1].default = currentAction.command;
+    ui.fields[2].description = `Below are available variables based on the Type you have select below.`;
+    ui.fields[2].default = currentAction.command;
+
+    ui.addField(new Field(`tabs`));
+    switch (currentAction.type) {
+    case `member`:
+      ui.fields[3].default = `0`;
+      break;
+    case `streamfile`:
+      ui.fields[3].default = `1`;
+      break;
+    case `object`:
+      ui.fields[3].default = `2`;
+      break;
+    }
+    ui.fields[3].items = [
+      {
+        label: `Member`,
+        value: `<ul>${Variables.Member.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+      },
+      {
+        label: `Streamfile`,
+        value: `<ul>${Variables.Streamfile.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+      },
+      {
+        label: `Object`,
+        value: `<ul>${Variables.Object.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+      }
+    ];
+
+    ui.addField(new Field(`hr`));
 
     ui.addField(new Field(`input`, `extensions`, `Extensions`));
-    ui.fields[2].default = currentAction.extensions.join(`, `);
-    ui.fields[2].description = `A comma delimited list of extensions for this actions.`;
+    ui.fields[5].default = currentAction.extensions.join(`, `);
+    ui.fields[5].description = `A comma delimited list of extensions for this actions.`;
 
     ui.addField(new Field(`select`, `type`, `Types`));
-    ui.fields[3].description = `The types of files this action can support.`;
-    ui.fields[3].items = [
+    ui.fields[6].description = `The types of files this action can support.`;
+    ui.fields[6].items = [
       {
         selected: currentAction.type === `member`,
         value: `member`,
@@ -115,8 +202,8 @@ module.exports = class SettingsUI {
     ];
 
     ui.addField(new Field(`select`, `environment`, `Environment`));
-    ui.fields[4].description = `Environment for command to be executed in.`;
-    ui.fields[4].items = [
+    ui.fields[7].description = `Environment for command to be executed in.`;
+    ui.fields[7].items = [
       {
         selected: currentAction.environment === `ile`,
         value: `ile`,
@@ -159,9 +246,9 @@ module.exports = class SettingsUI {
       }
 
       await Configuration.setGlobal(`actions`, allActions);
-
-      this.MainMenu();
     }
+
+    this.MainMenu();
   }
 
 }

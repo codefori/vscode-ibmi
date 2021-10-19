@@ -4,6 +4,8 @@ const vscode = require(`vscode`);
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
+const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `sourceFileList`, `objectBrowserList`, `databaseBrowserList`, `ifsShortcuts`, `customVariables`];
+
 module.exports = class memberBrowserProvider {
   /**
    * @param {vscode.ExtensionContext} context
@@ -100,11 +102,10 @@ module.exports = class memberBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.saveLibraryListProfile`, async () => {
+      vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async () => {
         const config = instance.getConfig();
 
-        const libraryList = config.libraryList;
-        let currentProfiles = config.libraryListProfiles;
+        let currentProfiles = config.connectionProfiles;
 
         const profileName = await vscode.window.showInputBox({
           prompt: `Name of library list profile`
@@ -114,38 +115,56 @@ module.exports = class memberBrowserProvider {
           const existingIndex = currentProfiles.findIndex(profile => profile.name.toUpperCase() === profileName.toUpperCase());
 
           if (existingIndex >= 0) {
-            currentProfiles[existingIndex].list = libraryList;
+            for (const prop of profileProps) {
+              currentProfiles[existingIndex][prop] = config[prop];
+            }
           } else {
-            currentProfiles.push({
+            let newProfile = {
               name: profileName,
-              list: libraryList
-            });
+            };
+
+            for (const prop of profileProps) {
+              newProfile[prop] = config[prop];
+            }
+
+            //@ts-ignore - no way because newProfile is built dynamically
+            currentProfiles.push(newProfile);
           }
 
-          await config.set(`libraryListProfiles`, currentProfiles);
+          await config.set(`connectionProfiles`, currentProfiles);
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.loadLibraryListProfile`, async () => {
+      vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async () => {
         const config = instance.getConfig();
 
-        const currentProfiles = config.libraryListProfiles;
+        const currentProfiles = config.connectionProfiles;
         const availableProfiles = currentProfiles.map(profile => profile.name);
 
         if (availableProfiles.length > 0) {
           const chosenProfile = await vscode.window.showQuickPick(availableProfiles);
 
           if (chosenProfile) {
-            const libraryList = currentProfiles.find(profile => profile.name === chosenProfile);
+            let profile = currentProfiles.find(profile => profile.name === chosenProfile);
 
-            if (libraryList) {
-              await config.set(`libraryList`, libraryList.list);
-              this.refresh();
+            if (profile) {
+              profile = {...profile}; //We clone it.
+              delete profile.name;
+              
+              await config.setMany(profile);
+              
+              await Promise.all([
+                vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
+              ]);
             }
           }
 
         } else {
-          vscode.window.showInformationMessage(`No library list profiles exist for this system.`);
+          vscode.window.showInformationMessage(`No profiles exist for this system.`);
         }
       })
     )

@@ -5,6 +5,20 @@ const vscode = require(`vscode`);
 const instance = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
 
+const ColumnData = require(`./columnData`);
+
+const currentArea = vscode.window.createTextEditorDecorationType({
+  backgroundColor: `rgba(242, 242, 109, 0.3)`,
+  border: `1px solid grey`,
+});
+
+const notCurrentArea = vscode.window.createTextEditorDecorationType({
+  backgroundColor: `rgba(242, 242, 109, 0.1)`,
+  border: `1px solid grey`,
+});
+
+const possibleTags = require(`./tags`);
+
 module.exports = class RPGLinter {
   /**
    * @param {vscode.ExtensionContext} context
@@ -20,6 +34,79 @@ module.exports = class RPGLinter {
 
     context.subscriptions.push(
       this.linterDiagnostics,
+
+      vscode.commands.registerCommand(`code-for-ibmi.rpgleColumnAssistant`, async () => {
+        if (Configuration.get(`rpgleColumnAssistEnabled`)) {
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            const document = editor.document;
+
+            if (document.languageId === `rpgle`) {
+              if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) { 
+                const lineNumber = editor.selection.start.line;
+                const positionIndex = editor.selection.start.character;
+
+                const positionsData = await ColumnData.promptLine(
+                  document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
+                  positionIndex
+                );
+
+                if (positionsData) {
+                  editor.edit(editBuilder => {
+                    editBuilder.replace(new vscode.Range(lineNumber, 0, lineNumber, positionsData.length), positionsData);
+                  });
+                }
+              }
+            }
+          }
+        } else {
+          vscode.window.showInformationMessage(`Column assist disabled.`);
+        }
+      }),
+
+      vscode.window.onDidChangeTextEditorSelection(e => {
+        if (Configuration.get(`rpgleColumnAssistEnabled`)) {
+          const editor = e.textEditor;
+          const document = editor.document;
+
+          if (document.languageId === `rpgle`) {
+            if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() !== `**FREE`) {
+              const lineNumber = editor.selection.start.line;
+              const positionIndex = editor.selection.start.character;
+
+              const positionsData = ColumnData.getAreasForLine(
+                document.getText(new vscode.Range(lineNumber, 0, lineNumber, 100)), 
+                positionIndex
+              );
+
+              if (positionsData) {
+                let decorations = [];
+
+                positionsData.specification.forEach((box, index) => {
+                  if (index === positionsData.active) {
+                    //There should only be one current.
+                    editor.setDecorations(currentArea, [{
+                      hoverMessage: box.name,
+                      range: new vscode.Range(lineNumber, box.start, lineNumber, box.end+1)
+                    }]);
+
+                  } else {
+                    decorations.push({
+                      hoverMessage: box.name,
+                      range: new vscode.Range(lineNumber, box.start, lineNumber, box.end+1)
+                    })
+                  }
+                });
+                editor.setDecorations(notCurrentArea, decorations);
+
+              } else {
+                editor.setDecorations(currentArea, []);
+                editor.setDecorations(notCurrentArea, []);
+              }
+            }
+          }
+        }
+      }),
 
       vscode.workspace.onDidChangeTextDocument((event) => {
         if (Configuration.get(`rpgleIndentationEnabled`)) {
@@ -70,24 +157,44 @@ module.exports = class RPGLinter {
             const range = document.getWordRangeAtPosition(position);
             const word = document.getText(range).toUpperCase();
 
-            const procedure = doc.procedures.find(proc => proc.name.toUpperCase() === word.toUpperCase());
+            const procedure = doc.procedures.find(proc => proc.name.toUpperCase() === word);
 
             if (procedure) {
+              let markdown = ``;
               let retrunValue = procedure.keywords.filter(keyword => keyword !== `EXTPROC`);
               if (retrunValue.length === 0) retrunValue = [`void`];
 
-              let markdown = `\`\`\`vb\n${procedure.name}(`;
+              const returnTag = procedure.tags.find(tag => tag.tag === `return`);
+              const deprecatedTag = procedure.tags.find(tag => tag.tag === `deprecated`);
+
+              // Deprecated notice
+              if (deprecatedTag) {
+                markdown += `**Deprecated:** ${deprecatedTag.content}\n\n`;
+              }
+
+              // Formatted code
+              markdown += `\`\`\`vb\n${procedure.name}(`;
 
               if (procedure.subItems.length > 0) {
                 markdown += `\n  ${procedure.subItems.map(parm => `${parm.name}: ${parm.keywords.join(` `)}`).join(`,\n  `)}\n`;
               }
 
               markdown += `): ${retrunValue.join(` `)}\n\`\`\` \n`;
-              markdown += procedure.subItems.map(parm => `*@param* \`${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)}\` ${parm.comments}`).join(`\n\n`);
-              markdown += `\n\n*@returns* ${retrunValue.join(` `)}`;
+
+              // Description
+              if (procedure.description)
+                markdown += `${procedure.description}\n\n`;
+
+              // Params
+              markdown += procedure.subItems.map(parm => `*@param* \`${parm.name.replace(new RegExp(`\\*`, `g`), `\\*`)}\` ${parm.description}`).join(`\n\n`);
+
+              // Return value
+              if (returnTag) {
+                markdown += `\n\n*@returns* ${returnTag.content}`;
+              }
 
               if (procedure.position) {
-                markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.line}\``;
+                markdown += `\n\n*@file* \`${procedure.position.path}:${procedure.position.line+1}\``;
               }
 
               return new vscode.Hover(
@@ -181,35 +288,86 @@ module.exports = class RPGLinter {
           }
         }),
 
+      vscode.languages.registerDefinitionProvider({ language: `rpgle` }, {
+        provideDefinition: async (document, position, token) => {
+          if (Configuration.get(`rpgleContentAssistEnabled`)) {
+            const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+            const doc = await this.getDocs(document.uri);
+            const range = document.getWordRangeAtPosition(position);
+            const word = document.getText(range).toUpperCase();
+
+            if (doc) {
+              const types = Object.keys(doc);
+              const type = types.find(type => doc[type].find(def => def.name.toUpperCase() === word));
+              if (doc[type]) {
+                const def = doc[type].find(def => def.name.toUpperCase() === word);
+                if (def) {
+                  let {finishedPath, type} = this.getPathInfo(document.uri, def.position.path);
+                  if (type === `member`) {
+                    finishedPath = `${finishedPath}.rpgle`;
+                  }
+
+                  return new vscode.Location(
+                    vscode.Uri.parse(finishedPath).with({scheme: type, path: finishedPath}),
+                    new vscode.Range(def.position.line, 0, def.position.line, 0)
+                  );
+                }
+              }
+            }
+          }
+        }}),
+
       vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
         provideCompletionItems: async (document, position) => {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
             const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
             const text = document.getText();
             if (isFree) {
+              const currentLine = document.getText(new vscode.Range(position.line, 0, position.line, position.character));
               const doc = await this.getDocs(document.uri, text);
 
               /** @type vscode.CompletionItem[] */
               let items = [];
               let item;
 
-              for (const procedure of doc.procedures) {
-                item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
-                item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
-                item.detail = procedure.keywords.join(` `);
-                item.documentation = procedure.comments;
-                items.push(item);
-              }
+              if (currentLine.startsWith(`//`)) {
+                for (const tag in possibleTags) {
+                  item = new vscode.CompletionItem(`@${tag}`, vscode.CompletionItemKind.Property);
+                  item.insertText = new vscode.SnippetString(`@${tag} $0`);
+                  item.detail = possibleTags[tag];
+                  items.push(item);
+                }
 
-              for (const subroutine of doc.subroutines) {
-                item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
-                item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
-                item.documentation = subroutine.comments;
-                items.push(item);
+              } else {
+                for (const procedure of doc.procedures) {
+                  item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
+                  item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
+                  item.detail = procedure.keywords.join(` `);
+                  item.documentation = procedure.description;
+                  items.push(item);
+                }
+
+                for (const subroutine of doc.subroutines) {
+                  item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
+                  item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
+                  item.documentation = subroutine.description;
+                  items.push(item);
+                }
               }
 
               return items;
             }
+          }
+        }
+      }),
+
+      vscode.window.onDidChangeActiveTextEditor(async (e) => {
+        if (e.document.languageId === `rpgle`) {
+          const document = e.document;
+          const text = document.getText();
+          const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+          if (isFree) {
+            this.updateCopybookCache(document.uri, text);
           }
         }
       }),
@@ -277,10 +435,9 @@ module.exports = class RPGLinter {
         //Get from root
         finishedPath = getPath;
       } 
-      else if (getPath.startsWith(`.`)) {
+
+      else {
         finishedPath = path.posix.join(config.homeDirectory, getPath);
-      } else {
-        finishedPath = path.posix.join(path.posix.dirname(workingUri.path), getPath);
       }
 
     } else {
@@ -377,26 +534,28 @@ module.exports = class RPGLinter {
    * @param {string} content 
    */
   async updateCopybookCache(workingUri, content) {
-    this.parsedCache[workingUri.path] = undefined; //Clear parsed data
+    if (this.parsedCache[workingUri.path]) {
+      this.parsedCache[workingUri.path] = undefined; //Clear parsed data
 
-    let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
+      let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
 
-    //First loop is for copy/include statements
-    for (let i = baseLines.length - 1; i >= 0; i--) {
-      const line = baseLines[i].trim(); //Paths are case insensitive so it's okay
-      if (line === ``) continue;
+      //First loop is for copy/include statements
+      for (let i = baseLines.length - 1; i >= 0; i--) {
+        const line = baseLines[i].trim(); //Paths are case insensitive so it's okay
+        if (line === ``) continue;
 
-      const pieces = line.split(` `).filter(piece => piece !== ``);
+        const pieces = line.split(` `).filter(piece => piece !== ``);
 
-      if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
-        await this.getContent(workingUri, pieces[1]);
+        if ([`/COPY`, `/INCLUDE`].includes(pieces[0].toUpperCase())) {
+          await this.getContent(workingUri, pieces[1]);
+        }
       }
     }
   }
 
   /**
    * @param {vscode.Uri} workingUri
-   * @param {string} content 
+   * @param {string} [content] 
    * @param {boolean} [withIncludes] To make sure include statements are parsed
    * @returns {Promise<{
    *   variables: Declaration[],
@@ -404,17 +563,26 @@ module.exports = class RPGLinter {
    *   procedures: Declaration[],
    *   subroutines: Declaration[],
    *   constants: Declaration[]
-   * }>}
+   * }|null>}
    */
   async getDocs(workingUri, content, withIncludes = true) {
     if (this.parsedCache[workingUri.path]) {
       return this.parsedCache[workingUri.path];
     };
 
+    if (!content) return null;
+
     let files = {};
     let baseLines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
-    let currentComments = [], currentExample = [], currentItem, currentSub;
 
+    let currentTitle = undefined, currentDescription = [];
+    /** @type {{tag: string, content: string}[]} */
+    let currentTags = [];
+
+    let currentItem, currentSub;
+
+    let resetDefinition = false; //Set to true when you're done defining a new item
+    let docs = false; // If section is for ILEDocs
     let lineNumber, parts, partsLower, pieces;
 
     const constants = [];
@@ -459,7 +627,7 @@ module.exports = class RPGLinter {
             currentItem = new Declaration(`constant`);
             currentItem.name = partsLower[1];
             currentItem.keywords = parts.slice(2);
-            currentItem.comments = currentComments.join(` `);
+            currentItem.description = currentDescription.join(` `);
 
             currentItem.position = {
               path: file,
@@ -467,9 +635,7 @@ module.exports = class RPGLinter {
             }
 
             constants.push(currentItem);
-            currentItem = undefined;
-            currentComments = [];
-            currentExample = [];
+            resetDefinition = true;
           }
           break;
 
@@ -479,7 +645,8 @@ module.exports = class RPGLinter {
               currentItem = new Declaration(`variable`);
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
-              currentItem.comments = currentComments.join(` `);
+              currentItem.description = currentDescription.join(` `);
+              currentItem.tags = currentTags;
 
               currentItem.position = {
                 path: file,
@@ -487,9 +654,7 @@ module.exports = class RPGLinter {
               }
 
               variables.push(currentItem);
-              currentItem = undefined;
-              currentComments = [];
-              currentExample = [];
+              resetDefinition = true;
             }
           }
           break;
@@ -500,16 +665,15 @@ module.exports = class RPGLinter {
               currentItem = new Declaration(`struct`);
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
-              currentItem.comments = currentComments.join(` `);
-              currentItem.example = currentExample;
+              currentItem.description = currentDescription.join(` `);
+              currentItem.tags = currentTags;
 
               currentItem.position = {
                 path: file,
                 line: lineNumber
               }
 
-              currentComments = [];
-              currentExample = [];
+              currentDescription = [];
             }
           }
           break;
@@ -517,7 +681,7 @@ module.exports = class RPGLinter {
         case `END-DS`:
           if (currentItem && currentItem.type === `struct`) {
             structs.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
           }
           break;
         
@@ -527,8 +691,8 @@ module.exports = class RPGLinter {
               currentItem = new Declaration(`procedure`);
               currentItem.name = partsLower[1];
               currentItem.keywords = parts.slice(2);
-              currentItem.comments = currentComments.join(` `);
-              currentItem.example = currentExample;
+              currentItem.description = currentDescription.join(` `);
+              currentItem.tags = currentTags;
 
               currentItem.position = {
                 path: file,
@@ -537,8 +701,7 @@ module.exports = class RPGLinter {
 
               currentItem.readParms = true;
 
-              currentComments = [];
-              currentExample = [];
+              currentDescription = [];
             }
           }
           break;
@@ -546,7 +709,7 @@ module.exports = class RPGLinter {
         case `END-PR`:
           if (currentItem && currentItem.type === `procedure`) {
             procedures.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
           }
           break;
         
@@ -556,8 +719,8 @@ module.exports = class RPGLinter {
 
           currentItem.name = partsLower[1];
           currentItem.keywords = parts.slice(2);
-          currentItem.comments = currentComments.join(` `);
-          currentItem.example = currentExample;
+          currentItem.description = currentDescription.join(` `);
+          currentItem.tags = currentTags;
 
           currentItem.position = {
             path: file,
@@ -566,8 +729,7 @@ module.exports = class RPGLinter {
 
           currentItem.readParms = false;
 
-          currentComments = [];
-          currentExample = [];
+          currentDescription = [];
           break;
 
         case `DCL-PI`:
@@ -575,8 +737,7 @@ module.exports = class RPGLinter {
             currentItem.keywords = parts.slice(2);
             currentItem.readParms = true;
 
-            currentComments = [];
-            currentExample = [];
+            currentDescription = [];
           }
           break;
 
@@ -589,7 +750,7 @@ module.exports = class RPGLinter {
         case `END-PROC`:
           if (currentItem && currentItem.type === `procedure`) {
             procedures.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
           }
           break;
 
@@ -597,39 +758,63 @@ module.exports = class RPGLinter {
           if (!subroutines.find(sub => sub.name.toUpperCase() === parts[1])) {
             currentItem = new Declaration(`subroutine`);
             currentItem.name = partsLower[1];
-            currentItem.comments = currentComments.join(` `);
-            currentItem.example = currentExample;
+            currentItem.description = currentDescription.join(` `);
 
             currentItem.position = {
               path: file,
               line: lineNumber
             }
 
-            currentComments = [];
-            currentExample = [];
+            currentDescription = [];
           }
           break;
     
         case `ENDSR`:
           if (currentItem && currentItem.type === `subroutine`) {
             subroutines.push(currentItem);
-            currentItem = undefined;
+            resetDefinition = true;
+          }
+          break;
+
+        case `///`:
+          docs = !docs;
+          
+          // When enabled
+          if (docs === true) {
+            currentTitle = undefined;
+            currentDescription = [];
+            currentTags = [];
           }
           break;
 
         default:
-          if (line.startsWith(`//@`)) {
-            currentComments.push(line.substring(3).trim());
+          if (line.startsWith(`//`)) {
+            if (docs) {
+              const content = line.substring(2).trim();
+              if (content.length > 0) {
+                if (content.startsWith(`@`)) {
+                  const lineData = content.substring(1).split(` `);
+                  currentTags.push({
+                    tag: lineData[0],
+                    content: lineData.slice(1).join(` `)
+                  });
+                } else {
+                  if (currentTags.length > 0) {
+                    currentTags[currentTags.length - 1].content += ` ${content}`;
 
-          } else if (line.startsWith(`//-`)) {
-            if (line.length >= 4) {
-              currentExample.push(line.substring(4).trimEnd());
-            } else if (line.length === 3) {
-              currentExample.push(``);
+                  } else {
+                    if (currentTitle === undefined) {
+                      currentTitle = content;
+                    } else {
+                      currentDescription.push(content);
+                    }
+                  }
+                }
+              }
+
+            } else {
+              //Do nothing because it's a regular comment
             }
-
-          } else if (line.startsWith(`//`)) {
-          //Do nothing. Because it's a comment.
 
           } else {
             if (currentItem && currentItem.type === `procedure`) {
@@ -640,15 +825,27 @@ module.exports = class RPGLinter {
                 currentSub = new Declaration(`subitem`);
                 currentSub.name = (parts[0] === `*N` ? `parm${currentItem.subItems.length+1}` : partsLower[0]) ;
                 currentSub.keywords = parts.slice(1);
-                currentSub.comments = currentComments.join(` `);
+
+                const paramTags = currentTags.filter(tag => tag.tag === `param`);
+                const paramTag = paramTags.length > currentItem.subItems.length ? paramTags[currentItem.subItems.length] : undefined;
+                if (paramTag) {
+                  currentSub.description = paramTag.content;
+                }
 
                 currentItem.subItems.push(currentSub);
                 currentSub = undefined;
-                currentComments = [];
               }
             }
           }
           break;
+        }
+
+        if (resetDefinition) {
+          currentItem = undefined;
+          currentTitle = undefined;
+          currentDescription = [];
+          currentTags = [];
+          resetDefinition = false;
         }
       
       }
@@ -761,7 +958,7 @@ module.exports = class RPGLinter {
         if ([
           `IF`, `ELSE`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
         ].includes(pieces[0])) {
-          if (pieces[0] == `DCL-DS` && line.includes(`LIKEDS`)) {
+          if (pieces[0] == `DCL-DS` && (line.includes(`LIKEDS`) || line.includes(`END-DS`))) {
             //No change
           } 
           else if (pieces[0] == `DCL-PI` && line.includes(`END-PI`)) {
@@ -791,7 +988,10 @@ class Declaration {
     this.type = type;
     this.name = ``;
     this.keywords = [];
-    this.comments = ``;
+    this.description = ``;
+
+    /** @type {{tag: string, content: string}[]} */
+    this.tags = [];
 
     /** @type {{path: string, line: number}} */
     this.position = undefined;
@@ -799,7 +999,6 @@ class Declaration {
     //Not used in subitem:
     /** @type {Declaration[]} */
     this.subItems = [];
-    this.example = [];
 
     //Only used in procedure
     this.readParms = false;

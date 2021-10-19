@@ -90,10 +90,12 @@ module.exports = class Instance {
    * @param {vscode.ExtensionContext} context
    */
   static async loadAllofExtension(context) {
+    const connection = this.getConnection();
+    const config = this.getConfig();
+
     const libraryListView = require(`./views/libraryListView`);
 
     const memberBrowser = require(`./views/memberBrowser`);
-    const qsysFs = new (require(`./filesystems/qsysFs`));
     
     const ifsBrowser = require(`./views/ifsBrowser`);
     const ifs = new (require(`./filesystems/ifs`));
@@ -101,10 +103,11 @@ module.exports = class Instance {
     const objectBrowser = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
-    const settingsUI = require(`./webviews/settings`);
     const actionsUI = require(`./webviews/actions`);
+    const variablesUI = require(`./webviews/variables`);
 
     const rpgleLinter = require(`./languages/rpgle/linter`);
+    const CLCommands = require(`./languages/clle/clCommands`);
 
     if (instance.connection) {
       CompileTools.register(context);
@@ -118,7 +121,7 @@ module.exports = class Instance {
         context.subscriptions.push(connectedBarItem);
       }
       
-      connectedBarItem.text = `Settings: ${instance.connection.currentHost}`;
+      connectedBarItem.text = `Settings: ${config.name}`;
       connectedBarItem.show();
 
       if (!actionsBarItem) {
@@ -160,8 +163,8 @@ module.exports = class Instance {
           })
         );
 
-        settingsUI.init(context);
         actionsUI.init(context);
+        variablesUI.init(context);
 
         //********* Library list view */
 
@@ -185,6 +188,20 @@ module.exports = class Instance {
           )
         );
 
+        let qsysFs, basicMemberEditing = true;
+        if (config.enableSourceDates) {
+          if (connection.remoteFeatures.db2util) {
+            basicMemberEditing = false;
+            require(`./filesystems/qsys/complex/handler`).begin(context);
+            qsysFs = new (require(`./filesystems/qsys/complex`));
+          } else {
+            vscode.window.showWarningMessage(`Source date support is disabled. SQL must be enabled.`);
+          }
+        }
+
+        if (basicMemberEditing) {
+          qsysFs = new (require(`./filesystems/qsys/basic`));
+        }
 
         context.subscriptions.push(
           Disposable(`member`,
@@ -322,6 +339,11 @@ module.exports = class Instance {
         
         new rpgleLinter(context);
 
+        if (config.clContentAssistEnabled) {
+          const clInstance = new CLCommands(context);
+          clInstance.init();
+        }
+
         //********* Actions */
 
         context.subscriptions.push(
@@ -331,34 +353,44 @@ module.exports = class Instance {
         );
 
         context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.runAction`, async () => {
-            const editor = vscode.window.activeTextEditor;
-            let willRun = false;
+          vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
+            if (node) {
+              const uri = node.resourceUri || node;
 
-            if (editor) {
-              willRun = true;
-              if (editor.document.isDirty) {
-                let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Cancel`);
+              CompileTools.RunAction(this, uri);
 
-                if (result === `Save`) {
-                  await editor.document.save();
-                } else {
-                  willRun = false;
+            } else {
+              const editor = vscode.window.activeTextEditor;
+              const uri = editor.document.uri;
+              let willRun = false;
+
+              if (editor) {
+                willRun = true;
+                if (editor.document.isDirty) {
+                  let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Cancel`);
+
+                  if (result === `Save`) {
+                    await editor.document.save();
+                  } else {
+                    willRun = false;
+                  }
+                }
+              }
+
+              if (willRun) {
+                const scheme = uri.scheme;
+                switch (scheme) {
+                case `member`:
+                case `streamfile`:
+                  CompileTools.RunAction(this, uri);
+                  break;
                 }
               }
             }
+          })
+        );
 
-            if (willRun) {
-              CompileTools.RunAction(this, editor.document.uri);
-            }
-          })
-        );
         
-        context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.runActionFromView`, async (node) => {
-            CompileTools.RunAction(this, node.resourceUri);
-          })
-        );
 
         initialisedBefore = true;
       }
