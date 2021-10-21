@@ -108,7 +108,7 @@ module.exports = class IBMiContent {
         }
         
         rows.push(
-          `(${sequence}, ${Number(sourceDates[i])}, '${this.escapeString(sourceData[i])}')`,
+          `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${this.escapeString(sourceData[i])}')`,
         );
       }
 
