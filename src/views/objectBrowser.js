@@ -144,24 +144,21 @@ module.exports = class objectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.generateCreateTableSQLFromObjectBrowser`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.generateSQLFromObjectBrowser`, async (node) => {
         if(!node) return;
 
         if (node.type != `FILE`) {
-          vscode.window.showErrorMessage(`CREATE TABLE can only be generated for file's.`);
+          vscode.window.showErrorMessage(`SQL can only be generated for file's.`);
           return;
         }
 
         let lib = node.path.split(`/`)[0];
         let file = node.path.split(`/`)[1];
           
-        vscode.window.showInformationMessage(`Generating CREATE TABLE statement...`);
-        let result = await instance.getContent().runSQL(`CALL QSYS2.GENERATE_SQL ('${file}', '${lib}', 'TABLE')`);
-
-        let resultString = ``;
-        result.forEach(element => resultString += element.SRCDTA + `\r\n`);
-
+        vscode.window.showInformationMessage(`Generating SQL statement...`);
+        
         try {
+          let resultString = await instance.getContent().generateSQL(lib, file, `TABLE`);
           const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Generated SQL`));
           const editor = await vscode.window.showTextDocument(textDoc);
           editor.edit(edit => {
@@ -169,7 +166,7 @@ module.exports = class objectBrowserProvider {
           })
 
         } catch (e) {
-          vscode.window.showErrorMessage(`Error generating CREATE TABLE statement.`);
+          vscode.window.showErrorMessage(`Cannot generate SQL.`);
         }
       })
     )

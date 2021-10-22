@@ -565,13 +565,13 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.generateCreateTableSQLFromDatabaseBrowser",
-				"title": "Generate CREATE TABLE SQL",
+				"command": "code-for-ibmi.generateSQLFromDatabaseBrowser",
+				"title": "Generate SQL",
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.generateCreateTableSQLFromObjectBrowser",
-				"title": "Generate CREATE TABLE SQL",
+				"command": "code-for-ibmi.generateSQLFromObjectBrowser",
+				"title": "Generate SQL",
 				"category": "IBM i"
 			},
 			{
@@ -1126,12 +1126,12 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.generateCreateTableSQLFromObjectBrowser",
+					"command": "code-for-ibmi.generateSQLFromObjectBrowser",
 					"when": "view == objectBrowser && viewItem == object",
 					"group": "2_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.generateCreateTableSQLFromDatabaseBrowser",
+					"command": "code-for-ibmi.generateSQLFromDatabaseBrowser",
 					"when": "view == databaseBrowser && viewItem == table",
 					"group": "2_generation@1"
 				},

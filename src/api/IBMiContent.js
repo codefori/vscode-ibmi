@@ -314,6 +314,11 @@ module.exports = class IBMiContent {
     }
   }
 
+  async generateSQL(schema, object, type) {
+    const result = await this.runSQL(`CALL QSYS2.GENERATE_SQL ('${object}', '${schema}', '${type}')`);
+    return result.map(row => row.SRCDTA).join(`\n`);
+  }
+
   /**
    * @param {string} errorsString 
    * @returns {{code: string, text: string}[]} errors
