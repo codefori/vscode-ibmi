@@ -36,6 +36,9 @@
 		"snippets": [
 			{
 				"path": "./snippets/cl.code-snippets"
+			},
+			{
+				"path": "./snippets/rpgle.code-snippets"
 			}
 		],
 		"configuration": {
