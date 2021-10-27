@@ -97,25 +97,25 @@ Each of these can be expanded by clicking on it. Click on, or hover over, the br
 
 ![Browser icons](assets/Browser_02.png)
 
-### USER LIBRARY LIST
+### User Library List
 
 The User Library List is is set initially from your user profile.  Add libraries as needed using the "**+**" icon.  Remove a library from the library list by right clicking on it.
 
 The User Library List is used when *Actions* (see below) are executed.
 
-### MEMBER BROWSER
+### Member Browser
 
 This lists libraries, source physical files and members in the source physical files. Click on a source member to open it in the editor.
 
-### IFS BROWSER
+### IFS Browser
 
 This shows directories and files in the IFS.  Click on a source file to open it in the editor.
 
-### OBJECT BROWSER
+### Object Browser
 
 This lists libraries and the objects in each library. Right click on an item to run an action on it.
 
-### DATABASE BROWSER
+### Database Browser
 
 This shows libraries and the files/table in each. It is effective only if db2Util is installed on the IBM i. Click on a file or table to see the field names.
 
