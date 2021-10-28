@@ -91,8 +91,8 @@ To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: 
 
 ## Actions
 
-Actions are used to perform tasks on members, streamfiles and other types of objects.
-You can edit Actions in this UI:
+Actions are used to perform tasks on members, streamfiles and other types of objects. You can edit Actions in this UI or by manually creating or editing the ```code-for-ibmi.actions``` section in the Code for IBM i settings file: ```settings.json```. If no ```code-for-ibmi.actions``` section exists in ```settings.json```, the default action list is loaded directly from the extension itself. If a new action is created or a change is made to an action and saved from this UI, the ```code-for-ibmi.actions``` section will then be automatically written to ```settings.json```.
+
 ![assets/actions_01.png](assets/actions_01.png)
 
 - Add actions with New Action.
