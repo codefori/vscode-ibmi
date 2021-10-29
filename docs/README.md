@@ -15,9 +15,7 @@ Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual
 
 ## Installation
 
-From  VS Code Marketplace:
-
-[Code-for-ibmi from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+From  VS Code Marketplace:  [Code-for-ibmi](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
 
 Or from the Extensions icon in the Activity Bar (on the left):
 ![assets/install_01,png](assets/install_01.png)
@@ -89,19 +87,74 @@ of the IBM i system you are connected to.
 
 To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: Disconnect from current connection```
 
+## Browsers
+
+In the side bar there are several browsers to display and intereact with various parts of the IBM i:
+
+![Browsers](assets/Browser_01.png)
+
+Each of these can be expanded by clicking on it. Click on, or hover over, the browser title to see its action icons. Hover over each icon to see what it does.
+
+![Browser icons](assets/Browser_02.png)
+
+### User Library List
+
+The User Library List is is set initially from your user profile.  Add libraries as needed using the "**+**" icon.  Remove a library from the library list by right clicking on it.
+
+The User Library List is used when *Actions* (see below) are executed.
+
+### Member Browser
+
+This lists libraries, source physical files and members in the source physical files. Click on a source member to open it in the editor.
+
+### IFS Browser
+
+This shows directories and files in the IFS.  Click on a source file to open it in the editor.
+
+### Object Browser
+
+This lists libraries and the objects in each library. Right click on an item to run an action on it.
+
+### Database Browser
+
+This shows libraries and the files/table in each. It is effective only if db2Util is installed on the IBM i. Click on a file or table to see the field names.
+
 ## Actions
 
 Actions are used to perform tasks on members, streamfiles and other types of objects. You can edit Actions in this UI or by manually creating or editing the ```code-for-ibmi.actions``` section in the Code for IBM i settings file: ```settings.json```. If no ```code-for-ibmi.actions``` section exists in ```settings.json```, the default action list is loaded directly from the extension itself. If a new action is created or a change is made to an existing action and saved from this UI, the ```code-for-ibmi.actions``` section will be automatically written/updated to ```settings.json```.
 
 ![assets/actions_01.png](assets/actions_01.png)
 
+Actions are defined commands used to perform tasks on members, streamfiles and other types of objects. Actions can be executed from two different places:
+
+- As you're writing code. For example, to compile a program or module.
+- When you right click on a member, streamfile or an object from the OBJECT BROWSER.
+
+A comprehensive set of Actions is provided, but you can add more or change the ones provided..
+
+### Running an Action
+
+To run an Action, open a source member (or IFS streamfile) and press the shortcut key:
+
+- Windows: Control + E
+- Mac: Command + E
+
+This shows a dropdown of the available Actions for the open file. Use the arrow keys to select which Action to run and hit enter to select it.
+
+Example: to run the 'CRTBNDRPG' Action, you must open a source member with either `RPG` or `RPGLE` as the extension. Then, when you use the Run Action shortcut (above), you will see the list of available Actions.
+
+### View/Change/Add Actions
+
+ Click **Actions** on the status bar, then view, change or add new Actions in this UI:
+![Action List UI](assets/actions_01.png)
+
+- Click on an action to change it.
 - Add actions with New Action.
 - Copy an existing action and modify it with Duplicate.
-- Click on an action to change it.
 
 Adding or changing, you see this same UI:
 
-![assets/actions_02.png](assets/actions_02.png)
+![Action edit UI](assets/actions_02.png)
 
 In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We can change any of the properties.
 
@@ -193,6 +246,7 @@ For all object variables, you can end the variable with `L` for the lowercase of
 | `&TYPE`     | The object type (PGM, FILE, etc)  |
 | `&EXT`     | The same as `&TYPE`  |
  -->
+
 ## Action Execution
 
 There are three varieties of Actions. They can:
@@ -211,17 +265,17 @@ It will execute immediatly it is selected.
 
 ### Display for modification
 
-If the "Command to run" string has a leading "?", e.g., like this:
+If the "Command to run" string has a leading "**?**", e.g., like this:
 
 `?CALL &LIBRARY/&NAME`  
 
 It is displayed and you can edit it as needed.
 
-![](assets/actions_exec_01.png)
+![Action Displayed for Modification](assets/actions_exec_01.png)
 
 For example, you might want to add **PARM('Douglas' 'Adams')** to the end.
 
-![](assets/actions_exec_02.png)
+![Modified Action](assets/actions_exec_02.png)
 
 ### Prompted
 
@@ -242,11 +296,11 @@ Suppose we have a "**Call program, prompt for parms**" action with the "Command 
 
 If we run the action it prompts like this:
 
-![](assets/actions_exec_03.png)
+![Prompting Action Example 1](assets/actions_exec_03.png)
 
 If we complete the screen like this:
 
-![](assets/actions_exec_04.png)
+![Completed Prompted Action](assets/actions_exec_04.png)
 
 and click **Execute** a command like this is executed;
 
@@ -260,7 +314,7 @@ You can also use variables in the prompt string. If an action is defined like th
 
 &CURLIB will be substituted and the prompt will look like this when executed:
 
-![](assets/actions_exec_05.png)
+![Prompted Action Example 2](assets/actions_exec_05.png)
 
 #### *Example 3*
 
@@ -278,46 +332,59 @@ When executed, it prompts like this:
 You can create custom variable to use in your "Command to run" strings. To access custom variables:
  Use <kbd>F1</kbd>, then search for "IBM i Custom variables":
 
- ![](assets/actions_custom_01.png)
+ ![F1 + IBM i Custom Variable](assets/actions_custom_01.png)
  
  Or from the User Library List browser:
 
-![](assets/actions_custom_01a.png)
+![Library List Browser](assets/actions_custom_01a.png)
 
 In the **Work with Variables** tab, click on **New Variable** to add your variable:
 
- ![](assets/actions_custom_02.png)
+ ![Work with Variables](assets/actions_custom_02.png)
  
  Here we are adding a variable named &TARGET_RLSE.
 
- ![](assets/actions_custom_03.png)
+ ![Adding TARGET_RLSE](assets/actions_custom_03.png)
 
-Press Save and the list of custom variables is show:
+Press Save and the list of custom variables is shown:
 
-![](assets/actions_custom_04.png)
+![Variables list after Save](assets/actions_custom_04.png)
 
 Click on a custom variable to change it or delete it.
 
-An example of usage might be in all the  CRTBNDxxx actions to add TGTRLS(&TARGET_RLSE), like this:
+#### *Example Usage*
+
+In all the  CRTBNDxxx actions add TGTRLS(&TARGET_RLSE), like this:
 
 `?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)  TGTRLS(&TARGET_RLSE)`
 
-Now a change to the TARGET_RLSE custom variable can impact all the CRTBNDxxx actions.
+Now a single change to the TARGET_RLSE custom variable can impact all the CRTBNDxxx actions.
 
-## Settings
+## Settings: Global
 
-To adjust this extension's settings, press <kbd>F1</kbd> and search for ```Preferences: Open Settings (UI)```.
+These are setting  which affect the extension (and therefore *every* connection). To adjust the extension's global setting,  either:
 
-![assets/settings_02.png](assets/settings_02.png)
+- Use the standard VS Code <kbd>Ctrl</kbd> + <kbd>,</kbd> and click Extensions
+- or click File/Preferences/Settings and click Extensions
+-or  press <kbd>F1</kbd>, search for ```Preferences: Open Settings (UI)``` and click extensions.
 
-Settings for this extension will be under ```Code for IBM i```
+Settings for the extension will be under ```Code for IBM i```
 
 ![assets/settings_01.png](assets/settings_01.png)
 
+Most of the setting have a self explanatory description. A few have notes below.
 
-### Auto Refresh
+### Actions
 
-When enabled, listings will refresh when items are interacted with (create, copy, delete, etc). If performance is bad, it is suggested you disable this option.
+Actions can be edited in settings.json, but also more easily by clicking **Actions** in the status bar. See *Actions*, above.
+
+### Connections
+
+Connections can be edited in settings.json, but you'd typically add additional connections as in *Connect First Time*, above.
+
+### Connection Settings
+
+These are the various setting relating to the items in the browsers, e.g., the list of source files in the MEMBER BROWSER. While these can be edited in settings.json, most can be more easily maintained by clicking or right clicking on an item in the browser.
 
 ### Log Compile Output
 
@@ -337,7 +404,8 @@ You can change the font size in the OUTPUT tab in your settings.json thus:
     },
 ````
 
-### Connections
+
+<!-- ### Connections
 
 List of connection details from prior connections.
 
@@ -395,25 +463,35 @@ An array for the user library list. Highest item of the library list goes first.
     "DATALIB",
     "QSYSINC"
 ]
-```
+``` -->
 
-##### Connection profiles
+## Settings: Connection
 
-It is possible to save the connection settings state, so you can change and revert back to it later. We call that state a 'connection profile'.
+Multiple connections can be defined and some settings are specific to a connection and can be saved for the connection and later reloaded.
 
-You can save a magnitude of settings into a profile by using the save button on the Library List view. You can provide it with a unique name, or use an existing one to overwrite an existing profile.
+### Connection profiles
 
-To load a profile, which would update the settings, you can use the list/load button on the Library List view.
+ We call these connection specific settings a 'connection profile'. The settings stored into a profile are:
 
-The settings stored into a profile are the following:
+- Those settings maintained by clicking Settings in the status bar ![Connection Profile Settings](assets/Connect_Profile_Setting_01.png)
 
-* Home / working directory
-* Current library
-* Library list
-* Source file list
-* IFS shortcuts
-* Object browser list
-* Database browser list
+- The Home / working directory
+- The Current library
+- The Library list
+- The Source file list
+- The IFS shortcuts
+- The Object browser list
+- The Database browser list
+
+Save the settings into a profile using the S**ave current settings button** on the USER LIBRARY LIST view.
+![Save Profile](assets/Connect_Profile_Save_01.png)
+
+Give it a unique name, or use an existing name to overwrite an existing profile.
+
+To load a profile, which would update the settings, use the **Set active profile** button on the Library List view.
+![Load profile](assets/Connect_Profile_Load_01.png)
+
+![Load profile](assets/Connect_Profile_Load_02.png)
 
 You might use this if you use a single box to manage many different applications that have different source files and/or library lists.
 
@@ -437,6 +515,13 @@ Note: If your IBM i runs replication software, there is no need to replicate the
 
 If source files are located in a specific ASP, specify here.
 Otherwise, leave blank.
+
+## Snippets
+
+Code for IBM i comes with a large set of built-in snippets for RPGLE. For example, here's what you might see if you entered %scan in an RPGLE member:
+![%SCAN example](assets/Snippet_01.png)
+
+You can also add your own snippets. Check out the [VS Code Snippet Documentation](https://code.visualstudio.com/docs/editor/userdefinedsnippets) 
 
 ## Source files
 
@@ -532,13 +617,8 @@ It is also possible to run SQL statements right from the editor. You can either 
 
 A compatible version of [db2util](https://github.com/IBM/ibmi-db2util) needs to be installed on the IBM i for the Database Browser to work.
 
-If installed, db2util is also used to more quickly populate the MEMBER BROWSER list. However, incompatible versions of db2util may fail to populate the MEMBER BROWSER list. You can ignore db2util in connectionSettings like this:
-
-````json
-            "buildLibrary": "QTEMP",
-            "sourceFileCCSID": "*FILE",
-            "enableSQL": false,
-````
+If installed, db2util is also used to more quickly populate the MEMBER BROWSER list. However, incompatible versions of db2util may fail to populate the MEMBER BROWSER list. db2util 1.0.12 is known to work.
+You can ignore db2util by deselecting "**Enable SQL**" in *Settings: Connection*.
 
 ## Tips & Tricks
 
