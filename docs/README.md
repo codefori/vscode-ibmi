@@ -121,6 +121,10 @@ This shows libraries and the files/table in each. It is effective only if db2Uti
 
 ## Actions
 
+Actions are used to perform tasks on members, streamfiles and other types of objects. You can edit Actions in this UI or by manually creating or editing the ```code-for-ibmi.actions``` section in the Code for IBM i settings file: ```settings.json```. If no ```code-for-ibmi.actions``` section exists in ```settings.json```, the default action list is loaded directly from the extension itself. If a new action is created or a change is made to an existing action and saved from this UI, the ```code-for-ibmi.actions``` section will be automatically written/updated to ```settings.json```.
+
+![assets/actions_01.png](assets/actions_01.png)
+
 Actions are defined commands used to perform tasks on members, streamfiles and other types of objects. Actions can be executed from two different places:
 
 - As you're writing code. For example, to compile a program or module.
