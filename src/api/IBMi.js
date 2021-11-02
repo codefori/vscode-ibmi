@@ -76,7 +76,7 @@ module.exports = class IBMi {
         let homeDirSet = true;
         let tempLibrarySet = false;
         
-        this.client.connection.once(`timeout`, async () => {
+        const disconnected = async () => {
           const choice = await vscode.window.showWarningMessage(`Connection to ${this.currentConnectionName} has timed out. Would you like to reconnect?`, `Yes`, `No`);
 
           if (choice === `Yes`) {
@@ -84,7 +84,11 @@ module.exports = class IBMi {
           } else {
             vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
           };
-        });
+        };
+
+        this.client.connection.once(`timeout`, disconnected);
+        this.client.connection.once(`end`, disconnected);
+        this.client.connection.once(`error`, disconnected);
 
         progress.report({
           message: `Loading configuration.`
