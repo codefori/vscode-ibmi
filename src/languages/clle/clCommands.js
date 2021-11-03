@@ -284,6 +284,8 @@ module.exports = class CLCommands {
 
     content = content.split(eol).join(` `);
 
+    content = content.split(`'`).filter((part, index) => index % 2 === 0).join(``);
+
     return content
       .trim()
       .split(` `)
@@ -310,7 +312,7 @@ module.exports = class CLCommands {
     } catch (e) {
       // GENCMDXML is not installed
       return false;
-    }
+    } 
   }
 
   static async install() {
