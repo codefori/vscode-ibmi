@@ -22,6 +22,9 @@ let ileDiagnostics;
 /** @type {vscode.OutputChannel} */
 let outputChannel;
 
+/** @type {{[key: string]: number}} Timestamp of when an action was last used. */
+let actionUsed = {};
+
 module.exports = class CompileTools {
 
   /**
@@ -152,7 +155,10 @@ module.exports = class CompileTools {
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
-      const options = availableActions.map(item => item.name);
+      const options = availableActions.map(item => ({
+        name: item.name,
+        time: actionUsed[item.name] || 0
+      })).sort((a, b) => b.time - a.time).map(item => item.name);
     
       let chosenOptionName, command, environment;
     
@@ -163,6 +169,7 @@ module.exports = class CompileTools {
       }
     
       if (chosenOptionName) {
+        actionUsed[chosenOptionName] = Date.now();
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
