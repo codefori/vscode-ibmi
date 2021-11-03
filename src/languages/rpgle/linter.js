@@ -317,7 +317,7 @@ module.exports = class RPGLinter {
           }
         }}),
 
-      vscode.languages.registerCompletionItemProvider({language: `rpgle`}, {
+      vscode.languages.registerCompletionItemProvider({language: `rpgle`, }, {
         provideCompletionItems: async (document, position) => {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
             const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
@@ -349,8 +349,32 @@ module.exports = class RPGLinter {
 
                 for (const subroutine of doc.subroutines) {
                   item = new vscode.CompletionItem(`${subroutine.name}`, vscode.CompletionItemKind.Function);
-                  item.insertText = new vscode.SnippetString(`Exsr ${subroutine.name}\$0`);
+                  item.insertText = new vscode.SnippetString(`${subroutine.name}\$0`);
                   item.documentation = subroutine.description;
+                  items.push(item);
+                }
+
+                for (const variable of doc.variables) {
+                  item = new vscode.CompletionItem(`${variable.name}`, vscode.CompletionItemKind.Variable);
+                  item.insertText = new vscode.SnippetString(`${variable.name}\$0`);
+                  item.detail = variable.keywords.join(` `);
+                  item.documentation = variable.description;
+                  items.push(item);
+                }
+
+                for (const struct of doc.structs) {
+                  item = new vscode.CompletionItem(`${struct.name}`, vscode.CompletionItemKind.Struct);
+                  item.insertText = new vscode.SnippetString(`${struct.name}\$0`);
+                  item.detail = struct.keywords.join(` `);
+                  item.documentation = struct.description;
+                  items.push(item);
+                }
+
+                for (const constant of doc.constants) {
+                  item = new vscode.CompletionItem(`${constant.name}`, vscode.CompletionItemKind.Constant);
+                  item.insertText = new vscode.SnippetString(`${constant.name}\$0`);
+                  item.detail = constant.keywords.join(` `);
+                  item.documentation = constant.description;
                   items.push(item);
                 }
               }
