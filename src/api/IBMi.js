@@ -12,6 +12,10 @@ const remoteApps = [
   {
     path: `/usr/bin/`,
     names: [`setccsid`]
+  },
+  {
+    path: `/QSYS.lib/ILEDITOR.lib/`,
+    names: [`GENCMDXML.PGM`, `OPENMBR.PGM`]
   }
 ];
 
@@ -43,7 +47,9 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined,
       grep: undefined,
-      setccsid: undefined
+      setccsid: undefined,
+      'GENCMDXML.PGM': undefined,
+      'OPENMBR.PGM': undefined,
     };
   }
 

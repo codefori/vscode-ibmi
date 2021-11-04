@@ -296,23 +296,7 @@ module.exports = class CLCommands {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
-    const config = instance.getConfig();
-
-    const tempLib = config.tempLibrary;
-
-    try {
-      await connection.remoteCommand(
-        `CHKOBJ OBJ(${tempLib}/GENCMDXML) OBJTYPE(*PGM)`
-      );
-
-      // GENCMDXML is installed
-      return true;
-
-    } catch (e) {
-      // GENCMDXML is not installed
-      return false;
-    } 
+    return (connection.remoteFeatures[`GENCMDXML.PGM`] !== undefined);
   }
 
   static async install() {
