@@ -109,6 +109,8 @@ module.exports = class Instance {
     const rpgleLinter = require(`./languages/rpgle/linter`);
     const CLCommands = require(`./languages/clle/clCommands`);
 
+    const JobListener = require(`./api/JobListener`);
+
     if (instance.connection) {
       CompileTools.register(context);
 
@@ -150,6 +152,8 @@ module.exports = class Instance {
 
       } else {
 
+        const db2enabled = connection.remoteFeatures.db2util;
+
         context.subscriptions.push(
           vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async () => {
             if (instance.connection) {
@@ -190,7 +194,7 @@ module.exports = class Instance {
 
         let qsysFs, basicMemberEditing = true;
         if (config.enableSourceDates) {
-          if (connection.remoteFeatures.db2util) {
+          if (db2enabled) {
             basicMemberEditing = false;
             require(`./filesystems/qsys/complex/handler`).begin(context);
             qsysFs = new (require(`./filesystems/qsys/complex`));
@@ -344,6 +348,26 @@ module.exports = class Instance {
           clInstance.init();
         }
 
+        //********* Job listener */
+
+        context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.startJobListener`, async () => {
+            if (config.jobListenerEnabled && db2enabled) {
+              JobListener.connect();
+            } else {
+              vscode.window.showErrorMessage(`Job listener is not enabled or SQL is not enabled.`);
+            }
+          })
+        );
+
+        if (config.jobListenerEnabled && db2enabled) {
+          vscode.window.showInformationMessage(`Do you want to connect to an interactive job?`, `Yes`, `No`).then(async (value) => {
+            if (value === `Yes`) {
+              JobListener.connect();
+            }
+          });
+        }
+
         //********* Actions */
 
         context.subscriptions.push(
@@ -389,9 +413,7 @@ module.exports = class Instance {
             }
           })
         );
-
         
-
         initialisedBefore = true;
       }
     }

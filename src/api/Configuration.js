@@ -58,6 +58,9 @@ module.exports = class Configuration {
 
     /** @type {boolean} */
     this.clContentAssistEnabled = (base.clContentAssistEnabled === true);
+
+    /** @type {boolean} */
+    this.jobListenerEnabled = (base.jobListenerEnabled === true);
   }
 
   /**

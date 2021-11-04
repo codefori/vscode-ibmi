@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `jobListenerEnabled`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -109,7 +109,14 @@ module.exports = class SettingsUI {
     
         field = new Field(`checkbox`, `clContentAssistEnabled`, `Enable CL Content Assist`);
         field.default = (config.clContentAssistEnabled ? `checked` : ``);
-        field.description = `Enable CL content assist and hover support. After enabled and restarted, Code for IBM i will ask you to install the required tools for the feature to work. This will install programs into your temporary library.`;
+        field.description = `Enable CL content assist and hover support. This will install programs into your temporary library.`;
+        ui.addField(field);
+
+        ui.addField(new Field(`hr`));
+    
+        field = new Field(`checkbox`, `jobListenerEnabled`, `Enable Job Listener`);
+        field.default = (config.jobListenerEnabled ? `checked` : ``);
+        field.description = `Enable CL content assist and hover support. This will install programs into your temporary library. Requires SQL to be enabled. To start listening, look for command 'Start job listener'. It is recommend you have a system with a lot of resource to run.`;
         ui.addField(field);
 
         ui.addField(new Field(`hr`));

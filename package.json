@@ -179,6 +179,11 @@
 								"default": false,
 								"description": "Enables the CL content assist and hover support."
 							},
+							"jobListenerEnabled": {
+								"type": "boolean",
+								"default": false,
+								"description": "Enables the job listener tools. This allows IBM i to control Code for IBM i."
+							},
 							"customVariables": {
 								"type": "array",
 								"description": "Custom variables for Actions",
@@ -596,6 +601,11 @@
 				"command": "code-for-ibmi.rpgleOpenInclude",
 				"title": "Open include at cursor",
 				"category": "IBM i (RPGLE)"
+			},
+			{
+				"command": "code-for-ibmi.startJobListener",
+				"title": "Start job listener",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.clearDiagnostics",
