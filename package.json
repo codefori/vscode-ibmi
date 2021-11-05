@@ -1020,6 +1020,13 @@
 					"when": "view == databaseBrowser"
 				}
 			],
+			"editor/context": [
+				{
+					"command": "code-for-ibmi.rpgleColumnAssistant",
+					"group": "1_rpgle",
+					"when": "editorLangId == rpgle"
+				}
+			],
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.deleteConnection",
