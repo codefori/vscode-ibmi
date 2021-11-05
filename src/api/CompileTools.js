@@ -118,6 +118,7 @@ module.exports = class CompileTools {
 
     string = string.replace(new RegExp(`&BUILDLIB`, `g`), config.currentLibrary);
     string = string.replace(new RegExp(`&CURLIB`, `g`), config.currentLibrary);
+    string = string.replace(new RegExp(`\\*CURLIB`, `g`), config.currentLibrary);
     string = string.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
     string = string.replace(new RegExp(`&HOME`, `g`), config.homeDirectory);
 
@@ -287,6 +288,15 @@ module.exports = class CompileTools {
             }
           });
 
+          const possibleObject = this.getObjectFromCommand(command);
+
+          if (possibleObject) {
+            evfeventInfo = {
+              ...evfeventInfo,
+              ...possibleObject
+            };
+          }
+
           outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
           outputChannel.append(`   Library list: ` + config.libraryList.join(` `) + `\n`);
           outputChannel.append(`        Command: ` + command + `\n`);
@@ -437,6 +447,45 @@ module.exports = class CompileTools {
     }
 
     return command;
-  
+  }
+
+  /**
+   * 
+   * @param {string} baseCommand 
+   * @returns {{lib?: string, object: string}}
+   */
+  static getObjectFromCommand(baseCommand) {
+
+    const possibleParms = [`OBJ`, `MODULE`, `PGM`, `PNLGRP`];
+    const command = baseCommand.toUpperCase();
+
+    for (const parm of possibleParms) {
+      const idx = command.indexOf(parm);
+      if (idx >= 0) {
+        const firstBracket = command.indexOf(`(`, idx);
+        const lastBracket = command.indexOf(`)`, idx);
+        if (firstBracket >= 0 && lastBracket >= 0) {
+          const value = command
+            .substring(firstBracket+1, lastBracket)
+            .split(`/`)
+            .map(v => v.trim());
+
+          if (value.length === 2) {
+            return {
+              lib: value[0],
+              object: value[1],
+            };
+          } else {
+            return {
+              object: value[0],
+            };
+          }
+        }
+        
+        break;
+      }
+    }
+
+    return null;
   }
 }
