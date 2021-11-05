@@ -179,6 +179,11 @@
 								"default": false,
 								"description": "Enables the CL content assist and hover support."
 							},
+							"autoSaveBeforeAction": {
+								"type": "boolean",
+								"default": false,
+								"description": "Automatically save before running action if editor is dirty"
+							},
 							"customVariables": {
 								"type": "array",
 								"description": "Custom variables for Actions",
