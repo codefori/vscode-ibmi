@@ -366,13 +366,26 @@ module.exports = class Instance {
 
               if (editor) {
                 willRun = true;
-                if (editor.document.isDirty) {
-                  let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Cancel`);
-
-                  if (result === `Save`) {
-                    await editor.document.save();
-                  } else {
-                    willRun = false;
+                if (config.autoSaveBeforeAction) {
+                  await editor.document.save();
+                } else {
+                  if (editor.document.isDirty) {
+                    let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
+                    
+                    switch (result) {
+                    case `Save`: 
+                      await editor.document.save();
+                      willRun = true;
+                      break;
+                    case `Save automatically`:
+                      config.set(`autoSaveBeforeAction`, true);
+                      await editor.document.save();
+                      willRun = true;
+                      break;
+                    default:
+                      willRun = false;
+                      break;
+                    }
                   }
                 }
               }

@@ -73,6 +73,11 @@ module.exports = class SettingsUI {
         field.default = config.hideCompileErrors.join(`, `);
         field.description = `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`;
         ui.addField(field);
+    
+        field = new Field(`checkbox`, `autoSaveBeforeAction`, `Auto Save for Actions`);
+        field.default = (config.autoSaveBeforeAction ? `checked` : ``);
+        field.description = `When current editor has unsaved changes, automatically save it before running an action.`;
+        ui.addField(field);
 
         ui.addField(new Field(`hr`));
     
