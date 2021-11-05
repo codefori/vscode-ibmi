@@ -391,40 +391,58 @@ module.exports = class memberBrowserProvider {
             });
 
             if (searchTerm) {
-              vscode.window.showInformationMessage(`Starting search for '${searchTerm}' in ${node.path}..`);
-            
               try {
                 let members = [];
 
-                if (!(node.path in this.refreshCache)) {
-                  this.refreshCache[node.path] = await content.getMemberList(path[0], path[1]);
-                }
-
-                members = this.refreshCache[node.path];
-
-                if (members.length > 0) {
-                  const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
-
-                  results.forEach(result => {
-                    const resultPath = result.path.split(`/`);
-                    const resultName = resultPath[resultPath.length-1];
-                    result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
+                await vscode.window.withProgress({
+                  location: vscode.ProgressLocation.Notification,
+                  title: `Searching `,
+                }, async progress => {
+                  progress.report({
+                    message: `Fetching member list for ${node.path}.`
                   });
 
-                  const resultDoc = Search.generateDocument(`member`, results);
-  
-                  const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
-                  const editor = await vscode.window.showTextDocument(textDoc);
-                  editor.edit(edit => {
-                    edit.insert(new vscode.Position(0, 0), resultDoc);
-                  })
+                  if (!(node.path in this.refreshCache)) {
+                    this.refreshCache[node.path] = await content.getMemberList(path[0], path[1]);
+                  }
 
-                } else {
-                  vscode.window.showErrorMessage(`No members to search.`);
-                }
+                  members = this.refreshCache[node.path];
+
+                  if (members.length > 0) {
+                    progress.report({
+                      message: `Searching '${searchTerm}' in ${node.path}.`
+                    });
+
+                    const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
+
+                    if (results.length > 0) {
+
+                      results.forEach(result => {
+                        const resultPath = result.path.split(`/`);
+                        const resultName = resultPath[resultPath.length-1];
+                        result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
+                      });
+
+                      const resultDoc = Search.generateDocument(`member`, results);
+  
+                      const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
+                      const editor = await vscode.window.showTextDocument(textDoc);
+                      editor.edit(edit => {
+                        edit.insert(new vscode.Position(0, 0), resultDoc);
+                      });
+
+                    } else {
+                      vscode.window.showInformationMessage(`No results found.`);
+                    }
+
+                  } else {
+                    vscode.window.showErrorMessage(`No members to search.`);
+                  }
+
+                });
 
               } catch (e) {
-                vscode.window.showErrorMessage(`Error searching source members.`);
+                vscode.window.showErrorMessage(`Error searching source members: ` + e);
               }
             }
           } else {

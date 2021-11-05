@@ -16,14 +16,19 @@ module.exports = class Search {
     term = term.replace(/'/g, `\\'`);
     term = term.replace(/\\/g, `\\\\"`);
 
-    //const standardOut = await connection.remoteCommand(`FNDSTRPDM STRING('${term}') FILE(${lib}/${spf}) MBR(*ALL) OPTION(*NONE) PRTMBRLIST(*YES) PRTRCDS('*ALL ' *CHAR *NOMARK *TRUNCATE)`, `.`);
-    const standardOut = await connection.qshCommand(`/usr/bin/grep -in '${term}' /QSYS.LIB/${lib}.LIB/${spf}.FILE/*`);
+    const result = await connection.qshCommand(`/usr/bin/grep -in '${term}' /QSYS.LIB/${lib}.LIB/${spf}.FILE/*`, undefined, 1);
+
+    //@ts-ignore stderr does exist.
+    if (result.stderr) throw new Error(result.stderr);
+
+    //@ts-ignore stdout does exist.
+    const standardOut = result.stdout;
       
     if (standardOut === ``) return [];
     
     let files = {};
   
-    /** @type {string[]} */ //@ts-ignore
+    /** @type {string[]} */
     const output = standardOut.split(`\n`);
   
     let parts, currentFile, currentLine, contentIndex, content;
