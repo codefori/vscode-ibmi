@@ -308,15 +308,29 @@ module.exports = class ifsBrowserProvider {
 
           if (searchTerm) {
             try {
-              const content = await Search.searchIFS(instance, path, searchTerm);
+              await vscode.window.withProgress({
+                location: vscode.ProgressLocation.Notification,
+                title: `Searching `,
+              }, async progress => {
+                progress.report({
+                  message: `Searching '${searchTerm}' in ${path}.`
+                });
 
-              const resultDoc = Search.generateDocument(`streamfile`, content);
+                const results = await Search.searchIFS(instance, path, searchTerm);
 
-              const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
-              const editor = await vscode.window.showTextDocument(textDoc);
-              editor.edit(edit => {
-                edit.insert(new vscode.Position(0, 0), resultDoc);
-              })
+                if (results.length > 0) {
+
+                  const resultDoc = Search.generateDocument(`streamfile`, results);
+
+                  const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
+                  const editor = await vscode.window.showTextDocument(textDoc);
+                  editor.edit(edit => {
+                    edit.insert(new vscode.Position(0, 0), resultDoc);
+                  })
+                } else {
+                  vscode.window.showInformationMessage(`No results found.`);
+                }
+              });
 
             } catch (e) {
               vscode.window.showErrorMessage(`Error searching streamfiles.`);
