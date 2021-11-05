@@ -224,28 +224,51 @@ module.exports = class SettingsUI {
       }
     ];
 
-    ui.addField(new Field(`submit`, `submitButton`, `Save`));
+    const field = new Field(`buttons`);
+    field.items = [
+      {
+        id: `saveAction`,
+        label: `Save`,
+      },
+      {
+        id: `deleteAction`,
+        label: `Delete`,
+      }
+    ];
+    ui.addField(field);
 
     let {panel, data} = await ui.loadPage(`Work with Actions`);
 
     if (data) {
       panel.dispose();
-      
-      const newAction = {
-        type: data.type,
-        extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
-        environment: data.environment,
-        name: data.name,
-        command: data.command
-      };
+      switch (data.buttons) {
+      case `saveAction`:
+        const newAction = {
+          type: data.type,
+          extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
+          environment: data.environment,
+          name: data.name,
+          command: data.command
+        };
+    
+        if (id >= 0) {
+          allActions[id] = newAction;
+        } else {
+          allActions.push(newAction);
+        }
 
-      if (id >= 0) {
-        allActions[id] = newAction;
-      } else {
-        allActions.push(newAction);
+        await Configuration.setGlobal(`actions`, allActions);
+        break;
+
+      case `deleteAction`:
+        const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, `Yes`, `No`)
+        if (result === `Yes`) {
+          allActions.splice(id, 1);
+          await Configuration.setGlobal(`actions`, allActions);
+        }
+        break;
       }
 
-      await Configuration.setGlobal(`actions`, allActions);
     }
 
     this.MainMenu();
