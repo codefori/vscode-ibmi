@@ -187,16 +187,18 @@ module.exports = class IBMiContent {
   }
 
   /**
-   * @param {string} lib 
+   * @param {{library: string, object?: string, types?: string[]}} filters 
    * @returns {Promise<{library: string, name: string, type: string, text: string}[]>} List of members 
    */
-  async getObjectList(lib) {
-    lib = lib.toUpperCase();
+  async getObjectList(filters) {
+    const library = filters.library.toUpperCase();
+    const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
+    const objectTypes = (filters.types && filters.types.length > 0 ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
 
     const tempLib = this.ibmi.config.tempLibrary;
     const TempName = IBMi.makeid();
 
-    await this.ibmi.remoteCommand(`DSPOBJD OBJ(${lib}/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+    await this.ibmi.remoteCommand(`DSPOBJD OBJ(${library}/${object}) OBJTYPE(${objectTypes}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
     const results = await this.getTable(tempLib, TempName, TempName);
 
     if (results.length === 1) {
@@ -206,7 +208,7 @@ module.exports = class IBMiContent {
     }
 
     return results.map(object => ({
-      library: lib,
+      library: library,
       name: object.ODOBNM,
       type: object.ODOBTP,
       attribute: object.ODOBAT,
@@ -217,11 +219,13 @@ module.exports = class IBMiContent {
   /**
    * @param {string} lib 
    * @param {string} spf
+   * @param {string} [mbr]
    * @returns {Promise<{asp?: string, library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
-  async getMemberList(lib, spf) {
-    lib = lib.toUpperCase();
-    spf = spf.toUpperCase();
+  async getMemberList(lib, spf, mbr = `*`) {
+    const library = lib.toUpperCase();
+    const sourceFile = spf.toUpperCase();
+    const member = (mbr !== `*` && mbr.endsWith(`*`) ? mbr.substring(0, mbr.length - 1) : null);
 
     let results;
 
@@ -239,21 +243,27 @@ module.exports = class IBMiContent {
             ON b.table_schema = a.table_schema AND
               b.table_name = a.table_name
         WHERE
-          a.table_schema = '${lib}' 
-          ${spf !== `*ALL` ? `AND a.table_name = '${spf}'` : ``}
+          a.table_schema = '${library}' 
+          ${sourceFile !== `*ALL` ? `AND a.table_name = '${sourceFile}'` : ``}
+          ${member ? `AND b.system_table_member like '${member}%'` : ``}
       `)
 
     } else {
       const tempLib = this.ibmi.config.tempLibrary;
       const TempName = IBMi.makeid();
 
-      await this.ibmi.remoteCommand(`DSPFD FILE(${lib}/${spf}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+      await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName);
 
       if (results.length === 1) {
         if (results[0].MBNAME.trim() === ``) {
           return []
         }
+      }
+
+      // There is no member parameter on the command so we have a slow filter.
+      if (member) {
+        results = results.filter(row => row.MBNAME.startsWith(member));
       }
     }
 
@@ -263,12 +273,12 @@ module.exports = class IBMiContent {
 
     return results.map(result => ({
       asp: asp,
-      library: lib,
+      library: library,
       file: result.MBFILE,
       name: result.MBNAME,
       extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
-      text: `${result.MBMTXT || ``}${spf === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
+      text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
     })).sort((a, b) => {
       if (a.name < b.name) { return -1; }
       if (a.name > b.name) { return 1; }

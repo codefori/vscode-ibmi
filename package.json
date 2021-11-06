@@ -59,6 +59,49 @@
 								"type": "string",
 								"description": "Host for this configuration"
 							},
+							"enableObjectBrowserTwo": {
+								"type": "boolean",
+								"default": false,
+								"description": "Want to try out the new Object Browser?"
+							},
+							"objectFilters": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"required": ["name", "library", "object"],
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "Connection name"
+										},
+										"library": {
+											"type": "string",
+											"description": "Library filter",
+											"maxLength": 10
+										},
+										"object": {
+											"type": "string",
+											"description": "Object filter",
+											"maxLength": 10
+										},
+										"types": {
+											"type": "array",
+											"description": "Object types filter",
+											"items": {
+												"type": "string",
+												"description": "Object type. Usually starts with an asterisk."
+											}
+										},
+										"member": {
+											"type": "string",
+											"description": "Member filter",
+											"maxLength": 10
+										}
+									}
+								},
+								"default": [],
+								"description": "List of filters for Object List"
+							},
 							"sourceFileList": {
 								"type": "array",
 								"items": {
@@ -805,6 +848,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.refreshObjectBrowser",
+				"title": "Refresh Object Browser",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
 				"command": "code-for-ibmi.createSourceFile",
 				"title": "Create Source File",
 				"category": "IBM i",
@@ -901,7 +950,7 @@
 				{
 					"id": "memberBrowser",
 					"name": "Member Browser",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserTwo == false"
 				},
 				{
 					"id": "ifsBrowser",
@@ -912,7 +961,12 @@
 					"id": "objectBrowser",
 					"name": "Object Browser",
 					"visibility": "collapsed",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserTwo == false"
+				},
+				{
+					"id": "objectBrowserTwo",
+					"name": "Object Browser (v. Two)",
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserTwo == true"
 				},
 				{
 					"id": "databaseBrowser",
@@ -1010,6 +1064,11 @@
 					"when": "view == objectBrowser"
 				},
 				{
+					"command": "code-for-ibmi.refreshObjectBrowser",
+					"group": "navigation",
+					"when": "view == objectBrowserTwo"
+				},
+				{
 					"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
 					"group": "navigation",
 					"when": "view == databaseBrowser"
@@ -1075,55 +1134,55 @@
 				},
 				{
 					"command": "code-for-ibmi.createMember",
-					"when": "view == memberBrowser && viewItem == SPF",
+					"when": "viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.removeSourceFile",
-					"when": "view == memberBrowser && viewItem == SPF",
+					"when": "viewItem == SPF && view == memberBrowser",
 					"group": "3_sourceFileStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.refreshSourceFile",
-					"when": "view == memberBrowser && viewItem == SPF"
+					"when": "viewItem == SPF && view == memberBrowser"
 				},
 				{
 					"command": "code-for-ibmi.searchSourceFile",
-					"when": "view == memberBrowser && viewItem == SPF"
+					"when": "viewItem == SPF"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == memberBrowser && viewItem == member",
+					"when": "viewItem == member",
 					"group": "1_workspace@1"
 				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
-					"when": "view == memberBrowser && viewItem == member",
+					"when": "viewItem == member",
 					"group": "2_memberStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.copyMember",
-					"when": "view == memberBrowser && viewItem == member",
+					"when": "viewItem == member",
 					"group": "2_memberStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteMember",
-					"when": "view == memberBrowser && viewItem == member",
+					"when": "viewItem == member",
 					"group": "2_memberStuff@4"
 				},
 				{
 					"command": "code-for-ibmi.renameMember",
-					"when": "view == memberBrowser && viewItem == member",
+					"when": "viewItem == member",
 					"group": "2_memberStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
-					"when": "view == memberBrowser && viewItem == member",
+					"when": "viewItem == member",
 					"group": "3_memberTransfer@1"
 				},
 				{
 					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
-					"when": "view == memberBrowser && viewItem == member",
+					"when": "viewItem == member",
 					"group": "3_memberTransfer@2"
 				},
 				{
@@ -1196,7 +1255,7 @@
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "viewItem == object",
 					"group": "1_workspace@1"
 				},
 				{

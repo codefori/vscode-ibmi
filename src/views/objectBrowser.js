@@ -173,7 +173,7 @@ module.exports = class objectBrowserProvider {
     if (element) { //Chosen SPF
       //Fetch members
       console.log(element.path);
-      const lib = element.path;
+      const library = element.path;
 
       // init cache entry if not exists
       let cacheExists = element.path in this.refreshCache;
@@ -182,9 +182,9 @@ module.exports = class objectBrowserProvider {
       }
 
       // only refresh member list for specific target, all LIB/SPF, or if cache entry didn't exist
-      if (!cacheExists || ([lib, `*ALL`].includes(this.targetLib))) {
+      if (!cacheExists || ([library, `*ALL`].includes(this.targetLib))) {
         try {
-          const objects = await content.getObjectList(lib);
+          const objects = await content.getObjectList({library});
           this.refreshCache[element.path] = []; // reset cache since we're getting new data
 
           let listItem;

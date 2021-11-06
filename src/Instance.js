@@ -101,6 +101,7 @@ module.exports = class Instance {
     const ifs = new (require(`./filesystems/ifs`));
 
     const objectBrowser = require(`./views/objectBrowser`);
+    const objectBrowserTwo = require(`./views/objectBrowserNew`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
     const actionsUI = require(`./webviews/actions`);
@@ -233,6 +234,18 @@ module.exports = class Instance {
         );
 
         //********* Object Browser */
+
+        // Optional feature
+        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:objectBrowserTwo`, config.enableObjectBrowserTwo === true);
+        
+        context.subscriptions.push(
+          Disposable(`objectBrowserTwo`,
+            vscode.window.registerTreeDataProvider(
+              `objectBrowserTwo`,
+              new objectBrowserTwo(context)
+            )
+          )
+        );
         
         context.subscriptions.push(
           Disposable(`objectBrowser`,
