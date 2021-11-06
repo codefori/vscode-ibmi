@@ -155,9 +155,8 @@ module.exports = class memberBrowserProvider {
               
               await Promise.all([
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
               ]);
             }

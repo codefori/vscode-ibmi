@@ -8,9 +8,6 @@ module.exports = class Configuration {
 
     this.host = base.host;
 
-    /** @type {boolean} */
-    this.enableObjectBrowserTwo = (base.enableObjectBrowserTwo === true);
-
     /** @type {{name: string, library: string, object: string, types: string[], member: string}[]} */
     this.objectFilters = base.objectFilters || [];
 

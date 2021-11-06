@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `enableObjectBrowserTwo`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -115,13 +115,6 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `clContentAssistEnabled`, `Enable CL Content Assist`);
         field.default = (config.clContentAssistEnabled ? `checked` : ``);
         field.description = `Enable CL content assist and hover support. After enabled and restarted, Code for IBM i will ask you to install the required tools for the feature to work. This will install programs into your temporary library.`;
-        ui.addField(field);
-
-        ui.addField(new Field(`hr`));
-    
-        field = new Field(`checkbox`, `enableObjectBrowserTwo`, `Enable Object Browser (v. Two)`);
-        field.default = (config.enableObjectBrowserTwo ? `checked` : ``);
-        field.description = `Enable to try the new Object Browser, which includes improved filters. Will disable the Member Browser and Object Browser.`;
         ui.addField(field);
 
         ui.addField(new Field(`hr`));

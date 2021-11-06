@@ -59,11 +59,6 @@
 								"type": "string",
 								"description": "Host for this configuration"
 							},
-							"enableObjectBrowserTwo": {
-								"type": "boolean",
-								"default": false,
-								"description": "Want to try out the new Object Browser?"
-							},
 							"objectFilters": {
 								"type": "array",
 								"items": {
@@ -101,13 +96,7 @@
 										}
 									}
 								},
-								"default": [{
-									"name": "QSYSINC Filter",
-									"library": "QSYSINC",
-									"object": "*",
-									"types": ["*FILE"],
-									"member": "*"
-								}],
+								"default": [],
 								"description": "List of filters for Object List"
 							},
 							"sourceFileList": {
@@ -119,16 +108,7 @@
 								"default": [
 									"QSYSINC/H"
 								],
-								"description": "As seen in the member browser"
-							},
-							"objectBrowserList": {
-								"type": "array",
-								"items": {
-									"type": "string",
-									"title": "Library name"
-								},
-								"default": [],
-								"description": "List of libraries to in the Object Browser"
+								"description": "As seen in the member browser. Deprecated."
 							},
 							"databaseBrowserList": {
 								"type": "array",
@@ -723,23 +703,6 @@
 				"icon": "$(files)"
 			},
 			{
-				"command": "code-for-ibmi.addSourceFile",
-				"title": "Add Source File",
-				"category": "IBM i",
-				"icon": "$(new-folder)"
-			},
-			{
-				"command": "code-for-ibmi.refreshSourceFile",
-				"title": "Refresh Member List",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.removeSourceFile",
-				"title": "Remove source file from view",
-				"category": "IBM i",
-				"icon": "$(remove)"
-			},
-			{
 				"command": "code-for-ibmi.createMember",
 				"title": "Create Member",
 				"category": "IBM i",
@@ -850,16 +813,10 @@
 				"icon": "$(remove)"
 			},
 			{
-				"command": "code-for-ibmi.refreshObjectList",
-				"title": "Refresh Object List",
-				"category": "IBM i",
-				"icon": "$(refresh)"
-			},
-			{
 				"command": "code-for-ibmi.maintainFilter",
 				"title": "Maintain filter",
 				"category": "IBM i",
-				"icon": "$(add)"
+				"icon": "$(pencil)"
 			},
 			{
 				"command": "code-for-ibmi.deleteFilter",
@@ -885,22 +842,10 @@
 				"icon": "$(new-file)"
 			},
 			{
-				"command": "code-for-ibmi.addLibraryToObjectBrowser",
-				"title": "Add library to Object Browser",
-				"category": "IBM i",
-				"icon": "$(new-folder)"
-			},
-			{
 				"command": "code-for-ibmi.createLibrary",
 				"title": "Create new library",
 				"category": "IBM i",
 				"icon": "$(repo-create)"
-			},
-			{
-				"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
-				"title": "Remove library from view",
-				"category": "IBM i",
-				"icon": "$(remove)"
 			},
 			{
 				"command": "code-for-ibmi.refreshDatabaseBrowser",
@@ -973,25 +918,15 @@
 					"when": "code-for-ibmi:connected == true"
 				},
 				{
-					"id": "memberBrowser",
-					"name": "Member Browser",
-					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserTwo == false"
+					"id": "objectBrowser",
+					"name": "Object Browser",
+					"visibility": "collapsed",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
 					"when": "code-for-ibmi:connected == true"
-				},
-				{
-					"id": "objectBrowser",
-					"name": "Object Browser",
-					"visibility": "collapsed",
-					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserTwo == false"
-				},
-				{
-					"id": "objectBrowserTwo",
-					"name": "Object Browser (v. Two)",
-					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserTwo == true"
 				},
 				{
 					"id": "databaseBrowser",
@@ -1041,22 +976,12 @@
 				{
 					"command": "code-for-ibmi.maintainFilter",
 					"group": "navigation",
-					"when": "view == objectBrowserTwo"
+					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.showVariableMaintenance",
 					"group": "navigation",
 					"when": "view == libraryListView"
-				},
-				{
-					"command": "code-for-ibmi.addSourceFile",
-					"group": "navigation",
-					"when": "view == memberBrowser"
-				},
-				{
-					"command": "code-for-ibmi.refreshMemberBrowser",
-					"group": "navigation",
-					"when": "view == memberBrowser"
 				},
 				{
 					"command": "code-for-ibmi.changeWorkingDirectory",
@@ -1079,24 +1004,14 @@
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.addLibraryToObjectBrowser",
-					"group": "navigation",
-					"when": "view == objectBrowser"
-				},
-				{
 					"command": "code-for-ibmi.createLibrary",
-					"group": "navigation",
-					"when": "view == objectBrowser"
-				},
-				{
-					"command": "code-for-ibmi.refreshObjectList",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
 					"group": "navigation",
-					"when": "view == objectBrowserTwo"
+					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
@@ -1174,15 +1089,6 @@
 					"command": "code-for-ibmi.createMember",
 					"when": "viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
-				},
-				{
-					"command": "code-for-ibmi.removeSourceFile",
-					"when": "viewItem == SPF && view == memberBrowser",
-					"group": "3_sourceFileStuff@1"
-				},
-				{
-					"command": "code-for-ibmi.refreshSourceFile",
-					"when": "viewItem == SPF && view == memberBrowser"
 				},
 				{
 					"command": "code-for-ibmi.searchSourceFile",
@@ -1279,17 +1185,9 @@
 					"group": "3_ifsTransfer@2"
 				},
 				{
-					"command": "code-for-ibmi.refreshObjectList",
-					"when": "view == objectBrowser && viewItem == library"
-				},
-				{
 					"command": "code-for-ibmi.createSourceFile",
-					"when": "view == objectBrowser && viewItem == library",
+					"when": "view == objectBrowser && viewItem == filter",
 					"group": "1_LibActions@1"
-				},
-				{
-					"command": "code-for-ibmi.removeLibraryFromObjectBrowser",
-					"when": "view == objectBrowser && viewItem == library"
 				},
 				{
 					"command": "code-for-ibmi.runAction",

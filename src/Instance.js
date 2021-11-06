@@ -94,14 +94,12 @@ module.exports = class Instance {
     const config = this.getConfig();
 
     const libraryListView = require(`./views/libraryListView`);
-
-    const memberBrowser = require(`./views/memberBrowser`);
     
     const ifsBrowser = require(`./views/ifsBrowser`);
     const ifs = new (require(`./filesystems/ifs`));
 
     const objectBrowser = require(`./views/objectBrowser`);
-    const objectBrowserTwo = require(`./views/objectBrowserNew`);
+    const objectBrowserTwo = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
     const actionsUI = require(`./webviews/actions`);
@@ -142,9 +140,8 @@ module.exports = class Instance {
       if (initialisedBefore) {
         await Promise.all([
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
+          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
         ]);
         return;
@@ -174,17 +171,6 @@ module.exports = class Instance {
             vscode.window.registerTreeDataProvider(
               `libraryListView`,
               new libraryListView(context)
-            )
-          )
-        );
-
-        //********* Member Browser */
-
-        context.subscriptions.push(
-          Disposable(`memberBrowser`,
-            vscode.window.registerTreeDataProvider(
-              `memberBrowser`,
-              new memberBrowser(context)
             )
           )
         );
@@ -234,18 +220,6 @@ module.exports = class Instance {
         );
 
         //********* Object Browser */
-
-        // Optional feature
-        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:objectBrowserTwo`, config.enableObjectBrowserTwo === true);
-        
-        context.subscriptions.push(
-          Disposable(`objectBrowserTwo`,
-            vscode.window.registerTreeDataProvider(
-              `objectBrowserTwo`,
-              new objectBrowserTwo(context)
-            )
-          )
-        );
         
         context.subscriptions.push(
           Disposable(`objectBrowser`,
@@ -416,7 +390,7 @@ module.exports = class Instance {
           })
         );
 
-        if (config.enableObjectBrowserTwo === true && config.objectFilters.length === 0) {
+        if (config.objectFilters.length === 0) {
           vscode.window.showInformationMessage(`Would you like to import filters to the new Object Browser from the Member Browser?`, `Yes`, `No`).then(async (result) => {
             if (result === `Yes`) {
               await vscode.commands.executeCommand(`code-for-ibmi.importFilters`);
