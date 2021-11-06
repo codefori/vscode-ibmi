@@ -447,7 +447,7 @@ module.exports = class objectBrowserTwoProvider {
 
         if (!newLibrary) return; 
 
-        let libraries = config.objectBrowserList;
+        let filters = config.objectFilters;
 
         try {
           await connection.remoteCommand(
@@ -459,8 +459,15 @@ module.exports = class objectBrowserTwoProvider {
         }
         
         if (newLibrary.length <= 10) {
-          libraries.push(newLibrary.toUpperCase());
-          await config.set(`objectBrowserList`, libraries);
+          filters.push({
+            name: newLibrary,
+            library: newLibrary,
+            object: `*ALL`,
+            types: [`*ALL`],
+            member: `*`
+          });
+
+          await config.set(`objectBrowserList`, filters);
           if (Configuration.get(`autoRefresh`)) this.refresh();
         } else {
           vscode.window.showErrorMessage(`Library name too long.`);
@@ -469,6 +476,9 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node) => {
         if (node) {
+          const config = instance.getConfig();
+          const filter = config.objectFilters.find(filter => filter.name === node.filter);
+
           //Running from right click
           const fileName = await vscode.window.showInputBox({
             prompt: `Name of new source file`
@@ -479,7 +489,7 @@ module.exports = class objectBrowserTwoProvider {
      
             if (fileName !== undefined && fileName.length > 0 && fileName.length <= 10) {
               try {
-                const library = node.path.toUpperCase();
+                const library = filter.library;
                 const uriPath = `${library}/${fileName.toUpperCase()}`
 
                 vscode.window.showInformationMessage(`Creating source file ${uriPath}.`);
@@ -491,9 +501,6 @@ module.exports = class objectBrowserTwoProvider {
                 if (Configuration.get(`autoRefresh`)) {
                   this.refresh();
                 }
-
-                let result = await vscode.window.showWarningMessage(`Do you want to add ${uriPath} to the Member Browser?`, `Yes`, `No`);
-
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating source file! ${e}`);
               }
