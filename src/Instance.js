@@ -417,7 +417,7 @@ module.exports = class Instance {
         );
 
         if (config.enableObjectBrowserTwo !== true) {
-          vscode.window.showInformationMessage(`Code for IBM i will be replacing the Object and Member browser in the future. Would you like to preview the new Object Browser now?`, `Yes`, `No`).then(async (result) => {
+          vscode.window.showInformationMessage(`Would you like to preview the new Object Browser? You can revert back later in the connection settings.`, `Yes`, `No`).then(async (result) => {
             if (result === `Yes`) {
               config.set(`enableObjectBrowserTwo`, true);
               vscode.commands.executeCommand(`setContext`, `code-for-ibmi:objectBrowserTwo`, true);
