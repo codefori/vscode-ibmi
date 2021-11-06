@@ -225,11 +225,13 @@ module.exports = class IBMiContent {
   async getMemberList(lib, spf, mbr = `*`) {
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
-    const member = (mbr !== `*` && mbr.endsWith(`*`) ? mbr.substring(0, mbr.length - 1) : null);
+    let member = (mbr !== `*` ? mbr : null);
 
     let results;
 
     if (this.ibmi.remoteFeatures.db2util) {
+      if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
+
       results = await this.runSQL(`
         SELECT
           (b.avgrowsize - 12) as MBMXRL,
@@ -245,7 +247,7 @@ module.exports = class IBMiContent {
         WHERE
           a.table_schema = '${library}' 
           ${sourceFile !== `*ALL` ? `AND a.table_name = '${sourceFile}'` : ``}
-          ${member ? `AND b.system_table_member like '${member}%'` : ``}
+          ${member ? `AND b.system_table_member like '${member}'` : ``}
       `)
 
     } else {

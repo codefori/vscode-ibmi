@@ -416,7 +416,20 @@ module.exports = class Instance {
           })
         );
 
-        
+        if (config.enableObjectBrowserTwo !== true) {
+          vscode.window.showInformationMessage(`Code for IBM i will be replacing the Object and Member browser in the future. Would you like to preview the new Object Browser now?`, `Yes`, `No`).then(async (result) => {
+            if (result === `Yes`) {
+              config.set(`enableObjectBrowserTwo`, true);
+              vscode.commands.executeCommand(`setContext`, `code-for-ibmi:objectBrowserTwo`, true);
+
+              vscode.window.showInformationMessage(`Would you like to import filters from the Member Browser?`, `Yes`, `No`).then(async (result) => {
+                if (result === `Yes`) {
+                  await vscode.commands.executeCommand(`code-for-ibmi.importFilters`);
+                }
+              });
+            }
+          });
+        }
 
         initialisedBefore = true;
       }

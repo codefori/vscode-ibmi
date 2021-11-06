@@ -68,7 +68,7 @@
 								"type": "array",
 								"items": {
 									"type": "object",
-									"required": ["name", "library", "object"],
+									"required": ["name", "library", "object", "types", "member"],
 									"properties": {
 										"name": {
 											"type": "string",
@@ -90,16 +90,24 @@
 											"items": {
 												"type": "string",
 												"description": "Object type. Usually starts with an asterisk."
-											}
+											},
+											"default": ["*ALL"]
 										},
 										"member": {
 											"type": "string",
 											"description": "Member filter",
-											"maxLength": 10
+											"maxLength": 10,
+											"default": "*"
 										}
 									}
 								},
-								"default": [],
+								"default": [{
+									"name": "QSYSINC Filter",
+									"library": "QSYSINC",
+									"object": "*",
+									"types": ["*FILE"],
+									"member": "*"
+								}],
 								"description": "List of filters for Object List"
 							},
 							"sourceFileList": {
@@ -848,6 +856,23 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.maintainFilter",
+				"title": "Maintain filter",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.deleteFilter",
+				"title": "Delete filter",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
+				"command": "code-for-ibmi.importFilters",
+				"title": "Import filters into new Object Browser.",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.refreshObjectBrowser",
 				"title": "Refresh Object Browser",
 				"category": "IBM i",
@@ -1014,6 +1039,11 @@
 					"when": "view == libraryListView"
 				},
 				{
+					"command": "code-for-ibmi.maintainFilter",
+					"group": "navigation",
+					"when": "view == objectBrowserTwo"
+				},
+				{
 					"command": "code-for-ibmi.showVariableMaintenance",
 					"group": "navigation",
 					"when": "view == libraryListView"
@@ -1121,6 +1151,14 @@
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryRemove@1"
+				},
+				{
+					"command": "code-for-ibmi.maintainFilter",
+					"when": "viewItem == filter"
+				},
+				{
+					"command": "code-for-ibmi.deleteFilter",
+					"when": "viewItem == filter"
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",

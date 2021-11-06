@@ -1,8 +1,9 @@
 
 const vscode = require(`vscode`);
 
+const FiltersUI = require(`../webviews/filters`);
+
 let instance = require(`../Instance`);
-const Configuration = require(`../api/Configuration`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -14,6 +15,49 @@ module.exports = class objectBrowserTwoProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node) => {
+        await FiltersUI.init(node ? node.filter : undefined);
+        this.refresh();
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.importFilters`, async () => {
+        const config = instance.getConfig();
+
+        config.objectFilters = config.sourceFileList.map(fullPath => {
+          const path = fullPath.split(`/`);
+          return {
+            name: fullPath,
+            library: path[0],
+            object: path[1],
+            types: [`*ALL`],
+            member: `*`
+          }
+        });
+
+        config.set(`objectFilters`, config.objectFilters);
+        
+        this.refresh();
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.deleteFilter`, async (node) => {
+        if (node) {
+          const config = instance.getConfig();
+          const filterName = node.filter;
+
+          vscode.window.showInformationMessage(`Delete filter ${filterName}?`, `Yes`, `No`).then(async (value) => {
+            if (value === `Yes`) {
+              const index = config.objectFilters.findIndex(filter => filter.name === filterName);
+
+              if (index > -1) {
+                config.objectFilters.splice(index, 1);
+                config.set(`objectFilters`, config.objectFilters);
+                this.refresh();
+              }
+            }
+          });
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, async () => {
         this.refresh();
       }),
@@ -79,7 +123,7 @@ module.exports = class objectBrowserTwoProvider {
       if (connection) {
         const filters = config.objectFilters;
 
-        items = filters.map(filter => new Filter(filter.name));
+        items = filters.map(filter => new Filter(filter));
       }
     }
     return items;
@@ -88,13 +132,14 @@ module.exports = class objectBrowserTwoProvider {
 
 class Filter extends vscode.TreeItem {
   /**
-   * @param {string} name
+   * @param {{name: string, library: string, object: string, types: string[], member: string}} filter
    */
-  constructor(name) {
-    super(name, vscode.TreeItemCollapsibleState.Collapsed);
+  constructor(filter) {
+    super(filter.name, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.contextValue = `filter`;
-    this.filter = name;
+    this.description = `${filter.library}/${filter.object}/${filter.member} (${filter.types.join(`, `)})`;
+    this.filter = filter.name;
   }
 }
 
