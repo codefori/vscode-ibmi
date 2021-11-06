@@ -416,17 +416,10 @@ module.exports = class Instance {
           })
         );
 
-        if (config.enableObjectBrowserTwo !== true) {
-          vscode.window.showInformationMessage(`Would you like to preview the new Object Browser? You can revert back later in the connection settings.`, `Yes`, `No`).then(async (result) => {
+        if (config.enableObjectBrowserTwo === true && config.objectFilters.length === 0) {
+          vscode.window.showInformationMessage(`Would you like to import filters to the new Object Browser from the Member Browser?`, `Yes`, `No`).then(async (result) => {
             if (result === `Yes`) {
-              config.set(`enableObjectBrowserTwo`, true);
-              vscode.commands.executeCommand(`setContext`, `code-for-ibmi:objectBrowserTwo`, true);
-
-              vscode.window.showInformationMessage(`Would you like to import filters from the Member Browser?`, `Yes`, `No`).then(async (result) => {
-                if (result === `Yes`) {
-                  await vscode.commands.executeCommand(`code-for-ibmi.importFilters`);
-                }
-              });
+              await vscode.commands.executeCommand(`code-for-ibmi.importFilters`);
             }
           });
         }

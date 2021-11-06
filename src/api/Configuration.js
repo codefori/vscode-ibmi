@@ -15,7 +15,7 @@ module.exports = class Configuration {
     this.objectFilters = base.objectFilters || [];
 
     /** @type {string[]} LIB/FILE, LIB/FILEs */
-    this.sourceFileList = base.sourceFileList || [`QSYSINC/H`];
+    this.sourceFileList = base.sourceFileList || [];
 
     /** @type {string[]} LIB, LIB */
     this.objectBrowserList = base.objectBrowserList || [];
