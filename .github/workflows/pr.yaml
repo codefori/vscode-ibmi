@@ -4,7 +4,7 @@ jobs:
   release:
     name: Validation
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'create-vsix')
+    if: contains(github.event.pull_request.labels.*.name, 'build')
     steps:
       - uses: actions/checkout@v2
         with:
