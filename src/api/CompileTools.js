@@ -264,15 +264,6 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-          const possibleObject = this.getObjectFromCommand(command);
-
-          if (possibleObject) {
-            evfeventInfo = {
-              ...evfeventInfo,
-              ...possibleObject
-            };
-          }
-
           /** @type {any} */
           let commandResult, output;
           let executed = false;
@@ -285,6 +276,15 @@ module.exports = class CompileTools {
             });
 
             if (commandResult) {
+              command = commandResult.command;
+              const possibleObject = this.getObjectFromCommand(command);
+
+              if (possibleObject) {
+                evfeventInfo = {
+                  ...evfeventInfo,
+                  ...possibleObject
+                };
+              }
 
               if (commandResult.code === 0 || commandResult.code === null) {
                 executed = true;
@@ -327,7 +327,7 @@ module.exports = class CompileTools {
    * Execute command
    * @param {*} instance
    * @param {{environment?: "ile"|"qsh"|"pase", command: string}} options 
-   * @returns {Promise<{stdout: string, stderr: string, code?: number}|null>}
+   * @returns {Promise<{stdout: string, stderr: string, code?: number, command: string}|null>}
    */
   static async runCommand(instance, options) {
     const connection = instance.getConnection();
@@ -380,15 +380,16 @@ module.exports = class CompileTools {
 
       case `ile`:
       default:
-        command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`;
         commandResult = await connection.qshCommand([
           `liblist -d ` + connection.defaultUserLibraries.join(` `),
           `liblist -c ` + config.currentLibrary,
           `liblist -a ` + libl.join(` `),
-          command,
+          `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`,
         ], undefined, 1);
         break;
       }
+
+      commandResult.command = command;
 
       return commandResult;
     } else {
