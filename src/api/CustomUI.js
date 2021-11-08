@@ -55,7 +55,6 @@ class CustomUI {
       });
 
     } else {
-      console.warn(`CustomUI.loadPage called with promise returned. This is deprecated.`);
       return new Promise((resolve, reject) => {
         panel.webview.onDidReceiveMessage(
           message => {
