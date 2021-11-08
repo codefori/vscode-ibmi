@@ -46,12 +46,13 @@ class CustomUI {
     if (callback) {
       panel.webview.onDidReceiveMessage(
         message => {
+          didSubmit = true;
           callback({panel, data: message});
         }
       );
   
       panel.onDidDispose(() => {
-        callback({panel, data: null});
+        if (!didSubmit) callback({panel, data: null});
       });
 
     } else {
@@ -215,6 +216,16 @@ class CustomUI {
 }
 
 class Field  {
+  static from(field) {
+    const res = new Field(field.type, field.id, field.label);
+
+    Object.keys(field).forEach(key => {
+      res[key] = field[key];
+    });
+
+    return res;
+  }
+
   /**
    * 
    * @param {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
