@@ -36,7 +36,7 @@ module.exports = class objectBrowserTwoProvider {
             name: fullPath,
             library: path[0],
             object: path[1],
-            types: [`*ALL`],
+            types: [`*SRCPF`],
             member: `*`
           }
         });
