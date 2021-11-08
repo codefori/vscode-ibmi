@@ -46,16 +46,16 @@ class CustomUI {
     if (callback) {
       panel.webview.onDidReceiveMessage(
         message => {
-          didSubmit = true;
           callback({panel, data: message});
         }
       );
   
       panel.onDidDispose(() => {
-        if (!didSubmit) callback({panel, data: null});
+        callback({panel, data: null});
       });
 
     } else {
+      console.warn(`CustomUI.loadPage called with promise returned. This is deprecated.`);
       return new Promise((resolve, reject) => {
         panel.webview.onDidReceiveMessage(
           message => {
