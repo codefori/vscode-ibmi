@@ -5,15 +5,14 @@ For example, you might be a vendor that produces lists or HTML that you'd like t
 ## Imports
 
 ```
-const { instance, CustomUI, Field } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).exports;
+const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).exports;
 ```
 
-We provide three base APIs for you to use. This document only covers `instance`. We have another page on [CustomUI](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/custom-ui.md).
+We provide three base APIs for you to use. This document only covers `instance`. We have another page on [CustomUI](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/custom-ui.md), which allows you to build UI for your extension.
 
 `instance` has four methods for you to use:
 
-* `getConnection(): `[`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
-  * `IBMi` has methods that can be used to send ILE, QSH and pase commands to the IBM i.
+* `getConnection()`: [`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
 * `getContent(): `[`IBMiContent`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMiContent.js) to work with content on the current connection
    * `IBMiContent` has methods to run SQL statements (requires `db2util`), get the contents of tables (without `db2util`) and read and write members/streamfiles.
 * `getConfig(): `[`Configuration`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/Configuration.js) to get/set configuration for the current connection
@@ -90,28 +89,20 @@ Please remember that you cannot use `QTEMP` between commands since each command 
 
 ### Running commands with the user library list
 
-By default, the `remoteCommand` method does not follow the user library list from VS Code. You must write your own code to grab the library list and set it before executing the command. Due to the way the `system` command in pase works, we actually use `QSH` to set the library list and execute the command:
+Code for IBM i ships a command that can be used by an extension to execute a remote command on the IBM i: `code-for-ibmi.runCommand`.
 
-```js
-  async runCommandWithLibl(ileCommand) {
-    const connection = instance.getConnection();
-    const content = instance.getContent();
-    const config = instance.getConfig();
+It has a parameter which is an object with two properties:
 
-    //We need to add it backwards since `liblist` adds items to the front
-    let libl = config.libraryList.slice(0).reverse();
+* `environment: "ile"|"qsh"|"pase"` which describes what environment the command will be executed.
+* `command: string` which will have the command. You can also use [Promptable fields](https://halcyon-tech.github.io/vscode-ibmi/#/?id=prompted).
 
-    const result = await connection.qshCommand([
-      //We also have to clear the initial library list to change it.
-      `liblist -d ` + connection.defaultUserLibraries.join(` `),
-      `liblist -c ` + config.currentLibrary,
-      `liblist -a ` + libl.join(` `),
-      `system -s "${ileCommand}"`,
-    ]);
-    
-    return result;
-  }
-```
+When executing a command in the `ile` or `qsh` environment, it will use the library list from the current connection.
+
+The command returns an object with the following properties:
+
+* `stdout: string` - usually contains the spoolfile from the `ile` environment
+* `stderr: string`
+* `code: number|null` - `0` or `null` usually indicates no error.
 
 ### Storing config specific to the connection
 
