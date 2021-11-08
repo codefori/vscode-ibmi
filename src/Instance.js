@@ -6,6 +6,7 @@ const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
 
 const Disposable = require(`./api/Disposable`);
+const { CustomUI, Field } = require(`./api/CustomUI`);
 
 /** @type {vscode.StatusBarItem} */
 let connectedBarItem;
@@ -400,10 +401,35 @@ module.exports = class Instance {
                 }
               }
             }
+          }),
+
+          vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
+            if (detail && detail.command) {
+              return CompileTools.runCommand(instance, detail);
+            } else {
+              return null;
+            }
           })
         );
 
-        
+        context.subscriptions.push(
+          vscode.commands.registerCommand(`code-for-ibmi.launchUI`, (title, fields, callback) => {
+            if (title && fields && callback) {
+              const ui = new CustomUI();
+
+              fields.forEach(field => {
+                const uiField = new Field(field.type, field.id, field.label);
+                Object.keys(field).forEach(key => {
+                  uiField[key] = field[key];
+                });
+
+                ui.addField(uiField);
+              });
+
+              ui.loadPage(title, callback);
+            }
+          })
+        );
 
         initialisedBefore = true;
       }
