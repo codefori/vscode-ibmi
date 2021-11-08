@@ -4,9 +4,31 @@ jobs:
   release:
     name: Validation
     runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'build')
     steps:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 1
       - run: npm install
       - run: node ./node_modules/eslint/bin/eslint src/** --quiet
+      
+      - run: npm install -g vsce
+      - name: Create build
+        run: npm run package
+        
+      - name: Upload build
+        uses: actions/upload-artifact@v2
+        with:
+          name: code-for-ibmi-pr-build
+          path: ./*.vsix
+          
+      - name: Post comment
+        uses: actions/github-script@v5
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '👋 A new build is available for this PR based on ${{ github.event.pull_request.head.sha }}. [Download here.](https://github.com/halcyon-tech/vscode-ibmi/actions/runs/${{ github.run_id }})'
+            })
