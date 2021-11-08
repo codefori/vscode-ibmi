@@ -199,7 +199,7 @@ module.exports = class IBMiContent {
     const TempName = IBMi.makeid();
 
     if (sourceFilesOnly) {
-      await this.ibmi.remoteCommand(`DSPFD FILE(BARRY/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+      await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
 
       const results = await this.getTable(tempLib, TempName, TempName);
 
