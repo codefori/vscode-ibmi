@@ -563,8 +563,12 @@ module.exports = class objectBrowserTwoProvider {
 
       if (connection) {
         const filters = config.objectFilters;
-
-        items = filters.map(filter => new Filter(filter));
+        
+        if (filters.length > 0) {
+          items = filters.map(filter => new Filter(filter));
+        } else {
+          items = [getNewFilter()]
+        }
       }
     }
     return items;
@@ -640,6 +644,18 @@ class Member extends vscode.TreeItem {
       arguments: [path]
     };
   }
+}
+
+const getNewFilter = () => {
+  const item = new vscode.TreeItem(`Create new filter..`);
+
+  item.iconPath = new vscode.ThemeIcon(`add`);
+  item.command = {
+    command: `code-for-ibmi.maintainFilter`,
+    title: `Create new filter`
+  };
+
+  return item;
 }
 
 //https://code.visualstudio.com/api/references/icons-in-labels
