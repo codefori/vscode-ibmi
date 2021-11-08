@@ -204,7 +204,7 @@ module.exports = class IBMiContent {
       const results = await this.getTable(tempLib, TempName, TempName);
 
       if (results.length === 1) {
-        if (results[0].ODOBNM.trim() === ``) {
+        if (results[0].PHFILE.trim() === ``) {
           return []
         }
       }
