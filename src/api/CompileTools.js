@@ -174,8 +174,6 @@ module.exports = class CompileTools {
         command = availableActions.find(action => action.name === chosenOptionName).command;
         environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
 
-        command = this.handleDefaultVariables(instance, command);
-
         let blank, asp, lib, file, fullName;
         let basename, name, ext;
 
@@ -265,29 +263,7 @@ module.exports = class CompileTools {
           break;
         }
 
-        if (command.startsWith(`?`)) {
-          command = await vscode.window.showInputBox({prompt: `Run action`, value: command.substring(1)})
-        } else {
-          command = await CompileTools.showCustomInputs(chosenOptionName, command);
-        }
-
         if (command) {
-          /** @type {any} */
-          let commandResult, output;
-          let executed = false;
-
-          //We have to reverse it because `liblist -a` adds the next item to the top always 
-          let libl = config.libraryList.slice(0).reverse();
-
-          libl = libl.map(library => {
-            //We use this for special variables in the libl
-            switch (library) {
-            case `&BUILDLIB`: return config.currentLibrary;
-            case `&CURLIB`: return config.currentLibrary;
-            default: return library;
-            }
-          });
-
           const possibleObject = this.getObjectFromCommand(command);
 
           if (possibleObject) {
@@ -297,51 +273,37 @@ module.exports = class CompileTools {
             };
           }
 
-          outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-          outputChannel.append(`   Library list: ` + config.libraryList.join(` `) + `\n`);
-          outputChannel.append(`        Command: ` + command + `\n`);
+          /** @type {any} */
+          let commandResult, output;
+          let executed = false;
 
           try {
 
-            switch (environment) {
-            case `pase`:
-              commandResult = await connection.paseCommand(command, undefined, 1);
-              break;
+            commandResult = await this.runCommand(instance, {
+              environment,
+              command
+            });
 
-            case `qsh`:
-              commandResult = await connection.qshCommand([
-                `liblist -d ` + connection.defaultUserLibraries.join(` `),
-                `liblist -c ` + config.currentLibrary,
-                `liblist -a ` + libl.join(` `),
-                command,
-              ], undefined, 1);
-              break;
+            if (commandResult) {
 
-            case `ile`:
-            default:
-              command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`;
-              commandResult = await connection.qshCommand([
-                `liblist -d ` + connection.defaultUserLibraries.join(` `),
-                `liblist -c ` + config.currentLibrary,
-                `liblist -a ` + libl.join(` `),
-                command,
-              ], undefined, 1);
-              break;
-            }
-
-            if (commandResult.code === 0 || commandResult.code === null) {
-              executed = true;
-              vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
-              if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
+              if (commandResult.code === 0 || commandResult.code === null) {
+                executed = true;
+                vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
+                if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
               
-            } else {
-              executed = false;
-              vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
-            }
+              } else {
+                executed = false;
+                vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
+              }
             
-            output = ``;
-            if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
-            if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
+              output = ``;
+              if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
+              if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
+
+              if (command.includes(`*EVENTF`)) {
+                this.refreshDiagnostics(instance, evfeventInfo);
+              }
+            }
 
           } catch (e) {
             output = `${e}\n`;
@@ -352,16 +314,85 @@ module.exports = class CompileTools {
 
           outputChannel.append(output);
 
-          if (command.includes(`*EVENTF`)) {
-            this.refreshDiagnostics(instance, evfeventInfo);
-          }
-
         }
       }
 
     } else {
       //No compile commands
       vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);
+    }
+  }
+
+  /**
+   * Execute command
+   * @param {*} instance
+   * @param {{environment?: "ile"|"qsh"|"pase", command: string}} options 
+   * @returns {Promise<{stdout: string, stderr: string, code?: number}|null>}
+   */
+  static async runCommand(instance, options) {
+    const connection = instance.getConnection();
+
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+    
+    let command = options.command;
+    let commandResult;
+
+    //We have to reverse it because `liblist -a` adds the next item to the top always 
+    let libl = config.libraryList.slice(0).reverse();
+
+    libl = libl.map(library => {
+      //We use this for special variables in the libl
+      switch (library) {
+      case `&BUILDLIB`: return config.currentLibrary;
+      case `&CURLIB`: return config.currentLibrary;
+      default: return library;
+      }
+    });
+
+    command = this.handleDefaultVariables(instance, command);
+
+    if (command.startsWith(`?`)) {
+      command = await vscode.window.showInputBox({prompt: `Run Command`, value: command.substring(1)})
+    } else {
+      command = await CompileTools.showCustomInputs(`Run Command`, command);
+    }
+
+    if (command) {
+
+      outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
+      outputChannel.append(`   Library list: ` + config.libraryList.join(` `) + `\n`);
+      outputChannel.append(`        Command: ` + command + `\n`);
+
+      switch (options.environment) {
+      case `pase`:
+        commandResult = await connection.paseCommand(command, undefined, 1);
+        break;
+
+      case `qsh`:
+        commandResult = await connection.qshCommand([
+          `liblist -d ` + connection.defaultUserLibraries.join(` `),
+          `liblist -c ` + config.currentLibrary,
+          `liblist -a ` + libl.join(` `),
+          command,
+        ], undefined, 1);
+        break;
+
+      case `ile`:
+      default:
+        command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`;
+        commandResult = await connection.qshCommand([
+          `liblist -d ` + connection.defaultUserLibraries.join(` `),
+          `liblist -c ` + config.currentLibrary,
+          `liblist -a ` + libl.join(` `),
+          command,
+        ], undefined, 1);
+        break;
+      }
+
+      return commandResult;
+    } else {
+      return null;
     }
   }
 
