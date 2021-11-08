@@ -1,8 +1,8 @@
-# Want to help test this PR?
+# Want to help test a PR?
 
-Attached is the `vsix` for the PR. Install it, test out the feature, and post some feedback.
+If you got a zip file from a build, extract it. Inside of it is a 'vsix'.
 
-VSIX contained in this zip: UPLOAD GITHUB ZIP LINK HERE
+Install it, test out the feature, and post some feedback.
 
 ### How to install
 
@@ -16,6 +16,6 @@ VSIX contained in this zip: UPLOAD GITHUB ZIP LINK HERE
 
 ### When you're done
 
-* post the feedback on this PR
+* post the feedback on the PR
 * uninstall the extension from the extension panel
 * re-install the extension from the Marketplace
