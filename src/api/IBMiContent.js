@@ -193,27 +193,52 @@ module.exports = class IBMiContent {
   async getObjectList(filters) {
     const library = filters.library.toUpperCase();
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
-    const objectTypes = (filters.types && filters.types.length > 0 ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
+    const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
 
     const tempLib = this.ibmi.config.tempLibrary;
     const TempName = IBMi.makeid();
 
-    await this.ibmi.remoteCommand(`DSPOBJD OBJ(${library}/${object}) OBJTYPE(${objectTypes}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-    const results = await this.getTable(tempLib, TempName, TempName);
+    if (sourceFilesOnly) {
+      await this.ibmi.remoteCommand(`DSPFD FILE(BARRY/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
 
-    if (results.length === 1) {
-      if (results[0].ODOBNM.trim() === ``) {
-        return []
+      const results = await this.getTable(tempLib, TempName, TempName);
+
+      if (results.length === 1) {
+        if (results[0].ODOBNM.trim() === ``) {
+          return []
+        }
       }
-    }
 
-    return results.map(object => ({
-      library: library,
-      name: object.ODOBNM,
-      type: object.ODOBTP,
-      attribute: object.ODOBAT,
-      text: object.ODOBTX
-    }))
+      return results
+        .filter(object => object.PHDTAT === `S`)
+        .map(object => ({
+          library,
+          name: object.PHFILE,
+          type: `*FILE`,
+          attribute: object.PHFILA,
+          text: object.PHTXT
+        }));
+
+    } else {
+      const objectTypes = (filters.types && filters.types.length > 0 ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
+
+      await this.ibmi.remoteCommand(`DSPOBJD OBJ(${library}/${object}) OBJTYPE(${objectTypes}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+      const results = await this.getTable(tempLib, TempName, TempName);
+
+      if (results.length === 1) {
+        if (results[0].ODOBNM.trim() === ``) {
+          return []
+        }
+      }
+
+      return results.map(object => ({
+        library,
+        name: object.ODOBNM,
+        type: object.ODOBTP,
+        attribute: object.ODOBAT,
+        text: object.ODOBTX
+      }));
+    }
   }
 
   /**

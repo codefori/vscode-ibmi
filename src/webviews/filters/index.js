@@ -55,7 +55,7 @@ module.exports = class FiltersUI {
 
     field = new Field(`input`, `types`, `Object type filter`);
     field.default = filter.types.join(`, `);
-    field.description = `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>.`;
+    field.description = `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`;
     ui.addField(field);
 
     field = new Field(`input`, `member`, `Member`);
