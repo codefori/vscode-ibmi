@@ -400,10 +400,16 @@ module.exports = class Instance {
                 }
               }
             }
+          }),
+
+          vscode.commands.registerCommand(`code-for-ibmi.runCommand`, async (detail) => {
+            if (detail && detail.command) {
+              return CompileTools.runCommand(instance, detail);
+            } else {
+              return null;
+            }
           })
         );
-
-        
 
         initialisedBefore = true;
       }
