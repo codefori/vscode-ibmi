@@ -816,7 +816,7 @@
 				"command": "code-for-ibmi.maintainFilter",
 				"title": "Maintain filter",
 				"category": "IBM i",
-				"icon": "$(pencil)"
+				"icon": "$(filter)"
 			},
 			{
 				"command": "code-for-ibmi.deleteFilter",
@@ -845,7 +845,7 @@
 				"command": "code-for-ibmi.createLibrary",
 				"title": "Create new library",
 				"category": "IBM i",
-				"icon": "$(repo-create)"
+				"icon": "$(file-directory-create)"
 			},
 			{
 				"command": "code-for-ibmi.refreshDatabaseBrowser",
