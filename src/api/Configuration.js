@@ -11,11 +11,11 @@ module.exports = class Configuration {
     /** @type {{name: string, library: string, object: string, types: string[], member: string}[]} */
     this.objectFilters = base.objectFilters || [];
 
-    /** @type {string[]} LIB/FILE, LIB/FILEs */
+    /** 
+     * @type {string[]} LIB/FILE, LIB/FILEs 
+     * @deprecated
+     * */
     this.sourceFileList = base.sourceFileList || [];
-
-    /** @type {string[]} LIB, LIB */
-    this.objectBrowserList = base.objectBrowserList || [];
 
     /** @type {string[]} schema, schema */
     this.databaseBrowserList = base.databaseBrowserList || [];
@@ -26,7 +26,7 @@ module.exports = class Configuration {
     /** @type {{name: string, value: string}[]} */
     this.customVariables = base.customVariables || [];
 
-    /** @type {{name: string, homeDirectory: string, currentLibrary: string, libraryList: string[], sourceFileList: string[], objectBrowserList: string[], databaseBrowserList: string[], ifsShortcuts: string[], customVariables: {name, value}[] }[]} */
+    /** @type {{name: string, homeDirectory: string, currentLibrary: string, libraryList: string[], sourceFileList: string[], objectFilters: object[], databaseBrowserList: string[], ifsShortcuts: string[], customVariables: {name, value}[] }[]} */
     this.connectionProfiles = base.connectionProfiles || [];
 
     /** @type {string[]} */

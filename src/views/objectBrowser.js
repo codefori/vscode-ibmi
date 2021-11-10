@@ -467,7 +467,7 @@ module.exports = class objectBrowserTwoProvider {
             member: `*`
           });
 
-          await config.set(`objectBrowserList`, filters);
+          await config.set(`objectFilters`, filters);
           if (Configuration.get(`autoRefresh`)) this.refresh();
         } else {
           vscode.window.showErrorMessage(`Library name too long.`);
