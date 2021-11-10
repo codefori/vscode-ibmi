@@ -920,7 +920,6 @@
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"visibility": "collapsed",
 					"when": "code-for-ibmi:connected == true"
 				},
 				{
