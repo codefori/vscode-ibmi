@@ -37,13 +37,18 @@ Tip: next time, try using 'IBM i: Connect to previous'
 
 ### Browse/Edit source members
 
-1. Connect to your system
-2. Find the MEMBER BROWSER and click on it to expand it.
-3. Hover over it and click the + icon. A window will appear to add the path to a source physical file you'd like to browse or edit.
-4. Key the path in `LIB/FILE` format and hit enter.
-5. The library will show up in the MEMBER BROWSER. Click on it and the source file will display.
-6. Click on the source file to display the list of members.
-7. Click on a member to open it.
+1. Connect to your system.
+2. Find the OBJECT BROWSER and click **+ Create new filter**.
+3. Complete the new filter dialog, following the descriptive text, ensuring:
+
+   a. That **Object** is the source physical file you want to edit.
+
+   b. That  **Object type filter** is set to *SRCPF.
+
+4. Save settings
+5. Click on the filter to expand the members in the source file.
+6. Click on a member to open it.
+
  **Note:** There is no member locking and the extension defaults to not retaining source dates.
 
 ### How do I compile my source code?
@@ -93,7 +98,7 @@ In the side bar there are several browsers to display and intereact with various
 
 ![Browsers](assets/Browser_01.png)
 
-Each of these can be expanded by clicking on it. Click on, or hover over, the browser title to see its action icons. Hover over each icon to see what it does.
+Each of these browsers can be expanded by clicking on it. Click on, or hover over, the browser title to see its action icons. Hover over each icon to see what it does.
 
 ![Browser icons](assets/Browser_02.png)
 
@@ -103,21 +108,71 @@ The User Library List is is set initially from your user profile.  Add libraries
 
 The User Library List is used when *Actions* (see below) are executed.
 
-### Member Browser
+### Object Browser
 
-This lists libraries, source physical files and members in the source physical files. Click on a source member to open it in the editor.
+The Object Browser allows you to interact with libraries, files, source files, programs and other types of objects. Subset the objects you want to work with by creating a filter or filters.
+
+#### Create First Filter
+
+Click on the **+ Create new filter** prompt to create your first filter (or click on the filter icon):
+
+![Create New filter](assets/Browser_03.png)
+
+Complete the new filter dialog. The explanatory text in the Create Filter dialog explains the options:
+
+![New Filter dialog](assets/Browser_04.png)
+
+**Click SAVE to create the new filter.**
+
+The above filter example lists all source files in library LENNONS1:
+
+![Expanded filter](assets/Browser_05.png)
+
+Note that the filter name has the filter definition the right.
+
+#### Create Additional Filters
+
+To create another filter,  click the filter icon to open up the new filter dialog.
+
+![Additional Filters](assets/Browser_06.png)
+
+#### Filter Examples
+
+**Single File Filter**
+
+![Single file filter](assets/Browser_07.png)
+
+**Subsetted source member example**
+
+A single source file files subsetting just some members:
+
+![Subset Members](assets/Browser_08.png)
+
+**Non Source Example**
+
+Some programs in a library:
+
+![programs filter](assets/Browser_09.png)
+
+#### Maintaining Filters
+
+Changing a filter definition is quick and easy. Just right click on the filter and chose **Maintain filter** to open up the filter dialog. Or chose **Delete filter** to remove the filter definition.
+
+![Maintian filter](assets/Browser_10.png)
 
 ### IFS Browser
 
 This shows directories and files in the IFS.  Click on a source file to open it in the editor.
 
-### Object Browser
+Add extra shortcuts as needed:
 
-This lists libraries and the objects in each library. Right click on an item to run an action on it.
+![Add shortcut](assets/BrowserIFS_01.png)
+
+![Shortcuts added](assets/BrowserIFS_02.png)
 
 ### Database Browser
 
-This shows libraries and the files/table in each. It is effective only if db2Util is installed on the IBM i. Click on a file or table to see the field names.
+This shows libraries and the files/tables in each. It is effective only if db2Util is installed on the IBM i. Click on a file or table to see the field names.
 
 ## Editing and Compiling
 
@@ -448,7 +503,7 @@ Connections can be edited in settings.json, but you'd typically add additional c
 
 ### Connection Settings
 
-These are the various setting relating to the items in the browsers, e.g., the list of source files in the MEMBER BROWSER. While these can be edited in settings.json, most can be more easily maintained by clicking or right clicking on an item in the browser.
+These are the various setting relating to the items in the browsers, e.g., the list of source files in the OBJECT BROWSER. While these can be edited in settings.json, most can be more easily maintained by clicking or right clicking on an item in the browser.
 
 ### Log Compile Output
 
@@ -542,7 +597,6 @@ Multiple connections can be defined and some settings are specific to a connecti
 - The Home / working directory
 - The Current library
 - The Library list
-- The Source file list
 - The IFS shortcuts
 - The Object browser list
 - The Database browser list
@@ -622,7 +676,7 @@ it in the member list.
  -->
 ## Comparing sources
 
-It is now possible to compare two sources, whether they are members or streamfiles.
+Compare two sources, whether they are members or streamfiles.
 
 1. right click on either type, choose 'Select for compare'
 2. right click the other source you'd like to compare with and choose 'Compare with Selected'
@@ -680,14 +734,14 @@ It is also possible to run SQL statements right from the editor. You can either 
 
 A compatible version of [db2util](https://github.com/IBM/ibmi-db2util) needs to be installed on the IBM i for the Database Browser to work.
 
-If installed, db2util is also used to more quickly populate the MEMBER BROWSER list. However, incompatible versions of db2util may fail to populate the MEMBER BROWSER list. db2util 1.0.12 is known to work.
+If installed, db2util is also used to more quickly populate the OBJECT BROWSER list(s). However, incompatible versions of db2util may fail to populate the OBJECT BROWSER list(s). db2util 1.0.12 is known to work.
 You can ignore db2util by deselecting "**Enable SQL**" in *Settings: Connection*.
 
 ## Tips & Tricks
 
 ### Search source files and IFS directories
 
-You can now right click and click 'Search' on IFS directories and source files to search through the content of streamfiles and source members.
+Right click and click 'Search' on IFS directories and source files to search through the content of streamfiles and source members.
 
 ### Overtype
 
