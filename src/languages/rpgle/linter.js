@@ -386,12 +386,14 @@ module.exports = class RPGLinter {
       }),
 
       vscode.window.onDidChangeActiveTextEditor(async (e) => {
-        if (e.document.languageId === `rpgle`) {
-          const document = e.document;
-          const text = document.getText();
-          const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
-          if (isFree) {
-            this.updateCopybookCache(document.uri, text);
+        if (e && e.document) {
+          if (e.document.languageId === `rpgle`) {
+            const document = e.document;
+            const text = document.getText();
+            const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+            if (isFree) {
+              this.updateCopybookCache(document.uri, text);
+            }
           }
         }
       }),
