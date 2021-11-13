@@ -310,10 +310,10 @@ module.exports = class ifsBrowserProvider {
             try {
               await vscode.window.withProgress({
                 location: vscode.ProgressLocation.Notification,
-                title: `Searching `,
+                title: `Searching`,
               }, async progress => {
                 progress.report({
-                  message: `Searching '${searchTerm}' in ${path}.`
+                  message: `'${searchTerm}' in ${path}.`
                 });
 
                 const results = await Search.searchIFS(instance, path, searchTerm);
