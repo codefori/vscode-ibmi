@@ -108,20 +108,6 @@ module.exports = class RPGLinter {
         }
       }),
 
-      vscode.workspace.onDidChangeTextDocument((event) => {
-        if (Configuration.get(`rpgleIndentationEnabled`)) {
-          if (event.document.languageId === `rpgle`) {
-            const isFree = (event.document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
-            const text = event.document.getText();
-            if (isFree) {
-              this.linterDiagnostics.set(event.document.uri, this.parseFreeFormatDocument(text, {
-                indent: Number(vscode.window.activeTextEditor.options.tabSize)
-              }));
-            }
-          }
-        }
-      }),
-
       vscode.commands.registerCommand(`code-for-ibmi.rpgleOpenInclude`, async => {
         if (Configuration.get(`rpgleContentAssistEnabled`)) {
           const editor = vscode.window.activeTextEditor;
@@ -146,6 +132,48 @@ module.exports = class RPGLinter {
               }
             }
           }
+        }
+      }),
+
+      vscode.languages.registerCodeActionsProvider(`rpgle`, {
+        provideCodeActions: async (document, range) => {
+          let diagnostics = [];
+          /** @type {vscode.CodeAction[]} */
+          let actions = [];
+
+          const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+          const text = document.getText();
+          if (isFree) {
+            const detail = this.parseFreeFormatDocument(text, {
+              indent: Number(vscode.window.activeTextEditor.options.tabSize)
+            });
+
+            const edit = new vscode.WorkspaceEdit();
+
+            if (detail.length > 0) {
+              detail.forEach(error => {
+                const action = new vscode.CodeAction(`Fix indentation on line ${error.line+1}`, vscode.CodeActionKind.QuickFix);
+                const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
+
+                const diagnostic = new vscode.Diagnostic(
+                  range, 
+                  `Incorrect indentation. Expected ${error.expectedIndent}, got ${error.currentIndent}`, 
+                  vscode.DiagnosticSeverity.Warning
+                );
+
+                diagnostics.push(diagnostic);
+                edit.replace(document.uri, range, `${` `.repeat(error.expectedIndent)}`);
+              });
+
+              const action = new vscode.CodeAction(`Fix all indentation warnings`, vscode.CodeActionKind.QuickFix);
+              action.diagnostics = diagnostics;
+              action.edit = edit;
+              actions.push(action);
+            }
+          }
+          
+          this.linterDiagnostics.set(document.uri, diagnostics);
+          return actions;
         }
       }),
 
@@ -903,7 +931,7 @@ module.exports = class RPGLinter {
 
     let lineNumber = -1;
 
-    /** @type {vscode.Diagnostic[]} */
+    /** @type {{line: number, expectedIndent: number, currentIndent: number}[]} */
     let diagnostics = [];
 
     /** @type {Number} */
@@ -929,13 +957,11 @@ module.exports = class RPGLinter {
           skipIndentCheck = true;
 
           if (currentIndent < expectedIndent) {
-            diagnostics.push(
-              new vscode.Diagnostic(
-                new vscode.Range(lineNumber, 0, lineNumber, currentIndent), 
-                `Incorrect indentation. Expected ${expectedIndent}, got ${currentIndent}`, 
-                vscode.DiagnosticSeverity.Warning
-              )
-            );
+            diagnostics.push({
+              line: lineNumber,
+              expectedIndent,
+              currentIndent
+            });
           }
         }
 
@@ -972,13 +998,11 @@ module.exports = class RPGLinter {
         }
           
         if (currentIndent !== expectedIndent && !skipIndentCheck) {
-          diagnostics.push(
-            new vscode.Diagnostic(
-              new vscode.Range(lineNumber, 0, lineNumber, currentIndent), 
-              `Incorrect indentation. Expected ${expectedIndent}, got ${currentIndent}`, 
-              vscode.DiagnosticSeverity.Warning
-            )
-          );
+          diagnostics.push({
+            line: lineNumber,
+            expectedIndent,
+            currentIndent
+          });
         }
 
         if ([
