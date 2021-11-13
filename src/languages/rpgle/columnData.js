@@ -202,7 +202,7 @@ const promptLine = async (line, index) => {
       parts.push({
         id: box.id,
         text: box.name,
-        content: line.substring(box.start, box.end+1).trim(),
+        content: line.substring(box.start, box.end+1).trimEnd(),
         values: box.values
       });
     });
