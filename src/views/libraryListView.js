@@ -4,7 +4,7 @@ const vscode = require(`vscode`);
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
-const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `sourceFileList`, `objectBrowserList`, `databaseBrowserList`, `ifsShortcuts`, `customVariables`];
+const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `databaseBrowserList`, `ifsShortcuts`, `customVariables`];
 
 module.exports = class memberBrowserProvider {
   /**
@@ -155,9 +155,8 @@ module.exports = class memberBrowserProvider {
               
               await Promise.all([
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshMemberBrowser`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
               ]);
             }
