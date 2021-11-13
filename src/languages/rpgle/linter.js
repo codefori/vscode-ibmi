@@ -148,24 +148,28 @@ module.exports = class RPGLinter {
               indent: Number(vscode.window.activeTextEditor.options.tabSize)
             });
 
-            actions = detail.map(error => {
-              const action = new vscode.CodeAction(`Fix indentation on line ${error.line+1}`, vscode.CodeActionKind.QuickFix);
-              const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
+            const edit = new vscode.WorkspaceEdit();
 
-              const diagnostic = new vscode.Diagnostic(
-                range, 
-                `Incorrect indentation. Expected ${error.expectedIndent}, got ${error.currentIndent}`, 
-                vscode.DiagnosticSeverity.Warning
-              );
+            if (detail.length > 0) {
+              detail.forEach(error => {
+                const action = new vscode.CodeAction(`Fix indentation on line ${error.line+1}`, vscode.CodeActionKind.QuickFix);
+                const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
 
-              diagnostics.push(diagnostic);
+                const diagnostic = new vscode.Diagnostic(
+                  range, 
+                  `Incorrect indentation. Expected ${error.expectedIndent}, got ${error.currentIndent}`, 
+                  vscode.DiagnosticSeverity.Warning
+                );
 
-              action.edit = new vscode.WorkspaceEdit();
-              action.diagnostics = [diagnostic];
-              action.edit.replace(document.uri, range, `${` `.repeat(error.expectedIndent)}`);
-              return action;
-            });
-            
+                diagnostics.push(diagnostic);
+                edit.replace(document.uri, range, `${` `.repeat(error.expectedIndent)}`);
+              });
+
+              const action = new vscode.CodeAction(`Fix all indentation warnings`, vscode.CodeActionKind.QuickFix);
+              action.diagnostics = diagnostics;
+              action.edit = edit;
+              actions.push(action);
+            }
           }
           
           this.linterDiagnostics.set(document.uri, diagnostics);
