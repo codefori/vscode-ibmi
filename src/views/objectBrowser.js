@@ -383,7 +383,7 @@ module.exports = class objectBrowserTwoProvider {
 
                 await vscode.window.withProgress({
                   location: vscode.ProgressLocation.Notification,
-                  title: `Searching `,
+                  title: `Searching`,
                 }, async progress => {
                   progress.report({
                     message: `Fetching member list for ${node.path}.`
@@ -393,7 +393,7 @@ module.exports = class objectBrowserTwoProvider {
 
                   if (members.length > 0) {
                     progress.report({
-                      message: `Searching '${searchTerm}' in ${node.path}.`
+                      message: `'${searchTerm}' in ${node.path}.`
                     });
 
                     const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
