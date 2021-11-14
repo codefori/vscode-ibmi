@@ -18,6 +18,7 @@ const notCurrentArea = vscode.window.createTextEditorDecorationType({
 });
 
 const possibleTags = require(`./tags`);
+const Prototypes = require(`./prototypes`);
 
 module.exports = class RPGLinter {
   /**
@@ -31,6 +32,9 @@ module.exports = class RPGLinter {
 
     /** @type {{[path: string]: {subroutines, procedures, variables, structs, constants}}} */
     this.parsedCache = {};
+
+    /** @type {{[library: string]: {memberPath: string, line: number, name: string}[]}} */
+    this.possibleImports = {};
 
     context.subscriptions.push(
       this.linterDiagnostics,
@@ -187,8 +191,9 @@ module.exports = class RPGLinter {
 
             const procedure = doc.procedures.find(proc => proc.name.toUpperCase() === word);
 
+            let markdown = ``;
+
             if (procedure) {
-              let markdown = ``;
               let retrunValue = procedure.keywords.filter(keyword => keyword !== `EXTPROC`);
               if (retrunValue.length === 0) retrunValue = [`void`];
 
@@ -230,6 +235,31 @@ module.exports = class RPGLinter {
                   markdown
                 )
               );
+
+            } else {
+              let sourceRoot;
+
+              if (document.uri.scheme === `member`) {
+                const splitPath = document.uri.path.split(`/`);
+                sourceRoot = (splitPath.length === 4 ? splitPath[1] : splitPath[0]).toUpperCase();
+              }
+
+              if (sourceRoot && this.possibleImports[sourceRoot]) {
+                const possibleImport = this.possibleImports[sourceRoot].find(importData => importData.name.toUpperCase() === word);
+
+                if (possibleImport) {
+                  markdown += `\`\`\`vb\n${possibleImport.name}()\n\`\`\``;
+                  markdown += `\n\nPossible import.`;
+                  markdown += `\n\n*@file* \`${possibleImport.memberPath}:${possibleImport.line}\``;
+
+
+                  return new vscode.Hover(
+                    new vscode.MarkdownString(
+                      markdown
+                    )
+                  );
+                }
+              }
             }
 
             const linePieces = document.lineAt(position.line).text.trim().split(` `);
@@ -320,25 +350,45 @@ module.exports = class RPGLinter {
         provideDefinition: async (document, position, token) => {
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
             const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
-            const doc = await this.getDocs(document.uri);
-            const range = document.getWordRangeAtPosition(position);
-            const word = document.getText(range).toUpperCase();
+            if (isFree) {
+              const doc = await this.getDocs(document.uri);
+              const range = document.getWordRangeAtPosition(position);
+              const word = document.getText(range).toUpperCase();
 
-            if (doc) {
-              const types = Object.keys(doc);
-              const type = types.find(type => doc[type].find(def => def.name.toUpperCase() === word));
-              if (doc[type]) {
-                const def = doc[type].find(def => def.name.toUpperCase() === word);
-                if (def) {
-                  let {finishedPath, type} = this.getPathInfo(document.uri, def.position.path);
-                  if (type === `member`) {
-                    finishedPath = `${finishedPath}.rpgle`;
+              if (doc) {
+                const types = Object.keys(doc);
+                const type = types.find(type => doc[type].find(def => def.name.toUpperCase() === word));
+                if (doc[type]) {
+                  const def = doc[type].find(def => def.name.toUpperCase() === word);
+                  if (def) {
+                    let {finishedPath, type} = this.getPathInfo(document.uri, def.position.path);
+                    if (type === `member`) {
+                      finishedPath = `${finishedPath}.rpgle`;
+                    }
+
+                    return new vscode.Location(
+                      vscode.Uri.parse(finishedPath).with({scheme: type, path: finishedPath}),
+                      new vscode.Range(def.position.line, 0, def.position.line, 0)
+                    );
+                  }
+                } else {
+                  let sourceRoot;
+
+                  if (document.uri.scheme === `member`) {
+                    const splitPath = document.uri.path.split(`/`);
+                    sourceRoot = (splitPath.length === 4 ? splitPath[1] : splitPath[0]).toUpperCase();
                   }
 
-                  return new vscode.Location(
-                    vscode.Uri.parse(finishedPath).with({scheme: type, path: finishedPath}),
-                    new vscode.Range(def.position.line, 0, def.position.line, 0)
-                  );
+                  if (sourceRoot && this.possibleImports[sourceRoot]) {
+                    const possibleImport = this.possibleImports[sourceRoot].find(importData => importData.name.toUpperCase() === word);
+
+                    if (possibleImport) {
+                      return new vscode.Location(
+                        vscode.Uri.parse(possibleImport.memberPath).with({scheme: `member`, path: `/${possibleImport.memberPath}.rpgle`}),
+                        new vscode.Range(possibleImport.line-1, 0, possibleImport.line-1, 0)
+                      );
+                    }
+                  }
                 }
               }
             }
@@ -367,6 +417,13 @@ module.exports = class RPGLinter {
                 }
 
               } else {
+                let sourceRoot;
+
+                if (document.uri.scheme === `member`) {
+                  const splitPath = document.uri.path.split(`/`);
+                  sourceRoot = (splitPath.length === 4 ? splitPath[1] : splitPath[0]).toUpperCase();
+                }
+
                 for (const procedure of doc.procedures) {
                   item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
                   item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
@@ -404,6 +461,21 @@ module.exports = class RPGLinter {
                   item.detail = constant.keywords.join(` `);
                   item.documentation = constant.description;
                   items.push(item);
+                }
+
+                if (sourceRoot) {
+                  if (this.possibleImports[sourceRoot]) {
+                    const possibleImports = this.possibleImports[sourceRoot].filter(
+                      possibleImport => doc.procedures.find(procedure => procedure.name.toUpperCase() === possibleImport.name) === undefined
+                    );
+
+                    for (const possibleImport of possibleImports) {
+                      item = new vscode.CompletionItem(`${possibleImport.name}`, vscode.CompletionItemKind.Interface);
+                      item.insertText = new vscode.SnippetString(`${possibleImport.name}($1)\$0`);
+                      item.detail = `From ${possibleImport.memberPath}:${possibleImport.line}`;
+                      items.push(item);
+                    }
+                  }
                 }
               }
 
@@ -659,6 +731,21 @@ module.exports = class RPGLinter {
           files[pieces[1]] = (await this.getContent(workingUri, pieces[1]));
         }
       }
+    }
+
+    switch (workingUri.scheme) {
+    case `member`:
+      const pathParts = workingUri.path.split(`/`);
+      const library = pathParts[1];
+
+      if (this.possibleImports[library] === undefined) {
+        Prototypes.searchPrototypesQSYS(library).then((proto) => {
+          this.possibleImports[library] = proto;
+        }).catch((e) => {
+          this.possibleImports[library] = [];
+        });
+      }
+      break;
     }
 
     //Now the real work
