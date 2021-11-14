@@ -14,7 +14,7 @@ module.exports = class Prototypes {
     });
 
     const search = await connection.qshCommand(
-      `/usr/bin/grep -in 'dcl-pr.*ext' ${sourceFiles.map(srcPf => `/QSYS.LIB/BARRY.LIB/${srcPf.name}.FILE/*`).join(` `)}`
+      `/usr/bin/grep -in 'dcl-pr.*ext' ${sourceFiles.map(srcPf => `/QSYS.LIB/${library}.LIB/${srcPf.name}.FILE/*`).join(` `)}`
     );
 
     /** @type {{memberPath: string, line: number, name: string}[]} */

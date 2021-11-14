@@ -237,12 +237,7 @@ module.exports = class RPGLinter {
               );
 
             } else {
-              let sourceRoot;
-
-              if (document.uri.scheme === `member`) {
-                const splitPath = document.uri.path.split(`/`);
-                sourceRoot = (splitPath.length === 4 ? splitPath[1] : splitPath[0]).toUpperCase();
-              }
+              let sourceRoot = RPGLinter.getRoot(document.uri);
 
               if (sourceRoot && this.possibleImports[sourceRoot]) {
                 const possibleImport = this.possibleImports[sourceRoot].find(importData => importData.name.toUpperCase() === word);
@@ -372,12 +367,7 @@ module.exports = class RPGLinter {
                     );
                   }
                 } else {
-                  let sourceRoot;
-
-                  if (document.uri.scheme === `member`) {
-                    const splitPath = document.uri.path.split(`/`);
-                    sourceRoot = (splitPath.length === 4 ? splitPath[1] : splitPath[0]).toUpperCase();
-                  }
+                  let sourceRoot = RPGLinter.getRoot(document.uri)
 
                   if (sourceRoot && this.possibleImports[sourceRoot]) {
                     const possibleImport = this.possibleImports[sourceRoot].find(importData => importData.name.toUpperCase() === word);
@@ -417,13 +407,6 @@ module.exports = class RPGLinter {
                 }
 
               } else {
-                let sourceRoot;
-
-                if (document.uri.scheme === `member`) {
-                  const splitPath = document.uri.path.split(`/`);
-                  sourceRoot = (splitPath.length === 4 ? splitPath[1] : splitPath[0]).toUpperCase();
-                }
-
                 for (const procedure of doc.procedures) {
                   item = new vscode.CompletionItem(`${procedure.name}`, vscode.CompletionItemKind.Function);
                   item.insertText = new vscode.SnippetString(`${procedure.name}(${procedure.subItems.map((parm, index) => `\${${index+1}:${parm.name}}`).join(`:`)})\$0`)
@@ -463,18 +446,18 @@ module.exports = class RPGLinter {
                   items.push(item);
                 }
 
-                if (sourceRoot) {
-                  if (this.possibleImports[sourceRoot]) {
-                    const possibleImports = this.possibleImports[sourceRoot].filter(
-                      possibleImport => doc.procedures.find(procedure => procedure.name.toUpperCase() === possibleImport.name) === undefined
-                    );
+                let sourceRoot = RPGLinter.getRoot(document.uri);
 
-                    for (const possibleImport of possibleImports) {
-                      item = new vscode.CompletionItem(`${possibleImport.name}`, vscode.CompletionItemKind.Interface);
-                      item.insertText = new vscode.SnippetString(`${possibleImport.name}($1)\$0`);
-                      item.detail = `From ${possibleImport.memberPath}:${possibleImport.line}`;
-                      items.push(item);
-                    }
+                if (sourceRoot && this.possibleImports[sourceRoot]) {
+                  const possibleImports = this.possibleImports[sourceRoot].filter(
+                    possibleImport => doc.procedures.find(procedure => procedure.name.toUpperCase() === possibleImport.name) === undefined
+                  );
+
+                  for (const possibleImport of possibleImports) {
+                    item = new vscode.CompletionItem(`${possibleImport.name}`, vscode.CompletionItemKind.Interface);
+                    item.insertText = new vscode.SnippetString(`${possibleImport.name}($1)\$0`);
+                    item.detail = `From ${possibleImport.memberPath}:${possibleImport.line}`;
+                    items.push(item);
                   }
                 }
               }
@@ -735,8 +718,7 @@ module.exports = class RPGLinter {
 
     switch (workingUri.scheme) {
     case `member`:
-      const pathParts = workingUri.path.split(`/`);
-      const library = pathParts[1];
+      const library = RPGLinter.getRoot(workingUri);
 
       if (this.possibleImports[library] === undefined) {
         Prototypes.searchPrototypesQSYS(library).then((proto) => {
@@ -1113,6 +1095,34 @@ module.exports = class RPGLinter {
     }
 
     return diagnostics;
+  }
+
+  /**
+   * 
+   * @param {vscode.Uri} workingUri 
+   * @returns {string|undefined}
+   */
+  static getRoot(workingUri) {
+    let result;
+    switch (workingUri.scheme) {
+    case `member`:
+      const splitPath = workingUri.path.split(`/`);
+      result = (splitPath.length === 4 ? splitPath[1] : splitPath[0]).toUpperCase();
+      break;
+
+    case `streamfile`:
+      // Disabled for IFS for now. Risky that it will scan lots of files.
+      // const config = instance.getConfig();
+
+      // if (config.homeDirectory) {
+      //   if (config.homeDirectory !== `/`) {
+      //     result = config.homeDirectory;
+      //   }
+      // }
+      break;
+    }
+
+    return result;
   }
 }
 
