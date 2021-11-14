@@ -137,7 +137,12 @@ module.exports = class RPGLinter {
 
       vscode.languages.registerCodeActionsProvider(`rpgle`, {
         provideCodeActions: async (document, range) => {
-          let diagnostics = [];
+          /** @type {vscode.Diagnostic[]} */
+          let indentDiags = [];
+
+          /** @type {vscode.Diagnostic[]} */
+          let generalDiags = [];
+
           /** @type {vscode.CodeAction[]} */
           let actions = [];
 
@@ -150,9 +155,11 @@ module.exports = class RPGLinter {
 
             const edit = new vscode.WorkspaceEdit();
 
-            if (detail.length > 0) {
-              detail.forEach(error => {
-                const action = new vscode.CodeAction(`Fix indentation on line ${error.line+1}`, vscode.CodeActionKind.QuickFix);
+            const indentErrors = detail.indentErrors;
+            const errors = detail.errors;
+
+            if (indentErrors.length > 0) {
+              indentErrors.forEach(error => {
                 const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
 
                 const diagnostic = new vscode.Diagnostic(
@@ -161,18 +168,32 @@ module.exports = class RPGLinter {
                   vscode.DiagnosticSeverity.Warning
                 );
 
-                diagnostics.push(diagnostic);
+                indentDiags.push(diagnostic);
                 edit.replace(document.uri, range, `${` `.repeat(error.expectedIndent)}`);
               });
 
               const action = new vscode.CodeAction(`Fix all indentation warnings`, vscode.CodeActionKind.QuickFix);
-              action.diagnostics = diagnostics;
+              action.diagnostics = indentDiags;
               action.edit = edit;
               actions.push(action);
             }
+
+            if (errors.length > 0) {
+              errors.forEach(error => {
+                const range = error.range;
+
+                const diagnostic = new vscode.Diagnostic(
+                  range, 
+                  error.type, 
+                  vscode.DiagnosticSeverity.Warning
+                );
+
+                generalDiags.push(diagnostic);
+              });
+            }
           }
           
-          this.linterDiagnostics.set(document.uri, diagnostics);
+          this.linterDiagnostics.set(document.uri, [...indentDiags, ...generalDiags]);
           return actions;
         }
       }),
@@ -932,7 +953,10 @@ module.exports = class RPGLinter {
     let lineNumber = -1;
 
     /** @type {{line: number, expectedIndent: number, currentIndent: number}[]} */
-    let diagnostics = [];
+    let indentErrors = [];
+
+    /** @type {{range: vscode.Range, type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"}[]} */
+    let errors = [];
 
     /** @type {Number} */
     let expectedIndent = 0;
@@ -943,9 +967,17 @@ module.exports = class RPGLinter {
 
     let continuedStatement = false, skipIndentCheck = false;
 
-    for (let line of lines) {
-      currentIndent = line.search(/\S/);
-      line = line.trim().toUpperCase();
+    let currentStatement = ``;
+
+    /** @type {vscode.Position} */
+    let statementStart;
+    /** @type {vscode.Position} */
+    let statementEnd;
+
+    for (let currentLine of lines) {
+      currentIndent = currentLine.search(/\S/);
+      let line = currentLine.trim().toUpperCase();
+
       lineNumber += 1;
 
       if (line.startsWith(`//`)) continue;
@@ -955,18 +987,23 @@ module.exports = class RPGLinter {
 
         if (continuedStatement) {
           skipIndentCheck = true;
+          statementEnd = new vscode.Position(lineNumber, currentLine.length);
 
           if (currentIndent < expectedIndent) {
-            diagnostics.push({
+            indentErrors.push({
               line: lineNumber,
               expectedIndent,
               currentIndent
             });
           }
+        } else {
+          statementStart = new vscode.Position(lineNumber, currentIndent);
+          statementEnd = new vscode.Position(lineNumber, currentLine.length);
         }
 
         if (line.endsWith(`;`)) {
           line = line.substr(0, line.length-1);
+          currentStatement += line;
           continuedStatement = false;
 
         } else {
@@ -979,10 +1016,83 @@ module.exports = class RPGLinter {
           } else {
             continuedStatement = true;
           }
+
+          currentStatement += line;
+        }
+
+        // Linter checking
+        if (continuedStatement === false) {
+          pieces = currentStatement.split(` `);
+
+          if (pieces.length > 0) {
+            const opcode = pieces[0].toUpperCase();
+
+            switch (opcode) {
+            case `IF`:
+              if (pieces[1].includes(`(`) && pieces[pieces.length-1].includes(`)`)) {
+                // Looking good
+              } else {
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `ForceOptionalParens`
+                });
+              }
+              break;
+            case `DCL-PR`:
+              // Unneeded PR
+              if (!currentStatement.includes(` EXT`)) {
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `PrototypeCheck`
+                });
+              }
+              break;
+
+            case `DCL-DS`:
+              if (currentStatement.includes(` OCCURS`)) {
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `NoOCCURS`
+                });
+              }
+
+              if (!currentStatement.includes(`QUALIFIED`)) {
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `QualifiedCheck`
+                });
+              }
+
+              if (pieces[1] === `*N`) {
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `BlankStructNamesCheck`
+                });
+              }
+              break;
+
+            case `EXEC`:
+              if (currentStatement.includes(`SELECT *`)) {
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `NoSELECTAll`
+                });
+              }
+              break;
+
+            case `EVAL`:
+            case `CALLP`:
+              errors.push({
+                range: new vscode.Range(statementStart, statementEnd),
+                type: `UselessOperationCheck`
+              });
+              break;
+            }
+          }
+          currentStatement = ``;
         }
 
         pieces = line.split(` `);
-
 
         if ([
           `ENDIF`, `ENDFOR`, `ENDDO`, `ELSE`, `ELSEIF`, `ON-ERROR`, `ENDMON`, `ENDSR`, `WHEN`, `OTHER`, `END-PROC`, `END-PI`, `END-PR`, `END-DS`
@@ -998,7 +1108,7 @@ module.exports = class RPGLinter {
         }
           
         if (currentIndent !== expectedIndent && !skipIndentCheck) {
-          diagnostics.push({
+          indentErrors.push({
             line: lineNumber,
             expectedIndent,
             currentIndent
@@ -1025,7 +1135,10 @@ module.exports = class RPGLinter {
       }
     }
 
-    return diagnostics;
+    return {
+      indentErrors,
+      errors
+    };
   }
 }
 
