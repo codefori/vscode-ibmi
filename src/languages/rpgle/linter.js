@@ -111,6 +111,7 @@ module.exports = class Linter {
 
         // Linter checking
         if (continuedStatement === false) {
+          const currentStatementUpper = currentStatement.toUpperCase();
           pieces = currentStatement.split(` `);
 
           if (pieces.length > 0) {
@@ -150,7 +151,7 @@ module.exports = class Linter {
             case `DCL-PR`:
               if (rules.PrototypeCheck) {
               // Unneeded PR
-                if (!currentStatement.includes(` EXT`)) {
+                if (!currentStatementUpper.includes(` EXT`)) {
                   errors.push({
                     range: new vscode.Range(statementStart, statementEnd),
                     type: `PrototypeCheck`
@@ -161,7 +162,7 @@ module.exports = class Linter {
 
             case `DCL-DS`:
               if (rules.NoOCCURS) {
-                if (currentStatement.includes(` OCCURS`)) {
+                if (currentStatementUpper.includes(` OCCURS`)) {
                   errors.push({
                     range: new vscode.Range(statementStart, statementEnd),
                     type: `NoOCCURS`
@@ -170,7 +171,7 @@ module.exports = class Linter {
               }
 
               if (rules.QualifiedCheck) {
-                if (!currentStatement.includes(`QUALIFIED`)) {
+                if (!currentStatementUpper.includes(`QUALIFIED`)) {
                   errors.push({
                     range: new vscode.Range(statementStart, statementEnd),
                     type: `QualifiedCheck`
@@ -190,7 +191,7 @@ module.exports = class Linter {
 
             case `EXEC`:
               if (rules.NoSELECTAll) {
-                if (currentStatement.includes(`SELECT *`)) {
+                if (currentStatementUpper.includes(`SELECT *`)) {
                   errors.push({
                     range: new vscode.Range(statementStart, statementEnd),
                     type: `NoSELECTAll`
