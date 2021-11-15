@@ -106,7 +106,7 @@ module.exports = class Instance {
     const actionsUI = require(`./webviews/actions`);
     const variablesUI = require(`./webviews/variables`);
 
-    const rpgleLinter = require(`./languages/rpgle/linter`);
+    const rpgleLinter = require(`./languages/rpgle/worker`);
     const CLCommands = require(`./languages/clle/clCommands`);
 
     if (instance.connection) {
