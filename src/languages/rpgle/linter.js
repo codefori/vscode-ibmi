@@ -9,6 +9,7 @@ const errorText = {
   'NoOCCURS': `\`OCCURS\` is not allowed.`,
   'NoSELECTAll': `\`SELECT *\` is not allowed in Embedded SQL.`,
   'UselessOperationCheck': `Redundant operation code.`,
+  'UppercaseConstants': `Constants must be in upper case.`,
 }
 
 module.exports = class Linter {
@@ -31,7 +32,7 @@ module.exports = class Linter {
     /** @type {{line: number, expectedIndent: number, currentIndent: number}[]} */
     let indentErrors = [];
 
-    /** @type {{range: vscode.Range, type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"}[]} */
+    /** @type {{range: vscode.Range, type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"|"UppercaseConstants"}[]} */
     let errors = [];
 
     /** @type {Number} */
@@ -43,7 +44,7 @@ module.exports = class Linter {
 
     let continuedStatement = false, skipIndentCheck = false;
 
-    let currentStatement = ``;
+    let currentStatement = ``, opcode;
 
     /** @type {vscode.Position} */
     let statementStart;
@@ -52,7 +53,7 @@ module.exports = class Linter {
 
     for (let currentLine of lines) {
       currentIndent = currentLine.search(/\S/);
-      let line = currentLine.trim().toUpperCase();
+      let line = currentLine.trim();
 
       lineNumber += 1;
 
@@ -103,9 +104,18 @@ module.exports = class Linter {
           pieces = currentStatement.split(` `);
 
           if (pieces.length > 0) {
-            const opcode = pieces[0].toUpperCase();
+            opcode = pieces[0].toUpperCase();
 
             switch (opcode) {
+            case `DCL-C`:
+              if (pieces[1] !== pieces[1].toUpperCase()) {
+                errors.push({
+                  range: new vscode.Range(lineNumber, 6, lineNumber, 6 + pieces[1].length),
+                  type: `UppercaseConstants`
+                });
+              }
+              break;
+
             case `IF`:
             case `ELSEIF`:
             case `WHEN`:
@@ -180,17 +190,18 @@ module.exports = class Linter {
         }
 
         pieces = line.split(` `);
+        opcode = pieces[0].toUpperCase();
 
         if ([
           `ENDIF`, `ENDFOR`, `ENDDO`, `ELSE`, `ELSEIF`, `ON-ERROR`, `ENDMON`, `ENDSR`, `WHEN`, `OTHER`, `END-PROC`, `END-PI`, `END-PR`, `END-DS`
-        ].includes(pieces[0])) {
+        ].includes(opcode)) {
           expectedIndent -= indent; 
         }
 
         //Special case for `ENDSL`
         if ([
           `ENDSL`
-        ].includes(pieces[0])) {
+        ].includes(opcode)) {
           expectedIndent -= (indent*2); 
         }
           
@@ -204,14 +215,14 @@ module.exports = class Linter {
 
         if ([
           `IF`, `ELSE`, `ELSEIF`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
-        ].includes(pieces[0])) {
-          if (pieces[0] == `DCL-DS` && (line.includes(`LIKEDS`) || line.includes(`END-DS`))) {
+        ].includes(opcode)) {
+          if (opcode == `DCL-DS` && (line.includes(`LIKEDS`) || line.includes(`END-DS`))) {
             //No change
           } 
-          else if (pieces[0] == `DCL-PI` && line.includes(`END-PI`)) {
+          else if (opcode == `DCL-PI` && line.includes(`END-PI`)) {
             //No change
           }
-          else if (pieces[0] == `SELECT`) {
+          else if (opcode == `SELECT`) {
             if (skipIndentCheck === false) expectedIndent += (indent*2); 
           }
           else {

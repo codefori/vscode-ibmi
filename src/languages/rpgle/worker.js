@@ -192,6 +192,13 @@ module.exports = class RPGLinter {
                 let action;
 
                 switch (error.type) {
+                case `UppercaseConstants`:
+                  action = new vscode.CodeAction(`Convert constant to uppercase (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
+                  action.edit = new vscode.WorkspaceEdit();
+                  action.edit.replace(document.uri, range, document.getText(range).toUpperCase());
+                  action.diagnostics = [diagnostic];
+                  break;
+
                 case `ForceOptionalParens`:
                   action = new vscode.CodeAction(`Add brackets (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
                   action.edit = new vscode.WorkspaceEdit();
