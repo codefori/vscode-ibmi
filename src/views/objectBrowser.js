@@ -368,13 +368,16 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node) => {
         if (node) {
+          const config = instance.getConfig();
           const content = instance.getContent();
 
           const path = node.path.split(`/`);
 
           if (path[1] !== `*ALL`) {
+            const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? `(in ASP ${config.sourceASP}` : ``);
+
             let searchTerm = await vscode.window.showInputBox({
-              prompt: `Search ${node.path}.`
+              prompt: `Search ${node.path}. ${aspText}`
             });
 
             if (searchTerm) {

@@ -12,6 +12,11 @@ const errorText = {
   'UppercaseConstants': `Constants must be in uppercase.`,
 }
 
+const oneLineTriggers = {
+  'DCL-DS': [`LIKEDS`, `LIKEREC`, `END-DS`],
+  'DCL-PI': [`END-PI`],
+}
+
 module.exports = class Linter {
   static getErrorText(error) {
     return errorText[error];
@@ -242,11 +247,11 @@ module.exports = class Linter {
 
         if ([
           `IF`, `ELSE`, `ELSEIF`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
-        ].includes(opcode)) {
-          if (opcode == `DCL-DS` && (line.includes(`LIKEDS`) || line.includes(`END-DS`))) {
+        ].includes(pieces[0])) {
+          if (pieces[0] == `DCL-DS` && oneLineTriggers[pieces[0]].some(trigger => line.includes(trigger))) {
             //No change
           } 
-          else if (opcode == `DCL-PI` && line.includes(`END-PI`)) {
+          else if (pieces[0] == `DCL-PI` && oneLineTriggers[pieces[0]].some(trigger => line.includes(trigger))) {
             //No change
           }
           else if (opcode == `SELECT`) {
