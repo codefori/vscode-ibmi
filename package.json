@@ -251,10 +251,10 @@
 					"default": false,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
-				"code-for-ibmi.rpgleIndentationEnabled": {
+				"code-for-ibmi.rpgleLinterSupportEnabled": {
 					"type": "boolean",
 					"default": false,
-					"description": "Experimental feature. When enabled, will provide indentation warnings for RPG sources. Supports total free RPG only."
+					"description": "Experimental feature. When enabled, will provide warnings for RPGLE sources. Supports total free RPG only."
 				},
 				"code-for-ibmi.rpgleContentAssistEnabled": {
 					"type": "boolean",

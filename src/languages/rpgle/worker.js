@@ -20,6 +20,8 @@ const notCurrentArea = vscode.window.createTextEditorDecorationType({
 
 const possibleTags = require(`./tags`);
 
+const lintFile = `rpglint`;
+
 module.exports = class RPGLinter {
   /**
    * @param {vscode.ExtensionContext} context
@@ -32,6 +34,9 @@ module.exports = class RPGLinter {
 
     /** @type {{[path: string]: {subroutines, procedures, variables, structs, constants}}} */
     this.parsedCache = {};
+
+    /** @type {{[spfPath: string]: object}} */
+    this.linterRules = {};
 
     context.subscriptions.push(
       this.linterDiagnostics,
@@ -138,93 +143,111 @@ module.exports = class RPGLinter {
 
       vscode.languages.registerCodeActionsProvider(`rpgle`, {
         provideCodeActions: async (document, range) => {
-          /** @type {vscode.Diagnostic[]} */
-          let indentDiags = [];
+          if (Configuration.get(`rpgleLinterSupportEnabled`)) {
+            /** @type {vscode.Diagnostic[]} */
+            let indentDiags = [];
 
-          /** @type {vscode.Diagnostic[]} */
-          let generalDiags = [];
+            /** @type {vscode.Diagnostic[]} */
+            let generalDiags = [];
 
-          /** @type {vscode.CodeAction[]} */
-          let actions = [];
+            /** @type {vscode.CodeAction[]} */
+            let actions = [];
 
-          const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
-          const text = document.getText();
-          if (isFree) {
-            const detail = Linter.getErrors(text, {
-              indent: Number(vscode.window.activeTextEditor.options.tabSize)
-            });
+            const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+            const text = document.getText();
+            if (isFree) {
+              let {finishedPath} = this.getPathInfo(document.uri, lintFile);
 
-            const edit = new vscode.WorkspaceEdit();
+              let options = {};
 
-            const indentErrors = detail.indentErrors;
-            const errors = detail.errors;
-
-            if (indentErrors.length > 0) {
-              indentErrors.forEach(error => {
-                const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
-
-                const diagnostic = new vscode.Diagnostic(
-                  range, 
-                  `Incorrect indentation. Expected ${error.expectedIndent}, got ${error.currentIndent}`, 
-                  vscode.DiagnosticSeverity.Warning
-                );
-
-                indentDiags.push(diagnostic);
-                edit.replace(document.uri, range, `${` `.repeat(error.expectedIndent)}`);
-              });
-
-              const action = new vscode.CodeAction(`Fix all indentation warnings`, vscode.CodeActionKind.QuickFix);
-              action.diagnostics = indentDiags;
-              action.edit = edit;
-              actions.push(action);
-            }
-
-            if (errors.length > 0) {
-              errors.forEach(error => {
-                const range = error.range;
-
-                const diagnostic = new vscode.Diagnostic(
-                  range, 
-                  Linter.getErrorText(error.type), 
-                  vscode.DiagnosticSeverity.Warning
-                );
-
-                let action;
-
-                switch (error.type) {
-                case `UppercaseConstants`:
-                  action = new vscode.CodeAction(`Convert constant to uppercase (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
-                  action.edit = new vscode.WorkspaceEdit();
-                  action.edit.replace(document.uri, range, document.getText(range).toUpperCase());
-                  action.diagnostics = [diagnostic];
-                  break;
-
-                case `ForceOptionalParens`:
-                  action = new vscode.CodeAction(`Add brackets (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
-                  action.edit = new vscode.WorkspaceEdit();
-                  action.edit.insert(document.uri, range.end, `)`);
-                  action.edit.insert(document.uri, range.start, `(`);
-                  action.diagnostics = [diagnostic];
-                  break;
-
-                case `UselessOperationCheck`:
-                  action = new vscode.CodeAction(`Remove operation (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
-                  action.edit = new vscode.WorkspaceEdit();
-                  action.edit.delete(document.uri, range);
-                  action.diagnostics = [diagnostic];
-                  break;
+              if (this.copyBooks[finishedPath]) {
+                const jsonString = this.copyBooks[finishedPath].join(``).trim();
+                if (jsonString) {
+                  try {
+                    options = JSON.parse(jsonString);
+                  } catch (e) {
+                    vscode.window.showErrorMessage(`Failed to parse rpglint.json file at ${finishedPath}.`);
+                  }
                 }
+              }
 
-                if (action) 
-                  actions.push(action);
-
-                generalDiags.push(diagnostic);
+              const detail = Linter.getErrors(text, {
+                indent: Number(vscode.window.activeTextEditor.options.tabSize),
+                ...options
               });
+
+              const edit = new vscode.WorkspaceEdit();
+
+              const indentErrors = detail.indentErrors;
+              const errors = detail.errors;
+
+              if (indentErrors.length > 0) {
+                indentErrors.forEach(error => {
+                  const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
+
+                  const diagnostic = new vscode.Diagnostic(
+                    range, 
+                    `Incorrect indentation. Expected ${error.expectedIndent}, got ${error.currentIndent}`, 
+                    vscode.DiagnosticSeverity.Warning
+                  );
+
+                  indentDiags.push(diagnostic);
+                  edit.replace(document.uri, range, `${` `.repeat(error.expectedIndent)}`);
+                });
+
+                const action = new vscode.CodeAction(`Fix all indentation warnings`, vscode.CodeActionKind.QuickFix);
+                action.diagnostics = indentDiags;
+                action.edit = edit;
+                actions.push(action);
+              }
+
+              if (errors.length > 0) {
+                errors.forEach(error => {
+                  const range = error.range;
+
+                  const diagnostic = new vscode.Diagnostic(
+                    range, 
+                    Linter.getErrorText(error.type), 
+                    vscode.DiagnosticSeverity.Warning
+                  );
+
+                  let action;
+
+                  switch (error.type) {
+                  case `UppercaseConstants`:
+                    action = new vscode.CodeAction(`Convert constant to uppercase (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
+                    action.edit = new vscode.WorkspaceEdit();
+                    action.edit.replace(document.uri, range, document.getText(range).toUpperCase());
+                    action.diagnostics = [diagnostic];
+                    break;
+
+                  case `ForceOptionalParens`:
+                    action = new vscode.CodeAction(`Add brackets (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
+                    action.edit = new vscode.WorkspaceEdit();
+                    action.edit.insert(document.uri, range.end, `)`);
+                    action.edit.insert(document.uri, range.start, `(`);
+                    action.diagnostics = [diagnostic];
+                    break;
+
+                  case `UselessOperationCheck`:
+                    action = new vscode.CodeAction(`Remove operation (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
+                    action.edit = new vscode.WorkspaceEdit();
+                    action.edit.delete(document.uri, range);
+                    action.diagnostics = [diagnostic];
+                    break;
+                  }
+
+                  if (action) 
+                    actions.push(action);
+
+                  generalDiags.push(diagnostic);
+                });
+              }
             }
-          }
           
-          this.linterDiagnostics.set(document.uri, [...indentDiags, ...generalDiags]);
-          return actions;
+            this.linterDiagnostics.set(document.uri, [...indentDiags, ...generalDiags]);
+            return actions;
+          }
         }
       }),
 
@@ -500,12 +523,17 @@ module.exports = class RPGLinter {
 
       vscode.workspace.onDidOpenTextDocument((document) => {
         if (document.languageId === `rpgle`) {
+          const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
-            const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
             const text = document.getText();
             if (isFree) {
               this.updateCopybookCache(document.uri, text);
             }
+          }
+
+          if (Configuration.get(`rpgleLinterSupportEnabled`)) {
+            // Will only download once.
+            this.getContent(document.uri, lintFile);
           }
         }
       })

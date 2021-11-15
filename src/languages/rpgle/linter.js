@@ -19,7 +19,17 @@ module.exports = class Linter {
 
   /**
    * @param {string} content 
-   * @param {{indent?: number}} rules 
+   * @param {{
+   *  indent?: number
+   *  BlankStructNamesCheck?: boolean,
+   *  QualifiedCheck?: boolean,
+   *  PrototypeCheck?: boolean,
+   *  ForceOptionalParens?: boolean,
+   *  NoOCCURS?: boolean,
+   *  NoSELECTAll?: boolean,
+   *  UselessOperationCheck?: boolean,
+   *  UppercaseConstants?: boolean
+   * }} rules 
    */
   static getErrors(content, rules) {
     /** @type {string[]} */
@@ -108,11 +118,13 @@ module.exports = class Linter {
 
             switch (opcode) {
             case `DCL-C`:
-              if (pieces[1] !== pieces[1].toUpperCase()) {
-                errors.push({
-                  range: new vscode.Range(lineNumber, 6, lineNumber, 6 + pieces[1].length),
-                  type: `UppercaseConstants`
-                });
+              if (rules.UppercaseConstants) {
+                if (pieces[1] !== pieces[1].toUpperCase()) {
+                  errors.push({
+                    range: new vscode.Range(lineNumber, 6, lineNumber, 6 + pieces[1].length),
+                    type: `UppercaseConstants`
+                  });
+                }
               }
               break;
 
@@ -121,68 +133,82 @@ module.exports = class Linter {
             case `WHEN`:
             case `DOW`:
             case `DOU`:
-              if (pieces[1].includes(`(`) && pieces[pieces.length-1].includes(`)`)) {
+              if (rules.ForceOptionalParens) {
+                if (pieces[1].includes(`(`) && pieces[pieces.length-1].includes(`)`)) {
                 // Looking good
-              } else {
-                statementStart = new vscode.Position(statementStart.line, statementStart.character + opcode.length + 1);
+                } else {
+                  statementStart = new vscode.Position(statementStart.line, statementStart.character + opcode.length + 1);
 
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `ForceOptionalParens`
-                });
+                  errors.push({
+                    range: new vscode.Range(statementStart, statementEnd),
+                    type: `ForceOptionalParens`
+                  });
+                }
               }
               break;
 
             case `DCL-PR`:
+              if (rules.PrototypeCheck) {
               // Unneeded PR
-              if (!currentStatement.includes(` EXT`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `PrototypeCheck`
-                });
+                if (!currentStatement.includes(` EXT`)) {
+                  errors.push({
+                    range: new vscode.Range(statementStart, statementEnd),
+                    type: `PrototypeCheck`
+                  });
+                }
               }
               break;
 
             case `DCL-DS`:
-              if (currentStatement.includes(` OCCURS`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `NoOCCURS`
-                });
+              if (rules.NoOCCURS) {
+                if (currentStatement.includes(` OCCURS`)) {
+                  errors.push({
+                    range: new vscode.Range(statementStart, statementEnd),
+                    type: `NoOCCURS`
+                  });
+                }
               }
 
-              if (!currentStatement.includes(`QUALIFIED`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `QualifiedCheck`
-                });
+              if (rules.QualifiedCheck) {
+                if (!currentStatement.includes(`QUALIFIED`)) {
+                  errors.push({
+                    range: new vscode.Range(statementStart, statementEnd),
+                    type: `QualifiedCheck`
+                  });
+                }
               }
 
-              if (pieces[1] === `*N`) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `BlankStructNamesCheck`
-                });
+              if (rules.BlankStructNamesCheck) {
+                if (pieces[1] === `*N`) {
+                  errors.push({
+                    range: new vscode.Range(statementStart, statementEnd),
+                    type: `BlankStructNamesCheck`
+                  });
+                }
               }
               break;
 
             case `EXEC`:
-              if (currentStatement.includes(`SELECT *`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `NoSELECTAll`
-                });
+              if (rules.NoSELECTAll) {
+                if (currentStatement.includes(`SELECT *`)) {
+                  errors.push({
+                    range: new vscode.Range(statementStart, statementEnd),
+                    type: `NoSELECTAll`
+                  });
+                }
               }
               break;
 
             case `EVAL`:
             case `CALLP`:
-              statementEnd = new vscode.Position(statementEnd.line, statementStart.character + opcode.length + 1);
-              errors.push({
-                range: new vscode.Range(statementStart, statementEnd),
-                type: `UselessOperationCheck`
-              });
-              break;
+              if (rules.UselessOperationCheck) {
+                statementEnd = new vscode.Position(statementEnd.line, statementStart.character + opcode.length + 1);
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `UselessOperationCheck`
+                });
+                break;
+              }
             }
           }
 
