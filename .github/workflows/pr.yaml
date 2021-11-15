@@ -10,7 +10,7 @@ jobs:
         with:
           fetch-depth: 1
       - run: npm install
-      - run: node ./node_modules/eslint/bin/eslint src/** --quiet
+      - run: node ./node_modules/eslint/bin/eslint src/** --no-error-on-unmatched-pattern
       
       - run: npm install -g vsce
       - name: Create build
