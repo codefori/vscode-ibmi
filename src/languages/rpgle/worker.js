@@ -6,6 +6,7 @@ const instance = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
 
 const ColumnData = require(`./columnData`);
+const Linter = require(`./linter`);
 
 const currentArea = vscode.window.createTextEditorDecorationType({
   backgroundColor: `rgba(242, 242, 109, 0.3)`,
@@ -149,7 +150,7 @@ module.exports = class RPGLinter {
           const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
           const text = document.getText();
           if (isFree) {
-            const detail = this.parseFreeFormatDocument(text, {
+            const detail = Linter.getErrors(text, {
               indent: Number(vscode.window.activeTextEditor.options.tabSize)
             });
 
@@ -184,9 +185,31 @@ module.exports = class RPGLinter {
 
                 const diagnostic = new vscode.Diagnostic(
                   range, 
-                  error.type, 
+                  Linter.getErrorText(error.type), 
                   vscode.DiagnosticSeverity.Warning
                 );
+
+                let action;
+
+                switch (error.type) {
+                case `ForceOptionalParens`:
+                  action = new vscode.CodeAction(`Add brackets (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
+                  action.edit = new vscode.WorkspaceEdit();
+                  action.edit.insert(document.uri, range.end, `)`);
+                  action.edit.insert(document.uri, range.start, `(`);
+                  action.diagnostics = [diagnostic];
+                  break;
+
+                case `UselessOperationCheck`:
+                  action = new vscode.CodeAction(`Remove operation (Line ${error.range.start.line+1})`, vscode.CodeActionKind.QuickFix);
+                  action.edit = new vscode.WorkspaceEdit();
+                  action.edit.delete(document.uri, range);
+                  action.diagnostics = [diagnostic];
+                  break;
+                }
+
+                if (action) 
+                  actions.push(action);
 
                 generalDiags.push(diagnostic);
               });
@@ -937,208 +960,6 @@ module.exports = class RPGLinter {
     this.parsedCache[workingUri.path] = parsedData;
 
     return parsedData;
-  }
-
-  /**
-   * 
-   * @param {string} content 
-   * @param {{indent?: number}} rules 
-   */
-  parseFreeFormatDocument(content, rules) {
-    /** @type {string[]} */
-    const lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
-
-    const indent = rules.indent || 2;
-
-    let lineNumber = -1;
-
-    /** @type {{line: number, expectedIndent: number, currentIndent: number}[]} */
-    let indentErrors = [];
-
-    /** @type {{range: vscode.Range, type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"}[]} */
-    let errors = [];
-
-    /** @type {Number} */
-    let expectedIndent = 0;
-    let currentIndent = 0;
-
-    /** @type {string[]} */
-    let pieces;
-
-    let continuedStatement = false, skipIndentCheck = false;
-
-    let currentStatement = ``;
-
-    /** @type {vscode.Position} */
-    let statementStart;
-    /** @type {vscode.Position} */
-    let statementEnd;
-
-    for (let currentLine of lines) {
-      currentIndent = currentLine.search(/\S/);
-      let line = currentLine.trim().toUpperCase();
-
-      lineNumber += 1;
-
-      if (line.startsWith(`//`)) continue;
-
-      if (currentIndent >= 0) {
-        skipIndentCheck = false;
-
-        if (continuedStatement) {
-          skipIndentCheck = true;
-          statementEnd = new vscode.Position(lineNumber, currentLine.length);
-
-          if (currentIndent < expectedIndent) {
-            indentErrors.push({
-              line: lineNumber,
-              expectedIndent,
-              currentIndent
-            });
-          }
-        } else {
-          statementStart = new vscode.Position(lineNumber, currentIndent);
-          statementEnd = new vscode.Position(lineNumber, currentLine.length);
-        }
-
-        if (line.endsWith(`;`)) {
-          line = line.substr(0, line.length-1);
-          currentStatement += line;
-          continuedStatement = false;
-
-        } else {
-
-          const semiIndex = line.lastIndexOf(`;`);
-          const commentIndex = line.lastIndexOf(`//`);
-
-          if (commentIndex > semiIndex) {
-            line = line.substr(0, semiIndex);
-          } else {
-            continuedStatement = true;
-          }
-
-          currentStatement += line;
-        }
-
-        // Linter checking
-        if (continuedStatement === false) {
-          pieces = currentStatement.split(` `);
-
-          if (pieces.length > 0) {
-            const opcode = pieces[0].toUpperCase();
-
-            switch (opcode) {
-            case `IF`:
-              if (pieces[1].includes(`(`) && pieces[pieces.length-1].includes(`)`)) {
-                // Looking good
-              } else {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `ForceOptionalParens`
-                });
-              }
-              break;
-            case `DCL-PR`:
-              // Unneeded PR
-              if (!currentStatement.includes(` EXT`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `PrototypeCheck`
-                });
-              }
-              break;
-
-            case `DCL-DS`:
-              if (currentStatement.includes(` OCCURS`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `NoOCCURS`
-                });
-              }
-
-              if (!currentStatement.includes(`QUALIFIED`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `QualifiedCheck`
-                });
-              }
-
-              if (pieces[1] === `*N`) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `BlankStructNamesCheck`
-                });
-              }
-              break;
-
-            case `EXEC`:
-              if (currentStatement.includes(`SELECT *`)) {
-                errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
-                  type: `NoSELECTAll`
-                });
-              }
-              break;
-
-            case `EVAL`:
-            case `CALLP`:
-              errors.push({
-                range: new vscode.Range(statementStart, statementEnd),
-                type: `UselessOperationCheck`
-              });
-              break;
-            }
-          }
-          currentStatement = ``;
-        }
-
-        pieces = line.split(` `);
-
-        if ([
-          `ENDIF`, `ENDFOR`, `ENDDO`, `ELSE`, `ELSEIF`, `ON-ERROR`, `ENDMON`, `ENDSR`, `WHEN`, `OTHER`, `END-PROC`, `END-PI`, `END-PR`, `END-DS`
-        ].includes(pieces[0])) {
-          expectedIndent -= indent; 
-        }
-
-        //Special case for `ENDSL`
-        if ([
-          `ENDSL`
-        ].includes(pieces[0])) {
-          expectedIndent -= (indent*2); 
-        }
-          
-        if (currentIndent !== expectedIndent && !skipIndentCheck) {
-          indentErrors.push({
-            line: lineNumber,
-            expectedIndent,
-            currentIndent
-          });
-        }
-
-        if ([
-          `IF`, `ELSE`, `ELSEIF`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
-        ].includes(pieces[0])) {
-          if (pieces[0] == `DCL-DS` && (line.includes(`LIKEDS`) || line.includes(`END-DS`))) {
-            //No change
-          } 
-          else if (pieces[0] == `DCL-PI` && line.includes(`END-PI`)) {
-            //No change
-          }
-          else if (pieces[0] == `SELECT`) {
-            if (skipIndentCheck === false) expectedIndent += (indent*2); 
-          }
-          else {
-            expectedIndent += indent; 
-          }
-        }
-          
-      }
-    }
-
-    return {
-      indentErrors,
-      errors
-    };
   }
 }
 
