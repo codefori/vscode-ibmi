@@ -33,6 +33,10 @@
 	],
 	"main": "./dist/extension",
 	"contributes": {
+		"jsonValidation": [{
+			"fileMatch": ["rpglint.json", "RPGLINT.JSON"],
+			"url": "./src/schemas/rpglint.json"
+		}],
 		"snippets": [
 			{
 				"path": "./snippets/cl.code-snippets"

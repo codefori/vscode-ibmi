@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/halcyon-tech/vscode-ibmi",
+  "type": "object",
+  "description": "The root schema comprises the entire JSON document.",
+  "required": [],
+  "properties": {
+      "BlankStructNamesCheck": {
+          "$id": "#/properties/BlankStructNamesCheck",
+          "type": "boolean",
+          "description": "Struct names cannot be blank (*N)."
+      },
+      "QualifiedCheck": {
+          "$id": "#/properties/QualifiedCheck",
+          "type": "boolean",
+          "description": "Struct names must be qualified (QUALIFIED)."
+      },
+      "PrototypeCheck": {
+          "$id": "#/properties/PrototypeCheck",
+          "type": "boolean",
+          "description": "Prototypes can only be defined with either EXT, EXTPGM or EXTPROC"
+      },
+      "ForceOptionalParens": {
+          "$id": "#/properties/ForceOptionalParens",
+          "type": "boolean",
+          "description": "Expressions must be surrounded by brackets."
+      },
+      "NoOCCURS": {
+          "$id": "#/properties/NoOCCURS",
+          "type": "boolean",
+          "description": "OCCURS is not allowed."
+      },
+      "NoSELECTAll": {
+          "$id": "#/properties/NoSELECTAll",
+          "type": "boolean",
+          "description": "'SELECT *' is not allowed in Embedded SQL."
+      },
+      "UselessOperationCheck": {
+          "$id": "#/properties/UselessOperationCheck",
+          "type": "boolean",
+          "description": "Redundant operation codes (EVAL, CALLP) not allowed."
+      },
+      "UppercaseConstants": {
+          "$id": "#/properties/UppercaseConstants",
+          "type": "boolean",
+          "description": "Constants must be in uppercase."
+      }
+  },
+  "additionalProperties": true
+}

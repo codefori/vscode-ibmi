@@ -8,8 +8,8 @@ const errorText = {
   'ForceOptionalParens': `Expressions must be surrounded by brackets.`,
   'NoOCCURS': `\`OCCURS\` is not allowed.`,
   'NoSELECTAll': `\`SELECT *\` is not allowed in Embedded SQL.`,
-  'UselessOperationCheck': `Redundant operation code.`,
-  'UppercaseConstants': `Constants must be in upper case.`,
+  'UselessOperationCheck': `Redundant operation codes (EVAL, CALLP) not allowed.`,
+  'UppercaseConstants': `Constants must be in uppercase.`,
 }
 
 module.exports = class Linter {
