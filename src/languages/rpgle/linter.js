@@ -10,6 +10,7 @@ const errorText = {
   'NoSELECTAll': `\`SELECT *\` is not allowed in Embedded SQL.`,
   'UselessOperationCheck': `Redundant operation codes (EVAL, CALLP) not allowed.`,
   'UppercaseConstants': `Constants must be in uppercase.`,
+  'SpecificCasing': `Does not match required case.`
 }
 
 const oneLineTriggers = {
@@ -33,7 +34,8 @@ module.exports = class Linter {
    *  NoOCCURS?: boolean,
    *  NoSELECTAll?: boolean,
    *  UselessOperationCheck?: boolean,
-   *  UppercaseConstants?: boolean
+   *  UppercaseConstants?: boolean,
+   *  SpecificCasing?: {operation: string, expected: string}[],
    * }} rules 
    */
   static getErrors(content, rules) {
@@ -47,7 +49,7 @@ module.exports = class Linter {
     /** @type {{line: number, expectedIndent: number, currentIndent: number}[]} */
     let indentErrors = [];
 
-    /** @type {{range: vscode.Range, type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"|"UppercaseConstants"}[]} */
+    /** @type {{range: vscode.Range, type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"|"UppercaseConstants"|"SpecificCasing", newValue?: string}[]} */
     let errors = [];
 
     /** @type {Number} */
@@ -114,10 +116,12 @@ module.exports = class Linter {
           currentStatement += line;
         }
 
+        const upperLine = line.toUpperCase();
+
         // Linter checking
         if (continuedStatement === false) {
           const currentStatementUpper = currentStatement.toUpperCase();
-          pieces = currentStatement.split(` `);
+          pieces = currentStatement.split(` `).filter(piece => piece !== ``);
 
           if (pieces.length > 0) {
             opcode = pieces[0].toUpperCase();
@@ -128,7 +132,8 @@ module.exports = class Linter {
                 if (pieces[1] !== pieces[1].toUpperCase()) {
                   errors.push({
                     range: new vscode.Range(lineNumber, 6, lineNumber, 6 + pieces[1].length),
-                    type: `UppercaseConstants`
+                    type: `UppercaseConstants`,
+                    newValue: pieces[1].toUpperCase()
                   });
                 }
               }
@@ -218,11 +223,27 @@ module.exports = class Linter {
             }
           }
 
+          if (rules.SpecificCasing) {
+            const caseRule = rules.SpecificCasing.find(rule => rule.operation.toUpperCase() === opcode);
+            if (caseRule) {
+              if (pieces[0] !== caseRule.expected) {
+                statementEnd = new vscode.Position(statementEnd.line, statementStart.character + opcode.length);
+                errors.push({
+                  range: new vscode.Range(statementStart, statementEnd),
+                  type: `SpecificCasing`,
+                  newValue: caseRule.expected
+                });
+              }
+            }
+          }
+
           currentStatement = ``;
         }
 
-        pieces = line.split(` `);
-        opcode = pieces[0].toUpperCase();
+        // Next, check for indentation errors
+
+        pieces = upperLine.split(` `).filter(piece => piece !== ``);
+        opcode = pieces[0];
 
         if ([
           `ENDIF`, `ENDFOR`, `ENDDO`, `ELSE`, `ELSEIF`, `ON-ERROR`, `ENDMON`, `ENDSR`, `WHEN`, `OTHER`, `END-PROC`, `END-PI`, `END-PR`, `END-DS`
@@ -247,11 +268,11 @@ module.exports = class Linter {
 
         if ([
           `IF`, `ELSE`, `ELSEIF`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
-        ].includes(pieces[0])) {
-          if (pieces[0] == `DCL-DS` && oneLineTriggers[pieces[0]].some(trigger => line.includes(trigger))) {
+        ].includes(opcode)) {
+          if (opcode == `DCL-DS` && oneLineTriggers[opcode].some(trigger => upperLine.includes(trigger))) {
             //No change
           } 
-          else if (pieces[0] == `DCL-PI` && oneLineTriggers[pieces[0]].some(trigger => line.includes(trigger))) {
+          else if (opcode == `DCL-PI` && oneLineTriggers[opcode].some(trigger => upperLine.includes(trigger))) {
             //No change
           }
           else if (opcode == `SELECT`) {

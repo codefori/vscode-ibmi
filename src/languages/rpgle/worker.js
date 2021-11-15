@@ -191,7 +191,7 @@ module.exports = class RPGLinter {
                   case `UppercaseConstants`:
                     action = new vscode.CodeAction(`Convert constant name to uppercase`, vscode.CodeActionKind.QuickFix);
                     action.edit = new vscode.WorkspaceEdit();
-                    action.edit.replace(document.uri, range, document.getText(range).toUpperCase());
+                    action.edit.replace(document.uri, range, error.newValue);
                     actions.push(action);
                     break;
   
@@ -207,6 +207,13 @@ module.exports = class RPGLinter {
                     action = new vscode.CodeAction(`Remove operation code`, vscode.CodeActionKind.QuickFix);
                     action.edit = new vscode.WorkspaceEdit();
                     action.edit.delete(document.uri, range);
+                    actions.push(action);
+                    break;
+  
+                  case `SpecificCasing`:
+                    action = new vscode.CodeAction(`Correct casing to '${error.newValue}'`, vscode.CodeActionKind.QuickFix);
+                    action.edit = new vscode.WorkspaceEdit();
+                    action.edit.replace(document.uri, range, error.newValue);
                     actions.push(action);
                     break;
                   }
