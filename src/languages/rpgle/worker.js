@@ -146,55 +146,7 @@ module.exports = class RPGLinter {
           const document = editor.document;
           if (document.languageId === `rpgle`) {
             if (Configuration.get(`rpgleLinterSupportEnabled`)) {
-
-              const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
-              if (isFree) {
-                const text = document.getText();
-
-                /** @type {vscode.Diagnostic[]} */
-                let indentDiags = [];
-
-                /** @type {vscode.Diagnostic[]} */
-                let generalDiags = [];
-
-                const options = this.getLinterOptions(document.uri);
-
-                const detail = Linter.getErrors(text, {
-                  indent: Number(vscode.window.activeTextEditor.options.tabSize),
-                  ...options
-                });
-
-                const indentErrors = detail.indentErrors;
-                const errors = detail.errors;
-
-                if (indentErrors.length > 0) {
-                  indentErrors.forEach(error => {
-                    const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
-
-                    indentDiags.push(new vscode.Diagnostic(
-                      range, 
-                      `Incorrect indentation. Expected ${error.expectedIndent}, got ${error.currentIndent}`, 
-                      vscode.DiagnosticSeverity.Warning
-                    ));
-                  });
-                }
-
-                if (errors.length > 0) {
-                  errors.forEach(error => {
-                    const range = error.range;
-
-                    const diagnostic = new vscode.Diagnostic(
-                      range, 
-                      Linter.getErrorText(error.type), 
-                      vscode.DiagnosticSeverity.Warning
-                    );
-
-                    generalDiags.push(diagnostic);
-                  });
-                }
-
-                this.linterDiagnostics.set(document.uri, [...indentDiags, ...generalDiags]);
-              }
+              this.refreshDiagnostics(document);
             }
           }
         }
@@ -507,6 +459,9 @@ module.exports = class RPGLinter {
         if (e && e.document) {
           if (e.document.languageId === `rpgle`) {
             const document = e.document;
+
+            this.refreshDiagnostics(document);
+
             const text = document.getText();
             const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
             if (isFree) {
@@ -549,7 +504,9 @@ module.exports = class RPGLinter {
 
           if (Configuration.get(`rpgleLinterSupportEnabled`)) {
             // Will only download once.
-            this.getContent(document.uri, lintFile);
+            this.getContent(document.uri, lintFile).then((content) => {
+              this.refreshDiagnostics(document);
+            });
           }
         }
       })
@@ -1029,6 +986,58 @@ module.exports = class RPGLinter {
     }
 
     return options;
+  }
+
+  /** @param {vscode.TextDocument} document */
+  refreshDiagnostics(document) {
+    const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+    if (isFree) {
+      const text = document.getText();
+
+      /** @type {vscode.Diagnostic[]} */
+      let indentDiags = [];
+
+      /** @type {vscode.Diagnostic[]} */
+      let generalDiags = [];
+
+      const options = this.getLinterOptions(document.uri);
+
+      const detail = Linter.getErrors(text, {
+        indent: Number(vscode.window.activeTextEditor.options.tabSize),
+        ...options
+      });
+
+      const indentErrors = detail.indentErrors;
+      const errors = detail.errors;
+
+      if (indentErrors.length > 0) {
+        indentErrors.forEach(error => {
+          const range = new vscode.Range(error.line, 0, error.line, error.currentIndent);
+
+          indentDiags.push(new vscode.Diagnostic(
+            range, 
+            `Incorrect indentation. Expected ${error.expectedIndent}, got ${error.currentIndent}`, 
+            vscode.DiagnosticSeverity.Warning
+          ));
+        });
+      }
+
+      if (errors.length > 0) {
+        errors.forEach(error => {
+          const range = error.range;
+
+          const diagnostic = new vscode.Diagnostic(
+            range, 
+            Linter.getErrorText(error.type), 
+            vscode.DiagnosticSeverity.Warning
+          );
+
+          generalDiags.push(diagnostic);
+        });
+      }
+
+      this.linterDiagnostics.set(document.uri, [...indentDiags, ...generalDiags]);
+    }
   }
 }
 
