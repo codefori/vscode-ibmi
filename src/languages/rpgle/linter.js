@@ -19,6 +19,11 @@ const notCurrentArea = vscode.window.createTextEditorDecorationType({
 
 const possibleTags = require(`./tags`);
 
+const oneLineTriggers = {
+  'DCL-DS': [`LIKEDS`, `LIKEREC`, `END-DS`],
+  'DCL-PI': [`END-PI`],
+}
+
 module.exports = class RPGLinter {
   /**
    * @param {vscode.ExtensionContext} context
@@ -1008,10 +1013,10 @@ module.exports = class RPGLinter {
         if ([
           `IF`, `ELSE`, `ELSEIF`, `FOR`, `FOR-EACH`, `DOW`, `DOU`, `MONITOR`, `ON-ERROR`, `BEGSR`, `SELECT`, `WHEN`, `OTHER`, `DCL-PROC`, `DCL-PI`, `DCL-PR`, `DCL-DS`
         ].includes(pieces[0])) {
-          if (pieces[0] == `DCL-DS` && (line.includes(`LIKEDS`) || line.includes(`END-DS`))) {
+          if (pieces[0] == `DCL-DS` && oneLineTriggers[pieces[0]].some(trigger => line.includes(trigger))) {
             //No change
           } 
-          else if (pieces[0] == `DCL-PI` && line.includes(`END-PI`)) {
+          else if (pieces[0] == `DCL-PI` && oneLineTriggers[pieces[0]].some(trigger => line.includes(trigger))) {
             //No change
           }
           else if (pieces[0] == `SELECT`) {
