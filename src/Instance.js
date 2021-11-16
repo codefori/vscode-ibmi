@@ -106,7 +106,6 @@ module.exports = class Instance {
     const actionsUI = require(`./webviews/actions`);
     const variablesUI = require(`./webviews/variables`);
 
-    const rpgleLinter = require(`./languages/rpgle/worker`);
     const CLCommands = require(`./languages/clle/clCommands`);
 
     if (instance.connection) {
@@ -324,8 +323,6 @@ module.exports = class Instance {
             }
           })
         );
-        
-        new rpgleLinter(context);
 
         if (config.clContentAssistEnabled) {
           const clInstance = new CLCommands(context);
