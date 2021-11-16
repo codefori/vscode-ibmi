@@ -6,6 +6,9 @@ const instance = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
 
 const ColumnData = require(`./columnData`);
+const Declaration = require(`./models/declaration`);
+const Cache = require(`./models/cache`);
+
 const Linter = require(`./linter`);
 
 const currentArea = vscode.window.createTextEditorDecorationType({
@@ -35,7 +38,7 @@ module.exports = class RPGLinter {
     /** @type {{[path: string]: string[]}} */
     this.copyBooks = {};
 
-    /** @type {{[path: string]: {subroutines, procedures, variables, structs, constants}}} */
+    /** @type {{[path: string]: Cache}} */
     this.parsedCache = {};
 
     /** @type {{[spfPath: string]: object}} */
@@ -149,7 +152,13 @@ module.exports = class RPGLinter {
           const document = editor.document;
           if (document.languageId === `rpgle`) {
             if (Configuration.get(`rpgleLinterSupportEnabled`)) {
-              this.refreshDiagnostics(document);
+              if (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`) {
+                const text = document.getText();
+                this.parsedCache[document.uri.path] = undefined;
+                this.getDocs(document.uri, text).then(docs => {
+                  this.refreshDiagnostics(document, docs);
+                });
+              }
             }
           }
         }
@@ -169,16 +178,17 @@ module.exports = class RPGLinter {
             const text = document.getText();
             if (isFree) {
               const options = this.getLinterOptions(document.uri);
+              const docs = await this.getDocs(document.uri);
 
               const detail = Linter.getErrors(text, {
                 indent: Number(vscode.window.activeTextEditor.options.tabSize),
                 ...options
-              });
+              }, docs);
 
               const fixIndent = detail.indentErrors.some(error => error.line === range.start.line);
 
               if (fixIndent) {
-                action = new vscode.CodeAction(`Fix indentation`, vscode.CodeActionKind.QuickFix);
+                action = new vscode.CodeAction(`Fix indentation`, vscode.CodeActionKind.Source);
                 action.edit = new vscode.WorkspaceEdit();
                 detail.indentErrors.forEach(error => {
                   action.edit.replace(document.uri, range, `${` `.repeat(error.expectedIndent)}`);
@@ -214,9 +224,17 @@ module.exports = class RPGLinter {
                     break;
   
                   case `SpecificCasing`:
+                  case `IncorrectVariableCase`:
                     action = new vscode.CodeAction(`Correct casing to '${error.newValue}'`, vscode.CodeActionKind.QuickFix);
                     action.edit = new vscode.WorkspaceEdit();
                     action.edit.replace(document.uri, range, error.newValue);
+                    actions.push(action);
+                    break;
+
+                  case `RequiresProcedureDescription`:
+                    action = new vscode.CodeAction(`Add title and description`, vscode.CodeActionKind.QuickFix);
+                    action.edit = new vscode.WorkspaceEdit();
+                    action.edit.insert(document.uri, range.start, `///\n// Title\n// Description\n///\n`);
                     actions.push(action);
                     break;
                   }
@@ -470,12 +488,14 @@ module.exports = class RPGLinter {
           if (e.document.languageId === `rpgle`) {
             const document = e.document;
 
-            this.refreshDiagnostics(document);
-
             const text = document.getText();
             const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
             if (isFree) {
               this.updateCopybookCache(document.uri, text);
+
+              this.getDocs(document.uri, text).then(doc => {
+                this.refreshDiagnostics(document, doc);
+              });
             }
           }
         }
@@ -496,32 +516,37 @@ module.exports = class RPGLinter {
             // The user usually switches tabs very quickly, so we trigger this event too.
             if (vscode.window.activeTextEditor) {
               if (workingUri.path !== vscode.window.activeTextEditor.document.uri.path) {
-                this.refreshDiagnostics(vscode.window.activeTextEditor.document);
+                this.getDocs(workingUri).then(docs => {
+                  this.refreshDiagnostics(vscode.window.activeTextEditor.document, docs);
+                });
               }
             }
           }
           else if (document.languageId === `rpgle`) {
             //Else fetch new info from source being edited
             if (isFree) {
-              this.updateCopybookCache(workingUri, text);
+              this.updateCopybookCache(workingUri, text).then(() => {});
             }
           }
-          
         }
       }),
 
       vscode.workspace.onDidOpenTextDocument((document) => {
         if (document.languageId === `rpgle`) {
           const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
+          const text = document.getText();
           if (Configuration.get(`rpgleContentAssistEnabled`)) {
-            const text = document.getText();
             if (isFree) {
               this.updateCopybookCache(document.uri, text);
             }
           }
 
           if (Configuration.get(`rpgleLinterSupportEnabled`)) {
-            this.getLinterFile(document);
+            this.getLinterFile(document).then(file => {
+              this.getDocs(document.uri, text).then(docs => {
+                this.refreshDiagnostics(document, docs);
+              });
+            });
           }
         }
       })
@@ -678,13 +703,7 @@ module.exports = class RPGLinter {
    * @param {vscode.Uri} workingUri
    * @param {string} [content] 
    * @param {boolean} [withIncludes] To make sure include statements are parsed
-   * @returns {Promise<{
-   *   variables: Declaration[],
-   *   structs: Declaration[],
-   *   procedures: Declaration[],
-   *   subroutines: Declaration[],
-   *   constants: Declaration[]
-   * }|null>}
+   * @returns {Promise<Cache|null>}
    */
   async getDocs(workingUri, content, withIncludes = true) {
     if (this.parsedCache[workingUri.path]) {
@@ -972,13 +991,13 @@ module.exports = class RPGLinter {
       }
     }
 
-    const parsedData = {
+    const parsedData = new Cache({
       procedures,
       structs,
       subroutines,
       variables,
       constants
-    };
+    });
 
     this.parsedCache[workingUri.path] = parsedData;
 
@@ -993,9 +1012,7 @@ module.exports = class RPGLinter {
     // Will only download once.
     const lintPath = lintFile[document.uri.scheme];
     if (lintPath) {
-      this.getContent(document.uri, lintPath).then((content) => {
-        this.refreshDiagnostics(document);
-      })
+      return this.getContent(document.uri, lintPath);
     }
   }
 
@@ -1022,8 +1039,11 @@ module.exports = class RPGLinter {
     return options;
   }
 
-  /** @param {vscode.TextDocument} document */
-  refreshDiagnostics(document) {
+  /** 
+   * @param {vscode.TextDocument} document 
+   * @param {Cache} [docs]
+   * */
+  async refreshDiagnostics(document, docs) {
     const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
     if (isFree) {
       const text = document.getText();
@@ -1039,7 +1059,7 @@ module.exports = class RPGLinter {
       const detail = Linter.getErrors(text, {
         indent: Number(vscode.window.activeTextEditor.options.tabSize),
         ...options
-      });
+      }, docs);
 
       const indentErrors = detail.indentErrors;
       const errors = detail.errors;
@@ -1058,7 +1078,19 @@ module.exports = class RPGLinter {
 
       if (errors.length > 0) {
         errors.forEach(error => {
-          const range = error.range;
+          const offset = error.offset;
+          let range;
+
+          if (offset) {
+            const docOffsetStart = document.offsetAt(error.range.start) + offset.position;
+            const docOffsetEnd = document.offsetAt(error.range.start) + offset.length;
+            range = new vscode.Range(
+              document.positionAt(docOffsetStart),
+              document.positionAt(docOffsetEnd)
+            );
+          } else {
+            range = error.range;
+          }
 
           const diagnostic = new vscode.Diagnostic(
             range, 
@@ -1072,31 +1104,5 @@ module.exports = class RPGLinter {
 
       this.linterDiagnostics.set(document.uri, [...indentDiags, ...generalDiags]);
     }
-  }
-}
-
-class Declaration {
-  /**
-   * 
-   * @param {"procedure"|"subroutine"|"struct"|"subitem"|"variable"|"constant"} type 
-   */
-  constructor(type) {
-    this.type = type;
-    this.name = ``;
-    this.keywords = [];
-    this.description = ``;
-
-    /** @type {{tag: string, content: string}[]} */
-    this.tags = [];
-
-    /** @type {{path: string, line: number}} */
-    this.position = undefined;
-
-    //Not used in subitem:
-    /** @type {Declaration[]} */
-    this.subItems = [];
-
-    //Only used in procedure
-    this.readParms = false;
   }
 }

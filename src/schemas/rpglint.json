@@ -2,7 +2,7 @@
     "$schema": "http://json-schema.org/draft-07/schema",
     "$id": "https://github.com/halcyon-tech/vscode-ibmi",
     "type": "object",
-    "description": "The root schema comprises the entire JSON document.",
+    "description": "Available lint configuration for RPGLE",
     "required": [],
     "properties": {
         "BlankStructNamesCheck": {
@@ -44,6 +44,21 @@
             "$id": "#/properties/UppercaseConstants",
             "type": "boolean",
             "description": "Constants must be in uppercase."
+        },
+        "IncorrectVariableCase": {
+            "$id": "#/properties/UppercaseConstants",
+            "type": "boolean",
+            "description": "Variable names must match the case of the definition."
+        },
+        "RequiresParameter": {
+            "$id": "#/properties/RequiresParameter",
+            "type": "boolean",
+            "description": "Brackets must be used on a procedure, even if it has no parameters."
+        },
+        "RequiresProcedureDescription": {
+            "$id": "#/properties/RequiresProcedureDescription",
+            "type": "boolean",
+            "description": "Procedure titles and descriptions must be provided."
         },
         "SpecificCasing": {
             "$id": "#/properties/SpecificCasing",

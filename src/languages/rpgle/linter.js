@@ -1,6 +1,9 @@
 
 const vscode = require(`vscode`);
 
+const Cache = require(`./models/cache`);
+const Statement = require(`./statement`);
+
 const errorText = {
   'BlankStructNamesCheck': `Struct names cannot be blank (\`*N\`).`,
   'QualifiedCheck': `Struct names must be qualified (\`QUALIFIED\`).`,
@@ -10,7 +13,11 @@ const errorText = {
   'NoSELECTAll': `\`SELECT *\` is not allowed in Embedded SQL.`,
   'UselessOperationCheck': `Redundant operation codes (EVAL, CALLP) not allowed.`,
   'UppercaseConstants': `Constants must be in uppercase.`,
-  'SpecificCasing': `Does not match required case.`
+  'SpecificCasing': `Does not match required case.`,
+  'InvalidDeclareNumber': `Variable names cannot start with a number`,
+  'IncorrectVariableCase': `Variable name casing does not match definition.`,
+  'RequiresParameter': `Procedure calls require brackets.`,
+  'RequiresProcedureDescription': `Proceudres require a title and description.`,
 }
 
 const oneLineTriggers = {
@@ -26,7 +33,7 @@ module.exports = class Linter {
   /**
    * @param {string} content 
    * @param {{
-   *  indent?: number
+   *  indent?: number,
    *  BlankStructNamesCheck?: boolean,
    *  QualifiedCheck?: boolean,
    *  PrototypeCheck?: boolean,
@@ -35,21 +42,41 @@ module.exports = class Linter {
    *  NoSELECTAll?: boolean,
    *  UselessOperationCheck?: boolean,
    *  UppercaseConstants?: boolean,
+   *  IncorrectVariableCase?: boolean,
+   *  RequiresParameter?: boolean,
    *  SpecificCasing?: {operation: string, expected: string}[],
    * }} rules 
+   * @param {Cache|null} [definitions]
    */
-  static getErrors(content, rules) {
+  static getErrors(content, rules, definitions) {
     /** @type {string[]} */
     const lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
 
     const indent = rules.indent || 2;
+
+    let definedNames = [];
+
+    if (definitions) {
+      definedNames = [
+        ...definitions.constants.map(def => def.name), 
+        ...definitions.variables.map(def => def.name), 
+        ...definitions.procedures.map(def => def.name), 
+        ...definitions.subroutines.map(def => def.name), 
+        ...definitions.structs.map(def => def.name)
+      ];
+    }
 
     let lineNumber = -1;
 
     /** @type {{line: number, expectedIndent: number, currentIndent: number}[]} */
     let indentErrors = [];
 
-    /** @type {{range: vscode.Range, type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"|"UppercaseConstants"|"SpecificCasing", newValue?: string}[]} */
+    /** @type {{
+     *  range: vscode.Range, 
+     *  offset?: {position: number, length: number}
+     *  type: "BlankStructNamesCheck"|"QualifiedCheck"|"PrototypeCheck"|"ForceOptionalParens"|"NoOCCURS"|"NoSELECTAll"|"UselessOperationCheck"|"UppercaseConstants"|"SpecificCasing"|"InvalidDeclareNumber"|"IncorrectVariableCase"|"RequiresParameter"|"RequiresProcedureDescription", 
+     *  newValue?: string}[]
+     * } */
     let errors = [];
 
     /** @type {Number} */
@@ -70,7 +97,7 @@ module.exports = class Linter {
 
     for (let currentLine of lines) {
       currentIndent = currentLine.search(/\S/);
-      let line = currentLine.trim();
+      let line = currentLine;
 
       lineNumber += 1;
 
@@ -98,7 +125,7 @@ module.exports = class Linter {
         if (line.endsWith(`;`)) {
           statementEnd = new vscode.Position(lineNumber, currentLine.length - 1);
           line = line.substr(0, line.length-1);
-          currentStatement += line;
+          currentStatement += line + ` `;
           continuedStatement = false;
 
         } else {
@@ -113,131 +140,242 @@ module.exports = class Linter {
             continuedStatement = true;
           }
 
-          currentStatement += line;
+          currentStatement += line + ` `;
         }
 
-        const upperLine = line.toUpperCase();
+        const upperLine = line.trim().toUpperCase();
+
+        // Generally ignore comments and directives.
+        if (upperLine.trimStart().startsWith(`/`)) {
+          currentStatement = ``;
+        }
+
+        // Ignore free directive.
+        if (upperLine === `**FREE`) {
+          currentStatement = ``;
+          continuedStatement = false;
+        }
 
         // Linter checking
-        if (continuedStatement === false) {
+        if (continuedStatement === false && currentStatement.length > 0) {
           const currentStatementUpper = currentStatement.toUpperCase();
-          pieces = currentStatement.split(` `).filter(piece => piece !== ``);
+          currentStatement = currentStatement.trim();
 
-          if (pieces.length > 0) {
-            opcode = pieces[0].toUpperCase();
+          const statement = Statement.parseStatement(currentStatement);
+          let value;
 
-            switch (opcode) {
-            case `DCL-C`:
-              if (rules.UppercaseConstants) {
-                if (pieces[1] !== pieces[1].toUpperCase()) {
-                  errors.push({
-                    range: new vscode.Range(lineNumber, 6, lineNumber, 6 + pieces[1].length),
-                    type: `UppercaseConstants`,
-                    newValue: pieces[1].toUpperCase()
-                  });
-                }
-              }
-              break;
+          if (statement.length >= 2) {
+            switch (statement[0].type) {
+            case `declare`:
+              value = statement[1].value;
 
-            case `IF`:
-            case `ELSEIF`:
-            case `WHEN`:
-            case `DOW`:
-            case `DOU`:
-              if (rules.ForceOptionalParens) {
-                if (pieces[1].includes(`(`) && pieces[pieces.length-1].includes(`)`)) {
-                // Looking good
-                } else {
-                  errors.push({
-                    range: new vscode.Range(
-                      new vscode.Position(statementStart.line, statementStart.character + opcode.length + 1), 
-                      statementEnd
-                    ),
-                    type: `ForceOptionalParens`
-                  });
-                }
-              }
-              break;
-
-            case `DCL-PR`:
-              if (rules.PrototypeCheck) {
-              // Unneeded PR
-                if (!currentStatementUpper.includes(` EXT`)) {
-                  errors.push({
-                    range: new vscode.Range(statementStart, statementEnd),
-                    type: `PrototypeCheck`
-                  });
-                }
-              }
-              break;
-
-            case `DCL-DS`:
-              if (rules.NoOCCURS) {
-                if (currentStatementUpper.includes(` OCCURS`)) {
-                  errors.push({
-                    range: new vscode.Range(statementStart, statementEnd),
-                    type: `NoOCCURS`
-                  });
-                }
-              }
-
-              if (rules.QualifiedCheck) {
-                if (!currentStatementUpper.includes(`QUALIFIED`)) {
-                  errors.push({
-                    range: new vscode.Range(statementStart, statementEnd),
-                    type: `QualifiedCheck`
-                  });
-                }
-              }
-
-              if (rules.BlankStructNamesCheck) {
-                if (pieces[1] === `*N`) {
-                  errors.push({
-                    range: new vscode.Range(statementStart, statementEnd),
-                    type: `BlankStructNamesCheck`
-                  });
-                }
-              }
-              break;
-
-            case `EXEC`:
-              if (rules.NoSELECTAll) {
-                if (currentStatementUpper.includes(`SELECT *`)) {
-                  errors.push({
-                    range: new vscode.Range(statementStart, statementEnd),
-                    type: `NoSELECTAll`
-                  });
-                }
-              }
-              break;
-
-            case `EVAL`:
-            case `CALLP`:
-              if (rules.UselessOperationCheck) {
+              if (value.match(/^\d/)) {
                 errors.push({
                   range: new vscode.Range(
-                    statementStart, 
-                    new vscode.Position(statementEnd.line, statementStart.character + opcode.length + 1)
+                    statementStart,
+                    statementEnd
                   ),
-                  type: `UselessOperationCheck`
+                  offset: {position: statement[1].position, length: statement[1].position + value.length},
+                  type: `InvalidDeclareNumber`
                 });
+              }
+
+              switch (statement[0].value.toUpperCase()) {
+              case `DCL-PROC`:
+                value = statement[1].value;
+                const procDef = definitions.procedures.find(def => def.name.toUpperCase() === value.toUpperCase());
+                if (procDef) {
+                  if (!procDef.description) {
+                    errors.push({
+                      range: new vscode.Range(
+                        statementStart,
+                        statementEnd
+                      ),
+                      type: `RequiresProcedureDescription`
+                    });
+                  }
+                }
+                break;
+              case `DCL-C`:
+                if (rules.UppercaseConstants) {
+                  if (value !== value.toUpperCase()) {
+                    errors.push({
+                      range: new vscode.Range(
+                        statementStart,
+                        statementEnd
+                      ),
+                      offset: {position: statement[1].position, length: statement[1].position + value.length},
+                      type: `UppercaseConstants`,
+                      newValue: value.toUpperCase()
+                    });
+                  }
+                }
+                break;
+
+              case `DCL-PR`:
+                if (rules.PrototypeCheck) {
+                  // Unneeded PR
+                  if (!statement.some(part => part.value && part.value.toUpperCase().startsWith(`EXT`))) {
+                    errors.push({
+                      range: new vscode.Range(statementStart, statementEnd),
+                      type: `PrototypeCheck`
+                    });
+                  }
+                }
+                break;
+
+              case `DCL-DS`:
+                if (rules.NoOCCURS) {
+                  if (statement.some(part => part.value && part.value.toUpperCase() === `OCCURS`)) {
+                    errors.push({
+                      range: new vscode.Range(statementStart, statementEnd),
+                      type: `NoOCCURS`
+                    });
+                  }
+                }
+    
+                if (rules.QualifiedCheck) {
+                  if (!statement.some(part => part.value && part.value.toUpperCase() === `QUALIFIED`)) {
+                    errors.push({
+                      range: new vscode.Range(statementStart, statementEnd),
+                      type: `QualifiedCheck`
+                    });
+                  }
+                }
+    
+                if (rules.BlankStructNamesCheck) {
+                  if (statement.some(part => part.type === `special`)) {
+                    errors.push({
+                      range: new vscode.Range(statementStart, statementEnd),
+                      type: `BlankStructNamesCheck`
+                    });
+                  }
+                }
                 break;
               }
+
+              break;
+
+            case `word`:
+              value = statement[0].value.toUpperCase();
+
+              if (rules.SpecificCasing) {
+                const caseRule = rules.SpecificCasing.find(rule => rule.operation.toUpperCase() === value);
+                if (caseRule) {
+                  if (statement[0].value !== caseRule.expected) {
+                    errors.push({
+                      range: new vscode.Range(
+                        statementStart,
+                        statementEnd
+                      ),
+                      offset: {position: statement[0].position, length: statement[0].position + value.length},
+                      type: `SpecificCasing`,
+                      newValue: caseRule.expected
+                    });
+                  }
+                }
+              }
+
+              switch (value.toUpperCase()) {
+              case `EVAL`:
+              case `CALLP`:
+                if (rules.UselessOperationCheck) {
+                  errors.push({
+                    range: new vscode.Range(
+                      statementStart,
+                      statementEnd
+                    ),
+                    offset: {position: statement[0].position, length: statement[0].position + value.length},
+                    type: `UselessOperationCheck`
+                  });
+                }
+                break;
+              case `EXEC`:
+                if (rules.NoSELECTAll) {
+                  if (currentStatementUpper.includes(`SELECT *`)) {
+                    errors.push({
+                      range: new vscode.Range(statementStart, statementEnd),
+                      type: `NoSELECTAll`
+                    });
+                  }
+                }
+                break;
+
+              case `IF`:
+              case `ELSEIF`:
+              case `WHEN`:
+              case `DOW`:
+              case `DOU`:
+                if (rules.ForceOptionalParens) {
+                  if (statement[1].type !== `block`) {
+                    const lastStatement = statement[statement.length-1];
+                    errors.push({
+                      range: new vscode.Range(
+                        statementStart, 
+                        statementEnd
+                      ),
+                      offset: {position: statement[1].position, length: lastStatement.position + lastStatement.value.length},
+                      type: `ForceOptionalParens`
+                    });
+                  }
+                }
+                break;
+              }
+              break;
             }
           }
+          
+          if (rules.IncorrectVariableCase || rules.RequiresParameter) {
+            let part;
 
-          if (rules.SpecificCasing) {
-            const caseRule = rules.SpecificCasing.find(rule => rule.operation.toUpperCase() === opcode);
-            if (caseRule) {
-              if (pieces[0] !== caseRule.expected) {
-                errors.push({
-                  range: new vscode.Range(
-                    statementStart, 
-                    new vscode.Position(statementEnd.line, statementStart.character + opcode.length)
-                  ),
-                  type: `SpecificCasing`,
-                  newValue: caseRule.expected
-                });
+            if (statement.length > 0 && statement[0].type !== `declare`) {
+
+              for (let i = 0; i < statement.length; i++) {
+                part = statement[i];
+
+                if (part.type === `word` && part.value) {
+                  const upperName = part.value.toUpperCase();
+              
+                  if (rules.IncorrectVariableCase) {
+                    // Check the casing of the reference matches the definition
+                    const definedName = definedNames.find(defName => defName.toUpperCase() === upperName);
+                    if (definedName && definedName !== part.value) {
+                      errors.push({
+                        range: new vscode.Range(
+                          statementStart,
+                          statementEnd
+                        ),
+                        offset: {position: part.position, length: part.position + part.value.length},
+                        type: `IncorrectVariableCase`,
+                        newValue: definedName
+                      });
+                    }
+                  }
+
+                  if (rules.RequiresParameter) {
+                    // Check the procedure reference has a block following it
+                    const definedProcedure = definitions.procedures.find(proc => proc.name.toUpperCase() === upperName);
+                    if (definedProcedure) {
+                      let requiresBlock = false;
+                      if (statement.length <= i+1) {
+                        requiresBlock = true;
+                      } else if (statement[i+1].type !== `block`) {
+                        requiresBlock = true;
+                      }
+
+                      if (requiresBlock) {
+                        errors.push({
+                          range: new vscode.Range(
+                            statementStart,
+                            statementEnd
+                          ),
+                          offset: {position: part.position, length: part.position + part.value.length},
+                          type: `RequiresParameter`,
+                        });
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -296,4 +434,5 @@ module.exports = class Linter {
       errors
     };
   }
+
 }
