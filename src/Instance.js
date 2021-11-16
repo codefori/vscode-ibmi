@@ -255,8 +255,12 @@ module.exports = class Instance {
             try {
               let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
               await vscode.window.showTextDocument(doc, { preview: false });
+
+              return true;
             } catch (e) {
               console.log(e);
+
+              return false;
             }
           }),
 
