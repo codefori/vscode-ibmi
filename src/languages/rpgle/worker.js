@@ -20,7 +20,10 @@ const notCurrentArea = vscode.window.createTextEditorDecorationType({
 
 const possibleTags = require(`./tags`);
 
-const lintFile = `rpglint`;
+const lintFile = {
+  member: `vscode,rpglint`,
+  streamfile: `.vscode/rpglint.json`
+};
 
 module.exports = class RPGLinter {
   /**
@@ -480,7 +483,8 @@ module.exports = class RPGLinter {
 
       vscode.workspace.onDidSaveTextDocument((document) => {
         if (Configuration.get(`rpgleContentAssistEnabled`)) {
-          const {type, finishedPath} = this.getPathInfo(document.uri, path.basename(document.uri.path));
+          const workingUri = document.uri;
+          const {finishedPath} = this.getPathInfo(workingUri, path.basename(workingUri.path));
           const text = document.getText();
           const isFree = (document.getText(new vscode.Range(0, 0, 0, 6)).toUpperCase() === `**FREE`);
 
@@ -488,11 +492,18 @@ module.exports = class RPGLinter {
             //Update stored copy book
             const lines = text.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
             this.copyBooks[finishedPath] = lines;
+
+            // The user usually switches tabs very quickly, so we trigger this event too.
+            if (vscode.window.activeTextEditor) {
+              if (workingUri.path !== vscode.window.activeTextEditor.document.uri.path) {
+                this.refreshDiagnostics(vscode.window.activeTextEditor.document);
+              }
+            }
           }
           else if (document.languageId === `rpgle`) {
             //Else fetch new info from source being edited
             if (isFree) {
-              this.updateCopybookCache(document.uri, text);
+              this.updateCopybookCache(workingUri, text);
             }
           }
           
@@ -510,10 +521,7 @@ module.exports = class RPGLinter {
           }
 
           if (Configuration.get(`rpgleLinterSupportEnabled`)) {
-            // Will only download once.
-            this.getContent(document.uri, lintFile).then((content) => {
-              this.refreshDiagnostics(document);
-            });
+            this.getLinterFile(document);
           }
         }
       })
@@ -618,7 +626,7 @@ module.exports = class RPGLinter {
       case `member`:
         if (this.copyBooks[finishedPath]) {
           lines = this.copyBooks[finishedPath];
-        } else {
+        } else {  
           content = await contentApi.downloadMemberContent(memberPath[0], memberPath[1], memberPath[2], memberPath[3]);
           lines = content.replace(new RegExp(`\\\r`, `g`), ``).split(`\n`);
           this.copyBooks[finishedPath] = lines;
@@ -977,17 +985,36 @@ module.exports = class RPGLinter {
     return parsedData;
   }
 
+  /**
+   * @param {vscode.TextDocument} document 
+   */
+  getLinterFile(document) {
+    // Used to fetch the linter settings
+    // Will only download once.
+    const lintPath = lintFile[document.uri.scheme];
+    if (lintPath) {
+      this.getContent(document.uri, lintPath).then((content) => {
+        this.refreshDiagnostics(document);
+      })
+    }
+  }
+
   getLinterOptions(workingUri) {
     let options = {};
-    let {finishedPath} = this.getPathInfo(workingUri, lintFile);
 
-    if (this.copyBooks[finishedPath]) {
-      const jsonString = this.copyBooks[finishedPath].join(``).trim();
-      if (jsonString) {
-        try {
-          options = JSON.parse(jsonString);
-        } catch (e) {
-          //vscode.window.showErrorMessage(`Failed to parse rpglint.json file at ${finishedPath}.`);
+    const localLintPath = lintFile[workingUri.scheme];
+    if (localLintPath) {
+      let {finishedPath} = this.getPathInfo(workingUri, localLintPath);
+
+      if (this.copyBooks[finishedPath]) {
+        const jsonString = this.copyBooks[finishedPath].join(``).trim();
+        if (jsonString) {
+          try {
+            options = JSON.parse(jsonString);
+            return options;
+          } catch (e) {
+            //vscode.window.showErrorMessage(`Failed to parse rpglint.json file at ${lintPath}.`);
+          }
         }
       }
     }
