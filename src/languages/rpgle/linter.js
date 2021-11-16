@@ -148,10 +148,11 @@ module.exports = class Linter {
                 if (pieces[1].includes(`(`) && pieces[pieces.length-1].includes(`)`)) {
                 // Looking good
                 } else {
-                  statementStart = new vscode.Position(statementStart.line, statementStart.character + opcode.length + 1);
-
                   errors.push({
-                    range: new vscode.Range(statementStart, statementEnd),
+                    range: new vscode.Range(
+                      new vscode.Position(statementStart.line, statementStart.character + opcode.length + 1), 
+                      statementEnd
+                    ),
                     type: `ForceOptionalParens`
                   });
                 }
@@ -213,9 +214,11 @@ module.exports = class Linter {
             case `EVAL`:
             case `CALLP`:
               if (rules.UselessOperationCheck) {
-                statementEnd = new vscode.Position(statementEnd.line, statementStart.character + opcode.length + 1);
                 errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
+                  range: new vscode.Range(
+                    statementStart, 
+                    new vscode.Position(statementEnd.line, statementStart.character + opcode.length + 1)
+                  ),
                   type: `UselessOperationCheck`
                 });
                 break;
@@ -227,9 +230,11 @@ module.exports = class Linter {
             const caseRule = rules.SpecificCasing.find(rule => rule.operation.toUpperCase() === opcode);
             if (caseRule) {
               if (pieces[0] !== caseRule.expected) {
-                statementEnd = new vscode.Position(statementEnd.line, statementStart.character + opcode.length);
                 errors.push({
-                  range: new vscode.Range(statementStart, statementEnd),
+                  range: new vscode.Range(
+                    statementStart, 
+                    new vscode.Position(statementEnd.line, statementStart.character + opcode.length)
+                  ),
                   type: `SpecificCasing`,
                   newValue: caseRule.expected
                 });
