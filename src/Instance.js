@@ -393,7 +393,7 @@ module.exports = class Instance {
 
           vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
             if (detail && detail.command) {
-              return CompileTools.runCommand(instance, detail);
+              return CompileTools.runCommand(this, detail);
             } else {
               return null;
             }
