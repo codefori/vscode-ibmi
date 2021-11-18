@@ -252,17 +252,17 @@
 				"code-for-ibmi.rpgleLinterSupportEnabled": {
 					"type": "boolean",
 					"default": false,
-					"description": "Experimental feature. When enabled, will provide warnings for RPGLE sources. Supports total free RPG only."
+					"description": "Feature removed. Install vscode-rpgle instead."
 				},
 				"code-for-ibmi.rpgleContentAssistEnabled": {
 					"type": "boolean",
 					"default": false,
-					"description": "Experimental feature. When enabled, will provide content assist for procedures inside of your RPG sources. Supports total free RPG only."
+					"description": "Feature removed. Install vscode-rpgle instead."
 				},
 				"code-for-ibmi.rpgleColumnAssistEnabled": {
 					"type": "boolean",
 					"default": false,
-					"description": "Experimental feature. When enabled, will provide column assist for writing fixed format RPGLE (RPG3 and RPGIV)."
+					"description": "Feature removed. Install vscode-rpgle instead."
 				},
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
@@ -616,20 +616,10 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.rpgleColumnAssistant",
-				"title": "Launch Column Assistant",
-				"category": "IBM i"
-			},
-			{
 				"command": "code-for-ibmi.changeCurrentLibrary",
 				"title": "Change current library",
 				"category": "IBM i",
 				"icon": "$(root-folder)"
-			},
-			{
-				"command": "code-for-ibmi.rpgleOpenInclude",
-				"title": "Open include at cursor",
-				"category": "IBM i (RPGLE)"
 			},
 			{
 				"command": "code-for-ibmi.clearDiagnostics",
@@ -880,18 +870,6 @@
 				"command": "code-for-ibmi.runEditorStatement",
 				"key": "ctrl+r",
 				"mac": "cmd+r"
-			},
-			{
-				"command": "code-for-ibmi.rpgleOpenInclude",
-				"key": "shift+f12",
-				"mac": "shift+f12",
-				"when": "editorLangId == rpgle"
-			},
-			{
-				"command": "code-for-ibmi.rpgleColumnAssistant",
-				"key": "shift+f4",
-				"mac": "shift+f4",
-				"when": "editorLangId == rpgle"
 			}
 		],
 		"viewsContainers": {
@@ -1019,13 +997,6 @@
 					"command": "code-for-ibmi.refreshDatabaseBrowser",
 					"group": "navigation",
 					"when": "view == databaseBrowser"
-				}
-			],
-			"editor/context": [
-				{
-					"command": "code-for-ibmi.rpgleColumnAssistant",
-					"group": "1_rpgle",
-					"when": "editorLangId == rpgle"
 				}
 			],
 			"view/item/context": [
