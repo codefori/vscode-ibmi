@@ -420,14 +420,6 @@ module.exports = class Instance {
           })
         );
 
-        if (config.objectFilters.length === 0 && config.sourceFileList.length > 0) {
-          vscode.window.showInformationMessage(`We have moved away from the Member Browser and the Object Browser. Would you like to import filters to the new Object Browser from the Member Browser?`, `Yes`, `No`).then(async (result) => {
-            if (result === `Yes`) {
-              await vscode.commands.executeCommand(`code-for-ibmi.importFilters`);
-            }
-          });
-        }
-
         const anyLanguageConfig  = [
           Configuration.get(`rpgleLinterSupportEnabled`),
           Configuration.get(`rpgleContentAssistEnabled`),

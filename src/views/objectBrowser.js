@@ -27,25 +27,6 @@ module.exports = class objectBrowserTwoProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.importFilters`, async () => {
-        const config = instance.getConfig();
-
-        config.objectFilters = config.sourceFileList.map(fullPath => {
-          const path = fullPath.split(`/`);
-          return {
-            name: fullPath,
-            library: path[0],
-            object: path[1],
-            types: [`*SRCPF`],
-            member: `*`
-          }
-        });
-
-        config.set(`objectFilters`, config.objectFilters);
-        
-        this.refresh();
-      }),
-
       vscode.commands.registerCommand(`code-for-ibmi.deleteFilter`, async (node) => {
         if (node) {
           const config = instance.getConfig();

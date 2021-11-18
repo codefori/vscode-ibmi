@@ -551,11 +551,6 @@ An array of objects. Each object is unique by the host property and is used so d
         {
             "name": "My IBMi Connection",
             "host": "seiden.iinthecloud.com",
-            "sourceFileList": [
-                "QSYSINC/H",
-                "BARRY/QRPGLESRC",
-                "MYPROJ/QRPGLESRC"
-            ],
             "libraryList": [
                 "QSYS2",
                 "QSYSINC",

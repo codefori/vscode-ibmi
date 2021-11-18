@@ -97,17 +97,6 @@
 								"default": [],
 								"description": "List of filters for Object List"
 							},
-							"sourceFileList": {
-								"type": "array",
-								"items": {
-									"type": "string",
-									"title": "Library and source physical file"
-								},
-								"default": [
-									"QSYSINC/H"
-								],
-								"description": "As seen in the member browser. Deprecated."
-							},
 							"databaseBrowserList": {
 								"type": "array",
 								"items": {
@@ -811,11 +800,6 @@
 				"title": "Delete filter",
 				"category": "IBM i",
 				"icon": "$(remove)"
-			},
-			{
-				"command": "code-for-ibmi.importFilters",
-				"title": "Import filters into new Object Browser.",
-				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.refreshObjectBrowser",
