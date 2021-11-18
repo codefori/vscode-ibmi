@@ -4,6 +4,7 @@ const vscode = require(`vscode`);
 const IBMi = require(`./api/IBMi`);
 const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
+const Configuration = require(`./api/Configuration`);
 
 const Disposable = require(`./api/Disposable`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
@@ -106,7 +107,6 @@ module.exports = class Instance {
     const actionsUI = require(`./webviews/actions`);
     const variablesUI = require(`./webviews/variables`);
 
-    const rpgleLinter = require(`./languages/rpgle/linter`);
     const CLCommands = require(`./languages/clle/clCommands`);
 
     if (instance.connection) {
@@ -256,8 +256,12 @@ module.exports = class Instance {
             try {
               let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
               await vscode.window.showTextDocument(doc, { preview: false });
+
+              return true;
             } catch (e) {
               console.log(e);
+
+              return false;
             }
           }),
 
@@ -324,8 +328,6 @@ module.exports = class Instance {
             }
           })
         );
-        
-        new rpgleLinter(context);
 
         if (config.clContentAssistEnabled) {
           const clInstance = new CLCommands(context);
@@ -392,7 +394,7 @@ module.exports = class Instance {
 
           vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
             if (detail && detail.command) {
-              return CompileTools.runCommand(instance, detail);
+              return CompileTools.runCommand(this, detail);
             } else {
               return null;
             }
@@ -424,6 +426,24 @@ module.exports = class Instance {
               await vscode.commands.executeCommand(`code-for-ibmi.importFilters`);
             }
           });
+        }
+
+        const anyLanguageConfig  = [
+          Configuration.get(`rpgleLinterSupportEnabled`),
+          Configuration.get(`rpgleContentAssistEnabled`),
+          Configuration.get(`rpgleColumnAssistEnabled`),
+        ];
+
+        if (anyLanguageConfig.includes(true)) {
+          vscode.window.showInformationMessage(`RPGLE language tools have been removed from Code for IBM i into a new extension. Want to check out the RPGLE language tools extension in the Marketplace?`, `Yes`, `No`).then(async (result) => {
+            if (result === `Yes`) {
+              await vscode.commands.executeCommand(`extension.open`, `halcyontechltd.vscode-rpgle`);
+            }
+          });
+
+          Configuration.setGlobal(`rpgleLinterSupportEnabled`, false);
+          Configuration.setGlobal(`rpgleContentAssistEnabled`, false);
+          Configuration.setGlobal(`rpgleColumnAssistEnabled`, false);
         }
 
         initialisedBefore = true;
