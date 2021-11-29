@@ -4,7 +4,7 @@ const vscode = require(`vscode`);
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 
-const remoteApps = [
+let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
     names: [`db2util`, `git`, `grep`]
@@ -12,10 +12,6 @@ const remoteApps = [
   {
     path: `/usr/bin/`,
     names: [`setccsid`]
-  },
-  {
-    path: `/QSYS.lib/ILEDITOR.lib/`,
-    names: [`GENCMDXML.PGM`, `OPENMBR.PGM`]
   }
 ];
 
@@ -48,8 +44,7 @@ module.exports = class IBMi {
       git: undefined,
       grep: undefined,
       setccsid: undefined,
-      'GENCMDXML.PGM': undefined,
-      'OPENMBR.PGM': undefined,
+      'GENCMDXML.PGM': undefined
     };
   }
 
@@ -215,6 +210,14 @@ module.exports = class IBMi {
         progress.report({
           message: `Checking installed components on host IBM i.`
         });
+
+        // We need to check if our remote programs are installed.
+        remoteApps.push(
+          {
+            path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+            names: [`GENCMDXML.PGM`]
+          }
+        );
 
         //Next, we see what pase features are available (installed via yum)
         try {
