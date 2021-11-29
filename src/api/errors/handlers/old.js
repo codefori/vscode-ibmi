@@ -1,5 +1,10 @@
 
-let expRange = require(`./expRange`);
+const {
+  formatName,
+  formatIFS
+} = require(`../format`);
+
+const expRange = require(`../expRange`);
 
 /**
  * Returns object of files and their errors
@@ -144,17 +149,3 @@ function arrayClean(array, deleteValue) {
 
   return array;
 };
-
-function formatName(input) {
-  let pieces = input.split(`/`);
-  let path = pieces[1].substr(pieces[1], pieces[1].length-1).split(`(`);
-
-  return [pieces[0], path[0], path[1]].join(`/`)
-}
-
-function formatIFS(path) {
-  const pieces = path.split(`/`);
-  const newPath = pieces.filter(x => x !== `.`);
-
-  return newPath.join(`/`);
-}

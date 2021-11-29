@@ -2,7 +2,7 @@
 const vscode = require(`vscode`);
 const path = require(`path`);
 
-const errorHandler = require(`./errorHandle`);
+const errorHandlers = require(`./errors/index`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
@@ -64,7 +64,14 @@ module.exports = class CompileTools {
 
     const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
-    const errors = errorHandler(lines);
+    let errors;
+    if (Configuration.get(`tryNewErrorParser`)) {
+      errors = errorHandlers.new(lines);
+    } else {
+      errors = errorHandlers.old(lines);
+    }
+
+    ileDiagnostics.clear();
 
     /** @type {vscode.Diagnostic[]} */
     let diagnostics = [];
