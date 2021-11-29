@@ -253,6 +253,11 @@
 					"default": false,
 					"description": "Feature removed. Install vscode-rpgle instead."
 				},
+				"code-for-ibmi.tryNewErrorParser": {
+					"type": "boolean",
+					"default": false,
+					"description": "Fix preview: Enable to test out the brand new error parser. Restart not required."
+				},
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
 					"default": true,
