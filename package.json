@@ -22,7 +22,7 @@
 	},
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.52.0"
+		"vscode": "^1.60.0"
 	},
 	"categories": [
 		"Other"
@@ -591,6 +591,11 @@
 			{
 				"command": "code-for-ibmi.disconnect",
 				"title": "Disconnect from current connection.",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.launchTerminalPicker",
+				"title": "Launch Terminal Picker",
 				"category": "IBM i"
 			},
 			{
@@ -1177,7 +1182,7 @@
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.0.4",
 		"@types/node": "^12.11.7",
-		"@types/vscode": "^1.52.0",
+		"@types/vscode": "^1.60.0",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"mocha": "^8.2.1",

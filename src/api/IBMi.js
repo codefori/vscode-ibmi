@@ -7,7 +7,7 @@ const Configuration = require(`./Configuration`);
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`db2util`, `git`, `grep`]
+    names: [`db2util`, `git`, `grep`, `tn5250`]
   },
   {
     path: `/usr/bin/`,
@@ -43,6 +43,7 @@ module.exports = class IBMi {
       db2util: undefined,
       git: undefined,
       grep: undefined,
+      tn5250: undefined,
       setccsid: undefined,
       'GENCMDXML.PGM': undefined
     };

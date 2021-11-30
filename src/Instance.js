@@ -15,6 +15,9 @@ let connectedBarItem;
 /** @type {vscode.StatusBarItem} */
 let actionsBarItem;
 
+/** @type {vscode.StatusBarItem} */
+let terminalBarItem;
+
 let initialisedBefore = false;
 
 /** @type {vscode.Uri} */
@@ -101,7 +104,6 @@ module.exports = class Instance {
     const ifs = new (require(`./filesystems/ifs`));
 
     const objectBrowser = require(`./views/objectBrowser`);
-    const objectBrowserTwo = require(`./views/objectBrowser`);
     const databaseBrowser = require(`./views/databaseBrowser`);
 
     const actionsUI = require(`./webviews/actions`);
@@ -109,11 +111,13 @@ module.exports = class Instance {
 
     const CLCommands = require(`./languages/clle/clCommands`);
 
+    const Terminal = require(`./api/terminal`);
+
     if (instance.connection) {
       CompileTools.register(context);
 
       if (!connectedBarItem) {
-        connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+        connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
         connectedBarItem.command = {
           command: `code-for-ibmi.showAdditionalSettings`,
           title: `Show Additional Connection Settings`,
@@ -136,6 +140,19 @@ module.exports = class Instance {
       }
 
       actionsBarItem.show();
+
+      if (!terminalBarItem) {
+        terminalBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
+        terminalBarItem.command = {
+          command: `code-for-ibmi.launchTerminalPicker`,
+          title: `Launch Terminal Picker`
+        }
+        context.subscriptions.push(terminalBarItem);
+
+        terminalBarItem.text = `Terminals`;
+      }
+
+      terminalBarItem.show();
 
       //Update the status bar and that's that.
       if (initialisedBefore) {
@@ -392,6 +409,10 @@ module.exports = class Instance {
             }
           }),
 
+          vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
+            Terminal.select(this);
+          }),
+
           vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
             if (detail && detail.command) {
               return CompileTools.runCommand(this, detail);
@@ -437,7 +458,7 @@ module.exports = class Instance {
           Configuration.setGlobal(`rpgleContentAssistEnabled`, false);
           Configuration.setGlobal(`rpgleColumnAssistEnabled`, false);
         }
-
+        
         initialisedBefore = true;
       }
     }
