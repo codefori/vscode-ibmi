@@ -22,7 +22,7 @@
 	},
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.52.0"
+		"vscode": "^1.60.0"
 	},
 	"categories": [
 		"Other"
@@ -196,6 +196,12 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Enables the CL content assist and hover support."
+							},
+							"encodingFor5250": {
+								"type": "string",
+								"default": "37",
+								"enum": ["37", "256", "273", "277", "278", "280", "284", "285", "297", "500", "871", "870", "905", "880", "420", "875", "424", "1026", "290", "win37", "win256", "win273", "win277", "win278", "win280", "win284", "win285", "win297", "win500", "win871", "win870", "win905", "win880", "win420", "win875", "win424", "win1026"],
+								"description": "The encoding for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
 							},
 							"autoSaveBeforeAction": {
 								"type": "boolean",
@@ -591,6 +597,11 @@
 			{
 				"command": "code-for-ibmi.disconnect",
 				"title": "Disconnect from current connection.",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.launchTerminalPicker",
+				"title": "Launch Terminal Picker",
 				"category": "IBM i"
 			},
 			{
@@ -1177,7 +1188,7 @@
 		"@types/glob": "^7.1.3",
 		"@types/mocha": "^8.0.4",
 		"@types/node": "^12.11.7",
-		"@types/vscode": "^1.52.0",
+		"@types/vscode": "^1.60.0",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"mocha": "^8.2.1",

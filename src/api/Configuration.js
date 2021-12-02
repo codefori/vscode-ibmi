@@ -56,6 +56,9 @@ module.exports = class Configuration {
     /** @type {boolean} */
     this.clContentAssistEnabled = (base.clContentAssistEnabled === true);
 
+    /** @type {string|undefined} */
+    this.encodingFor5250 = base.encodingFor5250 || `37`;
+
     /** @type {boolean} */
     this.autoSaveBeforeAction = (base.autoSaveBeforeAction === true);
   }

@@ -118,6 +118,22 @@ module.exports = class SettingsUI {
         ui.addField(field);
 
         ui.addField(new Field(`hr`));
+
+        const encodings = ["37", "256", "273", "277", "278", "280", "284", "285", "297", "500", "871", "870", "905", "880", "420", "875", "424", "1026", "290", "win37", "win256", "win273", "win277", "win278", "win280", "win284", "win285", "win297", "win500", "win871", "win870", "win905", "win880", "win420", "win875", "win424", "win1026"];
+        
+        field = new Field(`select`, `encodingFor5250`, `5250 encoding`);
+        field.description = `The encoding for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum.`;
+        field.items = encodings.map(encoding => {
+          return {
+            selected: config.encodingFor5250 === encoding,
+            value: encoding,
+            description: encoding,
+            text: encoding,
+          };
+        });
+        ui.addField(field);
+
+        ui.addField(new Field(`hr`));
     
         field = new Field(`submit`, `save`, `Save settings`);
         ui.addField(field);
