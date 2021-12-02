@@ -742,6 +742,13 @@ Right click and click 'Search' on IFS directories and source files to search thr
 
 VS Code works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
 
+### Integrated terminals
+
+It is possible, using the Terminals button in the lower left-hand corner, to select a Terminal to launch:
+
+* PASE: will launch into the pase environment
+* 5250: will launch a 5250 emulator right into the connected system. For this functionality, `tn5250` must be installed on the remote system. This can be installed via yum.
+
 ### Variant Characters/CCSID Issues
 
 Use of variant characters, for example, '£', in your file names or source code may cause files not to open or characters to display incorrectly in Code for IBM i. If you are experiencing such issues, it is likely the IBM i PASE environment locale is not set correctly.
