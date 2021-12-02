@@ -748,6 +748,9 @@ It is possible, using the Terminals button in the lower left-hand corner, to sel
 
 * PASE: will launch into the pase environment
 * 5250: will launch a 5250 emulator right into the connected system. For this functionality, `tn5250` must be installed on the remote system. This can be installed via yum.
+   - **Do the function keys work?** Yes.
+   - **It is possible to do a system request?** Yes. Use Command+C.
+   - **How do I end my session?** Use the Terminal bin in VS Code.
 
 ### Variant Characters/CCSID Issues
 
