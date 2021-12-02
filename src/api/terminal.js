@@ -1,5 +1,6 @@
 
 const vscode = require(`vscode`);
+const Configuration = require(`./Configuration`);
 const IBMi = require(`./IBMi`);
 
 module.exports = class Terminal {
@@ -7,18 +8,30 @@ module.exports = class Terminal {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
+    /** @type {Configuration} */
+    const configuration = instance.getConfig();
+
     const types = [`PASE`, `5250`];
     vscode.window.showQuickPick(types, {
       placeHolder: `Select a terminal type`
     }).then(type => {
       if (type) {
-        if (type === `5250` && connection.remoteFeatures.tn5250 === undefined) {
-          vscode.window.showErrorMessage(`5250 terminal is not supported. Please install tn5250 via yum on the remote system.`);
-          return;
+        let encodingMap;
+
+        if (type === `5250`) {
+          if (connection.remoteFeatures.tn5250 === undefined) {
+            vscode.window.showErrorMessage(`5250 terminal is not supported. Please install tn5250 via yum on the remote system.`);
+            return;
+          }
+
+          encodingMap = configuration.encodingFor5250;
+
+          // This makes it so the function keys continue to work in the terminal instead of sending them as VS Code commands
+          vscode.workspace.getConfiguration().update(`terminal.integrated.sendKeybindingsToShell`, true, true);
         }
 
         // @ts-ignore because type is a string
-        Terminal.createTerminal(instance, type);
+        Terminal.createTerminal(instance, type, encodingMap);
       }
     });
   }
@@ -27,8 +40,9 @@ module.exports = class Terminal {
    * 
    * @param {*} instance 
    * @param {"PASE"|"5250"} type 
+   * @param {string} [encodingMap]
    */
-  static createTerminal(instance, type) {
+  static createTerminal(instance, type, encodingMap) {
     const writeEmitter = new vscode.EventEmitter();
 
     /** @type {IBMi} */
@@ -50,7 +64,24 @@ module.exports = class Terminal {
             channel.close();
           },
           handleInput: (data) => {
-            channel.stdin.write(data);
+            if (type === `5250`) {
+              let buffer = Buffer.from(data);
+              console.log(buffer);
+
+              switch (buffer[0]) {
+              case 127: //Backspace
+                //Move back one, space, move back again - deletes a character
+                buffer = Buffer.from([
+                  27, 79, 68, //Move back one
+                  27, 91, 51, 126 //Delete character
+                ]);
+                break;
+              }
+
+              channel.stdin.write(buffer.toString());
+            } else {
+              channel.stdin.write(data);
+            }
           },
           setDimensions: (dim) => {
             //channel.setWindow(dim.rows, dim.columns, 0, 0);
@@ -82,7 +113,7 @@ module.exports = class Terminal {
       emulatorTerminal.show();
 
       if (type === `5250`) {
-        channel.stdin.write(`TERM=xterm /QOpenSys/pkgs/bin/tn5250 localhost\n`);
+        channel.stdin.write(`TERM=xterm /QOpenSys/pkgs/bin/tn5250 ${encodingMap ? `map=${encodingMap}` : ``} localhost\n`);
       } else {
         channel.stdin.write(`echo "Terminal started. Thanks for using Code for IBM i"\n`);
       }
