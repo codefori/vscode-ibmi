@@ -84,31 +84,10 @@ module.exports = class databaseBrowserProvider {
                 break;
 
               case `cl`:
-                //We have to reverse it because `liblist -a` adds the next item to the top always 
-                let libl = config.libraryList.slice(0).reverse();
-
-                libl = libl.map(library => {
-                  //We use this for special variables in the libl
-                  switch (library) {
-                  case `&BUILDLIB`: return config.currentLibrary;
-                  case `&CURLIB`: return config.currentLibrary;
-                  default: return library;
-                  }
+                const commandResult = await CompileTools.runCommand(instance, {
+                  command: statement.content,
+                  environment: `ile`
                 });
-
-                CompileTools.appendOutput(`Current library: ` + config.currentLibrary + `\n`);
-                CompileTools.appendOutput(`   Library list: ` + config.libraryList.join(` `) + `\n`);
-                CompileTools.appendOutput(`        Command: ` + statement.content + `\n`);
-
-                const command = `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${statement.content}"`;
-
-                /** @type {object} */
-                const commandResult = await connection.qshCommand([
-                  `liblist -d ` + connection.defaultUserLibraries.join(` `),
-                  `liblist -c ` + config.currentLibrary,
-                  `liblist -a ` + libl.join(` `),
-                  command,
-                ], undefined, 1);
 
                 if (commandResult.code === 0 || commandResult.code === null) {
                   vscode.window.showInformationMessage(`Command executed successfuly.`);
@@ -353,13 +332,13 @@ function parseStatement(editor) {
     });
 
     let statementData = statements.find(range => cursor >= range.start && cursor <= range.end);
-    content = statementData.text;
+    content = statementData.text.trim();
 
     editor.selection = new vscode.Selection(editor.document.positionAt(statementData.start), editor.document.positionAt(statementData.end));
 
-    if (content.includes(`CL:`)) {
+    if (content.toUpperCase().startsWith(`CL:`)) {
       let lines = content.split(eol);
-      let startIndex = lines.findIndex(line => line.startsWith(`CL:`));
+      let startIndex = lines.findIndex(line => line.toUpperCase().startsWith(`CL:`));
       lines = lines.slice(startIndex);
       lines[0] = lines[0].substring(3).trim();
 
