@@ -15,7 +15,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/v/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/i/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
 ![](https://img.shields.io/visual-studio-marketplace/r/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
-![](https://img.shields.io/github/contributors/halcyon-tech/vscode-ibmi?style=flat-square) 
+![](https://dimg.shields.io/github/contributors/halcyon-tech/vscode-ibmi?style=flat-square) 
 ![](https://img.shields.io/github/issues-pr/halcyon-tech/vscode-ibmi?style=flat-square) 
 ![https://github.com/halcyon-tech/vscode-ibmi/issues](https://img.shields.io/github/issues/halcyon-tech/vscode-ibmi?style=flat-square)
 
