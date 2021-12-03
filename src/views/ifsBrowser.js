@@ -409,9 +409,8 @@ module.exports = class ifsBrowserProvider {
         try {
           const objects = await content.getFileList(element.path);
 
-          for (const object of objects) {
-            items.push(new Object(object.type, object.name, object.path));
-          }
+          items = objects.map(object => new Object(object.type, object.name, object.path));
+          await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 
         } catch (e) {
           console.log(e);
@@ -431,6 +430,20 @@ module.exports = class ifsBrowserProvider {
     }
 
     return items;
+  }
+
+  /**
+   * 
+   * @param {string} path 
+   * @param {string[]} list 
+   */
+  storeIFSList(path, list) {
+    const storage = instance.getStorage();
+    const existingDirs = storage.get(`sourceList`) || {};
+
+    existingDirs[path] = list;
+
+    return storage.set(`sourceList`, existingDirs);
   }
 }
 

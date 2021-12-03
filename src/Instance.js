@@ -5,6 +5,7 @@ const IBMi = require(`./api/IBMi`);
 const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
 const Configuration = require(`./api/Configuration`);
+const Storage = require(`./api/Storage`);
 
 const Disposable = require(`./api/Disposable`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
@@ -47,6 +48,7 @@ module.exports = class Instance {
   static getConnection() {return instance.connection};
   static getConfig() {return instance.connection.config};
   static getContent() {return instance.content};
+  static getStorage() {return instance.storage};
 
   /**
    * @returns {Promise<boolean>} Indicates whether it was disconnect succesfully or not.
@@ -114,6 +116,8 @@ module.exports = class Instance {
     const Terminal = require(`./api/terminal`);
 
     if (instance.connection) {
+      instance.storage = new Storage(context, instance.connection.currentConnectionName);
+
       CompileTools.register(context);
 
       if (!connectedBarItem) {
@@ -323,6 +327,37 @@ module.exports = class Instance {
                 vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
               }
             }
+          }),
+
+          vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async () => {
+            const sources = instance.storage.get(`sourceList`);
+            const dirs = Object.keys(sources);
+            let list = [];
+
+            dirs.forEach(dir => {
+              sources[dir].forEach(source => {
+                list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
+              });
+            });
+
+            if (list.length > 0) {
+              list.push(`Clear list`);
+
+              vscode.window.showQuickPick(list, {
+                placeHolder: `Go to file..`
+              }).then(async (selection) => {
+                if (selection) {
+                  if (selection === `Clear list`) {
+                    instance.storage.set(`sourceList`, {});
+                    vscode.window.showInformationMessage(`Cleared list.`);
+                  } else {
+                    vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);
+                  }
+                }
+              })
+            } else {
+              vscode.window.showErrorMessage(`No files to select from.`);
+            }
           })
         )
 
@@ -484,6 +519,8 @@ let instance = {
   connection: undefined,
   /** @type {IBMiContent} */
   content: undefined, //IBM,
+  /** @type {Storage} */
+  storage: undefined,
   /** @type {vscode.EventEmitter} */
   emitter: undefined,
   /** @type {{event: string, func: Function}[]} */

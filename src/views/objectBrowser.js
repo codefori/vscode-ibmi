@@ -539,6 +539,9 @@ module.exports = class objectBrowserTwoProvider {
         const path = element.path.split(`/`);
         const members = await content.getMemberList(path[0], path[1], filter.member);
         items = members.map(member => new Member(member));
+
+        await this.storeMemberList(element.path, members.map(member => `${member.name}.${member.extension}`));
+
         break;
       }
 
@@ -556,6 +559,20 @@ module.exports = class objectBrowserTwoProvider {
       }
     }
     return items;
+  }
+
+  /**
+   * 
+   * @param {string} path 
+   * @param {string[]} list 
+   */
+  storeMemberList(path, list) {
+    const storage = instance.getStorage();
+    const existingDirs = storage.get(`sourceList`);
+
+    existingDirs[path] = list;
+
+    return storage.set(`sourceList`, existingDirs);
   }
 }
 

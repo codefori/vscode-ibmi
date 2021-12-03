@@ -605,6 +605,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.goToFile",
+				"title": "Go to file...",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.showVariableMaintenance",
 				"title": "Maintain custom variables",
 				"category": "IBM i",
@@ -870,6 +875,16 @@
 				"command": "code-for-ibmi.runEditorStatement",
 				"key": "ctrl+r",
 				"mac": "cmd+r"
+			},
+			{
+				"command": "code-for-ibmi.goToFile",
+				"key": "ctrl+alt+p",
+				"mac": "cmd+alt+p"
+			},
+			{
+				"command": "code-for-ibmi.openFileByPath",
+				"key": "ctrl+alt+o",
+				"mac": "cmd+alt+o"
 			}
 		],
 		"viewsContainers": {
