@@ -320,7 +320,7 @@ module.exports = class IBMiContent {
    * @return {Promise<{type: "directory"|"streamfile", name: string, path: string}[]>} Resulting list
    */
   async getFileList(remotePath) {
-    const result = await this.ibmi.paseCommand(`ls -a -p ` + remotePath, undefined, 1);
+    const result = await this.ibmi.paseCommand(`ls -a -p "${remotePath}"`, undefined, 1);
 
     //@ts-ignore
     const fileList = result.stdout;
