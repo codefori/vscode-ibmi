@@ -130,7 +130,7 @@ module.exports = class ifsBrowserProvider {
         if (fullName) {
 
           try {
-            await connection.paseCommand(`mkdir ${fullName}`);
+            await connection.paseCommand(`mkdir "${fullName}"`);
 
             if (Configuration.get(`autoRefresh`)) this.refresh();
 
@@ -164,7 +164,7 @@ module.exports = class ifsBrowserProvider {
           try {
             vscode.window.showInformationMessage(`Creating and streamfile ${fullName}.`);
 
-            await connection.paseCommand(`echo "" > ${fullName}`);
+            await connection.paseCommand(`echo "" > "${fullName}"`);
 
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
 
@@ -223,7 +223,7 @@ module.exports = class ifsBrowserProvider {
             const connection = instance.getConnection();
 
             try {
-              await connection.paseCommand(`rm -rf ${node.path}`)
+              await connection.paseCommand(`rm -rf "${node.path}"`)
 
               vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
@@ -250,7 +250,7 @@ module.exports = class ifsBrowserProvider {
             const connection = instance.getConnection();
 
             try {
-              await connection.paseCommand(`mv ${node.path} ${fullName}`);
+              await connection.paseCommand(`mv "${node.path}" "${fullName}"`);
               if (Configuration.get(`autoRefresh`)) this.refresh();
 
             } catch (e) {
@@ -276,7 +276,7 @@ module.exports = class ifsBrowserProvider {
             const connection = instance.getConnection();
 
             try {
-              await connection.paseCommand(`cp ${node.path} ${fullName}`);
+              await connection.paseCommand(`cp "${node.path}" "${fullName}"`);
               if (Configuration.get(`autoRefresh`)) this.refresh();
 
             } catch (e) {
