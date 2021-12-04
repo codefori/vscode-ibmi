@@ -757,7 +757,7 @@ It is possible, using the Terminals button in the lower left-hand corner, to sel
 ### Variant Characters/CCSID Issues
 
 Use of variant characters, for example, '£', in your file names or source code may cause files not to open or characters to display incorrectly in Code for IBM i. If you are experiencing such issues, it is likely the IBM i PASE environment locale is not set correctly.
-To ensure that the locale is set corretly:
+To ensure that the locale is set correctly:
 
 - OS 7.4 or greater:
 
