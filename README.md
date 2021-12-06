@@ -1,5 +1,7 @@
 # Code for IBM i
 
+[GitHub star this repo 🌟](https://github.com/halcyon-tech/vscode-ibmi) &nbsp;and [Sponsor development on GitHub 🤝](https://github.com/sponsors/worksofliam?frequency=recurring&sponsor=worksofliam)
+
 <img src="https://user-images.githubusercontent.com/3708366/136115951-90750f32-a267-42fb-8627-d15140ff5903.png" align="right">
 
 Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Edit and compile all ILE languages, view errors inline, content assist for RPGLE and CL, source date support, and much more. Code for IBM i has hundreds of daily users and almost 3000 downloads. We strive on being open-source so we can best support our community.
