@@ -99,7 +99,7 @@ module.exports = class Terminal {
             }
           },
           setDimensions: (dim) => {
-            //channel.setWindow(dim.rows, dim.columns, 0, 0);
+            channel.setWindow(dim.rows, dim.columns, 0, 0);
           },
         },
       });
