@@ -57,7 +57,13 @@ module.exports = class Configuration {
     this.clContentAssistEnabled = (base.clContentAssistEnabled === true);
 
     /** @type {string|undefined} */
-    this.encodingFor5250 = base.encodingFor5250 || `37`;
+    this.encodingFor5250 = base.encodingFor5250 || `default`;
+
+    /** @type {string|undefined} */
+    this.terminalFor5250 = base.terminalFor5250 || `default`;
+
+    /** @type {boolean} */
+    this.setDeviceNameFor5250 = (base.setDeviceNameFor5250 === true);
 
     /** @type {boolean} */
     this.autoSaveBeforeAction = (base.autoSaveBeforeAction === true);
