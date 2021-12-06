@@ -14,9 +14,9 @@ module.exports = class Terminal {
     const types = [`PASE`, `5250`];
     vscode.window.showQuickPick(types, {
       placeHolder: `Select a terminal type`
-    }).then(type => {
+    }).then(async type => {
       if (type) {
-        let encodingMap;
+        let encoding, terminal, name;
 
         if (type === `5250`) {
           if (connection.remoteFeatures.tn5250 === undefined) {
@@ -24,14 +24,29 @@ module.exports = class Terminal {
             return;
           }
 
-          encodingMap = configuration.encodingFor5250;
+          encoding = (configuration.encodingFor5250 && configuration.encodingFor5250 !== `default` ? configuration.encodingFor5250 : undefined);
+          terminal = (configuration.terminalFor5250 && configuration.terminalFor5250 !== `default` ? configuration.terminalFor5250 : undefined);
+          
+          if (configuration.setDeviceNameFor5250) {
+            name = await vscode.window.showInputBox({
+              prompt: `Enter a device name for the terminal.`,
+              value: ``,
+              placeHolder: `Blank for default.`
+            });
+
+            if (name === ``) name = undefined;
+          }
 
           // This makes it so the function keys continue to work in the terminal instead of sending them as VS Code commands
           vscode.workspace.getConfiguration().update(`terminal.integrated.sendKeybindingsToShell`, true, true);
         }
 
         // @ts-ignore because type is a string
-        Terminal.createTerminal(instance, type, encodingMap);
+        Terminal.createTerminal(instance, type, {
+          encoding,
+          terminal,
+          name
+        });
       }
     });
   }
@@ -40,9 +55,9 @@ module.exports = class Terminal {
    * 
    * @param {*} instance 
    * @param {"PASE"|"5250"} type 
-   * @param {string} [encodingMap]
+   * @param {{encoding?: string, terminal?: string, name?: string}} [greenScreenSettings]
    */
-  static createTerminal(instance, type, encodingMap) {
+  static createTerminal(instance, type, greenScreenSettings = {}) {
     const writeEmitter = new vscode.EventEmitter();
 
     /** @type {IBMi} */
@@ -84,7 +99,7 @@ module.exports = class Terminal {
             }
           },
           setDimensions: (dim) => {
-            //channel.setWindow(dim.rows, dim.columns, 0, 0);
+            channel.setWindow(dim.rows, dim.columns, 0, 0);
           },
         },
       });
@@ -113,7 +128,13 @@ module.exports = class Terminal {
       emulatorTerminal.show();
 
       if (type === `5250`) {
-        channel.stdin.write(`TERM=xterm /QOpenSys/pkgs/bin/tn5250 ${encodingMap ? `map=${encodingMap}` : ``} localhost\n`);
+        channel.stdin.write([
+          `TERM=xterm /QOpenSys/pkgs/bin/tn5250`,
+          `${greenScreenSettings.encoding ? `map=${greenScreenSettings.encoding}` : ``}`,
+          `${greenScreenSettings.terminal ? `env.TERM=${greenScreenSettings.terminal}` : ``}`,
+          `${greenScreenSettings.name ? `env.DEVNAME=${greenScreenSettings.name}` : ``}`,
+          `localhost\n`
+        ].join(` `));
       } else {
         channel.stdin.write(`echo "Terminal started. Thanks for using Code for IBM i"\n`);
       }

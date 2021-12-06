@@ -199,9 +199,20 @@
 							},
 							"encodingFor5250": {
 								"type": "string",
-								"default": "37",
-								"enum": ["37", "256", "273", "277", "278", "280", "284", "285", "297", "500", "871", "870", "905", "880", "420", "875", "424", "1026", "290", "win37", "win256", "win273", "win277", "win278", "win280", "win284", "win285", "win297", "win500", "win871", "win870", "win905", "win880", "win420", "win875", "win424", "win1026"],
+								"default": "default",
+								"enum": ["default", "37", "256", "273", "277", "278", "280", "284", "285", "297", "500", "871", "870", "905", "880", "420", "875", "424", "1026", "290", "win37", "win256", "win273", "win277", "win278", "win280", "win284", "win285", "win297", "win500", "win871", "win870", "win905", "win880", "win420", "win875", "win424", "win1026"],
 								"description": "The encoding for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+							},
+							"terminalFor5250": {
+								"type": "string",
+								"default": "default",
+								"enum": ["default", "IBM-3477-FC", "IBM-3477-FG", "IBM-3180-2 ", "IBM-3179-2 ", "IBM-3196-A1", "IBM-5292-2", "IBM-5291-1", "IBM-5251-11"],
+								"description": "The terminal type for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+							},
+							"setDeviceNameFor5250": {
+								"type": "boolean",
+								"default": false,
+								"description": "If enabled, user will be prompted for the terminal device name."
 							},
 							"autoSaveBeforeAction": {
 								"type": "boolean",
