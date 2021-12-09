@@ -77,7 +77,7 @@ class CustomUI {
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
-    return `/*html*/
+    return /*html*/`
     <!DOCTYPE html>
     <html lang="en">
     

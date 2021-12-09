@@ -143,7 +143,7 @@ module.exports = class SettingsUI {
 
     ui.addField(new Field(`input`, `command`, `Command to run`));
     ui.fields[2].multiline = true;
-    ui.fields[2].description = `Below are available variables based on the Type you have select below. You can specify different commands on each line.`;
+    ui.fields[2].description = `Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`;
     ui.fields[2].default = currentAction.command;
 
     ui.addField(new Field(`tabs`));

@@ -299,7 +299,14 @@ module.exports = class CompileTools {
               
               } else {
                 executed = false;
-                vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
+                vscode.window.showErrorMessage(
+                  `Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`,
+                  Configuration.get(`logCompileOutput`) ? `Show Output` : undefined
+                ).then(async (item) => {
+                  if (item === `Show Output`) {
+                    outputChannel.show();
+                  }
+                });
               }
 
               if (command.includes(`*EVENTF`)) {
@@ -363,13 +370,12 @@ module.exports = class CompileTools {
       const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
       outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-      outputChannel.append(`   Library list: ` + config.libraryList.join(` `) + `\n`);
-      outputChannel.append(`        Commands:\n`);
-      outputChannel.append(commands.map(command => `\t\t${command}\n`).join(``));
+      outputChannel.append(`Library list: ` + config.libraryList.join(` `) + `\n`);
+      outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
 
       switch (options.environment) {
       case `pase`:
-        commandResult = await connection.paseCommand(commandString, undefined, 1);
+        commandResult = await connection.paseCommand(commands.join(` && `), undefined, 1);
         break;
 
       case `qsh`:
@@ -387,15 +393,17 @@ module.exports = class CompileTools {
           `liblist -d ` + connection.defaultUserLibraries.join(` `),
           `liblist -c ` + config.currentLibrary,
           `liblist -a ` + libl.join(` `),
-          ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}`),
+          //...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}`), -- WORKING
+          //...commands.map(command => `${`if [[ $? -eq 0 ]]; then system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}; fi`),
+          ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
         ], undefined, 1);
         break;
       }
 
       commandResult.command = commandString;
 
-      if (commandResult.stderr.length > 0) outputChannel.append(`${commandResult.stderr}\n\n`);
       if (commandResult.stdout.length > 0) outputChannel.append(`${commandResult.stdout}\n\n`);
+      if (commandResult.stderr.length > 0) outputChannel.append(`${commandResult.stderr}\n\n`);
 
       return commandResult;
     } else {
