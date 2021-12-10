@@ -252,7 +252,7 @@
 				},
 				"code-for-ibmi.logCompileOutput": {
 					"type": "boolean",
-					"default": false,
+					"default": true,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
 				"code-for-ibmi.rpgleLinterSupportEnabled": {
@@ -608,6 +608,11 @@
 			{
 				"command": "code-for-ibmi.disconnect",
 				"title": "Disconnect from current connection.",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openErrors",
+				"title": "Open errors",
 				"category": "IBM i"
 			},
 			{
