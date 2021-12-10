@@ -611,6 +611,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.openErrors",
+				"title": "Open errors",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.launchTerminalPicker",
 				"title": "Launch Terminal Picker",
 				"category": "IBM i"

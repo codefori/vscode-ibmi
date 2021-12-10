@@ -1,5 +1,6 @@
 
 const vscode = require(`vscode`);
+const path = require(`path`);
 
 const IBMi = require(`./api/IBMi`);
 const IBMiContent = require(`./api/IBMiContent`);
@@ -442,6 +443,63 @@ module.exports = class Instance {
                 }
               }
             }
+          }),
+
+          vscode.commands.registerCommand(`code-for-ibmi.openErrors`, async () => {
+            const detail = {
+              asp: undefined,
+              lib: ``,
+              object: ``,
+              ext: undefined
+            };
+
+            let initialPath = ``, pathDetail;
+            const editor = vscode.window.activeTextEditor;
+
+            if (editor) {
+              const uri = editor.document.uri;
+              
+              if ([`member`, `streamfile`].includes(uri.scheme)) {
+
+                switch (uri.scheme) {
+                case `member`:
+                  const memberPath = uri.path.split(`/`);
+                  if (memberPath.length === 4) {
+                    detail.lib = memberPath[1];
+                  } else if (memberPath.length === 5) {
+                    detail.asp = memberPath[1];
+                    detail.lib = memberPath[2];
+                  }
+                  break;
+                case `streamfile`:
+                  detail.asp = (config.sourceASP && config.sourceASP.length > 0) ? config.sourceASP : undefined;
+                  detail.lib = config.currentLibrary;
+                  break;
+                }
+
+                pathDetail = path.parse(editor.document.uri.path);
+                detail.object = pathDetail.name;
+                detail.ext = pathDetail.ext.substring(1);
+
+                initialPath = `${detail.lib}/${detail.object}`;
+              }
+            }
+
+            vscode.window.showInputBox({
+              prompt: `Enter object path (LIB/OBJECT)`,
+              value: initialPath
+            }).then(async (selection) => {
+              if (selection) {
+                const [lib, object] = selection.split(`/`);
+                if (lib && object) {
+                  detail.lib = lib;
+                  detail.object = object;
+                  CompileTools.refreshDiagnostics(this, detail);
+                } else {
+                  vscode.window.showErrorMessage(`Format incorrect. Use LIB/OBJECT`);
+                }
+              }
+            })
           }),
 
           vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
