@@ -296,16 +296,18 @@ module.exports = class CompileTools {
               if (commandResult.code === 0 || commandResult.code === null) {
                 executed = true;
                 vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
-                if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshObjectList`, evfeventInfo.lib);
               
               } else {
                 executed = false;
-                vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`);
+                vscode.window.showErrorMessage(
+                  `Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`,
+                  Configuration.get(`logCompileOutput`) ? `Show Output` : undefined
+                ).then(async (item) => {
+                  if (item === `Show Output`) {
+                    outputChannel.show();
+                  }
+                });
               }
-            
-              output = ``;
-              if (commandResult.stderr.length > 0) output += `${commandResult.stderr}\n\n`;
-              if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
 
               if (command.includes(`*EVENTF`)) {
                 this.refreshDiagnostics(instance, evfeventInfo);
@@ -313,13 +315,11 @@ module.exports = class CompileTools {
             }
 
           } catch (e) {
-            output = `${e}\n`;
+            outputChannel.append(`${e}\n`);
             executed = false;
 
             vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
-
-          outputChannel.append(output);
 
         }
       }
@@ -342,7 +342,7 @@ module.exports = class CompileTools {
     /** @type {Configuration} */
     const config = instance.getConfig();
     
-    let command = options.command;
+    let commandString = options.command;
     let commandResult;
 
     //We have to reverse it because `liblist -a` adds the next item to the top always 
@@ -357,23 +357,25 @@ module.exports = class CompileTools {
       }
     });
 
-    command = this.handleDefaultVariables(instance, command);
+    commandString = this.handleDefaultVariables(instance, commandString);
 
-    if (command.startsWith(`?`)) {
-      command = await vscode.window.showInputBox({prompt: `Run Command`, value: command.substring(1)})
+    if (commandString.startsWith(`?`)) {
+      commandString = await vscode.window.showInputBox({prompt: `Run Command`, value: commandString.substring(1)})
     } else {
-      command = await CompileTools.showCustomInputs(`Run Command`, command);
+      commandString = await CompileTools.showCustomInputs(`Run Command`, commandString);
     }
 
-    if (command) {
+    if (commandString) {
+
+      const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
       outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-      outputChannel.append(`   Library list: ` + config.libraryList.join(` `) + `\n`);
-      outputChannel.append(`        Command: ` + command + `\n`);
+      outputChannel.append(`Library list: ` + config.libraryList.join(` `) + `\n`);
+      outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
 
       switch (options.environment) {
       case `pase`:
-        commandResult = await connection.paseCommand(command, undefined, 1);
+        commandResult = await connection.paseCommand(commands.join(` && `), undefined, 1);
         break;
 
       case `qsh`:
@@ -381,7 +383,7 @@ module.exports = class CompileTools {
           `liblist -d ` + connection.defaultUserLibraries.join(` `),
           `liblist -c ` + config.currentLibrary,
           `liblist -a ` + libl.join(` `),
-          command,
+          ...commands,
         ], undefined, 1);
         break;
 
@@ -391,12 +393,17 @@ module.exports = class CompileTools {
           `liblist -d ` + connection.defaultUserLibraries.join(` `),
           `liblist -c ` + config.currentLibrary,
           `liblist -a ` + libl.join(` `),
-          `system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`,
+          //...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}`), -- WORKING
+          //...commands.map(command => `${`if [[ $? -eq 0 ]]; then system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}; fi`),
+          ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
         ], undefined, 1);
         break;
       }
 
-      commandResult.command = command;
+      commandResult.command = commandString;
+
+      if (commandResult.stdout.length > 0) outputChannel.append(`${commandResult.stdout}\n\n`);
+      if (commandResult.stderr.length > 0) outputChannel.append(`${commandResult.stderr}\n\n`);
 
       return commandResult;
     } else {

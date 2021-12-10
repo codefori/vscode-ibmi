@@ -142,7 +142,8 @@ module.exports = class SettingsUI {
     ui.addField(new Field(`hr`));
 
     ui.addField(new Field(`input`, `command`, `Command to run`));
-    ui.fields[2].description = `Below are available variables based on the Type you have select below.`;
+    ui.fields[2].multiline = true;
+    ui.fields[2].description = `Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`;
     ui.fields[2].default = currentAction.command;
 
     ui.addField(new Field(`tabs`));
@@ -242,7 +243,18 @@ module.exports = class SettingsUI {
     if (data) {
       panel.dispose();
       switch (data.buttons) {
-      case `saveAction`:
+      case `deleteAction`:
+        const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, `Yes`, `No`)
+        if (result === `Yes`) {
+          allActions.splice(id, 1);
+          await Configuration.setGlobal(`actions`, allActions);
+        }
+        break;
+
+      default:
+        // We don't want \r (Windows line endings)
+        data.command = data.command.replace(new RegExp(`\\\r`, `g`), ``);
+
         const newAction = {
           type: data.type,
           extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
@@ -258,14 +270,6 @@ module.exports = class SettingsUI {
         }
 
         await Configuration.setGlobal(`actions`, allActions);
-        break;
-
-      case `deleteAction`:
-        const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, `Yes`, `No`)
-        if (result === `Yes`) {
-          allActions.splice(id, 1);
-          await Configuration.setGlobal(`actions`, allActions);
-        }
         break;
       }
 

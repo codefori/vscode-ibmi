@@ -77,7 +77,7 @@ class CustomUI {
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
-    return `
+    return /*html*/`
     <!DOCTYPE html>
     <html lang="en">
     
@@ -170,13 +170,24 @@ class CustomUI {
             }
 
             for (const field of submitfields) {
-                document.getElementById(field)
+                const currentElement = document.getElementById(field);
+                if (currentElement.hasAttribute('multiline')) {
+                  currentElement
+                    .addEventListener('keyup', function(event) {
+                        event.preventDefault();
+                        if (event.keyCode === 13 && event.shiftKey) {
+                          doDone();
+                        }
+                    });
+                } else {
+                  currentElement
                     .addEventListener('keyup', function(event) {
                         event.preventDefault();
                         if (event.keyCode === 13) {
-                           doDone();
+                          doDone();
                         }
                     });
+                }
             }
 
             for (const field of filefields) {
