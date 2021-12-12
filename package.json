@@ -1248,6 +1248,7 @@
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
-		"HalcyonTechLtd.vscode-ibmi-walkthroughs"
+		"HalcyonTechLtd.vscode-ibmi-walkthroughs",
+		"vscode.git"
 	]
 }

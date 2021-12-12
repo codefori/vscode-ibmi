@@ -1,7 +1,12 @@
 
+const path = require(`path`);
 const vscode = require(`vscode`);
+
 const IBMi = require(`./IBMi`);
 const Storage = require(`./Storage`);
+
+const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
+const gitApi = gitExtension.getAPI(1);
 
 const DEPLOYMENT_KEY = `deployment`;
 
@@ -53,8 +58,8 @@ module.exports = class Deployment {
 
           if (remotePath) {
             const method = await vscode.window.showQuickPick(
-              [`Changes`, `All`],
-              { placeHolder: `Select deployment method` }
+              [`Staged Changes`, `All`],
+              { placeHolder: `Select deployment method to ${remotePath}` }
             );
 
             if (method) {
@@ -64,15 +69,61 @@ module.exports = class Deployment {
               this.deploymentLog.clear();
 
               switch (method) {
-              case `Changes`: // Uses git
+              case `Staged Changes`: // Uses git
+                if (gitApi.repositories.length > 0) {
+                  const repository = gitApi.repositories.find(r => r.rootUri.fsPath === folder.uri.fsPath);
+
+                  if (repository) {
+                    const changes = await repository.state.indexChanges;
+                    const uploads = changes.map(change => {
+                      const relative = change.uri.fsPath.replace(folder.uri.fsPath, ``);
+                      const remote = path.posix.join(remotePath, relative);
+                      return {
+                        local: change.uri.path,
+                        remote: remote
+                      };
+                    });
+                    
+                    this.button.text = BUTTON_WORKING;
+
+                    try {
+                      await client.putFiles(uploads, {
+                        concurrency: 5
+                      });
+                      this.button.text = BUTTON_BASE;
+                      this.deploymentLog.appendLine(`Deployment finished.`);
+                      vscode.window.showInformationMessage(`Deployment finished.`);
+
+                      return true;
+                    } catch (e) {
+                      this.button.text = BUTTON_BASE;
+                      vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
+                        if (action === `View Log`) {
+                          this.deploymentLog.show();
+                        }
+                      });
+                      
+                      this.deploymentLog.appendLine(`Deployment failed.`);
+                      this.deploymentLog.appendLine(e);
+                    }
+
+
+                  } else {
+                    vscode.window.showErrorMessage(`No repository found for ${folder.uri.fsPath}`);
+                  }
+                } else {
+                  vscode.window.showErrorMessage(`No repositories are open.`);
+                }
+
                 break;
 
               case `All`: // Uploads entire directory
+                this.button.text = BUTTON_WORKING;
+
                 const uploadResult = await vscode.window.withProgress({
                   location: vscode.ProgressLocation.Notification,
                   title: `Deploying to ${folder.name}`,
                 }, async (progress) => {
-                  this.button.text = BUTTON_WORKING;
                   progress.report({ message: `Deploying to ${folder.name}` });
                   try {
                     await client.putDirectory(folder.uri.fsPath, remotePath, {
@@ -112,9 +163,9 @@ module.exports = class Deployment {
                       this.deploymentLog.show();
                     }
                   });
-
-                  return false;
                 }
+
+                break;
               }
             }
           } else {
@@ -123,6 +174,8 @@ module.exports = class Deployment {
         } else {
           vscode.window.showErrorMessage(`No folder selected for deployment.`);
         }
+
+        return false;
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.setDeployDirectory`, async (directory) => {
