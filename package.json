@@ -815,6 +815,12 @@
 				"icon": "$(cloud-upload)"
 			},
 			{
+				"command": "code-for-ibmi.setDeployDirectory",
+				"title": "Deploy Workspace to directory",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)"
+			},
+			{
 				"command": "code-for-ibmi.addIFSShortcut",
 				"title": "Add IFS shortcut",
 				"category": "IBM i",
@@ -1182,6 +1188,11 @@
 					"command": "code-for-ibmi.uploadStreamfile",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "3_ifsTransfer@2"
+				},
+				{
+					"command": "code-for-ibmi.setDeployDirectory",
+					"when": "view == ifsBrowser && viewItem == directory && code-for-ibmi:workspace == true",
+					"group": "3_ifsTransfer@3"
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
