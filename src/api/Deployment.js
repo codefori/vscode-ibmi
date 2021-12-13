@@ -6,6 +6,8 @@ const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
 
+const ignore = require(`ignore`).default;
+
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 const gitApi = gitExtension.getAPI(1);
 
@@ -86,7 +88,7 @@ module.exports = class Deployment {
                   if (repository) {
                     const changes = await repository.state.indexChanges;
                     const uploads = changes.map(change => {
-                      const relative = change.uri.fsPath.replace(folder.uri.fsPath, ``);
+                      const relative = path.relative(folder.uri.fsPath, change.uri);
                       const remote = path.posix.join(remotePath, relative);
                       return {
                         local: change.uri.path,
@@ -129,6 +131,17 @@ module.exports = class Deployment {
 
               case `All`: // Uploads entire directory
                 this.button.text = BUTTON_WORKING;
+                
+                // get the .gitignore file from workspace
+                const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
+
+                let ignoreRules = ignore({ignorecase: true}).add(`.git`);
+
+                if (gitignores.length > 0) {
+                  // get the content from the file
+                  const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
+                  ignoreRules.add(gitignoreContent.split(`\n`));
+                }
 
                 const uploadResult = await vscode.window.withProgress({
                   location: vscode.ProgressLocation.Notification,
@@ -147,6 +160,14 @@ module.exports = class Deployment {
                           progress.report({ message: `Deployed ${localPath}` });
                           this.deploymentLog.appendLine(`SUCCESS: ${localPath} -> ${remotePath}`);
                         }
+                      },
+                      validate: (localPath, remotePath) => {
+                        if (ignoreRules) {
+                          const relative = path.relative(folder.uri.fsPath, localPath);
+                          return !ignoreRules.ignores(relative);
+                        }
+
+                        return true;
                       }
                     });
 
