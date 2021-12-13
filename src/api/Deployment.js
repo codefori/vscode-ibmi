@@ -37,16 +37,22 @@ module.exports = class Deployment {
 
     context.subscriptions.push(this.button, this.deploymentLog);
 
-    if (vscode.workspace.workspaceFolders.length > 0) {
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:workspace`, true);
-      this.button.show();
+    if (vscode.workspace.workspaceFolders) {
+      if (vscode.workspace.workspaceFolders.length > 0) {
+        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:workspace`, true);
+        this.button.show();
+      }
     }
 
     context.subscriptions.push(
+      /**
+       * @param {number} document
+       * @returns {Promise<{false|{workspace: number}}>}
+       */
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, async (workspaceIndex) => {
         /** @type {Storage} */
         const storage = instance.getStorage();
-
+        
         let folder;
 
         if (workspaceIndex) {
@@ -87,38 +93,44 @@ module.exports = class Deployment {
 
                   if (repository) {
                     const changes = await repository.state.indexChanges;
-                    const uploads = changes.map(change => {
-                      const relative = path.relative(folder.uri.fsPath, change.uri);
-                      const remote = path.posix.join(remotePath, relative);
-                      return {
-                        local: change.uri.path,
-                        remote: remote
-                      };
-                    });
+                    if (changes.length > 0) {
+                      const uploads = changes.map(change => {
+                        const relative = path.relative(folder.uri.fsPath, change.uri.path);
+                        const remote = path.posix.join(remotePath, relative);
+                        return {
+                          local: change.uri.path,
+                          remote: remote
+                        };
+                      });
                     
-                    this.button.text = BUTTON_WORKING;
+                      this.button.text = BUTTON_WORKING;
 
-                    try {
-                      await client.putFiles(uploads, {
-                        concurrency: 5
-                      });
-                      this.button.text = BUTTON_BASE;
-                      this.deploymentLog.appendLine(`Deployment finished.`);
-                      vscode.window.showInformationMessage(`Deployment finished.`);
+                      try {
+                        await client.putFiles(uploads, {
+                          concurrency: 5
+                        });
+                        this.button.text = BUTTON_BASE;
+                        this.deploymentLog.appendLine(`Deployment finished.`);
+                        vscode.window.showInformationMessage(`Deployment finished.`);
 
-                      return true;
-                    } catch (e) {
-                      this.button.text = BUTTON_BASE;
-                      vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
-                        if (action === `View Log`) {
-                          this.deploymentLog.show();
-                        }
-                      });
+                        return {
+                          workspace: folder.index
+                        };
+                      } catch (e) {
+                        this.button.text = BUTTON_BASE;
+                        vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
+                          if (action === `View Log`) {
+                            this.deploymentLog.show();
+                          }
+                        });
                       
-                      this.deploymentLog.appendLine(`Deployment failed.`);
-                      this.deploymentLog.appendLine(e);
-                    }
+                        this.deploymentLog.appendLine(`Deployment failed.`);
+                        this.deploymentLog.appendLine(e);
+                      }
 
+                    } else {
+                      vscode.window.showInformationMessage(`No staged changes to deploy.`);
+                    }
 
                   } else {
                     vscode.window.showErrorMessage(`No repository found for ${folder.uri.fsPath}`);
@@ -187,7 +199,10 @@ module.exports = class Deployment {
                 this.button.text = BUTTON_BASE;
                 if (uploadResult) {
                   vscode.window.showInformationMessage(`Deployment finished.`);
-                  return true;
+                  return {
+                    workspace: folder.index
+                  };
+                  
                 } else {
                   vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
                     if (action === `View Log`) {

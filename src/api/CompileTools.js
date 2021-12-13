@@ -51,7 +51,7 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {{asp?: string, lib: string, object: string, ext?: string}} evfeventInfo
+   * @param {{asp?: string, lib: string, object: string, ext?: string, translate?: {local: string, remote: string}}} evfeventInfo
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
@@ -104,9 +104,17 @@ module.exports = class CompileTools {
           }
         }
 
-        if (file.startsWith(`/`))
-          ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
-        else
+        if (file.startsWith(`/`)) {
+          if (evfeventInfo.translate) {
+            if (file.toUpperCase().startsWith(evfeventInfo.translate.remote.toUpperCase())) {
+              const relative = file.substring(evfeventInfo.translate.remote.length);
+              const local = path.join(evfeventInfo.translate.local, relative);
+              ileDiagnostics.set(vscode.Uri.file(local), diagnostics);
+            }
+          } else {
+            ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+          }
+        } else
           ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
         
       }
@@ -272,11 +280,18 @@ module.exports = class CompileTools {
         if (command) {
 
           if (action.type === `file` && action.deployFirst) {
+            /** @type {{workspace: number}|false} */
             const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`);
 
             if (!deployResult) {
               vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);
               return;
+            } else {
+              const workspace = vscode.workspace.workspaceFolders.find(folder => folder.index === deployResult.workspace);
+              evfeventInfo.translate = {
+                local: workspace.uri.path,
+                remote: config.homeDirectory
+              }
             }
           }
 

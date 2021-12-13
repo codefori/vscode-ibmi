@@ -236,6 +236,7 @@ module.exports = class SettingsUI {
     ui.addField(new Field(`hr`));
 
     field = new Field(`checkbox`, `deployFirst`, `Run Deploy First`);
+    field.default = (currentAction.deployFirst ? `checked` : ``);
     field.description = `Run deploy first before running the command. Only works for local files.`;
     ui.addField(field);
 
