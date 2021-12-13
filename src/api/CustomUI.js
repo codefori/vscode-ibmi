@@ -266,6 +266,8 @@ class Field  {
   }
 
   getHTML() {
+    this.default = this.default ? this.default.replace(/"/g, `&quot;`) : undefined;
+
     switch (this.type) {
     case `submit`:
       return `<vscode-button id="${this.id}">${this.label}</vscode-button>`;
