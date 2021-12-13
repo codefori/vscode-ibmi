@@ -143,9 +143,6 @@ module.exports = class CompileTools {
   static async RunAction(instance, uri) {
     let evfeventInfo = {asp: undefined, lib: ``, object: ``};
 
-    /** @type {IBMi} */
-    const connection = instance.getConnection();
-
     /** @type {Configuration} */
     const config = instance.getConfig();
 
@@ -178,13 +175,14 @@ module.exports = class CompileTools {
     
       if (chosenOptionName) {
         actionUsed[chosenOptionName] = Date.now();
-        command = availableActions.find(action => action.name === chosenOptionName).command;
-        environment = availableActions.find(action => action.name === chosenOptionName).environment || `ile`;
+        const action = availableActions.find(action => action.name === chosenOptionName);
+        command = action.command;
+        environment = action.environment || `ile`;
 
         let blank, asp, lib, file, fullName;
         let basename, name, ext;
 
-        switch (uri.scheme) {
+        switch (action.type) {
         case `member`:
           const memberPath = uri.path.split(`/`);
       
@@ -223,6 +221,7 @@ module.exports = class CompileTools {
 
           break;
 
+        case `file`:
         case `streamfile`:
           basename = path.posix.basename(uri.path);
           name = basename.substring(0, basename.lastIndexOf(`.`)).toUpperCase();
@@ -271,6 +270,16 @@ module.exports = class CompileTools {
         }
 
         if (command) {
+
+          if (action.type === `file` && action.deployFirst) {
+            const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`);
+
+            if (!deployResult) {
+              vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);
+              return;
+            }
+          }
+
           /** @type {any} */
           let commandResult, output;
           let executed = false;

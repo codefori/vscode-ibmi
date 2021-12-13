@@ -321,7 +321,8 @@
 								"enum": [
 									"member",
 									"streamfile",
-									"object"
+									"object",
+									"file"
 								]
 							},
 							"environment": {
@@ -352,6 +353,10 @@
 							"command": {
 								"type": "string",
 								"description": "Action command"
+							},
+							"deployFirst": {
+								"type": "boolean",
+								"description": "If enabled and type is local, the deployment process will run before the Action."
 							}
 						}
 					},

@@ -135,6 +135,7 @@ module.exports = class SettingsUI {
     const custom = config.customVariables.map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
 
     let ui = new CustomUI();
+    let field;
 
     ui.addField(new Field(`input`, `name`, `Action name`));
     ui.fields[0].default = currentAction.name;
@@ -151,6 +152,7 @@ module.exports = class SettingsUI {
     case `member`:
       ui.fields[3].default = `0`;
       break;
+    case `file`:
     case `streamfile`:
       ui.fields[3].default = `1`;
       break;
@@ -164,7 +166,7 @@ module.exports = class SettingsUI {
         value: `<ul>${Variables.Member.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
       },
       {
-        label: `Streamfile`,
+        label: `Streamfile / File`,
         value: `<ul>${Variables.Streamfile.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
       },
       {
@@ -199,6 +201,12 @@ module.exports = class SettingsUI {
         value: `object`,
         description: `Object`,
         text: `Objects in the QSYS file system`,
+      },
+      {
+        selected: currentAction.type === `file`,
+        value: `file`,
+        description: `Local File (Workspace)`,
+        text: `Actions for local files in the VS Code Workspace.`,
       }
     ];
 
@@ -225,7 +233,15 @@ module.exports = class SettingsUI {
       }
     ];
 
-    const field = new Field(`buttons`);
+    ui.addField(new Field(`hr`));
+
+    field = new Field(`checkbox`, `deployFirst`, `Run Deploy First`);
+    field.description = `Run deploy first before running the command. Only works for local files.`;
+    ui.addField(field);
+
+    ui.addField(new Field(`hr`));
+
+    field = new Field(`buttons`);
     field.items = [
       {
         id: `saveAction`,
@@ -260,7 +276,8 @@ module.exports = class SettingsUI {
           extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
           environment: data.environment,
           name: data.name,
-          command: data.command
+          command: data.command,
+          deployFirst: data.deployFirst,
         };
     
         if (id >= 0) {

@@ -3,6 +3,7 @@ const path = require(`path`);
 const vscode = require(`vscode`);
 
 const IBMi = require(`./IBMi`);
+const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
@@ -65,6 +66,15 @@ module.exports = class Deployment {
             if (method) {
               /** @type {IBMi} */
               const ibmi = instance.getConnection();
+
+              /** @type {Configuration} */
+              const config = instance.getConfig();
+
+              if (config.homeDirectory !== remotePath) {
+                await config.set(`homeDirectory`, remotePath);
+                vscode.window.showInformationMessage(`Home directory set to ${remotePath} for deployment.`);
+              }
+
               const client = ibmi.client;
               this.deploymentLog.clear();
 

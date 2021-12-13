@@ -441,6 +441,7 @@ module.exports = class Instance {
                 switch (scheme) {
                 case `member`:
                 case `streamfile`:
+                case `file`:
                   CompileTools.RunAction(this, uri);
                   break;
                 }
