@@ -51,7 +51,7 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {{asp?: string, lib: string, object: string, ext?: string, translate?: {local: string, remote: string}}} evfeventInfo
+   * @param {{asp?: string, lib: string, object: string, ext?: string, workspace?: boolean}} evfeventInfo
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
@@ -104,19 +104,20 @@ module.exports = class CompileTools {
           }
         }
 
-        if (file.startsWith(`/`)) {
-          if (evfeventInfo.translate) {
-            if (file.toUpperCase().startsWith(evfeventInfo.translate.remote.toUpperCase())) {
-              const relative = file.substring(evfeventInfo.translate.remote.length);
-              const local = path.join(evfeventInfo.translate.local, relative);
-              ileDiagnostics.set(vscode.Uri.file(local), diagnostics);
-            }
-          } else {
-            ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+        if (evfeventInfo.workspace && vscode.workspace) {
+          const baseInfo = path.parse(file);
+          const parentInfo = path.parse(baseInfo.dir);
+
+          const possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
+          if (possibleFiles.length > 0) {
+            ileDiagnostics.set(possibleFiles[0], diagnostics);
           }
-        } else
-          ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
-        
+        } else {
+          if (file.startsWith(`/`))
+            ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+          else
+            ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
+        }
       }
 
     } else {
@@ -283,15 +284,11 @@ module.exports = class CompileTools {
             /** @type {{workspace: number}|false} */
             const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`);
 
-            if (!deployResult) {
+            if (deployResult) {
+              evfeventInfo.workspace = true;
+            } else {
               vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);
               return;
-            } else {
-              const workspace = vscode.workspace.workspaceFolders.find(folder => folder.index === deployResult.workspace);
-              evfeventInfo.translate = {
-                local: workspace.uri.path,
-                remote: config.homeDirectory
-              }
             }
           }
 
