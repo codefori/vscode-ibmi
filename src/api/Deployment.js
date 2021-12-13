@@ -105,6 +105,8 @@ module.exports = class Deployment {
                     
                       this.button.text = BUTTON_WORKING;
 
+                      vscode.window.showInformationMessage(`Deploying staged changes (${uploads.length}) to ${remotePath}`);
+
                       try {
                         await client.putFiles(uploads, {
                           concurrency: 5
@@ -127,7 +129,7 @@ module.exports = class Deployment {
                       }
 
                     } else {
-                      vscode.window.showInformationMessage(`No staged changes to deploy.`);
+                      vscode.window.showWarningMessage(`No staged changes to deploy.`);
                     }
 
                   } else {
