@@ -61,7 +61,13 @@
 								"type": "array",
 								"items": {
 									"type": "object",
-									"required": ["name", "library", "object", "types", "member"],
+									"required": [
+										"name",
+										"library",
+										"object",
+										"types",
+										"member"
+									],
 									"properties": {
 										"name": {
 											"type": "string",
@@ -84,7 +90,9 @@
 												"type": "string",
 												"description": "Object type. Usually starts with an asterisk."
 											},
-											"default": ["*ALL"]
+											"default": [
+												"*ALL"
+											]
 										},
 										"member": {
 											"type": "string",
@@ -189,7 +197,11 @@
 							"sourceDateLocation": {
 								"type": "string",
 								"default": "none",
-								"enum": ["none", "bar", "inline"],
+								"enum": [
+									"none",
+									"bar",
+									"inline"
+								],
 								"description": "The location of the source date of the current line will be displayed."
 							},
 							"clContentAssistEnabled": {
@@ -200,13 +212,62 @@
 							"encodingFor5250": {
 								"type": "string",
 								"default": "default",
-								"enum": ["default", "37", "256", "273", "277", "278", "280", "284", "285", "297", "500", "871", "870", "905", "880", "420", "875", "424", "1026", "290", "win37", "win256", "win273", "win277", "win278", "win280", "win284", "win285", "win297", "win500", "win871", "win870", "win905", "win880", "win420", "win875", "win424", "win1026"],
+								"enum": [
+									"default",
+									"37",
+									"256",
+									"273",
+									"277",
+									"278",
+									"280",
+									"284",
+									"285",
+									"297",
+									"500",
+									"871",
+									"870",
+									"905",
+									"880",
+									"420",
+									"875",
+									"424",
+									"1026",
+									"290",
+									"win37",
+									"win256",
+									"win273",
+									"win277",
+									"win278",
+									"win280",
+									"win284",
+									"win285",
+									"win297",
+									"win500",
+									"win871",
+									"win870",
+									"win905",
+									"win880",
+									"win420",
+									"win875",
+									"win424",
+									"win1026"
+								],
 								"description": "The encoding for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
 							},
 							"terminalFor5250": {
 								"type": "string",
 								"default": "default",
-								"enum": ["default", "IBM-3477-FC", "IBM-3477-FG", "IBM-3180-2 ", "IBM-3179-2 ", "IBM-3196-A1", "IBM-5292-2", "IBM-5291-1", "IBM-5251-11"],
+								"enum": [
+									"default",
+									"IBM-3477-FC",
+									"IBM-3477-FG",
+									"IBM-3180-2 ",
+									"IBM-3179-2 ",
+									"IBM-3196-A1",
+									"IBM-5292-2",
+									"IBM-5291-1",
+									"IBM-5251-11"
+								],
 								"description": "The terminal type for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
 							},
 							"setDeviceNameFor5250": {
@@ -247,7 +308,12 @@
 						"type": "string",
 						"title": "IFS directory"
 					},
-					"default": ["node_modules", ".git", "vendor", "__pycache__"],
+					"default": [
+						"node_modules",
+						".git",
+						"vendor",
+						"__pycache__"
+					],
 					"description": "List of directories that will be ignored when searching the IFS."
 				},
 				"code-for-ibmi.logCompileOutput": {
@@ -321,7 +387,8 @@
 								"enum": [
 									"member",
 									"streamfile",
-									"object"
+									"object",
+									"file"
 								]
 							},
 							"environment": {
@@ -352,27 +419,31 @@
 							"command": {
 								"type": "string",
 								"description": "Action command"
+							},
+							"deployFirst": {
+								"type": "boolean",
+								"description": "If enabled and type is local, the deployment process will run before the Action."
 							}
 						}
 					},
 					"default": [
 						{
-						    "type": "member",
-						    "extensions": [
-							"CBLLE",
-							"CBL"
-						    ],
-						    "name": "Create Bound COBOL Program (CRTBNDCBL)",
-						    "command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"type": "member",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Bound COBOL Program (CRTBNDCBL)",
+							"command": "CRTBNDCBL (&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
 						},
 						{
-						    "type": "member",
-						    "extensions": [
-							"CBLLE",
-							"CBL"
-						    ],
-						    "name": "Create Module CBLLE (CRTCBLMOD)",
-						    "command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
+							"type": "member",
+							"extensions": [
+								"CBLLE",
+								"CBL"
+							],
+							"name": "Create Module CBLLE (CRTCBLMOD)",
+							"command": "CRTCBLMOD MODULE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*SOURCE) DBGVIEW(*SOURCE)"
 						},
 						{
 							"type": "member",
@@ -815,6 +886,12 @@
 				"icon": "$(cloud-upload)"
 			},
 			{
+				"command": "code-for-ibmi.setDeployDirectory",
+				"title": "Deploy Workspace to directory",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)"
+			},
+			{
 				"command": "code-for-ibmi.addIFSShortcut",
 				"title": "Add IFS shortcut",
 				"category": "IBM i",
@@ -1184,6 +1261,11 @@
 					"group": "3_ifsTransfer@2"
 				},
 				{
+					"command": "code-for-ibmi.setDeployDirectory",
+					"when": "view == ifsBrowser && viewItem == directory && code-for-ibmi:workspace == true",
+					"group": "3_ifsTransfer@3"
+				},
+				{
 					"command": "code-for-ibmi.createSourceFile",
 					"when": "view == objectBrowser && viewItem == filter",
 					"group": "1_LibActions@1"
@@ -1231,12 +1313,14 @@
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.3.0",
 		"csv-parse": "^4.15.1",
+		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1",
 		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
-		"HalcyonTechLtd.vscode-ibmi-walkthroughs"
+		"HalcyonTechLtd.vscode-ibmi-walkthroughs",
+		"vscode.git"
 	]
 }

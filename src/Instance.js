@@ -8,6 +8,9 @@ const CompileTools = require(`./api/CompileTools`);
 const Configuration = require(`./api/Configuration`);
 const Storage = require(`./api/Storage`);
 
+const Terminal = require(`./api/terminal`);
+const Deployment = require(`./api/Deployment`);
+
 const Disposable = require(`./api/Disposable`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
 
@@ -114,8 +117,6 @@ module.exports = class Instance {
 
     const CLCommands = require(`./languages/clle/clCommands`);
 
-    const Terminal = require(`./api/terminal`);
-
     if (instance.connection) {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
 
@@ -186,6 +187,8 @@ module.exports = class Instance {
 
         actionsUI.init(context);
         variablesUI.init(context);
+
+        const deployment = new Deployment(context, this);
 
         //********* Library list view */
 
@@ -438,6 +441,7 @@ module.exports = class Instance {
                 switch (scheme) {
                 case `member`:
                 case `streamfile`:
+                case `file`:
                   CompileTools.RunAction(this, uri);
                   break;
                 }
