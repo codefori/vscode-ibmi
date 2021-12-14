@@ -95,10 +95,10 @@ module.exports = class Deployment {
                     const changes = await repository.state.indexChanges;
                     if (changes.length > 0) {
                       const uploads = changes.map(change => {
-                        const relative = path.relative(folder.uri.fsPath, change.uri.path);
+                        const relative = path.relative(folder.uri.path, change.uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
                         const remote = path.posix.join(remotePath, relative);
                         return {
-                          local: change.uri.path,
+                          local: change.uri._fsPath,
                           remote: remote
                         };
                       });
