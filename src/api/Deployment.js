@@ -9,7 +9,6 @@ const Storage = require(`./Storage`);
 const ignore = require(`ignore`).default;
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
-const gitApi = gitExtension.getAPI(1);
 
 const DEPLOYMENT_KEY = `deployment`;
 
@@ -88,6 +87,15 @@ module.exports = class Deployment {
 
               switch (method) {
               case `Staged Changes`: // Uses git
+                let gitApi;
+
+                try {
+                  gitApi = gitExtension.getAPI(1);
+                } catch (e) {
+                  vscode.window.showErrorMessage(`Unable to get git API.`);
+                  return false;
+                }
+
                 if (gitApi.repositories.length > 0) {
                   const repository = gitApi.repositories.find(r => r.rootUri.fsPath === folder.uri.fsPath);
 
