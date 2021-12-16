@@ -2,17 +2,17 @@
 
 [GitHub star this repo 🌟](https://github.com/halcyon-tech/vscode-ibmi) &nbsp;and [Sponsor development on GitHub 🤝](https://github.com/sponsors/worksofliam?frequency=recurring&sponsor=worksofliam)
 
-<img src="https://user-images.githubusercontent.com/3708366/136115951-90750f32-a267-42fb-8627-d15140ff5903.png" align="right">
+<img src="./icon.png" align="right">
 
 Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Edit and compile all ILE languages, view errors inline, content assist for RPGLE and CL, source date support, and much more. Code for IBM i has hundreds of daily users and almost 3000 downloads. We strive on being open-source so we can best support our community.
 
-* [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) :desktop_computer:
-* [Support the project financially](https://github.com/sponsors/worksofliam) :handshake:
-* [Watch some tutorials](https://www.youtube.com/playlist?list=PLNl31cqBafCp-ml8WqPeriHWLD1bkg7KL) 	:tv:
-* [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/) :blue_book:
-* [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases) :mag_right:
-* Build from source (see below!) :hammer:
-* [Use our IBM i API in your own extension](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/extending.md) :hammer_and_wrench:
+* [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) 💻
+* [Support the project financially](https://github.com/sponsors/worksofliam) 🤝
+* [Watch some tutorials](https://www.youtube.com/playlist?list=PLNl31cqBafCp-ml8WqPeriHWLD1bkg7KL) 📺
+* [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/) 📘
+* [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases) 🔎
+* Build from source (see below!) 🔨
+* [Use our IBM i API in your own extension](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/extending.md) 🛠
 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/v/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/i/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
