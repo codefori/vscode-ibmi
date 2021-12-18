@@ -22,6 +22,12 @@ let ileDiagnostics;
 /** @type {vscode.OutputChannel} */
 let outputChannel;
 
+/** @type {vscode.StatusBarItem} */
+let actionsBarItem;
+
+const ACTION_BUTTON_BASE = `Actions`;
+const ACTION_BUTTON_RUNNING = `$(sync~spin) Actions`;
+
 /** @type {{[key: string]: number}} Timestamp of when an action was last used. */
 let actionUsed = {};
 
@@ -40,6 +46,19 @@ module.exports = class CompileTools {
       outputChannel = vscode.window.createOutputChannel(`IBM i Output`);
       context.subscriptions.push(outputChannel);
     }
+
+    if (!actionsBarItem) {
+      actionsBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+      actionsBarItem.command = {
+        command: `code-for-ibmi.showActionsMaintenance`,
+        title: `Show IBM i Actions`,
+      };
+      context.subscriptions.push(actionsBarItem);
+
+      actionsBarItem.text = ACTION_BUTTON_BASE;
+    }
+
+    actionsBarItem.show();
   }
 
   /**
@@ -296,8 +315,9 @@ module.exports = class CompileTools {
           let commandResult, output;
           let executed = false;
 
-          try {
+          actionsBarItem.text = ACTION_BUTTON_RUNNING;
 
+          try {
             commandResult = await this.runCommand(instance, {
               environment,
               command
@@ -342,6 +362,8 @@ module.exports = class CompileTools {
             vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
 
+          actionsBarItem.text = ACTION_BUTTON_BASE;
+
         }
       }
 
@@ -358,6 +380,7 @@ module.exports = class CompileTools {
    * @returns {Promise<{stdout: string, stderr: string, code?: number, command: string}|null>}
    */
   static async runCommand(instance, options) {
+    /** @type {IBMi} */
     const connection = instance.getConnection();
 
     /** @type {Configuration} */
@@ -394,9 +417,20 @@ module.exports = class CompileTools {
       outputChannel.append(`Library list: ` + config.libraryList.join(` `) + `\n`);
       outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
 
+      const callbacks = {
+        /** @param {Buffer} data */
+        onStdout: (data) => {
+          outputChannel.append(data.toString());
+        },
+        /** @param {Buffer} data */
+        onStderr: (data) => {
+          outputChannel.append(data.toString());
+        }
+      }
+
       switch (options.environment) {
       case `pase`:
-        commandResult = await connection.paseCommand(commands.join(` && `), undefined, 1);
+        commandResult = await connection.paseCommand(commands.join(` && `), undefined, 1, callbacks);
         break;
 
       case `qsh`:
@@ -405,7 +439,7 @@ module.exports = class CompileTools {
           `liblist -c ` + config.currentLibrary,
           `liblist -a ` + libl.join(` `),
           ...commands,
-        ], undefined, 1);
+        ], undefined, 1, callbacks);
         break;
 
       case `ile`:
@@ -417,15 +451,14 @@ module.exports = class CompileTools {
           //...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}`), -- WORKING
           //...commands.map(command => `${`if [[ $? -eq 0 ]]; then system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}; fi`),
           ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
-        ], undefined, 1);
+        ], undefined, 1, callbacks);
         break;
       }
 
+      //@ts-ignore We know it is an object
       commandResult.command = commandString;
 
-      if (commandResult.stdout.length > 0) outputChannel.append(`${commandResult.stdout}\n\n`);
-      if (commandResult.stderr.length > 0) outputChannel.append(`${commandResult.stderr}\n\n`);
-
+      //@ts-ignore We know it is an object
       return commandResult;
     } else {
       return null;

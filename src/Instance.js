@@ -18,9 +18,6 @@ const { CustomUI, Field } = require(`./api/CustomUI`);
 let connectedBarItem;
 
 /** @type {vscode.StatusBarItem} */
-let actionsBarItem;
-
-/** @type {vscode.StatusBarItem} */
 let terminalBarItem;
 
 let initialisedBefore = false;
@@ -134,19 +131,6 @@ module.exports = class Instance {
       connectedBarItem.text = `Settings: ${config.name}`;
       connectedBarItem.show();
 
-      if (!actionsBarItem) {
-        actionsBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-        actionsBarItem.command = {
-          command: `code-for-ibmi.showActionsMaintenance`,
-          title: `Show IBM i Actions`,
-        };
-        context.subscriptions.push(actionsBarItem);
-
-        actionsBarItem.text = `Actions`;
-      }
-
-      actionsBarItem.show();
-
       if (!terminalBarItem) {
         terminalBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
         terminalBarItem.command = {
@@ -176,7 +160,6 @@ module.exports = class Instance {
           vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async () => {
             if (instance.connection) {
               connectedBarItem.hide();
-              actionsBarItem.hide();
               vscode.window.showInformationMessage(`Disconnecting from ${instance.connection.currentHost}.`);
               this.disconnect();
             } else {
