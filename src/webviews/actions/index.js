@@ -44,6 +44,7 @@ module.exports = class SettingsUI {
     allActions.forEach(action => { if (!types.includes(action.type)) types.push(action.type); });
     const treeRoot = [...types].map(type => ({ 
       icons,
+      open: true,
       label: `📦 ${type}`,
       type,
       subItems: []
@@ -53,8 +54,8 @@ module.exports = class SettingsUI {
       const envActions = allActions.filter(action => action.type === env.type);
       env.subItems = envActions.map(action => ({
         icons,
-        label: `🔨 ${action.name}`,
-        value: action.index,
+        label: `🔨 ${action.name} (${action.extensions.map(ext => ext.toLowerCase()).join(`, `)})`,
+        value: String(action.index),
       }));
     });
 
