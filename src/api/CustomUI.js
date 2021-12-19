@@ -93,7 +93,7 @@ class CustomUI {
             }
 
             vscode-tree {
-              width: 50em;
+              width: 100%;
             }
 
             .long-input {
@@ -212,12 +212,14 @@ class CustomUI {
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
               ${trees.map(tree => { 
-                return `
+                return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
-                  currentTree.data = ${JSON.stringify(tree.items)};
+                  currentTree.data = ${JSON.stringify(tree.treeList)};
                   currentTree.addEventListener('vsc-select', (event) => {
-                    console.log(event.detail);
-                    vscode.postMessage({'${tree.id}': event.detail.value});
+                    console.log(JSON.stringify(event.detail));
+                    if (event.detail.itemType === 'leaf') {
+                      vscode.postMessage({'${tree.id}': event.detail.value});
+                    }
                   });
                   `
               })}
@@ -265,8 +267,10 @@ class Field  {
     */
     this.multiline = undefined;
 
-    /** @type {{label: string, value: string}[]|{selected?: boolean, value: string, description: string, text: string}[]|{label: string, id: string}[]|undefined} Used for tree, select & button types. */
+    /** @type {{label: string, value: string}[]|{selected?: boolean, value: string, description: string, text: string}[]|{label: string, id: string}[]|undefined} Used for select & button types. */
     this.items = undefined;
+
+    this.treeList = undefined;
   }
 
   getHTML() {

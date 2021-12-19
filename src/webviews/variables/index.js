@@ -27,7 +27,7 @@ module.exports = class SettingsUI {
     
     field = new Field(`tree`, `variable`, `Work with Variables`);
     field.description = `Create or maintain custom variables. Custom variables can be used in any Action in this connection.`;
-    field.items = [
+    field.treeList = [
       ...variables.map((variable, index) => ({
         label: `&${variable.name}: \`${variable.value}\``,
         value: String(index)

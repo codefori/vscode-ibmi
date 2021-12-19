@@ -22,20 +22,43 @@ module.exports = class SettingsUI {
   }
 
   static async MainMenu() {
-    let allActions = Configuration.get(`actions`);
+    const allBaseActions = Configuration.get(`actions`);
+    const allActions = allBaseActions.map((action, index) => ({
+      ...action,
+      index,
+    }));
 
     let ui = new CustomUI();
     let field;
-    
 
     field = new Field(`tree`, `actions`, `Work with Actions`);
-    field.description = `Create or maintain Actions.`;
-    field.items = [
-      ...allActions.map((action, index) => ({
-        label: `${action.name} (${action.type}: ${action.extensions.join(`, `)})`,
-        value: String(index)
-      })).sort((a, b) => a.label.localeCompare(b.label))
-    ];
+    field.description = `Create or maintain Actions. Actions are grouped by the type of file/object they target.`;
+
+    const icons = {
+      branch: `folder`,
+      leaf: `file`,
+      open: `folder-opened`,
+    };
+
+    let types = [];
+    allActions.forEach(action => { if (!types.includes(action.type)) types.push(action.type); });
+    const treeRoot = [...types].map(type => ({ 
+      icons,
+      label: `📦 ${type}`,
+      type,
+      subItems: []
+    }));
+
+    treeRoot.forEach(env => {
+      const envActions = allActions.filter(action => action.type === env.type);
+      env.subItems = envActions.map(action => ({
+        icons,
+        label: `🔨 ${action.name}`,
+        value: action.index,
+      }));
+    });
+
+    field.treeList = treeRoot;
     
     ui.addField(field);
 
