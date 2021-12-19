@@ -39,6 +39,14 @@
 				"language": "cl"
 			}
 		],
+		"jsonValidation": [
+			{
+				"fileMatch": [
+					"actions.json"
+				],
+				"url": "./src/schemas/actions.json"
+			}
+		],
 		"configuration": {
 			"title": "Code for IBM i",
 			"properties": {

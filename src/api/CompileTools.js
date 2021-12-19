@@ -178,14 +178,17 @@ module.exports = class CompileTools {
 
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
 
-    //We do this for backwards compatability.
-    //Can be removed in a few versions.
     for (let action of allActions) {
-      if (action.extension) action.extensions = [action.extension];
       if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
+    /** @type {object[]} */
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(`GLOBAL`)));
+
+    if (uri.scheme === `file`) {
+      const localActions = await this.getLocalActions();
+      availableActions.push(...localActions);
+    }
 
     if (availableActions.length > 0) {
       const options = availableActions.map(item => ({
@@ -413,6 +416,7 @@ module.exports = class CompileTools {
 
       const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
+      outputChannel.append(`\n\n`);
       outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
       outputChannel.append(`Library list: ` + config.libraryList.join(` `) + `\n`);
       outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
@@ -555,7 +559,6 @@ module.exports = class CompileTools {
    * @returns {{lib?: string, object: string}}
    */
   static getObjectFromCommand(baseCommand) {
-
     const possibleParms = [`OBJ`, `MODULE`, `PGM`, `PNLGRP`];
     const command = baseCommand.toUpperCase();
 
@@ -587,5 +590,45 @@ module.exports = class CompileTools {
     }
 
     return null;
+  }
+
+  static async getLocalActions() {
+    const workspaces = vscode.workspace.workspaceFolders;
+    const actions = [];
+
+    if (workspaces && workspaces.length > 0) {
+      const actionsFiles = await vscode.workspace.findFiles(`**/.vscode/actions.json`);
+
+      for (const file of actionsFiles) {
+        const actionsContent = await vscode.workspace.fs.readFile(file);
+        try {
+          const actionsJson = JSON.parse(actionsContent.toString());
+
+          // Maybe one day replace this with real schema validation
+          if (Array.isArray(actionsJson)) {
+            actionsJson.forEach((action, index) => {
+              if (
+                typeof action.name === `string` &&
+                typeof action.command === `string` &&
+                [`ile`, `pase`, `qsh`].includes(action.environment) &&
+                Array.isArray(action.extensions)
+              ) {
+                actions.push({
+                  ...action,
+                  type: `file`
+                });
+              } else {
+                throw new Error(`Invalid Action defined at index ${index}.`);
+              }
+            })
+          }
+        } catch (e) {
+          // ignore
+          this.appendOutput(`Error parsing ${file.fsPath}: ${e.message}\n`);
+        }
+      };
+    }
+
+    return actions;
   }
 }
