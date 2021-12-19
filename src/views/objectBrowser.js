@@ -514,7 +514,7 @@ module.exports = class objectBrowserTwoProvider {
   }
 
   /**
-   * @param {vscode.TreeItem|Filter|Object?} element
+   * @param {vscode.TreeItem|Filter|ILEObject?} element
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
@@ -527,20 +527,26 @@ module.exports = class objectBrowserTwoProvider {
 
       switch (element.contextValue) {
       case `filter`:
-        filter = config.objectFilters.find(filter => filter.name === element.filter);
+        /** @type {ILEObject} */ //@ts-ignore We know what is it based on contextValue.
+        const obj = element;
+
+        filter = config.objectFilters.find(filter => filter.name === obj.filter);
         const objects = await content.getObjectList(filter);
         items = objects.map(object => 
-          object.type === `*FILE` ? new SPF(filter.name, object) : new Object(filter.name, object)
+          object.type === `*FILE` ? new SPF(filter.name, object) : new ILEObject(filter.name, object)
         );
         break;
 
       case `SPF`:
-        filter = config.objectFilters.find(filter => filter.name === element.filter);
-        const path = element.path.split(`/`);
+        /** @type {SPF} */ //@ts-ignore We know what is it based on contextValue.
+        const spf = element;
+
+        filter = config.objectFilters.find(filter => filter.name === spf.filter);
+        const path = spf.path.split(`/`);
         const members = await content.getMemberList(path[0], path[1], filter.member);
         items = members.map(member => new Member(member));
 
-        await this.storeMemberList(element.path, members.map(member => `${member.name}.${member.extension}`));
+        await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
 
         break;
       }
@@ -607,7 +613,7 @@ class SPF extends vscode.TreeItem {
   }
 }
 
-class Object extends vscode.TreeItem {
+class ILEObject extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
    * @param {{library: string, name: string, type: string, text: string}} objectInfo
