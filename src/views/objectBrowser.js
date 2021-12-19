@@ -585,6 +585,7 @@ class Filter extends vscode.TreeItem {
 
     this.contextValue = `filter`;
     this.description = `${filter.library}/${filter.object}/${filter.member} (${filter.types.join(`, `)})`;
+    this.library = filter.library;
     this.filter = filter.name;
   }
 }
