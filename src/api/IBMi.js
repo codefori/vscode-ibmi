@@ -315,9 +315,10 @@ module.exports = class IBMi {
    * 
    * @param {string|string[]} command 
    * @param {string} [directory] 
-   * @param {number} [returnType] 
+   * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
+   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void}} [callbacks]
    */
-  qshCommand(command, directory = this.config.homeDirectory, returnType = 0) {
+  qshCommand(command, directory = this.config.homeDirectory, returnType = 0, callbacks = {}) {
 
     if (Array.isArray(command)) {
       command = command.join(`;`);
@@ -327,7 +328,7 @@ module.exports = class IBMi {
 
     command = `echo "` + command + `" | /QOpenSys/usr/bin/qsh`;
 
-    return this.paseCommand(command, directory, returnType);
+    return this.paseCommand(command, directory, returnType, callbacks);
   }
 
   /**
@@ -335,15 +336,17 @@ module.exports = class IBMi {
    * @param {string} command 
    * @param {null|string} [directory] If null/not passed, will default to home directory
    * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
+   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void}} [callbacks]
    * @returns {Promise<string|{code: number, stdout: string, stderr: string}>}
    */
-  async paseCommand(command, directory = this.config.homeDirectory, returnType = 0) {
+  async paseCommand(command, directory = this.config.homeDirectory, returnType = 0, callbacks = {}) {
     command = command.replace(/\$/g, `\\$`);
 
     this.outputChannel.append(`${directory}: ${command}\n`);
 
     const result = await this.client.execCommand(command, {
       cwd: directory,
+      ...callbacks
     });
 
     this.outputChannel.append(JSON.stringify(result, null, 4) + `\n`);
