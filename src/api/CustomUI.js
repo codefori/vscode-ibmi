@@ -95,6 +95,10 @@ class CustomUI {
             vscode-tree {
               width: 50em;
             }
+
+            .long-input {
+              width: 100%;
+            }
         </style>
     </head>
     
@@ -310,7 +314,7 @@ class Field  {
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
-              <vscode-inputbox id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
+              <vscode-inputbox class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
           </vscode-form-control>
       </vscode-form-item>
       `;
