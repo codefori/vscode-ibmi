@@ -508,11 +508,11 @@ There are two options for deployment:
 
 The user can also defined Actions that are for the 'file' (local) type to run the deploy before running the Action.
 
-### 3. Workspace Actions
+### 3. Workspace Actions (deploy & build)
 
 Similar to other repository settings, users can now store Actions as part of the Workspace. Users can now create `.vscode/actions.json` inside of your Workspace, and can contain Actions that are specific to that Workspace. That configuration file should also be checked into git for that application.
 
-Here is an example `actions.json` setup, which requires deployment to happen before triggering BoB. VS Code will prompt content assist when working with `actions.json`.
+Here is an example `actions.json` setup, which requires deployment to happen before triggering BoB. VS Code will prompt content assist when working with `actions.json`. You could replace BoB with any build system here (e.g. make, or perhaps a vendor-specific tool.).
 
 ```json
 [
