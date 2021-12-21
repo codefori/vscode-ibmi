@@ -1,0 +1,69 @@
+{
+  "$id": "#/actions",
+  "type": "array",
+  "title": "Actions",
+  "description": "List of Actions that apply to this Workspace. Actions may be used to run commands on the remote system.",
+  "default": [],
+  "additionalItems": true,
+  "items": {
+    "$id": "#/actions/items",
+    "anyOf": [
+      {
+        "$id": "#/actions/items/anyOf/0",
+        "type": "object",
+        "title": "Action",
+        "description": "A single Action.",
+        "default": {},
+        "required": [
+          "name",
+          "command",
+          "environment",
+          "extensions"
+        ],
+        "properties": {
+          "name": {
+            "$id": "#/actions/items/anyOf/0/properties/name",
+            "type": "string",
+            "title": "Name",
+            "description": "The name of the Action. Used when running the Action."
+          },
+          "command": {
+            "$id": "#/actions/items/anyOf/0/properties/command",
+            "type": "string",
+            "title": "Command",
+            "description": "The command that will be run when executing this Action.",
+            "default": ""
+          },
+          "environment": {
+            "$id": "#/actions/items/anyOf/0/properties/commandEnvironment",
+            "type": "string",
+            "title": "Command Environment",
+            "description": "Which environment the command will run in.",
+            "default": "ile",
+            "enum": [
+              "ile",
+              "qsh",
+              "pase"
+            ]
+          },
+          "extensions": {
+            "$id": "#/actions/items/anyOf/0/properties/extensions",
+            "type": "array",
+            "title": "Extensions",
+            "description": "Extensions which support this Action.",
+            "default": ["GLOBAL"],
+            "items": {
+              "type": "string",
+              "title": "Extension."
+            }
+          },
+          "deployFirst": {
+            "type": "boolean",
+            "description": "The deployment process should run before the Action."
+          }
+        },
+        "additionalProperties": true
+      }
+    ]
+  }
+}

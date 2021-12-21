@@ -508,6 +508,30 @@ There are two options for deployment:
 
 The user can also defined Actions that are for the 'file' (local) type to run the deploy before running the Action.
 
+### 3. Workspace Actions
+
+Similar to other repository settings, users can now store Actions as part of the Workspace. Users can now create `.vscode/actions.json` inside of your Workspace, and can contain Actions that are specific to that Workspace. That configuration file should also be checked into git for that application.
+
+Here is an example `actions.json` setup, which requires deployment to happen before triggering BoB. VS Code will prompt content assist when working with `actions.json`.
+
+```json
+[
+  {
+    "name": "Deploy & build 🔨",
+    "command": "/QOpenSys/pkgs/bin/bash -c \"error=*EVENTF lib1=&CURLIB makei -z &NAME.&EXT\"",
+    "extensions": [
+      "GLOBAL"
+    ],
+    "environment": "pase",
+    "deployFirst": true
+  }
+]
+```
+
+Now, when the user run an Action against the local file (with `Control/Command + E`), they will appear in the list. 
+
+![image](https://user-images.githubusercontent.com/3708366/146957104-4a26b4ba-c675-4a40-bb51-f77ea964ecf5.png)
+
 ## Settings: Global
 
 These are setting  which affect the extension (and therefore *every* connection). To adjust the extension's global setting,  either:
