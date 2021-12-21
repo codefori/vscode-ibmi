@@ -528,7 +528,7 @@ Here is an example `actions.json` setup, which requires deployment to happen bef
 ]
 ```
 
-Now, when the user run an Action against the local file (with `Control/Command + E`), they will appear in the list. 
+Now, when the user runs an Action against the local file (with `Control/Command + E`), they will appear in the list. 
 
 ![image](https://user-images.githubusercontent.com/3708366/146957104-4a26b4ba-c675-4a40-bb51-f77ea964ecf5.png)
 
