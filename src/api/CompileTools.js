@@ -123,7 +123,7 @@ module.exports = class CompileTools {
           }
         }
 
-        if (evfeventInfo.workspace >= 0 && vscode.workspace) {
+        if (vscode.workspace && evfeventInfo.workspace !== null && evfeventInfo.workspace !== false) {
           const baseInfo = path.parse(file);
           const parentInfo = path.parse(baseInfo.dir);
 
