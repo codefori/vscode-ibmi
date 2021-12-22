@@ -198,7 +198,7 @@ To maximize your editing tab try:
 
 Compile the **active tab** with Ctrl+E. 
 
-- If there are unsaved changes, you will be told it first must be savedt, and also given the option to always save before a compile.
+- If there are unsaved changes, you will be told it first must be saved, and also given the option to always save before a compile.
 If you click **Save Automatically**, sequent compile requests will always save first if there are changes. (In *Settings: Connection*, below, you can turn off the auto save option.)
 
 - If there is more than one compile option for your source type, select the appropriate one.
