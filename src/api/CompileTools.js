@@ -70,7 +70,7 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {{asp?: string, lib: string, object: string, ext?: string, workspace?: boolean}} evfeventInfo
+   * @param {{asp?: string, lib: string, object: string, ext?: string, workspace?: number|boolean}} evfeventInfo
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
@@ -123,7 +123,7 @@ module.exports = class CompileTools {
           }
         }
 
-        if (evfeventInfo.workspace && vscode.workspace) {
+        if (evfeventInfo.workspace >= 0 && vscode.workspace) {
           const baseInfo = path.parse(file);
           const parentInfo = path.parse(baseInfo.dir);
 
@@ -169,7 +169,8 @@ module.exports = class CompileTools {
    * @param {vscode.Uri} uri 
    */
   static async RunAction(instance, uri) {
-    let evfeventInfo = {asp: undefined, lib: ``, object: ``};
+    /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number|boolean}} */
+    let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: null};
 
     /** @type {Configuration} */
     const config = instance.getConfig();
@@ -209,6 +210,18 @@ module.exports = class CompileTools {
         const action = availableActions.find(action => action.name === chosenOptionName);
         command = action.command;
         environment = action.environment || `ile`;
+
+        if (action.type === `file` && action.deployFirst) {
+          /** @type {number|false} */
+          const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`);
+
+          if (deployResult !== false) {
+            evfeventInfo.workspace = deployResult;
+          } else {
+            vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);
+            return;
+          }
+        }
 
         let blank, asp, lib, file, fullName;
         let basename, name, ext;
@@ -255,15 +268,37 @@ module.exports = class CompileTools {
         case `file`:
         case `streamfile`:
           basename = path.posix.basename(uri.path);
-          name = basename.substring(0, basename.lastIndexOf(`.`)).toUpperCase();
+          name = basename.substring(0, basename.lastIndexOf(`.`));
           ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
 
           evfeventInfo = {
+            ...evfeventInfo,
             asp: undefined,
             lib: config.currentLibrary,
             object: name,
             ext
           };
+
+          switch (action.type) {
+          case `file`:
+            command = command.replace(new RegExp(`&LOCALPATH`, `g`), uri.path);
+
+            if (evfeventInfo.workspace !== false) {
+              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
+              const currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace];
+              if (currentWorkspace) {
+                const workspacePath = currentWorkspace.uri.path;
+                const relativePath = path.relative(workspacePath, uri.path);
+                const remoteDeploy = path.join(config.homeDirectory, relativePath)
+
+                command = command.replace(new RegExp(`&FULLPATH`, `g`), remoteDeploy);
+              }
+            }
+            break;
+          case `streamfile`:
+            command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
+            break;
+          }
 
           command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
 
@@ -283,7 +318,7 @@ module.exports = class CompileTools {
             asp: undefined,
             lib,
             object: name,
-            extension
+            ext: extension
           };
 
           command = command.replace(new RegExp(`&LIBRARYL`, `g`), lib.toLowerCase());
@@ -301,18 +336,6 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-
-          if (action.type === `file` && action.deployFirst) {
-            /** @type {{workspace: number}|false} */
-            const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`);
-
-            if (deployResult) {
-              evfeventInfo.workspace = true;
-            } else {
-              vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);
-              return;
-            }
-          }
 
           /** @type {any} */
           let commandResult, output;

@@ -123,7 +123,7 @@ module.exports = class Deployment {
                         this.deploymentLog.appendLine(`Deployment finished.`);
                         vscode.window.showInformationMessage(`Deployment finished.`);
 
-                        return true;
+                        return folder.index;
                       } catch (e) {
                         this.button.text = BUTTON_BASE;
                         vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
@@ -207,7 +207,7 @@ module.exports = class Deployment {
                 this.button.text = BUTTON_BASE;
                 if (uploadResult) {
                   vscode.window.showInformationMessage(`Deployment finished.`);
-                  return true;
+                  return folder.index;
                   
                 } else {
                   vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
