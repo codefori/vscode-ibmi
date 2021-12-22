@@ -36,7 +36,7 @@ module.exports = class ComplexQsysFs {
       return new Uint8Array(Buffer.from(memberContent, `utf8`));
 
     } catch (e) {
-      vscode.window.showErrorMessage(e);
+      vscode.window.showErrorMessage(`Error downloading member content: ${e.message}`);
     }
 
   }

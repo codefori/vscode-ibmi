@@ -134,9 +134,13 @@ module.exports = class IBMiContent {
       let output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
 
       if (typeof output === `string`) {
-        //Little hack for db2util returns blanks where it should be null.
+        // Little hack for db2util returns blanks where it should be null.
         output = output.replace(new RegExp(`:,`, `g`), `:null,`);
         output = output.replace(new RegExp(`:}`, `g`), `:null}`);
+
+        // Remove control characters
+        output = output.replace(/[\u0000-\u001F\u007F-\u009F]/g, ` `);
+
         const rows = JSON.parse(output);
         for (let row of rows)
           for (let key in row) {
