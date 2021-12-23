@@ -300,6 +300,9 @@ module.exports = class CompileTools {
             }
             break;
           case `streamfile`:
+            const relativePath = path.relative(config.homeDirectory, uri.fsPath);
+            command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
+            
             command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
             break;
           }
