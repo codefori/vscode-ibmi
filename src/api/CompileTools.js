@@ -281,15 +281,19 @@ module.exports = class CompileTools {
 
           switch (action.type) {
           case `file`:
-            command = command.replace(new RegExp(`&LOCALPATH`, `g`), uri.path);
+            command = command.replace(new RegExp(`&LOCALPATH`, `g`), uri.fsPath);
 
             if (evfeventInfo.workspace !== false) {
               /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
               const currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace];
               if (currentWorkspace) {
-                const workspacePath = currentWorkspace.uri.path;
-                const relativePath = path.relative(workspacePath, uri.path);
-                const remoteDeploy = path.join(config.homeDirectory, relativePath)
+                const workspacePath = currentWorkspace.uri.fsPath;
+                
+                const relativePath = path.relative(workspacePath, uri.fsPath);
+                command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
+
+                // We need to make sure the remote path is posix
+                const remoteDeploy = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
 
                 command = command.replace(new RegExp(`&FULLPATH`, `g`), remoteDeploy);
               }
