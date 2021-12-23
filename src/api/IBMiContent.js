@@ -179,6 +179,8 @@ module.exports = class IBMiContent {
 
     let result = await this.downloadStreamfile(tempRmt);
 
+    this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
+
     return parse(result, {
       columns: true,
       skip_empty_lines: true,
