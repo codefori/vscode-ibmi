@@ -499,7 +499,14 @@ module.exports = class Instance {
             } else {
               return null;
             }
-          })
+          }),
+          vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement) => {
+            if (statement) {
+              return instance.content.runSQL(statement);
+            } else {
+              return null;
+            }
+          }),
         );
 
         context.subscriptions.push(

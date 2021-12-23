@@ -57,30 +57,33 @@ module.exports = class databaseBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
-        const connection = instance.getConnection();
         const content = instance.getContent();
-        const config = instance.getConfig();
         const editor = vscode.window.activeTextEditor;
 
         if (editor.document.languageId === `sql`) {
-          if (connection.remoteFeatures.db2util) {
-            const statement = parseStatement(editor);
+          const statement = parseStatement(editor);
+
+          if (statement.content.trim().length > 0) {
 
             try {
               switch (statement.type) {
               case `sql`:
                 const data = await content.runSQL(statement.content);
 
-                const panel = vscode.window.createWebviewPanel(
-                  `databaseResult`,
-                  `Database Result`,
-                  vscode.ViewColumn.Active,
-                  {
-                    retainContextWhenHidden: true,
-                    enableFindWidget: true
-                  }
-                );
-                panel.webview.html = generateTable(statement.content, data);
+                if (data.length > 0) {
+                  const panel = vscode.window.createWebviewPanel(
+                    `databaseResult`,
+                    `Database Result`,
+                    vscode.ViewColumn.Active,
+                    {
+                      retainContextWhenHidden: true,
+                      enableFindWidget: true
+                    }
+                  );
+                  panel.webview.html = generateTable(statement.content, data);
+                } else {
+                  vscode.window.showInformationMessage(`Query executed with no data returned.`);
+                }
                 break;
 
               case `cl`:
@@ -105,13 +108,11 @@ module.exports = class databaseBrowserProvider {
 
             } catch (e) {
               if (typeof e === `string`) {
-                vscode.window.showErrorMessage(e);
+                vscode.window.showErrorMessage(e.length > 0 ? e : `An error occurred when executing the statement.`);
               } else {
                 vscode.window.showErrorMessage(e.message || `Error running SQL statement.`);
               }
             }
-          } else {
-            vscode.window.showErrorMessage(`To execute statements, db2util must be installed on the system.`);
           }
         }
       }),

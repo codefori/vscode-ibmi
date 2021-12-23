@@ -127,11 +127,13 @@ module.exports = class IBMiContent {
    * @returns {Promise<any[]>} Result set
    */
   async runSQL(statement) {
-    const command = this.ibmi.remoteFeatures.db2util;
+    const { db2, db2util } = this.ibmi.remoteFeatures;
 
-    if (command) {
-      statement = statement.replace(/"/g, `\\"`);
-      let output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
+    let output;
+
+    statement = statement.replace(/"/g, `\\"`);
+    if (db2util) {
+      output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${db2util} -o json "${statement}"`);
 
       if (typeof output === `string`) {
         //Little hack for db2util returns blanks where it should be null.
@@ -148,8 +150,81 @@ module.exports = class IBMiContent {
       } else {
         return [];
       }
+    } else if (db2) {
+
+      // Well, the fun part about db2 is that it always writes to standard out.
+      // It does not write to standard error at all.
+      output = await this.ibmi.qshCommand(`${db2} "${statement}"`, undefined, 1);
+
+      if (typeof output === `object`) {
+        if (output.code == null || output.code === 0) {
+          let gotHeaders = false;
+          let figuredLengths = false;
+  
+          let data = output.stdout.split(`\n`);
+  
+          /** @type {{name: string, from: number, length: number}[]} */
+          let headers;
+  
+          let rows = [];
+  
+          data.forEach((line, index) => {
+            if (line.trim().length === 0 || index === data.length - 1) return;
+            if (gotHeaders === false) {
+              headers = line.split(` `).filter((x) => x.length > 0).map((x) => {
+                return {
+                  name: x,
+                  from: 0,
+                  length: 0,
+                };
+              });
+  
+              gotHeaders = true;
+            } else
+            if (figuredLengths === false) {
+              let base = 0;
+              line.split(` `).forEach((x, i) => {
+                headers[i].from = base;
+                headers[i].length = x.length;
+  
+                base += x.length + 1;
+              });
+  
+              figuredLengths = true;
+            } else {
+              let row = {};
+  
+              headers.forEach((header) => {
+                /** @type {string|number} */
+                let value = line.substring(header.from, header.from + header.length).trimEnd();
+  
+                // is value a number?
+                if (value.startsWith(` `)) {
+                  const asNumber = Number(value.trim());
+                  if (!isNaN(asNumber)) {
+                    value = asNumber;
+                  }
+                }
+                
+                row[header.name] = value;
+              });
+  
+              rows.push(row);
+            }
+          });
+  
+          return rows;
+        } else {
+          const errorLines = output.stdout.split(`\n`);
+
+          throw new Error(`${errorLines[3]} (${errorLines[1].trim()})`);
+        }
+      }
+
+      return [];
+
     } else {
-      throw new Error(`db2util not installed on remote server.`);
+      throw new Error(`There is no way to run SQL on this system.`);
     }
   }
 

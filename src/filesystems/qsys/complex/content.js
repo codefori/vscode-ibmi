@@ -24,13 +24,13 @@ module.exports = class IBMiContent {
   static async downloadMemberContentWithDates(asp, lib, spf, mbr) {
     const connection = instance.getConnection();
     const content = instance.getContent();
-    const db2 = connection.remoteFeatures.db2util;
+    const db2util = connection.remoteFeatures.db2util;
 
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
 
-    if (db2) {
+    if (db2util) {
       const tempLib = connection.config.tempLibrary;
       const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
       const aliasPath = `${tempLib}.${alias}`;
@@ -83,10 +83,10 @@ module.exports = class IBMiContent {
    */
   static async uploadMemberContentWithDates(asp, lib, spf, mbr, body) {
     const connection = instance.getConnection();
-    const db2 = connection.remoteFeatures.db2util;
+    const db2util = connection.remoteFeatures.db2util;
     const setccsid = connection.remoteFeatures.setccsid;
 
-    if (db2) {
+    if (db2util) {
       const tempLib = connection.config.tempLibrary;
       const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
       const aliasPath = `${tempLib}.${alias}`;

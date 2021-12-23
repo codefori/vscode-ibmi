@@ -14,7 +14,7 @@ We provide three base APIs for you to use. This document only covers `instance`.
 
 * `getConnection()`: [`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
 * `getContent(): `[`IBMiContent`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMiContent.js) to work with content on the current connection
-   * `IBMiContent` has methods to run SQL statements (requires `db2util`), get the contents of tables (without `db2util`) and read and write members/streamfiles.
+   * `IBMiContent` has methods to run SQL statements (requires `db2util` or `db2` which is part of the OS), get the contents of tables (without `db2util`) and read and write members/streamfiles.
 * `getConfig(): `[`Configuration`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/Configuration.js) to get/set configuration for the current connection
 * `on(event: string, callback: Function): void` to add an event handler. Available events:
   * `connected` which can be used to determine when Code for IBM i has established a connection.
@@ -83,10 +83,6 @@ You can use `instance.getConnection()` to determine if there is a connection:
   }
 ```
 
-### Temporary library
-
-Please remember that you cannot use `QTEMP` between commands since each command runs in a new job. Please refer to `instance.getConfig().tempLibrary` for a temporary library.
-
 ### Running commands with the user library list
 
 Code for IBM i ships a command that can be used by an extension to execute a remote command on the IBM i: `code-for-ibmi.runCommand`.
@@ -103,6 +99,25 @@ The command returns an object with the following properties:
 * `stdout: string` - usually contains the spoolfile from the `ile` environment
 * `stderr: string`
 * `code: number|null` - `0` or `null` usually indicates no error.
+
+```js
+const result = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+  environment: `pase`,
+  command: `ls`
+});
+```
+
+### Running SQL queries
+
+Code for IBM i has a command that lets you run SQL statements and get a result back.
+
+```js
+const rows = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, statement);
+```
+
+### Temporary library
+
+Please remember that you cannot use `QTEMP` between commands since each command runs in a new job. Please refer to `instance.getConfig().tempLibrary` for a temporary library.
 
 ### Storing config specific to the connection
 
