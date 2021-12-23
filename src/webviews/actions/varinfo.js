@@ -17,6 +17,7 @@ module.exports = {
   ],
   'Streamfile': [
     {name: `&amp;FULLPATH`, text: `Full path of the streamfile`},
+    {name: `&amp;RELATIVEPATH`, text: `Relative path of the streamfile from the home directory or workspace.`},
     {name: `&amp;NAME`, text: `Name of the streamfile (<code>&amp;NAMEL</code> for lowercase)`},
     {name: `&amp;EXT`, text: `Extension of the streamfile (<code>&amp;EXTL</code> for lowercase)`},
     ...generic
