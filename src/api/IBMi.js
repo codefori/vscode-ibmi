@@ -11,7 +11,7 @@ let remoteApps = [
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`]
+    names: [`setccsid`, `db2`]
   }
 ];
 
@@ -45,6 +45,7 @@ module.exports = class IBMi {
       grep: undefined,
       tn5250: undefined,
       setccsid: undefined,
+      db2: undefined,
       'GENCMDXML.PGM': undefined
     };
   }

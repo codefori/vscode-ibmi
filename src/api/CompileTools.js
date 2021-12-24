@@ -70,7 +70,7 @@ module.exports = class CompileTools {
   
   /**
    * @param {*} instance
-   * @param {{asp?: string, lib: string, object: string, ext?: string, workspace?: number|boolean}} evfeventInfo
+   * @param {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} evfeventInfo
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
@@ -123,7 +123,7 @@ module.exports = class CompileTools {
           }
         }
 
-        if (vscode.workspace && evfeventInfo.workspace !== null && evfeventInfo.workspace !== false) {
+        if (vscode.workspace && evfeventInfo.workspace && evfeventInfo.workspace >= 0) {
           const baseInfo = path.parse(file);
           const parentInfo = path.parse(baseInfo.dir);
 
@@ -169,7 +169,7 @@ module.exports = class CompileTools {
    * @param {vscode.Uri} uri 
    */
   static async RunAction(instance, uri) {
-    /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number|boolean}} */
+    /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} */
     let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: null};
 
     /** @type {Configuration} */
@@ -283,7 +283,7 @@ module.exports = class CompileTools {
           case `file`:
             command = command.replace(new RegExp(`&LOCALPATH`, `g`), uri.fsPath);
 
-            if (evfeventInfo.workspace !== false) {
+            if (evfeventInfo.workspace) {
               /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
               const currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace];
               if (currentWorkspace) {
