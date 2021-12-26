@@ -141,7 +141,6 @@ module.exports = class objectBrowserTwoProvider {
 
                 if (Configuration.get(`autoRefresh`)) {
                   this.refresh();
-                  this.refresh();
                 }
               } catch (e) {
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
