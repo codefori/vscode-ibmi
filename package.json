@@ -329,21 +329,6 @@
 					"default": true,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
-				"code-for-ibmi.rpgleLinterSupportEnabled": {
-					"type": "boolean",
-					"default": false,
-					"description": "Feature removed. Install vscode-rpgle instead."
-				},
-				"code-for-ibmi.rpgleContentAssistEnabled": {
-					"type": "boolean",
-					"default": false,
-					"description": "Feature removed. Install vscode-rpgle instead."
-				},
-				"code-for-ibmi.rpgleColumnAssistEnabled": {
-					"type": "boolean",
-					"default": false,
-					"description": "Feature removed. Install vscode-rpgle instead."
-				},
 				"code-for-ibmi.tryNewErrorParser": {
 					"type": "boolean",
 					"default": false,

@@ -527,24 +527,6 @@ module.exports = class Instance {
             }
           })
         );
-
-        const anyLanguageConfig  = [
-          Configuration.get(`rpgleLinterSupportEnabled`),
-          Configuration.get(`rpgleContentAssistEnabled`),
-          Configuration.get(`rpgleColumnAssistEnabled`),
-        ];
-
-        if (anyLanguageConfig.includes(true)) {
-          vscode.window.showInformationMessage(`RPGLE language tools have been removed from Code for IBM i into a new extension. Want to check out the RPGLE language tools extension in the Marketplace?`, `Yes`, `No`).then(async (result) => {
-            if (result === `Yes`) {
-              await vscode.commands.executeCommand(`extension.open`, `halcyontechltd.vscode-rpgle`);
-            }
-          });
-
-          Configuration.setGlobal(`rpgleLinterSupportEnabled`, false);
-          Configuration.setGlobal(`rpgleContentAssistEnabled`, false);
-          Configuration.setGlobal(`rpgleColumnAssistEnabled`, false);
-        }
         
         initialisedBefore = true;
       }
