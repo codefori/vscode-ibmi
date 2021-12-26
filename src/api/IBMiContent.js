@@ -350,6 +350,8 @@ module.exports = class IBMiContent {
           a.table_schema = '${library}' 
           ${sourceFile !== `*ALL` ? `AND a.table_name = '${sourceFile}'` : ``}
           ${member ? `AND b.system_table_member like '${member}'` : ``}
+        ORDER BY
+          b.system_table_member
       `)
 
     } else {
@@ -370,6 +372,12 @@ module.exports = class IBMiContent {
         if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1);
         results = results.filter(row => row.MBNAME.startsWith(member));
       }
+
+      results = results.sort((a, b) => {
+        if (a.MBNAME < b.MBNAME) { return -1; }
+        if (a.MBNAME > b.MBNAME) { return 1; }
+        return 0;
+      });
     }
 
     if (results.length === 0) return [];
@@ -384,11 +392,7 @@ module.exports = class IBMiContent {
       extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
-    })).sort((a, b) => {
-      if (a.name < b.name) { return -1; }
-      if (a.name > b.name) { return 1; }
-      return 0;
-    });
+    }));
   }
 
   /**
