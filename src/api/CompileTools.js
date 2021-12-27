@@ -123,7 +123,7 @@ module.exports = class CompileTools {
           }
         }
 
-        if (vscode.workspace && evfeventInfo.workspace && evfeventInfo.workspace >= 0) {
+        if (vscode.workspace && evfeventInfo.workspace !== undefined && evfeventInfo.workspace >= 0) {
           const baseInfo = path.parse(file);
           const parentInfo = path.parse(baseInfo.dir);
 
@@ -170,7 +170,7 @@ module.exports = class CompileTools {
    */
   static async RunAction(instance, uri) {
     /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} */
-    let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: null};
+    let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: undefined};
 
     /** @type {Configuration} */
     const config = instance.getConfig();
