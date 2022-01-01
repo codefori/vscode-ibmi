@@ -76,7 +76,6 @@ module.exports = class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
-        let homeDirSet = true;
         let tempLibrarySet = false;
         
         const disconnected = async () => {
@@ -105,25 +104,47 @@ module.exports = class IBMi {
           message: `Checking home directory.`
         });
 
-        //Get home directory if one isn't set
-        let commandResult = await this.paseCommand(`pwd`, null, 1);
-        if (typeof commandResult === `object`) {
-          if (this.config.homeDirectory === `.`) this.config.set(`homeDirectory`, commandResult.stdout.trim());
+        let defaultHomeDir;
 
+        let commandResult = await this.paseCommand(`pwd`, `.`, 1);
+        if (typeof commandResult === `object`) {
           if (commandResult.stderr) {
-            homeDirSet = false;
+            defaultHomeDir = undefined;
+          } else {
+            defaultHomeDir = commandResult.stdout.trim();
+          }
+        }
+
+        //Get home directory if one isn't set
+        if (defaultHomeDir) {
+          if (this.config.homeDirectory === `.`) {
+            // New connections always have `.` as the initial value
+            // But set the value to the real path
+            this.config.set(`homeDirectory`, defaultHomeDir);
+
+          } else {
+            //If they have one set, check it exists.
+            let lsResult = await this.paseCommand(`pwd`, undefined, 1);
+            if (typeof lsResult === `object`) {
+              if (lsResult.stderr) {
+                //If it doesn't exist, reset it
+                this.config.set(`homeDirectory`, defaultHomeDir);
+                progress.report({
+                  message: `Configured home directory reset to ${defaultHomeDir}.`
+                });
+              }
+            }
           }
         }
 
         //Set a default IFS listing
         if (this.config.ifsShortcuts.length === 0) {
-          if (homeDirSet) {
+          if (defaultHomeDir) {
             await this.config.set(`ifsShortcuts`, [this.config.homeDirectory]);
           } else {
             await this.config.set(`ifsShortcuts`, [`/`]);
           }
         }
-
 
         progress.report({
           message: `Checking library list configuration.`
@@ -269,7 +290,7 @@ module.exports = class IBMi {
           }
         }
 
-        if (homeDirSet) {
+        if (defaultHomeDir) {
           if (!tempLibrarySet) {
             vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
               .then(result => {
