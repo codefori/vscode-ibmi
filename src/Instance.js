@@ -15,6 +15,9 @@ const Disposable = require(`./api/Disposable`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
 
 /** @type {vscode.StatusBarItem} */
+let reconnectBarItem;
+
+/** @type {vscode.StatusBarItem} */
 let connectedBarItem;
 
 /** @type {vscode.StatusBarItem} */
@@ -82,6 +85,7 @@ module.exports = class Instance {
       instance.connection.subscriptions.forEach(subscription => subscription.dispose());
 
       if (instance.connection) {
+        instance.connection.client.connection.removeAllListeners();
         instance.connection.client.dispose();
         instance.connection = undefined;
         vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
@@ -118,6 +122,22 @@ module.exports = class Instance {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
 
       CompileTools.register(context);
+
+      if (!reconnectBarItem) {
+        reconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 11);
+        reconnectBarItem.command = {
+          command: `code-for-ibmi.connectPrevious`,
+          title: `Force Reconnect`,
+          arguments: [instance.connection.currentConnectionName]
+        };
+        context.subscriptions.push(reconnectBarItem);
+      }
+      
+      if (Configuration.get(`showReconnectButton`)) {
+        reconnectBarItem.tooltip = `Force reconnect to system.`;
+        reconnectBarItem.text = `$(extensions-remote)`;
+        reconnectBarItem.show();
+      }
 
       if (!connectedBarItem) {
         connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
@@ -165,7 +185,7 @@ module.exports = class Instance {
             } else {
               vscode.window.showErrorMessage(`Not currently connected to any system.`);
             }
-          })
+          }),
         );
 
         actionsUI.init(context);
