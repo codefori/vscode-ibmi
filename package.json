@@ -329,6 +329,11 @@
 					"default": true,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
+				"code-for-ibmi.showReconnectButton": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, a new button will be shown in the toolbar to force reconnect to the IBM i."
+				},
 				"code-for-ibmi.tryNewErrorParser": {
 					"type": "boolean",
 					"default": false,

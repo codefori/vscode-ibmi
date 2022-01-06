@@ -98,8 +98,12 @@ module.exports = class Login {
    */
   static async LoginToPrevious(name, context) {
     if (instance.getConnection()) {
-      vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-      if (!instance.disconnect()) return;
+
+      // If the user is already connected and trying to connect to a different system, disconnect them first
+      if (name !== instance.getConnection().currentConnectionName) {
+        vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
+        if (!instance.disconnect()) return;
+      }
     }
 
     const existingConnections = Configuration.get(`connections`);
