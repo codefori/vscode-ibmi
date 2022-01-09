@@ -200,6 +200,7 @@ module.exports = class IBMi {
           let [errorcode, errortext] = e.split(`:`);
 
           switch (errorcode) {
+          case `CPF2158`: //Library X exists in ASP device ASP X.
           case `CPF2111`: //Already exists, hopefully ok :)
             tempLibrarySet = true;
             break;
