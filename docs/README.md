@@ -178,7 +178,6 @@ This shows libraries and the files/tables in each. It is effective only if db2Ut
 
 ### Editing
 
-
 Click on a source member or stream file in the browser to open it. You can have multiple sources open.
 
  ![Editing example](assets/EditComp-01.png)
@@ -196,7 +195,7 @@ To maximize your editing tab try:
 
 ### Compiling
 
-Compile the **active tab** with Ctrl+E. 
+Compile the **active tab** with Ctrl+E.
 
 - If there are unsaved changes, you will be told it first must be saved, and also given the option to always save before a compile.
 If you click **Save Automatically**, sequent compile requests will always save first if there are changes. (In *Settings: Connection*, below, you can turn off the auto save option.)
@@ -283,88 +282,6 @@ In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We c
 - '**Environment**' determine where the command should be run. In this case, `CRTBNDRPG` needs to run in the ILE environment since it's an ILE command. You also have the option to run commands through PASE or QShell.
 
 When complete, **click Save**. If you simply close the tab, nothing will be saved.
-<!-- Left in, just in case we need it again. -->
-<!-- Internally, the command information is saved similar to this in settings.json:
-
-```json
-"code-for-ibmi.actions": [
-  {
-    "type": "member",
-    "extensions": [
-      "rpgle",
-      "rpg"
-    ],
-    "name": "CRTBNDRPG",
-    "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)"
-  }
-]
-```
-
-The  `type` property values are:
-
-- `member` for source members
-- `streamfile` for streamfiles
-- `object` for objects
-
-Use the `environment` property to run the action in a specific environment:
-
-- `ile` (default) to run CL commands in the ILE environment
-- `qsh` to run commands in QShell
-- `pase` to run commands in pase
-
-Other important properties:
-
-- `extensions` property is used to tie the action to certain types of files or objects.
-- `name` is used to identify the action when selecting and running them.
-- `command` is used to define what will be executed. Read about command below.
-
-### Command variables and fields
-
-> `CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)`
-
-The command variable is the command that will be executed on the IBM i. Notice it has portions of text that start with an & (ampersand) - such text will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified.
-
-#### Variables in all types
-
-| Variable | Usage                              |
-|----------|------------------------------------|
-| `&CURLIB` | Values which comes from the connection settings |
-| `&BUILDLIB` | The same as `&CURLIB` |
-| `&USERNAME` | Username being used to connect to the current system |
-| `&HOME` | Home directory configured for the connection |
-
-#### Member variables
-
-For all member variables, you can end the variable with `L` for the lowercase of it. E.g. `&OPENMBR` for the uppercase or `&OPENMBRL` for the lowercase.
-
-| Variable | Usage                              |
-|----------|------------------------------------|
-| `&OPENLIB` | Library that member resides in     |
-| `&OPENSPF` | Source file that member resides in |
-| `&OPENMBR` | Name of member                     |
-| `&EXT`     | Member extension                   |
-
-#### Streamfile variables
-
-| Variable  | Usage                                           |
-|-----------|-------------------------------------------------|
-| `&FULLPATH` | Path to the streamfile.                         |
-| `&NAME`     | Name of the streamfile with no extension        |
-| `&NAMEL`    | The same as `&NAME`, but lowercase.             |
-| `&EXT`      | Extension of basename                           |
-| `&EXTL`      | The same as `&EXT`, but lowercase. |
-
-#### Object variables
-
-For all object variables, you can end the variable with `L` for the lowercase of it. E.g. `&NAME` for the uppercase or `&NAMEL` for the lowercase.
-
-| Variable  | Usage                             |
-|-----------|-----------------------------------|
-| `&LIBRARY`  | Library in which the object exists|
-| `&NAME`     | Name of the object                |
-| `&TYPE`     | The object type (PGM, FILE, etc)  |
-| `&EXT`     | The same as `&TYPE`  |
- -->
 
 ## Action Execution
 
@@ -576,62 +493,6 @@ You can change the font size in the OUTPUT tab in your settings.json thus:
     },
 ````
 
-
-<!-- ### Connections
-
-List of connection details from prior connections.
-
-Here is a snippet of what the connection details look like:
-
-```json
-"code-for-ibmi.connections": [
-  {
-    "name": "My IBMi Connection",
-    "host": "DEV400",
-    "port": 22,
-    "username": "OTTEB",
-    "privateKey": null
-  }
-],
-```
-
-#### Connection Settings
-
-An array of objects. Each object is unique by the host property and is used so different connections can have their own settings. **Note that connection properties can only be edited in the form of JSON, other than certain places in the UI**
-
-```json
-    "code-for-ibmi.connectionSettings": [
-        {
-            "name": "My IBMi Connection",
-            "host": "seiden.iinthecloud.com",
-            "libraryList": [
-                "QSYS2",
-                "QSYSINC",
-                "SAMPLE"
-            ],
-            "homeDirectory": "/home/alan3/apug",
-            "tempLibrary": "ILEDITOR",
-            "buildLibrary": "QTEMP",
-            "sourceASP": null
-        }
-    ]
-```
-
-#### Source File List
-
-Source files to be included in the member browser.
-
-#### Library List
-
-An array for the user library list. Highest item of the library list goes first.
-
-```json
-"libraryList": [
-    "DATALIB",
-    "QSYSINC"
-]
-``` -->
-
 ## Settings: Connection
 
 Multiple connections can be defined and some settings are specific to a connection and can be saved for the connection and later reloaded.
@@ -687,41 +548,8 @@ Otherwise, leave blank.
 Code for IBM i comes with a large set of built-in snippets for RPGLE. For example, here's what you might see if you entered %scan in an RPGLE member:
 ![%SCAN example](assets/Snippet_01.png)
 
-You can also add your own snippets. Check out the [VS Code Snippet Documentation](https://code.visualstudio.com/docs/editor/userdefinedsnippets) 
+You can also add your own snippets. Check out the [VS Code Snippet Documentation](https://code.visualstudio.com/docs/editor/userdefinedsnippets)
 
-<!-- ## Source files
-
-### Adding Source Files
-
-In order to make the member browser useful, source files need to be declared
-in the ```Code for IBM i``` settings.
-
-In the **Source File List** setting, additional source files can be added
-by clicking the **Add Item** button.
-The source file follows the intuitive ```LIB/SRCPF``` format.
-
-![assets/srcflist_01.png](assets/srcflist_01.png)
-
-![assets/srcflist_02.png](assets/srcflist_02.png)
-
-Now in the **Member Browser**, source files will appear.
-Each source file can be expanded to reveal its members.
-
-![assets/srcflist_03.png](assets/srcflist_03.png)
-
-![assets/srcflist_04.png](assets/srcflist_04.png)
-
-A source file can be refreshed by right clicking and selecting **Refresh Member List** in the context menu.
-
-![assets/srcflist_05.png](assets/srcflist_05.png)
-
-### Opening Source Members
-
-After adding a source file, a source member can now be opened by selecting
-it in the member list.
-
-![assets/members_01.png](assets/members_01.png)
- -->
 ## Comparing sources
 
 Compare two sources, whether they are members or streamfiles.
@@ -731,33 +559,6 @@ Compare two sources, whether they are members or streamfiles.
 
 ![assets/compare_01.png](assets/compare_01.png)
 
-<!-- ### Compiling Sources
-
-Pressing <kbd>F1</kbd> and search for ```IBM i: Run Action```
-will reveal two commands that can compile a source member.
-
-![assets/compile_01.png](assets/compile_01.png)
-
-Notice how ```IBM i: Run Action on Active Editor``` can be executed with
-<kbd>CTRL</kbd> + <kbd>E</kbd>.
-
-To compile a source member, run the ```IBM i: Run Action on Active Editor``` command.
-If there is more than one compile option available for the member type, it will prompt you.
-
-This will result in a message displaying whether the
-compilation was successful or not.
-
-If any compiler warnings or errors occurred, it will be listed under
-the **PROBLEMS** tab.
-
-![assets/compile_02.png](assets/compile_02.png)
-
-This is what happens when a compiler error occurs.
-
-![assets/compile_03.png](assets/compile_03.png)
-
-For compile command configuration, see [Settings/Actions](#actions)
- -->
 ## Database Browser
 
 The database browser allows you browse tables in schemas on your connected system. The schema list comes from the defined library list.
