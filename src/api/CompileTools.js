@@ -587,7 +587,7 @@ module.exports = class CompileTools {
    * @returns {{lib?: string, object: string}}
    */
   static getObjectFromCommand(baseCommand) {
-    const possibleParms = [`OBJ`, `MODULE`, `PGM`, `PNLGRP`];
+    const possibleParms = [`MODULE`, `PNLGRP`, `OBJ`, `PGM`];
     const command = baseCommand.toUpperCase();
 
     for (const parm of possibleParms) {
