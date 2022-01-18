@@ -665,6 +665,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showOutputPanel",
+				"title": "Show IBM i output",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login settings",
 				"category": "IBM i"

@@ -25,6 +25,9 @@ let outputChannel;
 /** @type {vscode.StatusBarItem} */
 let actionsBarItem;
 
+/** @type {vscode.StatusBarItem} */
+let outputBarItem;
+
 const ACTION_BUTTON_BASE = `Actions`;
 const ACTION_BUTTON_RUNNING = `$(sync~spin) Actions`;
 
@@ -59,6 +62,25 @@ module.exports = class CompileTools {
     }
 
     actionsBarItem.show();
+
+    if (!outputBarItem) {
+      vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, () => {
+        this.showOutput();
+      })
+
+      outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+      outputBarItem.command = {
+        command: `code-for-ibmi.showOutputPanel`,
+        title: `Show IBM i Output`,
+      };
+      context.subscriptions.push(outputBarItem);
+
+      outputBarItem.text = `$(three-bars) Output`;
+    }
+
+    if (Configuration.get(`logCompileOutput`)) {
+      outputBarItem.show();
+    }
   }
 
   /**
@@ -376,7 +398,7 @@ module.exports = class CompileTools {
                   Configuration.get(`logCompileOutput`) ? `Show Output` : undefined
                 ).then(async (item) => {
                   if (item === `Show Output`) {
-                    outputChannel.show();
+                    this.showOutput();
                   }
                 });
               }
@@ -495,6 +517,10 @@ module.exports = class CompileTools {
     } else {
       return null;
     }
+  }
+
+  static showOutput() {
+    outputChannel.show();
   }
 
   static appendOutput(output) {
