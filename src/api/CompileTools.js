@@ -370,6 +370,10 @@ module.exports = class CompileTools {
 
           actionsBarItem.text = ACTION_BUTTON_RUNNING;
 
+          if (Configuration.get(`clearOutputEveryTime`)) {
+            outputChannel.clear();
+          }
+
           try {
             commandResult = await this.runCommand(instance, {
               environment,

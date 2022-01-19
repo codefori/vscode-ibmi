@@ -329,6 +329,11 @@
 					"default": true,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
+				"code-for-ibmi.clearOutputEveryTime": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, will clear the IBM i Output before an Action is run."
+				},
 				"code-for-ibmi.showReconnectButton": {
 					"type": "boolean",
 					"default": false,
