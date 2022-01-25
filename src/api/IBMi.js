@@ -235,6 +235,71 @@ module.exports = class IBMi {
         }
 
         progress.report({
+          message: `Checking for bad data areas.`
+        });
+        
+        try {
+          await this.remoteCommand(
+            `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+            undefined
+          );
+
+          vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
+            detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
+            modal: true,
+          }, `Delete`, `Read more`).then(choice => {
+            switch (choice) {
+            case `Delete`:
+              this.remoteCommand(
+                `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
+              )
+                .then(() => {
+                  vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                })
+                .catch(e => {
+                  vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                });
+              break;
+            case `Read more`:
+              vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+              break;
+            }
+          });
+        } catch (e) {
+          // It doesn't exist, we're all good.
+        }
+
+        try {
+          await this.remoteCommand(
+            `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+            undefined
+          );
+
+          vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
+            modal: false,
+          }, `Delete`, `Read more`).then(choice => {
+            switch (choice) {
+            case `Delete`:
+              this.remoteCommand(
+                `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
+              )
+                .then(() => {
+                  vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                })
+                .catch(e => {
+                  vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                });
+              break;
+            case `Read more`:
+              vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+              break;
+            }
+          });
+        } catch (e) {
+          // It doesn't exist, we're all good.
+        }
+
+        progress.report({
           message: `Checking installed components on host IBM i.`
         });
 

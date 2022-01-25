@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.8.21",
+	"version": "0.8.24",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -328,6 +328,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
+				},
+				"code-for-ibmi.clearOutputEveryTime": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, will clear the IBM i Output before an Action is run."
 				},
 				"code-for-ibmi.showReconnectButton": {
 					"type": "boolean",
@@ -665,6 +670,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.showOutputPanel",
+				"title": "Show IBM i output",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login settings",
 				"category": "IBM i"
@@ -976,6 +986,26 @@
 				"command": "code-for-ibmi.openFileByPath",
 				"key": "ctrl+alt+o",
 				"mac": "cmd+alt+o"
+			},
+			{
+				"command": "code-for-ibmi.showAdditionalSettings",
+				"key": "ctrl+alt+,",
+				"mac": "cmd+alt+,"
+			},
+			{
+				"command": "code-for-ibmi.launchTerminalPicker",
+				"key": "ctrl+shift+j",
+				"mac": "cmd+shift+j"
+			},
+			{
+				"command": "code-for-ibmi.disconnect",
+				"key": "ctrl+shift+escape",
+				"mac": "cmd+shift+escape"
+			},
+			{
+				"command": "code-for-ibmi.showOutputPanel",
+				"key": "ctrl+shift+f6",
+				"mac": "cmd+shift+f6"
 			}
 		],
 		"viewsContainers": {

@@ -25,7 +25,10 @@ let outputChannel;
 /** @type {vscode.StatusBarItem} */
 let actionsBarItem;
 
-const ACTION_BUTTON_BASE = `Actions`;
+/** @type {vscode.StatusBarItem} */
+let outputBarItem;
+
+const ACTION_BUTTON_BASE = `$(code) Actions`;
 const ACTION_BUTTON_RUNNING = `$(sync~spin) Actions`;
 
 /** @type {{[key: string]: number}} Timestamp of when an action was last used. */
@@ -59,6 +62,25 @@ module.exports = class CompileTools {
     }
 
     actionsBarItem.show();
+
+    if (!outputBarItem) {
+      vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, () => {
+        this.showOutput();
+      })
+
+      outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+      outputBarItem.command = {
+        command: `code-for-ibmi.showOutputPanel`,
+        title: `Show IBM i Output`,
+      };
+      context.subscriptions.push(outputBarItem);
+
+      outputBarItem.text = `$(three-bars) Output`;
+    }
+
+    if (Configuration.get(`logCompileOutput`)) {
+      outputBarItem.show();
+    }
   }
 
   /**
@@ -348,6 +370,10 @@ module.exports = class CompileTools {
 
           actionsBarItem.text = ACTION_BUTTON_RUNNING;
 
+          if (Configuration.get(`clearOutputEveryTime`)) {
+            outputChannel.clear();
+          }
+
           try {
             commandResult = await this.runCommand(instance, {
               environment,
@@ -376,7 +402,7 @@ module.exports = class CompileTools {
                   Configuration.get(`logCompileOutput`) ? `Show Output` : undefined
                 ).then(async (item) => {
                   if (item === `Show Output`) {
-                    outputChannel.show();
+                    this.showOutput();
                   }
                 });
               }
@@ -497,6 +523,10 @@ module.exports = class CompileTools {
     }
   }
 
+  static showOutput() {
+    outputChannel.show();
+  }
+
   static appendOutput(output) {
     outputChannel.append(output);
   }
@@ -587,7 +617,7 @@ module.exports = class CompileTools {
    * @returns {{lib?: string, object: string}}
    */
   static getObjectFromCommand(baseCommand) {
-    const possibleParms = [`OBJ`, `MODULE`, `PGM`, `PNLGRP`];
+    const possibleParms = [`MODULE`, `PNLGRP`, `OBJ`, `PGM`];
     const command = baseCommand.toUpperCase();
 
     for (const parm of possibleParms) {

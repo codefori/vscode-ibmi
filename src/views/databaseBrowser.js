@@ -264,7 +264,9 @@ class ColumnItem extends vscode.TreeItem {
   constructor(column) {
     super(column.name.toLowerCase(), vscode.TreeItemCollapsibleState.None);
 
-    this.description = `${column.type.toLowerCase()}. ${column.heading}`;
+    const type = column.type.toLowerCase() + `(${column.length ? column.length : column.scale + `, ` + column.precision})`;
+
+    this.description = `${type}. ${column.heading}`;
     this.tooltip = column.comment;
     this.iconPath = new vscode.ThemeIcon(`circle-filled`);
   }

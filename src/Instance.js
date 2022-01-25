@@ -148,7 +148,7 @@ module.exports = class Instance {
         context.subscriptions.push(connectedBarItem);
       }
       
-      connectedBarItem.text = `Settings: ${config.name}`;
+      connectedBarItem.text = `$(settings-gear) Settings: ${config.name}`;
       connectedBarItem.show();
 
       if (!terminalBarItem) {
@@ -159,7 +159,7 @@ module.exports = class Instance {
         }
         context.subscriptions.push(terminalBarItem);
 
-        terminalBarItem.text = `Terminals`;
+        terminalBarItem.text = `$(terminal) Terminals`;
       }
 
       terminalBarItem.show();
