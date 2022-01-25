@@ -92,6 +92,12 @@ of the IBM i system you are connected to.
 
 To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: Disconnect from current connection```
 
+### Unstable Connections (Reconnect)
+
+If your connection is unstable and is sometimes lost, check the setting "Show Reconnect Button". See *Settings: Global*, below. This will add a "Force reconnect to system" button to the task bar.
+
+![Reconnect Button](assets/connect_06.png)
+
 ## Browsers
 
 In the side bar there are several browsers to display and intereact with various parts of the IBM i:
@@ -232,18 +238,23 @@ You can remove all the squiggly line using F1 and searching for IBM i Clear Diag
 
 ![Clear diagnostics](assets/EditComp-08.png)
 
+### Compile Listing
+
+If you have *Log Compile Output* checked in settings (see *Settings: Global*, below), then compile listings are found under the Output tab by selecting IBM i Output.  Use the shortcut Output icon on the tool bar to jump to the compile listing.
+
+![Output button](assets/EditComp-09.png)
+
 ## Actions
 
-An action is used to perform a task, e.g. a compile, on a member, streamfile or other type of object.
-A comprehensive default set of actions is loaded directly from the extension. You can change or add to actions using the user interface below.  
+An action is used to perform a task on a member, streamfile or other type of object. A comprehensive default set of actions is loaded directly from the extension. You can also easily change or add to actions--see *View/Change/Add Actions*, below.
 
 If you change or add actions as below, then all actions are saved in the ```code-for-ibmi.actions``` section in ```settings.json```. You can also edit the```code-for-ibmi.actions``` section manually. If it doesn't exist, you can create you own ```code-for-ibmi.actions``` section in ```settings.json```.  
 
 **Note:** When  a  ```code-for-ibmi.actions``` section  exists in ```settings.json``` the set of actions is loaded from there, not from the default set in the extension.
 
-![assets/actions_01.png](assets/actions_01.png)
+<!-- ![assets/actions_01.png](assets/actions_01.png) -->
 
-Actions are defined commands used to perform tasks on members, streamfiles and other types of objects. Actions can be executed from two different places:
+Actions are defined commands used to perform tasks on members, streamfiles and other types of objects. For example, to compile a source file. Actions can be executed from two different places:
 
 - As you're writing code. For example, to compile a program or module.
 - When you right click on a member, streamfile or an object from the OBJECT BROWSER.
@@ -595,6 +606,14 @@ Right click and click 'Search' on IFS directories and source files to search thr
 ### Overtype
 
 VS Code works in "insert" mode. This can be annoying when editing a fixed mode source, for example DDS. Fortunately there is an [Overtype extension](https://marketplace.visualstudio.com/items?itemName=DrMerfy.overtype) that allows you to toggle between insert and  overtype, and can also display the current mode in the status bar.
+
+### Font Size
+
+Font size in the editor is controlled by the VS Code setting *Editor: Font Size*.  However, with your cursor in an editor, you can also temporarily change the editor font size by holding Ctrl and using your mouse scroll bar.
+
+Font size in the Menu, Side, Status and Activity bars can be changed using holding down Ctrl, then using  + or -. Such changes will hold from session to session. However, this will also change the size of the editor font and you may have to adjust it as above for this session.
+
+Rule of thumb: Experiment.
 
 ### Integrated terminals
 
