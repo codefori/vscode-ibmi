@@ -40,11 +40,8 @@ Tip: next time, try using 'IBM i: Connect to previous'
 1. Connect to your system.
 2. Find the OBJECT BROWSER and click **+ Create new filter**.
 3. Complete the new filter dialog, following the descriptive text, ensuring:
-
    a. That **Object** is the source physical file you want to edit.
-
    b. That  **Object type filter** is set to *SRCPF.
-
 4. Save settings
 5. Click on the filter to expand the members in the source file.
 6. Click on a member to open it.
@@ -554,6 +551,10 @@ Note: If your IBM i runs replication software, there is no need to replicate the
 If source files are located in a specific ASP, specify here.
 Otherwise, leave blank.
 
+#### Enable source dates
+
+For source dates to be supported, `db2util` must be install on IBM i. This can be fetched via yum.
+
 ## Snippets
 
 Code for IBM i comes with a large set of built-in snippets for RPGLE. For example, here's what you might see if you entered %scan in an RPGLE member:
@@ -589,13 +590,6 @@ Clicking on a schema will load all tables, views, PFs, and LFs inside of the cho
 It is also possible to run SQL statements right from the editor. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
 
 ![assets/db_03.png](assets/db_03.png)
-
-### db2Util Required
-
-A compatible version of [db2util](https://github.com/IBM/ibmi-db2util) needs to be installed on the IBM i for the Database Browser to work.
-
-If installed, db2util is also used to more quickly populate the OBJECT BROWSER list(s). However, incompatible versions of db2util may fail to populate the OBJECT BROWSER list(s). db2util 1.0.12 is known to work.
-You can ignore db2util by deselecting "**Enable SQL**" in *Settings: Connection*.
 
 ## Tips & Tricks
 
