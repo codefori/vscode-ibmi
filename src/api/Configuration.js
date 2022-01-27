@@ -41,9 +41,6 @@ module.exports = class Configuration {
     /** @type {string} */
     this.sourceFileCCSID = base.sourceFileCCSID || `*FILE`;
 
-    /** @type {boolean} Undefined means not created, so default to on */
-    this.enableSQL = (base.enableSQL === true || base.enableSQL === undefined);
-
     /** @type {string[]} */
     this.hideCompileErrors = base.hideCompileErrors || [];
 

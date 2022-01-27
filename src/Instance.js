@@ -211,7 +211,7 @@ module.exports = class Instance {
             require(`./filesystems/qsys/complex/handler`).begin(context);
             qsysFs = new (require(`./filesystems/qsys/complex`));
           } else {
-            vscode.window.showWarningMessage(`Source date support is disabled. SQL must be enabled.`);
+            vscode.window.showWarningMessage(`Source date support is disabled. db2util must be installed.`);
           }
         }
 

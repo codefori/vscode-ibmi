@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
+        const restartFields = [`enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -52,11 +52,6 @@ module.exports = class SettingsUI {
         field = new Field(`input`, `tempLibrary`, `Temporary library`);
         field.default = config.tempLibrary;
         field.description = `Temporary library. Cannot be QTEMP.`;
-        ui.addField(field);
-    
-        field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
-        field.default = (config.enableSQL ? `checked` : ``);
-        field.description = `Must be enabled to make the use of db2util and is enabled by default. If you find db2util isn't working for some reason, disable this. If this config is changed, you must reconnect to the system.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceASP`, `Source ASP`);
