@@ -124,15 +124,27 @@ module.exports = class IBMiContent {
   /**
    * Run an SQL statement
    * @param {string} statement 
+   * @param {"default"|"db2util"|"db2"} [executor]
    * @returns {Promise<any[]>} Result set
    */
-  async runSQL(statement) {
+  async runSQL(statement, executor = `default`) {
     const { db2, db2util } = this.ibmi.remoteFeatures;
 
+    let dbUtility;
     let output;
 
+    switch (executor) {
+      case `default`:
+      case `db2util`:
+        dbUtility = db2util ? `db2util` : `db2`;
+        break;
+      case `db2`:
+        dbUtility = executor;
+        break;
+    }
+
     statement = statement.replace(/"/g, `\\"`);
-    if (db2util) {
+    if (db2util && dbUtility === `db2util`) {
       output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${db2util} -o json "${statement}"`);
 
       if (typeof output === `string`) {
@@ -150,8 +162,7 @@ module.exports = class IBMiContent {
       } else {
         return [];
       }
-    } else if (db2) {
-
+    } else if (db2 && dbUtility === `db2`) {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
       output = await this.ibmi.qshCommand(`${db2} "${statement}"`, undefined, 1);

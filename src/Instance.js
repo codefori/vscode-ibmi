@@ -522,7 +522,7 @@ module.exports = class Instance {
           }),
           vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement) => {
             if (statement) {
-              return instance.content.runSQL(statement);
+              return instance.content.runSQL(statement, config.sqlExecutor);
             } else {
               return null;
             }
