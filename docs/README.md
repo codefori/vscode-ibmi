@@ -40,11 +40,8 @@ Tip: next time, try using 'IBM i: Connect to previous'
 1. Connect to your system.
 2. Find the OBJECT BROWSER and click **+ Create new filter**.
 3. Complete the new filter dialog, following the descriptive text, ensuring:
-
    a. That **Object** is the source physical file you want to edit.
-
    b. That  **Object type filter** is set to *SRCPF.
-
 4. Save settings
 5. Click on the filter to expand the members in the source file.
 6. Click on a member to open it.
@@ -542,6 +539,10 @@ Note: If your IBM i runs replication software, there is no need to replicate the
 
 If source files are located in a specific ASP, specify here.
 Otherwise, leave blank.
+
+#### Enable source dates
+
+For source dates to be supported, `db2util` must be install on IBM i. This can be fetched via yum.
 
 ## Snippets
 
