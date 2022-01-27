@@ -165,6 +165,16 @@
 								"default": "ILEDITOR",
 								"description": "Temporary library. Cannot be QTEMP."
 							},
+							"sqlExecutor": {
+								"type": "string",
+								"default": "default",
+								"enum": [
+									"default",
+									"db2util",
+									"db2"
+								],
+								"description": "The location of the source date of the current line will be displayed."
+							},
 							"currentLibrary": {
 								"type": "string",
 								"default": "QTEMP",

@@ -58,6 +58,7 @@ module.exports = class databaseBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
         const content = instance.getContent();
+        const config = instance.getConfig();
         const editor = vscode.window.activeTextEditor;
 
         if (editor.document.languageId === `sql`) {
@@ -68,7 +69,7 @@ module.exports = class databaseBrowserProvider {
             try {
               switch (statement.type) {
               case `sql`:
-                const data = await content.runSQL(statement.content);
+                const data = await content.runSQL(statement.content, config.sqlExecutor);
 
                 if (data.length > 0) {
                   const panel = vscode.window.createWebviewPanel(

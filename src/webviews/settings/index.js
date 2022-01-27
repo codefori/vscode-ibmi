@@ -53,6 +53,30 @@ module.exports = class SettingsUI {
         field.default = config.tempLibrary;
         field.description = `Temporary library. Cannot be QTEMP.`;
         ui.addField(field);
+
+        field = new Field(`select`, `sqlExecutor`, `SQL executor`);
+        field.description = `Which method should be used to execute SQL statements.`;
+        field.items = [
+          {
+            selected: config.sqlExecutor === `default`,
+            value: `default`,
+            description: `Default`,
+            text: `db2util if is available, otherwise db2`,
+          },
+          {
+            selected: config.sqlExecutor === `db2util`,
+            value: `db2util`,
+            description: `db2util (PASE)`,
+            text: `db2util can be installed through yum`,
+          },
+          {
+            selected: config.sqlExecutor === `db2`,
+            value: `db2`,
+            description: `db2 (QSH)`,
+            text: `db2 is shipped with most versions of IBM i`,
+          }
+        ];
+        ui.addField(field);
     
         field = new Field(`input`, `sourceASP`, `Source ASP`);
         field.default = config.sourceASP;
