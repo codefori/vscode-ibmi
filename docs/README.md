@@ -579,13 +579,6 @@ It is also possible to run SQL statements right from the editor. You can either 
 
 ![assets/db_03.png](assets/db_03.png)
 
-### db2Util Required
-
-A compatible version of [db2util](https://github.com/IBM/ibmi-db2util) needs to be installed on the IBM i for the Database Browser to work.
-
-If installed, db2util is also used to more quickly populate the OBJECT BROWSER list(s). However, incompatible versions of db2util may fail to populate the OBJECT BROWSER list(s). db2util 1.0.12 is known to work.
-You can ignore db2util by deselecting "**Enable SQL**" in *Settings: Connection*.
-
 ## Tips & Tricks
 
 ### Search source files and IFS directories
