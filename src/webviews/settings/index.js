@@ -74,6 +74,12 @@ module.exports = class SettingsUI {
             value: `db2`,
             description: `db2 (QSH)`,
             text: `db2 is shipped with most versions of IBM i`,
+          },
+          {
+            selected: config.sqlExecutor === `none`,
+            value: `none`,
+            description: `None`,
+            text: `Uses import files where available, otherwise uses db2`,
           }
         ];
         ui.addField(field);

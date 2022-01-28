@@ -124,7 +124,7 @@ module.exports = class IBMiContent {
   /**
    * Run an SQL statement
    * @param {string} statement 
-   * @param {"default"|"db2util"|"db2"} [executor]
+   * @param {"default"|"db2util"|"db2"|"none"} [executor]
    * @returns {Promise<any[]>} Result set
    */
   async runSQL(statement, executor = `default`) {
@@ -140,6 +140,9 @@ module.exports = class IBMiContent {
         break;
       case `db2`:
         dbUtility = executor;
+        break;
+      default: //None or anything else
+        dbUtility = db2 ? `db2` : `none`;
         break;
     }
 
@@ -248,29 +251,34 @@ module.exports = class IBMiContent {
   async getTable(lib, file, mbr) {
     if (!mbr) mbr = file; //Incase mbr is the same file
 
-    const tempRmt = this.ibmi.getTempRemote(IBMi.qualifyPath(undefined, lib, file, mbr));
+    if (file === mbr && this.ibmi.config.sqlExecutor !== `none`) {
+      return this.runSQL(`SELECT * FROM ${lib}.${file}`, this.ibmi.config.sqlExecutor);
 
-    await this.ibmi.remoteCommand(
-      `QSYS/CPYTOIMPF FROMFILE(` +
-        lib +
-        `/` +
-        file +
-        ` ` +
-        mbr +
-        `) ` +
-        `TOSTMF('` +
-        tempRmt +
-        `') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) `,
-    );
+    } else {
+      const tempRmt = this.ibmi.getTempRemote(IBMi.qualifyPath(undefined, lib, file, mbr));
 
-    let result = await this.downloadStreamfile(tempRmt);
+      await this.ibmi.remoteCommand(
+        `QSYS/CPYTOIMPF FROMFILE(` +
+          lib +
+          `/` +
+          file +
+          ` ` +
+          mbr +
+          `) ` +
+          `TOSTMF('` +
+          tempRmt +
+          `') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) `,
+      );
 
-    this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
+      let result = await this.downloadStreamfile(tempRmt);
 
-    return parse(result, {
-      columns: true,
-      skip_empty_lines: true,
-    });
+      this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
+
+      return parse(result, {
+        columns: true,
+        skip_empty_lines: true,
+      });
+    }
     
   }
 
@@ -336,13 +344,14 @@ module.exports = class IBMiContent {
    * @returns {Promise<{asp?: string, library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
   async getMemberList(lib, spf, mbr = `*`) {
+    const config = this.ibmi.config;
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
 
     let results;
 
-    if (this.ibmi.remoteFeatures.db2util) {
+    if (config.sqlExecutor !== `none`) {
       if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
 
       results = await this.runSQL(`
@@ -363,10 +372,10 @@ module.exports = class IBMiContent {
           ${member ? `AND b.system_table_member like '${member}'` : ``}
         ORDER BY
           b.system_table_member
-      `)
+      `, config.sqlExecutor)
 
     } else {
-      const tempLib = this.ibmi.config.tempLibrary;
+      const tempLib = config.tempLibrary;
       const TempName = IBMi.makeid();
 
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);

@@ -29,7 +29,7 @@ module.exports = class Configuration {
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
-    /** @type {"default"|"db2util"|"db2"} */
+    /** @type {"default"|"db2util"|"db2"|"none"} */
     this.sqlExecutor = base.sqlExecutor || `default`;
 
     /** @type {string} */

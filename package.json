@@ -171,9 +171,10 @@
 								"enum": [
 									"default",
 									"db2util",
-									"db2"
+									"db2",
+									"none"
 								],
-								"description": "The location of the source date of the current line will be displayed."
+								"description": "Which SQL executor that should be used for running queries."
 							},
 							"currentLibrary": {
 								"type": "string",

@@ -50,6 +50,7 @@ module.exports = class IBMiContent {
   
       let rows = await content.runSQL(
         `select srcdat, REPLACE(rtrim(srcdta), ' ', '.+') as srcdta from ${aliasPath}`,
+        `db2util`
       );
 
       if (rows.length === 0) {
