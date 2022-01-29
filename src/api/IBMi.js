@@ -354,6 +354,13 @@ module.exports = class IBMi {
           }
         }
 
+        if (this.config.autoConvertIFSccsid) {
+          if (this.remoteFeatures.attr === undefined || this.remoteFeatures.iconv === undefined) {
+            this.config.autoConvertIFSccsid = false;
+            vscode.window.showWarningMessage(`EBCDIC streamfiles will not be rendered correctly since \`attr\` or \`iconv\` is not installed on the host. They should both exist in \`\\usr\\bin\`.`);
+          }
+        }
+
         if (defaultHomeDir) {
           if (!tempLibrarySet) {
             vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
