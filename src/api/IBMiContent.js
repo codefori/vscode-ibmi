@@ -10,7 +10,7 @@ const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
-const UTF8_CCSIDS = [`1208`, `1252`];
+const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
 module.exports = class IBMiContent {
   /**
