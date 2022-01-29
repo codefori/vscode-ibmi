@@ -11,7 +11,7 @@ let remoteApps = [
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `db2`]
+    names: [`setccsid`, `db2`, `iconv`, `attr`]
   }
 ];
 
@@ -351,6 +351,13 @@ module.exports = class IBMi {
             }
           } catch (e) {
             //Oh well
+          }
+        }
+
+        if (this.config.autoConvertIFSccsid) {
+          if (this.remoteFeatures.attr === undefined || this.remoteFeatures.iconv === undefined) {
+            this.config.autoConvertIFSccsid = false;
+            vscode.window.showWarningMessage(`EBCDIC streamfiles will not be rendered correctly since \`attr\` or \`iconv\` is not installed on the host. They should both exist in \`\\usr\\bin\`.`);
           }
         }
 
