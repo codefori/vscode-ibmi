@@ -94,6 +94,11 @@ module.exports = class SettingsUI {
         field.description = `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`;
         ui.addField(field);
     
+        field = new Field(`checkbox`, `autoConvertIFSccsid`, `Support EBCDIC streamfiles`);
+        field.default = (config.autoConvertIFSccsid ? `checked` : ``)
+        field.description = `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`;
+        ui.addField(field);
+    
         field = new Field(`input`, `hideCompileErrors`, `Errors to ignore`);
         field.default = config.hideCompileErrors.join(`, `);
         field.description = `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`;

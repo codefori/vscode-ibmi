@@ -10,6 +10,8 @@ const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
+const UTF8_CCSIDS = [`1208`, `1252`];
+
 module.exports = class IBMiContent {
   /**
    * @param {IBMi} instance 
@@ -23,19 +25,61 @@ module.exports = class IBMiContent {
    * @param {string} localPath 
    */
   async downloadStreamfile(remotePath, localPath = null) {
+    const features = this.ibmi.remoteFeatures;
+    const config = this.ibmi.config;
     const client = this.ibmi.client;
+
+    if (config.autoConvertIFSccsid && features.attr && features.iconv) {
+      // If it's not 1208, generate a temp file with the converted content
+      let ccsid = await this.ibmi.paseCommand(`${features.attr} "${remotePath}" CCSID`);
+      if (typeof ccsid === `string`) {
+        //What's the point of converting 1208?
+        if (!UTF8_CCSIDS.includes(ccsid)) {
+          ccsid = ccsid.padStart(3, `0`);
+          const newTempFile = this.ibmi.getTempRemote(remotePath);
+          await this.ibmi.paseCommand(`${features.iconv} -f IBM-${ccsid} -t UTF-8 "${remotePath}" > ${newTempFile}`);
+          remotePath = newTempFile;
+        }
+      }
+    }
 
     if (localPath == null) localPath = await tmpFile();
     await client.getFile(localPath, remotePath);
     return readFileAsync(localPath, `utf8`);
   }
 
-  async writeStreamfile(remotePath, content) {
+  async writeStreamfile(originalPath, content) {
     const client = this.ibmi.client;
+    const features = this.ibmi.remoteFeatures;
+    const config = this.ibmi.config;
+
     let tmpobj = await tmpFile();
 
+    let ccsid;
+
+    if (config.autoConvertIFSccsid && features.attr && features.iconv) {
+      // First, find the CCSID of the original file
+      ccsid = await this.ibmi.paseCommand(`${features.attr} "${originalPath}" CCSID`);
+      if (typeof ccsid === `string`) {
+        if (UTF8_CCSIDS.includes(ccsid)) {
+          ccsid = undefined; // Don't covert...
+        } else {
+          ccsid = ccsid.padStart(3, `0`);
+        }
+      }
+    }
+
     await writeFileAsync(tmpobj, content, `utf8`);
-    return client.putFile(tmpobj, remotePath); // assumes streamfile will be UTF8
+
+    if (ccsid) {
+      // Upload our file to the same temp file, then write convert it back to the original ccsid
+      const tempFile = this.ibmi.getTempRemote(originalPath);
+      await client.putFile(tmpobj, tempFile);
+      return this.ibmi.paseCommand(`${features.iconv} -f UTF-8 -t IBM-${ccsid} "${tempFile}" > ${originalPath}`);
+
+    } else {
+      return client.putFile(tmpobj, originalPath);
+    }
   }
 
   /**
@@ -134,16 +178,16 @@ module.exports = class IBMiContent {
     let output;
 
     switch (executor) {
-      case `default`:
-      case `db2util`:
-        dbUtility = db2util ? `db2util` : `db2`;
-        break;
-      case `db2`:
-        dbUtility = executor;
-        break;
-      default: //None or anything else
-        dbUtility = db2 ? `db2` : `none`;
-        break;
+    case `default`:
+    case `db2util`:
+      dbUtility = db2util ? `db2util` : `db2`;
+      break;
+    case `db2`:
+      dbUtility = executor;
+      break;
+    default: //None or anything else
+      dbUtility = db2 ? `db2` : `none`;
+      break;
     }
 
     statement = statement.replace(/"/g, `\\"`);

@@ -11,7 +11,7 @@ let remoteApps = [
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `db2`]
+    names: [`setccsid`, `db2`, `iconv`, `attr`]
   }
 ];
 

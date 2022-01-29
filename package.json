@@ -194,6 +194,11 @@
 								"default": "*FILE",
 								"description": "The CCSID of source files on your system. You should only change this setting from `*FILE` if you have a source file that is 65535 - otherwise use `*FILE`. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems."
 							},
+							"autoConvertIFSccsid": {
+								"type": "boolean",
+								"default": false,
+								"description": "Automatically convert IFS to UTF8 when reading and writing."
+							},
 							"hideCompileErrors": {
 								"type": "array",
 								"items": {
