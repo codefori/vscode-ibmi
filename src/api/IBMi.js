@@ -326,6 +326,18 @@ module.exports = class IBMi {
           
         } catch (e) {}
 
+        if (this.config.sqlExecutor === `default`) {
+          if (this.remoteFeatures.db2util && this.remoteFeatures.db2) {
+            this.config.set(`sqlExecutor`, `db2util`);
+          } else if (this.remoteFeatures.db2util) {
+            this.config.set(`sqlExecutor`, `db2util`);
+          } else if (this.remoteFeatures.db2) {
+            this.config.set(`sqlExecutor`, `db2`);
+          } else {
+            this.config.set(`sqlExecutor`, `none`);
+          }
+        }
+
         if (this.remoteFeatures.db2util) {
           progress.report({
             message: `db2util is enabled, so checking for ASP information.`
