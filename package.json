@@ -634,7 +634,7 @@
 							],
 							"name": "Set CCSID to 1252",
 							"environment": "pase",
-							"command": "setccsid 1252 &FULLPATH"
+							"command": "setccsid 1252 \"&FULLPATH\""
 						},
 						{
 							"type": "object",
