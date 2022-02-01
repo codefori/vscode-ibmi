@@ -4,6 +4,8 @@ const vscode = require(`vscode`);
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 
+const TEMP_PATH = `/tmp/vscodetemp`
+
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
@@ -243,7 +245,7 @@ module.exports = class IBMi {
             `DLTOBJ OBJ(${this.config.tempLibrary}/O*) OBJTYPE(*FILE)`
           )
             .then(result => {
-              vscode.window.showInformationMessage(`Temporary data cleared from ${this.config.tempLibrary}.`);
+              // All good!
             })
             .catch(e => { 
               // CPF2125: No objects deleted.
@@ -255,6 +257,22 @@ module.exports = class IBMi {
                   }
                 });
               }
+            });
+
+          this.paseCommand(
+            `rm -f ${TEMP_PATH}*`
+          )
+            .then(result => {
+              // All good!
+            })
+            .catch(e => { 
+              // CPF2125: No objects deleted.
+              this.config.set(`autoClearTempData`, false);
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${TEMP_PATH}. Disabling auto-clear.`, `View log`).then(async choice => {
+                if (choice === `View log`) {
+                  this.outputChannel.show();
+                }
+              });
             });
         }
 
@@ -499,7 +517,7 @@ module.exports = class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      let value = `/tmp/vscodetemp-` + IBMi.makeid();
+      let value = `${TEMP_PATH}-` + IBMi.makeid();
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;
