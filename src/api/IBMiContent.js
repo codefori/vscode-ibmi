@@ -183,12 +183,28 @@ module.exports = class IBMiContent {
       dbUtility = db2util ? `db2util` : `db2`;
       break;
     case `db2`:
-      dbUtility = executor;
+      dbUtility = `db2`;
       break;
     default: //None or anything else
       dbUtility = db2 ? `db2` : `none`;
       break;
     }
+
+    const lines = [
+      `-------`,
+      `runSQL()`,
+      `\tInput executor: ${executor}`,
+      `\tRead executor: ${dbUtility}`,
+      `\tComponents:`,
+      `\t\tdb2util: ${db2util}`,
+      `\t\tdb2: ${db2}`,
+      ``,
+      `Statement:`,
+      `${statement}`,
+      `-------`
+    ];
+
+    this.ibmi.log(lines.join(`\n`));
 
     statement = statement.replace(/"/g, `\\"`);
     if (db2util && dbUtility === `db2util`) {
@@ -209,7 +225,7 @@ module.exports = class IBMiContent {
       } else {
         return [];
       }
-    } else if (db2 && dbUtility === `db2`) {
+    } else if (db2) {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
       output = await this.ibmi.qshCommand(`${db2} "${statement}"`, undefined, 1);

@@ -482,6 +482,10 @@ module.exports = class IBMi {
     }
   }
 
+  log(string) {
+    this.outputChannel.appendLine(string);
+  }
+
   static makeid() {
     let text = `o`;
     let possible =
