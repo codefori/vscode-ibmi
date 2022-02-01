@@ -234,6 +234,30 @@ module.exports = class IBMi {
           console.log(e);
         }
 
+        if (tempLibrarySet && this.config.autoClearTempData) {
+          progress.report({
+            message: `Clearing temporary data.`
+          });
+
+          this.remoteCommand(
+            `DLTOBJ OBJ(${this.config.tempLibrary}/O*) OBJTYPE(*FILE)`
+          )
+            .then(result => {
+              vscode.window.showInformationMessage(`Temporary data cleared from ${this.config.tempLibrary}.`);
+            })
+            .catch(e => { 
+              // CPF2125: No objects deleted.
+              if (!e.startsWith(`CPF2125`)) {
+                this.config.set(`autoClearTempData`, false);
+                vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}. Disabling auto-clear.`, `View log`).then(async choice => {
+                  if (choice === `View log`) {
+                    this.outputChannel.show();
+                  }
+                });
+              }
+            });
+        }
+
         progress.report({
           message: `Checking for bad data areas.`
         });

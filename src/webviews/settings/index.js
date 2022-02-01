@@ -53,6 +53,11 @@ module.exports = class SettingsUI {
         field.default = config.tempLibrary;
         field.description = `Temporary library. Cannot be QTEMP.`;
         ui.addField(field);
+    
+        field = new Field(`checkbox`, `autoClearTempData`, `Clear temporary data on startup`);
+        field.default = (config.autoClearTempData ? `checked` : ``)
+        field.description = `Automatically clear temporary data in the chosen temporary library on startup. Deletes all <code>*FILE</code> objects that start with <code>O</code> in the chosen temporary library.`;
+        ui.addField(field);
 
         field = new Field(`select`, `sqlExecutor`, `SQL executor`);
         field.description = `Which method should be used to execute SQL statements.`;
