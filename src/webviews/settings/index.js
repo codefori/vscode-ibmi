@@ -61,7 +61,7 @@ module.exports = class SettingsUI {
             selected: config.sqlExecutor === `default`,
             value: `default`,
             description: `Default`,
-            text: `db2util if is available, otherwise db2`,
+            text: `Will use whichever method is available.`,
           },
           {
             selected: config.sqlExecutor === `db2util`,
@@ -76,10 +76,16 @@ module.exports = class SettingsUI {
             text: `db2 is shipped with most versions of IBM i`,
           },
           {
+            selected: config.sqlExecutor === `QZDFMDB2`,
+            value: `QZDFMDB2`,
+            description: `QZDFMDB2 (QSYS)`,
+            text: `A program to run statements shipped with the OS. Works similarly to db2 (QSH)`,
+          },
+          {
             selected: config.sqlExecutor === `none`,
             value: `none`,
             description: `None`,
-            text: `Uses import files where available, otherwise uses db2`,
+            text: `Uses import files where available`,
           }
         ];
         ui.addField(field);
