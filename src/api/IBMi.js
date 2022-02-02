@@ -12,6 +12,14 @@ let remoteApps = [
   {
     path: `/usr/bin/`,
     names: [`setccsid`, `db2`, `iconv`, `attr`]
+  },
+  {
+    path: `/QSYS.LIB/`,
+    // In the future, we may use a generic specific. 
+    // Right now we only need one program
+    // specific: `*.PGM`,
+    specific: `QZDFMDB2.PGM`,
+    names: [`QZDFMDB2.PGM`]
   }
 ];
 
@@ -46,7 +54,8 @@ module.exports = class IBMi {
       tn5250: undefined,
       setccsid: undefined,
       db2: undefined,
-      'GENCMDXML.PGM': undefined
+      'GENCMDXML.PGM': undefined,
+      'QZDFMDB2.PGM': undefined,
     };
   }
 
@@ -307,6 +316,7 @@ module.exports = class IBMi {
         remoteApps.push(
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+            specific: `*.PGM`,
             names: [`GENCMDXML.PGM`]
           }
         );
@@ -315,12 +325,18 @@ module.exports = class IBMi {
         try {
           //This may enable certain features in the future.
           for (const feature of remoteApps) {
-            const call = await this.paseCommand(`ls -p ${feature.path}`);
+            const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
             if (typeof call === `string`) {
               const files = call.split(`\n`);
-              for (const name of feature.names)
-                if (files.includes(name))
-                  this.remoteFeatures[name] = feature.path + name;
+
+              if (feature.specific) {
+                for (const name of feature.names)
+                  this.remoteFeatures[name] = files.find(file => file.includes(name));
+              } else {
+                for (const name of feature.names)
+                  if (files.includes(name))
+                    this.remoteFeatures[name] = feature.path + name;
+              }
             }
           }
           
@@ -333,6 +349,8 @@ module.exports = class IBMi {
             this.config.set(`sqlExecutor`, `db2util`);
           } else if (this.remoteFeatures.db2) {
             this.config.set(`sqlExecutor`, `db2`);
+          } else if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
+            this.config.set(`sqlExecutor`, `QZDFMDB2`);
           } else {
             this.config.set(`sqlExecutor`, `none`);
           }
