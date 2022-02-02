@@ -85,7 +85,7 @@ module.exports = class SettingsUI {
             selected: config.sqlExecutor === `none`,
             value: `none`,
             description: `None`,
-            text: `Uses import files where available, otherwise uses db2`,
+            text: `Uses import files where available`,
           }
         ];
         ui.addField(field);

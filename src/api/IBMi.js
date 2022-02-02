@@ -325,6 +325,10 @@ module.exports = class IBMi {
         try {
           //This may enable certain features in the future.
           for (const feature of remoteApps) {
+            progress.report({
+              message: `Checking installed components on host IBM i: ${feature.path}`
+            });
+        
             const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
             if (typeof call === `string`) {
               const files = call.split(`\n`);
@@ -342,18 +346,9 @@ module.exports = class IBMi {
           
         } catch (e) {}
 
-        if (this.config.sqlExecutor === `default`) {
-          if (this.remoteFeatures.db2util && this.remoteFeatures.db2) {
-            this.config.set(`sqlExecutor`, `db2util`);
-          } else if (this.remoteFeatures.db2util) {
-            this.config.set(`sqlExecutor`, `db2util`);
-          } else if (this.remoteFeatures.db2) {
-            this.config.set(`sqlExecutor`, `db2`);
-          } else if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
-            this.config.set(`sqlExecutor`, `QZDFMDB2`);
-          } else {
-            this.config.set(`sqlExecutor`, `none`);
-          }
+        if (this.remoteFeatures.db2util === undefined && this.remoteFeatures.db2 === undefined && this.remoteFeatures[`QZDFMDB2.PGM`] === undefined) {
+          vscode.window.showWarningMessage(`There is no way to run SQL statements on this system. Set SQL executor to none in the Sonnection Settings.`);
+          this.config.set(`sqlExecutor`, `none`);
         }
 
         if (this.remoteFeatures.db2util) {
