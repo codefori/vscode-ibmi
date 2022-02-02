@@ -4,6 +4,8 @@ const vscode = require(`vscode`);
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 
+const TEMP_PATH = `/tmp/vscodetemp`
+
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
@@ -241,6 +243,46 @@ module.exports = class IBMi {
           }
 
           console.log(e);
+        }
+
+        if (tempLibrarySet && this.config.autoClearTempData) {
+          progress.report({
+            message: `Clearing temporary data.`
+          });
+
+          this.remoteCommand(
+            `DLTOBJ OBJ(${this.config.tempLibrary}/O*) OBJTYPE(*FILE)`
+          )
+            .then(result => {
+              // All good!
+            })
+            .catch(e => { 
+              // CPF2125: No objects deleted.
+              if (!e.startsWith(`CPF2125`)) {
+                this.config.set(`autoClearTempData`, false);
+                vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}. Disabling auto-clear.`, `View log`).then(async choice => {
+                  if (choice === `View log`) {
+                    this.outputChannel.show();
+                  }
+                });
+              }
+            });
+
+          this.paseCommand(
+            `rm -f ${TEMP_PATH}*`
+          )
+            .then(result => {
+              // All good!
+            })
+            .catch(e => { 
+              // CPF2125: No objects deleted.
+              this.config.set(`autoClearTempData`, false);
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${TEMP_PATH}. Disabling auto-clear.`, `View log`).then(async choice => {
+                if (choice === `View log`) {
+                  this.outputChannel.show();
+                }
+              });
+            });
         }
 
         progress.report({
@@ -488,7 +530,7 @@ module.exports = class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      let value = `/tmp/vscodetemp-` + IBMi.makeid();
+      let value = `${TEMP_PATH}-` + IBMi.makeid();
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;

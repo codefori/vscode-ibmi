@@ -165,6 +165,11 @@
 								"default": "ILEDITOR",
 								"description": "Temporary library. Cannot be QTEMP."
 							},
+							"autoClearTempData": {
+								"type": "boolean",
+								"default": false,
+								"description": "Automatically delete temporary objects from the temporary library on startup."
+							},
 							"sqlExecutor": {
 								"type": "string",
 								"default": "default",

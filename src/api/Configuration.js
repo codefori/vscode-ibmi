@@ -17,6 +17,9 @@ module.exports = class Configuration {
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];
 
+    /** @type {boolean} */
+    this.autoClearTempData = (base.autoClearTempData === true);
+
     /** @type {{name: string, value: string}[]} */
     this.customVariables = base.customVariables || [];
 
