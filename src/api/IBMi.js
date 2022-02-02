@@ -251,7 +251,7 @@ module.exports = class IBMi {
           });
 
           this.remoteCommand(
-            `DLTOBJ OBJ(${this.config.tempLibrary}/O*) OBJTYPE(*FILE)`
+            `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`
           )
             .then(result => {
               // All good!
@@ -542,11 +542,11 @@ module.exports = class IBMi {
   }
 
   static makeid() {
-    let text = `o`;
+    let text = `O_`;
     let possible =
       `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
   
-    for (let i = 0; i < 9; i++)
+    for (let i = 0; i < 8; i++)
       text += possible.charAt(Math.floor(Math.random() * possible.length));
   
     return text;
