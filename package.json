@@ -37,6 +37,10 @@
 			{
 				"path": "./snippets/cl.code-snippets",
 				"language": "cl"
+			},
+			{
+				"path": "./snippets/rpgle.code-snippets",
+				"language": "rpgle"
 			}
 		],
 		"jsonValidation": [
