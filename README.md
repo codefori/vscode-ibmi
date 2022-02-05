@@ -48,3 +48,4 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 * [@szsascha](https://github.com/szsascha)
 * [@dman247](https://github.com/dman247)
 * [@EddieSmith](https://github.com/EddieSmith)
+* [@devame](https://github.com/devame)
