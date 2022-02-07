@@ -49,7 +49,7 @@ module.exports = class IBMiContent {
       }
   
       let rows = await content.runSQL(
-        `select srcdat, REPLACE(rtrim(srcdta), ' ', '.+') as srcdta from ${aliasPath}`,
+        `select srcdat, rtrim(srcdta) as srcdta from ${aliasPath}`,
         `db2util`
       );
 
@@ -62,7 +62,7 @@ module.exports = class IBMiContent {
   
       const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
       const body = rows
-        .map(row => row.SRCDTA.replace(/\.\+/g, ` `))
+        .map(row => row.SRCDTA)
         .join(`\n`);
 
       allSourceDates[alias] = sourceDates;

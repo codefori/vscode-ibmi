@@ -223,7 +223,7 @@ module.exports = class IBMiContent {
         const rows = JSON.parse(output);
         for (let row of rows)
           for (let key in row) {
-            if (typeof row[key] === `string`) row[key] = row[key].trim();
+            if (typeof row[key] === `string`) row[key] = row[key].trimEnd();
             if (row[key] === `null`) row[key] = null;
           }
 
