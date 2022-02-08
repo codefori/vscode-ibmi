@@ -368,26 +368,6 @@ module.exports = class Instance {
           })
         )
 
-        context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
-            const config = this.getConfig();
-            const currentLibrary = config.currentLibrary.toUpperCase();
-    
-            const newLibrary = await vscode.window.showInputBox({
-              prompt: `Changing current library`,
-              value: currentLibrary
-            });
-    
-            try {
-              if (newLibrary && newLibrary !== currentLibrary) {
-                await config.set(`currentLibrary`, newLibrary);
-              }
-            } catch (e) {
-              console.log(e);
-            }
-          })
-        );
-
         if (config.clContentAssistEnabled) {
           const clInstance = new CLCommands(context);
           clInstance.init();
