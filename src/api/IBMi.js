@@ -484,6 +484,7 @@ module.exports = class IBMi {
       command = command.join(`;`);
     }
 
+    command = command.replace(/#/g, `\\#`);
     command = command.replace(/"/g, `\\"`);
 
     command = `echo "` + command + `" | /QOpenSys/usr/bin/qsh`;
