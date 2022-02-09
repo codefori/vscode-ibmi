@@ -32,8 +32,8 @@ module.exports = class Configuration {
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
-    /** @type {"default"|"db2util"|"db2"|"QZDFMDB2"|"none"} */
-    this.sqlExecutor = base.sqlExecutor || `default`;
+    /** @type {boolean} */
+    this.enableSQL = (base.enableSQL === true);
 
     /** @type {string} */
     this.tempLibrary = base.tempLibrary || `ILEDITOR`;

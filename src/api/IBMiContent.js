@@ -5,6 +5,7 @@ const util = require(`util`);
 let fs = require(`fs`);
 const tmp = require(`tmp`);
 const parse = require(`csv-parse/lib/sync`);
+const Tools = require(`./Tools`);
 
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
@@ -95,7 +96,7 @@ module.exports = class IBMiContent {
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
 
-    const path = IBMi.qualifyPath(asp, lib, spf, mbr);
+    const path = Tools.qualifyPath(asp, lib, spf, mbr);
     const tempRmt = this.ibmi.getTempRemote(path);
     const tmpobj = await tmpFile();
     const client = this.ibmi.client;
@@ -146,7 +147,7 @@ module.exports = class IBMiContent {
     mbr = mbr.toUpperCase();
 
     const client = this.ibmi.client;
-    const path = IBMi.qualifyPath(asp, lib, spf, mbr);
+    const path = Tools.qualifyPath(asp, lib, spf, mbr);
     const tempRmt = this.ibmi.getTempRemote(path);
     const tmpobj = await tmpFile();
 
@@ -167,88 +168,17 @@ module.exports = class IBMiContent {
   
   /**
    * Run an SQL statement
-   * @param {string} statement 
-   * @param {"default"|"db2util"|"db2"|"none"|"QZDFMDB2"} [executor]
+   * @param {string} statement
    * @returns {Promise<any[]>} Result set
    */
-  async runSQL(statement, executor = `default`) {
-    const { db2, db2util, 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
+  async runSQL(statement) {
+    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
 
-    let dbUtility;
     let output;
-
-    if ([`default`, `db2util`].includes(executor) && db2util) {
-      dbUtility = `db2util`;
-    } else
-
-    if ([`default`, `db2util`, `db2`].includes(executor) && db2) {
-      dbUtility = `db2`;
-    } else
-
-    if ([`default`, `db2util`, `db2`, `QZDFMDB2`].includes(executor) && db2) {
-      dbUtility = `QZDFMDB2`;
-    } else
-
-    {
-      dbUtility = `none`;
-    }
-
-
-    const lines = [
-      `-------`,
-      `runSQL()`,
-      `\tInput executor: ${executor}`,
-      `\tRead executor: ${dbUtility}`,
-      `\tComponents:`,
-      `\t\tdb2util: ${db2util}`,
-      `\t\tdb2: ${db2}`,
-      `\t\tQZDFMDB2: ${QZDFMDB2}`,
-      ``,
-      `Statement:`,
-      `${statement}`,
-      `-------`
-    ];
-
-    this.ibmi.log(lines.join(`\n`));
 
     statement = statement.replace(/"/g, `\\"`);
 
-    if (db2util && dbUtility === `db2util`) {
-      output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${db2util} -o json "${statement}"`);
-
-      if (typeof output === `string`) {
-        //Little hack for db2util returns blanks where it should be null.
-        output = output.replace(new RegExp(`:,`, `g`), `:null,`);
-        output = output.replace(new RegExp(`:}`, `g`), `:null}`);
-        const rows = JSON.parse(output);
-        for (let row of rows)
-          for (let key in row) {
-            if (typeof row[key] === `string`) row[key] = row[key].trimEnd();
-            if (row[key] === `null`) row[key] = null;
-          }
-
-        return rows;
-      } else {
-        return [];
-      }
-    } else if (db2 && dbUtility === `db2`) {
-      // Well, the fun part about db2 is that it always writes to standard out.
-      // It does not write to standard error at all.
-      output = await this.ibmi.qshCommand(`${db2} "${statement}"`, undefined, 1);
-
-      if (typeof output === `object`) {
-        if (output.code == null || output.code === 0) {
-          return IBMiContent.db2Parse(output.stdout);
-
-        } else {
-          const errorLines = output.stdout.split(`\n`);
-
-          throw new Error(`${errorLines[3]} (${errorLines[1].trim()})`);
-        }
-      }
-
-      return [];
-    } else if (QZDFMDB2) {
+    if (QZDFMDB2) {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
 
@@ -259,16 +189,18 @@ module.exports = class IBMiContent {
 
       if (typeof output === `object`) {
         // For each new line, it appends crap at the front
-        const strOut = output.stdout.substring(11);
+        const strOut = output.stdout.substring(10).trimStart();
         
         if (output.code == null || output.code === 0) {
-          return IBMiContent.db2Parse(strOut);
+          return Tools.db2Parse(strOut);
 
         } else {
           const errorLines = strOut.split(`\n`);
 
           throw new Error(`${errorLines[3]} (${errorLines[1].trim()})`);
         }
+      } else {
+        throw new Error(`There was an error running the SQL statement.`);
       }
 
     } else {
@@ -285,11 +217,11 @@ module.exports = class IBMiContent {
   async getTable(lib, file, mbr) {
     if (!mbr) mbr = file; //Incase mbr is the same file
 
-    if (file === mbr && this.ibmi.config.sqlExecutor !== `none`) {
-      return this.runSQL(`SELECT * FROM ${lib}.${file}`, this.ibmi.config.sqlExecutor);
+    if (file === mbr && this.ibmi.sqlEnabled) {
+      return this.runSQL(`SELECT * FROM ${lib}.${file}`);
 
     } else {
-      const tempRmt = this.ibmi.getTempRemote(IBMi.qualifyPath(undefined, lib, file, mbr));
+      const tempRmt = this.ibmi.getTempRemote(Tools.qualifyPath(undefined, lib, file, mbr));
 
       await this.ibmi.remoteCommand(
         `QSYS/CPYTOIMPF FROMFILE(` +
@@ -326,7 +258,7 @@ module.exports = class IBMiContent {
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
 
     const tempLib = this.ibmi.config.tempLibrary;
-    const TempName = IBMi.makeid();
+    const TempName = Tools.makeid();
 
     if (sourceFilesOnly) {
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
@@ -385,7 +317,7 @@ module.exports = class IBMiContent {
 
     let results;
 
-    if (config.sqlExecutor !== `none`) {
+    if (this.ibmi.sqlEnabled) {
       if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
 
       results = await this.runSQL(`
@@ -406,11 +338,11 @@ module.exports = class IBMiContent {
           ${member ? `AND b.system_table_member like '${member}'` : ``}
         ORDER BY
           b.system_table_member
-      `, config.sqlExecutor)
+      `)
 
     } else {
       const tempLib = config.tempLibrary;
-      const TempName = IBMi.makeid();
+      const TempName = Tools.makeid();
 
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName);
@@ -502,67 +434,4 @@ module.exports = class IBMiContent {
 
     return errors;
   }
-
-  static db2Parse(output) {
-    let gotHeaders = false;
-    let figuredLengths = false;
-
-    let data = output.split(`\n`);
-
-    /** @type {{name: string, from: number, length: number}[]} */
-    let headers;
-  
-    let rows = [];
-      
-    data.forEach((line, index) => {
-      if (line.trim().length === 0 || index === data.length - 1) return;
-      if (gotHeaders === false) {
-        headers = line.split(` `).filter((x) => x.length > 0).map((x) => {
-          return {
-            name: x,
-            from: 0,
-            length: 0,
-          };
-        });
-      
-        gotHeaders = true;
-      } else
-      if (figuredLengths === false) {
-        let base = 0;
-        line.split(` `).forEach((x, i) => {
-          headers[i].from = base;
-          headers[i].length = x.length;
-      
-          base += x.length + 1;
-        });
-      
-        figuredLengths = true;
-      } else {
-        let row = {};
-      
-        headers.forEach((header) => {
-          const strValue = line.substring(header.from, header.from + header.length).trimEnd();
-
-          /** @type {string|number} */
-          let realValue = strValue;
-      
-          // is value a number?
-          if (strValue.startsWith(` `)) {
-            const asNumber = Number(strValue.trim());
-            if (!isNaN(asNumber)) {
-              realValue = asNumber;
-            }
-          } else if (strValue === `-`) {
-            realValue = ``; //null?
-          }
-                    
-          row[header.name] = realValue;
-        });
-      
-        rows.push(row);
-      }
-    });
-      
-    return rows;
-  } 
 }

@@ -170,16 +170,10 @@
 								"default": false,
 								"description": "Automatically delete temporary objects from the temporary library on startup."
 							},
-							"sqlExecutor": {
-								"type": "string",
-								"default": "default",
-								"enum": [
-									"default",
-									"db2util",
-									"db2",
-									"none"
-								],
-								"description": "Which SQL executor that should be used for running queries."
+							"enableSQL": {
+								"type": "boolean",
+								"default": true,
+								"description": "Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
 							},
 							"currentLibrary": {
 								"type": "string",
@@ -192,7 +186,7 @@
 									"null"
 								],
 								"default": null,
-								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` and have db2util installed, as Code for IBM i will fetch ASP information automatically."
+								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` as Code for IBM i will fetch ASP information automatically."
 							},
 							"sourceFileCCSID": {
 								"type": "string",

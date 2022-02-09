@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -59,45 +59,14 @@ module.exports = class SettingsUI {
         field.description = `Automatically clear temporary data in the chosen temporary library on startup. Deletes all <code>*FILE</code> objects that start with <code>O</code> in the chosen temporary library.`;
         ui.addField(field);
 
-        field = new Field(`select`, `sqlExecutor`, `SQL executor`);
-        field.description = `Which method should be used to execute SQL statements.`;
-        field.items = [
-          {
-            selected: config.sqlExecutor === `default`,
-            value: `default`,
-            description: `Default`,
-            text: `Will use whichever method is available.`,
-          },
-          {
-            selected: config.sqlExecutor === `db2util`,
-            value: `db2util`,
-            description: `db2util (PASE)`,
-            text: `db2util can be installed through yum`,
-          },
-          {
-            selected: config.sqlExecutor === `db2`,
-            value: `db2`,
-            description: `db2 (QSH)`,
-            text: `db2 is shipped with most versions of IBM i`,
-          },
-          {
-            selected: config.sqlExecutor === `QZDFMDB2`,
-            value: `QZDFMDB2`,
-            description: `QZDFMDB2 (QSYS)`,
-            text: `A program to run statements shipped with the OS. Works similarly to db2 (QSH)`,
-          },
-          {
-            selected: config.sqlExecutor === `none`,
-            value: `none`,
-            description: `None`,
-            text: `Uses import files where available`,
-          }
-        ];
+        field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
+        field.default = (config.enableSQL ? `checked` : ``);
+        field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceASP`, `Source ASP`);
         field.default = config.sourceASP;
-        field.description = `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> and have db2util installed, as Code for IBM i will fetch ASP information automatically.`;
+        field.description = `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceFileCCSID`, `Source file CCSID`);
