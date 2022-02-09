@@ -3,17 +3,18 @@ const vscode = require(`vscode`);
 
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
+const Tools = require(`./Tools`);
 
 const TEMP_PATH = `/tmp/vscodetemp`
 
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`db2util`, `git`, `grep`, `tn5250`]
+    names: [`git`, `grep`, `tn5250`]
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `db2`, `iconv`, `attr`]
+    names: [`setccsid`, `iconv`, `attr`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -48,14 +49,14 @@ module.exports = class IBMi {
      */
     this.aspInfo = {};
 
+    this.sqlEnabled = false;
+
     /** @type {{[name: string]: string}} */
     this.remoteFeatures = {
-      db2util: undefined,
       git: undefined,
       grep: undefined,
       tn5250: undefined,
       setccsid: undefined,
-      db2: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
     };
@@ -388,36 +389,44 @@ module.exports = class IBMi {
           
         } catch (e) {}
 
-        if (this.remoteFeatures.db2util === undefined && this.remoteFeatures.db2 === undefined && this.remoteFeatures[`QZDFMDB2.PGM`] === undefined) {
-          vscode.window.showWarningMessage(`There is no way to run SQL statements on this system. Set SQL executor to none in the Sonnection Settings.`);
-          this.config.set(`sqlExecutor`, `none`);
-        }
+        if (this.config.enableSQL) {
+          if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
+            progress.report({
+              message: `SQL program found, so checking for ASP information.`
+            });
+          
+            this.sqlEnabled = true;
 
-        if (this.remoteFeatures.db2util) {
-          progress.report({
-            message: `db2util is enabled, so checking for ASP information.`
-          });
+            //This is mostly a nice to have. We grab the ASP info so user's do
+            //not have to provide the ASP in the settings.
+            try {
+              const statement = `SELECT * FROM QSYS2.ASP_INFO`;
+              const output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`)
 
-          //This is mostly a nice to have. We grab the ASP info so user's do
-          //not have to provide the ASP in the settings. This only works if
-          //they have db2util installed, becuase we have to use SQL to get the
-          //data. I couldn't find an outfile for this information. :(
-          try {
-            const command = this.remoteFeatures.db2util;
-
-            const statement = `SELECT * FROM QSYS2.ASP_INFO`;
-            let output = await this.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
-      
-            if (typeof output === `string`) {
-              const rows = JSON.parse(output);
-              for (const row of rows) {
-                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                  this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
-                }
+              if (typeof output === `string`) {
+                // For each new line, it appends crap at the front
+                const strOut = output.substring(10).trimStart();
+        
+                const rows = Tools.db2Parse(strOut);
+                rows.forEach(row => {
+                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                    this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+                  }
+                });
               }
+            } catch (e) {
+              //Oh well
+              progress.report({
+                message: `Failed to get ASP information.`
+              });
             }
-          } catch (e) {
-            //Oh well
+          } else {
+            // Disable it if it's not found
+
+            progress.report({
+              message: `SQL program not installed. Disabling SQL.`
+            });
+            await this.config.set(`enableSQL`, false);
           }
         }
 
@@ -531,7 +540,7 @@ module.exports = class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      let value = `${TEMP_PATH}-` + IBMi.makeid();
+      let value = `${TEMP_PATH}-` + Tools.makeid();
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;
@@ -540,29 +549,5 @@ module.exports = class IBMi {
 
   log(string) {
     this.outputChannel.appendLine(string);
-  }
-
-  static makeid() {
-    let text = `O_`;
-    let possible =
-      `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
-  
-    for (let i = 0; i < 8; i++)
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
-  
-    return text;
-  }
-
-  /**
-   * Build the IFS path string to a member
-   * @param {string|undefined} asp 
-   * @param {string} lib 
-   * @param {string} obj 
-   * @param {string} mbr 
-   */
-  static qualifyPath(asp, lib, obj, mbr) {
-    const path =
-      (asp && asp.length > 0 ? `/${asp}` : ``) + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
-    return path;
   }
 }

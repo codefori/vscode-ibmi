@@ -175,7 +175,7 @@ Add extra shortcuts as needed:
 
 ### Database Browser
 
-This shows libraries and the files/tables in each. It is effective only if db2Util is installed on the IBM i. Click on a file or table to see the field names.
+This shows libraries and the files/tables in each. Click on a file or table to see the field names.
 
 ## Editing and Compiling
 
@@ -553,7 +553,7 @@ Otherwise, leave blank.
 
 #### Enable source dates
 
-For source dates to be supported, `db2util` must be install on IBM i. This can be fetched via yum.
+When enabled, source dates will be retained.
 
 ## Snippets
 

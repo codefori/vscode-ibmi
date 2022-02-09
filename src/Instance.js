@@ -206,12 +206,12 @@ module.exports = class Instance {
 
         let qsysFs, basicMemberEditing = true;
         if (config.enableSourceDates) {
-          if (connection.remoteFeatures.db2util) {
+          if (connection.sqlEnabled) {
             basicMemberEditing = false;
             require(`./filesystems/qsys/complex/handler`).begin(context);
             qsysFs = new (require(`./filesystems/qsys/complex`));
           } else {
-            vscode.window.showWarningMessage(`Source date support is disabled. db2util must be installed.`);
+            vscode.window.showWarningMessage(`Source date support is disabled. SQL must be enabled.`);
           }
         }
 
@@ -502,7 +502,7 @@ module.exports = class Instance {
           }),
           vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement) => {
             if (statement) {
-              return instance.content.runSQL(statement, config.sqlExecutor);
+              return instance.content.runSQL(statement);
             } else {
               return null;
             }
