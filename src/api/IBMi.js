@@ -391,17 +391,20 @@ module.exports = class IBMi {
 
         if (this.config.enableSQL) {
           if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
-            progress.report({
-              message: `SQL program found, so checking for ASP information.`
-            });
-          
             this.sqlEnabled = true;
+
+            let statement;
+            let output;
+
+            progress.report({
+              message: `Checking for ASP information.`
+            });
 
             //This is mostly a nice to have. We grab the ASP info so user's do
             //not have to provide the ASP in the settings.
             try {
-              const statement = `SELECT * FROM QSYS2.ASP_INFO`;
-              const output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`)
+              statement = `SELECT * FROM QSYS2.ASP_INFO`;
+              output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
 
               if (typeof output === `string`) {
                 const rows = Tools.db2Parse(output);
@@ -416,6 +419,31 @@ module.exports = class IBMi {
               progress.report({
                 message: `Failed to get ASP information.`
               });
+            }
+
+            progress.report({
+              message: `Fetching system values.`
+            });
+
+            // Next, we're going to see if we can get the QCCSID. Some things
+            // don't work without it!!!
+            try {
+              statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+              output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
+
+              if (typeof output === `string`) {
+                const rows = Tools.db2Parse(output);
+                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                if (ccsid) {
+                  if (ccsid === 65535) {
+                    this.sqlEnabled = false;
+                    vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
+                  }
+                }
+              }
+            } catch (e) {
+              // Oh well!
+              console.log(e);
             }
           } else {
             // Disable it if it's not found
