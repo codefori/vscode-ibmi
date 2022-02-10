@@ -54,19 +54,29 @@ module.exports = class SettingsUI {
         field.description = `Temporary library. Cannot be QTEMP.`;
         ui.addField(field);
     
+        field = new Field(`checkbox`, `autoClearTempData`, `Clear temporary data on startup`);
+        field.default = (config.autoClearTempData ? `checked` : ``)
+        field.description = `Automatically clear temporary data in the chosen temporary library on startup. Deletes all <code>*FILE</code> objects that start with <code>O</code> in the chosen temporary library.`;
+        ui.addField(field);
+
         field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
         field.default = (config.enableSQL ? `checked` : ``);
-        field.description = `Must be enabled to make the use of db2util and is enabled by default. If you find db2util isn't working for some reason, disable this. If this config is changed, you must reconnect to the system.`;
+        field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceASP`, `Source ASP`);
         field.default = config.sourceASP;
-        field.description = `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> and have db2util installed, as Code for IBM i will fetch ASP information automatically.`;
+        field.description = `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceFileCCSID`, `Source file CCSID`);
         field.default = config.sourceFileCCSID;
         field.description = `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`;
+        ui.addField(field);
+    
+        field = new Field(`checkbox`, `autoConvertIFSccsid`, `Support EBCDIC streamfiles`);
+        field.default = (config.autoConvertIFSccsid ? `checked` : ``)
+        field.description = `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`;
         ui.addField(field);
     
         field = new Field(`input`, `hideCompileErrors`, `Errors to ignore`);

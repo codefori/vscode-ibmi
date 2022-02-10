@@ -5,10 +5,13 @@ const util = require(`util`);
 let fs = require(`fs`);
 const tmp = require(`tmp`);
 const parse = require(`csv-parse/lib/sync`);
+const Tools = require(`./Tools`);
 
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
+
+const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
 module.exports = class IBMiContent {
   /**
@@ -23,19 +26,61 @@ module.exports = class IBMiContent {
    * @param {string} localPath 
    */
   async downloadStreamfile(remotePath, localPath = null) {
+    const features = this.ibmi.remoteFeatures;
+    const config = this.ibmi.config;
     const client = this.ibmi.client;
+
+    if (config.autoConvertIFSccsid && features.attr && features.iconv) {
+      // If it's not 1208, generate a temp file with the converted content
+      let ccsid = await this.ibmi.paseCommand(`${features.attr} "${remotePath}" CCSID`);
+      if (typeof ccsid === `string`) {
+        //What's the point of converting 1208?
+        if (!UTF8_CCSIDS.includes(ccsid)) {
+          ccsid = ccsid.padStart(3, `0`);
+          const newTempFile = this.ibmi.getTempRemote(remotePath);
+          await this.ibmi.paseCommand(`${features.iconv} -f IBM-${ccsid} -t UTF-8 "${remotePath}" > ${newTempFile}`);
+          remotePath = newTempFile;
+        }
+      }
+    }
 
     if (localPath == null) localPath = await tmpFile();
     await client.getFile(localPath, remotePath);
     return readFileAsync(localPath, `utf8`);
   }
 
-  async writeStreamfile(remotePath, content) {
+  async writeStreamfile(originalPath, content) {
     const client = this.ibmi.client;
+    const features = this.ibmi.remoteFeatures;
+    const config = this.ibmi.config;
+
     let tmpobj = await tmpFile();
 
+    let ccsid;
+
+    if (config.autoConvertIFSccsid && features.attr && features.iconv) {
+      // First, find the CCSID of the original file
+      ccsid = await this.ibmi.paseCommand(`${features.attr} "${originalPath}" CCSID`);
+      if (typeof ccsid === `string`) {
+        if (UTF8_CCSIDS.includes(ccsid)) {
+          ccsid = undefined; // Don't covert...
+        } else {
+          ccsid = ccsid.padStart(3, `0`);
+        }
+      }
+    }
+
     await writeFileAsync(tmpobj, content, `utf8`);
-    return client.putFile(tmpobj, remotePath); // assumes streamfile will be UTF8
+
+    if (ccsid) {
+      // Upload our file to the same temp file, then write convert it back to the original ccsid
+      const tempFile = this.ibmi.getTempRemote(originalPath);
+      await client.putFile(tmpobj, tempFile);
+      return this.ibmi.paseCommand(`${features.iconv} -f UTF-8 -t IBM-${ccsid} "${tempFile}" > ${originalPath}`);
+
+    } else {
+      return client.putFile(tmpobj, originalPath);
+    }
   }
 
   /**
@@ -51,7 +96,7 @@ module.exports = class IBMiContent {
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
 
-    const path = IBMi.qualifyPath(asp, lib, spf, mbr);
+    const path = Tools.qualifyPath(asp, lib, spf, mbr);
     const tempRmt = this.ibmi.getTempRemote(path);
     const tmpobj = await tmpFile();
     const client = this.ibmi.client;
@@ -102,7 +147,7 @@ module.exports = class IBMiContent {
     mbr = mbr.toUpperCase();
 
     const client = this.ibmi.client;
-    const path = IBMi.qualifyPath(asp, lib, spf, mbr);
+    const path = Tools.qualifyPath(asp, lib, spf, mbr);
     const tempRmt = this.ibmi.getTempRemote(path);
     const tmpobj = await tmpFile();
 
@@ -123,105 +168,30 @@ module.exports = class IBMiContent {
   
   /**
    * Run an SQL statement
-   * @param {string} statement 
+   * @param {string} statement
    * @returns {Promise<any[]>} Result set
    */
   async runSQL(statement) {
-    const { db2, db2util } = this.ibmi.remoteFeatures;
+    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
 
     let output;
 
     statement = statement.replace(/"/g, `\\"`);
-    if (db2util) {
-      output = await this.ibmi.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${db2util} -o json "${statement}"`);
 
-      if (typeof output === `string`) {
-        //Little hack for db2util returns blanks where it should be null.
-        output = output.replace(new RegExp(`:,`, `g`), `:null,`);
-        output = output.replace(new RegExp(`:}`, `g`), `:null}`);
-        const rows = JSON.parse(output);
-        for (let row of rows)
-          for (let key in row) {
-            if (typeof row[key] === `string`) row[key] = row[key].trim();
-            if (row[key] === `null`) row[key] = null;
-          }
-
-        return rows;
-      } else {
-        return [];
-      }
-    } else if (db2) {
-
+    if (QZDFMDB2) {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
-      output = await this.ibmi.qshCommand(`${db2} "${statement}"`, undefined, 1);
+
+      // We join all new lines together
+      //statement = statement.replace(/\n/g, ` `);
+
+      output = await this.ibmi.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 1)
 
       if (typeof output === `object`) {
-        if (output.code == null || output.code === 0) {
-          let gotHeaders = false;
-          let figuredLengths = false;
-  
-          let data = output.stdout.split(`\n`);
-  
-          /** @type {{name: string, from: number, length: number}[]} */
-          let headers;
-  
-          let rows = [];
-  
-          data.forEach((line, index) => {
-            if (line.trim().length === 0 || index === data.length - 1) return;
-            if (gotHeaders === false) {
-              headers = line.split(` `).filter((x) => x.length > 0).map((x) => {
-                return {
-                  name: x,
-                  from: 0,
-                  length: 0,
-                };
-              });
-  
-              gotHeaders = true;
-            } else
-            if (figuredLengths === false) {
-              let base = 0;
-              line.split(` `).forEach((x, i) => {
-                headers[i].from = base;
-                headers[i].length = x.length;
-  
-                base += x.length + 1;
-              });
-  
-              figuredLengths = true;
-            } else {
-              let row = {};
-  
-              headers.forEach((header) => {
-                /** @type {string|number} */
-                let value = line.substring(header.from, header.from + header.length).trimEnd();
-  
-                // is value a number?
-                if (value.startsWith(` `)) {
-                  const asNumber = Number(value.trim());
-                  if (!isNaN(asNumber)) {
-                    value = asNumber;
-                  }
-                }
-                
-                row[header.name] = value;
-              });
-  
-              rows.push(row);
-            }
-          });
-  
-          return rows;
-        } else {
-          const errorLines = output.stdout.split(`\n`);
-
-          throw new Error(`${errorLines[3]} (${errorLines[1].trim()})`);
-        }
+        return Tools.db2Parse(output.stdout);
+      } else {
+        throw new Error(`There was an error running the SQL statement.`);
       }
-
-      return [];
 
     } else {
       throw new Error(`There is no way to run SQL on this system.`);
@@ -237,29 +207,34 @@ module.exports = class IBMiContent {
   async getTable(lib, file, mbr) {
     if (!mbr) mbr = file; //Incase mbr is the same file
 
-    const tempRmt = this.ibmi.getTempRemote(IBMi.qualifyPath(undefined, lib, file, mbr));
+    if (file === mbr && this.ibmi.sqlEnabled) {
+      return this.runSQL(`SELECT * FROM ${lib}.${file}`);
 
-    await this.ibmi.remoteCommand(
-      `QSYS/CPYTOIMPF FROMFILE(` +
-        lib +
-        `/` +
-        file +
-        ` ` +
-        mbr +
-        `) ` +
-        `TOSTMF('` +
-        tempRmt +
-        `') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) `,
-    );
+    } else {
+      const tempRmt = this.ibmi.getTempRemote(Tools.qualifyPath(undefined, lib, file, mbr));
 
-    let result = await this.downloadStreamfile(tempRmt);
+      await this.ibmi.remoteCommand(
+        `QSYS/CPYTOIMPF FROMFILE(` +
+          lib +
+          `/` +
+          file +
+          ` ` +
+          mbr +
+          `) ` +
+          `TOSTMF('` +
+          tempRmt +
+          `') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) `,
+      );
 
-    this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
+      let result = await this.downloadStreamfile(tempRmt);
 
-    return parse(result, {
-      columns: true,
-      skip_empty_lines: true,
-    });
+      this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
+
+      return parse(result, {
+        columns: true,
+        skip_empty_lines: true,
+      });
+    }
     
   }
 
@@ -273,7 +248,7 @@ module.exports = class IBMiContent {
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
 
     const tempLib = this.ibmi.config.tempLibrary;
-    const TempName = IBMi.makeid();
+    const TempName = Tools.makeid();
 
     if (sourceFilesOnly) {
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
@@ -325,13 +300,14 @@ module.exports = class IBMiContent {
    * @returns {Promise<{asp?: string, library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
   async getMemberList(lib, spf, mbr = `*`) {
+    const config = this.ibmi.config;
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
 
     let results;
 
-    if (this.ibmi.remoteFeatures.db2util) {
+    if (this.ibmi.sqlEnabled) {
       if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
 
       results = await this.runSQL(`
@@ -355,8 +331,8 @@ module.exports = class IBMiContent {
       `)
 
     } else {
-      const tempLib = this.ibmi.config.tempLibrary;
-      const TempName = IBMi.makeid();
+      const tempLib = config.tempLibrary;
+      const TempName = Tools.makeid();
 
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName);

@@ -6,7 +6,7 @@ const Configuration = require(`../api/Configuration`);
 
 const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `databaseBrowserList`, `ifsShortcuts`, `customVariables`];
 
-module.exports = class memberBrowserProvider {
+module.exports = class libraryListProvider {
   /**
    * @param {vscode.ExtensionContext} context
    */
@@ -25,10 +25,25 @@ module.exports = class memberBrowserProvider {
         this.refresh();
       }),
 
+
+      vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
+        const config = instance.getConfig();
+        const currentLibrary = config.currentLibrary.toUpperCase();
+  
+        const newLibrary = await vscode.window.showInputBox({
+          prompt: `Changing current library`,
+          value: currentLibrary
+        });
+  
+        if (newLibrary && newLibrary !== currentLibrary) {
+          await config.set(`currentLibrary`, newLibrary);
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async () => {
         const config = instance.getConfig();
 
-        let libraryList = config.libraryList;
+        let libraryList = [...config.libraryList];
 
         const addingLib = await vscode.window.showInputBox({
           prompt: `Library to add`
@@ -37,6 +52,13 @@ module.exports = class memberBrowserProvider {
         if (addingLib) {
           if (addingLib.length <= 10) {
             libraryList.push(addingLib.toUpperCase());
+            const badLibs = await this.validateLibraryList(libraryList);
+
+            if (badLibs.length > 0) {
+              libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+              vscode.window.showWarningMessage(`The following libraries were removed from the updated library list as they are invalid: ${badLibs.join(`, `)}`);
+            }
+
             await config.set(`libraryList`, libraryList);
             if (Configuration.get(`autoRefresh`)) this.refresh();
           } else {
@@ -167,6 +189,37 @@ module.exports = class memberBrowserProvider {
         }
       })
     )
+  }
+
+  /**
+   * Validates a list of libraries
+   * @param {string[]} newLibl 
+   * @returns {Promise<string[]>} Bad libraries
+   */
+  async validateLibraryList(newLibl) {
+    const connection = await instance.getConnection();
+    const config = instance.getConfig();
+
+    let badLibs = [];
+
+    /** @type {object} */
+    const result = await connection.qshCommand([
+      `liblist -d ` + connection.defaultUserLibraries.join(` `),
+      ...newLibl.map(lib => `liblist -a ` + lib)
+    ], undefined, 1);
+
+    if (result.stderr) {
+      const lines = result.stderr.split(`\n`);
+
+      lines.forEach(line => {
+        const badLib = newLibl.find(lib => line.includes(lib));
+
+        // If there is an error about the library, remove it
+        if (badLib) badLibs.push(badLib);
+      });
+    }
+
+    return badLibs;
   }
 
   refresh() {

@@ -3,15 +3,26 @@ const vscode = require(`vscode`);
 
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
+const Tools = require(`./Tools`);
+
+const TEMP_PATH = `/tmp/vscodetemp`
 
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`db2util`, `git`, `grep`, `tn5250`]
+    names: [`git`, `grep`, `tn5250`]
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `db2`]
+    names: [`setccsid`, `iconv`, `attr`]
+  },
+  {
+    path: `/QSYS.LIB/`,
+    // In the future, we may use a generic specific. 
+    // Right now we only need one program
+    // specific: `*.PGM`,
+    specific: `QZDFMDB2.PGM`,
+    names: [`QZDFMDB2.PGM`]
   }
 ];
 
@@ -38,15 +49,16 @@ module.exports = class IBMi {
      */
     this.aspInfo = {};
 
+    this.sqlEnabled = false;
+
     /** @type {{[name: string]: string}} */
     this.remoteFeatures = {
-      db2util: undefined,
       git: undefined,
       grep: undefined,
       tn5250: undefined,
       setccsid: undefined,
-      db2: undefined,
-      'GENCMDXML.PGM': undefined
+      'GENCMDXML.PGM': undefined,
+      'QZDFMDB2.PGM': undefined,
     };
   }
 
@@ -234,6 +246,46 @@ module.exports = class IBMi {
           console.log(e);
         }
 
+        if (tempLibrarySet && this.config.autoClearTempData) {
+          progress.report({
+            message: `Clearing temporary data.`
+          });
+
+          this.remoteCommand(
+            `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`
+          )
+            .then(result => {
+              // All good!
+            })
+            .catch(e => { 
+              // CPF2125: No objects deleted.
+              if (!e.startsWith(`CPF2125`)) {
+                this.config.set(`autoClearTempData`, false);
+                vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}. Disabling auto-clear.`, `View log`).then(async choice => {
+                  if (choice === `View log`) {
+                    this.outputChannel.show();
+                  }
+                });
+              }
+            });
+
+          this.paseCommand(
+            `rm -f ${TEMP_PATH}*`
+          )
+            .then(result => {
+              // All good!
+            })
+            .catch(e => { 
+              // CPF2125: No objects deleted.
+              this.config.set(`autoClearTempData`, false);
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${TEMP_PATH}. Disabling auto-clear.`, `View log`).then(async choice => {
+                if (choice === `View log`) {
+                  this.outputChannel.show();
+                }
+              });
+            });
+        }
+
         progress.report({
           message: `Checking for bad data areas.`
         });
@@ -307,6 +359,7 @@ module.exports = class IBMi {
         remoteApps.push(
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+            specific: `*.PGM`,
             names: [`GENCMDXML.PGM`]
           }
         );
@@ -315,47 +368,97 @@ module.exports = class IBMi {
         try {
           //This may enable certain features in the future.
           for (const feature of remoteApps) {
-            const call = await this.paseCommand(`ls -p ${feature.path}`);
+            progress.report({
+              message: `Checking installed components on host IBM i: ${feature.path}`
+            });
+        
+            const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
             if (typeof call === `string`) {
               const files = call.split(`\n`);
-              for (const name of feature.names)
-                if (files.includes(name))
-                  this.remoteFeatures[name] = feature.path + name;
+
+              if (feature.specific) {
+                for (const name of feature.names)
+                  this.remoteFeatures[name] = files.find(file => file.includes(name));
+              } else {
+                for (const name of feature.names)
+                  if (files.includes(name))
+                    this.remoteFeatures[name] = feature.path + name;
+              }
             }
           }
           
         } catch (e) {}
 
-        //Even if db2util is installed, but they have disabled it... then disable it
-        if (this.config.enableSQL !== true) {
-          this.remoteFeatures.db2util = undefined;
-        }
+        if (this.config.enableSQL) {
+          if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
+            this.sqlEnabled = true;
 
-        if (this.remoteFeatures.db2util) {
-          progress.report({
-            message: `db2util is enabled, so checking for ASP information.`
-          });
+            let statement;
+            let output;
 
-          //This is mostly a nice to have. We grab the ASP info so user's do
-          //not have to provide the ASP in the settings. This only works if
-          //they have db2util installed, becuase we have to use SQL to get the
-          //data. I couldn't find an outfile for this information. :(
-          try {
-            const command = this.remoteFeatures.db2util;
+            progress.report({
+              message: `Checking for ASP information.`
+            });
 
-            const statement = `SELECT * FROM QSYS2.ASP_INFO`;
-            let output = await this.paseCommand(`DB2UTIL_JSON_CONTAINER=array ${command} -o json "${statement}"`);
-      
-            if (typeof output === `string`) {
-              const rows = JSON.parse(output);
-              for (const row of rows) {
-                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                  this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+            //This is mostly a nice to have. We grab the ASP info so user's do
+            //not have to provide the ASP in the settings.
+            try {
+              statement = `SELECT * FROM QSYS2.ASP_INFO`;
+              output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
+
+              if (typeof output === `string`) {
+                const rows = Tools.db2Parse(output);
+                rows.forEach(row => {
+                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                    this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+                  }
+                });
+              }
+            } catch (e) {
+              //Oh well
+              progress.report({
+                message: `Failed to get ASP information.`
+              });
+            }
+
+            progress.report({
+              message: `Fetching system values.`
+            });
+
+            // Next, we're going to see if we can get the QCCSID. Some things
+            // don't work without it!!!
+            try {
+              statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+              output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
+
+              if (typeof output === `string`) {
+                const rows = Tools.db2Parse(output);
+                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                if (ccsid) {
+                  if (ccsid === 65535) {
+                    this.sqlEnabled = false;
+                    vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
+                  }
                 }
               }
+            } catch (e) {
+              // Oh well!
+              console.log(e);
             }
-          } catch (e) {
-            //Oh well
+          } else {
+            // Disable it if it's not found
+
+            progress.report({
+              message: `SQL program not installed. Disabling SQL.`
+            });
+            await this.config.set(`enableSQL`, false);
+          }
+        }
+
+        if (this.config.autoConvertIFSccsid) {
+          if (this.remoteFeatures.attr === undefined || this.remoteFeatures.iconv === undefined) {
+            this.config.autoConvertIFSccsid = false;
+            vscode.window.showWarningMessage(`EBCDIC streamfiles will not be rendered correctly since \`attr\` or \`iconv\` is not installed on the host. They should both exist in \`\\usr\\bin\`.`);
           }
         }
 
@@ -415,6 +518,7 @@ module.exports = class IBMi {
       command = command.join(`;`);
     }
 
+    command = command.replace(/#/g, `\\#`);
     command = command.replace(/"/g, `\\"`);
 
     command = `echo "` + command + `" | /QOpenSys/usr/bin/qsh`;
@@ -461,34 +565,14 @@ module.exports = class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      let value = `/tmp/vscodetemp-` + IBMi.makeid();
+      let value = `${TEMP_PATH}-` + Tools.makeid();
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;
     }
   }
 
-  static makeid() {
-    let text = `o`;
-    let possible =
-      `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
-  
-    for (let i = 0; i < 9; i++)
-      text += possible.charAt(Math.floor(Math.random() * possible.length));
-  
-    return text;
-  }
-
-  /**
-   * Build the IFS path string to a member
-   * @param {string|undefined} asp 
-   * @param {string} lib 
-   * @param {string} obj 
-   * @param {string} mbr 
-   */
-  static qualifyPath(asp, lib, obj, mbr) {
-    const path =
-      (asp && asp.length > 0 ? `/${asp}` : ``) + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
-    return path;
+  log(string) {
+    this.outputChannel.appendLine(string);
   }
 }

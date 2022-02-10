@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.8.24",
+	"version": "0.8.34",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -165,6 +165,16 @@
 								"default": "ILEDITOR",
 								"description": "Temporary library. Cannot be QTEMP."
 							},
+							"autoClearTempData": {
+								"type": "boolean",
+								"default": false,
+								"description": "Automatically delete temporary objects from the temporary library on startup."
+							},
+							"enableSQL": {
+								"type": "boolean",
+								"default": true,
+								"description": "Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
+							},
 							"currentLibrary": {
 								"type": "string",
 								"default": "QTEMP",
@@ -176,17 +186,17 @@
 									"null"
 								],
 								"default": null,
-								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` and have db2util installed, as Code for IBM i will fetch ASP information automatically."
+								"description": "If source files live within a specific ASP, please specify it here. Leave blank/null otherwise. You can ignore this column if you have access to `QSYS2.ASP_INFO` as Code for IBM i will fetch ASP information automatically."
 							},
 							"sourceFileCCSID": {
 								"type": "string",
 								"default": "*FILE",
 								"description": "The CCSID of source files on your system. You should only change this setting from `*FILE` if you have a source file that is 65535 - otherwise use `*FILE`. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems."
 							},
-							"enableSQL": {
+							"autoConvertIFSccsid": {
 								"type": "boolean",
-								"default": true,
-								"description": "Must be enabled to make the use of db2util and is enabled by default. If you find db2util isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
+								"default": false,
+								"description": "Automatically convert IFS to UTF8 when reading and writing."
 							},
 							"hideCompileErrors": {
 								"type": "array",
@@ -623,7 +633,7 @@
 							],
 							"name": "Set CCSID to 1252",
 							"environment": "pase",
-							"command": "setccsid 1252 &FULLPATH"
+							"command": "setccsid 1252 \"&FULLPATH\""
 						},
 						{
 							"type": "object",

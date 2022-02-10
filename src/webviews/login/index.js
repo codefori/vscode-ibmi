@@ -24,7 +24,7 @@ module.exports = class Login {
 
     ui.addField(new Field(`input`, `name`, `Connection Name`));
     ui.addField(new Field(`input`, `host`, `Host or IP Address`));
-    ui.addField(new Field(`input`, `port`, `Port`));
+    ui.addField(new Field(`input`, `port`, `Port (SSH)`));
     ui.fields[2].default = `22`;
     ui.addField(new Field(`input`, `username`, `Username`));
     ui.addField(new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`));

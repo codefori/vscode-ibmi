@@ -17,6 +17,9 @@ module.exports = class Configuration {
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];
 
+    /** @type {boolean} */
+    this.autoClearTempData = (base.autoClearTempData === true);
+
     /** @type {{name: string, value: string}[]} */
     this.customVariables = base.customVariables || [];
 
@@ -28,6 +31,9 @@ module.exports = class Configuration {
 
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
+
+    /** @type {boolean} */
+    this.enableSQL = (base.enableSQL === true);
 
     /** @type {string} */
     this.tempLibrary = base.tempLibrary || `ILEDITOR`;
@@ -41,8 +47,8 @@ module.exports = class Configuration {
     /** @type {string} */
     this.sourceFileCCSID = base.sourceFileCCSID || `*FILE`;
 
-    /** @type {boolean} Undefined means not created, so default to on */
-    this.enableSQL = (base.enableSQL === true || base.enableSQL === undefined);
+    /** @type {boolean} */
+    this.autoConvertIFSccsid = (base.autoConvertIFSccsid === true);
 
     /** @type {string[]} */
     this.hideCompileErrors = base.hideCompileErrors || [];

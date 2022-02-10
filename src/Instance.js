@@ -206,7 +206,7 @@ module.exports = class Instance {
 
         let qsysFs, basicMemberEditing = true;
         if (config.enableSourceDates) {
-          if (connection.remoteFeatures.db2util) {
+          if (connection.sqlEnabled) {
             basicMemberEditing = false;
             require(`./filesystems/qsys/complex/handler`).begin(context);
             qsysFs = new (require(`./filesystems/qsys/complex`));
@@ -367,26 +367,6 @@ module.exports = class Instance {
             }
           })
         )
-
-        context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
-            const config = this.getConfig();
-            const currentLibrary = config.currentLibrary.toUpperCase();
-    
-            const newLibrary = await vscode.window.showInputBox({
-              prompt: `Changing current library`,
-              value: currentLibrary
-            });
-    
-            try {
-              if (newLibrary && newLibrary !== currentLibrary) {
-                await config.set(`currentLibrary`, newLibrary);
-              }
-            } catch (e) {
-              console.log(e);
-            }
-          })
-        );
 
         if (config.clContentAssistEnabled) {
           const clInstance = new CLCommands(context);

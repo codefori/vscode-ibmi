@@ -8,13 +8,11 @@ For example, you might be a vendor that produces lists or HTML that you'd like t
 const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).exports;
 ```
 
-We provide three base APIs for you to use. This document only covers `instance`. We have another page on [CustomUI](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/custom-ui.md), which allows you to build UI for your extension.
-
 `instance` has four methods for you to use:
 
 * `getConnection()`: [`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
 * `getContent(): `[`IBMiContent`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMiContent.js) to work with content on the current connection
-   * `IBMiContent` has methods to run SQL statements (requires `db2util` or `db2` which is part of the OS), get the contents of tables (without `db2util`) and read and write members/streamfiles.
+   * `IBMiContent` has methods to run SQL statements, get the contents of tables and read and write members/streamfiles.
 * `getConfig(): `[`Configuration`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/Configuration.js) to get/set configuration for the current connection
 * `on(event: string, callback: Function): void` to add an event handler. Available events:
   * `connected` which can be used to determine when Code for IBM i has established a connection.
@@ -24,63 +22,33 @@ We provide three base APIs for you to use. This document only covers `instance`.
 See the following code bases for large examples of extensions that use Code for IBM i:
 
 * [VS Code extension to manage IBM i IWS services](https://github.com/halcyon-tech/vscode-ibmi-iws)
+* [Git for IBM i extension](https://github.com/halcyon-tech/git-client-ibmi)
 
-### `connected` event
+### Views
 
-Using the `instance.on` method, your extension can determine when Code for IBM i has connected to a remote system:
+Code for IBM i provides a context so you can control when a command, view, etc, can work. `code-for-ibmi.connected` can and should be used if your view depends on a connection. For example
 
-```js
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-const vscode = require(`vscode`);
+This will show a welcome view when there is no connection:
 
-const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`);
-
-// this method is called when your extension is activated
-// your extension is activated the very first time the command is executed
-
-function activate(context) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log(`Congratulations, your extension "your-extention" is now active!`);
-
-  instance.on(`connected`, () => {
-    const config = instance.getConfig();
-    
-    console.log(`your-extention knows that you connected to ` + config.host);
-  });
-
-}
-
-// this method is called when your extension is deactivated
-function deactivate() {}
-
-module.exports = {
-  activate,
-  deactivate
-};
+```json
+		"viewsWelcome": [{
+			"view": "git-client-ibmi.commits",
+			"contents": "No connection found. Please connect to an IBM i.",
+			"when": "code-for-ibmi:connected !== true"
+		}],
 ```
 
-### Is there a connection?
+This will show a view when there is a connection:
 
-You can use `instance.getConnection()` to determine if there is a connection:
-
-```js
-  async getChildren(element) {
-    const connection = instance.getConnection();
-
-    /** @type {vscode.TreeItem[]} */
-    let items = [];
-
-    if (connection) {
-      //Do work here...
-
-    } else {
-      items = [new vscode.TreeItem(`Please connect to an IBM i and refresh.`)];
+```json
+    "views": {
+      "scm": [{
+        "id": "git-client-ibmi.commits",
+        "name": "Commits",
+        "contextualTitle": "IBM i",
+        "when": "code-for-ibmi:connected == true"
+      }]
     }
-
-    return items;
-  }
 ```
 
 ### Running commands with the user library list
@@ -136,3 +104,62 @@ someArray.push(someUserItem);
 
 config.set(`someArray`, someArray);
 ```
+
+### Is there a connection?
+
+You can use `instance.getConnection()` to determine if there is a connection:
+
+```js
+  async getChildren(element) {
+    const connection = instance.getConnection();
+
+    /** @type {vscode.TreeItem[]} */
+    let items = [];
+
+    if (connection) {
+      //Do work here...
+
+    } else {
+      items = [new vscode.TreeItem(`Please connect to an IBM i and refresh.`)];
+    }
+
+    return items;
+  }
+```
+
+### `connected` event
+
+Using the `instance.on` method, your extension can determine when Code for IBM i has connected to a remote system:
+
+```js
+// The module 'vscode' contains the VS Code extensibility API
+// Import the module and reference it with the alias vscode in your code below
+const vscode = require(`vscode`);
+
+const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`);
+
+// this method is called when your extension is activated
+// your extension is activated the very first time the command is executed
+
+function activate(context) {
+  // Use the console to output diagnostic information (console.log) and errors (console.error)
+  // This line of code will only be executed once when your extension is activated
+  console.log(`Congratulations, your extension "your-extention" is now active!`);
+
+  instance.on(`connected`, () => {
+    const config = instance.getConfig();
+    
+    console.log(`your-extention knows that you connected to ` + config.host);
+  });
+
+}
+
+// this method is called when your extension is deactivated
+function deactivate() {}
+
+module.exports = {
+  activate,
+  deactivate
+};
+```
+

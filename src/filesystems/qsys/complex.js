@@ -30,15 +30,9 @@ module.exports = class ComplexQsysFs {
 
     const name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-    try {
-      const memberContent = await contentApi.downloadMemberContentWithDates(asp, lib, file, name);
+    const memberContent = await contentApi.downloadMemberContentWithDates(asp, lib, file, name);
 
-      return new Uint8Array(Buffer.from(memberContent, `utf8`));
-
-    } catch (e) {
-      vscode.window.showErrorMessage(e);
-    }
-
+    return new Uint8Array(Buffer.from(memberContent, `utf8`));
   }
 
   /**

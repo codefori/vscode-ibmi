@@ -205,14 +205,10 @@ module.exports = class databaseBrowserProvider {
       if (connection) {
         const config = instance.getConfig();
 
-        if (connection.remoteFeatures.db2util) {
-          const libraries = config.databaseBrowserList;
+        const libraries = config.databaseBrowserList;
 
-          for (let library of libraries) {
-            items.push(new SchemaItem(library));
-          }
-        } else {
-          items.push(new vscode.TreeItem(`'db2util' not installed on system or is disabled in the settings.`, vscode.TreeItemCollapsibleState.None));
+        for (let library of libraries) {
+          items.push(new SchemaItem(library));
         }
       }
     }
