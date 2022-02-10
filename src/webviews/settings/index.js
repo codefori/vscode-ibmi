@@ -255,7 +255,7 @@ module.exports = class SettingsUI {
           ui.addField(field);
 
           field = new Field(`input`, `port`, `Port`);
-          field.default = connection.port;
+          field.default = String(connection.port);
           ui.addField(field);
 
           field = new Field(`input`, `username`, `Username`);
