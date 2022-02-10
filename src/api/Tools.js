@@ -15,7 +15,18 @@ module.exports = class {
     let rows = [];
       
     data.forEach((line, index) => {
-      if (line.trim().length === 0 || index === data.length - 1) return;
+      const trimmed = line.trim();
+      if (trimmed.length === 0 || index === data.length - 1) return;
+      if (trimmed === `DB2>`) return;
+      if (trimmed === `?>`) return;
+
+      if (trimmed === `**** CLI ERROR *****`) {
+        if (data.length > index + 3) {
+          throw new Error(`${data[index + 3]} (${data[index + 1].trim()})`);
+        }
+        return;
+      }
+
       if (gotHeaders === false) {
         headers = line.split(` `).filter((x) => x.length > 0).map((x) => {
           return {

@@ -183,22 +183,12 @@ module.exports = class IBMiContent {
       // It does not write to standard error at all.
 
       // We join all new lines together
-      statement = statement.replace(/\n/g, ` `);
+      //statement = statement.replace(/\n/g, ` `);
 
       output = await this.ibmi.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 1)
 
       if (typeof output === `object`) {
-        // For each new line, it appends crap at the front
-        const strOut = output.stdout.substring(10).trimStart();
-        
-        if (output.code == null || output.code === 0) {
-          return Tools.db2Parse(strOut);
-
-        } else {
-          const errorLines = strOut.split(`\n`);
-
-          throw new Error(`${errorLines[3]} (${errorLines[1].trim()})`);
-        }
+        return Tools.db2Parse(output.stdout);
       } else {
         throw new Error(`There was an error running the SQL statement.`);
       }

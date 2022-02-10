@@ -404,10 +404,7 @@ module.exports = class IBMi {
               const output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`)
 
               if (typeof output === `string`) {
-                // For each new line, it appends crap at the front
-                const strOut = output.substring(10).trimStart();
-        
-                const rows = Tools.db2Parse(strOut);
+                const rows = Tools.db2Parse(output);
                 rows.forEach(row => {
                   if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
                     this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
