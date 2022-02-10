@@ -435,7 +435,7 @@ module.exports = class IBMi {
                 const rows = Tools.db2Parse(output);
                 const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
                 if (ccsid) {
-                  if (ccsid === 65535) {
+                  if (ccsid.CURRENT_NUMERIC_VALUE === 65535) {
                     this.sqlEnabled = false;
                     vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
                   }
