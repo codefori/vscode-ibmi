@@ -32,8 +32,8 @@ module.exports = class Configuration {
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
-    /** @type {boolean} */
-    this.enableSQL = (base.enableSQL === true);
+    /** @type {boolean} Undefined means not created, so default to on */
+    this.enableSQL = (base.enableSQL === true || base.enableSQL === undefined);
 
     /** @type {string} */
     this.tempLibrary = base.tempLibrary || `ILEDITOR`;
