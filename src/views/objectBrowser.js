@@ -517,6 +517,7 @@ module.exports = class objectBrowserTwoProvider {
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
+    const connection = instance.getConnection();
     const content = instance.getContent();
     const config = instance.getConfig();
     let items = [], item;
@@ -542,10 +543,22 @@ module.exports = class objectBrowserTwoProvider {
 
         filter = config.objectFilters.find(filter => filter.name === spf.filter);
         const path = spf.path.split(`/`);
-        const members = await content.getMemberList(path[0], path[1], filter.member);
-        items = members.map(member => new Member(member));
 
-        await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
+        try {
+          const members = await content.getMemberList(path[0], path[1], filter.member);
+          items = members.map(member => new Member(member));
+
+          await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
+        } catch (e) {
+          // Work around since we can't get the member list if the users QCCSID is not setup.
+          if (connection.sqlEnabled) {
+            if (e && e.message && e.message.includes(`CCSID`)) {
+              vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. ${e.message}`);
+              connection.sqlEnabled = false;
+              this.refresh();
+            }
+          }
+        }
 
         break;
       }
