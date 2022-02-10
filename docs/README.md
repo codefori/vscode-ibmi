@@ -22,6 +22,7 @@ Or from the Extensions icon in the Activity Bar (on the left):
 
 ### Recommended Extensions
 
+- [RPGLE language tools](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.vscode-rpgle) - a curated set of extensions built on or adding value to Code for IBM i.
 - [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS. Is usually installed automatically.
 
 ## Quick Start Guide
@@ -557,7 +558,7 @@ When enabled, source dates will be retained.
 
 ## Snippets
 
-Code for IBM i comes with a large set of built-in snippets for RPGLE. For example, here's what you might see if you entered %scan in an RPGLE member:
+Code for IBM i comes with a large set of built-in RPGLE snippets, if you install the *RPGLE language tools* extension. For example, here's what you might see if you entered %scan in an RPGLE member:
 ![%SCAN example](assets/Snippet_01.png)
 
 You can also add your own snippets. Check out the [VS Code Snippet Documentation](https://code.visualstudio.com/docs/editor/userdefinedsnippets)
