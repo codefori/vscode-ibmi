@@ -553,7 +553,13 @@ module.exports = class objectBrowserTwoProvider {
           // Work around since we can't get the member list if the users QCCSID is not setup.
           if (connection.sqlEnabled) {
             if (e && e.message && e.message.includes(`CCSID`)) {
-              vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. ${e.message}`);
+              vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. It is recommended you reload. ${e.message}`, `Reload`).then(async (value) => {
+                if (value === `Reload`) {
+                  await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                }
+              });
+              
+              config.set(`enableSQL`, false);
               connection.sqlEnabled = false;
               this.refresh();
             }
