@@ -563,6 +563,8 @@ module.exports = class objectBrowserTwoProvider {
               connection.sqlEnabled = false;
               this.refresh();
             }
+          } else {
+            throw e;
           }
         }
 
