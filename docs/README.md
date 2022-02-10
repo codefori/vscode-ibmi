@@ -22,8 +22,9 @@ Or from the Extensions icon in the Activity Bar (on the left):
 
 ### Recommended Extensions
 
-- [RPGLE language tools](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.vscode-rpgle) - a curated set of extensions built on or adding value to Code for IBM i.
+- [RPGLE language tools](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.vscode-rpgle) - Adds functionality to improve writing RPGLE.
 - [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS. Is usually installed automatically.
+- [IBM i Development Pack](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.ibm-i-development-pack) - a curated set of extensions built on or adding value to Code for IBM i.
 
 ## Quick Start Guide
 
