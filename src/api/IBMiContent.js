@@ -203,12 +203,19 @@ module.exports = class IBMiContent {
    * @param {string} lib 
    * @param {string} file 
    * @param {string} [mbr] Will default to file provided 
+   * @param {boolean} [deleteTable] Will delete the table after download
    */
-  async getTable(lib, file, mbr) {
+  async getTable(lib, file, mbr, deleteTable) {
     if (!mbr) mbr = file; //Incase mbr is the same file
 
     if (file === mbr && this.ibmi.config.enableSQL) {
-      return this.runSQL(`SELECT * FROM ${lib}.${file}`);
+      const data = await this.runSQL(`SELECT * FROM ${lib}.${file}`);
+      
+      if (deleteTable && this.ibmi.config.autoClearTempData) {
+        this.ibmi.remoteCommand(`DLTOBJ OBJ(${lib}/${file}) OBJTYPE(*FILE)`, `.`);
+      }
+
+      return data;
 
     } else {
       const tempRmt = this.ibmi.getTempRemote(Tools.qualifyPath(undefined, lib, file, mbr));
@@ -228,7 +235,11 @@ module.exports = class IBMiContent {
 
       let result = await this.downloadStreamfile(tempRmt);
 
-      this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
+      if (this.ibmi.config.autoClearTempData) {
+        this.ibmi.paseCommand(`rm -f ` + tempRmt, `.`);
+        if (deleteTable)
+          this.ibmi.remoteCommand(`DLTOBJ OBJ(${lib}/${file}) OBJTYPE(*FILE)`, `.`);
+      }
 
       return parse(result, {
         columns: true,
@@ -253,7 +264,7 @@ module.exports = class IBMiContent {
     if (sourceFilesOnly) {
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
 
-      const results = await this.getTable(tempLib, TempName, TempName);
+      const results = await this.getTable(tempLib, TempName, TempName, true);
 
       if (results.length === 1) {
         if (results[0].PHFILE.trim() === ``) {
@@ -275,7 +286,7 @@ module.exports = class IBMiContent {
       const objectTypes = (filters.types && filters.types.length > 0 ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
 
       await this.ibmi.remoteCommand(`DSPOBJD OBJ(${library}/${object}) OBJTYPE(${objectTypes}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-      const results = await this.getTable(tempLib, TempName, TempName);
+      const results = await this.getTable(tempLib, TempName, TempName, true);
 
       if (results.length === 1) {
         if (results[0].ODOBNM.trim() === ``) {
@@ -335,7 +346,7 @@ module.exports = class IBMiContent {
       const TempName = Tools.makeid();
 
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-      results = await this.getTable(tempLib, TempName, TempName);
+      results = await this.getTable(tempLib, TempName, TempName, true);
 
       if (results.length === 1) {
         if (results[0].MBNAME.trim() === ``) {
