@@ -52,8 +52,6 @@ module.exports = class IBMi {
     /** @type {number|null} */
     this.qccsid = null;
 
-    this.sqlEnabled = false;
-
     /** @type {{[name: string]: string}} */
     this.remoteFeatures = {
       git: undefined,
@@ -392,67 +390,67 @@ module.exports = class IBMi {
           
         } catch (e) {}
 
-        if (this.config.enableSQL) {
-          if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
-            this.sqlEnabled = true;
+        if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
+          let statement;
+          let output;
 
-            let statement;
-            let output;
+          progress.report({
+            message: `Checking for ASP information.`
+          });
 
-            progress.report({
-              message: `Checking for ASP information.`
-            });
+          //This is mostly a nice to have. We grab the ASP info so user's do
+          //not have to provide the ASP in the settings.
+          try {
+            statement = `SELECT * FROM QSYS2.ASP_INFO`;
+            output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
 
-            //This is mostly a nice to have. We grab the ASP info so user's do
-            //not have to provide the ASP in the settings.
-            try {
-              statement = `SELECT * FROM QSYS2.ASP_INFO`;
-              output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
-
-              if (typeof output === `string`) {
-                const rows = Tools.db2Parse(output);
-                rows.forEach(row => {
-                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                    this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
-                  }
-                });
-              }
-            } catch (e) {
-              //Oh well
-              progress.report({
-                message: `Failed to get ASP information.`
+            if (typeof output === `string`) {
+              const rows = Tools.db2Parse(output);
+              rows.forEach(row => {
+                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                  this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+                }
               });
             }
-
+          } catch (e) {
+            //Oh well
             progress.report({
-              message: `Fetching system values.`
+              message: `Failed to get ASP information.`
             });
+          }
 
-            // Next, we're going to see if we can get the QCCSID. Some things
-            // don't work without it!!!
-            try {
-              statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
-              output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
+          progress.report({
+            message: `Fetching system values.`
+          });
 
-              if (typeof output === `string`) {
-                const rows = Tools.db2Parse(output);
-                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
-                if (ccsid) {
-                  this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
-                  
+          // Next, we're going to see if we can get the QCCSID. Some things
+          // don't work without it!!!
+          try {
+            statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+            output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
+
+            if (typeof output === `string`) {
+              const rows = Tools.db2Parse(output);
+              const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+              if (ccsid) {
+                this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+
+                if (this.config.enableSQL) {
                   if (ccsid.CURRENT_NUMERIC_VALUE === 65535) {
-                    this.sqlEnabled = false;
+                    await this.config.set(`enableSQL`, false);
                     vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
                   }
                 }
               }
-            } catch (e) {
-              // Oh well!
-              console.log(e);
             }
-          } else {
-            // Disable it if it's not found
+          } catch (e) {
+            // Oh well!
+            console.log(e);
+          }
+        } else {
+          // Disable it if it's not found
 
+          if (this.config.enableSQL) {
             progress.report({
               message: `SQL program not installed. Disabling SQL.`
             });

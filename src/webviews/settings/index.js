@@ -61,7 +61,7 @@ module.exports = class SettingsUI {
 
         field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
         field.default = (config.enableSQL ? `checked` : ``);
-        field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this.`;
+        field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID is 65535, it is recommend SQL is disabled. When disabled, will use import files where possible.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceASP`, `Source ASP`);

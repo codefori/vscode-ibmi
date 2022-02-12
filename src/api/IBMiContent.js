@@ -207,7 +207,7 @@ module.exports = class IBMiContent {
   async getTable(lib, file, mbr) {
     if (!mbr) mbr = file; //Incase mbr is the same file
 
-    if (file === mbr && this.ibmi.sqlEnabled) {
+    if (file === mbr && this.ibmi.config.enableSQL) {
       return this.runSQL(`SELECT * FROM ${lib}.${file}`);
 
     } else {
@@ -307,7 +307,7 @@ module.exports = class IBMiContent {
 
     let results;
 
-    if (this.ibmi.sqlEnabled) {
+    if (config.enableSQL) {
       if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
 
       results = await this.runSQL(`
