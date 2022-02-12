@@ -261,8 +261,7 @@ module.exports = class IBMi {
             .catch(e => { 
               // CPF2125: No objects deleted.
               if (!e.startsWith(`CPF2125`)) {
-                this.config.set(`autoClearTempData`, false);
-                vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}. Disabling auto-clear.`, `View log`).then(async choice => {
+                vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
                   if (choice === `View log`) {
                     this.outputChannel.show();
                   }
@@ -278,8 +277,7 @@ module.exports = class IBMi {
             })
             .catch(e => { 
               // CPF2125: No objects deleted.
-              this.config.set(`autoClearTempData`, false);
-              vscode.window.showErrorMessage(`Temporary data not cleared from ${TEMP_PATH}. Disabling auto-clear.`, `View log`).then(async choice => {
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${TEMP_PATH}.`, `View log`).then(async choice => {
                 if (choice === `View log`) {
                   this.outputChannel.show();
                 }
