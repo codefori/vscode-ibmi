@@ -1008,11 +1008,6 @@
 				"mac": "cmd+shift+j"
 			},
 			{
-				"command": "code-for-ibmi.disconnect",
-				"key": "ctrl+shift+escape",
-				"mac": "cmd+shift+escape"
-			},
-			{
 				"command": "code-for-ibmi.showOutputPanel",
 				"key": "ctrl+shift+f6",
 				"mac": "cmd+shift+f6"
