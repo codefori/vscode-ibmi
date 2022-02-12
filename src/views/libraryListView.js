@@ -25,7 +25,6 @@ module.exports = class libraryListProvider {
         this.refresh();
       }),
 
-
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
         const config = instance.getConfig();
         const currentLibrary = config.currentLibrary.toUpperCase();
@@ -37,6 +36,37 @@ module.exports = class libraryListProvider {
   
         if (newLibrary && newLibrary !== currentLibrary) {
           await config.set(`currentLibrary`, newLibrary);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
+        const libraryList = config.libraryList;
+  
+        const newLibraryListStr = await vscode.window.showInputBox({
+          prompt: `Changing library list (can use '*reset')`,
+          value: libraryList.map(lib => lib.toUpperCase()).join(`, `)
+        });
+
+        if (newLibraryListStr) {
+
+          let newLibraryList = [];
+
+          if (newLibraryListStr.toUpperCase() === `*RESET`) {
+            newLibraryList = connection.defaultUserLibraries;
+          } else {
+            newLibraryList = newLibraryListStr.split(`,`).map(lib => lib.trim().toUpperCase());
+            const badLibs = await this.validateLibraryList(newLibraryList);
+
+            if (badLibs.length > 0) {
+              newLibraryList = newLibraryList.filter(lib => !badLibs.includes(lib));
+              vscode.window.showWarningMessage(`The following libraries were removed from the updated library list as they are invalid: ${badLibs.join(`, `)}`);
+            }
+          }
+
+          await config.set(`libraryList`, newLibraryList);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
         }
       }),
 
@@ -198,9 +228,22 @@ module.exports = class libraryListProvider {
    */
   async validateLibraryList(newLibl) {
     const connection = await instance.getConnection();
-    const config = instance.getConfig();
 
     let badLibs = [];
+
+    newLibl = newLibl.filter(lib => {
+      if (lib.match(/^\d/)) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      if (lib.length > 10) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      return true;
+    });
 
     /** @type {object} */
     const result = await connection.qshCommand([

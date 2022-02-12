@@ -737,6 +737,12 @@
 				"icon": "$(root-folder)"
 			},
 			{
+				"command": "code-for-ibmi.changeUserLibraryList",
+				"title": "Change user library list",
+				"category": "IBM i",
+				"icon": "$(explorer-view-icon)"
+			},
+			{
 				"command": "code-for-ibmi.clearDiagnostics",
 				"title": "Clear diagnostics.",
 				"category": "IBM i"
@@ -1065,17 +1071,17 @@
 					"when": "view == connectionBrowser"
 				},
 				{
+					"command": "code-for-ibmi.changeUserLibraryList",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
 					"command": "code-for-ibmi.changeCurrentLibrary",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
 				{
 					"command": "code-for-ibmi.addToLibraryList",
-					"group": "navigation",
-					"when": "view == libraryListView"
-				},
-				{
-					"command": "code-for-ibmi.refreshLibraryListView",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
