@@ -204,18 +204,23 @@ module.exports = class Instance {
           )
         );
 
-        let qsysFs, basicMemberEditing = true;
+        let qsysFs, basicMemberSupport = true;
+
         if (config.enableSourceDates) {
-          if (connection.sqlEnabled) {
-            basicMemberEditing = false;
+          if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
+            basicMemberSupport = false;
             require(`./filesystems/qsys/complex/handler`).begin(context);
             qsysFs = new (require(`./filesystems/qsys/complex`));
+
+            if (connection.qccsid === 65535) {
+              vscode.window.showWarningMessage(`Source date support is enabled, but QCCSID is 65535. If you encounter problems with source date support, please disable it in the settings.`);
+            } 
           } else {
-            vscode.window.showWarningMessage(`Source date support is disabled. SQL must be enabled.`);
+            vscode.window.showErrorMessage(`Source date support is enabled, but the remote system does not support SQL. Source date support will be disabled.`);
           }
         }
 
-        if (basicMemberEditing) {
+        if (basicMemberSupport) {
           qsysFs = new (require(`./filesystems/qsys/basic`));
         }
 
