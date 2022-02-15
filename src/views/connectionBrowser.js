@@ -46,11 +46,17 @@ module.exports = class objectBrowserProvider {
             `Yes`, `No`
           ).then(async (value) => {
             if (value === `Yes`) {
+              // First remove the connection details
               const connections = Configuration.get(`connections`);
               const newConnections = connections.filter(connection => connection.name !== element.label);
-
               await Configuration.setGlobal(`connections`, newConnections);
 
+              // Also remove the connection settings
+              const connectionSettings = Configuration.get(`connectionSettings`);
+              const newConnectionSettings = connectionSettings.filter(connection => connection.name !== element.label);
+              await Configuration.setGlobal(`connectionSettings`, newConnectionSettings);
+
+              // Then remove the password
               context.secrets.delete(`${element.label}_password`);
 
               this.refresh();
