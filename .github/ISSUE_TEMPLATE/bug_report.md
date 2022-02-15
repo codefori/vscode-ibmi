@@ -10,6 +10,8 @@ assignees: ''
 **Describe the bug**
 (A clear and concise description of what the bug is. We will not accept your bug and close it if this is not filled out correctly.)
 
+Los problemas en espanol estan bien.
+
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Go to '...'
