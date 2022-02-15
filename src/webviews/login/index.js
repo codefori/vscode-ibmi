@@ -54,12 +54,11 @@ module.exports = class Login {
             const connected = await connection.connect(data);
             if (connected.success) {
     
-              vscode.window.showInformationMessage(`Connected to ${data.host}!`);
-    
               instance.setConnection(connection);
               instance.loadAllofExtension(context);
     
               if (!existingConnections.some(item => item.name === data.name)) {
+                // New connection!
                 existingConnections.push({
                   name: data.name,
                   host: data.host,
@@ -71,6 +70,14 @@ module.exports = class Login {
                 if(data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
 
                 await Configuration.setGlobal(`connections`, existingConnections);
+
+                vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selection) => {
+                  if (selection === `Open configuration`) {
+                    vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                  }
+                });
+              } else {
+                vscode.window.showInformationMessage(`Connected to ${data.host}!`);
               }
     
             } else {
