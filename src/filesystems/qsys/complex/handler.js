@@ -1,7 +1,7 @@
 const vscode = require(`vscode`);
 const instance = require(`../../../Instance`);
 
-let allSourceDates = require(`./sourceDates`);
+let { allSourceDates, recordLengths } = require(`./data`);
 
 const annotationDecoration = vscode.window.createTextEditorDecorationType({
   after: {
@@ -15,6 +15,8 @@ module.exports = class {
   static begin(context) {
     const config = instance.getConfig();
 
+    const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
+
     let sourceDateBarItem;
     if (config.sourceDateLocation === `bar`) {
       sourceDateBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
@@ -22,6 +24,57 @@ module.exports = class {
       sourceDateBarItem.tooltip = `Source date`;
       sourceDateBarItem.show();
     }
+
+    let editTimeout;
+
+    /** 
+     * Provides the quick fixes on errors.
+     */
+    context.subscriptions.push(
+      vscode.workspace.onDidChangeTextDocument(event => {
+        const document = event.document;
+        if (document && document.uri.scheme === `member`) {
+          clearTimeout(editTimeout);
+
+          editTimeout = setTimeout(() => {
+            const path = document.uri.path.split(`/`);
+            let lib, file, fullName;
+
+            if (path.length === 4) {
+              lib = path[1];
+              file = path[2];
+              fullName = path[3];
+            } else {
+              lib = path[2];
+              file = path[3];
+              fullName = path[4];
+            }
+
+            fullName = fullName.substr(0, fullName.lastIndexOf(`.`));
+            const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
+            const recordLength = recordLengths[alias];
+
+            /** @type {vscode.Diagnostic[]} */
+            const lengthDiags = [];
+
+            if (recordLength) {
+              for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
+                const lineLength = document.lineAt(lineIndex).text.length;
+                if (lineLength > recordLength) {
+                  const badRange = new vscode.Range(lineIndex, recordLength+1, lineIndex, lineLength);
+                  const diagnostic = new vscode.Diagnostic(badRange, `Content past record length of ${recordLength}`, vscode.DiagnosticSeverity.Error);
+
+                  lengthDiags.push(diagnostic);
+                }
+              }
+            }
+
+            lengthDiagnostics.set(document.uri, lengthDiags);
+          }, 2000);
+        }
+        
+      })
+    );
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument(event => {

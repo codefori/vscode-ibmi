@@ -9,8 +9,7 @@ const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const DEFAULT_RECORD_LENGTH = 80;
-let allSourceDates = require(`./sourceDates`);
-let recordLengths = {};
+let { allSourceDates, recordLengths } = require(`./data`);
 
 module.exports = class IBMiContent {
   /**
