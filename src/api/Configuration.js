@@ -39,6 +39,9 @@ module.exports = class Configuration {
     this.tempLibrary = base.tempLibrary || `ILEDITOR`;
 
     /** @type {string} */
+    this.tempDir = base.tempDir || `/tmp/`;
+
+    /** @type {string} */
     this.currentLibrary = base.currentLibrary || ``;
 
     /** @type {string|undefined} */

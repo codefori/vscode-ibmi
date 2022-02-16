@@ -165,6 +165,11 @@
 								"default": "ILEDITOR",
 								"description": "Temporary library. Cannot be QTEMP."
 							},
+							"tempDir": {
+								"type": "string",
+								"default": "/tmp",
+								"description": "Temporary directory."
+							},
 							"autoClearTempData": {
 								"type": "boolean",
 								"default": false,
