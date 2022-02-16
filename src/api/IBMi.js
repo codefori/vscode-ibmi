@@ -4,6 +4,7 @@ const vscode = require(`vscode`);
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 const Tools = require(`./Tools`);
+const path = require(`path`);
 
 let remoteApps = [
   {
@@ -275,9 +276,10 @@ module.exports = class IBMi {
         }
         
         if (tempDirSet) {
-          this.tempPath = this.config.tempDir + `/vscodetemp`;
+          this.tempDir = this.config.tempDir;
         } else {
-          this.tempPath = `/tmp/vscodetemp`;
+          this.tempDir = `/tmp`;
+          await this.config.set(`tempDir`,`/tmp`);
         }
 
         if (tempLibrarySet && this.config.autoClearTempData) {
@@ -303,14 +305,14 @@ module.exports = class IBMi {
             });
 
           this.paseCommand(
-            `rm -f ${this.tempPath}*`
+            `rm -f ${path.posix.join(this.tempDir,`vscodetemp*`)}`
           )
             .then(result => {
               // All good!
             })
             .catch(e => { 
               // CPF2125: No objects deleted.
-              vscode.window.showErrorMessage(`Temporary data not cleared from ${this.tempPath}.`, `View log`).then(async choice => {
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${this.tempDir}.`, `View log`).then(async choice => {
                 if (choice === `View log`) {
                   this.outputChannel.show();
                 }
@@ -599,7 +601,7 @@ module.exports = class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      let value = `${this.tempPath}-` + Tools.makeid();
+      let value = path.posix.join(this.tempDir, `vscodetemp-${Tools.makeid()}`);
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;
