@@ -980,6 +980,12 @@
 				"title": "Run selected statement",
 				"category": "IBM i",
 				"icon": "$(database)"
+			},
+			{
+				"command": "code-for-ibmi.closeSearchView",
+				"title": "Close search view",
+				"category": "IBM i",
+				"icon": "$(close)"
 			}
 		],
 		"keybindings": [
@@ -1025,6 +1031,11 @@
 					"id": "ibmi-explorer",
 					"title": "IBM i",
 					"icon": "$(server-environment)"
+				},
+				{
+					"id": "ibmi-search",
+					"title": "IBM i Search",
+					"icon": "$(search)"
 				}
 			]
 		},
@@ -1055,6 +1066,13 @@
 					"name": "Database Browser",
 					"visibility": "collapsed",
 					"when": "code-for-ibmi:connected == true"
+				}
+			],
+			"ibmi-search": [
+				{
+					"id": "searchView",
+					"name": "Results",
+					"when": "code-for-ibmi:searchViewVisable == true"
 				}
 			]
 		},
@@ -1144,6 +1162,11 @@
 					"command": "code-for-ibmi.refreshDatabaseBrowser",
 					"group": "navigation",
 					"when": "view == databaseBrowser"
+				},
+				{
+					"command": "code-for-ibmi.closeSearchView",
+					"group": "navigation",
+					"when": "view == searchView"
 				}
 			],
 			"view/item/context": [

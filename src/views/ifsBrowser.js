@@ -320,13 +320,8 @@ module.exports = class ifsBrowserProvider {
 
                 if (results.length > 0) {
 
-                  const resultDoc = Search.generateDocument(`streamfile`, results);
+                  instance.setSearchResults(searchTerm, results);
 
-                  const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
-                  const editor = await vscode.window.showTextDocument(textDoc);
-                  editor.edit(edit => {
-                    edit.insert(new vscode.Position(0, 0), resultDoc);
-                  })
                 } else {
                   vscode.window.showInformationMessage(`No results found.`);
                 }
