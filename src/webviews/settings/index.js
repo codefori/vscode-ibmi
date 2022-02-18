@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -56,7 +56,7 @@ module.exports = class SettingsUI {
     
         field = new Field(`input`, `tempDir`, `Temporary IFS directory`);
         field.default = config.tempDir;
-        field.description = `User must be authorized to create new files in this directory.`;
+        field.description = `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`;
         ui.addField(field);
 
         field = new Field(`checkbox`, `autoClearTempData`, `Clear temporary data automatically`);

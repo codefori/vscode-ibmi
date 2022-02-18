@@ -275,10 +275,7 @@ module.exports = class IBMi {
           }
         }
         
-        if (tempDirSet) {
-          this.tempDir = this.config.tempDir;
-        } else {
-          this.tempDir = `/tmp`;
+        if (!tempDirSet) {
           await this.config.set(`tempDir`,`/tmp`);
         }
 
@@ -305,14 +302,14 @@ module.exports = class IBMi {
             });
 
           this.paseCommand(
-            `rm -f ${path.posix.join(this.tempDir,`vscodetemp*`)}`
+            `rm -f ${path.posix.join(this.config.tempDir,`vscodetemp*`)}`
           )
             .then(result => {
               // All good!
             })
             .catch(e => { 
               // CPF2125: No objects deleted.
-              vscode.window.showErrorMessage(`Temporary data not cleared from ${this.tempDir}.`, `View log`).then(async choice => {
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
                 if (choice === `View log`) {
                   this.outputChannel.show();
                 }
@@ -601,7 +598,7 @@ module.exports = class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      let value = path.posix.join(this.tempDir, `vscodetemp-${Tools.makeid()}`);
+      let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;
