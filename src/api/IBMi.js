@@ -4,8 +4,7 @@ const vscode = require(`vscode`);
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 const Tools = require(`./Tools`);
-
-const TEMP_PATH = `/tmp/vscodetemp`
+const path = require(`path`);
 
 let remoteApps = [
   {
@@ -247,6 +246,39 @@ module.exports = class IBMi {
           console.log(e);
         }
 
+        progress.report({
+          message: `Checking temporary directory configuration.`
+        });
+
+        let tempDirSet = false;
+        // Next, we need to check if the temp directory exists
+        let result = await this.paseCommand(
+          `[ -d "${this.config.tempDir}" ]`,
+          undefined,
+          1
+        );
+        if (typeof result === `object` && !result.code) {
+          // Directory exists
+          tempDirSet = true;
+        } else {
+          // Directory does not exist, try to create it
+          let result = await this.paseCommand(
+            `mkdir -p ${this.config.tempDir}`,
+            undefined,
+            1
+          );
+          if(typeof result === `object` && !result.code) {
+            // Directory created
+            tempDirSet = true;
+          } else {
+            // Directory not created
+          }
+        }
+        
+        if (!tempDirSet) {
+          await this.config.set(`tempDir`,`/tmp`);
+        }
+
         if (tempLibrarySet && this.config.autoClearTempData) {
           progress.report({
             message: `Clearing temporary data.`
@@ -270,14 +302,14 @@ module.exports = class IBMi {
             });
 
           this.paseCommand(
-            `rm -f ${TEMP_PATH}*`
+            `rm -f ${path.posix.join(this.config.tempDir,`vscodetemp*`)}`
           )
             .then(result => {
               // All good!
             })
             .catch(e => { 
               // CPF2125: No objects deleted.
-              vscode.window.showErrorMessage(`Temporary data not cleared from ${TEMP_PATH}.`, `View log`).then(async choice => {
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
                 if (choice === `View log`) {
                   this.outputChannel.show();
                 }
@@ -566,7 +598,7 @@ module.exports = class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else {
-      let value = `${TEMP_PATH}-` + Tools.makeid();
+      let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
       return value;

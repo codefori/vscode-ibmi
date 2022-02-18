@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -54,6 +54,11 @@ module.exports = class SettingsUI {
         field.description = `Temporary library. Cannot be QTEMP.`;
         ui.addField(field);
     
+        field = new Field(`input`, `tempDir`, `Temporary IFS directory`);
+        field.default = config.tempDir;
+        field.description = `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`;
+        ui.addField(field);
+
         field = new Field(`checkbox`, `autoClearTempData`, `Clear temporary data automatically`);
         field.default = (config.autoClearTempData ? `checked` : ``)
         field.description = `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`;

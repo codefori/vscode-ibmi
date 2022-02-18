@@ -548,6 +548,13 @@ Temporary library. Stores temporary objects used by Code for i. Will be created 
 Default value: ILEDITOR.
 Note: If your IBM i runs replication software, there is no need to replicate the temporary library. Your sysadmin may add it to the list of objects to be ignored.
 
+#### Temporary IFS directory
+
+Temporary IFS directory. Stores temporary IFS files used by Code for i. Will be created automatically if it does not exist. Must be in root or QOpenSys filesystem.
+Default value: /tmp.
+Note: If your IBM i runs replication software, there is no need to replicate the temporary directory. Your sysadmin may add it to the list of path to be ignored.
+It is safe to have files created by Code for i automatically deleted during maintenance or IPL.
+
 #### Source ASP
 
 If source files are located in a specific ASP, specify here.
