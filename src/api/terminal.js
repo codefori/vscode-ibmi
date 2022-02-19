@@ -45,7 +45,8 @@ module.exports = class Terminal {
         Terminal.createTerminal(instance, type, {
           encoding,
           terminal,
-          name
+          name,
+          connectionString: configuration.connectringStringFor5250
         });
       }
     });
@@ -55,7 +56,7 @@ module.exports = class Terminal {
    * 
    * @param {*} instance 
    * @param {"PASE"|"5250"} type 
-   * @param {{encoding?: string, terminal?: string, name?: string}} [greenScreenSettings]
+   * @param {{encoding?: string, terminal?: string, name?: string, connectionString?: string}} [greenScreenSettings]
    */
   static createTerminal(instance, type, greenScreenSettings = {}) {
     const writeEmitter = new vscode.EventEmitter();
@@ -130,10 +131,11 @@ module.exports = class Terminal {
       if (type === `5250`) {
         channel.stdin.write([
           `TERM=xterm /QOpenSys/pkgs/bin/tn5250`,
-          `${greenScreenSettings.encoding ? `map=${greenScreenSettings.encoding}` : ``}`,
-          `${greenScreenSettings.terminal ? `env.TERM=${greenScreenSettings.terminal}` : ``}`,
-          `${greenScreenSettings.name ? `env.DEVNAME=${greenScreenSettings.name}` : ``}`,
-          `localhost\n`
+          greenScreenSettings.encoding ? `map=${greenScreenSettings.encoding}` : ``,
+          greenScreenSettings.terminal ? `env.TERM=${greenScreenSettings.terminal}` : ``,
+          greenScreenSettings.name ? `env.DEVNAME=${greenScreenSettings.name}` : ``,
+          greenScreenSettings.connectionString || `localhost`,
+          `\n`
         ].join(` `));
       } else {
         channel.stdin.write(`echo "Terminal started. Thanks for using Code for IBM i"\n`);

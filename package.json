@@ -298,6 +298,11 @@
 								"default": false,
 								"description": "If enabled, user will be prompted for the terminal device name."
 							},
+							"connectringStringFor5250": {
+								"type": "string",
+								"default": "localhost",
+								"description": "The connectring string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+							},
 							"autoSaveBeforeAction": {
 								"type": "boolean",
 								"default": false,
