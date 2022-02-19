@@ -566,6 +566,7 @@ When enabled, it is possible to open a member or a stream file in Code for IBM i
 To open a member or a stream file, simply write its name into a named pipe called `vscodetemp-O__`*`usrprf`* in the temporary IFS directory (/tmp by default).
 For a stream file, simply write the absolute path of the stream file (starting with `/`).
 For a member, use the format `library/file/member.type` or `asp/library/file/member.type`.
+The path should be written in UTF-8 encoding. The named pipe is set to CCSID 1208 (UTF-8) so writing in text mode with a CCSID aware tool (like QShell) should take care of the conversion.
 
 For example:
 ````

@@ -321,6 +321,11 @@
 									}
 								},
 								"default": []
+							},
+							"openFromIbmi": {
+								"type": "boolean",
+								"default": false,
+								"description": "Enable opening member or stream file in Code for IBM i from an IBM i job."
 							}
 						}
 					}
