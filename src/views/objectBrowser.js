@@ -10,6 +10,7 @@ const FiltersUI = require(`../webviews/filters`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
+
 const Search = require(`../api/Search`);
 
 module.exports = class objectBrowserTwoProvider {
@@ -389,13 +390,7 @@ module.exports = class objectBrowserTwoProvider {
                         result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
                       });
 
-                      const resultDoc = Search.generateDocument(`member`, results);
-  
-                      const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `Result`));
-                      const editor = await vscode.window.showTextDocument(textDoc);
-                      editor.edit(edit => {
-                        edit.insert(new vscode.Position(0, 0), resultDoc);
-                      });
+                      instance.setSearchResults(searchTerm, results);
 
                     } else {
                       vscode.window.showInformationMessage(`No results found.`);

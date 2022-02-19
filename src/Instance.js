@@ -14,6 +14,8 @@ const Deployment = require(`./api/Deployment`);
 const Disposable = require(`./api/Disposable`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
 
+const searchView = require(`./views/searchView`);
+
 /** @type {vscode.StatusBarItem} */
 let reconnectBarItem;
 
@@ -27,6 +29,9 @@ let initialisedBefore = false;
 
 /** @type {vscode.Uri} */
 let selectedForCompare;
+
+/** @type {searchView} */
+let searchViewContext;
 
 module.exports = class Instance {
   static setupEmitter() {
@@ -53,6 +58,10 @@ module.exports = class Instance {
   static getConfig() {return instance.connection.config};
   static getContent() {return instance.content};
   static getStorage() {return instance.storage};
+
+  static setSearchResults(term, results) {
+    searchViewContext.setResults(term, results);
+  }
 
   /**
    * @returns {Promise<boolean>} Indicates whether it was disconnect succesfully or not.
@@ -273,10 +282,23 @@ module.exports = class Instance {
           )
         );
 
+        //********* Search View */
+
+        searchViewContext = new searchView(context);
+
+        context.subscriptions.push(
+          Disposable(`libraryListView`, 
+            vscode.window.registerTreeDataProvider(
+              `searchView`,
+              searchViewContext
+            )
+          )
+        );
+
         //********* General editing */
   
         context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path) => {
+          vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path, line) => {
             console.log(path);
             let uri;
             if (path.startsWith(`/`)) {
@@ -288,7 +310,13 @@ module.exports = class Instance {
   
             try {
               let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-              await vscode.window.showTextDocument(doc, { preview: false });
+              const editor = await vscode.window.showTextDocument(doc, { preview: false });
+
+              if (editor && line) {
+                const selectedLine = editor.document.lineAt(line);
+                editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
+                editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
+              }
 
               return true;
             } catch (e) {
