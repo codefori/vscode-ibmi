@@ -510,6 +510,25 @@ module.exports = class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
+
+        if (this.config.openFromIbmi) {
+          const fifo = path.posix.join(this.config.tempDir,`vscodetemp-O__${this.currentUser.trim().toUpperCase()}`);
+          const result = await this.paseCommand(
+            `rm -f ${fifo};mkfifo -m 600 ${fifo};/QOpenSys/usr/bin/setccsid 1208 ${fifo}`,
+            undefined,
+            1            
+          );
+          if (typeof result === `object` && !result.code) {
+            const readFifo = () => {
+              this.client.execCommand(`cat ${fifo}`).then(async result => {
+                await vscode.commands.executeCommand(`code-for-ibmi.openEditable`,result.stdout);
+                readFifo();
+              });
+            }
+            readFifo();
+          }
+        }
+
         return {
           success: true
         };

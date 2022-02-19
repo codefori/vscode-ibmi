@@ -76,6 +76,9 @@ module.exports = class Configuration {
 
     /** @type {boolean} */
     this.autoSaveBeforeAction = (base.autoSaveBeforeAction === true);
+
+    /** @type {boolean} */
+    this.openFromIbmi = (base.openFromIbmi === true);
   }
 
   /**

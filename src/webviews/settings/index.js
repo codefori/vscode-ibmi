@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `tempDir`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `tempDir`, `openFromIbmi`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -92,6 +92,11 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `autoSaveBeforeAction`, `Auto Save for Actions`);
         field.default = (config.autoSaveBeforeAction ? `checked` : ``);
         field.description = `When current editor has unsaved changes, automatically save it before running an action.`;
+        ui.addField(field);
+
+        field = new Field(`checkbox`, `openFromIbmi`, `Open from IBM i`);
+        field.default = (config.openFromIbmi ? `checked` : ``);
+        field.description = `Enable opening member or stream file in Code for IBM i from an IBM i job.`;
         ui.addField(field);
 
         ui.addField(new Field(`hr`));

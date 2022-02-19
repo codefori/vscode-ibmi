@@ -560,6 +560,19 @@ It is safe to have files created by Code for i automatically deleted during main
 If source files are located in a specific ASP, specify here.
 Otherwise, leave blank.
 
+#### Open from IBM i
+
+When enabled, it is possible to open a member or a stream file in Code for IBM i from an IBM i job. Only one instance of Code for IBM i per user profile can do the opening (the first one to connect to the IBM with each user profile).
+To open a member or a stream file, simply write its name into a named pipe called `vscodetemp-O__`*`usrprf`* in the temporary IFS directory (/tmp by default).
+For a stream file, simply write the absolute path of the stream file (starting with `/`).
+For a member, use the format `library/file/member.type` or `asp/library/file/member.type`.
+
+For example:
+````
+QSH CMD('echo DEVLIB/QDDSSRC/DSPF1.DSPF > /tmp/vscodetemp-O__DEVUSR1')
+QSH CMD('echo /home/DEVUSR1/src/dspf1.DSPF > /tmp/vscodetemp-O__DEVUSR1')
+````
+
 #### Enable source dates
 
 When enabled, source dates will be retained.
