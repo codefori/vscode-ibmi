@@ -2,6 +2,11 @@ const vscode = require(`vscode`);
 
 const Colors = require(`./colors`);
 
+const hidden = vscode.window.createTextEditorDecorationType({
+  letterSpacing: `-1em`,
+  opacity: `0`,
+});
+
 module.exports = class ColorProvider {
   /** 
    * @param {vscode.ExtensionContext} context
@@ -37,7 +42,9 @@ module.exports = class ColorProvider {
       const activeEditor = vscode.window.activeTextEditor;
     
       if (document.uri.path === activeEditor.document.uri.path) {
-      /** @type {{[byte: string]: vscode.DecorationOptions[]}} */
+        const hiddenDecorations = [];
+
+        /** @type {{[color: string]: vscode.DecorationOptions[]}} */
         const colorDecorations = {};
 
         // Set up the arrays
@@ -50,8 +57,6 @@ module.exports = class ColorProvider {
           const line = document.lineAt(lineIndex);
 
           const lineBytes = Buffer.from(line.text);
-          console.log((lineIndex + 1));
-          console.log(lineBytes);
 
           Colors.list.forEach(color => {
             const byteIndex = lineBytes.indexOf(Colors.definitions[color].bytes);
@@ -59,6 +64,15 @@ module.exports = class ColorProvider {
               const definition = Colors.definitions[color];
               colorDecorations[color].push({
                 range: new vscode.Range(lineIndex, byteIndex+definition.bytes.length, lineIndex, line.text.length)
+              });
+
+              hiddenDecorations.push({
+                range: new vscode.Range(lineIndex, byteIndex, lineIndex, byteIndex+definition.bytes.length-1),
+                renderOptions: {
+                  after: {
+                    contentText: ``.padEnd(definition.bytes.length),
+                  }
+                }
               });
             }
           })
@@ -68,6 +82,8 @@ module.exports = class ColorProvider {
         Colors.list.forEach(color => {
           activeEditor.setDecorations(Colors.definitions[color].decoration, colorDecorations[color]);
         });
+
+        activeEditor.setDecorations(hidden, hiddenDecorations);
       }
     } 
   }
