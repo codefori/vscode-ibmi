@@ -41,7 +41,7 @@ module.exports = class ColorProvider {
         const colorDecorations = {};
 
         // Set up the arrays
-        Colors.bytes.forEach(byte => {
+        Colors.list.forEach(byte => {
           colorDecorations[byte] = [];
         });
 
@@ -50,20 +50,23 @@ module.exports = class ColorProvider {
           const line = document.lineAt(lineIndex);
 
           const lineBytes = Buffer.from(line.text);
+          console.log((lineIndex + 1));
+          console.log(lineBytes);
 
-          Colors.bytes.forEach(byte => {
-            const byteIndex = lineBytes.indexOf(byte);
+          Colors.list.forEach(color => {
+            const byteIndex = lineBytes.indexOf(Colors.definitions[color].bytes);
             if (byteIndex >= 0) {
-              colorDecorations[byte].push({
-                range: new vscode.Range(lineIndex, byteIndex+1, lineIndex, line.text.length)
+              const definition = Colors.definitions[color];
+              colorDecorations[color].push({
+                range: new vscode.Range(lineIndex, byteIndex+definition.bytes.length, lineIndex, line.text.length)
               });
             }
           })
         }
 
         // Then set the decorations
-        Colors.bytes.forEach(byte => {
-          activeEditor.setDecorations(Colors.decorations[byte], colorDecorations[byte]);
+        Colors.list.forEach(color => {
+          activeEditor.setDecorations(Colors.definitions[color].decoration, colorDecorations[color]);
         });
       }
     } 
