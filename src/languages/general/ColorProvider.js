@@ -63,7 +63,7 @@ module.exports = class ColorProvider {
             if (byteIndex >= 0) {
               const definition = Colors.definitions[color];
               colorDecorations[color].push({
-                range: new vscode.Range(lineIndex, byteIndex+definition.bytes.length, lineIndex, line.text.length)
+                range: new vscode.Range(lineIndex, byteIndex+definition.bytes.length-1, lineIndex, line.text.length)
               });
 
               hiddenDecorations.push({
