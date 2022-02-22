@@ -59,6 +59,8 @@ module.exports = class IBMi {
       setccsid: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
+      'STRC4I.PGM': undefined,
+      'STRC4I.CMD': undefined,
     };
   }
 
@@ -391,9 +393,19 @@ module.exports = class IBMi {
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
             specific: `*.PGM`,
-            names: [`GENCMDXML.PGM`]
+            names: [`GENCMDXML.PGM`, `STRC4I.PGM`]
           }
         );
+
+        // We need to check if our remote commands are installed.
+        remoteApps.push(
+          {
+            path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+            specific: `*.CMD`,
+            names: [`STRC4I.CMD`]
+          }
+        );
+
 
         //Next, we see what pase features are available (installed via yum)
         try {
@@ -521,7 +533,7 @@ module.exports = class IBMi {
           if (typeof result === `object` && !result.code) {
             const readFifo = () => {
               this.client.execCommand(`cat ${fifo}`).then(async result => {
-                await vscode.commands.executeCommand(`code-for-ibmi.openEditable`,result.stdout);
+                await vscode.commands.executeCommand(`code-for-ibmi.openEditable`, result.stdout);
                 readFifo();
               });
             }

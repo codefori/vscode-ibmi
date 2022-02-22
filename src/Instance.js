@@ -117,6 +117,7 @@ module.exports = class Instance {
     const variablesUI = require(`./webviews/variables`);
 
     const CLCommands = require(`./languages/clle/clCommands`);
+    const openFromIbmi = require(`./openFromIbmi/openFromIbmi`);
 
     if (instance.connection) {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
@@ -376,6 +377,10 @@ module.exports = class Instance {
         if (config.clContentAssistEnabled) {
           const clInstance = new CLCommands(context);
           clInstance.init();
+        }
+
+        if (config.openFromIbmi) {
+          openFromIbmi.init();
         }
 
         //********* Actions */

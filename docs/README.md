@@ -574,6 +574,14 @@ QSH CMD('echo DEVLIB/QDDSSRC/DSPF1.DSPF > /tmp/vscodetemp-O__DEVUSR1')
 QSH CMD('echo /home/DEVUSR1/src/dspf1.DSPF > /tmp/vscodetemp-O__DEVUSR1')
 ````
 
+Code for IBM i will offer to create the STRC4I command (and the corresponding command processing program) in your temporary library. This command is a convenience front end for writing to the named pipe to open a stream file or a source member in Code for IBM i from an IBM i job.
+
+To use this command as a user defined option in PDM, from `WRKMBRPDM`, press F16 then F6, enter the option you want to create (`C4` is suggested) and enter the following command:
+
+*`TEMPLIB`*`/STRC4I SRCFILE(&L/&F) SRCMBR(&N)`
+
+You can now enter `C4` in front of a member in `WRKMBRPDM` and it will open in Code for IBM i.
+
 #### Enable source dates
 
 When enabled, source dates will be retained.
