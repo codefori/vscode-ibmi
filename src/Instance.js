@@ -421,7 +421,9 @@ module.exports = class Instance {
         }
 
         // ********* Color provider */
-        new ColorProvider(context);
+        if (Configuration.get(`showSeuColors`)) {
+          new ColorProvider(context);
+        }
 
         //********* Actions */
 
