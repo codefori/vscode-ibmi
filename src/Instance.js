@@ -114,6 +114,8 @@ module.exports = class Instance {
     const connection = this.getConnection();
     const config = this.getConfig();
 
+    const helpView = require(`./views/helpView`);
+
     const libraryListView = require(`./views/libraryListView`);
     
     const ifsBrowser = require(`./views/ifsBrowser`);
@@ -201,6 +203,15 @@ module.exports = class Instance {
         variablesUI.init(context);
 
         const deployment = new Deployment(context, this);
+
+        //********* Help view */
+
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
+            `helpView`,
+            new helpView()
+          )
+        );
 
         //********* Library list view */
 
