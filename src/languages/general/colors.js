@@ -154,7 +154,7 @@ exports.definitions = {
     })
   },
   white_ul: {
-    bytes: Buffer.from([23]),
+    bytes: Buffer.from([23, 42]),
     decoration: vscode.window.createTextEditorDecorationType({
       light: {
         color: `#000000`,
@@ -167,7 +167,7 @@ exports.definitions = {
     })
   },
   yellow: {
-    bytes: Buffer.from([22]),
+    bytes: Buffer.from([22, 42]),
     decoration: vscode.window.createTextEditorDecorationType({
       color: `#f4c842`,
     })
