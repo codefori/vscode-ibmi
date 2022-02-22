@@ -129,6 +129,8 @@ module.exports = class Instance {
 
     const CLCommands = require(`./languages/clle/clCommands`);
 
+    const ColorProvider = require(`./languages/general/ColorProvider`);
+
     if (instance.connection) {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
 
@@ -412,9 +414,15 @@ module.exports = class Instance {
           })
         )
 
+        // ********* CL content assist */
         if (config.clContentAssistEnabled) {
           const clInstance = new CLCommands(context);
           clInstance.init();
+        }
+
+        // ********* Color provider */
+        if (Configuration.get(`showSeuColors`)) {
+          new ColorProvider(context);
         }
 
         //********* Actions */
