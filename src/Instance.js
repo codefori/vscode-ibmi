@@ -11,8 +11,9 @@ const Storage = require(`./api/Storage`);
 const Terminal = require(`./api/terminal`);
 const Deployment = require(`./api/Deployment`);
 
-const Disposable = require(`./api/Disposable`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
+
+const searchView = require(`./views/searchView`);
 
 /** @type {vscode.StatusBarItem} */
 let reconnectBarItem;
@@ -27,6 +28,9 @@ let initialisedBefore = false;
 
 /** @type {vscode.Uri} */
 let selectedForCompare;
+
+/** @type {searchView} */
+let searchViewContext;
 
 module.exports = class Instance {
   static setupEmitter() {
@@ -53,6 +57,10 @@ module.exports = class Instance {
   static getConfig() {return instance.connection.config};
   static getContent() {return instance.content};
   static getStorage() {return instance.storage};
+
+  static setSearchResults(term, results) {
+    searchViewContext.setResults(term, results);
+  }
 
   /**
    * @returns {Promise<boolean>} Indicates whether it was disconnect succesfully or not.
@@ -105,6 +113,8 @@ module.exports = class Instance {
     const connection = this.getConnection();
     const config = this.getConfig();
 
+    const helpView = require(`./views/helpView`);
+
     const libraryListView = require(`./views/libraryListView`);
     
     const ifsBrowser = require(`./views/ifsBrowser`);
@@ -118,6 +128,8 @@ module.exports = class Instance {
 
     const CLCommands = require(`./languages/clle/clCommands`);
     const openFromIbmi = require(`./openFromIbmi/openFromIbmi`);
+
+    const ColorProvider = require(`./languages/general/ColorProvider`);
 
     if (instance.connection) {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
@@ -194,14 +206,21 @@ module.exports = class Instance {
 
         const deployment = new Deployment(context, this);
 
+        //********* Help view */
+
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
+            `helpView`,
+            new helpView()
+          )
+        );
+
         //********* Library list view */
 
         context.subscriptions.push(
-          Disposable(`libraryListView`, 
-            vscode.window.registerTreeDataProvider(
-              `libraryListView`,
-              new libraryListView(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `libraryListView`,
+            new libraryListView(context)
           )
         );
 
@@ -226,58 +245,59 @@ module.exports = class Instance {
         }
 
         context.subscriptions.push(
-          Disposable(`member`,
-            //@ts-ignore
-            vscode.workspace.registerFileSystemProvider(`member`, qsysFs, { 
-              isCaseSensitive: false
-            })
-          )
+          //@ts-ignore
+          vscode.workspace.registerFileSystemProvider(`member`, qsysFs, { 
+            isCaseSensitive: false
+          })
         );
 
         //********* IFS Browser */
 
         context.subscriptions.push(
-          Disposable(`ifsBrowser`,
-            vscode.window.registerTreeDataProvider(
-              `ifsBrowser`,
-              new ifsBrowser(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `ifsBrowser`,
+            new ifsBrowser(context)
           )
         );
   
         context.subscriptions.push(
-          Disposable(`streamfile`,
-            //@ts-ignore
-            vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, { 
-              isCaseSensitive: false
-            })
-          )
+          //@ts-ignore
+          vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, { 
+            isCaseSensitive: false
+          })
         );
 
         //********* Object Browser */
         
         context.subscriptions.push(
-          Disposable(`objectBrowser`,
-            vscode.window.registerTreeDataProvider(
-              `objectBrowser`,
-              new objectBrowser(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `objectBrowser`,
+            new objectBrowser(context)
           )
         );
         
         context.subscriptions.push(
-          Disposable(`databaseBrowser`, 
-            vscode.window.registerTreeDataProvider(
-              `databaseBrowser`,
-              new databaseBrowser(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `databaseBrowser`,
+            new databaseBrowser(context)
+          )
+        );
+
+        //********* Search View */
+
+        searchViewContext = new searchView(context);
+
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
+            `searchView`,
+            searchViewContext
           )
         );
 
         //********* General editing */
   
         context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path) => {
+          vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path, line) => {
             console.log(path);
             let uri;
             if (path.startsWith(`/`)) {
@@ -289,7 +309,13 @@ module.exports = class Instance {
   
             try {
               let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-              await vscode.window.showTextDocument(doc, { preview: false });
+              const editor = await vscode.window.showTextDocument(doc, { preview: false });
+
+              if (editor && line) {
+                const selectedLine = editor.document.lineAt(line);
+                editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
+                editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
+              }
 
               return true;
             } catch (e) {
@@ -374,13 +400,20 @@ module.exports = class Instance {
           })
         )
 
+        // ********* CL content assist */
         if (config.clContentAssistEnabled) {
           const clInstance = new CLCommands(context);
           clInstance.init();
         }
 
+        // ********* Open from IBM i */
         if (config.openFromIbmi) {
           openFromIbmi.init();
+        }
+
+        // ********* Color provider */
+        if (Configuration.get(`showSeuColors`)) {
+          new ColorProvider(context);
         }
 
         //********* Actions */

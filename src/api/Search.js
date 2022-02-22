@@ -1,25 +1,27 @@
 const Configuration = require(`./Configuration`);
 const IBMi = require(`./IBMi`);
 
+const escapeRegex = require(`escape-string-regexp`).default;
+
 module.exports = class Search {
   /**
    * @param {*} instance
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} term 
-   * @return {Promise<{path: string, text: string, recordLength: number, lines: {number: number, content: string}[]}[]>}
+   * @return {Promise<{path: string, text: string, lines: {number: number, content: string}[]}[]>}
    */
   static async searchMembers(instance, lib, spf, term) {
     /** @type {IBMi} */
     const connection = instance.getConnection();
     const config = instance.getConfig();
     
-    term = term.replace(/'/g, `\\'`);
-    term = term.replace(/\\/g, `\\\\"`);
+    term = escapeRegex(term);
+    term = term.replace(/\\"/g, `\\\\"`);
 
     const asp = ((config.sourceASP && config.sourceASP.length > 0) ? `/${config.sourceASP}` : ``);
 
-    const result = await connection.qshCommand(`/usr/bin/grep -in '${term}' ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`, undefined, 1);
+    const result = await connection.qshCommand(`/usr/bin/grep -in "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`, undefined, 1);
 
     //@ts-ignore stderr does exist.
     if (result.stderr) throw new Error(result.stderr);
@@ -40,7 +42,7 @@ module.exports = class Search {
   
       parts = line.split(`:`);
       currentFile = parts[0].substr(10); //Remove '/QSYS.LIB/'
-      currentFile = `/` + currentFile.replace(`.LIB`, ``).replace(`.FILE`, ``).replace(`.MBR`, ``);
+      currentFile = currentFile.replace(`.LIB`, ``).replace(`.FILE`, ``).replace(`.MBR`, ``);
 
       currentLine = Number(parts[1]);
 
@@ -71,7 +73,6 @@ module.exports = class Search {
     }
   
     return list;
-
   }
 
   /**
@@ -90,8 +91,8 @@ module.exports = class Search {
     if (grep) {
       let standardOut = ``;
 
-      term = term.replace(/'/g, `\\'`);
-      term = term.replace(/\\/g, `\\\\"`);
+      term = escapeRegex(term);
+      term = term.replace(/\\"/g, `\\\\"`);
 
       /** @type {string[]} */
       const dirsToIgnore = Configuration.get(`grepIgnoreDirs`);
@@ -103,7 +104,7 @@ module.exports = class Search {
 
       try {
         //@ts-ignore
-        standardOut = await connection.paseCommand(`${grep} -nr ${ignoreString} "${term}" "${path}"`);
+        standardOut = await connection.paseCommand(`${grep} -inr ${ignoreString} "${term}" "${path}"`);
       } catch (e) {
         if (e === ``) standardOut = e //Means no results were found.
         else throw e;
@@ -152,40 +153,6 @@ module.exports = class Search {
     } else {
       throw new Error(`Grep must be installed on the remote system.`);
     }
-  }
-
-  /**
-   * 
-   * @param {`member`|`streamfile`} scheme 
-   * @param {{path: string, text?: string, recordLength?: number, lines: {number: number, content: string}[]}[]} results 
-   * @return {string}
-   */
-  static generateDocument(scheme, results) {
-    const lines = [];
-
-    let totalResults = 0;
-
-    results.forEach(file => {
-      totalResults += file.lines.length;
-    })
-
-    lines.push(
-      ``,
-      `${totalResults} results - ${results.length} files`,
-      ``,
-    );
-
-    for (const file of results) {
-      lines.push(`${scheme}:${file.path}`);
-
-      for (const hit of file.lines) {
-        lines.push(`${String(hit.number).padStart(6)} ${hit.content}`);
-      }
-
-      lines.push(``);
-    }
-
-    return lines.join(`\n`);
   }
 }
 

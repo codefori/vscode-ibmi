@@ -194,6 +194,11 @@ module.exports = class SettingsUI {
         field.default = (config.setDeviceNameFor5250 ? `checked` : ``);
         field.description = `When enabled, the user will be able to enter a device name before the terminal starts.`;
         ui.addField(field);
+    
+        field = new Field(`input`, `connectringStringFor5250`, `Connection string for 5250`);
+        field.default = config.connectringStringFor5250;
+        field.description = `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`;
+        ui.addField(field);
 
         ui.addField(new Field(`hr`));
     

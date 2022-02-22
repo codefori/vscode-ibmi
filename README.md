@@ -10,6 +10,7 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 * [Support the project financially](https://github.com/sponsors/worksofliam) 🤝
 * [Watch some tutorials](https://www.youtube.com/playlist?list=PLNl31cqBafCp-ml8WqPeriHWLD1bkg7KL) 📺
 * [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/) 📘
+* [See who's contributed](https://github.com/halcyon-tech/vscode-ibmi/blob/master/CONTRIBUTING.md) 🕶️
 * [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases) 🔎
 * Build from source (see below!) 🔨
 * [Use our IBM i API in your own extension](https://github.com/halcyon-tech/vscode-ibmi/blob/master/docs/api/extending.md) 🛠
@@ -30,21 +31,3 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 3. `npm i`
 4. 'Run Extension' from vscode debug.
 
-### Contributors
-
-* [@connorholyday](https://github.com/connorholyday)
-* [@worksofliam](https://github.com/worksofliam)
-* [@alanseiden](https://github.com/alanseiden)
-* [@richardschoen](https://github.com/richardschoen)
-* [@barrettotte](https://github.com/barrettotte)
-* [@thebeardedgeek](https://github.com/thebeardedgeek)
-* [@dferrand](https://github.com/dferrand)
-* [@dariocs](https://github.com/dariocs)
-* [@priceaj](https://github.com/priceaj)
-* [@sgi495](https://github.com/sgi495)
-* [@SJLennon](https://github.com/SJLennon)
-* [@onewheelonly](https://github.com/onewheelonly)
-* [@chrjorgensen](https://github.com/chrjorgensen)
-* [@szsascha](https://github.com/szsascha)
-* [@dman247](https://github.com/dman247)
-* [@EddieSmith](https://github.com/EddieSmith)

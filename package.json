@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "0.9.1",
+	"version": "1.0.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -298,6 +298,11 @@
 								"default": false,
 								"description": "If enabled, user will be prompted for the terminal device name."
 							},
+							"connectringStringFor5250": {
+								"type": "string",
+								"default": "localhost",
+								"description": "The connectring string for the 5250 emulator. To use the 5250 emulator, tn5250 must be installed on the remote system via yum."
+							},
 							"autoSaveBeforeAction": {
 								"type": "boolean",
 								"default": false,
@@ -349,6 +354,11 @@
 					"default": true,
 					"description": "If enabled, will log spool files from command executed. You can find it under Output for 'IBM i Compile Log'."
 				},
+				"code-for-ibmi.showSeuColors": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, will colourise lines like SEU. Only supports source members. Requires restart if changed."
+				},
 				"code-for-ibmi.clearOutputEveryTime": {
 					"type": "boolean",
 					"default": true,
@@ -357,7 +367,7 @@
 				"code-for-ibmi.showReconnectButton": {
 					"type": "boolean",
 					"default": false,
-					"description": "If enabled, a new button will be shown in the toolbar to force reconnect to the IBM i."
+					"description": "If enabled, a new button will be shown in the toolbar to force reconnect to the IBM i. Requires restart if changed."
 				},
 				"code-for-ibmi.tryNewErrorParser": {
 					"type": "boolean",
@@ -990,6 +1000,12 @@
 				"title": "Run selected statement",
 				"category": "IBM i",
 				"icon": "$(database)"
+			},
+			{
+				"command": "code-for-ibmi.closeSearchView",
+				"title": "Close search view",
+				"category": "IBM i",
+				"icon": "$(close)"
 			}
 		],
 		"keybindings": [
@@ -1035,6 +1051,11 @@
 					"id": "ibmi-explorer",
 					"title": "IBM i",
 					"icon": "$(server-environment)"
+				},
+				{
+					"id": "ibmi-search",
+					"title": "IBM i Search",
+					"icon": "$(search)"
 				}
 			]
 		},
@@ -1044,6 +1065,11 @@
 					"id": "connectionBrowser",
 					"name": "Servers",
 					"when": "code-for-ibmi:connected == false"
+				},
+				{
+					"id": "helpView",
+					"name": "Help and Support",
+					"when": "code-for-ibmi:connected == true"
 				},
 				{
 					"id": "libraryListView",
@@ -1065,6 +1091,13 @@
 					"name": "Database Browser",
 					"visibility": "collapsed",
 					"when": "code-for-ibmi:connected == true"
+				}
+			],
+			"ibmi-search": [
+				{
+					"id": "searchView",
+					"name": "Results",
+					"when": "code-for-ibmi:searchViewVisable == true"
 				}
 			]
 		},
@@ -1154,6 +1187,11 @@
 					"command": "code-for-ibmi.refreshDatabaseBrowser",
 					"group": "navigation",
 					"when": "view == databaseBrowser"
+				},
+				{
+					"command": "code-for-ibmi.closeSearchView",
+					"group": "navigation",
+					"when": "view == searchView"
 				}
 			],
 			"view/item/context": [
@@ -1354,6 +1392,7 @@
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"mocha": "^8.2.1",
+		"semver": "^7.3.5",
 		"typescript": "^4.1.3",
 		"vscode-test": "^1.5.0",
 		"webpack": "^5.24.3",
@@ -1362,6 +1401,7 @@
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.6.3",
 		"csv-parse": "^4.15.1",
+		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1",

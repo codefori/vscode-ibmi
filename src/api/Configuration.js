@@ -74,6 +74,9 @@ module.exports = class Configuration {
     /** @type {boolean} */
     this.setDeviceNameFor5250 = (base.setDeviceNameFor5250 === true);
 
+    /** @type {string} */
+    this.connectringStringFor5250 = base.connectringStringFor5250 || `localhost`;
+
     /** @type {boolean} */
     this.autoSaveBeforeAction = (base.autoSaveBeforeAction === true);
 
