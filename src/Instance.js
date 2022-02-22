@@ -11,7 +11,6 @@ const Storage = require(`./api/Storage`);
 const Terminal = require(`./api/terminal`);
 const Deployment = require(`./api/Deployment`);
 
-const Disposable = require(`./api/Disposable`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
 
 const searchView = require(`./views/searchView`);
@@ -218,11 +217,9 @@ module.exports = class Instance {
         //********* Library list view */
 
         context.subscriptions.push(
-          Disposable(`libraryListView`, 
-            vscode.window.registerTreeDataProvider(
-              `libraryListView`,
-              new libraryListView(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `libraryListView`,
+            new libraryListView(context)
           )
         );
 
@@ -247,51 +244,41 @@ module.exports = class Instance {
         }
 
         context.subscriptions.push(
-          Disposable(`member`,
-            //@ts-ignore
-            vscode.workspace.registerFileSystemProvider(`member`, qsysFs, { 
-              isCaseSensitive: false
-            })
-          )
+          //@ts-ignore
+          vscode.workspace.registerFileSystemProvider(`member`, qsysFs, { 
+            isCaseSensitive: false
+          })
         );
 
         //********* IFS Browser */
 
         context.subscriptions.push(
-          Disposable(`ifsBrowser`,
-            vscode.window.registerTreeDataProvider(
-              `ifsBrowser`,
-              new ifsBrowser(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `ifsBrowser`,
+            new ifsBrowser(context)
           )
         );
   
         context.subscriptions.push(
-          Disposable(`streamfile`,
-            //@ts-ignore
-            vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, { 
-              isCaseSensitive: false
-            })
-          )
+          //@ts-ignore
+          vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, { 
+            isCaseSensitive: false
+          })
         );
 
         //********* Object Browser */
         
         context.subscriptions.push(
-          Disposable(`objectBrowser`,
-            vscode.window.registerTreeDataProvider(
-              `objectBrowser`,
-              new objectBrowser(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `objectBrowser`,
+            new objectBrowser(context)
           )
         );
         
         context.subscriptions.push(
-          Disposable(`databaseBrowser`, 
-            vscode.window.registerTreeDataProvider(
-              `databaseBrowser`,
-              new databaseBrowser(context)
-            )
+          vscode.window.registerTreeDataProvider(
+            `databaseBrowser`,
+            new databaseBrowser(context)
           )
         );
 
@@ -300,11 +287,9 @@ module.exports = class Instance {
         searchViewContext = new searchView(context);
 
         context.subscriptions.push(
-          Disposable(`libraryListView`, 
-            vscode.window.registerTreeDataProvider(
-              `searchView`,
-              searchViewContext
-            )
+          vscode.window.registerTreeDataProvider(
+            `searchView`,
+            searchViewContext
           )
         );
 
