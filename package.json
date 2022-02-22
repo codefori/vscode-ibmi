@@ -1057,6 +1057,11 @@
 					"when": "code-for-ibmi:connected == false"
 				},
 				{
+					"id": "helpView",
+					"name": "Help and Support",
+					"when": "code-for-ibmi:connected == true"
+				},
+				{
 					"id": "libraryListView",
 					"name": "User Library List",
 					"when": "code-for-ibmi:connected == true"
