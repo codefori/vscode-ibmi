@@ -138,7 +138,7 @@ module.exports = class IBMiContent {
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} mbr 
-   * @param {string} content 
+   * @param {string|Uint8Array} content 
    */
   async uploadMemberContent(asp, lib, spf, mbr, content) {
     if (!asp) asp = this.ibmi.config.sourceASP;

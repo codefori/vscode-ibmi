@@ -5,6 +5,7 @@ const vscode = require(`vscode`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
+const IBMiContent = require(`./IBMiContent`);
 
 const ignore = require(`ignore`).default;
 
@@ -49,8 +50,15 @@ module.exports = class Deployment {
        * @returns {Promise<{false|{workspace: number}}>}
        */
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, async (workspaceIndex) => {
+
+        /** @type {IBMi} */
+        const connection = instance.getConnection();
+
         /** @type {Storage} */
         const storage = instance.getStorage();
+
+        /** @type {IBMiContent} */
+        const content = instance.getContent();
         
         let folder;
 
@@ -77,9 +85,13 @@ module.exports = class Deployment {
               /** @type {Configuration} */
               const config = instance.getConfig();
 
-              if (config.homeDirectory !== remotePath) {
-                await config.set(`homeDirectory`, remotePath);
-                vscode.window.showInformationMessage(`Home directory set to ${remotePath} for deployment.`);
+              const isIFS = remotePath.startsWith(`/`);
+
+              if (isIFS) {
+                if (config.homeDirectory !== remotePath) {
+                  await config.set(`homeDirectory`, remotePath);
+                  vscode.window.showInformationMessage(`Home directory set to ${remotePath} for deployment.`);
+                }
               }
 
               const client = ibmi.client;
@@ -168,39 +180,109 @@ module.exports = class Deployment {
                   title: `Deploying to ${folder.name}`,
                 }, async (progress) => {
                   progress.report({ message: `Deploying to ${folder.name}` });
-                  try {
-                    await client.putDirectory(folder.uri.fsPath, remotePath, {
-                      recursive: true,
-                      concurrency: 5,
-                      tick: (localPath, remotePath, error) => {
-                        if (error) {
-                          progress.report({ message: `Failed to deploy ${localPath}` });
-                          this.deploymentLog.appendLine(`FAILED: ${localPath} -> ${remotePath}: ${error.message}`);
-                        } else {
-                          progress.report({ message: `Deployed ${localPath}` });
-                          this.deploymentLog.appendLine(`SUCCESS: ${localPath} -> ${remotePath}`);
+                  if (isIFS) {
+                    try {
+                      await client.putDirectory(folder.uri.fsPath, remotePath, {
+                        recursive: true,
+                        concurrency: 5,
+                        tick: (localPath, remotePath, error) => {
+                          if (error) {
+                            progress.report({ message: `Failed to deploy ${localPath}` });
+                            this.deploymentLog.appendLine(`FAILED: ${localPath} -> ${remotePath}: ${error.message}`);
+                          } else {
+                            progress.report({ message: `Deployed ${localPath}` });
+                            this.deploymentLog.appendLine(`SUCCESS: ${localPath} -> ${remotePath}`);
+                          }
+                        },
+                        validate: (localPath, remotePath) => {
+                          if (ignoreRules) {
+                            const relative = path.relative(folder.uri.fsPath, localPath);
+                            return !ignoreRules.ignores(relative);
+                          }
+
+                          return true;
                         }
-                      },
-                      validate: (localPath, remotePath) => {
+                      });
+
+                      progress.report({ message: `Deployment finished.` });
+                      this.deploymentLog.appendLine(`Deployment finished.`);
+
+                      return true;
+                    } catch (e) {
+                      progress.report({ message: `Deployment failed.` });
+                      this.deploymentLog.appendLine(`Deployment failed`);
+                      this.deploymentLog.appendLine(e);
+
+                      return false;
+                    }
+                  } else {
+                    // Upload/write to QSYS
+                    const uploads = await vscode.workspace.findFiles(`**`, ``);
+
+                    /** @type {string[]} */
+                    const sourceFilesCreated = [];
+
+                    let index = -1;
+
+                    for (const uri of uploads) {
+                      const relative = path.relative(folder.uri.fsPath, uri.fsPath);
+                      const pathParts = relative.toUpperCase().split(path.sep);
+                      const baseInfo = path.parse(relative);
+
+                      index += 1;
+
+                      // directory / file.ext
+                      if (pathParts.length === 2 && pathParts[0].match(/^[A-Z]/i)) {
                         if (ignoreRules) {
-                          const relative = path.relative(folder.uri.fsPath, localPath);
-                          return !ignoreRules.ignores(relative);
+                          if (ignoreRules.ignores(relative)) {
+                            // Skip because it's part of the .gitignore
+                            continue;
+                          }
                         }
 
-                        return true;
+                        if (baseInfo.ext.length > 1) {
+
+                          progress.report({ message: `Deploying ${relative} (${index + 1}/${uploads.length})` });
+
+                          if (!sourceFilesCreated.includes(pathParts[0])) {
+                            sourceFilesCreated.push(pathParts[0]);
+                            try {
+                              await connection.remoteCommand(`CRTSRCPF FILE(${remotePath}/${pathParts[0]}) RCDLEN(112)`);
+                            } catch (e) {
+                            // We likely don't care that it fails.
+                            }
+                          }
+
+                          try {
+                            await connection.remoteCommand(`ADDPFM FILE(${remotePath}/${pathParts[0]}) MBR(${baseInfo.name}) SRCTYPE(${baseInfo.ext.substring(1)})`);
+                          } catch (e) {
+                            // We likely don't care that it fails. It might already exist?
+                          }
+
+                          try {
+                            const fileContent = await vscode.workspace.fs.readFile(uri);
+                            await content.uploadMemberContent(undefined, remotePath, pathParts[0], baseInfo.name, fileContent);
+
+                            progress.report({ message: `Deployed ${relative}` });
+                            this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`,`)}`);
+
+                          } catch (error) {
+                            // Failed to upload a file. Fail deploy.
+                            progress.report({ message: `Failed to deploy ${relative}` });
+                            this.deploymentLog.appendLine(`FAILED: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`,`)}: ${error.message}`);
+                            return false;
+                          }
+                        }
+                      } else {
+                        // Bad extension
                       }
-                    });
+                    }
 
                     progress.report({ message: `Deployment finished.` });
                     this.deploymentLog.appendLine(`Deployment finished.`);
 
+                    // All good uploading!
                     return true;
-                  } catch (e) {
-                    progress.report({ message: `Deployment failed.` });
-                    this.deploymentLog.appendLine(`Deployment failed`);
-                    this.deploymentLog.appendLine(e);
-
-                    return false;
                   }
                 });
 
@@ -221,19 +303,20 @@ module.exports = class Deployment {
               }
             }
           } else {
-            vscode.window.showErrorMessage(`Chosen folder (${folder.uri.fsPath}) is not configured for deployment.`);
+            vscode.window.showErrorMessage(`Chosen location (${folder.uri.fsPath}) is not configured for deployment.`);
           }
         } else {
-          vscode.window.showErrorMessage(`No folder selected for deployment.`);
+          vscode.window.showErrorMessage(`No location selected for deployment.`);
         }
 
         return false;
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.setDeployDirectory`, async (directory) => {
+      vscode.commands.registerCommand(`code-for-ibmi.setDeployLocation`, async (node) => {
         let path;
-        if (directory) {
-          path = directory.path;
+        if (node) {
+          // Directory or filter can be chosen
+          path = node.path || node.library;
         } else {
           path = await vscode.window.showInputBox({
             prompt: `Enter IFS directory to deploy to`,
@@ -251,7 +334,7 @@ module.exports = class Deployment {
             existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
             await storage.set(DEPLOYMENT_KEY, existingPaths);
 
-            vscode.window.showInformationMessage(`Deployment directory set to ${path}`, `Deploy now`).then(async (choice) => {
+            vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`).then(async (choice) => {
               if (choice === `Deploy now`) {
                 vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index);
               }
@@ -270,7 +353,7 @@ module.exports = class Deployment {
         return workspaces[0];
       } else {
         const chosen = await vscode.window.showQuickPick(workspaces.map(dir => dir.name), {
-          placeHolder: `Select workspace to deploy to`
+          placeHolder: `Select workspace to deploy`
         });
 
         if (chosen) {

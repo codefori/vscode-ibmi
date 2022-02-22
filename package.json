@@ -925,8 +925,8 @@
 				"icon": "$(cloud-upload)"
 			},
 			{
-				"command": "code-for-ibmi.setDeployDirectory",
-				"title": "Deploy Workspace to directory",
+				"command": "code-for-ibmi.setDeployLocation",
+				"title": "Set Deploy Workspace Location",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)"
 			},
@@ -1343,8 +1343,13 @@
 					"group": "3_ifsTransfer@2"
 				},
 				{
-					"command": "code-for-ibmi.setDeployDirectory",
+					"command": "code-for-ibmi.setDeployLocation",
 					"when": "view == ifsBrowser && viewItem == directory && code-for-ibmi:workspace == true",
+					"group": "3_ifsTransfer@3"
+				},
+				{
+					"command": "code-for-ibmi.setDeployLocation",
+					"when": "view == objectBrowser && viewItem == filter && code-for-ibmi:workspace == true",
 					"group": "3_ifsTransfer@3"
 				},
 				{
