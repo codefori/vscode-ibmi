@@ -62,6 +62,9 @@ module.exports = class Deployment {
         
         let folder;
 
+        /** @type {string[]} */
+        const sourceFilesCreated = [];
+
         if (workspaceIndex) {
           folder = vscode.workspace.workspaceFolders.find(dir => dir.index === workspaceIndex);
         } else {
@@ -119,7 +122,8 @@ module.exports = class Deployment {
                         const remote = path.posix.join(remotePath, relative);
                         return {
                           local: change.uri._fsPath,
-                          remote: remote
+                          remote: remote,
+                          uri: change.uri
                         };
                       });
                     
@@ -128,9 +132,51 @@ module.exports = class Deployment {
                       vscode.window.showInformationMessage(`Deploying staged changes (${uploads.length}) to ${remotePath}`);
 
                       try {
-                        await client.putFiles(uploads, {
-                          concurrency: 5
-                        });
+                        if (isIFS) {
+                          await client.putFiles(uploads, {
+                            concurrency: 5
+                          });
+                        } else {
+                          // Upload changes to QSYS
+                          const uploadUris = uploads.map(upload => upload.uri);
+                          let index = 0;
+
+                          for (const uri of uploadUris) {
+                            const relative = path.relative(folder.uri.fsPath, uri.fsPath);
+                            const pathParts = relative.toUpperCase().split(path.sep);
+                            const baseInfo = path.parse(relative);
+      
+                            index += 1;
+      
+                            // directory / file.ext
+                            if (pathParts.length === 2 && pathParts[0].match(/^[A-Z]/i)) {
+                              if (baseInfo.ext.length > 1) {
+
+                                if (!sourceFilesCreated.includes(pathParts[0])) {
+                                  sourceFilesCreated.push(pathParts[0]);
+                                  try {
+                                    await connection.remoteCommand(`CRTSRCPF FILE(${remotePath}/${pathParts[0]}) RCDLEN(112)`);
+                                  } catch (e) {
+                                  // We likely don't care that it fails.
+                                  }
+                                }
+      
+                                try {
+                                  await connection.remoteCommand(`ADDPFM FILE(${remotePath}/${pathParts[0]}) MBR(${baseInfo.name}) SRCTYPE(${baseInfo.ext.substring(1)})`);
+                                } catch (e) {
+                                  // We likely don't care that it fails. It might already exist?
+                                }
+      
+                                const fileContent = await vscode.workspace.fs.readFile(uri);
+                                await content.uploadMemberContent(undefined, remotePath, pathParts[0], baseInfo.name, fileContent);
+    
+                                this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`,`)}`);
+                              }
+                            } else {
+                              // Bad extension
+                            }
+                          }
+                        }
                         this.button.text = BUTTON_BASE;
                         this.deploymentLog.appendLine(`Deployment finished.`);
                         vscode.window.showInformationMessage(`Deployment finished.`);
@@ -218,9 +264,6 @@ module.exports = class Deployment {
                   } else {
                     // Upload/write to QSYS
                     const uploads = await vscode.workspace.findFiles(`**`, ``);
-
-                    /** @type {string[]} */
-                    const sourceFilesCreated = [];
 
                     let index = -1;
 
