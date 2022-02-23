@@ -176,8 +176,6 @@ module.exports = class IBMiContent {
 
     let output;
 
-    statement = statement.replace(/"/g, `\\"`);
-
     if (QZDFMDB2) {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
@@ -185,7 +183,14 @@ module.exports = class IBMiContent {
       // We join all new lines together
       //statement = statement.replace(/\n/g, ` `);
 
-      output = await this.ibmi.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 1)
+      output = await this.ibmi.paseCommand(
+        `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, 
+        undefined, 
+        1, 
+        {
+          stdin: statement
+        }
+      )
 
       if (typeof output === `object`) {
         return Tools.db2Parse(output.stdout);

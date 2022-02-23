@@ -432,7 +432,9 @@ module.exports = class IBMi {
           //not have to provide the ASP in the settings.
           try {
             statement = `SELECT * FROM QSYS2.ASP_INFO`;
-            output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
+            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, null, 0, {
+              stdin: statement
+            });
 
             if (typeof output === `string`) {
               const rows = Tools.db2Parse(output);
@@ -457,7 +459,9 @@ module.exports = class IBMi {
           // don't work without it!!!
           try {
             statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
-            output = await this.paseCommand(`echo "${statement}" | LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`);
+            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, null, 0, {
+              stdin: statement
+            });
 
             if (typeof output === `string`) {
               const rows = Tools.db2Parse(output);
@@ -543,7 +547,7 @@ module.exports = class IBMi {
    * @param {string|string[]} command 
    * @param {string} [directory] 
    * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
-   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void}} [callbacks]
+   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string}} [callbacks]
    */
   qshCommand(command, directory = this.config.homeDirectory, returnType = 0, callbacks = {}) {
 
@@ -551,12 +555,9 @@ module.exports = class IBMi {
       command = command.join(`;`);
     }
 
-    command = command.replace(/#/g, `\\#`);
-    command = command.replace(/"/g, `\\"`);
+    callbacks.stdin = command;
 
-    command = `echo "` + command + `" | /QOpenSys/usr/bin/qsh`;
-
-    return this.paseCommand(command, directory, returnType, callbacks);
+    return this.paseCommand(`/QOpenSys/usr/bin/qsh`, directory, returnType, callbacks);
   }
 
   /**
@@ -564,17 +565,18 @@ module.exports = class IBMi {
    * @param {string} command 
    * @param {null|string} [directory] If null/not passed, will default to home directory
    * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
-   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void}} [callbacks]
+   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string}} [standardIO]
    * @returns {Promise<string|{code: number, stdout: string, stderr: string}>}
    */
-  async paseCommand(command, directory = this.config.homeDirectory, returnType = 0, callbacks = {}) {
-    command = command.replace(/\$/g, `\\$`);
-
+  async paseCommand(command, directory = this.config.homeDirectory, returnType = 0, standardIO = {}) {
     this.outputChannel.append(`${directory}: ${command}\n`);
+    if (standardIO && standardIO.stdin) {
+      this.outputChannel.append(`${standardIO.stdin}\n`);
+    }
 
     const result = await this.client.execCommand(command, {
       cwd: directory,
-      ...callbacks
+      ...standardIO
     });
 
     this.outputChannel.append(JSON.stringify(result, null, 4) + `\n`);
