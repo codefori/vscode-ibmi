@@ -246,7 +246,7 @@ module.exports = class CompileTools {
         }
 
         let blank, asp, lib, file, fullName;
-        let basename, name, ext;
+        let basename, name, ext, parent;
 
         switch (action.type) {
         case `member`:
@@ -292,6 +292,7 @@ module.exports = class CompileTools {
           basename = path.posix.basename(uri.path);
           name = basename.substring(0, basename.lastIndexOf(`.`));
           ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
+          parent = path.parse(path.parse(uri.path).dir).base;
 
           evfeventInfo = {
             ...evfeventInfo,
@@ -339,6 +340,8 @@ module.exports = class CompileTools {
             command = command.replace(new RegExp(`&FULLPATH`, `g`), fullName);
             break;
           }
+
+          command = command.replace(new RegExp(`&PARENT`, `g`), parent);
 
           command = command.replace(new RegExp(`&BASENAME`, `g`), basename);
 
