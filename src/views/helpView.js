@@ -33,6 +33,7 @@ module.exports = class helpView {
     const items = [
       new HelpItem(`book`, `Get started`, `https://halcyon-tech.github.io/vscode-ibmi/#/`),
       new HelpItem(`star`, `Become a Patron`, `https://github.com/sponsors/worksofliam`),
+      new HelpItem(`output`, `Open official Forum`, `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
       new HelpItem(`eye`, `Review Issues`, `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
       new HelpItem(`bug`, `Report an Issue`, `https://github.com/halcyon-tech/vscode-ibmi/issues/new?body=${encodeURIComponent(issueUrl)}`),
       new HelpItem(`globe`, `Get Premium Support`, `https://github.com/sponsors/worksofliam`)
