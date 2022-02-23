@@ -302,6 +302,7 @@ module.exports = class CompileTools {
           };
 
           let relativePath;
+          let fullPath
 
           switch (action.type) {
           case `file`:
@@ -325,15 +326,17 @@ module.exports = class CompileTools {
               command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
   
               // We need to make sure the remote path is posix
-              const remoteDeploy = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
-              command = command.replace(new RegExp(`&FULLPATH`, `g`), remoteDeploy);
+              fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
+              command = command.replace(new RegExp(`&FULLPATH`, `g`), fullPath);
             }
             break;
 
           case `streamfile`:
             relativePath = path.relative(config.homeDirectory, uri.fsPath);
             command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
-            command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
+
+            fullName = uri.path;
+            command = command.replace(new RegExp(`&FULLPATH`, `g`), fullName);
             break;
           }
 
