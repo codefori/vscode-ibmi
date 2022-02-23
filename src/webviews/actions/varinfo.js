@@ -18,6 +18,7 @@ module.exports = {
   'Streamfile': [
     {name: `&amp;FULLPATH`, text: `Full path of the file on the remote system`},
     {name: `&amp;RELATIVEPATH`, text: `Relative path of the streamfile from the home directory or workspace`},
+    {name: `&amp;PARENT`, text: `Name of the parent directory or source file`},
     {name: `&amp;BASENAME`, text: `Name of the file, including the extension`},
     {name: `&amp;NAME`, text: `Name of the file (<code>&amp;NAMEL</code> for lowercase)`},
     {name: `&amp;EXT`, text: `Extension of the file (<code>&amp;EXTL</code> for lowercase)`},
