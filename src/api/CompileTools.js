@@ -301,29 +301,42 @@ module.exports = class CompileTools {
             ext
           };
 
+          let relativePath;
+          let fullPath
+
           switch (action.type) {
           case `file`:
             command = command.replace(new RegExp(`&LOCALPATH`, `g`), uri.fsPath);
 
-            if (evfeventInfo.workspace) {
-              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
-              const currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace];
-              if (currentWorkspace) {
-                const workspacePath = currentWorkspace.uri.fsPath;
-                
-                const relativePath = path.relative(workspacePath, uri.fsPath);
-                command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
+            let baseDir = config.homeDirectory;
+            let currentWorkspace;
 
-                // We need to make sure the remote path is posix
-                const remoteDeploy = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
-                command = command.replace(new RegExp(`&FULLPATH`, `g`), remoteDeploy);
-              }
+            if (evfeventInfo.workspace !== undefined) {
+              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
+              currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace];
+
+            } else {
+              currentWorkspace = vscode.workspace.workspaceFolders[0];
+            }
+
+            if (currentWorkspace) {
+              baseDir = currentWorkspace.uri.fsPath;
+              
+              relativePath = path.relative(baseDir, uri.fsPath);
+              command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
+  
+              // We need to make sure the remote path is posix
+              fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
+              command = command.replace(new RegExp(`&FULLPATH`, `g`), fullPath);
             }
             break;
+
           case `streamfile`:
-            const relativePath = path.relative(config.homeDirectory, uri.fsPath);
+            relativePath = path.relative(config.homeDirectory, uri.fsPath);
             command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
-            command = command.replace(new RegExp(`&FULLPATH`, `g`), uri.path);
+
+            fullName = uri.path;
+            command = command.replace(new RegExp(`&FULLPATH`, `g`), fullName);
             break;
           }
 
