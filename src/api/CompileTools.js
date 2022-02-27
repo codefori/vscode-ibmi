@@ -449,7 +449,7 @@ module.exports = class CompileTools {
   /**
    * Execute command
    * @param {*} instance
-   * @param {{environment?: "ile"|"qsh"|"pase", command: string}} options 
+   * @param {{environment?: "ile"|"qsh"|"pase", command: string, cwd?: string}} options 
    * @returns {Promise<{stdout: string, stderr: string, code?: number, command: string}|null>}
    */
   static async runCommand(instance, options) {
@@ -459,6 +459,7 @@ module.exports = class CompileTools {
     /** @type {Configuration} */
     const config = instance.getConfig();
     
+    const cwd = options.cwd;
     let commandString = options.command;
     let commandResult;
 
@@ -504,7 +505,7 @@ module.exports = class CompileTools {
 
       switch (options.environment) {
       case `pase`:
-        commandResult = await connection.paseCommand(commands.join(` && `), undefined, 1, callbacks);
+        commandResult = await connection.paseCommand(commands.join(` && `), cwd, 1, callbacks);
         break;
 
       case `qsh`:
@@ -513,7 +514,7 @@ module.exports = class CompileTools {
           `liblist -c ` + config.currentLibrary,
           `liblist -a ` + libl.join(` `),
           ...commands,
-        ], undefined, 1, callbacks);
+        ], cwd, 1, callbacks);
         break;
 
       case `ile`:
@@ -525,7 +526,7 @@ module.exports = class CompileTools {
           //...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}`), -- WORKING
           //...commands.map(command => `${`if [[ $? -eq 0 ]]; then system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}; fi`),
           ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
-        ], undefined, 1, callbacks);
+        ], cwd, 1, callbacks);
         break;
       }
 

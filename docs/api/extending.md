@@ -57,8 +57,9 @@ Code for IBM i ships a command that can be used by an extension to execute a rem
 
 It has a parameter which is an object with two properties:
 
-* `environment: "ile"|"qsh"|"pase"` which describes what environment the command will be executed.
+* `environment?: "ile"|"qsh"|"pase"` which describes what environment the command will be executed. Is optional and defaults to `ile`
 * `command: string` which will have the command. You can also use [Promptable fields](https://halcyon-tech.github.io/vscode-ibmi/#/?id=prompted).
+* `cwd?: string` which will set this as the working directory for the command when it is executed. Is optional and defaults to the users working directory in Code for IBM i.
 
 When executing a command in the `ile` or `qsh` environment, it will use the library list from the current connection.
 
