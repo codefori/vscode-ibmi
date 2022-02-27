@@ -67,7 +67,7 @@ module.exports = class ColorProvider {
               });
 
               hiddenDecorations.push({
-                range: new vscode.Range(lineIndex, byteIndex, lineIndex, byteIndex+definition.bytes.length-1),
+                range: new vscode.Range(lineIndex, byteIndex, lineIndex, byteIndex+1),
                 renderOptions: {
                   after: {
                     contentText: ``.padEnd(definition.bytes.length),
