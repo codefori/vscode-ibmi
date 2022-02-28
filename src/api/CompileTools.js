@@ -527,12 +527,16 @@ module.exports = class CompileTools {
 
       case `ile`:
       default:
+        // escape $ and # in commands
+
         commandResult = await connection.sendQsh({
           command: [
             `liblist -d ` + connection.defaultUserLibraries.join(` `),
             `liblist -c ` + config.currentLibrary,
             `liblist -a ` + libl.join(` `),
-            ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
+            ...commands.map(command => 
+              `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
+            ),
           ],
           directory: cwd,
           ...callbacks
