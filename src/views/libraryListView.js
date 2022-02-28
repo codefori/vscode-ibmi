@@ -246,10 +246,12 @@ module.exports = class libraryListProvider {
     });
 
     /** @type {object} */
-    const result = await connection.qshCommand([
-      `liblist -d ` + connection.defaultUserLibraries.join(` `),
-      ...newLibl.map(lib => `liblist -a ` + lib)
-    ], undefined, 1);
+    const result = await connection.sendQsh({
+      command: [
+        `liblist -d ` + connection.defaultUserLibraries.join(` `),
+        ...newLibl.map(lib => `liblist -a ` + lib)
+      ]
+    });
 
     if (result.stderr) {
       const lines = result.stderr.split(`\n`);

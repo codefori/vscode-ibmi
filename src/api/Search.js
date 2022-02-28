@@ -21,7 +21,9 @@ module.exports = class Search {
 
     const asp = ((config.sourceASP && config.sourceASP.length > 0) ? `/${config.sourceASP}` : ``);
 
-    const result = await connection.qshCommand(`/usr/bin/grep -in "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`, undefined, 1);
+    const result = await connection.sendQsh({
+      command: `/usr/bin/grep -in "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`
+    });
 
     //@ts-ignore stderr does exist.
     if (result.stderr) throw new Error(result.stderr);
