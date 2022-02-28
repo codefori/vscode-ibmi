@@ -121,13 +121,14 @@ module.exports = class IBMi {
 
         let defaultHomeDir;
 
-        let commandResult = await this.paseCommand(`pwd`, `.`, 1);
-        if (typeof commandResult === `object`) {
-          if (commandResult.stderr) {
-            defaultHomeDir = undefined;
-          } else {
-            defaultHomeDir = commandResult.stdout.trim();
-          }
+        const commandResult = await this.sendCommand({
+          command: `pwd`,
+          directory: `.`
+        });
+        if (commandResult.stderr) {
+          defaultHomeDir = undefined;
+        } else {
+          defaultHomeDir = commandResult.stdout.trim();
         }
 
         //Get home directory if one isn't set
@@ -139,15 +140,15 @@ module.exports = class IBMi {
 
           } else {
             //If they have one set, check it exists.
-            let lsResult = await this.paseCommand(`pwd`, undefined, 1);
-            if (typeof lsResult === `object`) {
-              if (lsResult.stderr) {
-                //If it doesn't exist, reset it
-                this.config.set(`homeDirectory`, defaultHomeDir);
-                progress.report({
-                  message: `Configured home directory reset to ${defaultHomeDir}.`
-                });
-              }
+            const pwdResult = await this.sendCommand({
+              command: `pwd`
+            });
+            if (pwdResult.stderr) {
+              //If it doesn't exist, reset it
+              this.config.set(`homeDirectory`, defaultHomeDir);
+              progress.report({
+                message: `Configured home directory reset to ${defaultHomeDir}.`
+              });
             }
           }
         }
@@ -169,30 +170,36 @@ module.exports = class IBMi {
         //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
         let currentLibrary = `QGPL`;
         this.defaultUserLibraries = [];
-        let libraryListString = await this.qshCommand(`liblist`);
-        if (typeof libraryListString === `string` && libraryListString !== ``) {
-          const libraryList = libraryListString.split(`\n`);
 
-          let lib, type;
-          for (const line of libraryList) {
-            lib = line.substr(0, 10).trim();
-            type = line.substr(12);
+        const liblResult = await this.sendQsh({
+          command: `liblist`
+        });
+        if (liblResult.code === 0) {
+          const libraryListString = liblResult.stdout;
+          if (libraryListString !== ``) {
+            const libraryList = libraryListString.split(`\n`);
 
-            switch (type) {
-            case `USR`:
-              this.defaultUserLibraries.push(lib);
-              break;
+            let lib, type;
+            for (const line of libraryList) {
+              lib = line.substr(0, 10).trim();
+              type = line.substr(12);
+
+              switch (type) {
+              case `USR`:
+                this.defaultUserLibraries.push(lib);
+                break;
                 
-            case `CUR`:
-              currentLibrary = lib;
-              break;
+              case `CUR`:
+                currentLibrary = lib;
+                break;
+              }
             }
-          }
 
-          //If this is the first time the config is made, then these arrays will be empty
-          if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
-          if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
-          if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
+            //If this is the first time the config is made, then these arrays will be empty
+            if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
+            if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
+            if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
+          }
         }
 
         progress.report({
@@ -252,22 +259,19 @@ module.exports = class IBMi {
 
         let tempDirSet = false;
         // Next, we need to check if the temp directory exists
-        let result = await this.paseCommand(
-          `[ -d "${this.config.tempDir}" ]`,
-          undefined,
-          1
-        );
-        if (typeof result === `object` && !result.code) {
+        let result = await this.sendCommand({
+          command: `[ -d "${this.config.tempDir}" ]`
+        });
+
+        if (result.code === 0) {
           // Directory exists
           tempDirSet = true;
         } else {
           // Directory does not exist, try to create it
-          let result = await this.paseCommand(
-            `mkdir -p ${this.config.tempDir}`,
-            undefined,
-            1
-          );
-          if(typeof result === `object` && !result.code) {
+          let result = await this.sendCommand({
+            command: `mkdir -p ${this.config.tempDir}`
+          });
+          if(result.code === 0) {
             // Directory created
             tempDirSet = true;
           } else {
@@ -276,7 +280,7 @@ module.exports = class IBMi {
         }
         
         if (!tempDirSet) {
-          await this.config.set(`tempDir`,`/tmp`);
+          await this.config.set(`tempDir`, `/tmp`);
         }
 
         if (tempLibrarySet && this.config.autoClearTempData) {
@@ -301,9 +305,9 @@ module.exports = class IBMi {
               }
             });
 
-          this.paseCommand(
-            `rm -f ${path.posix.join(this.config.tempDir,`vscodetemp*`)}`
-          )
+          this.sendCommand({
+            command: `rm -f ${path.posix.join(this.config.tempDir,`vscodetemp*`)}`
+          })
             .then(result => {
               // All good!
             })
@@ -543,21 +547,27 @@ module.exports = class IBMi {
   }
 
   /**
-   * 
-   * @param {string|string[]} command 
-   * @param {string} [directory] 
-   * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
-   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string}} [callbacks]
+   * @param {{
+   *   command: string|string[], 
+   *   directory?: string,
+   *   onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string
+   * }} options
    */
-  qshCommand(command, directory = this.config.homeDirectory, returnType = 0, callbacks = {}) {
+  async sendQsh(options) {
+    let qshCommand;
 
-    if (Array.isArray(command)) {
-      command = command.join(`;`);
+    if (Array.isArray(options.command)) {
+      qshCommand = options.command.join(`;`);
+    } else {
+      qshCommand = options.command;
     }
 
-    callbacks.stdin = command;
+    options.stdin = qshCommand;
 
-    return this.paseCommand(`/QOpenSys/usr/bin/qsh`, directory, returnType, callbacks);
+    return this.sendCommand({
+      ...options,
+      command: `/QOpenSys/usr/bin/qsh`
+    });
   }
 
   /**
@@ -567,20 +577,14 @@ module.exports = class IBMi {
    * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
    * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string}} [standardIO]
    * @returns {Promise<string|{code: number, stdout: string, stderr: string}>}
+   * @deprecated Use sendCommand instead
    */
   async paseCommand(command, directory = this.config.homeDirectory, returnType = 0, standardIO = {}) {
-    this.outputChannel.append(`${directory}: ${command}\n`);
-    if (standardIO && standardIO.stdin) {
-      this.outputChannel.append(`${standardIO.stdin}\n`);
-    }
-
-    const result = await this.client.execCommand(command, {
-      cwd: directory,
+    const result = await this.sendCommand({
+      command,
+      directory,
       ...standardIO
-    });
-
-    this.outputChannel.append(JSON.stringify(result, null, 4) + `\n`);
-    this.outputChannel.append(`\n`);
+    })
 
     if (returnType === 0) {
       if (result.code === 0 || result.code === null) return Promise.resolve(result.stdout);
@@ -588,6 +592,38 @@ module.exports = class IBMi {
     } else {
       return Promise.resolve(result);
     }
+  }
+
+  /**
+   * @param {{
+   *   command: string, 
+   *   directory?: string,
+   *   onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string
+   * }} options
+   * @returns {Promise<{code: number, stdout: string, stderr: string}>}
+   */
+  async sendCommand(options) {
+    const command = options.command;
+    const directory = options.directory || this.config.homeDirectory;
+
+    this.outputChannel.append(`${directory}: ${command}\n`);
+    if (options && options.stdin) {
+      this.outputChannel.append(`${options.stdin}\n`);
+    }
+
+    const result = await this.client.execCommand(command, {
+      cwd: directory,
+      stdin: options.stdin,
+      onStdout: options.onStdout,
+      onStderr: options.onStderr,
+    });
+
+    // Some simplification
+    if (result.code === null) result.code = 0;
+
+    this.outputChannel.append(JSON.stringify(result, null, 4) + `\n\n`);
+
+    return result;
   }
 
   /**

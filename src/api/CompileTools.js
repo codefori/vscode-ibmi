@@ -505,28 +505,38 @@ module.exports = class CompileTools {
 
       switch (options.environment) {
       case `pase`:
-        commandResult = await connection.paseCommand(commands.join(` && `), cwd, 1, callbacks);
+        commandResult = await connection.sendCommand({
+          command: commands.join(` && `), 
+          directory: cwd,
+          ...callbacks
+        });
         break;
 
       case `qsh`:
-        commandResult = await connection.qshCommand([
-          `liblist -d ` + connection.defaultUserLibraries.join(` `),
-          `liblist -c ` + config.currentLibrary,
-          `liblist -a ` + libl.join(` `),
-          ...commands,
-        ], cwd, 1, callbacks);
+        commandResult = await connection.sendQsh({
+          command: [
+            `liblist -d ` + connection.defaultUserLibraries.join(` `),
+            `liblist -c ` + config.currentLibrary,
+            `liblist -a ` + libl.join(` `),
+            ...commands,
+          ],
+          directory: cwd,
+          ...callbacks
+        });
         break;
 
       case `ile`:
       default:
-        commandResult = await connection.qshCommand([
-          `liblist -d ` + connection.defaultUserLibraries.join(` `),
-          `liblist -c ` + config.currentLibrary,
-          `liblist -a ` + libl.join(` `),
-          //...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}`), -- WORKING
-          //...commands.map(command => `${`if [[ $? -eq 0 ]]; then system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"`}; fi`),
-          ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
-        ], cwd, 1, callbacks);
+        commandResult = await connection.sendQsh({
+          command: [
+            `liblist -d ` + connection.defaultUserLibraries.join(` `),
+            `liblist -c ` + config.currentLibrary,
+            `liblist -a ` + libl.join(` `),
+            ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
+          ],
+          directory: cwd,
+          ...callbacks
+        });
         break;
       }
 
