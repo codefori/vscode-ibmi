@@ -264,7 +264,7 @@ module.exports = class CompileTools {
           }
           name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
-          ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : undefined);
+          ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : ``);
 
           evfeventInfo = {
             asp,
@@ -291,7 +291,7 @@ module.exports = class CompileTools {
         case `streamfile`:
           basename = path.posix.basename(uri.path);
           name = basename.substring(0, basename.lastIndexOf(`.`));
-          ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : undefined);
+          ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : ``);
           parent = path.parse(path.parse(uri.path).dir).base;
 
           evfeventInfo = {
