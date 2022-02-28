@@ -121,13 +121,14 @@ module.exports = class IBMi {
 
         let defaultHomeDir;
 
-        let commandResult = await this.paseCommand(`pwd`, `.`, 1);
-        if (typeof commandResult === `object`) {
-          if (commandResult.stderr) {
-            defaultHomeDir = undefined;
-          } else {
-            defaultHomeDir = commandResult.stdout.trim();
-          }
+        const commandResult = await this.sendCommand({
+          command: `pwd`,
+          directory: `.`
+        });
+        if (commandResult.stderr) {
+          defaultHomeDir = undefined;
+        } else {
+          defaultHomeDir = commandResult.stdout.trim();
         }
 
         //Get home directory if one isn't set
@@ -139,15 +140,15 @@ module.exports = class IBMi {
 
           } else {
             //If they have one set, check it exists.
-            let lsResult = await this.paseCommand(`pwd`, undefined, 1);
-            if (typeof lsResult === `object`) {
-              if (lsResult.stderr) {
-                //If it doesn't exist, reset it
-                this.config.set(`homeDirectory`, defaultHomeDir);
-                progress.report({
-                  message: `Configured home directory reset to ${defaultHomeDir}.`
-                });
-              }
+            const pwdResult = await this.sendCommand({
+              command: `pwd`
+            });
+            if (pwdResult.stderr) {
+              //If it doesn't exist, reset it
+              this.config.set(`homeDirectory`, defaultHomeDir);
+              progress.report({
+                message: `Configured home directory reset to ${defaultHomeDir}.`
+              });
             }
           }
         }
@@ -258,22 +259,19 @@ module.exports = class IBMi {
 
         let tempDirSet = false;
         // Next, we need to check if the temp directory exists
-        let result = await this.paseCommand(
-          `[ -d "${this.config.tempDir}" ]`,
-          undefined,
-          1
-        );
-        if (typeof result === `object` && !result.code) {
+        let result = await this.sendCommand({
+          command: `[ -d "${this.config.tempDir}" ]`
+        });
+
+        if (result.code === 0) {
           // Directory exists
           tempDirSet = true;
         } else {
           // Directory does not exist, try to create it
-          let result = await this.paseCommand(
-            `mkdir -p ${this.config.tempDir}`,
-            undefined,
-            1
-          );
-          if(typeof result === `object` && !result.code) {
+          let result = await this.sendCommand({
+            command: `mkdir -p ${this.config.tempDir}`
+          });
+          if(result.code === 0) {
             // Directory created
             tempDirSet = true;
           } else {
@@ -282,7 +280,7 @@ module.exports = class IBMi {
         }
         
         if (!tempDirSet) {
-          await this.config.set(`tempDir`,`/tmp`);
+          await this.config.set(`tempDir`, `/tmp`);
         }
 
         if (tempLibrarySet && this.config.autoClearTempData) {
@@ -307,9 +305,9 @@ module.exports = class IBMi {
               }
             });
 
-          this.paseCommand(
-            `rm -f ${path.posix.join(this.config.tempDir,`vscodetemp*`)}`
-          )
+          this.sendCommand({
+            command: `rm -f ${path.posix.join(this.config.tempDir,`vscodetemp*`)}`
+          })
             .then(result => {
               // All good!
             })

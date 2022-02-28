@@ -91,7 +91,6 @@ module.exports = class Search {
     const grep = connection.remoteFeatures.grep;
 
     if (grep) {
-      let standardOut = ``;
 
       term = escapeRegex(term);
       term = term.replace(/\\"/g, `\\\\"`);
@@ -104,20 +103,16 @@ module.exports = class Search {
         ignoreString = dirsToIgnore.map(dir => `--exclude-dir=${dir}`).join(` `);
       }
 
-      try {
-        //@ts-ignore
-        standardOut = await connection.paseCommand(`${grep} -inr ${ignoreString} "${term}" "${path}"`);
-      } catch (e) {
-        if (e === ``) standardOut = e //Means no results were found.
-        else throw e;
-      }
+      const grepRes = await connection.sendCommand({
+        command: `${grep} -inr ${ignoreString} "${term}" "${path}"`,
+      });
 
-      if (standardOut === ``) return [];
+      if (grepRes.code !== 0) return [];
     
       let files = {};
   
       /** @type {string[]} */ //@ts-ignore
-      const output = standardOut.split(`\n`);
+      const output = grepRes.stdout.split(`\n`);
   
       let parts, contentIndex, content;
       for (const line of output) {

@@ -174,8 +174,6 @@ module.exports = class IBMiContent {
   async runSQL(statement) {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
 
-    let output;
-
     if (QZDFMDB2) {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
@@ -183,16 +181,12 @@ module.exports = class IBMiContent {
       // We join all new lines together
       //statement = statement.replace(/\n/g, ` `);
 
-      output = await this.ibmi.paseCommand(
-        `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, 
-        undefined, 
-        1, 
-        {
-          stdin: statement
-        }
-      )
+      const output = await this.ibmi.sendCommand({
+        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+        stdin: statement,
+      })
 
-      if (typeof output === `object`) {
+      if (output.stdout) {
         return Tools.db2Parse(output.stdout);
       } else {
         throw new Error(`There was an error running the SQL statement.`);
@@ -393,12 +387,14 @@ module.exports = class IBMiContent {
    * @return {Promise<{type: "directory"|"streamfile", name: string, path: string}[]>} Resulting list
    */
   async getFileList(remotePath) {
-    const result = await this.ibmi.paseCommand(`ls -a -p "${remotePath}"`, undefined, 1);
+    const result = await this.ibmi.sendCommand({
+      command: `ls -a -p "${remotePath}"`
+    });
 
     //@ts-ignore
     const fileList = result.stdout;
 
-    if (typeof fileList === `string` && fileList !== ``) {
+    if (fileList !== ``) {
       let list = fileList.split(`\n`);
 
       //Remove current and dir up.
