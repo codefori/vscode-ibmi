@@ -645,7 +645,11 @@ class ILEObject extends vscode.TreeItem {
     this.type = type;
     this.description = text;
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.resourceUri = vscode.Uri.parse(`${library}/${name}.${type}`).with({scheme: `object`})
+
+    this.resourceUri = vscode.Uri.from({
+      scheme: `object`,
+      path: `/${library}/${name}.${type}`
+    })
   }
 }
 
@@ -658,7 +662,10 @@ class Member extends vscode.TreeItem {
     this.contextValue = `member`;
     this.description = member.text;
     this.path = path;
-    this.resourceUri = vscode.Uri.parse(path).with({scheme: `member`, path: `/${path}`});
+    this.resourceUri = vscode.Uri.from({
+      scheme: `member`,
+      path: `/${path}`
+    })
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open Member`,
