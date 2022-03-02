@@ -295,8 +295,7 @@ module.exports = class Deployment {
                           }
                         }
 
-                        if (baseInfo.ext.length > 1) {
-
+                        if (pathParts[0].length <= 10 && baseInfo.name.length <= 10 && baseInfo.ext.length > 1) {
                           progress.report({ message: `Deploying ${relative} (${index + 1}/${uploads.length})` });
 
                           if (!sourceFilesCreated.includes(pathParts[0])) {
@@ -319,14 +318,16 @@ module.exports = class Deployment {
                             await content.uploadMemberContent(undefined, remotePath, pathParts[0], baseInfo.name, fileContent);
 
                             progress.report({ message: `Deployed ${relative}` });
-                            this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`,`)}`);
+                            this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`/`)}`);
 
                           } catch (error) {
                             // Failed to upload a file. Fail deploy.
                             progress.report({ message: `Failed to deploy ${relative}` });
-                            this.deploymentLog.appendLine(`FAILED: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`,`)}: ${error.message}`);
+                            this.deploymentLog.appendLine(`FAILED: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`/`)}: ${error}`);
                             return false;
                           }
+                        } else {
+                          this.deploymentLog.appendLine(`SKIPPED: ${relative}}`);
                         }
                       } else {
                         // Bad extension
