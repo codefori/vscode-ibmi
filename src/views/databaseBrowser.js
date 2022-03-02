@@ -358,7 +358,7 @@ function parseStatement(editor) {
  */
 function generateTable(statement, array) {
   // Setup basics of valid HTML5 document
-  let html = `
+  let html = /*html*/`
     <!DOCTYPE html>
     <html>
     <head>
@@ -368,7 +368,6 @@ function generateTable(statement, array) {
       <meta name='viewport' content='width=device-width, initial-scale=1'>
       <style>
         body {
-          font-family: var(--vscode-editor-font-family);
           color: var(--vscode-editor-foreground);
         }
         table {
@@ -376,20 +375,27 @@ function generateTable(statement, array) {
           font-size: var(--vscode-editor-font-size);
           width: 100%;
           border-collapse: collapse;
+          margin: 25px 0;
+          font-family: sans-serif;
+          min-width: 400px;
+          <!-- box-shadow: 0 0 20px rgba(0, 0, 0, 0.15); -->
         }
         ::selection {
+          font-weight: bold;
           background-color: var(--vscode-editor-selectionBackground);
-          color: var(--vscode-editor-selectionForeground);
         }
-        container {
-          overflow-x: auto;
-          white-space: nowrap;
+        table thead tr {
+          background-color: var(--vscode-editor-selectionBackground);
+          color: var(--vscode-editor-foreground);
+          text-align: left;
         }
-        tr:nth-child(even) {
-          background-color: var(--vscode-editor-selectionHighlightBackground);
+        table th,
+        table td {
+          padding: 12px 15px;
         }
-        table thead tr th {
-          border-bottom: 2px solid var(--vscode-editor-selectionHighlightBackground);
+
+        table tbody tr {
+          border-bottom: 1px solid var(--vscode-editor-selectionBackground);
         }
       </style>
     </head>
