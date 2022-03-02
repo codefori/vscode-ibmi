@@ -1,6 +1,8 @@
 
 const vscode = require(`vscode`);
 
+const csv = require(`csv/sync`);
+
 let instance = require(`../Instance`);
 const CompileTools = require(`../api/CompileTools`);
 const Configuration = require(`../api/Configuration`);
@@ -69,16 +71,12 @@ module.exports = class databaseBrowserProvider {
               switch (statement.type) {
               case `sql`:
               case `json`:
+              case `csv`:
                 const data = await content.runSQL(statement.content);
 
                 if (data.length > 0) {
-                  if (statement.type === `json`) {
-                    const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `result.json`));
-                    const editor = await vscode.window.showTextDocument(textDoc);
-                    editor.edit(edit => {
-                      edit.insert(new vscode.Position(0, 0), JSON.stringify(data, null, 2));
-                    });
-                  } else {
+                  switch (statement.type) {
+                  case `sql`:
                     const panel = vscode.window.createWebviewPanel(
                       `databaseResult`,
                       `Database Result`,
@@ -89,7 +87,20 @@ module.exports = class databaseBrowserProvider {
                       }
                     );
                     panel.webview.html = generateTable(statement.content, data);
+                    break;
+
+                  case `csv`:
+                  case `json`:
+                    const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `result.${statement.type}`));
+                    const editor = await vscode.window.showTextDocument(textDoc);
+                    editor.edit(edit => {
+                      edit.insert(new vscode.Position(0, 0), statement.type === `csv` ? csv.stringify(data, {
+                        header: true
+                      }) : JSON.stringify(data, null, 2));
+                    });
+                    break;
                   }
+
                 } else {
                   vscode.window.showInformationMessage(`Query executed with no data returned.`);
                 }
@@ -288,7 +299,7 @@ const TABLE_ICONS = {
 
 /**
  * @param {vscode.TextEditor} editor
- * @returns {{type: "sql"|"cl"|"json", content: string}} Statement
+ * @returns {{type: "sql"|"cl"|"json"|"csv", content: string}} Statement
  */
 function parseStatement(editor) {
   const document = editor.document;
@@ -349,6 +360,7 @@ function parseStatement(editor) {
     switch (mode) {
     case `cl`:
     case `json`:
+    case `csv`:
       let lines = content.split(eol);
       let startIndex = lines.findIndex(line => line.toLowerCase().startsWith(`${mode}:`));
       lines = lines.slice(startIndex);
