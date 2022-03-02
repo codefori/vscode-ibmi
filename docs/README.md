@@ -430,10 +430,11 @@ When the user has used the right-click option, they will be asked if they want t
 
 Using the 'Deploy' button will start the deployment process. For the deployment process to run, VS Code needs to know which folder/library to deploy to and will fail if it has not been setup correctly. If the workspace has more than one folder, the user will have to select which folder they want to deploy.
 
-There are two options for deployment:
+There are three options for deployment:
 
-1. Staged Changes: This only works if the chosen workspace folder is a git repository. Code for IBM i will look at the git status to determine the staged / indexed files and only upload those.
-2. All: Will upload all files in the chosen workspace folder. Will ignore files that are part of the '.gitignore' file if it exists.
+1. Working Changes: This only works if the chosen workspace folder is a git repository. Code for IBM i will look at the git status to determine the files that have been changed since the last commit (unstaged and staged) and only uploads those files.
+2. Staged Changes: The same as the "Working Changes" option, but only uploads staged / indexed files.
+3. All: Will upload all files in the chosen workspace folder. Will ignore files that are part of the '.gitignore' file if it exists.
 
 The user can also defined Actions that are for the 'file' (local) type to run the deploy before running the Action.
 
