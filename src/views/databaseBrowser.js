@@ -355,23 +355,24 @@ function parseStatement(editor) {
 
     editor.selection = new vscode.Selection(editor.document.positionAt(statementData.start), editor.document.positionAt(statementData.end));
 
-    const mode = content.split(`:`)[0].trim().toLowerCase();
+    // Remove blank lines and comment lines
+    let lines = content.split(eol).filter(line => line.trim().length > 0 && !line.trimStart().startsWith(`--`));
 
-    switch (mode) {
-    case `cl`:
-    case `json`:
-    case `csv`:
-      let lines = content.split(eol);
-      let startIndex = lines.findIndex(line => line.toLowerCase().startsWith(`${mode}:`));
-      lines = lines.slice(startIndex);
-      lines[0] = lines[0].substring(mode.length + 1).trim();
+    lines.forEach((line, startIndex) => {
+      if (type !== `sql`) return;
+      
+      [`cl`, `json`, `csv`].forEach(mode => {
+        if (line.trim().toLowerCase().startsWith(mode + `:`)) {
+          lines = lines.slice(startIndex);
+          lines[0] = lines[0].substring(mode.length + 1).trim();
+    
+          content = lines.join(` `);
 
-      content = lines.join(` `);
-
-      //@ts-ignore We know the mode.
-      type = mode.toLowerCase();
-      break;
-    }
+          //@ts-ignore We know the type.
+          type = mode;
+        }
+      });
+    });
   }
 
   return {
