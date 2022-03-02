@@ -101,7 +101,7 @@ module.exports = class Deployment {
               this.deploymentLog.clear();
 
               let useStagedChanges = true;
-              var changeType = `staged`;
+              let changeType = `staged`;
               switch (method) {
               case `Working Changes`:
                 useStagedChanges = false;
