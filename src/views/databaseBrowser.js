@@ -68,19 +68,28 @@ module.exports = class databaseBrowserProvider {
             try {
               switch (statement.type) {
               case `sql`:
+              case `json`:
                 const data = await content.runSQL(statement.content);
 
                 if (data.length > 0) {
-                  const panel = vscode.window.createWebviewPanel(
-                    `databaseResult`,
-                    `Database Result`,
-                    vscode.ViewColumn.Active,
-                    {
-                      retainContextWhenHidden: true,
-                      enableFindWidget: true
-                    }
-                  );
-                  panel.webview.html = generateTable(statement.content, data);
+                  if (statement.type === `json`) {
+                    const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `result.json`));
+                    const editor = await vscode.window.showTextDocument(textDoc);
+                    editor.edit(edit => {
+                      edit.insert(new vscode.Position(0, 0), JSON.stringify(data, null, 2));
+                    });
+                  } else {
+                    const panel = vscode.window.createWebviewPanel(
+                      `databaseResult`,
+                      `Database Result`,
+                      vscode.ViewColumn.Active,
+                      {
+                        retainContextWhenHidden: true,
+                        enableFindWidget: true
+                      }
+                    );
+                    panel.webview.html = generateTable(statement.content, data);
+                  }
                 } else {
                   vscode.window.showInformationMessage(`Query executed with no data returned.`);
                 }
@@ -279,7 +288,7 @@ const TABLE_ICONS = {
 
 /**
  * @param {vscode.TextEditor} editor
- * @returns {{type: "sql"|"cl", content: string}} Statement
+ * @returns {{type: "sql"|"cl"|"json", content: string}} Statement
  */
 function parseStatement(editor) {
   const document = editor.document;
@@ -288,7 +297,7 @@ function parseStatement(editor) {
   let text = document.getText(editor.selection).trim();
   let content;
 
-  /** @type {"sql"|"cl"} */
+  /** @type {"sql"|"cl"|"json"} */
   let type = `sql`;
 
   if (text.length > 0) {
@@ -335,14 +344,21 @@ function parseStatement(editor) {
 
     editor.selection = new vscode.Selection(editor.document.positionAt(statementData.start), editor.document.positionAt(statementData.end));
 
-    if (content.toUpperCase().startsWith(`CL:`)) {
+    const mode = content.split(`:`)[0].trim().toLowerCase();
+
+    switch (mode) {
+    case `cl`:
+    case `json`:
       let lines = content.split(eol);
-      let startIndex = lines.findIndex(line => line.toUpperCase().startsWith(`CL:`));
+      let startIndex = lines.findIndex(line => line.toLowerCase().startsWith(`${mode}:`));
       lines = lines.slice(startIndex);
-      lines[0] = lines[0].substring(3).trim();
+      lines[0] = lines[0].substring(mode.length + 1).trim();
 
       content = lines.join(` `);
-      type = `cl`;
+
+      //@ts-ignore We know the mode.
+      type = mode.toLowerCase();
+      break;
     }
   }
 
