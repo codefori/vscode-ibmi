@@ -77,7 +77,7 @@ module.exports = class Deployment {
 
           if (remotePath) {
             const method = await vscode.window.showQuickPick(
-              [`Staged Changes`, `All`],
+              [`Working Changes`, `Staged Changes`, `All`],
               { placeHolder: `Select deployment method to ${remotePath}` }
             );
 
@@ -100,7 +100,12 @@ module.exports = class Deployment {
               const client = ibmi.client;
               this.deploymentLog.clear();
 
+              let useStagedChanges = true;
+              var changeType = `staged`;
               switch (method) {
+              case `Working Changes`:
+                useStagedChanges = false;
+                changeType = `working`;
               case `Staged Changes`: // Uses git
                 let gitApi;
 
@@ -115,7 +120,14 @@ module.exports = class Deployment {
                   const repository = gitApi.repositories.find(r => r.rootUri.fsPath === folder.uri.fsPath);
 
                   if (repository) {
-                    const changes = await repository.state.indexChanges;
+                    let changes;
+                    if (useStagedChanges) {
+                      changes = await repository.state.indexChanges;
+                    }
+                    else {
+                      changes = await repository.state.workingTreeChanges;
+                    }
+                    
                     if (changes.length > 0) {
                       const uploads = changes.map(change => {
                         const relative = path.relative(folder.uri.path, change.uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
@@ -129,7 +141,7 @@ module.exports = class Deployment {
                     
                       this.button.text = BUTTON_WORKING;
 
-                      vscode.window.showInformationMessage(`Deploying staged changes (${uploads.length}) to ${remotePath}`);
+                      vscode.window.showInformationMessage(`Deploying ${changeType} changes (${uploads.length}) to ${remotePath}`);
 
                       try {
                         if (isIFS) {
@@ -195,7 +207,7 @@ module.exports = class Deployment {
                       }
 
                     } else {
-                      vscode.window.showWarningMessage(`No staged changes to deploy.`);
+                      vscode.window.showWarningMessage(`No ${changeType} changes to deploy.`);
                     }
 
                   } else {
