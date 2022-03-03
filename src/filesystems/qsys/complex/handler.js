@@ -3,10 +3,16 @@ const instance = require(`../../../Instance`);
 
 let { allSourceDates, recordLengths } = require(`./data`);
 
+const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
+
 const annotationDecoration = vscode.window.createTextEditorDecorationType({
-  after: {
-    margin: `0 0 0 3em`,
+  before: {
+    color: new vscode.ThemeColor(`editorLineNumber.foreground`),
     textDecoration: `none`,
+    fontWeight: `normal`,
+    fontStyle: `normal`,
+    margin: `0 1em 0 0`,
+    // Pull the decoration out of the document flow if we want to be scrollable
   },
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
 });
@@ -16,14 +22,6 @@ module.exports = class {
     const config = instance.getConfig();
 
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
-
-    let sourceDateBarItem;
-    if (config.sourceDateLocation === `bar`) {
-      sourceDateBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
-      sourceDateBarItem.text = `$(calendar)`;
-      sourceDateBarItem.tooltip = `Source date`;
-      sourceDateBarItem.show();
-    }
 
     let editTimeout;
 
@@ -151,76 +149,77 @@ module.exports = class {
       })
     );
 
-    if (config.sourceDateLocation !== `none`) {
-      context.subscriptions.push(
-        vscode.window.onDidChangeTextEditorSelection(event => {
-          if (event.textEditor.document.uri.scheme === `member`) {
-            const editor = event.textEditor;
+    context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => {
+        const currentValue = config.sourceDateGutter;
+        config.set(`sourceDateGutter`, !currentValue);
+      }),
 
-            const line = event.selections[0].active.line;
+      vscode.window.onDidChangeTextEditorSelection(event => {
+        if (config.sourceDateGutter) {
+          const editor = event.textEditor;
+          this.refreshGutter(editor);
+        }
+      }),
 
-            const normalPath = event.textEditor.document.uri.path;
-            const path = normalPath.split(`/`);
-            let lib, file, fullName;
-
-            if (path.length === 4) {
-              lib = path[1];
-              file = path[2];
-              fullName = path[3];
-            } else {
-              lib = path[2];
-              file = path[3];
-              fullName = path[4];
-            }
-
-            fullName = fullName.substr(0, fullName.lastIndexOf(`.`));
-            const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
-
-            const sourceDates = allSourceDates[alias];
-
-            if (sourceDates && sourceDates[line]) {
-
-              switch (config.sourceDateLocation) {
-              case `bar`:
-                sourceDateBarItem.text = `$(calendar) ${sourceDates[line]}`;
-                sourceDateBarItem.tooltip = `Line ${line+1} ${normalPath}`;
-                break;
-                
-              case `inline`:
-                /** @type {vscode.DecorationOptions[]} */
-                let annotations = [];
-
-                annotations.push({
-                  range: new vscode.Range(
-                    new vscode.Position(line, Number.MAX_SAFE_INTEGER),
-                    new vscode.Position(line, Number.MAX_SAFE_INTEGER)
-                  ),
-                  renderOptions: {
-                    after: {
-                      color: new vscode.ThemeColor(`editorLineNumber.foreground`),
-                      contentText: sourceDates[line],
-                      fontWeight: `normal`,
-                      fontStyle: `normal`,
-                      // Pull the decoration out of the document flow if we want to be scrollable
-                      textDecoration: `position: absolute;`,
-                    },
-                  },
-                });
-
-
-                editor.setDecorations(annotationDecoration, annotations);
-                break;
-              }
-            } else {
-              if (sourceDateBarItem) {
-                sourceDateBarItem.text = `$(calendar)`;
-                sourceDateBarItem.tooltip = `Source date`;
-              }
-            }
-
+      vscode.window.onDidChangeActiveTextEditor(editor => {
+        if (editor) {
+          if (config.sourceDateGutter) {
+            this.refreshGutter(editor);
           }
-        })
-      );
+        }
+      })
+    );
+  }
+
+  /**
+   * @param {vscode.TextEditor} editor 
+   */
+  static refreshGutter(editor) {
+    if (editor.document.uri.scheme === `member`) {
+      const normalPath = editor.document.uri.path;
+      const path = normalPath.split(`/`);
+      let lib, file, fullName;
+
+      if (path.length === 4) {
+        lib = path[1];
+        file = path[2];
+        fullName = path[3];
+      } else {
+        lib = path[2];
+        file = path[3];
+        fullName = path[4];
+      }
+
+      fullName = fullName.substr(0, fullName.lastIndexOf(`.`));
+      const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
+
+      const sourceDates = allSourceDates[alias];
+
+      if (sourceDates) {
+
+        /** @type {vscode.DecorationOptions[]} */
+        let annotations = [];
+
+        const currentDate = this.currentStamp();
+
+        for (let cLine = 0; cLine < sourceDates.length; cLine++) {
+          annotations.push({
+            range: new vscode.Range(
+              new vscode.Position(cLine, 0),
+              new vscode.Position(cLine, 0)
+            ),
+            renderOptions: {
+              before: {
+                contentText: sourceDates[cLine],
+                color: currentDate === sourceDates[cLine] ? highlightedColor : undefined
+              },
+            },
+          });
+        }
+
+        editor.setDecorations(annotationDecoration, annotations);
+      }
     }
   }
 

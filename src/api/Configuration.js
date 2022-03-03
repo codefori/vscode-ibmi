@@ -59,8 +59,8 @@ module.exports = class Configuration {
     /** @type {boolean} */
     this.enableSourceDates = (base.enableSourceDates === true);
 
-    /** @type {"none"|"bar"|"inline"} */
-    this.sourceDateLocation = base.sourceDateLocation || `none`;
+    /** @type {boolean} */
+    this.sourceDateGutter = (base.sourceDateGutter === true);
 
     /** @type {boolean} */
     this.clContentAssistEnabled = (base.clContentAssistEnabled === true);

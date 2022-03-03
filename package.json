@@ -217,15 +217,10 @@
 								"default": false,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
-							"sourceDateLocation": {
-								"type": "string",
-								"default": "none",
-								"enum": [
-									"none",
-									"bar",
-									"inline"
-								],
-								"description": "The location of the source date of the current line will be displayed."
+							"sourceDateGutter": {
+								"type": "boolean",
+								"default": false,
+								"description": "When enabled along with enableSourceDates, Code for IBM i will display the source date in the gutter of source members."
 							},
 							"clContentAssistEnabled": {
 								"type": "boolean",
@@ -734,6 +729,11 @@
 				"title": "Maintain custom variables",
 				"category": "IBM i",
 				"icon": "$(variable)"
+			},
+			{
+				"command": "code-for-ibmi.toggleSourceDateGutter",
+				"title": "Toggle Source Date Gutter",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.selectForCompare",
