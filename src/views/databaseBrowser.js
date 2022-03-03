@@ -1,6 +1,8 @@
 
 const vscode = require(`vscode`);
 
+const csv = require(`csv/sync`);
+
 let instance = require(`../Instance`);
 const CompileTools = require(`../api/CompileTools`);
 const Configuration = require(`../api/Configuration`);
@@ -68,19 +70,37 @@ module.exports = class databaseBrowserProvider {
             try {
               switch (statement.type) {
               case `sql`:
+              case `json`:
+              case `csv`:
                 const data = await content.runSQL(statement.content);
 
                 if (data.length > 0) {
-                  const panel = vscode.window.createWebviewPanel(
-                    `databaseResult`,
-                    `Database Result`,
-                    vscode.ViewColumn.Active,
-                    {
-                      retainContextWhenHidden: true,
-                      enableFindWidget: true
-                    }
-                  );
-                  panel.webview.html = generateTable(statement.content, data);
+                  switch (statement.type) {
+                  case `sql`:
+                    const panel = vscode.window.createWebviewPanel(
+                      `databaseResult`,
+                      `Database Result`,
+                      vscode.ViewColumn.Active,
+                      {
+                        retainContextWhenHidden: true,
+                        enableFindWidget: true
+                      }
+                    );
+                    panel.webview.html = generateTable(statement.content, data);
+                    break;
+
+                  case `csv`:
+                  case `json`:
+                    const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `result.${statement.type}`));
+                    const editor = await vscode.window.showTextDocument(textDoc);
+                    editor.edit(edit => {
+                      edit.insert(new vscode.Position(0, 0), statement.type === `csv` ? csv.stringify(data, {
+                        header: true
+                      }) : JSON.stringify(data, null, 2));
+                    });
+                    break;
+                  }
+
                 } else {
                   vscode.window.showInformationMessage(`Query executed with no data returned.`);
                 }
@@ -279,7 +299,7 @@ const TABLE_ICONS = {
 
 /**
  * @param {vscode.TextEditor} editor
- * @returns {{type: "sql"|"cl", content: string}} Statement
+ * @returns {{type: "sql"|"cl"|"json"|"csv", content: string}} Statement
  */
 function parseStatement(editor) {
   const document = editor.document;
@@ -288,7 +308,7 @@ function parseStatement(editor) {
   let text = document.getText(editor.selection).trim();
   let content;
 
-  /** @type {"sql"|"cl"} */
+  /** @type {"sql"|"cl"|"json"} */
   let type = `sql`;
 
   if (text.length > 0) {
@@ -335,15 +355,24 @@ function parseStatement(editor) {
 
     editor.selection = new vscode.Selection(editor.document.positionAt(statementData.start), editor.document.positionAt(statementData.end));
 
-    if (content.toUpperCase().startsWith(`CL:`)) {
-      let lines = content.split(eol);
-      let startIndex = lines.findIndex(line => line.toUpperCase().startsWith(`CL:`));
-      lines = lines.slice(startIndex);
-      lines[0] = lines[0].substring(3).trim();
+    // Remove blank lines and comment lines
+    let lines = content.split(eol).filter(line => line.trim().length > 0 && !line.trimStart().startsWith(`--`));
 
-      content = lines.join(` `);
-      type = `cl`;
-    }
+    lines.forEach((line, startIndex) => {
+      if (type !== `sql`) return;
+      
+      [`cl`, `json`, `csv`].forEach(mode => {
+        if (line.trim().toLowerCase().startsWith(mode + `:`)) {
+          lines = lines.slice(startIndex);
+          lines[0] = lines[0].substring(mode.length + 1).trim();
+    
+          content = lines.join(` `);
+
+          //@ts-ignore We know the type.
+          type = mode;
+        }
+      });
+    });
   }
 
   return {
@@ -358,7 +387,7 @@ function parseStatement(editor) {
  */
 function generateTable(statement, array) {
   // Setup basics of valid HTML5 document
-  let html = `
+  let html = /*html*/`
     <!DOCTYPE html>
     <html>
     <head>
@@ -368,7 +397,6 @@ function generateTable(statement, array) {
       <meta name='viewport' content='width=device-width, initial-scale=1'>
       <style>
         body {
-          font-family: var(--vscode-editor-font-family);
           color: var(--vscode-editor-foreground);
         }
         table {
@@ -376,20 +404,27 @@ function generateTable(statement, array) {
           font-size: var(--vscode-editor-font-size);
           width: 100%;
           border-collapse: collapse;
+          margin: 25px 0;
+          font-family: sans-serif;
+          min-width: 400px;
+          <!-- box-shadow: 0 0 20px rgba(0, 0, 0, 0.15); -->
         }
         ::selection {
+          font-weight: bold;
           background-color: var(--vscode-editor-selectionBackground);
-          color: var(--vscode-editor-selectionForeground);
         }
-        container {
-          overflow-x: auto;
-          white-space: nowrap;
+        table thead tr {
+          background-color: var(--vscode-editor-selectionBackground);
+          color: var(--vscode-editor-foreground);
+          text-align: left;
         }
-        tr:nth-child(even) {
-          background-color: var(--vscode-editor-selectionHighlightBackground);
+        table th,
+        table td {
+          padding: 12px 15px;
         }
-        table thead tr th {
-          border-bottom: 2px solid var(--vscode-editor-selectionHighlightBackground);
+
+        table tbody tr {
+          border-bottom: 1px solid var(--vscode-editor-selectionBackground);
         }
       </style>
     </head>

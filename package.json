@@ -1400,7 +1400,7 @@
 	},
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.6.3",
-		"csv-parse": "^4.15.1",
+		"csv": "^6.0.5",
 		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",

@@ -4,7 +4,7 @@ const path = require(`path`);
 const util = require(`util`);
 let fs = require(`fs`);
 const tmp = require(`tmp`);
-const parse = require(`csv-parse/lib/sync`);
+const csv = require(`csv/sync`);
 const Tools = require(`./Tools`);
 
 const tmpFile = util.promisify(tmp.file);
@@ -240,7 +240,7 @@ module.exports = class IBMiContent {
           this.ibmi.remoteCommand(`DLTOBJ OBJ(${lib}/${file}) OBJTYPE(*FILE)`, `.`);
       }
 
-      return parse(result, {
+      return csv.parse(result, {
         columns: true,
         skip_empty_lines: true,
       });
