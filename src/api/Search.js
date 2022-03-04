@@ -20,13 +20,12 @@ module.exports = class Search {
     const asp = ((config.sourceASP && config.sourceASP.length > 0) ? `/${config.sourceASP}` : ``);
 
     const result = await connection.sendQsh({
-      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`
+      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`,
     });
 
     //@ts-ignore stderr does exist.
     if (result.stderr) throw new Error(result.stderr);
 
-    //@ts-ignore stdout does exist.
     const standardOut = result.stdout;
       
     if (standardOut === ``) return [];
@@ -103,7 +102,8 @@ module.exports = class Search {
       }
 
       const grepRes = await connection.sendCommand({
-        command: `${grep} -inr -F ${ignoreString} "${term}" "${path}"`,
+        command: `${grep} -inr -F -f - ${ignoreString} "${path}"`,
+        stdin: term
       });
 
       if (grepRes.code !== 0) return [];
