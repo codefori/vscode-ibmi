@@ -1,8 +1,6 @@
 const Configuration = require(`./Configuration`);
 const IBMi = require(`./IBMi`);
 
-const escapeRegex = require(`escape-string-regexp`).default;
-
 module.exports = class Search {
   /**
    * @param {*} instance
@@ -16,13 +14,13 @@ module.exports = class Search {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     
-    term = escapeRegex(term);
-    term = term.replace(/\\"/g, `\\\\"`);
+    term = term.replace(/\\/g, `\\\\`);
+    term = term.replace(/"/g, `\\\\"`);
 
     const asp = ((config.sourceASP && config.sourceASP.length > 0) ? `/${config.sourceASP}` : ``);
 
     const result = await connection.sendQsh({
-      command: `/usr/bin/grep -in "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`
+      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`
     });
 
     //@ts-ignore stderr does exist.
@@ -92,8 +90,9 @@ module.exports = class Search {
 
     if (grep) {
 
-      term = escapeRegex(term);
-      term = term.replace(/\\"/g, `\\\\"`);
+    
+      term = term.replace(/\\/g, `\\\\`);
+      term = term.replace(/"/g, `\\\\"`);
 
       /** @type {string[]} */
       const dirsToIgnore = Configuration.get(`grepIgnoreDirs`);
@@ -104,7 +103,7 @@ module.exports = class Search {
       }
 
       const grepRes = await connection.sendCommand({
-        command: `${grep} -inr ${ignoreString} "${term}" "${path}"`,
+        command: `${grep} -inr -F ${ignoreString} "${term}" "${path}"`,
       });
 
       if (grepRes.code !== 0) return [];
