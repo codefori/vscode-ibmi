@@ -647,38 +647,21 @@ module.exports = class CompileTools {
    * @param {string} baseCommand 
    * @returns {{lib?: string, object: string}}
    */
-  static getObjectFromCommand(baseCommand) {
-    const possibleParms = [`MODULE`, `PNLGRP`, `OBJ`, `PGM`];
+   static getObjectFromCommand(baseCommand) {
+    const parmRegex = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
     const command = baseCommand.toUpperCase();
+    const object = parmRegex.exec(command).groups.object.split(`/`);
 
-    for (const parm of possibleParms) {
-      const idx = command.indexOf(parm);
-      if (idx >= 0) {
-        const firstBracket = command.indexOf(`(`, idx);
-        const lastBracket = command.indexOf(`)`, idx);
-        if (firstBracket >= 0 && lastBracket >= 0) {
-          const value = command
-            .substring(firstBracket+1, lastBracket)
-            .split(`/`)
-            .map(v => v.trim());
-
-          if (value.length === 2) {
-            return {
-              lib: value[0],
-              object: value[1],
-            };
-          } else {
-            return {
-              object: value[0],
-            };
-          }
-        }
-        
-        break;
-      }
+    if (object.length === 2) {
+      return {
+        lib: object[0],
+        object: object[1],
+      };
+    } else {
+      return {
+        object: object[0],
+      };
     }
-
-    return null;
   }
 
   static async getLocalActions() {
