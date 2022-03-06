@@ -27,6 +27,10 @@
 	"categories": [
 		"Other"
 	],
+	"galleryBanner": {
+		"color": "#333333",
+		"theme": "dark"
+	},
 	"activationEvents": [
 		"onView:connectionBrowser",
 		"onCommand:code-for-ibmi.connect"
