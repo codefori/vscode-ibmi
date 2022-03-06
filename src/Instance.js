@@ -307,13 +307,20 @@ module.exports = class Instance {
             }
   
             try {
-              let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-              const editor = await vscode.window.showTextDocument(doc, { preview: false });
+              if (line) {
+                // If a line is provided, we have to do a specific open
+                let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
+                const editor = await vscode.window.showTextDocument(doc, { preview: false });
 
-              if (editor && line) {
-                const selectedLine = editor.document.lineAt(line);
-                editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
-                editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
+                if (editor) {
+                  const selectedLine = editor.document.lineAt(line);
+                  editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
+                  editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
+                }
+
+              } else {
+                // Otherwise, do a generic open
+                const res = await vscode.commands.executeCommand(`vscode.open`, uri);
               }
 
               return true;
