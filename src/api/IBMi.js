@@ -543,8 +543,8 @@ module.exports = class IBMi {
    */
   remoteCommand(command, directory) {
     //execCommand does not crash..
-    // escape $ and #
-    command = command.replace(/\$/g, `\\$`).replace(/#/g, `\\#`);
+    // escape $ and "
+    command = command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
 
     return this.paseCommand(`system "` + command + `"`, directory);
   }
