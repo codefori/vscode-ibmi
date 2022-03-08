@@ -647,20 +647,24 @@ module.exports = class CompileTools {
    * @param {string} baseCommand 
    * @returns {{lib?: string, object: string}}
    */
-   static getObjectFromCommand(baseCommand) {
+  static getObjectFromCommand(baseCommand) {
     const parmRegex = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
     const command = baseCommand.toUpperCase();
-    const object = parmRegex.exec(command).groups.object.split(`/`);
+    const regex = parmRegex.exec(command);
 
-    if (object.length === 2) {
-      return {
-        lib: object[0],
-        object: object[1],
-      };
-    } else {
-      return {
-        object: object[0],
-      };
+    if (regex) {
+      const object = parmRegex.exec(command).groups.object.split(`/`);
+
+      if (object.length === 2) {
+        return {
+          lib: object[0],
+          object: object[1],
+        };
+      } else {
+        return {
+          object: object[0],
+        };
+      }
     }
   }
 
