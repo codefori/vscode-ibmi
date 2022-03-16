@@ -94,7 +94,7 @@ module.exports = class IBMiContent {
     let rows = [],
       sequence = 0;
     for (let i = 0; i < sourceData.length; i++) {
-      sequence = i + 1;
+      sequence = (i + 1) / 100;
       if (sourceData[i].length > recordLength) {
         sourceData[i] = sourceData[i].substring(0, recordLength);
       }
@@ -105,9 +105,14 @@ module.exports = class IBMiContent {
     }
 
     //We assume the alias still exists....
-    const query = `insert into ${aliasPath} values ${rows.join(`,`)};`;
+    const query = [];
 
-    await writeFileAsync(tmpobj, query, `utf8`);
+    const rowGroups = this.sliceUp(rows, 5000);
+    rowGroups.forEach(rowGroup => {
+      query.push(`insert into ${aliasPath} values ${rowGroup.join(`,`)};`);
+    });
+
+    await writeFileAsync(tmpobj, query.join(`\n`), `utf8`);
     await client.putFile(tmpobj, tempRmt);
 
     await connection.remoteCommand(`CLRPFM FILE(${lib}/${spf}) MBR(${mbr})`);
@@ -146,5 +151,18 @@ module.exports = class IBMiContent {
     });
   
     return val;
+  }
+
+  /**
+   * @param {any[]} arr 
+   * @param {number} size 
+   * @returns {any[]}
+   */
+  static sliceUp(arr, size) {
+    const result = [];
+    for (let i = 0; i < arr.length; i += size) {
+      result.push(arr.slice(i, i + size));
+    }
+    return result;
   }
 }
