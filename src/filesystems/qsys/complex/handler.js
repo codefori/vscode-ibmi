@@ -203,7 +203,7 @@ module.exports = class {
 
         const currentDate = this.currentStamp();
 
-        for (let cLine = 0; cLine < sourceDates.length; cLine++) {
+        for (let cLine = 0; cLine < sourceDates.length && cLine < editor.document.lineCount; cLine++) {
           annotations.push({
             range: new vscode.Range(
               new vscode.Position(cLine, 0),
