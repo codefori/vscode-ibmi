@@ -198,7 +198,6 @@ module.exports = class IBMi {
             //If this is the first time the config is made, then these arrays will be empty
             if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
             if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
-            if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
           }
         }
 

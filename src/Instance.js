@@ -121,12 +121,12 @@ module.exports = class Instance {
     const ifs = new (require(`./filesystems/ifs`));
 
     const objectBrowser = require(`./views/objectBrowser`);
-    const databaseBrowser = require(`./views/databaseBrowser`);
 
     const actionsUI = require(`./webviews/actions`);
     const variablesUI = require(`./webviews/variables`);
 
     const CLCommands = require(`./languages/clle/clCommands`);
+    const SQLLanguage = require(`./languages/sql`);
 
     const ColorProvider = require(`./languages/general/ColorProvider`);
 
@@ -181,8 +181,7 @@ module.exports = class Instance {
         await Promise.all([
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
+          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
         ]);
         return;
 
@@ -272,13 +271,6 @@ module.exports = class Instance {
           vscode.window.registerTreeDataProvider(
             `objectBrowser`,
             new objectBrowser(context)
-          )
-        );
-        
-        context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `databaseBrowser`,
-            new databaseBrowser(context)
           )
         );
 
@@ -411,6 +403,9 @@ module.exports = class Instance {
           const clInstance = new CLCommands(context);
           clInstance.init();
         }
+
+        // ********* SQL statement executor */
+        SQLLanguage.initialise(context);
 
         // ********* Color provider */
         if (Configuration.get(`showSeuColors`)) {
