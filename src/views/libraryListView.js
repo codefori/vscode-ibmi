@@ -28,12 +28,12 @@ module.exports = class libraryListProvider {
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
         const config = instance.getConfig();
         const currentLibrary = config.currentLibrary.toUpperCase();
-  
+
         const newLibrary = await vscode.window.showInputBox({
           prompt: `Changing current library`,
           value: currentLibrary
         });
-  
+
         if (newLibrary && newLibrary !== currentLibrary) {
           await config.set(`currentLibrary`, newLibrary);
         }
@@ -43,7 +43,7 @@ module.exports = class libraryListProvider {
         const connection = instance.getConnection();
         const config = instance.getConfig();
         const libraryList = config.libraryList;
-  
+
         const newLibraryListStr = await vscode.window.showInputBox({
           prompt: `Changing library list (can use '*reset')`,
           value: libraryList.map(lib => lib.toUpperCase()).join(`, `)
@@ -56,7 +56,11 @@ module.exports = class libraryListProvider {
           if (newLibraryListStr.toUpperCase() === `*RESET`) {
             newLibraryList = connection.defaultUserLibraries;
           } else {
-            newLibraryList = newLibraryListStr.split(`,`).map(lib => lib.trim().toUpperCase());
+            newLibraryList = newLibraryListStr
+              .replace(/,/g, ` `)
+              .split(` `)
+              .map(lib => lib.toUpperCase())
+              .filter((lib, idx, libl) => lib && libl.indexOf(lib) === idx);
             const badLibs = await this.validateLibraryList(newLibraryList);
 
             if (badLibs.length > 0) {
@@ -202,9 +206,9 @@ module.exports = class libraryListProvider {
             if (profile) {
               profile = {...profile}; //We clone it.
               delete profile.name;
-              
+
               await config.setMany(profile);
-              
+
               await Promise.all([
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
@@ -223,7 +227,7 @@ module.exports = class libraryListProvider {
 
   /**
    * Validates a list of libraries
-   * @param {string[]} newLibl 
+   * @param {string[]} newLibl
    * @returns {Promise<string[]>} Bad libraries
    */
   async validateLibraryList(newLibl) {
@@ -257,7 +261,7 @@ module.exports = class libraryListProvider {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(lib));
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
 
         // If there is an error about the library, remove it
         if (badLib) badLibs.push(badLib);
