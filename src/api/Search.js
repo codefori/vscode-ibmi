@@ -1,5 +1,7 @@
+
 const Configuration = require(`./Configuration`);
 const IBMi = require(`./IBMi`);
+const IBMiContent = require(`./IBMiContent`);
 
 module.exports = class Search {
   /**
@@ -12,12 +14,30 @@ module.exports = class Search {
   static async searchMembers(instance, lib, spf, term) {
     /** @type {IBMi} */
     const connection = instance.getConnection();
+
+    /** @type {Configuration} */
     const config = instance.getConfig();
+
+    /** @type {IBMiContent} */
+    const content = instance.getContent();
     
     term = term.replace(/\\/g, `\\\\`);
     term = term.replace(/"/g, `\\\\"`);
 
-    const asp = ((config.sourceASP && config.sourceASP.length > 0) ? `/${config.sourceASP}` : ``);
+    let asp = ``;
+
+    if (config.sourceASP && config.sourceASP.length > 0) {
+      asp = `/${config.sourceASP}`;
+    } else 
+    if (config.enableSQL) {
+      try {
+        const [row] = await content.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${lib}'))`);
+
+        if (row && connection.aspInfo[row.IASP_NUMBER]) {
+          asp = `/${connection.aspInfo[row.IASP_NUMBER]}`;
+        }
+      } catch (e) {}
+    }
 
     const result = await connection.sendQsh({
       command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`,
@@ -35,7 +55,7 @@ module.exports = class Search {
     /** @type {string[]} */
     const output = standardOut.split(`\n`);
   
-    let parts, currentFile, currentLine, contentIndex, content;
+    let parts, currentFile, currentLine, contentIndex, curContent;
     for (const line of output) {
       if (line.startsWith(`Binary`)) continue;
   
@@ -55,11 +75,11 @@ module.exports = class Search {
       contentIndex = nthIndex(line, `:`, 2);
       
       if (contentIndex >= 0) {
-        content = line.substr(contentIndex+1);
+        curContent = line.substr(contentIndex+1);
   
         files[currentFile].lines.push({
           number: currentLine,
-          content 
+          content: curContent 
         })
       }
       
@@ -88,8 +108,6 @@ module.exports = class Search {
     const grep = connection.remoteFeatures.grep;
 
     if (grep) {
-
-    
       term = term.replace(/\\/g, `\\\\`);
       term = term.replace(/"/g, `\\\\"`);
 
