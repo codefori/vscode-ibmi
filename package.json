@@ -600,6 +600,14 @@
 							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
 						},
 						{
+							"type": "member",
+							"extensions": [
+								"SQL"
+							],
+							"name": "Run SQL Statements (RUNSQLSTM)",
+							"command": "?RUNSQLSTM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) COMMIT(*NONE) NAMING(*SQL)"
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"rpgle"
@@ -660,6 +668,13 @@
 							"command": "?CRTBNDCL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)"
 						},
 						{
+							"type": "streamfile",
+							"extensions": [
+								"SQL"
+							],
+							"name": "Run SQL Statements (RUNSQLSTM)",
+							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
+						},						{
 							"type": "streamfile",
 							"extensions": [
 								"cmd"
