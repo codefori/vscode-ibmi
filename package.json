@@ -484,6 +484,16 @@
 						{
 							"type": "member",
 							"extensions": [
+								"RPGLE",
+								"RPG",
+								"SQLRPGLE"
+							],
+							"name": "Create Service Program (CRTSRVPGM)",
+							"command": "?CRTSRVPGM SRVPGM(&OPENLIB/&OPENMBR) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
 								"SQLRPGLE"
 							],
 							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
@@ -609,12 +619,29 @@
 						{
 							"type": "streamfile",
 							"extensions": [
+								"RPGLE",
+								"RPG",
+								"SQLRPGLE"
+							],
+							"name": "Create Service Program (CRTSRVPGM)",
+							"command": "?CRTSRVPGM SRVPGM(&BUILDLIB/&NAME) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
 								"SQLRPGLE"
 							],
 							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
 							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},						{
 							"type": "streamfile",
 							"extensions": [
 								"RPGLE",
