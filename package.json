@@ -492,6 +492,14 @@
 						{
 							"type": "member",
 							"extensions": [
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
 								"RPGLE",
 								"RPG"
 							],
