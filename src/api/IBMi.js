@@ -394,7 +394,6 @@ module.exports = class IBMi {
         remoteApps.push(
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-            specific: `*.PGM`,
             names: [`GENCMDXML.PGM`]
           }
         );
@@ -422,7 +421,9 @@ module.exports = class IBMi {
             }
           }
           
-        } catch (e) {}
+        } catch (e) {
+          console.log(e);
+        }
 
         if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
           let statement;
