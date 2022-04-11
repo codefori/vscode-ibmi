@@ -612,7 +612,7 @@ class Filter extends vscode.TreeItem {
 class SPF extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
-   * @param {{library: string, name: string}} detail
+   * @param {{library: string, name: string, count: number}} detail
    */
   constructor(filter, detail) {
     super(detail.name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
@@ -621,6 +621,7 @@ class SPF extends vscode.TreeItem {
 
     this.contextValue = `SPF`;
     this.path = [detail.library, detail.name].join(`/`);
+    this.description = detail.count ? `(${detail.count})` : null;
 
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
   }
