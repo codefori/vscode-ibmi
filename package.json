@@ -358,6 +358,11 @@
 					"default": true,
 					"description": "If enabled, will clear the IBM i Output before an Action is run."
 				},
+				"code-for-ibmi.autoOpenFile": {
+					"type": "boolean",
+					"default": true,
+					"description": "When enabled, files will automatically be opened when copied or moved/renamed."
+				},
 				"code-for-ibmi.showReconnectButton": {
 					"type": "boolean",
 					"default": false,
