@@ -8,10 +8,11 @@ module.exports = class Search {
    * @param {*} instance
    * @param {string} lib 
    * @param {string} spf 
+   * @param {string} memberFilter
    * @param {string} term 
    * @return {Promise<{path: string, text: string, lines: {number: number, content: string}[]}[]>}
    */
-  static async searchMembers(instance, lib, spf, term) {
+  static async searchMembers(instance, lib, spf, memberFilter, term) {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
@@ -40,7 +41,7 @@ module.exports = class Search {
     }
 
     const result = await connection.sendQsh({
-      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`,
+      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/${memberFilter ? memberFilter : `*`}`,
     });
 
     //@ts-ignore stderr does exist.
