@@ -484,9 +484,7 @@
 						{
 							"type": "member",
 							"extensions": [
-								"RPGLE",
-								"RPG",
-								"SQLRPGLE"
+								"GLOBAL"
 							],
 							"name": "Create Service Program (CRTSRVPGM)",
 							"command": "?CRTSRVPGM SRVPGM(&OPENLIB/&OPENMBR) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
@@ -627,9 +625,7 @@
 						{
 							"type": "streamfile",
 							"extensions": [
-								"RPGLE",
-								"RPG",
-								"SQLRPGLE"
+								"GLOBAL"
 							],
 							"name": "Create Service Program (CRTSRVPGM)",
 							"command": "?CRTSRVPGM SRVPGM(&BUILDLIB/&NAME) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
