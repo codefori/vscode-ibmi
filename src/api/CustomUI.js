@@ -274,7 +274,7 @@ class Field  {
   }
 
   getHTML() {
-    this.default = typeof this.default === "string" ? this.default.replace(/"/g, `&quot;`) : undefined;
+    this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
 
     switch (this.type) {
     case `submit`:

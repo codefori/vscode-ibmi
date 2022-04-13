@@ -382,7 +382,7 @@ module.exports = class objectBrowserTwoProvider {
                       message: `'${searchTerm}' in ${node.path}.`
                     });
 
-                    const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
+                    const results = await Search.searchMembers(instance, path[0], path[1], node.memberFilter, searchTerm);
 
                     if (results.length > 0) {
 
@@ -529,7 +529,7 @@ module.exports = class objectBrowserTwoProvider {
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
         const objects = await content.getObjectList(filter);
         items = objects.map(object => 
-          object.type === `*FILE` ? new SPF(filter.name, object) : new ILEObject(filter.name, object)
+          object.type === `*FILE` ? new SPF(filter.name, object, filter.member) : new ILEObject(filter.name, object)
         );
         break;
 
@@ -615,11 +615,13 @@ class SPF extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
    * @param {{library: string, name: string, count?: number}} detail
+   * @param {string} memberFilter Member filter string
    */
-  constructor(filter, detail) {
+  constructor(filter, detail, memberFilter) {
     super(detail.name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
 
     this.filter = filter;
+    this.memberFilter = memberFilter;
 
     this.contextValue = `SPF`;
     this.path = [detail.library, detail.name].join(`/`);
