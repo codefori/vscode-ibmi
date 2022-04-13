@@ -250,7 +250,7 @@ module.exports = class IBMiContent {
 
   /**
    * @param {{library: string, object?: string, types?: string[]}} filters 
-   * @returns {Promise<{library: string, name: string, type: string, text: string}[]>} List of members 
+   * @returns {Promise<{library: string, name: string, type: string, text: string, count?: number}[]>} List of members 
    */
   async getObjectList(filters) {
     const library = filters.library.toUpperCase();
@@ -264,7 +264,6 @@ module.exports = class IBMiContent {
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
 
       const results = await this.getTable(tempLib, TempName, TempName, true);
-
       if (results.length === 1) {
         if (results[0].PHFILE.trim() === ``) {
           return []
@@ -278,7 +277,8 @@ module.exports = class IBMiContent {
           name: object.PHFILE,
           type: `*FILE`,
           attribute: object.PHFILA,
-          text: object.PHTXT
+          text: object.PHTXT,
+          count: object.PHNOMB,
         }));
 
     } else {

@@ -138,7 +138,9 @@ module.exports = class objectBrowserTwoProvider {
                   `CPYSRCF FROMFILE(${oldPath[0]}/${oldPath[1]}) TOFILE(${newPath[0]}/${newPath[1]}) FROMMBR(${oldName}) TOMBR(${newName}) MBROPT(*REPLACE)`,
                 )
 
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                if (Configuration.get(`autoOpenFile`)) {
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                }
 
                 if (Configuration.get(`autoRefresh`)) {
                   this.refresh();
@@ -612,7 +614,7 @@ class Filter extends vscode.TreeItem {
 class SPF extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
-   * @param {{library: string, name: string}} detail
+   * @param {{library: string, name: string, count?: number}} detail
    * @param {string} memberFilter Member filter string
    */
   constructor(filter, detail, memberFilter) {
@@ -623,6 +625,7 @@ class SPF extends vscode.TreeItem {
 
     this.contextValue = `SPF`;
     this.path = [detail.library, detail.name].join(`/`);
+    this.description = detail.count ? `(${detail.count})` : null;
 
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
   }
