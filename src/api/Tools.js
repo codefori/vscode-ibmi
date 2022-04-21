@@ -79,7 +79,7 @@ module.exports = class {
               realValue = asNumber;
             }
           } else if (strValue === `-`) {
-            realValue = ``; //null?
+            realValue = null; //null?
           }
                     
           row[header.name] = realValue;

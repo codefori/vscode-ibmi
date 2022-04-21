@@ -20,45 +20,7 @@ exports.initialise = (context) => {
         if (statement.content.trim().length > 0) {
 
           try {
-            switch (statement.type) {
-            case `sql`:
-            case `json`:
-            case `csv`:
-              const data = await content.runSQL(statement.content);
-
-              if (data.length > 0) {
-                switch (statement.type) {
-                case `sql`:
-                  const panel = vscode.window.createWebviewPanel(
-                    `databaseResult`,
-                    `Database Result`,
-                    vscode.ViewColumn.Active,
-                    {
-                      retainContextWhenHidden: true,
-                      enableFindWidget: true
-                    }
-                  );
-                  panel.webview.html = this.generateTable(statement.content, data);
-                  break;
-
-                case `csv`:
-                case `json`:
-                  const textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `result.${statement.type}`));
-                  const editor = await vscode.window.showTextDocument(textDoc);
-                  editor.edit(edit => {
-                    edit.insert(new vscode.Position(0, 0), statement.type === `csv` ? csv.stringify(data, {
-                      header: true
-                    }) : JSON.stringify(data, null, 2));
-                  });
-                  break;
-                }
-
-              } else {
-                vscode.window.showInformationMessage(`Query executed with no data returned.`);
-              }
-              break;
-
-            case `cl`:
+            if (statement.type === `cl`) {
               const commandResult = await CompileTools.runCommand(instance, {
                 command: statement.content,
                 environment: `ile`
@@ -75,7 +37,68 @@ exports.initialise = (context) => {
               if (commandResult.stdout.length > 0) output += `${commandResult.stdout}\n\n`;
 
               CompileTools.appendOutput(output);
-              break;
+            } else {
+              const data = await content.runSQL(statement.content);
+
+              if (data.length > 0) {
+                switch (statement.type) {
+                case `statement`:
+                  const panel = vscode.window.createWebviewPanel(
+                    `databaseResult`,
+                    `Database Result`,
+                    vscode.ViewColumn.Active,
+                    {
+                      retainContextWhenHidden: true,
+                      enableFindWidget: true
+                    }
+                  );
+                  panel.webview.html = this.generateTable(statement.content, data);
+                  break;
+
+                case `csv`:
+                case `json`:
+                case `sql`:
+                  let textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `result.${statement.type}`));
+                  let editor = await vscode.window.showTextDocument(textDoc);
+
+                  let content = ``;
+                  switch (statement.type) {
+                  case `csv`: content = csv.stringify(data, {
+                    header: true,
+                    quoted_string: true,
+                  }); break;
+                  case `json`: content = JSON.stringify(data, null, 2); break;
+
+                  case `sql`: 
+                    const keys = Object.keys(data[0]);
+
+                    const insertStatement = [
+                      `insert into TABLE (`,
+                      `  ${keys.join(`, `)}`,
+                      `) values `,
+                      data.map(
+                        row => `  (${keys.map(key => {
+                          if (row[key] === null) return `null`;
+                          if (typeof row[key] === `string`) return `'${row[key].replace(/'/g, `''`)}'`;
+                          return row[key];
+                        }).join(`, `)})`
+                      ).join(`,\n`),
+                    ];
+                    content = insertStatement.join(`\n`); 
+                    break;
+                  }
+
+                  editor.edit(edit => {
+                    edit.insert(new vscode.Position(0, 0), content);
+                  }).then(() => {
+                    editor.revealRange(new vscode.Range(1, 1, 1, 1), vscode.TextEditorRevealType.AtTop);
+                  });
+                  break;
+                }
+
+              } else {
+                vscode.window.showInformationMessage(`Query executed with no data returned.`);
+              }
             }
 
           } catch (e) {
@@ -94,7 +117,7 @@ exports.initialise = (context) => {
 
 /**
  * @param {vscode.TextEditor} editor
- * @returns {{type: "sql"|"cl"|"json"|"csv", content: string}} Statement
+ * @returns {{type: "statement"|"cl"|"json"|"csv"|"sql", content: string}} Statement
  */
 exports.parseStatement = (editor) => {
   const document = editor.document;
@@ -103,8 +126,8 @@ exports.parseStatement = (editor) => {
   let text = document.getText(editor.selection).trim();
   let content;
 
-  /** @type {"sql"|"cl"|"json"} */
-  let type = `sql`;
+  /** @type {"statement"|"cl"|"json"|"sql"} */
+  let type = `statement`;
 
   if (text.length > 0) {
     content = text;
@@ -154,9 +177,9 @@ exports.parseStatement = (editor) => {
     let lines = content.split(eol).filter(line => line.trim().length > 0 && !line.trimStart().startsWith(`--`));
 
     lines.forEach((line, startIndex) => {
-      if (type !== `sql`) return;
+      if (type !== `statement`) return;
       
-      [`cl`, `json`, `csv`].forEach(mode => {
+      [`cl`, `json`, `csv`, `sql`].forEach(mode => {
         if (line.trim().toLowerCase().startsWith(mode + `:`)) {
           lines = lines.slice(startIndex);
           lines[0] = lines[0].substring(mode.length + 1).trim();
