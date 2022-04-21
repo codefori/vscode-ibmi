@@ -52,7 +52,7 @@ module.exports = class basicQsysFs {
    */
   writeFile(uri, content, options) {
     const contentApi = instance.getContent();
-    const path = uri.path.split(`/`);
+    const path = uri.path.toUpperCase().split(`/`);
     let asp, lib, file, fullName;
 
     if (path.length === 4) {

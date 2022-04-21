@@ -49,7 +49,7 @@ module.exports = class ComplexQsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
-    const path = uri.path.split(`/`);
+    const path = uri.path.toUpperCase().split(`/`);
     let asp, lib, file, fullName;
 
     if (path.length === 4) {
