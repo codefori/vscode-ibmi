@@ -6,7 +6,7 @@ module.exports = [
   `  dcl  &destfmt  *char      8  value('DEST0200')`,
   `  dcl  &rcvvar   *char      1`,
   `  dcl  &rcvfmt   *char      8  value('CMDD0100')`,
-  `  dcl  &error    *char     16  value(x'10000000')`,
+  `  dcl  &error    *char     16  value(x'00000010')`,
   `  dcl  &null2    *char      2  value(x'0000')`,
   `  dcl  &null3    *char      3  value(x'000000')`,
   `  dcl  &null10   *char     10  value(x'00000000000000000000')`,
