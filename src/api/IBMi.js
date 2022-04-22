@@ -198,7 +198,6 @@ module.exports = class IBMi {
             //If this is the first time the config is made, then these arrays will be empty
             if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
             if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
-            if (this.config.databaseBrowserList.length === 0) await this.config.set(`databaseBrowserList`, this.defaultUserLibraries);
           }
         }
 
@@ -394,7 +393,6 @@ module.exports = class IBMi {
         remoteApps.push(
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-            specific: `*.PGM`,
             names: [`GENCMDXML.PGM`]
           }
         );
@@ -422,7 +420,9 @@ module.exports = class IBMi {
             }
           }
           
-        } catch (e) {}
+        } catch (e) {
+          console.log(e);
+        }
 
         if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
           let statement;
@@ -543,6 +543,9 @@ module.exports = class IBMi {
    */
   remoteCommand(command, directory) {
     //execCommand does not crash..
+    // escape $ and "
+    command = command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
+
     return this.paseCommand(`system "` + command + `"`, directory);
   }
 

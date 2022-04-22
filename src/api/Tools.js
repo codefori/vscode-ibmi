@@ -6,26 +6,41 @@ module.exports = class {
   static db2Parse(output) {
     let gotHeaders = false;
     let figuredLengths = false;
+    let iiErrorMessage = false;
 
     let data = output.split(`\n`);
 
     /** @type {{name: string, from: number, length: number}[]} */
     let headers;
+
+    let SQLSTATE;
   
     let rows = [];
       
     data.forEach((line, index) => {
       const trimmed = line.trim();
+      if (trimmed.length === 0 && iiErrorMessage) iiErrorMessage = false;
       if (trimmed.length === 0 || index === data.length - 1) return;
       if (trimmed === `DB2>`) return;
       if (trimmed === `?>`) return;
 
       if (trimmed === `**** CLI ERROR *****`) {
+        iiErrorMessage = true;
         if (data.length > index + 3) {
-          throw new Error(`${data[index + 3]} (${data[index + 1].trim()})`);
+          SQLSTATE = data[index + 1].trim();
+
+          if (SQLSTATE.includes(`:`)) {
+            SQLSTATE = SQLSTATE.split(`:`)[1].trim();
+          }
+
+          if (!SQLSTATE.startsWith(`01`)) {
+            throw new Error(`${data[index + 3]} (${SQLSTATE})`);
+          }
         }
         return;
       }
+
+      if (iiErrorMessage) return;
 
       if (gotHeaders === false) {
         headers = line.split(` `).filter((x) => x.length > 0).map((x) => {
@@ -64,7 +79,7 @@ module.exports = class {
               realValue = asNumber;
             }
           } else if (strValue === `-`) {
-            realValue = ``; //null?
+            realValue = null; //null?
           }
                     
           row[header.name] = realValue;

@@ -121,12 +121,12 @@ module.exports = class Instance {
     const ifs = new (require(`./filesystems/ifs`));
 
     const objectBrowser = require(`./views/objectBrowser`);
-    const databaseBrowser = require(`./views/databaseBrowser`);
 
     const actionsUI = require(`./webviews/actions`);
     const variablesUI = require(`./webviews/variables`);
 
     const CLCommands = require(`./languages/clle/clCommands`);
+    const SQLLanguage = require(`./languages/sql`);
 
     const ColorProvider = require(`./languages/general/ColorProvider`);
 
@@ -181,8 +181,7 @@ module.exports = class Instance {
         await Promise.all([
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshDatabaseBrowser`)
+          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
         ]);
         return;
 
@@ -274,13 +273,6 @@ module.exports = class Instance {
             new objectBrowser(context)
           )
         );
-        
-        context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `databaseBrowser`,
-            new databaseBrowser(context)
-          )
-        );
 
         //********* Search View */
 
@@ -307,13 +299,20 @@ module.exports = class Instance {
             }
   
             try {
-              let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-              const editor = await vscode.window.showTextDocument(doc, { preview: false });
+              if (line) {
+                // If a line is provided, we have to do a specific open
+                let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
+                const editor = await vscode.window.showTextDocument(doc, { preview: false });
 
-              if (editor && line) {
-                const selectedLine = editor.document.lineAt(line);
-                editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
-                editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
+                if (editor) {
+                  const selectedLine = editor.document.lineAt(line);
+                  editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
+                  editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
+                }
+
+              } else {
+                // Otherwise, do a generic open
+                const res = await vscode.commands.executeCommand(`vscode.open`, uri);
               }
 
               return true;
@@ -404,6 +403,9 @@ module.exports = class Instance {
           const clInstance = new CLCommands(context);
           clInstance.init();
         }
+
+        // ********* SQL statement executor */
+        SQLLanguage.initialise(context);
 
         // ********* Color provider */
         if (Configuration.get(`showSeuColors`)) {

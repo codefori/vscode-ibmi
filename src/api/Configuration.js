@@ -11,9 +11,6 @@ module.exports = class Configuration {
     /** @type {{name: string, library: string, object: string, types: string[], member: string}[]} */
     this.objectFilters = base.objectFilters || [];
 
-    /** @type {string[]} schema, schema */
-    this.databaseBrowserList = base.databaseBrowserList || [];
-
     /** @type {string[]} */
     this.libraryList = base.libraryList || [];
 
@@ -23,7 +20,7 @@ module.exports = class Configuration {
     /** @type {{name: string, value: string}[]} */
     this.customVariables = base.customVariables || [];
 
-    /** @type {{name: string, homeDirectory: string, currentLibrary: string, libraryList: string[], objectFilters: object[], databaseBrowserList: string[], ifsShortcuts: string[], customVariables: {name, value}[] }[]} */
+    /** @type {{name: string, homeDirectory: string, currentLibrary: string, libraryList: string[], objectFilters: object[], ifsShortcuts: string[], customVariables: {name, value}[] }[]} */
     this.connectionProfiles = base.connectionProfiles || [];
 
     /** @type {string[]} */
@@ -59,8 +56,8 @@ module.exports = class Configuration {
     /** @type {boolean} */
     this.enableSourceDates = (base.enableSourceDates === true);
 
-    /** @type {"none"|"bar"|"inline"} */
-    this.sourceDateLocation = base.sourceDateLocation || `none`;
+    /** @type {boolean} */
+    this.sourceDateGutter = (base.sourceDateGutter === true);
 
     /** @type {boolean} */
     this.clContentAssistEnabled = (base.clContentAssistEnabled === true);

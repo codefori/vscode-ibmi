@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.0.3",
+	"version": "1.3.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -27,6 +27,10 @@
 	"categories": [
 		"Other"
 	],
+	"galleryBanner": {
+		"color": "#333333",
+		"theme": "dark"
+	},
 	"activationEvents": [
 		"onView:connectionBrowser",
 		"onCommand:code-for-ibmi.connect"
@@ -112,15 +116,6 @@
 								},
 								"default": [],
 								"description": "List of filters for Object List"
-							},
-							"databaseBrowserList": {
-								"type": "array",
-								"items": {
-									"type": "string",
-									"title": "schema name"
-								},
-								"default": [],
-								"description": "List of schemas to in the Database Browser"
 							},
 							"libraryList": {
 								"type": "array",
@@ -217,15 +212,10 @@
 								"default": false,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
-							"sourceDateLocation": {
-								"type": "string",
-								"default": "none",
-								"enum": [
-									"none",
-									"bar",
-									"inline"
-								],
-								"description": "The location of the source date of the current line will be displayed."
+							"sourceDateGutter": {
+								"type": "boolean",
+								"default": false,
+								"description": "When enabled along with enableSourceDates, Code for IBM i will display the source date in the gutter of source members."
 							},
 							"clContentAssistEnabled": {
 								"type": "boolean",
@@ -359,6 +349,11 @@
 					"default": true,
 					"description": "If enabled, will clear the IBM i Output before an Action is run."
 				},
+				"code-for-ibmi.autoOpenFile": {
+					"type": "boolean",
+					"default": true,
+					"description": "When enabled, files will automatically be opened when copied or moved/renamed."
+				},
 				"code-for-ibmi.showReconnectButton": {
 					"type": "boolean",
 					"default": false,
@@ -485,10 +480,26 @@
 						{
 							"type": "member",
 							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Create Service Program (CRTSRVPGM)",
+							"command": "?CRTSRVPGM SRVPGM(&OPENLIB/&OPENMBR) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
 								"SQLRPGLE"
 							],
 							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
 							"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
 							"type": "member",
@@ -583,6 +594,14 @@
 							"command": "?CRTPGM PGM(&OPENLIB/&OPENMBR) MODULE(*PGM) ENTMOD(*FIRST) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*ENTMOD) TGTRLS(*CURRENT)"
 						},
 						{
+							"type": "member",
+							"extensions": [
+								"SQL"
+							],
+							"name": "Run SQL Statements (RUNSQLSTM)",
+							"command": "?RUNSQLSTM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) COMMIT(*NONE) NAMING(*SQL)"
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"rpgle"
@@ -602,12 +621,27 @@
 						{
 							"type": "streamfile",
 							"extensions": [
+								"GLOBAL"
+							],
+							"name": "Create Service Program (CRTSRVPGM)",
+							"command": "?CRTSRVPGM SRVPGM(&BUILDLIB/&NAME) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER) TGTRLS(*CURRENT)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
 								"SQLRPGLE"
 							],
 							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
 							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
 						},
 						{
+							"type": "streamfile",
+							"extensions": [
+								"SQLRPGLE"
+							],
+							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
+							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+						},						{
 							"type": "streamfile",
 							"extensions": [
 								"RPGLE",
@@ -626,6 +660,13 @@
 							"command": "?CRTBNDCL PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)"
 						},
 						{
+							"type": "streamfile",
+							"extensions": [
+								"SQL"
+							],
+							"name": "Run SQL Statements (RUNSQLSTM)",
+							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
+						},						{
 							"type": "streamfile",
 							"extensions": [
 								"cmd"
@@ -734,6 +775,11 @@
 				"title": "Maintain custom variables",
 				"category": "IBM i",
 				"icon": "$(variable)"
+			},
+			{
+				"command": "code-for-ibmi.toggleSourceDateGutter",
+				"title": "Toggle Source Date Gutter",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.selectForCompare",
@@ -973,24 +1019,6 @@
 				"icon": "$(file-directory-create)"
 			},
 			{
-				"command": "code-for-ibmi.refreshDatabaseBrowser",
-				"title": "Refresh Database Browser",
-				"category": "IBM i",
-				"icon": "$(refresh)"
-			},
-			{
-				"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
-				"title": "Add Schema to Database Browser",
-				"category": "IBM i",
-				"icon": "$(new-folder)"
-			},
-			{
-				"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",
-				"title": "Remove schema from view",
-				"category": "IBM i",
-				"icon": "$(remove)"
-			},
-			{
 				"command": "code-for-ibmi.runEditorStatement",
 				"title": "Run selected statement",
 				"category": "IBM i",
@@ -1174,16 +1202,6 @@
 					"when": "view == objectBrowser"
 				},
 				{
-					"command": "code-for-ibmi.addSchemaToDatabaseBrowser",
-					"group": "navigation",
-					"when": "view == databaseBrowser"
-				},
-				{
-					"command": "code-for-ibmi.refreshDatabaseBrowser",
-					"group": "navigation",
-					"when": "view == databaseBrowser"
-				},
-				{
 					"command": "code-for-ibmi.closeSearchView",
 					"group": "navigation",
 					"when": "view == searchView"
@@ -1361,10 +1379,6 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "viewItem == object",
 					"group": "1_workspace@1"
-				},
-				{
-					"command": "code-for-ibmi.removeSchemaFromDatabaseBrowser",
-					"when": "view == databaseBrowser && viewItem == schema"
 				}
 			]
 		},
@@ -1400,7 +1414,7 @@
 	},
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.6.3",
-		"csv-parse": "^4.15.1",
+		"csv": "^6.0.5",
 		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",

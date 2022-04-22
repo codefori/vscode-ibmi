@@ -56,44 +56,47 @@ module.exports = class CLCommands {
                   .slice(nameIndex)
                   .map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)).toUpperCase() : undefined);
 
-                // get the command definition
-                const docs = await this.getCommand(name);
-                
-                if (docs) {
-                  let { parms, commandInfo } = docs;
-                  let item;
+                if (name.length > 2) {
 
-                  if (currentParameter) {
+                  // get the command definition
+                  const docs = await this.getCommand(name);
+                
+                  if (docs) {
+                    let { parms, commandInfo } = docs;
+                    let item;
+
+                    if (currentParameter) {
                     // If we're prompting a parameter, we show the available options for that parm
-                    const singleParm = parms.find(parm => parm.keyword === currentParameter);
-                    if (singleParm) {
-                      for (const parm of singleParm.specialValues) {
-                        item = new vscode.CompletionItem(parm, vscode.CompletionItemKind.Property);
-                        item.insertText = new vscode.SnippetString(`${parm}\$0`);
+                      const singleParm = parms.find(parm => parm.keyword === currentParameter);
+                      if (singleParm) {
+                        for (const parm of singleParm.specialValues) {
+                          item = new vscode.CompletionItem(parm, vscode.CompletionItemKind.Property);
+                          item.insertText = new vscode.SnippetString(`${parm}\$0`);
+                          items.push(item);
+                        }
+                      }
+
+                    } else {
+                    // If we're only prompt for command parms, then we show those instead
+                      parms = parms.filter(parm => existingParms.includes(parm.keyword) === false);
+  
+                      if (parms.length > 0) {
+                        item = new vscode.CompletionItem(`All parameters`, vscode.CompletionItemKind.Interface);
+                        item.insertText = new vscode.SnippetString(parms.map((parm, idx) => `${parm.keyword}(\${${idx+1}:})`).join(` `) + `\$0`);
+                        item.detail = commandInfo.Prompt;
+                        items.push(item);
+                      }
+  
+                      for (const parm of parms) {
+                        item = new vscode.CompletionItem(parm.keyword, vscode.CompletionItemKind.TypeParameter);
+                        item.insertText = new vscode.SnippetString(`${parm.keyword}(\${1:})\$0`);
+                        item.detail = parm.prompt + ` ${parm.type ? `(${parm.choice || parm.type})` : ``}`.trimEnd();
                         items.push(item);
                       }
                     }
 
-                  } else {
-                    // If we're only prompt for command parms, then we show those instead
-                    parms = parms.filter(parm => existingParms.includes(parm.keyword) === false);
-  
-                    if (parms.length > 0) {
-                      item = new vscode.CompletionItem(`All parameters`, vscode.CompletionItemKind.Interface);
-                      item.insertText = new vscode.SnippetString(parms.map((parm, idx) => `${parm.keyword}(\${${idx+1}:})`).join(` `) + `\$0`);
-                      item.detail = commandInfo.Prompt;
-                      items.push(item);
-                    }
-  
-                    for (const parm of parms) {
-                      item = new vscode.CompletionItem(parm.keyword, vscode.CompletionItemKind.TypeParameter);
-                      item.insertText = new vscode.SnippetString(`${parm.keyword}(\${1:})\$0`);
-                      item.detail = parm.prompt + ` ${parm.type ? `(${parm.choice || parm.type})` : ``}`.trimEnd();
-                      items.push(item);
-                    }
+                    return items;
                   }
-
-                  return items;
                 }
               }
             }

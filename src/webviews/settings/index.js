@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `sourceDateLocation`, `clContentAssistEnabled`, `tempDir`];
+        const restartFields = [`enableSQL`, `enableSourceDates`, `clContentAssistEnabled`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -100,29 +100,10 @@ module.exports = class SettingsUI {
         field.default = (config.enableSourceDates ? `checked` : ``);
         field.description = `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`;
         ui.addField(field);
-
-        field = new Field(`select`, `sourceDateLocation`, `Source Date Location`);
-        field.description = `The location of the source date of the current line will be displayed.`;
-        field.items = [
-          {
-            selected: config.sourceDateLocation === `none`,
-            value: `none`,
-            description: `Hidden`,
-            text: `Source date is not shown.`,
-          },
-          {
-            selected: config.sourceDateLocation === `inline`,
-            value: `inline`,
-            description: `Inline`,
-            text: `Source date is show on same line being edited.`,
-          },
-          {
-            selected: config.sourceDateLocation === `bar`,
-            value: `bar`,
-            description: `Bar`,
-            text: `Source date is shown on the VS Code status bar.`,
-          }
-        ];
+            
+        field = new Field(`checkbox`, `sourceDateGutter`, `Source Dates in Gutter`);
+        field.default = (config.sourceDateGutter ? `checked` : ``);
+        field.description = `When enabled, source dates will be displayed in the gutter.`;
         ui.addField(field);
 
         ui.addField(new Field(`hr`));

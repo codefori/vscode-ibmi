@@ -10,7 +10,9 @@ Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual
 ## Requirements
 
 - SSH Daemon must be started on IBM i.
-  (Licensed program 5733-SC1 provides SSH support. STRTCPSVR *SSHD starts the daemon.)
+   - (Licensed program 5733-SC1 provides SSH support.)
+   - `STRTCPSVR *SSHD` starts the daemon.
+   - User `QSSHD` is enabled.
 - Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos).
 
 ## Installation
@@ -430,10 +432,11 @@ When the user has used the right-click option, they will be asked if they want t
 
 Using the 'Deploy' button will start the deployment process. For the deployment process to run, VS Code needs to know which folder/library to deploy to and will fail if it has not been setup correctly. If the workspace has more than one folder, the user will have to select which folder they want to deploy.
 
-There are two options for deployment:
+There are three options for deployment:
 
-1. Staged Changes: This only works if the chosen workspace folder is a git repository. Code for IBM i will look at the git status to determine the staged / indexed files and only upload those.
-2. All: Will upload all files in the chosen workspace folder. Will ignore files that are part of the '.gitignore' file if it exists.
+1. Working Changes: This only works if the chosen workspace folder is a git repository. Code for IBM i will look at the git status to determine the files that have been changed since the last commit (unstaged and staged) and only uploads those files.
+2. Staged Changes: The same as the "Working Changes" option, but only uploads staged / indexed files.
+3. All: Will upload all files in the chosen workspace folder. Will ignore files that are part of the '.gitignore' file if it exists.
 
 The user can also defined Actions that are for the 'file' (local) type to run the deploy before running the Action.
 
@@ -598,9 +601,25 @@ Clicking on a schema will load all tables, views, PFs, and LFs inside of the cho
 
 ### Viewing result sets
 
-It is also possible to run SQL statements right from the editor. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
+It is also possible to run SQL statements right from the editor in an SQL file. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
 
 ![assets/db_03.png](assets/db_03.png)
+
+Much like the SQL pre-processor, you can now run CL commands from an SQL scripts. As well as CL commands, you can also get your SQL result set back as `json` or `csv`.
+
+```
+-- result set as normal table
+select * from sample.employee;
+
+-- result set as JSON, will open in a new file
+json: select * from sample.employee;
+
+-- result set as CSV, will open in a new file
+csv: select * from sample.employee;
+
+-- run CL commands. output is directed to IBM i output channel
+cl: dspffd sample/employee
+```
 
 ## Tips & Tricks
 

@@ -1,34 +1,52 @@
+
 const Configuration = require(`./Configuration`);
 const IBMi = require(`./IBMi`);
-
-const escapeRegex = require(`escape-string-regexp`).default;
+const IBMiContent = require(`./IBMiContent`);
 
 module.exports = class Search {
   /**
    * @param {*} instance
    * @param {string} lib 
    * @param {string} spf 
+   * @param {string} memberFilter
    * @param {string} term 
    * @return {Promise<{path: string, text: string, lines: {number: number, content: string}[]}[]>}
    */
-  static async searchMembers(instance, lib, spf, term) {
+  static async searchMembers(instance, lib, spf, memberFilter, term) {
     /** @type {IBMi} */
     const connection = instance.getConnection();
-    const config = instance.getConfig();
-    
-    term = escapeRegex(term);
-    term = term.replace(/\\"/g, `\\\\"`);
 
-    const asp = ((config.sourceASP && config.sourceASP.length > 0) ? `/${config.sourceASP}` : ``);
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+
+    /** @type {IBMiContent} */
+    const content = instance.getContent();
+    
+    term = term.replace(/\\/g, `\\\\`);
+    term = term.replace(/"/g, `\\\\"`);
+
+    let asp = ``;
+
+    if (config.sourceASP && config.sourceASP.length > 0) {
+      asp = `/${config.sourceASP}`;
+    } else 
+    if (config.enableSQL) {
+      try {
+        const [row] = await content.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${lib}'))`);
+
+        if (row && connection.aspInfo[row.IASP_NUMBER]) {
+          asp = `/${connection.aspInfo[row.IASP_NUMBER]}`;
+        }
+      } catch (e) {}
+    }
 
     const result = await connection.sendQsh({
-      command: `/usr/bin/grep -in "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/*`
+      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/${memberFilter ? memberFilter : `*`}`,
     });
 
     //@ts-ignore stderr does exist.
     if (result.stderr) throw new Error(result.stderr);
 
-    //@ts-ignore stdout does exist.
     const standardOut = result.stdout;
       
     if (standardOut === ``) return [];
@@ -38,7 +56,7 @@ module.exports = class Search {
     /** @type {string[]} */
     const output = standardOut.split(`\n`);
   
-    let parts, currentFile, currentLine, contentIndex, content;
+    let parts, currentFile, currentLine, contentIndex, curContent;
     for (const line of output) {
       if (line.startsWith(`Binary`)) continue;
   
@@ -58,11 +76,11 @@ module.exports = class Search {
       contentIndex = nthIndex(line, `:`, 2);
       
       if (contentIndex >= 0) {
-        content = line.substr(contentIndex+1);
+        curContent = line.substr(contentIndex+1);
   
         files[currentFile].lines.push({
           number: currentLine,
-          content 
+          content: curContent 
         })
       }
       
@@ -91,9 +109,8 @@ module.exports = class Search {
     const grep = connection.remoteFeatures.grep;
 
     if (grep) {
-
-      term = escapeRegex(term);
-      term = term.replace(/\\"/g, `\\\\"`);
+      term = term.replace(/\\/g, `\\\\`);
+      term = term.replace(/"/g, `\\\\"`);
 
       /** @type {string[]} */
       const dirsToIgnore = Configuration.get(`grepIgnoreDirs`);
@@ -104,7 +121,8 @@ module.exports = class Search {
       }
 
       const grepRes = await connection.sendCommand({
-        command: `${grep} -inr ${ignoreString} "${term}" "${path}"`,
+        command: `${grep} -inr -F -f - ${ignoreString} "${path}"`,
+        stdin: term
       });
 
       if (grepRes.code !== 0) return [];

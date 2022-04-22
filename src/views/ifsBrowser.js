@@ -183,33 +183,36 @@ module.exports = class ifsBrowserProvider {
 
         let root;
 
-        if (node) {
+        if (node && node.path) {
           //Running from right click
-          
           root = node.path;
         } else {
           root = config.homeDirectory;
         }
 
-        let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
-        let filname = originPath[0].fsPath.replace(/^.*[\\\/]/, ``);
-        let destPathSuggestion = root;
-        if (!destPathSuggestion.endsWith(`/`)) destPathSuggestion += `/`;
-        destPathSuggestion += filname;
+        const chosenFiles = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()), canSelectMany: true });
 
-        const destinationPath = await vscode.window.showInputBox({
-          prompt: `Name of new streamfile`,
-          value: destPathSuggestion
+        /** @type {{local: string, remote: string}[]} */
+        const uploads = [];
+        
+        chosenFiles.forEach(uri => {
+          uploads.push({
+            local: uri.fsPath,
+            remote: path.posix.join(root, path.basename(uri.fsPath))
+          })
         });
 
-        if (destinationPath) {
-          try {
-            await client.putFile(originPath[0].fsPath, destinationPath);
-            vscode.window.showInformationMessage(`File was uploaded.`);
-            this.refresh();
-          } catch (e) {
-            vscode.window.showErrorMessage(`Error reading streamfile! ${e}`);
-          }
+        if (uploads.length > 0) {
+          client.putFiles(uploads, {
+            concurrency: 5,
+          }).then(() => {
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+            vscode.window.showInformationMessage(`Uploaded files.`);
+          }).catch(err => {
+            vscode.window.showInformationMessage(`Uploaded files.`);
+          });
+        } else {
+          vscode.window.showInformationMessage(`No files selected.`);
         }
       }),
 
@@ -404,7 +407,9 @@ module.exports = class ifsBrowserProvider {
         try {
           const objects = await content.getFileList(element.path);
 
-          items = objects.map(object => new Object(object.type, object.name, object.path));
+          items = objects.filter(o => o.type === `directory`)
+            .concat(objects.filter(o => o.type === `streamfile`))
+            .map(object => new Object(object.type, object.name, object.path));
           await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 
         } catch (e) {

@@ -138,7 +138,9 @@ module.exports = class objectBrowserTwoProvider {
                   `CPYSRCF FROMFILE(${oldPath[0]}/${oldPath[1]}) TOFILE(${newPath[0]}/${newPath[1]}) FROMMBR(${oldName}) TOMBR(${newName}) MBROPT(*REPLACE)`,
                 )
 
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                if (Configuration.get(`autoOpenFile`)) {
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                }
 
                 if (Configuration.get(`autoRefresh`)) {
                   this.refresh();
@@ -380,7 +382,7 @@ module.exports = class objectBrowserTwoProvider {
                       message: `'${searchTerm}' in ${node.path}.`
                     });
 
-                    const results = await Search.searchMembers(instance, path[0], path[1], searchTerm);
+                    const results = await Search.searchMembers(instance, path[0], path[1], node.memberFilter, searchTerm);
 
                     if (results.length > 0) {
 
@@ -527,7 +529,7 @@ module.exports = class objectBrowserTwoProvider {
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
         const objects = await content.getObjectList(filter);
         items = objects.map(object => 
-          object.type === `*FILE` ? new SPF(filter.name, object) : new ILEObject(filter.name, object)
+          object.type === `*FILE` ? new SPF(filter.name, object, filter.member) : new ILEObject(filter.name, object)
         );
         break;
 
@@ -612,15 +614,18 @@ class Filter extends vscode.TreeItem {
 class SPF extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
-   * @param {{library: string, name: string}} detail
+   * @param {{library: string, name: string, count?: number}} detail
+   * @param {string} memberFilter Member filter string
    */
-  constructor(filter, detail) {
+  constructor(filter, detail, memberFilter) {
     super(detail.name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
 
     this.filter = filter;
+    this.memberFilter = memberFilter;
 
     this.contextValue = `SPF`;
     this.path = [detail.library, detail.name].join(`/`);
+    this.description = detail.count ? `(${detail.count})` : null;
 
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
   }
@@ -645,7 +650,11 @@ class ILEObject extends vscode.TreeItem {
     this.type = type;
     this.description = text;
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.resourceUri = vscode.Uri.parse(`${library}/${name}.${type}`).with({scheme: `object`})
+
+    this.resourceUri = vscode.Uri.from({
+      scheme: `object`,
+      path: `/${library}/${name}.${type}`
+    })
   }
 }
 
@@ -658,7 +667,10 @@ class Member extends vscode.TreeItem {
     this.contextValue = `member`;
     this.description = member.text;
     this.path = path;
-    this.resourceUri = vscode.Uri.parse(path).with({scheme: `member`, path: `/${path}`});
+    this.resourceUri = vscode.Uri.from({
+      scheme: `member`,
+      path: `/${path}`
+    })
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open Member`,

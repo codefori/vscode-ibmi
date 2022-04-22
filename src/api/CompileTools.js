@@ -527,12 +527,16 @@ module.exports = class CompileTools {
 
       case `ile`:
       default:
+        // escape $ and # in commands
+
         commandResult = await connection.sendQsh({
           command: [
             `liblist -d ` + connection.defaultUserLibraries.join(` `),
             `liblist -c ` + config.currentLibrary,
             `liblist -a ` + libl.join(` `),
-            ...commands.map(command => `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`),
+            ...commands.map(command => 
+              `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
+            ),
           ],
           directory: cwd,
           ...callbacks
@@ -644,37 +648,24 @@ module.exports = class CompileTools {
    * @returns {{lib?: string, object: string}}
    */
   static getObjectFromCommand(baseCommand) {
-    const possibleParms = [`MODULE`, `PNLGRP`, `OBJ`, `PGM`];
+    const parmRegex = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
     const command = baseCommand.toUpperCase();
+    const regex = parmRegex.exec(command);
 
-    for (const parm of possibleParms) {
-      const idx = command.indexOf(parm);
-      if (idx >= 0) {
-        const firstBracket = command.indexOf(`(`, idx);
-        const lastBracket = command.indexOf(`)`, idx);
-        if (firstBracket >= 0 && lastBracket >= 0) {
-          const value = command
-            .substring(firstBracket+1, lastBracket)
-            .split(`/`)
-            .map(v => v.trim());
+    if (regex) {
+      const object = parmRegex.exec(command).groups.object.split(`/`);
 
-          if (value.length === 2) {
-            return {
-              lib: value[0],
-              object: value[1],
-            };
-          } else {
-            return {
-              object: value[0],
-            };
-          }
-        }
-        
-        break;
+      if (object.length === 2) {
+        return {
+          lib: object[0],
+          object: object[1],
+        };
+      } else {
+        return {
+          object: object[0],
+        };
       }
     }
-
-    return null;
   }
 
   static async getLocalActions() {
