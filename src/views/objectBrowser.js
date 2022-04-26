@@ -581,7 +581,7 @@ class Filter extends vscode.TreeItem {
 class SPF extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
-   * @param {{library: string, name: string, text: string}} detail
+   * @param {{library: string, name: string, text: string, attribute?: string}} detail
    * @param {string} memberFilter Member filter string
    */
   constructor(filter, detail, memberFilter) {
@@ -592,7 +592,7 @@ class SPF extends vscode.TreeItem {
 
     this.contextValue = `SPF`;
     this.path = [detail.library, detail.name].join(`/`);
-    this.description = detail.text;
+    this.description = detail.text + (detail.attribute && detail.attribute !== `*PHY` ? ` (${detail.attribute})` : ``);
 
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
   }
@@ -601,9 +601,9 @@ class SPF extends vscode.TreeItem {
 class ILEObject extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
-   * @param {{library: string, name: string, type: string, text: string}} objectInfo
+   * @param {{library: string, name: string, type: string, text: string, attribute?: string}} objectInfo
    */
-  constructor(filter, {library, name, type, text}) {
+  constructor(filter, {library, name, type, text, attribute}) {
     if (type.startsWith(`*`)) type = type.substring(1);
 
     const icon = objectIcons[type] || objectIcons[``];
@@ -615,7 +615,7 @@ class ILEObject extends vscode.TreeItem {
     this.contextValue = `object`;
     this.path = `${library}/${name}`;
     this.type = type;
-    this.description = text;
+    this.description = text + (attribute ? ` (${attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
 
     this.resourceUri = vscode.Uri.from({
