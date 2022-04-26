@@ -12,6 +12,7 @@ let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
 const Search = require(`../api/Search`);
+const Tools = require(`../api/Tools`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -277,26 +278,11 @@ module.exports = class objectBrowserTwoProvider {
         let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
  
         if (originPath) {
-          const path = node.path.split(`/`);
-          let asp, lib, file, fullName;
-      
-          if (path.length === 3) {
-            lib = path[0];
-            file = path[1];
-            fullName = path[2];
-          } else {
-            asp = path[0];
-            lib = path[1];
-            file = path[2];
-            fullName = path[3];
-          }
-
-          const name = fullName.substring(0, fullName.lastIndexOf(`.`));
-
+          const {asp, library, file, member} = Tools.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
           
           try {
-            contentApi.uploadMemberContent(asp, lib, file, name, data);
+            contentApi.uploadMemberContent(asp, library, file, member, data);
             vscode.window.showInformationMessage(`Member was uploaded.`);
           } catch (e) {
             vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
@@ -308,25 +294,12 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
         const contentApi = instance.getContent();
 
-        const path = node.path.split(`/`);
-        let asp, lib, file, fullName;
+        const {asp, library, file, member, basename} = Tools.parserMemberPath(node.path);
     
-        if (path.length === 3) {
-          lib = path[0];
-          file = path[1];
-          fullName = path[2];
-        } else {
-          asp = path[0];
-          lib = path[1];
-          file = path[2];
-          fullName = path[3];
-        }
-    
-        const name = fullName.substring(0, fullName.lastIndexOf(`.`));
-        const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+        const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
         if (node) {
-          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + fullName) });
+          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + basename) });
 
           if (localFilepath) {
             let localPath = localFilepath.path;
