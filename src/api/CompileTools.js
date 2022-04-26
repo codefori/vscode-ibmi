@@ -200,13 +200,14 @@ module.exports = class CompileTools {
     const allActions = Configuration.get(`actions`);
 
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
+    const fragement = uri.fragment;
 
     for (let action of allActions) {
       if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
     /** @type {object[]} */
-    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(`GLOBAL`)));
+    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (uri.scheme === `file`) {
       const localActions = await this.getLocalActions();

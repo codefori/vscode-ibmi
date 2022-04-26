@@ -496,7 +496,7 @@ module.exports = class objectBrowserTwoProvider {
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
         const objects = await content.getObjectList(filter);
         items = objects.map(object => 
-          object.type === `*FILE` ? new SPF(filter.name, object, filter.member) : new ILEObject(filter.name, object)
+          object.attribute === `*PHY` ? new SPF(filter.name, object, filter.member) : new ILEObject(filter.name, object)
         );
         break;
 
@@ -592,7 +592,7 @@ class SPF extends vscode.TreeItem {
 
     this.contextValue = `SPF`;
     this.path = [detail.library, detail.name].join(`/`);
-    this.description = detail.text + (detail.attribute && detail.attribute !== `*PHY` ? ` (${detail.attribute})` : ``);
+    this.description = detail.text;
 
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
   }
@@ -615,13 +615,14 @@ class ILEObject extends vscode.TreeItem {
     this.contextValue = `object`;
     this.path = `${library}/${name}`;
     this.type = type;
-    this.description = text + (attribute ? ` (${attribute})` : ``);
+    this.description = text + (attribute ? ` (${attribute.toLowerCase()})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
-      path: `/${library}/${name}.${type}`
-    })
+      path: `/${library}/${name}.${type}`,
+      fragment: attribute ? attribute : undefined
+    });
   }
 }
 

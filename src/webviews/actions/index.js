@@ -203,7 +203,7 @@ module.exports = class SettingsUI {
 
     ui.addField(new Field(`input`, `extensions`, `Extensions`));
     ui.fields[5].default = currentAction.extensions.join(`, `);
-    ui.fields[5].description = `A comma delimited list of extensions for this actions.`;
+    ui.fields[5].description = `A comma delimited list of extensions for this action. This can be a member extension, a streamfile extension, an object type or an object attribute`;
 
     ui.addField(new Field(`select`, `type`, `Types`));
     ui.fields[6].description = `The types of files this action can support.`;

@@ -250,7 +250,7 @@ module.exports = class IBMiContent {
 
   /**
    * @param {{library: string, object?: string, types?: string[]}} filters 
-   * @returns {Promise<{library: string, name: string, type: string, text: string, count?: number}[]>} List of members 
+   * @returns {Promise<{library: string, name: string, type: string, text: string, attribute: string, count?: number}[]>} List of members 
    */
   async getObjectList(filters) {
     const library = filters.library.toUpperCase();
