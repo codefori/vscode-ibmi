@@ -1,6 +1,8 @@
 
 const vscode = require(`vscode`);
-let instance = require(`../../Instance`);
+const instance = require(`../../Instance`);
+
+const Tools = require(`../../api/Tools`);
 
 module.exports = class basicQsysFs {
   constructor() {
@@ -16,23 +18,9 @@ module.exports = class basicQsysFs {
   async readFile(uri) {
     const contentApi = instance.getContent();
 
-    const path = uri.path.split(`/`);
-    let asp, lib, file, fullName;
+    const {asp, library, file, member} = Tools.parserMemberPath(uri.path);
 
-    if (path.length === 4) {
-      lib = path[1];
-      file = path[2];
-      fullName = path[3];
-    } else {
-      asp = path[1];
-      lib = path[2];
-      file = path[3];
-      fullName = path[4];
-    }
-
-    const name = fullName.substring(0, fullName.lastIndexOf(`.`));
-
-    const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+    const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
     return new Uint8Array(Buffer.from(memberContent, `utf8`));
   }
@@ -52,23 +40,9 @@ module.exports = class basicQsysFs {
    */
   writeFile(uri, content, options) {
     const contentApi = instance.getContent();
-    const path = uri.path.toUpperCase().split(`/`);
-    let asp, lib, file, fullName;
+    const {asp, library, file, member} = Tools.parserMemberPath(uri.path);
 
-    if (path.length === 4) {
-      lib = path[1];
-      file = path[2];
-      fullName = path[3];
-    } else {
-      asp = path[1];
-      lib = path[2];
-      file = path[3];
-      fullName = path[4];
-    }
-
-    const name = fullName.substring(0, fullName.lastIndexOf(`.`));
-
-    return contentApi.uploadMemberContent(asp, lib, file, name, content.toString(`utf8`));
+    return contentApi.uploadMemberContent(asp, library, file, member, content.toString(`utf8`));
   }
 
   /**

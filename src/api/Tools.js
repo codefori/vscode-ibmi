@@ -115,4 +115,45 @@ module.exports = class {
       (asp && asp.length > 0 ? `/${asp}` : ``) + `/QSYS.lib/${lib}.lib/${obj}.file/${mbr}.mbr`;
     return path;
   }
+
+  /**
+   * @param {string} string 
+   * @returns {{asp?: string, library: string, file: string, member: string, extension?: string, basename: string}}
+   */
+  static parserMemberPath(string) {
+    const result = {
+      asp: undefined,
+      library: undefined,
+      file: undefined,
+      member: undefined,
+      extension: undefined,
+      basename: undefined,
+    };
+
+    // Remove leading slash
+    const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
+    
+    if (path.length === 3) {
+      result.library = path[0];
+      result.file = path[1];
+      result.member = path[2];
+      result.basename = path[2];
+    } else 
+    if (path.length === 4) {
+      result.asp = path[0];
+      result.library = path[1];
+      result.file = path[2];
+      result.member = path[3];
+      result.basename = path[3];
+    } else {
+      throw new Error(`Invalid path: ${string}`);
+    }
+
+    if (result.basename.includes(`.`)) {
+      result.member = result.basename.substring(0, result.member.lastIndexOf(`.`));
+      result.extension = result.basename.substring(result.member.lastIndexOf(`.`) + 1);
+    }
+
+    return result;
+  }
 }

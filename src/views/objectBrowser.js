@@ -12,6 +12,7 @@ let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
 const Search = require(`../api/Search`);
+const Tools = require(`../api/Tools`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -124,33 +125,28 @@ module.exports = class objectBrowserTwoProvider {
             fullPath = fullPath.toUpperCase();
 
             const connection = instance.getConnection();
-            const oldPath = node.path.split(`/`);
-            const oldName = oldPath[2].substring(0, oldPath[2].lastIndexOf(`.`));
-            const newPath = fullPath.split(`/`);
 
-            if (newPath.length === 3) {
-              const newName = newPath[2].substring(0, newPath[2].lastIndexOf(`.`));
+            try {
+              vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
-              try {
-                vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
+              const oldData = Tools.parserMemberPath(node.path);
+              const newData = Tools.parserMemberPath(fullPath);
 
-                await connection.remoteCommand(
-                  `CPYSRCF FROMFILE(${oldPath[0]}/${oldPath[1]}) TOFILE(${newPath[0]}/${newPath[1]}) FROMMBR(${oldName}) TOMBR(${newName}) MBROPT(*REPLACE)`,
-                )
+              await connection.remoteCommand(
+                `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
+              )
 
-                if (Configuration.get(`autoOpenFile`)) {
-                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
-                }
-
-                if (Configuration.get(`autoRefresh`)) {
-                  this.refresh();
-                }
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error creating new member! ${e}`);
+              if (Configuration.get(`autoOpenFile`)) {
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
               }
-            } else {
-              vscode.window.showErrorMessage(`Extension must be provided when creating a member.`);
+
+              if (Configuration.get(`autoRefresh`)) {
+                this.refresh();
+              }
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error creating new member! ${e}`);
             }
+            
           }
 
         } else {
@@ -165,12 +161,11 @@ module.exports = class objectBrowserTwoProvider {
 
           if (result === `Yes`) {
             const connection = instance.getConnection();
-            const path = node.path.split(`/`);
-            const name = path[2].substring(0, path[2].lastIndexOf(`.`));
+            const {library, file, member} = Tools.parserMemberPath(node.path);
 
             try {
               await connection.remoteCommand(
-                `RMVM FILE(${path[0]}/${path[1]}) MBR(${name})`,
+                `RMVM FILE(${library}/${file}) MBR(${member})`,
               );
 
               vscode.window.showInformationMessage(`Deleted ${node.path}.`);
@@ -277,26 +272,11 @@ module.exports = class objectBrowserTwoProvider {
         let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
  
         if (originPath) {
-          const path = node.path.split(`/`);
-          let asp, lib, file, fullName;
-      
-          if (path.length === 3) {
-            lib = path[0];
-            file = path[1];
-            fullName = path[2];
-          } else {
-            asp = path[0];
-            lib = path[1];
-            file = path[2];
-            fullName = path[3];
-          }
-
-          const name = fullName.substring(0, fullName.lastIndexOf(`.`));
-
+          const {asp, library, file, member} = Tools.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
           
           try {
-            contentApi.uploadMemberContent(asp, lib, file, name, data);
+            contentApi.uploadMemberContent(asp, library, file, member, data);
             vscode.window.showInformationMessage(`Member was uploaded.`);
           } catch (e) {
             vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
@@ -308,25 +288,12 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
         const contentApi = instance.getContent();
 
-        const path = node.path.split(`/`);
-        let asp, lib, file, fullName;
+        const {asp, library, file, member, basename} = Tools.parserMemberPath(node.path);
     
-        if (path.length === 3) {
-          lib = path[0];
-          file = path[1];
-          fullName = path[2];
-        } else {
-          asp = path[0];
-          lib = path[1];
-          file = path[2];
-          fullName = path[3];
-        }
-    
-        const name = fullName.substring(0, fullName.lastIndexOf(`.`));
-        const memberContent = await contentApi.downloadMemberContent(asp, lib, file, name);
+        const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
         if (node) {
-          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + fullName) });
+          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + basename) });
 
           if (localFilepath) {
             let localPath = localFilepath.path;
