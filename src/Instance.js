@@ -330,12 +330,28 @@ module.exports = class Instance {
             }
           }),
           vscode.commands.registerCommand(`code-for-ibmi.compareWithSelected`, async (node) => {
-            if (node) {
-              if (selectedForCompare) {
-                vscode.commands.executeCommand(`vscode.diff`, selectedForCompare, node.resourceUri);
+            if (selectedForCompare) {
+              let uri;
+              if (node) {
+                uri = node.resourceUri;
               } else {
-                vscode.window.showInformationMessage(`Nothing selected to compare.`);
+                const compareWith = await vscode.window.showInputBox({
+                  prompt: `Enter the path to compare with.`,
+                  value: `${selectedForCompare.toString()}`,
+                  title: `Compare with`
+                })
+
+                if (compareWith) 
+                  uri = vscode.Uri.parse(compareWith);
               }
+
+              if (uri) {
+                vscode.commands.executeCommand(`vscode.diff`, selectedForCompare, uri);
+              } else {
+                vscode.window.showErrorMessage(`No compare to path provided.`);
+              }
+            } else {
+              vscode.window.showInformationMessage(`Nothing selected to compare.`);
             }
           })
         );
