@@ -82,7 +82,6 @@ module.exports = class Terminal {
           handleInput: (data) => {
             if (type === `5250`) {
               let buffer = Buffer.from(data);
-              console.log(buffer);
 
               switch (buffer[0]) {
               case 127: //Backspace
