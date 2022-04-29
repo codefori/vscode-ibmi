@@ -91,10 +91,12 @@ module.exports = class IBMiContent {
     const sourceData = body.split(`\n`);
     const recordLength = recordLengths[alias] || DEFAULT_RECORD_LENGTH;
 
+    const decimalSequence = sourceData.length >= 10000;
+
     let rows = [],
       sequence = 0;
     for (let i = 0; i < sourceData.length; i++) {
-      sequence = (i + 1) / 100;
+      sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
       if (sourceData[i].length > recordLength) {
         sourceData[i] = sourceData[i].substring(0, recordLength);
       }
