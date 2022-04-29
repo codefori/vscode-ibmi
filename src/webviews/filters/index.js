@@ -28,7 +28,7 @@ module.exports = class FiltersUI {
 
     } else {
       filter = {
-        name: `New Filter`,
+        name: `Filter ${objectFilters.length + 1}`,
         library: `QGPL`,
         object: `*`,
         types: [`*ALL`],
@@ -41,6 +41,7 @@ module.exports = class FiltersUI {
 
     field = new Field(`input`, `name`, `Filter name`);
     field.default = filter.name;
+    field.description = `The filter name should be unique.`
     ui.addField(field);
 
     field = new Field(`input`, `library`, `Library`);
@@ -76,7 +77,7 @@ module.exports = class FiltersUI {
         //In case we need to play with the data
         switch (key) {
         case `name`:
-          data[name] = data[key].trim();
+          data[key] = data[key].trim();
           break;
         case `types`:
           data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
@@ -98,6 +99,12 @@ module.exports = class FiltersUI {
           await config.set(`objectFilters`, objectFilters);
         }
       } else {
+        existingConfigIndex = objectFilters.findIndex(cFilter => cFilter.name === data.name);
+
+        if (existingConfigIndex >= 0) {
+          data.name = `${data.name.trim()} (2)`;
+        }
+
         objectFilters.push(data);
         await config.set(`objectFilters`, objectFilters);
       }
