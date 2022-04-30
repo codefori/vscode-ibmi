@@ -398,9 +398,9 @@ module.exports = class IBMi {
         );
 
         //Next, we see what pase features are available (installed via yum)
-        try {
-          //This may enable certain features in the future.
-          for (const feature of remoteApps) {
+        //This may enable certain features in the future.
+        for (const feature of remoteApps) {
+          try {
             progress.report({
               message: `Checking installed components on host IBM i: ${feature.path}`
             });
@@ -418,10 +418,9 @@ module.exports = class IBMi {
                     this.remoteFeatures[name] = feature.path + name;
               }
             }
+          } catch (e) {
+            console.log(e);
           }
-          
-        } catch (e) {
-          console.log(e);
         }
 
         if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
