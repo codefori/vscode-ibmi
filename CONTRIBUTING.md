@@ -34,3 +34,4 @@ Thanks so much to everyone [who has contributed](https://github.com/halcyon-tech
 * [@dman247](https://github.com/dman247)
 * [@EddieSmith](https://github.com/EddieSmith)
 * [@fathert](https://github.com/fathert)
+* [@Teqed](https://github.com/Teqed)
