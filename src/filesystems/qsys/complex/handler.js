@@ -1,4 +1,6 @@
 const vscode = require(`vscode`);
+const Tools = require(`../../../api/Tools`);
+
 const instance = require(`../../../Instance`);
 
 let { allSourceDates, recordLengths } = require(`./data`);
@@ -77,21 +79,11 @@ module.exports = class {
     context.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document.uri.scheme === `member`) {
-          const path = event.document.uri.path.split(`/`);
-          let lib, file, fullName;
+          const path = event.document.uri.path;
+          const {library, file, member} = Tools.parserMemberPath(path);
 
-          if (path.length === 4) {
-            lib = path[1];
-            file = path[2];
-            fullName = path[3];
-          } else {
-            lib = path[2];
-            file = path[3];
-            fullName = path[4];
-          }
 
-          fullName = fullName.substr(0, fullName.lastIndexOf(`.`));
-          const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
+          const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
 
           let sourceDates = allSourceDates[alias];
           if (sourceDates) {
@@ -177,22 +169,10 @@ module.exports = class {
    */
   static refreshGutter(editor) {
     if (editor.document.uri.scheme === `member`) {
-      const normalPath = editor.document.uri.path;
-      const path = normalPath.split(`/`);
-      let lib, file, fullName;
+      const path = editor.document.uri.path;
+      const {library, file, member} = Tools.parserMemberPath(path);
 
-      if (path.length === 4) {
-        lib = path[1];
-        file = path[2];
-        fullName = path[3];
-      } else {
-        lib = path[2];
-        file = path[3];
-        fullName = path[4];
-      }
-
-      fullName = fullName.substr(0, fullName.lastIndexOf(`.`));
-      const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
+      const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
 
       const sourceDates = allSourceDates[alias];
 
