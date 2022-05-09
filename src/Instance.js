@@ -366,18 +366,40 @@ module.exports = class Instance {
               let isValid = true;
 
               if (!searchFor.startsWith(`/`)) {
-                try { //The reason for the try is because match throws an error.
-                  const [path] = searchFor.match(/\w+\/\w+\/\w+\.\w+/);
-                  if (path) isValid = true;
-                } catch (e) {
-                  isValid = false;
+                isValid = false;
+                let validObjectName = new RegExp(`^[A-Za-z0-9@#$][A-Za-z0-9_#@$.]*$`);
+                let nameParts = searchFor.split(`/`);
+                if (nameParts.length != 3) {
+                  vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
+                } else if (!validObjectName.test(nameParts[0])) {
+                  vscode.window.showErrorMessage(`Invalid library name`);
+                } else if (!validObjectName.test(nameParts[1])) {
+                  vscode.window.showErrorMessage(`Invalid source file name`);
+                } else {
+                  // Member part must contain at least 1 period to separate mbr.type
+                  let mbrParts = nameParts[2].split(`.`);
+                  if (mbrParts.length < 2) {
+                    vscode.window.showErrorMessage(`Member format incorrect. Use MBR.ext`);
+                  } else {
+                    // Member type does not allow periods
+                    let validMbrType = new RegExp(`^[A-Za-z0-9@#$][A-Za-z0-9_#@$]*$`);
+                    // Since member type can't contain periods it's always the last mbr part
+                    let mbrType = mbrParts.pop();
+                    // Member name may contain periods, so it's any of the pieces that remain
+                    let mbrName = mbrParts.join(`.`);
+                    if (!validObjectName.test(mbrName)) {
+                      vscode.window.showErrorMessage(`Invalid member name`);
+                    } else if (!validMbrType.test(mbrType)) {
+                      vscode.window.showErrorMessage(`Invalid member type`);
+                    } else {
+                      isValid = true;
+                    }
+                  }
                 }
               }
 
               if (isValid) {
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, searchFor);
-              } else {
-                vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
               }
             }
           }),
