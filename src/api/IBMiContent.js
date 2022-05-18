@@ -389,7 +389,7 @@ module.exports = class IBMiContent {
   async getFileList(remotePath) {
     remotePath = remotePath.replace(/'|"|\$|\\| /g, function(matched){return `\\`.concat(matched)});
     const result = await this.ibmi.sendCommand({
-      command: `ls -a -p ${remotePath}`
+      command: `ls -a -p -L ${remotePath}`
     });
 
     //@ts-ignore
