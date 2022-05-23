@@ -12,6 +12,7 @@ const ignore = require(`ignore`).default;
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
 const DEPLOYMENT_KEY = `deployment`;
+const DEPLOYMENT_STATS_KEY = `deploymentStats`;
 
 const BUTTON_BASE = `$(cloud-upload) Deploy`;
 const BUTTON_WORKING = `$(sync~spin) Deploying`;
@@ -77,7 +78,7 @@ module.exports = class Deployment {
 
           if (remotePath) {
             const method = await vscode.window.showQuickPick(
-              [`Working Changes`, `Staged Changes`, `All`],
+              [`Working Changes`, `Staged Changes`, `All`, `Changed`],
               { placeHolder: `Select deployment method to ${remotePath}` }
             );
 
@@ -219,18 +220,65 @@ module.exports = class Deployment {
 
                 break;
 
+              case `Changed`:
               case `All`: // Uploads entire directory
+                const changedOnly = method === `Changed`;
+
                 this.button.text = BUTTON_WORKING;
                 
                 // get the .gitignore file from workspace
                 const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
 
-                let ignoreRules = ignore({ignorecase: true}).add(`.git`);
+                const ignoreRules = ignore({ignorecase: true}).add(`.git`);
 
                 if (gitignores.length > 0) {
                   // get the content from the file
                   const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
                   ignoreRules.add(gitignoreContent.split(`\n`));
+                }
+
+                const stats = {};
+
+                if (changedOnly) {
+                  const changes = await connection.sendCommand({
+                    command: `/QOpenSys/pkgs/bin/find . -type f -not -path '*/\.*' -printf '%A+ %p\n'`
+                  });
+
+                  console.log(changes);
+
+                  if (changes.stdout) {
+                    const localFiles = await vscode.workspace.findFiles(`**/*`);
+                    const remoteStatList = changes.stdout.split(`\n`)
+
+                    for (const line of remoteStatList) {
+                      const parts = line.split(` `);
+                      const fileData = {
+                        remoteTs: parts[0],
+                        localTs: null,
+                        path: parts[1].substring(2),
+                      };
+
+                      const localFile = localFiles.find(f => {
+                        const realUnixPath = f.path.split(path.sep).join(path.posix.sep);
+                        return realUnixPath.endsWith(fileData.path);
+                      });
+
+                      const relative = path.relative(folder.uri.fsPath, localFile.fsPath);
+                      if (relative.startsWith(`..`)) continue;;
+                      if (!ignoreRules.ignores(relative)) {
+
+                        if (localFile) {
+                          try {
+                            fileData.localTs = (await vscode.workspace.fs.stat(localFile)).mtime;
+                          } catch (e) {
+                            console.log(e);
+                          }
+                        }
+
+                        stats[fileData.path] = fileData;
+                      }
+                    }
+                  }
                 }
 
                 const uploadResult = await vscode.window.withProgress({
@@ -240,6 +288,10 @@ module.exports = class Deployment {
                   progress.report({ message: `Deploying to ${folder.name}` });
                   if (isIFS) {
                     try {
+
+                      const allPrevStats = storage.get(DEPLOYMENT_STATS_KEY) || {};
+                      const workspacePrevStats = allPrevStats[folder.uri.fsPath] || {};
+
                       await client.putDirectory(folder.uri.fsPath, remotePath, {
                         recursive: true,
                         concurrency: 5,
@@ -253,14 +305,36 @@ module.exports = class Deployment {
                           }
                         },
                         validate: (localPath, remotePath) => {
-                          if (ignoreRules) {
-                            const relative = path.relative(folder.uri.fsPath, localPath);
-                            return !ignoreRules.ignores(relative);
+                          const relative = path.relative(folder.uri.fsPath, localPath);
+                          if (relative.startsWith(`..`)) return false;
+                          if (ignoreRules.ignores(relative)) return false;
+
+                          if (changedOnly) {
+                            if (workspacePrevStats[relative]) {
+                              const previousStat = workspacePrevStats[relative];
+                              const currentStat = stats[relative];
+
+                              if (currentStat && previousStat) {
+
+                                if (currentStat.localTs !== previousStat.localTs || currentStat.remoteTs !== previousStat.remoteTs) {
+                                  return true;
+                                } else {
+                                  return false;
+                                }
+                              }
+                            }
                           }
 
                           return true;
                         }
                       });
+
+                      if (changedOnly) {
+                        storage.set(DEPLOYMENT_STATS_KEY, {
+                          ...allPrevStats,
+                          [folder.uri.fsPath]: stats
+                        });
+                      }
 
                       progress.report({ message: `Deployment finished.` });
                       this.deploymentLog.appendLine(`Deployment finished.`);
