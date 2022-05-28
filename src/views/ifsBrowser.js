@@ -162,7 +162,7 @@ module.exports = class ifsBrowserProvider {
           const connection = instance.getConnection();
 
           try {
-            vscode.window.showInformationMessage(`Creating and streamfile ${fullName}.`);
+            vscode.window.showInformationMessage(`Creating streamfile ${fullName}.`);
 
             await connection.paseCommand(`echo "" > "${fullName}"`);
 
