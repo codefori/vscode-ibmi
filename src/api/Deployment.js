@@ -96,6 +96,9 @@ module.exports = class Deployment {
                   await config.set(`homeDirectory`, remotePath);
                   vscode.window.showInformationMessage(`Home directory set to ${remotePath} for deployment.`);
                 }
+              } else {
+                vscode.window.showErrorMessage(`No longer able to deploy to a library.`);
+                return false;
               }
 
               const client = ibmi.client;
@@ -145,51 +148,9 @@ module.exports = class Deployment {
                       vscode.window.showInformationMessage(`Deploying ${changeType} changes (${uploads.length}) to ${remotePath}`);
 
                       try {
-                        if (isIFS) {
-                          await client.putFiles(uploads, {
-                            concurrency: 5
-                          });
-                        } else {
-                          // Upload changes to QSYS
-                          const uploadUris = uploads.map(upload => upload.uri);
-                          let index = 0;
-
-                          for (const uri of uploadUris) {
-                            const relative = path.relative(folder.uri.fsPath, uri.fsPath);
-                            const pathParts = relative.toUpperCase().split(path.sep);
-                            const baseInfo = path.parse(relative);
-      
-                            index += 1;
-      
-                            // directory / file.ext
-                            if (pathParts.length === 2 && pathParts[0].match(/^[A-Z]/i)) {
-                              if (baseInfo.ext.length > 1) {
-
-                                if (!sourceFilesCreated.includes(pathParts[0])) {
-                                  sourceFilesCreated.push(pathParts[0]);
-                                  try {
-                                    await connection.remoteCommand(`CRTSRCPF FILE(${remotePath}/${pathParts[0]}) RCDLEN(112)`);
-                                  } catch (e) {
-                                  // We likely don't care that it fails.
-                                  }
-                                }
-      
-                                try {
-                                  await connection.remoteCommand(`ADDPFM FILE(${remotePath}/${pathParts[0]}) MBR(${baseInfo.name}) SRCTYPE(${baseInfo.ext.substring(1)})`);
-                                } catch (e) {
-                                  // We likely don't care that it fails. It might already exist?
-                                }
-      
-                                const fileContent = await vscode.workspace.fs.readFile(uri);
-                                await content.uploadMemberContent(undefined, remotePath, pathParts[0], baseInfo.name, fileContent);
-    
-                                this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`,`)}`);
-                              }
-                            } else {
-                              // Bad extension
-                            }
-                          }
-                        }
+                        await client.putFiles(uploads, {
+                          concurrency: 5
+                        });
                         this.button.text = BUTTON_BASE;
                         this.deploymentLog.appendLine(`Deployment finished.`);
                         vscode.window.showInformationMessage(`Deployment finished.`);
@@ -286,133 +247,65 @@ module.exports = class Deployment {
                   title: `Deploying to ${folder.name}`,
                 }, async (progress) => {
                   progress.report({ message: `Deploying to ${folder.name}` });
-                  if (isIFS) {
-                    try {
+                  try {
 
-                      const allPrevStats = storage.get(DEPLOYMENT_STATS_KEY) || {};
-                      const workspacePrevStats = allPrevStats[folder.uri.fsPath] || {};
+                    const allPrevStats = storage.get(DEPLOYMENT_STATS_KEY) || {};
+                    const workspacePrevStats = allPrevStats[folder.uri.fsPath] || {};
 
-                      await client.putDirectory(folder.uri.fsPath, remotePath, {
-                        recursive: true,
-                        concurrency: 5,
-                        tick: (localPath, remotePath, error) => {
-                          if (error) {
-                            progress.report({ message: `Failed to deploy ${localPath}` });
-                            this.deploymentLog.appendLine(`FAILED: ${localPath} -> ${remotePath}: ${error.message}`);
-                          } else {
-                            progress.report({ message: `Deployed ${localPath}` });
-                            this.deploymentLog.appendLine(`SUCCESS: ${localPath} -> ${remotePath}`);
-                          }
-                        },
-                        validate: (localPath, remotePath) => {
-                          const relative = path.relative(folder.uri.fsPath, localPath);
-                          if (relative.startsWith(`..`)) return false;
-                          if (ignoreRules.ignores(relative)) return false;
+                    await client.putDirectory(folder.uri.fsPath, remotePath, {
+                      recursive: true,
+                      concurrency: 5,
+                      tick: (localPath, remotePath, error) => {
+                        if (error) {
+                          progress.report({ message: `Failed to deploy ${localPath}` });
+                          this.deploymentLog.appendLine(`FAILED: ${localPath} -> ${remotePath}: ${error.message}`);
+                        } else {
+                          progress.report({ message: `Deployed ${localPath}` });
+                          this.deploymentLog.appendLine(`SUCCESS: ${localPath} -> ${remotePath}`);
+                        }
+                      },
+                      validate: (localPath, remotePath) => {
+                        const relative = path.relative(folder.uri.fsPath, localPath);
+                        if (relative.startsWith(`..`)) return false;
+                        if (ignoreRules.ignores(relative)) return false;
 
-                          if (changedOnly) {
-                            if (workspacePrevStats[relative]) {
-                              const previousStat = workspacePrevStats[relative];
-                              const currentStat = stats[relative];
+                        if (changedOnly) {
+                          if (workspacePrevStats[relative]) {
+                            const previousStat = workspacePrevStats[relative];
+                            const currentStat = stats[relative];
 
-                              if (currentStat && previousStat) {
+                            if (currentStat && previousStat) {
 
-                                if (currentStat.localTs !== previousStat.localTs || currentStat.remoteTs !== previousStat.remoteTs) {
-                                  return true;
-                                } else {
-                                  return false;
-                                }
+                              if (currentStat.localTs !== previousStat.localTs || currentStat.remoteTs !== previousStat.remoteTs) {
+                                return true;
+                              } else {
+                                return false;
                               }
                             }
                           }
-
-                          return true;
                         }
+
+                        return true;
+                      }
+                    });
+
+                    if (changedOnly) {
+                      storage.set(DEPLOYMENT_STATS_KEY, {
+                        ...allPrevStats,
+                        [folder.uri.fsPath]: stats
                       });
-
-                      if (changedOnly) {
-                        storage.set(DEPLOYMENT_STATS_KEY, {
-                          ...allPrevStats,
-                          [folder.uri.fsPath]: stats
-                        });
-                      }
-
-                      progress.report({ message: `Deployment finished.` });
-                      this.deploymentLog.appendLine(`Deployment finished.`);
-
-                      return true;
-                    } catch (e) {
-                      progress.report({ message: `Deployment failed.` });
-                      this.deploymentLog.appendLine(`Deployment failed`);
-                      this.deploymentLog.appendLine(e);
-
-                      return false;
-                    }
-                  } else {
-                    // Upload/write to QSYS
-                    const uploads = await vscode.workspace.findFiles(`**`, ``);
-
-                    let index = -1;
-
-                    for (const uri of uploads) {
-                      const relative = path.relative(folder.uri.fsPath, uri.fsPath);
-                      const pathParts = relative.toUpperCase().split(path.sep);
-                      const baseInfo = path.parse(relative);
-
-                      index += 1;
-
-                      // directory / file.ext
-                      if (pathParts.length === 2 && pathParts[0].match(/^[A-Z]/i)) {
-                        if (ignoreRules) {
-                          if (ignoreRules.ignores(relative)) {
-                            // Skip because it's part of the .gitignore
-                            continue;
-                          }
-                        }
-
-                        if (pathParts[0].length <= 10 && baseInfo.name.length <= 10 && baseInfo.ext.length > 1) {
-                          progress.report({ message: `Deploying ${relative} (${index + 1}/${uploads.length})` });
-
-                          if (!sourceFilesCreated.includes(pathParts[0])) {
-                            sourceFilesCreated.push(pathParts[0]);
-                            try {
-                              await connection.remoteCommand(`CRTSRCPF FILE(${remotePath}/${pathParts[0]}) RCDLEN(112)`);
-                            } catch (e) {
-                            // We likely don't care that it fails.
-                            }
-                          }
-
-                          try {
-                            await connection.remoteCommand(`ADDPFM FILE(${remotePath}/${pathParts[0]}) MBR(${baseInfo.name}) SRCTYPE(${baseInfo.ext.substring(1)})`);
-                          } catch (e) {
-                            // We likely don't care that it fails. It might already exist?
-                          }
-
-                          try {
-                            const fileContent = await vscode.workspace.fs.readFile(uri);
-                            await content.uploadMemberContent(undefined, remotePath, pathParts[0], baseInfo.name, fileContent);
-
-                            progress.report({ message: `Deployed ${relative}` });
-                            this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`/`)}`);
-
-                          } catch (error) {
-                            // Failed to upload a file. Fail deploy.
-                            progress.report({ message: `Failed to deploy ${relative}` });
-                            this.deploymentLog.appendLine(`FAILED: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`/`)}: ${error}`);
-                            return false;
-                          }
-                        } else {
-                          this.deploymentLog.appendLine(`SKIPPED: ${relative}}`);
-                        }
-                      } else {
-                        // Bad extension
-                      }
                     }
 
                     progress.report({ message: `Deployment finished.` });
                     this.deploymentLog.appendLine(`Deployment finished.`);
 
-                    // All good uploading!
                     return true;
+                  } catch (e) {
+                    progress.report({ message: `Deployment failed.` });
+                    this.deploymentLog.appendLine(`Deployment failed`);
+                    this.deploymentLog.appendLine(e);
+
+                    return false;
                   }
                 });
 

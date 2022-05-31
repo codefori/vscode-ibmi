@@ -1360,11 +1360,6 @@
 					"group": "3_ifsTransfer@3"
 				},
 				{
-					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == objectBrowser && viewItem == filter && code-for-ibmi:workspace == true",
-					"group": "3_ifsTransfer@3"
-				},
-				{
 					"command": "code-for-ibmi.createSourceFile",
 					"when": "view == objectBrowser && viewItem == filter",
 					"group": "1_LibActions@1"
