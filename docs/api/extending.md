@@ -85,14 +85,14 @@ interface CommandResult {
 ```
 
 ```js
-const result = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+const result: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
   environment: `pase`,
   command: `ls`
 });
 
 // or
 
-const result: CommandResult = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+const result = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
   environment: `pase`,
   command: `ls`
 });
@@ -110,6 +110,84 @@ const rows: Object[] = await vscode.commands.executeCommand(`code-for-ibmi.runQu
 const rows = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, statement);
 ```
 
+### Right click options
+
+It is possible for your extension to add right click options to:
+
+* objects in the Object Browser
+* members in the Object Browser
+* directories in the IFS Browser
+* streamfiles in the IFS Browser
+* much more
+
+You would register a command as you'd normally expect, but expect a parameter for the chosen node from the tree view. Here is the sample for deleting a streamfile in the IFS Browser.
+
+```js
+context.subscriptions.push(
+  // `node` is the object passed in directly from the IFS Browser.
+  vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
+    if (node) {
+      //Running from right click
+      let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+
+      if (result === `Yes`) {
+        // directory using the connection API.
+        const connection = instance.getConnection();
+
+        try {
+          // Running a pase command. You should use `code-for-ibmi.runCommand` instead.
+          await connection.paseCommand(`rm -rf "${node.path}"`)
+
+          vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+
+          this.refresh();
+        } catch (e) {
+          vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
+        }
+      }
+    } else {
+      // If it's reached this point, it usually 
+      // indicates that it's running from the command palette
+    }
+  })
+);
+```
+
+Following that, we need to register the command to it has a label. We do this in `package.json`
+
+```json
+{
+  "command": "code-for-ibmi.deleteIFS",
+  "title": "Delete object",
+  "category": "Your extension"
+}
+```
+
+Finally, we add it to a context menu:
+
+```json
+"menus": {
+  "view/item/context": [
+    {
+      "command": "code-for-ibmi.deleteIFS",
+      "when": "view == ifsBrowser",
+      "group": "yourext@1"
+    },
+  ]
+}
+```
+
+**When adding your command to a menu context**, there are lots of possible values for your `when` clause:
+
+* `view` can be `ifsBrowser` or `objectBrowser`.
+* `viewItem` can be different depending on the view:
+   * for `ifsBrowser`, it can be `directory` or `streamfile`
+   * for `objectBrowser`, it can be `member` (source member), `object` (any object), `SPF` (source file) or `filter`.
+
+This allows your extension to provide commands for specific types of objects or specific items in the treeview.
+
+[Read more about the when clause on the VS Code docs website.](https://code.visualstudio.com/api/references/when-clause-contexts)
+
 ### Temporary library
 
 Please remember that you cannot use `QTEMP` between commands since each command runs in a new job. Please refer to `instance.getConfig().tempLibrary` for a temporary library.
@@ -120,12 +198,7 @@ It is likely there will configuration that is specific to a connection. You can 
 
 ```js
 const config = instance.getConfig();
-let someArray = config.get(`someArray`);
-
-if (!someArray) {
-  //This means this config doesn't exist for the connection
-  someArray = [];
-}
+const someArray = config.get(`someArray`) || [];
 
 someArray.push(someUserItem);
 
