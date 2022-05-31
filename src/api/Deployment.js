@@ -241,7 +241,7 @@ module.exports = class Deployment {
 
                 if (changedOnly) {
                   const changes = await connection.sendCommand({
-                    command: `/QOpenSys/pkgs/bin/find . -type f -not -path '*/\.*' -printf '%A+ %p\n'`
+                    command: `/QOpenSys/pkgs/bin/find . -type f -printf '%A+ %p\n'`
                   });
 
                   console.log(changes);
