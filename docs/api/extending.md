@@ -153,7 +153,7 @@ context.subscriptions.push(
 );
 ```
 
-Following that, we need to register the command to it has a label. We do this in `package.json`
+Following that, we need to register the command so it has a label. We do this in `package.json`
 
 ```json
 {
