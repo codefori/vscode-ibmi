@@ -567,7 +567,11 @@ Otherwise, leave blank.
 
 #### Enable source dates
 
-When enabled, source dates will be retained.
+When checked, source dates will be retained.
+
+#### Source Dates in Gutter
+
+When checked, source dates will be displayed in the gutter.
 
 ## Snippets
 
