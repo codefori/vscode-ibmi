@@ -165,21 +165,21 @@ module.exports = class objectBrowserTwoProvider {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
-        const path = node.path.split(`/`);
-        const name = path[2].substring(0, path[2].lastIndexOf(`.`));
-
         if (node) {
+          const {library, file, member, basename} = Tools.parserMemberPath(node.path);
+
           const newText = await vscode.window.showInputBox({
             value: node.description,
-            prompt: `Update ${name} text`
+            prompt: `Update ${basename} text`
           });
 
           if (newText && newText !== node.description) {
+            const escapedText = newText.replace(/'/g, `''`);
             const connection = instance.getConnection();
 
             try {
               await connection.remoteCommand(
-                `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${name}) TEXT('${newText}')`,
+                `CHGPFM FILE(${library}/${file}) MBR(${member}) TEXT('${escapedText}')`,
               );
 
               if (Configuration.get(`autoRefresh`)) {
