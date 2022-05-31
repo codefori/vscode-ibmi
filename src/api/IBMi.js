@@ -9,7 +9,7 @@ const path = require(`path`);
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`]
+    names: [`git`, `grep`, `tn5250`, `find`]
   },
   {
     path: `/usr/bin/`,
@@ -57,6 +57,7 @@ module.exports = class IBMi {
       grep: undefined,
       tn5250: undefined,
       setccsid: undefined,
+      find: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
     };

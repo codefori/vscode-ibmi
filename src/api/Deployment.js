@@ -63,9 +63,6 @@ module.exports = class Deployment {
         
         let folder;
 
-        /** @type {string[]} */
-        const sourceFilesCreated = [];
-
         if (workspaceIndex) {
           folder = vscode.workspace.workspaceFolders.find(dir => dir.index === workspaceIndex);
         } else {
@@ -76,9 +73,16 @@ module.exports = class Deployment {
           const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
           const remotePath = existingPaths[folder.uri.fsPath];
 
+          const find = connection.remoteFeatures.find;
+
           if (remotePath) {
             const method = await vscode.window.showQuickPick(
-              [`Working Changes`, `Staged Changes`, `All`, `Changed`],
+              [
+                ...(find ? [`Changes Only`] : []), 
+                `Working Changes`, 
+                `Staged Changes`, 
+                `All`
+              ],
               { placeHolder: `Select deployment method to ${remotePath}` }
             );
 
@@ -181,9 +185,9 @@ module.exports = class Deployment {
 
                 break;
 
-              case `Changed`:
+              case `Changes Only`:
               case `All`: // Uploads entire directory
-                const changedOnly = method === `Changed`;
+                const changedOnly = method === `Changes Only`;
 
                 this.button.text = BUTTON_WORKING;
                 
@@ -202,7 +206,7 @@ module.exports = class Deployment {
 
                 if (changedOnly) {
                   const changes = await connection.sendCommand({
-                    command: `/QOpenSys/pkgs/bin/find . -type f -printf '%A+ %p\n'`
+                    command: `${find} . -type f -printf '%A+ %p\n'`
                   });
 
                   console.log(changes);
