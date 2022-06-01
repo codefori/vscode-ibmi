@@ -61,7 +61,7 @@ module.exports = class Search {
       if (line.startsWith(`Binary`)) continue;
   
       parts = line.split(`:`);
-      currentFile = parts[0].substr(10); //Remove '/QSYS.LIB/'
+      currentFile = parts[0].substring(10); //Remove '/QSYS.LIB/'
       currentFile = currentFile.replace(`.LIB`, ``).replace(`.FILE`, ``).replace(`.MBR`, ``);
 
       currentLine = Number(parts[1]);
@@ -76,7 +76,7 @@ module.exports = class Search {
       contentIndex = nthIndex(line, `:`, 2);
       
       if (contentIndex >= 0) {
-        curContent = line.substr(contentIndex+1);
+        curContent = line.substring(contentIndex+1);
   
         files[currentFile].lines.push({
           number: currentLine,
@@ -147,7 +147,7 @@ module.exports = class Search {
         contentIndex = nthIndex(line, `:`, 2);
       
         if (contentIndex >= 0) {
-          content = line.substr(contentIndex+1);
+          content = line.substring(contentIndex+1);
     
           files[parts[0]].lines.push({
             number: Number(parts[1]),

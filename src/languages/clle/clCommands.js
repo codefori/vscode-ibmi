@@ -45,7 +45,7 @@ module.exports = class CLCommands {
 
               // Determine if we're prompting a paramater vs a command
               let parmIdx = parts[parts.length-1].indexOf(`(`);
-              if (parmIdx > -1 && parts[parts.length-1].includes(`)`) === false) currentParameter = parts[parts.length-1].substr(0, parmIdx);
+              if (parmIdx > -1 && parts[parts.length-1].includes(`)`) === false) currentParameter = parts[parts.length-1].substring(0, parmIdx);
 
               // If we found a command..
               if (nameIndex > -1) {
@@ -54,7 +54,7 @@ module.exports = class CLCommands {
                 // get the parms we already have defined in the document
                 const existingParms = parts
                   .slice(nameIndex)
-                  .map(part => part.includes(`(`) ? part.substr(0, part.indexOf(`(`)).toUpperCase() : undefined);
+                  .map(part => part.includes(`(`) ? part.substring(0, part.indexOf(`(`)).toUpperCase() : undefined);
 
                 if (name.length > 2) {
 
@@ -114,7 +114,7 @@ module.exports = class CLCommands {
 
             if (possibleParm.endsWith(`(`)) {
               //If the word we're highlighting is a paramater name, we need to find the command that uses it 
-              possibleParm = possibleParm.substr(0, possibleParm.length - 1);
+              possibleParm = possibleParm.substring(0, possibleParm.length - 1);
 
               // get the document in parts
               const parts = CLCommands.getCLParts(document, new vscode.Range(new vscode.Position(0, 0), position));

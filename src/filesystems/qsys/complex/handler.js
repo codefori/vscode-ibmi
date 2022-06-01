@@ -50,7 +50,7 @@ module.exports = class {
               fullName = path[4];
             }
 
-            fullName = fullName.substr(0, fullName.lastIndexOf(`.`));
+            fullName = fullName.substring(0, fullName.lastIndexOf(`.`));
             const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
             const recordLength = recordLengths[alias];
 

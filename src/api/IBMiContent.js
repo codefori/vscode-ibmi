@@ -401,11 +401,11 @@ module.exports = class IBMiContent {
       list = list.filter(item => item !== `../` && item !== `./`);
 
       const items = list.map(item => {
-        const type = ((item.substr(item.length - 1, 1) === `/`) ? `directory` : `streamfile`);
+        const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
 
         return {
           type, 
-          name: (type === `directory` ? item.substr(0, item.length - 1) : item),
+          name: (type === `directory` ? item.substring(0, item.length - 1) : item),
           path: path.posix.join(remotePath, item)
         };
       });

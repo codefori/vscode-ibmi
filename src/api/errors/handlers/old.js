@@ -36,8 +36,8 @@ module.exports = function(lines) {
     line = line.padEnd(150);
 
     pieces = arrayClean(line.split(` `), ``);
-    curtype = line.substr(0, 10).trim();
-    _FileID = Number(line.substr(13, 3));
+    curtype = line.substring(0, 10).trim();
+    _FileID = Number(line.substring(13, 13+3));
     tempFileID = undefined;
 
     switch (curtype) {
@@ -53,7 +53,7 @@ module.exports = function(lines) {
         _Expansions[_FileID] = [];
 
         //000000 check means that the current FILEID is not an include
-        _TrackCopies[_FileID] = (line.substr(17, 6) != `000000`);
+        _TrackCopies[_FileID] = (line.substring(17, 17+6) != `000000`);
         ranges.push(new expRange(Number(pieces[3]), 0));
       } else {
         ranges.push(new expRange(Number(pieces[3]), 0));
@@ -81,12 +81,12 @@ module.exports = function(lines) {
       break;
         
     case `ERROR`:
-      let sev = Number(line.substr(58, 2));
-      let linenum = Number(line.substr(37, 6));
-      let column = Number(line.substr(33, 3));
-      let toColumn = Number(line.substr(44, 3)) ;
-      let text = line.substr(65).trim();
-      let code = line.substr(48, 7).trim();
+      let sev = Number(line.substring(58, 58+2));
+      let linenum = Number(line.substring(37, 37+6));
+      let column = Number(line.substring(33, 33+3));
+      let toColumn = Number(line.substring(44, 44+3)) ;
+      let text = line.substring(65).trim();
+      let code = line.substring(48, 48+7).trim();
       let  sqldiff = 0;
 
       if (!text.includes(`name or indicator SQ`)) {

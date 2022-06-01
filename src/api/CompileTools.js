@@ -6,6 +6,7 @@ const errorHandlers = require(`./errors/index`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
+const { Console } = require("console");
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -632,7 +633,7 @@ module.exports = class CompileTools {
       panel.dispose();
       if (data) {
         for (const component of components.reverse()) {
-          command = command.substr(0, component.positions[0]) + data[component.name] + command.substr(component.positions[1]);
+          command = command.substring(0, component.positions[0]) + data[component.name] + command.substring(component.positions[1]);
         }
       } else {
         command = undefined;
