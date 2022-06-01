@@ -117,6 +117,12 @@ module.exports = class objectBrowserTwoProvider {
                 `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
               )
 
+              if (oldData.extension !== newData.extension) {
+                await connection.remoteCommand(
+                  `CHGPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension})`,
+                );
+              }
+
               if (Configuration.get(`autoOpenFile`)) {
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
               }
