@@ -283,7 +283,7 @@ module.exports = class ifsBrowserProvider {
               if (Configuration.get(`autoRefresh`)) this.refresh();
 
             } catch (e) {
-              vscode.window.showErrorMessage(`Error moving streamfile! ${e}`);
+              vscode.window.showErrorMessage(`Error copying streamfile! ${e}`);
             }
           }
 
