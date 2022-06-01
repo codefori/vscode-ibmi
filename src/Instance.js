@@ -7,6 +7,7 @@ const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
 const Configuration = require(`./api/Configuration`);
 const Storage = require(`./api/Storage`);
+const Tools = require(`./api/Tools`);
 
 const Terminal = require(`./api/terminal`);
 const Deployment = require(`./api/Deployment`);
@@ -43,7 +44,7 @@ module.exports = class Instance {
     })
   }
 
-  /** 
+  /**
    * @param {IBMi} conn
    */
   static setConnection(conn) {
@@ -52,7 +53,7 @@ module.exports = class Instance {
 
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
   };
-  
+
   static getConnection() {return instance.connection};
   static getConfig() {return instance.connection.config};
   static getContent() {return instance.content};
@@ -82,7 +83,7 @@ module.exports = class Instance {
           }
 
         } else {
-          await vscode.window.showTextDocument(document); 
+          await vscode.window.showTextDocument(document);
           await vscode.commands.executeCommand(`workbench.action.closeActiveEditor`);
         }
       }
@@ -116,7 +117,7 @@ module.exports = class Instance {
     const helpView = require(`./views/helpView`);
 
     const libraryListView = require(`./views/libraryListView`);
-    
+
     const ifsBrowser = require(`./views/ifsBrowser`);
     const ifs = new (require(`./filesystems/ifs`));
 
@@ -144,7 +145,7 @@ module.exports = class Instance {
         };
         context.subscriptions.push(reconnectBarItem);
       }
-      
+
       if (Configuration.get(`showReconnectButton`)) {
         reconnectBarItem.tooltip = `Force reconnect to system.`;
         reconnectBarItem.text = `$(extensions-remote)`;
@@ -159,7 +160,7 @@ module.exports = class Instance {
         };
         context.subscriptions.push(connectedBarItem);
       }
-      
+
       connectedBarItem.text = `$(settings-gear) Settings: ${config.name}`;
       connectedBarItem.show();
 
@@ -232,7 +233,7 @@ module.exports = class Instance {
 
             if (connection.qccsid === 65535) {
               vscode.window.showWarningMessage(`Source date support is enabled, but QCCSID is 65535. If you encounter problems with source date support, please disable it in the settings.`);
-            } 
+            }
           } else {
             vscode.window.showErrorMessage(`Source date support is enabled, but the remote system does not support SQL. Source date support will be disabled.`);
           }
@@ -244,7 +245,7 @@ module.exports = class Instance {
 
         context.subscriptions.push(
           //@ts-ignore
-          vscode.workspace.registerFileSystemProvider(`member`, qsysFs, { 
+          vscode.workspace.registerFileSystemProvider(`member`, qsysFs, {
             isCaseSensitive: false
           })
         );
@@ -257,16 +258,16 @@ module.exports = class Instance {
             new ifsBrowser(context)
           )
         );
-  
+
         context.subscriptions.push(
           //@ts-ignore
-          vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, { 
+          vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, {
             isCaseSensitive: false
           })
         );
 
         //********* Object Browser */
-        
+
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
             `objectBrowser`,
@@ -286,7 +287,7 @@ module.exports = class Instance {
         );
 
         //********* General editing */
-  
+
         context.subscriptions.push(
           vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path, line) => {
             console.log(path);
@@ -297,7 +298,7 @@ module.exports = class Instance {
             } else {
               uri = vscode.Uri.parse(path).with({scheme: `member`, path: `/${path}`});
             }
-  
+
             try {
               if (line) {
                 // If a line is provided, we have to do a specific open
@@ -341,7 +342,7 @@ module.exports = class Instance {
                   title: `Compare with`
                 })
 
-                if (compareWith) 
+                if (compareWith)
                   uri = vscode.Uri.parse(compareWith);
               }
 
@@ -363,21 +364,14 @@ module.exports = class Instance {
             });
 
             if (searchFor) {
-              let isValid = true;
-
-              if (!searchFor.startsWith(`/`)) {
-                try { //The reason for the try is because match throws an error.
-                  const [path] = searchFor.match(/\w+\/\w+\/\w+\.\w+/);
-                  if (path) isValid = true;
-                } catch (e) {
-                  isValid = false;
+              try {
+                // If opening a source member, parse and validate the path.
+                if (!searchFor.startsWith(`/`)) {
+                  Tools.parserMemberPath(searchFor);
                 }
-              }
-
-              if (isValid) {
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, searchFor);
-              } else {
-                vscode.window.showErrorMessage(`Format incorrect. Use LIB/SPF/NAME.ext`);
+              } catch (e) {
+                vscode.window.showErrorMessage(e.message);
               }
             }
           }),
@@ -455,9 +449,9 @@ module.exports = class Instance {
                 } else {
                   if (editor.document.isDirty) {
                     let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
-                    
+
                     switch (result) {
-                    case `Save`: 
+                    case `Save`:
                       await editor.document.save();
                       willRun = true;
                       break;
@@ -500,7 +494,7 @@ module.exports = class Instance {
 
             if (editor) {
               const uri = editor.document.uri;
-              
+
               if ([`member`, `streamfile`].includes(uri.scheme)) {
 
                 switch (uri.scheme) {
@@ -582,7 +576,7 @@ module.exports = class Instance {
             }
           })
         );
-        
+
         initialisedBefore = true;
       }
     }
@@ -592,8 +586,8 @@ module.exports = class Instance {
 
   /**
    * Register event
-   * @param {string} event 
-   * @param {Function} func 
+   * @param {string} event
+   * @param {Function} func
    */
   static on(event, func) {
     instance.events.push({

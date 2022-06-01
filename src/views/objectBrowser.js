@@ -108,10 +108,10 @@ module.exports = class objectBrowserTwoProvider {
             const connection = instance.getConnection();
 
             try {
-              vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
-
               const oldData = Tools.parserMemberPath(node.path);
               const newData = Tools.parserMemberPath(fullPath);
+
+              vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
               await connection.remoteCommand(
                 `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
@@ -127,7 +127,7 @@ module.exports = class objectBrowserTwoProvider {
             } catch (e) {
               vscode.window.showErrorMessage(`Error creating new member! ${e}`);
             }
-            
+
           }
 
         } else {
@@ -194,54 +194,37 @@ module.exports = class objectBrowserTwoProvider {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node) => {
-        const path = node.path.split(`/`);
-
-        const oldName = path[2].substring(0, path[2].lastIndexOf(`.`));
-        const oldExtension = path[2].substring(path[2].lastIndexOf(`.`)+1);
-
         if (node) {
-          let newName = await vscode.window.showInputBox({
-            value: path[2],
-            prompt: `Rename ${path[2]}`
+          const oldMember = Tools.parserMemberPath(node.path);
+          const lib = oldMember.library;
+          const spf = oldMember.file;
+          let newBasename = await vscode.window.showInputBox({
+            value: oldMember.basename,
+            prompt: `Rename ${oldMember.basename}`
           });
 
-          newName = newName.toUpperCase();
-  
-          if (newName && newName.toUpperCase() !== path[2]) {
-            const connection = instance.getConnection();
-            const newNameParts = newName.split(`.`);
-            let renameHappened = false;
-
-            if (newNameParts.length === 2) {
-              try {
-
-                if (newNameParts[0] !== oldName) {
-                  await connection.remoteCommand(
-                    `RNMM FILE(${path[0]}/${path[1]}) MBR(${oldName}) NEWMBR(${newNameParts[0]})`,
-                  );
-
-                  renameHappened = true;
-                }
-
-                if (newNameParts[1] !== oldExtension) {
-                  await connection.remoteCommand(
-                    `CHGPFM FILE(${path[0]}/${path[1]}) MBR(${renameHappened ? newNameParts[0] : oldName}) SRCTYPE(${newNameParts[1]})`,
-                  );
-                }
-    
-                if (Configuration.get(`autoRefresh`)) {
-                  this.refresh();
-                }
-                else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+          if (newBasename && newBasename.toUpperCase() !== oldMember.basename) {
+            try {
+              const newMember = Tools.parserMemberPath(lib + `/` + spf + `/` + newBasename);
+              const connection = instance.getConnection();
+              if (oldMember.member !== newMember.member) {
+                await connection.remoteCommand(
+                  `RNMM FILE(${lib}/${spf}) MBR(${oldMember.member}) NEWMBR(${newMember.member})`,
+                );
               }
-            } else {
-              vscode.window.showErrorMessage(`New name format incorrect. 'NAME.EXTENTION' required.`);
+              if (oldMember.extension !== newMember.extension) {
+                await connection.remoteCommand(
+                  `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension})`,
+                );
+              }
+              if (Configuration.get(`autoRefresh`)) {
+                this.refresh();
+              }
+              else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+            } catch(e) {
+              vscode.window.showErrorMessage(`Error renaming member! ${e}`);
             }
           }
-
-          
         } else {
           //Running from command.
         }
@@ -251,11 +234,11 @@ module.exports = class objectBrowserTwoProvider {
         const contentApi = instance.getContent();
 
         let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
- 
+
         if (originPath) {
           const {asp, library, file, member} = Tools.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
-          
+
           try {
             contentApi.uploadMemberContent(asp, library, file, member, data);
             vscode.window.showInformationMessage(`Member was uploaded.`);
@@ -263,14 +246,14 @@ module.exports = class objectBrowserTwoProvider {
             vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
           }
         }
-  
+
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
         const contentApi = instance.getContent();
 
         const {asp, library, file, member, basename} = Tools.parserMemberPath(node.path);
-    
+
         const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
         if (node) {
@@ -373,7 +356,7 @@ module.exports = class objectBrowserTwoProvider {
           prompt: `Name of new library`
         });
 
-        if (!newLibrary) return; 
+        if (!newLibrary) return;
 
         let filters = config.objectFilters;
 
@@ -385,7 +368,7 @@ module.exports = class objectBrowserTwoProvider {
           vscode.window.showErrorMessage(`Cannot create library "${newLibrary}": ${e}`);
           return;
         }
-        
+
         if (newLibrary.length <= 10) {
           filters.push({
             name: newLibrary,
@@ -414,7 +397,7 @@ module.exports = class objectBrowserTwoProvider {
 
           if (fileName) {
             const connection = instance.getConnection();
-     
+
             if (fileName !== undefined && fileName.length > 0 && fileName.length <= 10) {
               try {
                 const library = filter.library;
@@ -476,7 +459,7 @@ module.exports = class objectBrowserTwoProvider {
 
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
         const objects = await content.getObjectList(filter);
-        items = objects.map(object => 
+        items = objects.map(object =>
           object.attribute === `*PHY` ? new SPF(filter.name, object, filter.member) : new ILEObject(filter.name, object)
         );
         break;
@@ -502,7 +485,7 @@ module.exports = class objectBrowserTwoProvider {
                   await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
                 }
               });
-              
+
               config.set(`enableSQL`, false);
               this.refresh();
             }
@@ -519,7 +502,7 @@ module.exports = class objectBrowserTwoProvider {
 
       if (connection) {
         const filters = config.objectFilters;
-        
+
         if (filters.length > 0) {
           items = filters.map(filter => new Filter(filter));
         } else {
@@ -531,9 +514,9 @@ module.exports = class objectBrowserTwoProvider {
   }
 
   /**
-   * 
-   * @param {string} path 
-   * @param {string[]} list 
+   *
+   * @param {string} path
+   * @param {string[]} list
    */
   storeMemberList(path, list) {
     const storage = instance.getStorage();
