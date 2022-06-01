@@ -6,7 +6,6 @@ const errorHandlers = require(`./errors/index`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
-const { Console } = require("console");
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
