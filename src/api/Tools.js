@@ -156,4 +156,13 @@ module.exports = class {
 
     return result;
   }
+
+  /**
+   * @param {string} Path
+   * @returns {string} escapedPath
+   */
+  static escapePath(Path) {
+    const escapedPath = Path.replace(/'|"|\$|\\| /g, function(matched){return `\\`.concat(matched)});
+    return escapedPath;
+  }
 }

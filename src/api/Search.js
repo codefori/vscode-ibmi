@@ -2,6 +2,7 @@
 const Configuration = require(`./Configuration`);
 const IBMi = require(`./IBMi`);
 const IBMiContent = require(`./IBMiContent`);
+const Tools = require(`./Tools`);
 
 module.exports = class Search {
   /**
@@ -121,7 +122,7 @@ module.exports = class Search {
       }
 
       const grepRes = await connection.sendCommand({
-        command: `${grep} -inr -F -f - ${ignoreString} "${path}"`,
+        command: `${grep} -inr -F -f - ${ignoreString} ${Tools.escapePath(path)}`,
         stdin: term
       });
 

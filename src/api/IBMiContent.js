@@ -388,7 +388,7 @@ module.exports = class IBMiContent {
    */
   async getFileList(remotePath) {
     const result = await this.ibmi.sendCommand({
-      command: `ls -a -p -L "${remotePath}"`
+      command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
     });
 
     //@ts-ignore
