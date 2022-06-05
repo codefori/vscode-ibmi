@@ -1,7 +1,7 @@
 module.exports = class {
   /**
    * Parse standard out for `/usr/bin/db2`
-   * @param {string} output 
+   * @param {string} output
    */
   static db2Parse(output) {
     let gotHeaders = false;
@@ -14,9 +14,9 @@ module.exports = class {
     let headers;
 
     let SQLSTATE;
-  
+
     let rows = [];
-      
+
     data.forEach((line, index) => {
       const trimmed = line.trim();
       if (trimmed.length === 0 && iiErrorMessage) iiErrorMessage = false;
@@ -50,7 +50,7 @@ module.exports = class {
             length: 0,
           };
         });
-      
+
         gotHeaders = true;
       } else
       if (figuredLengths === false) {
@@ -58,20 +58,20 @@ module.exports = class {
         line.split(` `).forEach((x, i) => {
           headers[i].from = base;
           headers[i].length = x.length;
-      
+
           base += x.length + 1;
         });
-      
+
         figuredLengths = true;
       } else {
         let row = {};
-      
+
         headers.forEach((header) => {
           const strValue = line.substring(header.from, header.from + header.length).trimEnd();
 
           /** @type {string|number} */
           let realValue = strValue;
-      
+
           // is value a number?
           if (strValue.startsWith(` `)) {
             const asNumber = Number(strValue.trim());
@@ -81,14 +81,14 @@ module.exports = class {
           } else if (strValue === `-`) {
             realValue = null; //null?
           }
-                    
+
           row[header.name] = realValue;
         });
-      
+
         rows.push(row);
       }
     });
-      
+
     return rows;
   }
 
@@ -96,19 +96,19 @@ module.exports = class {
     let text = `O_`;
     let possible =
       `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
-  
+
     for (let i = 0; i < 8; i++)
       text += possible.charAt(Math.floor(Math.random() * possible.length));
-  
+
     return text;
   }
 
   /**
    * Build the IFS path string to a member
-   * @param {string|undefined} asp 
-   * @param {string} lib 
-   * @param {string} obj 
-   * @param {string} mbr 
+   * @param {string|undefined} asp
+   * @param {string} lib
+   * @param {string} obj
+   * @param {string} mbr
    */
   static qualifyPath(asp, lib, obj, mbr) {
     const path =
@@ -117,8 +117,8 @@ module.exports = class {
   }
 
   /**
-   * @param {string} string 
-   * @returns {{asp?: string, library: string, file: string, member: string, extension?: string, basename: string}}
+   * @param {string} string
+   * @returns {{asp?: string, library: string, file: string, member: string, extension: string, basename: string}}
    */
   static parserMemberPath(string) {
     const result = {
@@ -130,28 +130,45 @@ module.exports = class {
       basename: undefined,
     };
 
+    const validQsysName = new RegExp(`^[A-Z0-9@#$][A-Z0-9_#@$.]{0,9}$`);
+
     // Remove leading slash
     const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
-    
-    if (path.length === 3) {
-      result.library = path[0];
-      result.file = path[1];
-      result.member = path[2];
-      result.basename = path[2];
-    } else 
-    if (path.length === 4) {
-      result.asp = path[0];
-      result.library = path[1];
-      result.file = path[2];
-      result.member = path[3];
-      result.basename = path[3];
-    } else {
-      throw new Error(`Invalid path: ${string}`);
+
+    if (path.length > 0) result.basename = path[path.length - 1];
+    if (path.length > 1) result.file = path[path.length - 2];
+    if (path.length > 2) result.library = path[path.length - 3];
+    if (path.length > 3) result.asp = path[path.length - 4];
+
+    if (!result.library || !result.file || !result.basename) {
+      throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
+    }
+    if (result.asp && !validQsysName.test(result.asp)) {
+      throw new Error(`Invalid ASP name: ${result.asp}`);
+    }
+    if (!validQsysName.test(result.library)) {
+      throw new Error(`Invalid Library name: ${result.library}`);
+    }
+    if (!validQsysName.test(result.file)) {
+      throw new Error(`Invalid Source File name: ${result.file}`);
     }
 
-    if (result.basename.includes(`.`)) {
-      result.member = result.basename.substring(0, result.member.lastIndexOf(`.`));
-      result.extension = result.basename.substring(result.member.lastIndexOf(`.`) + 1);
+    if (!result.basename.includes(`.`)) {
+      throw new Error(`Source Type extension is required.`);
+    } else {
+      result.member = result.basename.substring(0, result.basename.lastIndexOf(`.`));
+      result.extension = result.basename.substring(result.basename.lastIndexOf(`.`) + 1);
+    }
+
+    if (!validQsysName.test(result.member)) {
+      throw new Error(`Invalid Source Member name: ${result.member}`);
+    }
+    // The extension/source type has nearly the same naming rules as
+    // the objects, except that a period is not allowed.  We can reuse
+    // the existing RegExp because result.extension is everything after
+    // the final period (so we know it won't contain a period).
+    if (!validQsysName.test(result.extension)) {
+      throw new Error(`Invalid Source Member Extension: ${result.extension}`);
     }
 
     return result;
