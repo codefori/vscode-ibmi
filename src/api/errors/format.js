@@ -1,6 +1,6 @@
 function formatName(input) {
   let pieces = input.split(`/`);
-  let path = pieces[1].substr(pieces[1], pieces[1].length-1).split(`(`);
+  let path = pieces[1].substring(0, pieces[1].length-1).split(`(`);
 
   return [pieces[0], path[0], path[1]].join(`/`)
 }

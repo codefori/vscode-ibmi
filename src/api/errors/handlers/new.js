@@ -41,8 +41,8 @@ module.exports = function getErrors(lines) {
     line = line.padEnd(150);
 
     pieces = line.split(` `).filter(x => x !== ``);
-    curtype = line.substr(0, 10).trim();
-    _FileID = Number(line.substr(13, 3));
+    curtype = line.substring(0, 10).trim();
+    _FileID = Number(line.substring(13, 13+3));
     tempFileID = _FileID;
 
     switch (curtype) {
@@ -104,12 +104,12 @@ module.exports = function getErrors(lines) {
       break;
 
     case `ERROR`:
-      let sev = Number(line.substr(58, 2));
-      let linenum = Number(line.substr(37, 6))-1;
-      let column = Number(line.substr(33, 3));
-      let toColumn = Number(line.substr(44, 3));
-      let text = line.substr(65).trim();
-      let code = line.substr(48, 7).trim();
+      let sev = Number(line.substring(58, 58+2));
+      let linenum = Number(line.substring(37, 37+6))-1;
+      let column = Number(line.substring(33, 33+3));
+      let toColumn = Number(line.substring(44, 44+3));
+      let text = line.substring(65).trim();
+      let code = line.substring(48, 48+7).trim();
 
       existingFile = currentProcessor.files.find(x => x.id === _FileID);
       if (existingFile)

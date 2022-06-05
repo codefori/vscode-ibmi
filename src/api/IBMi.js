@@ -181,8 +181,8 @@ module.exports = class IBMi {
 
             let lib, type;
             for (const line of libraryList) {
-              lib = line.substr(0, 10).trim();
-              type = line.substr(12);
+              lib = line.substring(0, 10).trim();
+              type = line.substring(12);
 
               switch (type) {
               case `USR`:

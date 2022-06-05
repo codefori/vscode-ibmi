@@ -359,7 +359,7 @@ module.exports = class ifsBrowserProvider {
             if (process.platform === `win32`) {
               //Issue with getFile not working propertly on Windows
               //when there was a / at the start.
-              if (localPath[0] === `/`) localPath = localPath.substr(1);
+              if (localPath[0] === `/`) localPath = localPath.substring(1);
             }
 
             try {
