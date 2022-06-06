@@ -942,7 +942,7 @@
 			},
 			{
 				"command": "code-for-ibmi.copyIFS",
-				"title": "Copy file",
+				"title": "Copy",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
@@ -1316,7 +1316,7 @@
 				},
 				{
 					"command": "code-for-ibmi.copyIFS",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser",
 					"group": "2_ifsStuff@2"
 				},
 				{

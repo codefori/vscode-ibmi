@@ -280,7 +280,7 @@ module.exports = class ifsBrowserProvider {
             const connection = instance.getConnection();
 
             try {
-              await connection.paseCommand(`cp ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
+              await connection.paseCommand(`cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
               if (Configuration.get(`autoRefresh`)) this.refresh();
 
             } catch (e) {
