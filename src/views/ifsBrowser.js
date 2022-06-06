@@ -289,7 +289,7 @@ module.exports = class ifsBrowserProvider {
               vscode.window.showInformationMessage(`${Tools.escapePath(node.path)} was copied to ${Tools.escapePath(fullName)}.`);
 
             } catch (e) {
-              vscode.window.showErrorMessage(`Error copying streamfile! ${e}`);
+              vscode.window.showErrorMessage(`Error copying ${node.contextValue}! ${e}`);
             }
           }
 
