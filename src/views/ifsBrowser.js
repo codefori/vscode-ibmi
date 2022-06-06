@@ -268,20 +268,25 @@ module.exports = class ifsBrowserProvider {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node) => {
+        const config = instance.getConfig();
+        const homeDirectory = config.homeDirectory;
+
         if (node) {
           //Running from right click
           
-          const fullName = await vscode.window.showInputBox({
+          let fullName = await vscode.window.showInputBox({
             prompt: `Name of new path`,
             value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path
           });
 
           if (fullName) {
+            fullName = fullName.startsWith(`/`) ? fullName : homeDirectory + `/` + fullName;
             const connection = instance.getConnection();
 
             try {
               await connection.paseCommand(`cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
               if (Configuration.get(`autoRefresh`)) this.refresh();
+              vscode.window.showInformationMessage(`${Tools.escapePath(node.path)} was copied to ${Tools.escapePath(fullName)}.`);
 
             } catch (e) {
               vscode.window.showErrorMessage(`Error copying streamfile! ${e}`);
