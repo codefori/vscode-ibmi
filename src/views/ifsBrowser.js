@@ -273,7 +273,7 @@ module.exports = class ifsBrowserProvider {
           
           const fullName = await vscode.window.showInputBox({
             prompt: `Name of new path`,
-            value: node.path
+            value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path
           });
 
           if (fullName) {
