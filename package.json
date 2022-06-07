@@ -812,7 +812,7 @@
 				"command": "code-for-ibmi.runAction",
 				"title": "Run Action",
 				"category": "IBM i",
-				"icon": "$(code)"
+				"icon": "$(file-binary)"
 			},
 			{
 				"command": "code-for-ibmi.addToLibraryList",
