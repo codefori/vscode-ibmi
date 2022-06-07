@@ -990,6 +990,24 @@
 				"icon": "$(remove)"
 			},
 			{
+				"command": "code-for-ibmi.sortIFSShortcuts",
+				"title": "Sort IFS shortcuts",
+				"category": "IBM i",
+				"icon": "$(list-ordered)"
+			},
+			{
+				"command": "code-for-ibmi.moveIFSShortcutDown",
+				"title": "Move IFS shortcut down",
+				"category": "IBM i",
+				"icon": "$(arrow-down)"
+			},
+			{
+				"command": "code-for-ibmi.moveIFSShortcutUp",
+				"title": "Move IFS shortcut up",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+		{
 				"command": "code-for-ibmi.maintainFilter",
 				"title": "Maintain filter",
 				"category": "IBM i",
@@ -1198,6 +1216,11 @@
 					"when": "view == ifsBrowser"
 				},
 				{
+					"command": "code-for-ibmi.sortIFSShortcuts",
+					"group": "navigation",
+					"when": "view == ifsBrowser"
+				},
+				{
 					"command": "code-for-ibmi.refreshIFSBrowser",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
@@ -1329,6 +1352,16 @@
 					"group": "3_memberTransfer@2"
 				},
 				{
+					"command": "code-for-ibmi.moveIFSShortcutDown",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.moveIFSShortcutUp",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "inline"
+				},
+				{
 					"command": "code-for-ibmi.runAction",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "1_workspace@1"
@@ -1374,6 +1407,31 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
+					"command": "code-for-ibmi.createDirectory",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.searchIFS",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "3_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.removeIFSShortcut",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "3_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.changeWorkingDirectory",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "3_ifsStuff@3"
+				},
+				{
 					"command": "code-for-ibmi.downloadStreamfile",
 					"when": "view == ifsBrowser && viewItem == streamfile",
 					"group": "3_ifsTransfer@1"
@@ -1386,6 +1444,16 @@
 				{
 					"command": "code-for-ibmi.setDeployLocation",
 					"when": "view == ifsBrowser && viewItem == directory && code-for-ibmi:workspace == true",
+					"group": "3_ifsTransfer@3"
+				},
+				{
+					"command": "code-for-ibmi.uploadStreamfile",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "3_ifsTransfer@2"
+				},
+				{
+					"command": "code-for-ibmi.setDeployLocation",
+					"when": "view == ifsBrowser && viewItem == shortcut && code-for-ibmi:workspace == true",
 					"group": "3_ifsTransfer@3"
 				},
 				{
