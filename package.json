@@ -811,7 +811,8 @@
 			{
 				"command": "code-for-ibmi.runAction",
 				"title": "Run Action",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(code)"
 			},
 			{
 				"command": "code-for-ibmi.addToLibraryList",
@@ -1199,6 +1200,13 @@
 					"command": "code-for-ibmi.closeSearchView",
 					"group": "navigation",
 					"when": "view == searchView"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "code-for-ibmi.runAction",
+					"when": "resourceScheme == member || resourceScheme == streamfile",
+					"group": "navigation@1"
 				}
 			],
 			"view/item/context": [
