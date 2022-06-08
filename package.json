@@ -1023,7 +1023,7 @@
 				"command": "code-for-ibmi.runEditorStatement",
 				"title": "Run selected statement",
 				"category": "IBM i",
-				"icon": "$(database)"
+				"icon": "$(notebook-execute)"
 			},
 			{
 				"command": "code-for-ibmi.closeSearchView",
@@ -1223,6 +1223,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "resourceScheme == member || resourceScheme == streamfile",
 					"group": "navigation@1"
+				},
+				{
+					"command": "code-for-ibmi.runEditorStatement",
+					"when": "editorLangId == sql",
+					"group": "navigation@2"
 				}
 			],
 			"view/item/context": [
