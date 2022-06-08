@@ -54,6 +54,7 @@ module.exports = class ifsBrowserProvider {
         let newDirectory;
 
         let shortcuts = config.ifsShortcuts;
+        let autoSortIFSShortcuts = config.autoSortIFSShortcuts;
 
         if (node) {
           newDirectory = node.path;
@@ -70,6 +71,7 @@ module.exports = class ifsBrowserProvider {
             if (!shortcuts.includes(newDirectory)) {
               shortcuts.push(newDirectory);
               await config.set(`ifsShortcuts`, shortcuts);
+              if (autoSortIFSShortcuts === true) vscode.commands.executeCommand(`code-for-ibmi.sortIFSShortcuts`);
               if (Configuration.get(`autoRefresh`)) this.refresh();
             }
           }

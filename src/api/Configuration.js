@@ -26,6 +26,9 @@ module.exports = class Configuration {
     /** @type {string[]} */
     this.ifsShortcuts = base.ifsShortcuts || [];
 
+    /** @type {boolean} Undefined means not created, so default to on */
+    this.autoSortIFSShortcuts = (base.autoSortIFSShortcuts === true );
+
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
