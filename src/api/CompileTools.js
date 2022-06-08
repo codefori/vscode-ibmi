@@ -28,7 +28,7 @@ let actionsBarItem;
 /** @type {vscode.StatusBarItem} */
 let outputBarItem;
 
-const ACTION_BUTTON_BASE = `$(code) Actions`;
+const ACTION_BUTTON_BASE = `$(file-binary) Actions`;
 const ACTION_BUTTON_RUNNING = `$(sync~spin) Actions`;
 
 /** @type {{[key: string]: number}} Timestamp of when an action was last used. */

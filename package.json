@@ -811,7 +811,8 @@
 			{
 				"command": "code-for-ibmi.runAction",
 				"title": "Run Action",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(file-binary)"
 			},
 			{
 				"command": "code-for-ibmi.addToLibraryList",
@@ -942,7 +943,7 @@
 			},
 			{
 				"command": "code-for-ibmi.copyIFS",
-				"title": "Copy file",
+				"title": "Copy",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
@@ -1201,6 +1202,13 @@
 					"when": "view == searchView"
 				}
 			],
+			"editor/title": [
+				{
+					"command": "code-for-ibmi.runAction",
+					"when": "resourceScheme == member || resourceScheme == streamfile",
+					"group": "navigation@1"
+				}
+			],
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.deleteConnection",
@@ -1316,7 +1324,7 @@
 				},
 				{
 					"command": "code-for-ibmi.copyIFS",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser",
 					"group": "2_ifsStuff@2"
 				},
 				{
