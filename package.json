@@ -1081,9 +1081,25 @@
 					"title": "IBM i Search",
 					"icon": "$(search)"
 				}
+			],
+			"panel": [
+				{
+					"id": "ibmi-panel",
+					"title": "IBM i",
+					"icon": "$(search)"
+				}
 			]
 		},
 		"views": {
+			"ibmi-panel": [
+				{
+					"type": "webview",
+					"id": "code-for-ibmi.resultset",
+					"name": "Results",
+					"when": "code-for-ibmi:connected == true",
+					"contextualTitle": "IBM i"
+				}
+			],
 			"ibmi-explorer": [
 				{
 					"id": "connectionBrowser",
