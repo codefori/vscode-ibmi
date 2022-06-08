@@ -130,7 +130,7 @@ module.exports = class {
       basename: undefined,
     };
 
-    const validQsysName = new RegExp(`^[A-Z0-9@#$][A-Z0-9_#@$.]{0,9}$`);
+    const validQsysName = new RegExp(`^[A-Z0-9@#£$][A-Z0-9_#@£$.]{0,9}$`);
 
     // Remove leading slash
     const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
