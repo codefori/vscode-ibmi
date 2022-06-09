@@ -54,6 +54,7 @@ exports.initialise = (context) => {
     vscode.window.registerWebviewViewProvider(`code-for-ibmi.resultset`, resultSetProvider),
 
     vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
+      const config = instance.getConfig();
       const content = instance.getContent();
       const editor = vscode.window.activeTextEditor;
 
@@ -61,6 +62,11 @@ exports.initialise = (context) => {
         const statement = this.parseStatement(editor);
 
         if (statement.content.trim().length > 0) {
+
+          statement.content = [
+            `SET CURRENT SCHEMA = '${config.currentLibrary.toUpperCase()}'`,
+            statement.content
+          ].join(`;\n`);
 
           try {
             if (statement.type === `cl`) {
