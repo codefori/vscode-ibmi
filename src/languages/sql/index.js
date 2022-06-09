@@ -30,11 +30,17 @@ class ResultSetPanelProvider {
     webviewView.webview.html = html.setSimpleMessage(`Database result set will show here.`);
   }
 
-  setHTML(html) {
-    if (this._view) {
-      this._view.show(true);
-      this._view.webview.html = html;
+  async setHTML(html) {
+    if (!this._view) {
+      // Weird one. Kind of a hack. _view.show doesn't work yet because it's not initialized.
+      // But, we can call a VS Code API to focus on the tab, which then
+      // 1. calls resolveWebviewView
+      // 2. sets this._view
+      await vscode.commands.executeCommand(`code-for-ibmi.resultset.focus`);
     }
+    
+    this._view.show(true);
+    this._view.webview.html = html;
   }
 }
 
