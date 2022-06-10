@@ -589,23 +589,13 @@ Compare two sources, whether they are members or streamfiles.
 
 ![assets/compare_01.png](assets/compare_01.png)
 
-## Database Browser
+## Tips & Tricks
 
-The database browser allows you browse tables in schemas on your connected system. The schema list comes from the defined library list.
-
-Clicking on a schema will load all tables, views, PFs, and LFs inside of the chosen schema. Click on any of those SQL objects will show you what columns are availabe. The tree view is primarily used for information purposes. When the schema has been opened, it will then add snippets to the editor when editing `.sql` sources.
-
-### Hovering tables shows information it
-
-![assets/db_01.png](assets/db_01.png)
-
-### Editor will provide snippets to insert
-
-![assets/db_02.png](assets/db_02.png)
-
-### Viewing result sets
+### Running SQL statement
 
 It is also possible to run SQL statements right from the editor in an SQL file. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
+
+SQL result sets appear in the 'IBM i: Results' panel.
 
 ![assets/db_03.png](assets/db_03.png)
 
@@ -625,7 +615,6 @@ csv: select * from sample.employee;
 cl: dspffd sample/employee
 ```
 
-## Tips & Tricks
 
 ### Search source files and IFS directories
 

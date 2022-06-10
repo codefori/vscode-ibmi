@@ -182,7 +182,7 @@ module.exports = class IBMiContent {
       //statement = statement.replace(/\n/g, ` `);
 
       const output = await this.ibmi.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
         stdin: statement,
       })
 

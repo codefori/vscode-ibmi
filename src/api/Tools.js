@@ -22,6 +22,7 @@ module.exports = class {
       if (trimmed.length === 0 && iiErrorMessage) iiErrorMessage = false;
       if (trimmed.length === 0 || index === data.length - 1) return;
       if (trimmed === `DB2>`) return;
+      if (trimmed.startsWith(`DB20`)) return; // Notice messages
       if (trimmed === `?>`) return;
 
       if (trimmed === `**** CLI ERROR *****`) {

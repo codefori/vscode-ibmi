@@ -4,13 +4,57 @@ const csv = require(`csv/sync`);
 
 let instance = require(`../../Instance`);
 const CompileTools = require(`../../api/CompileTools`);
+const html = require(`./html`);
+
+
+class ResultSetPanelProvider {
+  constructor() {
+    /** @type {vscode.WebviewView} */
+    this._view = undefined;
+  }
+
+  /**
+   * 
+   * @param {vscode.WebviewView} webviewView 
+   * @param {vscode.WebviewViewResolveContext} context 
+   * @param {vscode.CancellationToken} _token 
+   */
+  resolveWebviewView(webviewView, context, _token) {
+    this._view = webviewView;
+
+    webviewView.webview.options = {
+      // Allow scripts in the webview
+      enableScripts: true,
+    };
+
+    webviewView.webview.html = html.setSimpleMessage(`Database result set will show here.`);
+  }
+
+  async setHTML(html) {
+    if (!this._view) {
+      // Weird one. Kind of a hack. _view.show doesn't work yet because it's not initialized.
+      // But, we can call a VS Code API to focus on the tab, which then
+      // 1. calls resolveWebviewView
+      // 2. sets this._view
+      await vscode.commands.executeCommand(`code-for-ibmi.resultset.focus`);
+    }
+    
+    this._view.show(true);
+    this._view.webview.html = html;
+  }
+}
 
 /**
  * @param {vscode.ExtensionContext} context 
  */
 exports.initialise = (context) => {
+  let resultSetProvider = new ResultSetPanelProvider();
+
   context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(`code-for-ibmi.resultset`, resultSetProvider),
+
     vscode.commands.registerCommand(`code-for-ibmi.runEditorStatement`, async () => {
+      const config = instance.getConfig();
       const content = instance.getContent();
       const editor = vscode.window.activeTextEditor;
 
@@ -18,6 +62,11 @@ exports.initialise = (context) => {
         const statement = this.parseStatement(editor);
 
         if (statement.content.trim().length > 0) {
+
+          statement.content = [
+            `SET CURRENT SCHEMA = '${config.currentLibrary.toUpperCase()}'`,
+            statement.content
+          ].join(`;\n`);
 
           try {
             if (statement.type === `cl`) {
@@ -38,29 +87,21 @@ exports.initialise = (context) => {
 
               CompileTools.appendOutput(output);
             } else {
+              if (statement.type === `statement`) {
+                resultSetProvider.setHTML(html.setSimpleMessage(`Executing statement...`));
+              }
+
               const data = await content.runSQL(statement.content);
 
               if (data.length > 0) {
                 switch (statement.type) {
                 case `statement`:
-                  const panel = vscode.window.createWebviewPanel(
-                    `databaseResult`,
-                    `Database Result`,
-                    vscode.ViewColumn.Active,
-                    {
-                      retainContextWhenHidden: true,
-                      enableFindWidget: true
-                    }
-                  );
-                  panel.webview.html = this.generateTable(statement.content, data);
+                  resultSetProvider.setHTML(html.generateTable(statement.content, data));
                   break;
 
                 case `csv`:
                 case `json`:
                 case `sql`:
-                  let textDoc = await vscode.workspace.openTextDocument(vscode.Uri.parse(`untitled:` + `result.${statement.type}`));
-                  let editor = await vscode.window.showTextDocument(textDoc);
-
                   let content = ``;
                   switch (statement.type) {
                   case `csv`: content = csv.stringify(data, {
@@ -88,24 +129,32 @@ exports.initialise = (context) => {
                     break;
                   }
 
-                  editor.edit(edit => {
-                    edit.insert(new vscode.Position(0, 0), content);
-                  }).then(() => {
-                    editor.revealRange(new vscode.Range(1, 1, 1, 1), vscode.TextEditorRevealType.AtTop);
-                  });
+                  const textDoc = await vscode.workspace.openTextDocument({language: statement.type, content});
+                  await vscode.window.showTextDocument(textDoc);
                   break;
                 }
 
               } else {
-                vscode.window.showInformationMessage(`Query executed with no data returned.`);
+                if (statement.type === `statement`) {
+                  resultSetProvider.setHTML(html.setSimpleMessage(`Query executed with no data returned.`));
+                } else {
+                  vscode.window.showInformationMessage(`Query executed with no data returned.`);
+                }
               }
             }
 
           } catch (e) {
+            let errorText;
             if (typeof e === `string`) {
-              vscode.window.showErrorMessage(e.length > 0 ? e : `An error occurred when executing the statement.`);
+              errorText = e.length > 0 ? e : `An error occurred when executing the statement.`;
             } else {
-              vscode.window.showErrorMessage(e.message || `Error running SQL statement.`);
+              errorText = e.message || `Error running SQL statement.`;
+            }
+
+            if (statement.type === `statement`) {
+              resultSetProvider.setHTML(html.setSimpleMessage(errorText, `errortext`));
+            } else {
+              vscode.window.showErrorMessage(errorText);
             }
           }
         }
@@ -197,73 +246,4 @@ exports.parseStatement = (editor) => {
     type,
     content
   };
-}
-
-/**
- * @param {any[]} array
- * @returns {string} HTML
- */
-exports.generateTable = (statement, array) => {
-  // Setup basics of valid HTML5 document
-  let html = /*html*/`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset='utf-8'>
-      <meta http-equiv='X-UA-Compatible' content='IE=edge'>
-      <title>Database Result</title>
-      <meta name='viewport' content='width=device-width, initial-scale=1'>
-      <style>
-        body {
-          color: var(--vscode-editor-foreground);
-        }
-        table {
-          font-weight: var(--vscode-editor-font-weight);
-          font-size: var(--vscode-editor-font-size);
-          width: 100%;
-          border-collapse: collapse;
-          margin: 25px 0;
-          font-family: sans-serif;
-          min-width: 400px;
-          <!-- box-shadow: 0 0 20px rgba(0, 0, 0, 0.15); -->
-        }
-        ::selection {
-          font-weight: bold;
-          background-color: var(--vscode-editor-selectionBackground);
-        }
-        table thead tr {
-          background-color: var(--vscode-editor-selectionBackground);
-          color: var(--vscode-editor-foreground);
-          text-align: left;
-        }
-        table th,
-        table td {
-          padding: 12px 15px;
-        }
-
-        table tbody tr {
-          border-bottom: 1px solid var(--vscode-editor-selectionBackground);
-        }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <table>
-          <thead>`;
-
-  const keys = Object.keys(array[0]);
-
-  html += `<tr>${keys.map(key => `<th>${key}</th>`).join(``)}</tr></thead><tbody>`;
-  html += array.map(row => {
-    return `<tr>` + keys.map(key => `<td>${row[key]}</td>`).join(``) + `</tr>`
-  }).join(``);
-
-  html += `
-          </tbody>
-        </table>
-      </div>
-    </body>
-  </html>`;
-
-  return html;
 }
