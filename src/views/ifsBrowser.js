@@ -193,6 +193,66 @@ module.exports = class ifsBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToTop`, async (node) => {
+        const config = instance.getConfig();
+
+        let moveDir;
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          moveDir = node.path;
+        }
+
+        if (moveDir) {
+
+          try {
+            moveDir = moveDir.trim();
+
+            const inx = shortcuts.indexOf(moveDir);
+
+            if (inx >= 1 && inx < shortcuts.length) {
+              shortcuts.splice(inx, 1);
+              shortcuts.splice(0, 0, moveDir);
+              await config.set(`ifsShortcuts`, shortcuts);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            }
+          } catch (e) {
+            console.log(e);
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToBottom`, async (node) => {
+        const config = instance.getConfig();
+
+        let moveDir;
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          moveDir = node.path;
+        }
+
+        if (moveDir) {
+
+          try {
+            moveDir = moveDir.trim();
+
+            const inx = shortcuts.indexOf(moveDir);
+
+            if (inx >= 0 && inx < shortcuts.length) {
+              shortcuts.splice(inx, 1);
+              shortcuts.splice( shortcuts.length, 0, moveDir);
+              await config.set(`ifsShortcuts`, shortcuts);
+              if (Configuration.get(`autoRefresh`)) this.refresh();
+            }
+          } catch (e) {
+            console.log(e);
+          }
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
         const connection = instance.getConnection();
         const config = instance.getConfig();

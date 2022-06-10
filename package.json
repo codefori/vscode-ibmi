@@ -1007,7 +1007,19 @@
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
-		{
+			{
+				"command": "code-for-ibmi.moveIFSShortcutToTop",
+				"title": "Move IFS shortcut to top",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "code-for-ibmi.moveIFSShortcutToBottom",
+				"title": "Move IFS shortcut to bottom",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+			{
 				"command": "code-for-ibmi.maintainFilter",
 				"title": "Maintain filter",
 				"category": "IBM i",
@@ -1432,19 +1444,29 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
-					"command": "code-for-ibmi.moveIFSShortcutUp",
+					"command": "code-for-ibmi.moveIFSShortcutToTop",
 					"when": "view == ifsBrowser && viewItem == shortcut",
 					"group": "4_ifsStuff@1"
 				},
 				{
-					"command": "code-for-ibmi.moveIFSShortcutDown",
+					"command": "code-for-ibmi.moveIFSShortcutUp",
 					"when": "view == ifsBrowser && viewItem == shortcut",
 					"group": "4_ifsStuff@2"
 				},
 				{
-					"command": "code-for-ibmi.sortIFSShortcuts",
+					"command": "code-for-ibmi.moveIFSShortcutDown",
 					"when": "view == ifsBrowser && viewItem == shortcut",
 					"group": "4_ifsStuff@3"
+				},
+				{
+					"command": "code-for-ibmi.moveIFSShortcutToBottom",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "4_ifsStuff@4"
+				},
+				{
+					"command": "code-for-ibmi.sortIFSShortcuts",
+					"when": "view == ifsBrowser && viewItem == shortcut",
+					"group": "4_ifsStuff@5"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
