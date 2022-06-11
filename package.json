@@ -150,6 +150,11 @@
 								"default": [],
 								"description": "List of directories shown in IFS Browser"
 							},
+							"autoSortIFSShortcuts": {
+								"type": "boolean",
+								"default": false,
+								"description": "Automatically sort the shortcuts in IFS browser when shortcut is added or removed."
+							},
 							"homeDirectory": {
 								"type": "string",
 								"default": ".",
