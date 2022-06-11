@@ -793,7 +793,7 @@
 			},
 			{
 				"command": "code-for-ibmi.changeCurrentLibrary",
-				"title": "Change current library",
+				"title": "Change current library/schema",
 				"category": "IBM i",
 				"icon": "$(root-folder)"
 			},
@@ -1228,6 +1228,11 @@
 					"command": "code-for-ibmi.runEditorStatement",
 					"when": "editorLangId == sql",
 					"group": "navigation@2"
+				},
+				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "editorLangId == sql",
+					"group": "navigation@3"
 				}
 			],
 			"view/item/context": [

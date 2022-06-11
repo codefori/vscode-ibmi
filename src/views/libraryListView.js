@@ -30,7 +30,7 @@ module.exports = class libraryListProvider {
         const currentLibrary = config.currentLibrary.toUpperCase();
 
         const newLibrary = await vscode.window.showInputBox({
-          prompt: `Changing current library`,
+          prompt: `Changing current library/schema`,
           value: currentLibrary
         });
 
