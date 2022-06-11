@@ -1020,6 +1020,11 @@
 				"icon": "$(file-directory-create)"
 			},
 			{
+				"command": "code-for-ibmi.createSaveFile",
+				"title": "Create Save File",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.runEditorStatement",
 				"title": "Run selected statement",
 				"category": "IBM i",
@@ -1397,6 +1402,11 @@
 					"command": "code-for-ibmi.createSourceFile",
 					"when": "view == objectBrowser && viewItem == filter",
 					"group": "1_LibActions@1"
+				},
+				{
+					"command": "code-for-ibmi.createSaveFile",
+					"when": "view == objectBrowser && viewItem == filter",
+					"group": "1_LibActions@2"
 				},
 				{
 					"command": "code-for-ibmi.runAction",

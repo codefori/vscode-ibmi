@@ -13,6 +13,8 @@ const Configuration = require(`../api/Configuration`);
 
 const Search = require(`../api/Search`);
 const Tools = require(`../api/Tools`);
+const path = require(`path`);
+const { select } = require(`../api/terminal`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -453,7 +455,148 @@ module.exports = class objectBrowserTwoProvider {
           console.log(this);
         }
       })
-    )
+    ),
+
+    vscode.commands.registerCommand(`code-for-ibmi.createSaveFile`, async (node) => {
+      const connection = instance.getConnection();
+      const config = instance.getConfig();
+      const content = instance.getContent();
+
+      if (node) {
+        const filter = config.objectFilters.find(filter => filter.name === node.filter);
+        if (filter) {
+          const library = filter.library;
+
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: `Searching`,
+          }, async progress => {
+            progress.report({
+              message: `Fetching object list for ${library}.`
+            });
+            
+            const objects = await content.getObjectList(filter);
+
+            if (objects.length > 0) {
+              progress.report({
+                message: `Select objects to put into savefile.`
+              });
+
+              const selected = await vscode.window.showQuickPick(
+                objects.map(object => ({
+                  label: object.name,
+                  description: object.type,
+                  detail: object.text
+                })),
+                {
+                  title: `Select objects to save`,
+                  canPickMany: true,
+                }
+              );
+
+              if (selected) {
+                progress.report({
+                  message: `Enter IFS path for savefile.`
+                });
+
+                const ifsLocation = await vscode.window.showInputBox({
+                  prompt: `Location of savefile`,
+                  value: path.posix.join(config.homeDirectory, `${library.toLowerCase()}-${selected.length}.savf`)
+                });
+
+                if (ifsLocation) {
+                  const name = connection.currentUser.toUpperCase();
+
+                  try {
+                    // Delete incase it already exists for some reason.
+                    await connection.remoteCommand(`DLTOBJ OBJ(${library}/${name}) OBJTYPE(*FILE)`);
+                  } catch (e) {}
+
+                  try {
+                    progress.report({
+                      message: `Creating savefile ${library}/${name}`
+                    });
+
+                    await connection.remoteCommand(`CRTSAVF FILE(${library}/${name})`);
+                  } catch (e) {
+                    vscode.window.showErrorMessage(`Error creating savefile! ${e}`);
+                    return;
+                  }
+
+                  let success = false;
+                  let command = `SAVOBJ OBJ(${selected.map(s => s.label).join(` `)}) LIB(${library}) DEV(*SAVF) SAVF(${library}/${name})`;
+
+                  try {
+                    progress.report({
+                      message: `Building savefile...`
+                    });
+
+                    await connection.remoteCommand(command);
+                    success = true;
+                  } catch (e) {
+                    vscode.window.showErrorMessage(`Error building savefile! ${e}`);
+                    // No return. We need to delete the savefile.
+                  }
+
+                  if (success) {
+                    try {
+                      progress.report({
+                        message: `Moving streamfile to the IFS.`
+                      });
+
+                      command = `CPYTOSTMF FROMMBR('/QSYS.lib/${library}.lib/${name}.FILE') TOSTMF('${ifsLocation}') STMFOPT(*REPLACE) STMFCCSID(1252) CVTDTA(*NONE)`;
+                      await connection.remoteCommand(command);
+                    } catch (e) {
+                      success = false;
+                      vscode.window.showErrorMessage(`Error moving streamfile to the IFS! ${e}`);
+
+                    // Do not cancel here. We have to delete the object.
+                    }
+                  } 
+
+                  try {
+                    progress.report({
+                      message: `Deleting savefile object ${library}/${name}`
+                    });
+
+                    await connection.remoteCommand(`DLTOBJ OBJ(${library}/${name}) OBJTYPE(*FILE)`);
+                  } catch (e) {
+                    vscode.window.showErrorMessage(`Error deleting savefile object! ${e}`);
+                    return;
+                  }
+
+                  progress.report({
+                    message: `Finishing up...`
+                  });
+
+                  if (success) {
+                    const chosen = await vscode.window.showInformationMessage(`Savefile created successfully at ${ifsLocation}.`, `Download`, `Download and delete`, `Ignore`);
+
+                    if (chosen && chosen.startsWith(`Download`)) {
+                      // Always download
+                      await vscode.commands.executeCommand(`code-for-ibmi.downloadStreamfile`, {
+                        path: ifsLocation,
+                      });
+
+                      if (chosen === `Download and delete`) {
+                        vscode.commands.executeCommand(`code-for-ibmi.deleteIFS`, {
+                          path: ifsLocation,
+                        })
+                      }
+                    }
+                  }
+
+                } else {
+                  vscode.window.showErrorMessage(`No location specified. Operation cancelled.`);
+                }
+              } else {
+                vscode.window.showWarningMessage(`No objects selected. Operation cancelled.`);
+              }
+            }
+          });
+        }
+      }
+    })
   }
 
   refresh() {
