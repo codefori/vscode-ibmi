@@ -62,7 +62,7 @@ module.exports = class Search {
       if (line.startsWith(`Binary`)) continue;
   
       parts = line.split(`:`);
-      currentFile = parts[0].substring(10); //Remove '/QSYS.LIB/'
+      currentFile = parts[0].substring(1).replace(`QSYS.LIB/`, ``); //Remove '/QSYS.LIB/'
       currentFile = currentFile.replace(`.LIB`, ``).replace(`.FILE`, ``).replace(`.MBR`, ``);
 
       currentLine = Number(parts[1]);
