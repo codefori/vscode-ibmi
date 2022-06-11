@@ -136,29 +136,24 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutDown`, async (node) => {
         const config = instance.getConfig();
 
-        let moveDir;
-
         let shortcuts = config.ifsShortcuts;
 
         if (node) {
-          moveDir = node.path;
-        }
-
-        if (moveDir) {
-
-          try {
-            moveDir = moveDir.trim();
-
-            const inx = shortcuts.indexOf(moveDir);
-
-            if (inx >= 0 && inx < shortcuts.length) {
-              shortcuts.splice(inx, 1);
-              shortcuts.splice(inx + 1, 0, moveDir);
-              await config.set(`ifsShortcuts`, shortcuts);
-              if (Configuration.get(`autoRefresh`)) this.refresh();
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
+              
+              if (inx >= 0 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice(inx + 1, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
             }
-          } catch (e) {
-            console.log(e);
           }
         }
       }),
@@ -166,29 +161,24 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutUp`, async (node) => {
         const config = instance.getConfig();
 
-        let moveDir;
-
         let shortcuts = config.ifsShortcuts;
 
         if (node) {
-          moveDir = node.path;
-        }
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
 
-        if (moveDir) {
-
-          try {
-            moveDir = moveDir.trim();
-
-            const inx = shortcuts.indexOf(moveDir);
-
-            if (inx >= 1 && inx < shortcuts.length) {
-              shortcuts.splice(inx, 1);
-              shortcuts.splice(inx - 1, 0, moveDir);
-              await config.set(`ifsShortcuts`, shortcuts);
-              if (Configuration.get(`autoRefresh`)) this.refresh();
+              if (inx >= 1 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice(inx - 1, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
             }
-          } catch (e) {
-            console.log(e);
           }
         }
       }),
@@ -196,29 +186,24 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToTop`, async (node) => {
         const config = instance.getConfig();
 
-        let moveDir;
-
         let shortcuts = config.ifsShortcuts;
 
         if (node) {
-          moveDir = node.path;
-        }
-
-        if (moveDir) {
-
-          try {
-            moveDir = moveDir.trim();
-
-            const inx = shortcuts.indexOf(moveDir);
-
-            if (inx >= 1 && inx < shortcuts.length) {
-              shortcuts.splice(inx, 1);
-              shortcuts.splice(0, 0, moveDir);
-              await config.set(`ifsShortcuts`, shortcuts);
-              if (Configuration.get(`autoRefresh`)) this.refresh();
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
+              
+              if (inx >= 1 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice(0, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
             }
-          } catch (e) {
-            console.log(e);
           }
         }
       }),
@@ -226,29 +211,24 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToBottom`, async (node) => {
         const config = instance.getConfig();
 
-        let moveDir;
-
         let shortcuts = config.ifsShortcuts;
 
         if (node) {
-          moveDir = node.path;
-        }
-
-        if (moveDir) {
-
-          try {
-            moveDir = moveDir.trim();
-
-            const inx = shortcuts.indexOf(moveDir);
-
-            if (inx >= 0 && inx < shortcuts.length) {
-              shortcuts.splice(inx, 1);
-              shortcuts.splice( shortcuts.length, 0, moveDir);
-              await config.set(`ifsShortcuts`, shortcuts);
-              if (Configuration.get(`autoRefresh`)) this.refresh();
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
+              
+              if (inx >= 0 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice( shortcuts.length, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
             }
-          } catch (e) {
-            console.log(e);
           }
         }
       }),
