@@ -315,9 +315,31 @@ module.exports = class objectBrowserTwoProvider {
                   members = await content.getMemberList(path[0], path[1]);
 
                   if (members.length > 0) {
-                    progress.report({
-                      message: `'${searchTerm}' in ${node.path}.`
-                    });
+                    // NOTE: if more messages are added, lower the timeout interval
+                    const timeoutInternal = 9000;
+                    const searchMessages = [
+                      `'${searchTerm}' in ${node.path}.`,
+                      `This is taking a while because there are ${members.length} members. Searching '${searchTerm}' in ${node.path} still.`,
+                      `What's so special about '${searchTerm}' anyway?`,
+                      `Still searching '${searchTerm}' in ${node.path}...`,
+                      `While you wait, why not make some tea?`,
+                      `Wow. This really is taking a while. Let's hope you get the result you want.`,
+                      `Why was six afraid of seven?`,
+                      `How does one end up with ${members.length} members?`,
+                      `'${searchTerm}' in ${node.path}.`,
+                    ];
+
+                    let currentMessage = 0;
+                    const messageTimeout = setInterval(() => {
+                      if (currentMessage < searchMessages.length) {
+                        progress.report({
+                          message: searchMessages[currentMessage]
+                        });
+                        currentMessage++;
+                      } else {
+                        clearInterval(messageTimeout);
+                      }
+                    }, timeoutInternal);
 
                     const results = await Search.searchMembers(instance, path[0], path[1], node.memberFilter, searchTerm);
 
