@@ -14,7 +14,6 @@ const Configuration = require(`../api/Configuration`);
 const Search = require(`../api/Search`);
 const Tools = require(`../api/Tools`);
 const path = require(`path`);
-const { select } = require(`../api/terminal`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
