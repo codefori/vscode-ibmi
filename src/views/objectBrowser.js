@@ -468,7 +468,7 @@ module.exports = class objectBrowserTwoProvider {
 
           await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: `Searching`,
+            title: `Savefile`,
           }, async progress => {
             progress.report({
               message: `Fetching object list for ${library}.`
