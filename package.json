@@ -1449,24 +1449,9 @@
 					"group": "4_ifsStuff@1"
 				},
 				{
-					"command": "code-for-ibmi.moveIFSShortcutUp",
-					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@2"
-				},
-				{
-					"command": "code-for-ibmi.moveIFSShortcutDown",
-					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@3"
-				},
-				{
 					"command": "code-for-ibmi.moveIFSShortcutToBottom",
 					"when": "view == ifsBrowser && viewItem == shortcut",
 					"group": "4_ifsStuff@4"
-				},
-				{
-					"command": "code-for-ibmi.sortIFSShortcuts",
-					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@5"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
