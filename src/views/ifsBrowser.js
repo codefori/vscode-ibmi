@@ -54,6 +54,7 @@ module.exports = class ifsBrowserProvider {
         let newDirectory;
 
         let shortcuts = config.ifsShortcuts;
+        let autoSortIFSShortcuts = config.autoSortIFSShortcuts;
 
         if (node) {
           newDirectory = node.path;
@@ -66,10 +67,11 @@ module.exports = class ifsBrowserProvider {
         try {
           if (newDirectory) {
             newDirectory = newDirectory.trim();
-            
+
             if (!shortcuts.includes(newDirectory)) {
               shortcuts.push(newDirectory);
               await config.set(`ifsShortcuts`, shortcuts);
+              if (autoSortIFSShortcuts === true) vscode.commands.executeCommand(`code-for-ibmi.sortIFSShortcuts`);
               if (Configuration.get(`autoRefresh`)) this.refresh();
             }
           }
@@ -98,7 +100,7 @@ module.exports = class ifsBrowserProvider {
             removeDir = removeDir.trim();
 
             const inx = shortcuts.indexOf(removeDir);
-            
+
             if (inx >= 0) {
               shortcuts.splice(inx, 1);
               await config.set(`ifsShortcuts`, shortcuts);
@@ -110,6 +112,127 @@ module.exports = class ifsBrowserProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.sortIFSShortcuts`, async (node) => {
+        const config = instance.getConfig();
+
+        let shortcuts = config.ifsShortcuts;
+
+        try {
+
+          shortcuts.sort(function(a, b){
+            let x = a.toLowerCase();
+            let y = b.toLowerCase();
+            if (x < y) {return -1;}
+            if (x > y) {return 1;}
+            return 0;
+          });
+          await config.set(`ifsShortcuts`, shortcuts);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        } catch (e) {
+          console.log(e);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutDown`, async (node) => {
+        const config = instance.getConfig();
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
+              
+              if (inx >= 0 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice(inx + 1, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutUp`, async (node) => {
+        const config = instance.getConfig();
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
+
+              if (inx >= 1 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice(inx - 1, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToTop`, async (node) => {
+        const config = instance.getConfig();
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
+              
+              if (inx >= 1 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice(0, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToBottom`, async (node) => {
+        const config = instance.getConfig();
+
+        let shortcuts = config.ifsShortcuts;
+
+        if (node) {
+          const moveDir = node.path ? node.path.trim() : null;
+          
+          if (moveDir) {
+            try {
+              const inx = shortcuts.indexOf(moveDir);
+              
+              if (inx >= 0 && inx < shortcuts.length) {
+                shortcuts.splice(inx, 1);
+                shortcuts.splice( shortcuts.length, 0, moveDir);
+                await config.set(`ifsShortcuts`, shortcuts);
+                if (Configuration.get(`autoRefresh`)) this.refresh();
+              }
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
         const connection = instance.getConnection();
         const config = instance.getConfig();
@@ -117,7 +240,7 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           //Running from right click
-          
+
           root = node.path;
         } else {
           root = config.homeDirectory;
@@ -148,12 +271,12 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           //Running from right click
-          
+
           root = node.path;
         } else {
           root = config.homeDirectory;
         }
-        
+
         const fullName = await vscode.window.showInputBox({
           prompt: `Name of new streamfile`,
           value: root
@@ -195,7 +318,7 @@ module.exports = class ifsBrowserProvider {
 
         /** @type {{local: string, remote: string}[]} */
         const uploads = [];
-        
+
         chosenFiles.forEach(uri => {
           uploads.push({
             local: uri.fsPath,
@@ -244,7 +367,7 @@ module.exports = class ifsBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
         if (node) {
           //Running from right click
-          
+
           const fullName = await vscode.window.showInputBox({
             prompt: `Name of new path`,
             value: node.path
@@ -298,7 +421,7 @@ module.exports = class ifsBrowserProvider {
           console.log(this);
         }
       }),
-      
+
       vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node) => {
         const connection = instance.getConnection();
         const config = instance.getConfig();
@@ -405,7 +528,7 @@ module.exports = class ifsBrowserProvider {
 
     if (connection) {
       const config = instance.getConfig();
-      
+
       if (element) { //Chosen directory
         //Fetch members
         console.log(element.path);
@@ -426,7 +549,7 @@ module.exports = class ifsBrowserProvider {
         }
 
       } else {
-        items = config.ifsShortcuts.map(directory => new Object(`directory`, directory, directory));
+        items = config.ifsShortcuts.map(directory => new Object(`shortcut`, directory, directory));
         // const objects = await content.getFileList(config.homeDirectory);
 
         // for (let object of objects) {
@@ -439,9 +562,9 @@ module.exports = class ifsBrowserProvider {
   }
 
   /**
-   * 
-   * @param {string} path 
-   * @param {string[]} list 
+   *
+   * @param {string} path
+   * @param {string[]} list
    */
   storeIFSList(path, list) {
     const storage = instance.getStorage();
@@ -455,8 +578,8 @@ module.exports = class ifsBrowserProvider {
 
 class Object extends vscode.TreeItem {
   /**
-   * @param {"directory"|"streamfile"} type 
-   * @param {string} label 
+   * @param {"shortcut"|"directory"|"streamfile"} type
+   * @param {string} label
    * @param {string} path
    */
   constructor(type, label, path) {
@@ -465,7 +588,7 @@ class Object extends vscode.TreeItem {
     this.contextValue = type;
     this.path = path;
 
-    if (type === `directory`) {
+    if (type === `shortcut` || type === `directory`) {
       this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     } else {
       this.resourceUri = vscode.Uri.parse(path).with({scheme: `streamfile`});

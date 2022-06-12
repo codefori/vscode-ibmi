@@ -64,6 +64,11 @@ module.exports = class SettingsUI {
         field.description = `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`;
         ui.addField(field);
 
+        field = new Field(`checkbox`, `autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`);
+        field.default = (config.autoSortIFSShortcuts ? `checked` : ``)
+        field.description = `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`;
+        ui.addField(field);
+
         field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
         field.default = (config.enableSQL ? `checked` : ``);
         field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID is 65535, it is recommend SQL is disabled. When disabled, will use import files where possible.`;
