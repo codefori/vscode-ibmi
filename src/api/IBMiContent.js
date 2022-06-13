@@ -311,9 +311,9 @@ module.exports = class IBMiContent {
    */
   async getMemberList(lib, spf, mbr = `*`) {
     const config = this.ibmi.config;
-    const library = lib.toUpperCase();
-    const sourceFile = spf.toUpperCase();
-    let member = (mbr !== `*` ? mbr : null);
+    const library = this.ibmi.sysNameInAmerican(lib).toUpperCase();
+    const sourceFile = this.ibmi.sysNameInAmerican(spf).toUpperCase();
+    let member = (mbr !== `*` ? this.ibmi.sysNameInAmerican(mbr) : null);
 
     let results;
 
@@ -374,7 +374,7 @@ module.exports = class IBMiContent {
       asp: asp,
       library: library,
       file: result.MBFILE,
-      name: result.MBNAME,
+      name: this.ibmi.sysNameInLocal(result.MBNAME),
       extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()

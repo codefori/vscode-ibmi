@@ -3,6 +3,7 @@ const vscode = require(`vscode`);
 const contentApi = require(`./complex/content`);
 
 const Tools = require(`../../api/Tools`);
+const instance = require(`../../Instance`);
 
 module.exports = class ComplexQsysFs {
   constructor() {
@@ -16,7 +17,8 @@ module.exports = class ComplexQsysFs {
    * @returns {Promise<Uint8Array>}
    */
   async readFile(uri) {
-    const {asp, library, file, member} = Tools.parserMemberPath(uri.path);
+    const connection = instance.getConnection();
+    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
 
     const memberContent = await contentApi.downloadMemberContentWithDates(asp, library, file, member);
 
@@ -37,7 +39,8 @@ module.exports = class ComplexQsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
-    const {asp, library, file, member} = Tools.parserMemberPath(uri.path);
+    const connection = instance.getConnection();
+    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
 
     return contentApi.uploadMemberContentWithDates(asp, library, file, member, content.toString(`utf8`));
   }

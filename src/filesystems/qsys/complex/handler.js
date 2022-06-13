@@ -79,8 +79,9 @@ module.exports = class {
     context.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument(event => {
         if (event.document.uri.scheme === `member`) {
+          const connection = instance.getConnection();
           const path = event.document.uri.path;
-          const {library, file, member} = Tools.parserMemberPath(path);
+          const {library, file, member} = connection.parserMemberPath(path);
 
 
           const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
@@ -173,8 +174,9 @@ module.exports = class {
    */
   static refreshGutter(editor) {
     if (editor.document.uri.scheme === `member`) {
+      const connection = instance.getConnection();
       const path = editor.document.uri.path;
-      const {library, file, member} = Tools.parserMemberPath(path);
+      const {library, file, member} = connection.parserMemberPath(path);
 
       const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
 

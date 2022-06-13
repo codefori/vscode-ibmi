@@ -2,8 +2,6 @@
 const vscode = require(`vscode`);
 const instance = require(`../../Instance`);
 
-const Tools = require(`../../api/Tools`);
-
 module.exports = class basicQsysFs {
   constructor() {
     this.emitter = new vscode.EventEmitter();
@@ -17,8 +15,9 @@ module.exports = class basicQsysFs {
    */
   async readFile(uri) {
     const contentApi = instance.getContent();
+    const connection = instance.getConnection();
 
-    const {asp, library, file, member} = Tools.parserMemberPath(uri.path);
+    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
 
     const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
@@ -40,7 +39,8 @@ module.exports = class basicQsysFs {
    */
   writeFile(uri, content, options) {
     const contentApi = instance.getContent();
-    const {asp, library, file, member} = Tools.parserMemberPath(uri.path);
+    const connection = instance.getConnection();
+    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
 
     return contentApi.uploadMemberContent(asp, library, file, member, content.toString(`utf8`));
   }
