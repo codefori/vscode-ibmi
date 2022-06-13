@@ -26,6 +26,9 @@ module.exports = class Configuration {
     /** @type {string[]} */
     this.ifsShortcuts = base.ifsShortcuts || [];
 
+    /** @type {boolean} Default auto sorting of shortcuts to off  */
+    this.autoSortIFSShortcuts = (base.autoSortIFSShortcuts === true );
+
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
