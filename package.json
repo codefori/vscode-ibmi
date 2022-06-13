@@ -768,7 +768,8 @@
 			{
 				"command": "code-for-ibmi.goToFile",
 				"title": "Go to file...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(go-to-file)"
 			},
 			{
 				"command": "code-for-ibmi.showVariableMaintenance",
@@ -865,7 +866,8 @@
 			{
 				"command": "code-for-ibmi.searchSourceFile",
 				"title": "Search Source File",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(search)"
 			},
 			{
 				"command": "code-for-ibmi.openFileByPath",
@@ -1178,6 +1180,11 @@
 					"when": "view == objectBrowser"
 				},
 				{
+					"command": "code-for-ibmi.goToFile",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
 					"command": "code-for-ibmi.showVariableMaintenance",
 					"group": "navigation",
 					"when": "view == libraryListView"
@@ -1264,6 +1271,11 @@
 				{
 					"command": "code-for-ibmi.moveLibraryDown",
 					"when": "view == libraryListView && viewItem == library",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.createMember",
+					"when": "viewItem == SPF",
 					"group": "inline"
 				},
 				{
