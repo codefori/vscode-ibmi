@@ -98,6 +98,8 @@ module.exports = class {
 
               const currentDate = this.currentStamp();
   
+              const startNewLine = change.text[0] === `\n`;
+
               // Is a space
               if (change.text.trim() === ``) {
               // Removing a line
@@ -113,13 +115,15 @@ module.exports = class {
                   sourceDates.splice(line, 0, currentDate);
                   return;
                 } else if (
-                  startLineNumber === endLineNumber && startChar < endChar
+                  startLineNumber === endLineNumber
                 ) {
                   //backspace
-                  sourceDates[line] = currentDate;
-                  return;
+                  if (startNewLine === false) {
+                    sourceDates[line] = currentDate;
+                    return;
+                  }
                 }
-              } else {
+              } else if (startNewLine === false) {
                 sourceDates[line] = currentDate;
               }
   
