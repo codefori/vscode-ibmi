@@ -311,9 +311,9 @@ module.exports = class IBMiContent {
    */
   async getMemberList(lib, spf, mbr = `*`) {
     const config = this.ibmi.config;
-    const library = this.ibmi.sysNameInAmerican(lib).toUpperCase();
-    const sourceFile = this.ibmi.sysNameInAmerican(spf).toUpperCase();
-    let member = (mbr !== `*` ? this.ibmi.sysNameInAmerican(mbr) : null);
+    const library = lib.toUpperCase();
+    const sourceFile = spf.toUpperCase();
+    let member = (mbr !== `*` ? mbr : null);
 
     let results;
 
@@ -333,9 +333,9 @@ module.exports = class IBMiContent {
             ON b.table_schema = a.table_schema AND
               b.table_name = a.table_name
         WHERE
-          a.table_schema = '${library}' 
-          ${sourceFile !== `*ALL` ? `AND a.table_name = '${sourceFile}'` : ``}
-          ${member ? `AND b.system_table_member like '${member}'` : ``}
+          a.table_schema = '${this.ibmi.sysNameInAmerican(library)}' 
+          ${sourceFile !== `*ALL` ? `AND a.table_name = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+          ${member ? `AND b.system_table_member like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
         ORDER BY
           b.system_table_member
       `)
