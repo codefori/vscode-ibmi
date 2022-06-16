@@ -362,9 +362,7 @@ module.exports = class IBMiContent {
     if (results.length === 0) return [];
 
     results = results.sort((a, b) => {
-      if (a.MBNAME < b.MBNAME) { return -1; }
-      if (a.MBNAME > b.MBNAME) { return 1; }
-      return 0;
+      return a.MBNAME.localeCompare(b.MBNAME);
     });
 
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
