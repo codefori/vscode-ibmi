@@ -336,8 +336,6 @@ module.exports = class IBMiContent {
           a.table_schema = '${this.ibmi.sysNameInAmerican(library)}' 
           ${sourceFile !== `*ALL` ? `AND a.table_name = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
           ${member ? `AND b.system_table_member like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
-        ORDER BY
-          b.system_table_member
       `;
       results = await this.runSQL(statement);
 
@@ -359,15 +357,15 @@ module.exports = class IBMiContent {
         if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1);
         results = results.filter(row => row.MBNAME.startsWith(member));
       }
-
-      results = results.sort((a, b) => {
-        if (a.MBNAME < b.MBNAME) { return -1; }
-        if (a.MBNAME > b.MBNAME) { return 1; }
-        return 0;
-      });
     }
-
+    
     if (results.length === 0) return [];
+
+    results = results.sort((a, b) => {
+      if (a.MBNAME < b.MBNAME) { return -1; }
+      if (a.MBNAME > b.MBNAME) { return 1; }
+      return 0;
+    });
 
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
 
