@@ -320,12 +320,12 @@ module.exports = class IBMiContent {
     if (config.enableSQL) {
       if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
 
-      results = await this.runSQL(`
+      const statement = `
         SELECT
           (b.avgrowsize - 12) as MBMXRL,
           a.iasp_number as MBASP,
-          a.table_name AS MBFILE,
-          b.system_table_member as MBNAME,
+          translate(a.table_name, '${this.ibmi.system_name_variant_chars.local}', '${this.ibmi.system_name_variant_chars.american}') AS MBFILE,
+          translate(b.system_table_member, '${this.ibmi.system_name_variant_chars.local}', '${this.ibmi.system_name_variant_chars.american}') as MBNAME,
           b.source_type as MBSEU2,
           b.partition_text as MBMTXT
         FROM qsys2.systables AS a
@@ -338,7 +338,8 @@ module.exports = class IBMiContent {
           ${member ? `AND b.system_table_member like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
         ORDER BY
           b.system_table_member
-      `)
+      `;
+      results = await this.runSQL(statement);
 
     } else {
       const tempLib = config.tempLibrary;
@@ -374,7 +375,7 @@ module.exports = class IBMiContent {
       asp: asp,
       library: library,
       file: result.MBFILE,
-      name: this.ibmi.sysNameInLocal(result.MBNAME),
+      name: result.MBNAME,
       extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
