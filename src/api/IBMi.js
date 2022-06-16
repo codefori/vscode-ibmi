@@ -490,15 +490,20 @@ module.exports = class IBMi {
                               + `)`
                               + `select HASH concat AT concat DOLLARSIGN as LOCAL`
                               + `  from VARIANTS; `;
-                    output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, null, 0, {
+                    output = await this.sendCommand({
+                      command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
                       stdin: statement
                     });
-                    const rows = Tools.db2Parse(output);
-                    rows.forEach(row => {
-                      if (row.LOCAL && row.LOCAL !== `null`) {
-                        this.system_name_variant_chars.local = row.LOCAL;
-                      }
-                    });
+                    if (output.stdout) {
+                      const rows = Tools.db2Parse(output.stdout);
+                      rows.forEach(row => {
+                        if (row.LOCAL && row.LOCAL !== `null`) {
+                          this.system_name_variant_chars.local = row.LOCAL;
+                        }
+                      });
+                    } else {
+                      throw new Error(`There was an error running the SQL statement.`);
+                    }
                     if (this.system_name_variant_chars.local === undefined) this.system_name_variant_chars.local = this.system_name_variant_chars.american;
                   }
                 }
