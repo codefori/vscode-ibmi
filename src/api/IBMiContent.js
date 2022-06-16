@@ -279,7 +279,11 @@ module.exports = class IBMiContent {
           attribute: object.PHFILA,
           text: object.PHTXT,
           count: object.PHNOMB,
-        }));
+        }))
+        .sort((a, b) => {
+          if (a.library.localeCompare(b.library) != 0) return a.library.localeCompare(b.library)
+          else return a.name.localeCompare(b.name);
+        });
 
     } else {
       const objectTypes = (filters.types && filters.types.length > 0 ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
@@ -293,13 +297,18 @@ module.exports = class IBMiContent {
         }
       }
 
-      return results.map(object => ({
-        library,
-        name: object.ODOBNM,
-        type: object.ODOBTP,
-        attribute: object.ODOBAT,
-        text: object.ODOBTX
-      }));
+      return results
+        .map(object => ({
+          library,
+          name: object.ODOBNM,
+          type: object.ODOBTP,
+          attribute: object.ODOBAT,
+          text: object.ODOBTX
+        }))
+        .sort((a, b) => {
+          if (a.library.localeCompare(b.library) != 0) return a.library.localeCompare(b.library)
+          else return a.name.localeCompare(b.name);
+        });
     }
   }
 
