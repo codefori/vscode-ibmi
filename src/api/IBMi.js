@@ -750,7 +750,7 @@ module.exports = class IBMi {
     let result = string;
 
     for (let i = 0; i < fromChars.length; i++) {
-      result = result.replace(new RegExp(`[`+fromChars[i]+`]`, `g`), toChars[i]);
+      result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
     };
 
     return result;
@@ -767,7 +767,7 @@ module.exports = class IBMi {
     let result = string;
 
     for (let i = 0; i < fromChars.length; i++) {
-      result = result.replace(new RegExp(fromChars[i], `g`), toChars[i]);
+      result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
     };
 
     return result;
