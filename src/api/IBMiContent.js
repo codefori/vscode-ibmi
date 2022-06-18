@@ -274,7 +274,7 @@ module.exports = class IBMiContent {
         .filter(object => object.PHDTAT === `S`)
         .map(object => ({
           library,
-          name: object.PHFILE,
+          name: this.ibmi.sysNameInLocal(object.PHFILE),
           type: `*FILE`,
           attribute: object.PHFILA,
           text: object.PHTXT,
@@ -300,7 +300,7 @@ module.exports = class IBMiContent {
       return results
         .map(object => ({
           library,
-          name: object.ODOBNM,
+          name: this.ibmi.sysNameInLocal(object.ODOBNM),
           type: object.ODOBTP,
           attribute: object.ODOBAT,
           text: object.ODOBTX
@@ -333,8 +333,8 @@ module.exports = class IBMiContent {
         SELECT
           (b.avgrowsize - 12) as MBMXRL,
           a.iasp_number as MBASP,
-          translate(a.table_name, '${this.ibmi.variantChars.local}', '${this.ibmi.variantChars.american}') AS MBFILE,
-          translate(b.system_table_member, '${this.ibmi.variantChars.local}', '${this.ibmi.variantChars.american}') as MBNAME,
+          a.table_name AS MBFILE,
+          b.system_table_member as MBNAME,
           b.source_type as MBSEU2,
           b.partition_text as MBMTXT
         FROM qsys2.systables AS a
@@ -379,9 +379,9 @@ module.exports = class IBMiContent {
     return results.map(result => ({
       asp: asp,
       library: library,
-      file: result.MBFILE,
-      name: result.MBNAME,
-      extension: result.MBSEU2,
+      file: this.ibmi.sysNameInLocal(result.MBFILE),
+      name: this.ibmi.sysNameInLocal(result.MBNAME),
+      extension: this.ibmi.sysNameInLocal(result.MBSEU2),
       recordLength: Number(result.MBMXRL),
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
     }));
