@@ -19,15 +19,17 @@ function activate(context) {
 
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
-  console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
-  // @ts-ignore Used to check if extension is being debugged. If this
-  // is true, then don't send any data to the collection service.
-  if (vscode.env.isTelemetryEnabled && !process._debugProcess) {
-    console.log(`Telemetry is enabled.`);
+  console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
+  
+  if (vscode.env.isTelemetryEnabled) {
     const extensionName = process.env.EXT_NAME;
     const extensionVersion = process.env.EXT_VERSION;
     const azureKey = process.env.AZURE_COLLECT_KEY;
+
+    console.log(`Extension name: ${extensionName}`);
+    console.log(`Extension version: ${extensionVersion}`);
+    console.log(`Azure key: ${azureKey}`);
 
     const reporter = Reporter.create(extensionName, extensionVersion, azureKey);
     context.subscriptions.push(reporter);
