@@ -333,8 +333,8 @@ module.exports = class IBMiContent {
         SELECT
           (b.avgrowsize - 12) as MBMXRL,
           a.iasp_number as MBASP,
-          translate(a.table_name, '${this.ibmi.system_name_variant_chars.local}', '${this.ibmi.system_name_variant_chars.american}') AS MBFILE,
-          translate(b.system_table_member, '${this.ibmi.system_name_variant_chars.local}', '${this.ibmi.system_name_variant_chars.american}') as MBNAME,
+          translate(a.table_name, '${this.ibmi.variantChars.local}', '${this.ibmi.variantChars.american}') AS MBFILE,
+          translate(b.system_table_member, '${this.ibmi.variantChars.local}', '${this.ibmi.variantChars.american}') as MBNAME,
           b.source_type as MBSEU2,
           b.partition_text as MBMTXT
         FROM qsys2.systables AS a
