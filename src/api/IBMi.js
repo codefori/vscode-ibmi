@@ -503,12 +503,10 @@ module.exports = class IBMi {
               stdin: statement
             });
             if (output.stdout) {
-              const rows = Tools.db2Parse(output.stdout);
-              rows.forEach(row => {
-                if (row.LOCAL && row.LOCAL !== `null`) {
-                  this.system_name_variant_chars.local = row.LOCAL;
-                }
-              });
+              const [row] = Tools.db2Parse(output.stdout);
+              if (row && row.LOCAL !== `null`) {
+                this.system_name_variant_chars.local = row.LOCAL;
+              }
             } else {
               throw new Error(`There was an error running the SQL statement.`);
             }
