@@ -487,6 +487,10 @@ module.exports = class IBMi {
               }
             }
 
+            progress.report({
+              message: `Fetching local encoding values.`
+            });
+  
             statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
                       + `  values ( cast( x'7B' as varchar(1) )` 
                       + `         , cast( x'7C' as varchar(1) )`
