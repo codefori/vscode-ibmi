@@ -57,11 +57,13 @@ module.exports = class objectBrowserTwoProvider {
           let path = node.path.split(`/`);
 
           //Running from right click
-          const fullName = await vscode.window.showInputBox({
+          let fullName = await vscode.window.showInputBox({
             prompt: `Name of new source member (member.ext)`
           });
 
           if (fullName) {
+            fullName = fullName.toUpperCase();
+
             const connection = instance.getConnection();
             const [name, extension] = fullName.split(`.`);
 
