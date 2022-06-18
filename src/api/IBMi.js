@@ -1,6 +1,8 @@
 
 const vscode = require(`vscode`);
 
+const Reporter = require(`../reporter`);
+
 const node_ssh = require(`node-ssh`);
 const Configuration = require(`./Configuration`);
 const Tools = require(`./Tools`);
@@ -516,6 +518,8 @@ module.exports = class IBMi {
         } else {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
+
+        Reporter.sendTelemetryEvent(`connected`)
 
         return {
           success: true

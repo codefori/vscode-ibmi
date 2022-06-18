@@ -646,7 +646,8 @@
 							],
 							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
 							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"RPGLE",
@@ -671,7 +672,8 @@
 							],
 							"name": "Run SQL Statements (RUNSQLSTM)",
 							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"cmd"
@@ -1549,6 +1551,7 @@
 	},
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.6.3",
+		"@vscode/extension-telemetry": "^0.6.0",
 		"csv": "^6.0.5",
 		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",

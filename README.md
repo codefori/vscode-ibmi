@@ -31,3 +31,22 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 3. `npm i`
 4. 'Run Extension' from vscode debug.
 
+### Data collection
+
+We do not collect any Personally identifiable information (PII). We do collect:
+
+* When you connect to a system - but nothing about that system.
+* The version of Visual Studio Code you're using.
+* The version of the Code for IBM i you're using.
+* The architecture of the machine you're using (e.g. Windows, Linux, Mac, Cloud, etc)
+
+We do this for a few reasons:
+
+1. Curious to see how many active users we have.
+2. Allows us to see how often users are updating.
+3. Let's us know what operating systems we should cater to (e.g. Windows vs Mac)
+
+**You can disable this:** 
+
+1. Open the VS Code settings (Control / Command + Comma)
+2. Search `telemetry` and set `telemetry.telemetryLevel` to `none`.

@@ -2,6 +2,8 @@
 // Import the module and reference it with the alias vscode in your code below
 const vscode = require(`vscode`);
 
+const Reporter = require(`./reporter`);
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
@@ -18,6 +20,18 @@ function activate(context) {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
+
+  // @ts-ignore Used to check if extension is being debugged. If this
+  // is true, then don't send any data to the collection service.
+  if (vscode.env.isTelemetryEnabled && !process._debugProcess) {
+    console.log(`Telemetry is enabled.`);
+    const extensionName = process.env.EXT_NAME;
+    const extensionVersion = process.env.EXT_VERSION;
+    const azureKey = process.env.AZURE_COLLECT_KEY;
+
+    const reporter = Reporter.create(extensionName, extensionVersion, azureKey);
+    context.subscriptions.push(reporter);
+  }
 
   //We setup the event emitter.
   instance.setupEmitter();
