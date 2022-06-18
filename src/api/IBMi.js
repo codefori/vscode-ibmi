@@ -461,30 +461,44 @@ module.exports = class IBMi {
           }
 
           progress.report({
-            message: `Fetching system values.`
+            message: `Fetching conversion values.`
           });
 
-          // Next, we're going to see if we can get the QCCSID. Some things
-          // don't work without it!!!
+          // Next, we're going to see if we can get the CCSID from the user or the system.
+          // Some things don't work without it!!!
           try {
-            statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
-            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, null, 0, {
+            statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
+            output = await this.sendCommand({
+              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, 
               stdin: statement
             });
 
-            if (typeof output === `string`) {
-              const rows = Tools.db2Parse(output);
-              const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
-              if (ccsid) {
-                this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+            if (output.stdout) {
+              const [row] = Tools.db2Parse(output.stdout);
+              if (row && row.CHARACTER_CODE_SET_ID !== `null`) {
+                this.qccsid = row.CHARACTER_CODE_SET_ID;
+              }
+            }
 
-                if (this.config.enableSQL) {
-                  if (ccsid.CURRENT_NUMERIC_VALUE === 65535) {
-                    await this.config.set(`enableSQL`, false);
-                    vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
-                  }
+            if (this.qccsid === undefined || this.qccsid === -2) {
+              statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+              output = await this.sendCommand({
+                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                stdin: statement
+              });
+              
+              if (output.stdout) {
+                const rows = Tools.db2Parse(output.stdout);
+                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                if (ccsid) {
+                  this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
                 }
               }
+            }
+
+            if (this.config.enableSQL && this.qccsid === 65535) {
+              await this.config.set(`enableSQL`, false);
+              vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
             }
 
             progress.report({
