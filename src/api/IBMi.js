@@ -62,7 +62,7 @@ module.exports = class IBMi {
     };
 
     /** @type {{[name: string]: string}} */
-    this.system_name_variant_chars = {
+    this.variantChars = {
       american: `#@$`,
       local: undefined
     };
@@ -505,12 +505,12 @@ module.exports = class IBMi {
             if (output.stdout) {
               const [row] = Tools.db2Parse(output.stdout);
               if (row && row.LOCAL !== `null`) {
-                this.system_name_variant_chars.local = row.LOCAL;
+                this.variantChars.local = row.LOCAL;
               }
             } else {
               throw new Error(`There was an error running the SQL statement.`);
             }
-            if (this.system_name_variant_chars.local === undefined) this.system_name_variant_chars.local = this.system_name_variant_chars.american;
+            if (this.variantChars.local === undefined) this.variantChars.local = this.variantChars.american;
           } catch (e) {
             // Oh well!
             console.log(e);
@@ -694,7 +694,7 @@ module.exports = class IBMi {
       basename: undefined,
     };
 
-    const variant_chars_local = this.system_name_variant_chars.local;
+    const variant_chars_local = this.variantChars.local;
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
     // Remove leading slash
@@ -744,8 +744,8 @@ module.exports = class IBMi {
    * @returns {string} result
    */
   sysNameInLocal(string) {
-    const fromChars = this.system_name_variant_chars.american;
-    const toChars = this.system_name_variant_chars.local;
+    const fromChars = this.variantChars.american;
+    const toChars = this.variantChars.local;
 
     let result = string;
 
@@ -761,8 +761,8 @@ module.exports = class IBMi {
    * @returns {string} result
    */
   sysNameInAmerican(string) {
-    const fromChars = this.system_name_variant_chars.local;
-    const toChars = this.system_name_variant_chars.american;
+    const fromChars = this.variantChars.local;
+    const toChars = this.variantChars.american;
 
     let result = string;
 
