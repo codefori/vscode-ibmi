@@ -60,6 +60,13 @@ module.exports = class IBMi {
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
     };
+
+    /** 
+     * Strictly for storing errors from sendCommand.
+     * Used when creating issues on GitHub.
+     * @type {object[]} 
+     * */
+    this.lastErrors = [];
   }
 
   /**
@@ -622,6 +629,20 @@ module.exports = class IBMi {
 
     // Some simplification
     if (result.code === null) result.code = 0;
+
+    // Store the error
+    if (result.code && result.stderr) {
+      this.lastErrors.push({
+        command,
+        code: result.code,
+        stderr: result.stderr,
+        cwd: directory
+      });
+
+      // We don't want it to fill up too much.
+      if (this.lastErrors.length > 3)
+        this.lastErrors.shift();
+    }
 
     this.outputChannel.append(JSON.stringify(result, null, 4) + `\n\n`);
 
