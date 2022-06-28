@@ -127,7 +127,6 @@ module.exports = class Instance {
     const variablesUI = require(`./webviews/variables`);
 
     const CLCommands = require(`./languages/clle/clCommands`);
-    const SQLLanguage = require(`./languages/sql`);
 
     const ColorProvider = require(`./languages/general/ColorProvider`);
 
@@ -413,9 +412,6 @@ module.exports = class Instance {
           const clInstance = new CLCommands(context);
           clInstance.init();
         }
-
-        // ********* SQL statement executor */
-        SQLLanguage.initialise(context);
 
         // ********* Color provider */
         if (Configuration.get(`showSeuColors`)) {
