@@ -593,6 +593,8 @@ Compare two sources, whether they are members or streamfiles.
 
 ### Running SQL statement
 
+Install the [Db2 for IBM i extension](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.vscode-db2i) for this functionality.
+
 It is also possible to run SQL statements right from the editor in an SQL file. You can either highlight the statement you want to run or move your anchor over the statement and use Ctrl+R/Cmd+R to execute the statement. **note: statements only run in SQL mode and does not inherit the library list**
 
 SQL result sets appear in the 'IBM i: Results' panel.
