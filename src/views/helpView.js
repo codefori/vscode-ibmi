@@ -28,6 +28,10 @@ module.exports = class helpView {
       ),
       `* SQL enabled: ${config.enableSQL}`,
       `* Source dates enabled: ${config.enableSourceDates}`,
+      ``,
+      `\`\`\`json`,
+      JSON.stringify(connection.lastErrors, null, 2),
+      `\`\`\``,
     ].join(`\n`);
 
     const items = [
