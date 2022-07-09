@@ -118,6 +118,64 @@ module.exports = class {
   }
 
   /**
+   * @param {string} string
+   * @returns {{asp?: string, library: string, file: string, member: string, extension: string, basename: string}}
+   */
+  static parserMemberPath(string) {
+    const result = {
+      asp: undefined,
+      library: undefined,
+      file: undefined,
+      member: undefined,
+      extension: undefined,
+      basename: undefined,
+    };
+
+    const validQsysName = new RegExp(`^[A-Z0-9@#£§$][A-Z0-9_#@£§$.]{0,9}$`);
+
+    // Remove leading slash
+    const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
+
+    if (path.length > 0) result.basename = path[path.length - 1];
+    if (path.length > 1) result.file = path[path.length - 2];
+    if (path.length > 2) result.library = path[path.length - 3];
+    if (path.length > 3) result.asp = path[path.length - 4];
+
+    if (!result.library || !result.file || !result.basename) {
+      throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
+    }
+    if (result.asp && !validQsysName.test(result.asp)) {
+      throw new Error(`Invalid ASP name: ${result.asp}`);
+    }
+    if (!validQsysName.test(result.library)) {
+      throw new Error(`Invalid Library name: ${result.library}`);
+    }
+    if (!validQsysName.test(result.file)) {
+      throw new Error(`Invalid Source File name: ${result.file}`);
+    }
+
+    if (!result.basename.includes(`.`)) {
+      throw new Error(`Source Type extension is required.`);
+    } else {
+      result.member = result.basename.substring(0, result.basename.lastIndexOf(`.`));
+      result.extension = result.basename.substring(result.basename.lastIndexOf(`.`) + 1);
+    }
+
+    if (!validQsysName.test(result.member)) {
+      throw new Error(`Invalid Source Member name: ${result.member}`);
+    }
+    // The extension/source type has nearly the same naming rules as
+    // the objects, except that a period is not allowed.  We can reuse
+    // the existing RegExp because result.extension is everything after
+    // the final period (so we know it won't contain a period).
+    if (!validQsysName.test(result.extension)) {
+      throw new Error(`Invalid Source Member Extension: ${result.extension}`);
+    }
+
+    return result;
+  }
+
+  /**
    * @param {string} Path
    * @returns {string} escapedPath
    */

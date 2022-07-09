@@ -7,6 +7,8 @@ assignees: ''
 
 ---
 
+Save us time! Click 'Report an Issue' from the Help and Support panel inside of VS Code after you have connected to a system.
+
 **Describe the bug**
 (A clear and concise description of what the bug is. We will not accept your bug and close it if this is not filled out correctly.)
 
