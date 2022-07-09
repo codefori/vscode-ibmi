@@ -64,7 +64,7 @@ module.exports = class IBMi {
     /** @type {{[name: string]: string}} */
     this.variantChars = {
       american: `#@$`,
-      local: undefined
+      local: `#@$`
     };
   }
 
@@ -524,7 +524,6 @@ module.exports = class IBMi {
             } else {
               throw new Error(`There was an error running the SQL statement.`);
             }
-            if (this.variantChars.local === undefined) this.variantChars.local = this.variantChars.american;
           } catch (e) {
             // Oh well!
             console.log(e);
