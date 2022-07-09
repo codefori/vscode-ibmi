@@ -467,6 +467,7 @@ module.exports = class IBMi {
           // Next, we're going to see if we can get the CCSID from the user or the system.
           // Some things don't work without it!!!
           try {
+            const CCSID_SYSVAL = -2;
             statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
             output = await this.sendCommand({
               command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, 
@@ -480,7 +481,7 @@ module.exports = class IBMi {
               }
             }
 
-            if (this.qccsid === undefined || this.qccsid === -2) {
+            if (this.qccsid === undefined || this.qccsid === CCSID_SYSVAL) {
               statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
               output = await this.sendCommand({
                 command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
