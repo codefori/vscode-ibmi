@@ -194,6 +194,9 @@ module.exports = class CompileTools {
     /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} */
     let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: undefined};
 
+    /** @type {IBMi} */
+    const connection = instance.getConnection();
+
     /** @type {Configuration} */
     const config = instance.getConfig();
 
@@ -246,54 +249,52 @@ module.exports = class CompileTools {
           }
         }
 
-        let blank, asp, lib, file, fullName;
         let basename, name, ext, parent;
 
         switch (action.type) {
         case `member`:
-          const memberPath = uri.path.split(`/`);
-      
-          if (memberPath.length === 4) {
-            lib = memberPath[1];
-            file = memberPath[2];
-            fullName = memberPath[3];
-          } else {
-            asp = memberPath[1]
-            lib = memberPath[2];
-            file = memberPath[3];
-            fullName = memberPath[4];
-          }
-          name = fullName.substring(0, fullName.lastIndexOf(`.`));
-
-          ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : ``);
+          const memberDetail = connection.parserMemberPath(uri.path);
 
           evfeventInfo = {
-            asp,
-            lib: lib,
-            object: name,
-            ext
+            asp: memberDetail.asp,
+            lib: memberDetail.library,
+            object: memberDetail.member,
+            ext: memberDetail.extension
           };
 
-          command = command.replace(new RegExp(`&OPENLIBL`, `g`), lib.toLowerCase());
-          command = command.replace(new RegExp(`&OPENLIB`, `g`), lib);
+          command = command.replace(new RegExp(`&OPENLIBL`, `g`), memberDetail.library.toLowerCase());
+          command = command.replace(new RegExp(`&OPENLIB`, `g`), memberDetail.library);
 
-          command = command.replace(new RegExp(`&OPENSPFL`, `g`), file.toLowerCase());
-          command = command.replace(new RegExp(`&OPENSPF`, `g`), file);
+          command = command.replace(new RegExp(`&OPENSPFL`, `g`), memberDetail.file.toLowerCase());
+          command = command.replace(new RegExp(`&OPENSPF`, `g`), memberDetail.file);
 
-          command = command.replace(new RegExp(`&OPENMBRL`, `g`), name.toLowerCase());
-          command = command.replace(new RegExp(`&OPENMBR`, `g`), name);
+          command = command.replace(new RegExp(`&OPENMBRL`, `g`), memberDetail.member.toLowerCase());
+          command = command.replace(new RegExp(`&OPENMBR`, `g`), memberDetail.member);
 
-          command = command.replace(new RegExp(`&EXTL`, `g`), ext.toLowerCase());
-          command = command.replace(new RegExp(`&EXT`, `g`), ext);
+          command = command.replace(new RegExp(`&EXTL`, `g`), memberDetail.extension.toLowerCase());
+          command = command.replace(new RegExp(`&EXT`, `g`), memberDetail.extension);
 
           break;
 
         case `file`:
         case `streamfile`:
-          basename = path.posix.basename(uri.path);
-          name = basename.substring(0, basename.lastIndexOf(`.`));
-          ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : ``);
-          parent = path.parse(path.parse(uri.path).dir).base;
+          const pathData = path.parse(uri.path);
+          basename = pathData.base;
+          name = pathData.name;
+          ext = pathData.ext ? (pathData.ext.startsWith(`.`) ? pathData.ext.substring(1) : pathData.ext) : ``;
+          parent = path.parse(pathData.dir).base;
+
+          // Logic to handle second extension, caused by bob.
+          const bobTypes = [`.PGM`];
+          const secondName = path.parse(name);
+          if (secondName.ext && bobTypes.includes(secondName.ext)) {
+            name = secondName.name;
+          }
+
+          // Remove bob text convention
+          if (name.includes(`-`)) {
+            name = name.substring(0, name.indexOf(`-`));
+          }
 
           evfeventInfo = {
             ...evfeventInfo,
@@ -337,7 +338,7 @@ module.exports = class CompileTools {
             relativePath = path.relative(config.homeDirectory, uri.fsPath);
             command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
 
-            fullName = uri.path;
+            const fullName = uri.path;
             command = command.replace(new RegExp(`&FULLPATH`, `g`), fullName);
             break;
           }
@@ -355,7 +356,7 @@ module.exports = class CompileTools {
           break;
 
         case `object`:
-          [blank, lib, fullName] = uri.path.split(`/`);
+          const [_, lib, fullName] = uri.path.split(`/`);
           name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
           evfeventInfo = {
