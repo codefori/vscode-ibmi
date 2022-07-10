@@ -274,12 +274,16 @@ module.exports = class IBMiContent {
         .filter(object => object.PHDTAT === `S`)
         .map(object => ({
           library,
-          name: object.PHFILE,
+          name: this.ibmi.sysNameInLocal(object.PHFILE),
           type: `*FILE`,
           attribute: object.PHFILA,
           text: object.PHTXT,
           count: object.PHNOMB,
-        }));
+        }))
+        .sort((a, b) => {
+          if (a.library.localeCompare(b.library) != 0) return a.library.localeCompare(b.library)
+          else return a.name.localeCompare(b.name);
+        });
 
     } else {
       const objectTypes = (filters.types && filters.types.length > 0 ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
@@ -293,13 +297,18 @@ module.exports = class IBMiContent {
         }
       }
 
-      return results.map(object => ({
-        library,
-        name: object.ODOBNM,
-        type: object.ODOBTP,
-        attribute: object.ODOBAT,
-        text: object.ODOBTX
-      }));
+      return results
+        .map(object => ({
+          library,
+          name: this.ibmi.sysNameInLocal(object.ODOBNM),
+          type: object.ODOBTP,
+          attribute: object.ODOBAT,
+          text: object.ODOBTX
+        }))
+        .sort((a, b) => {
+          if (a.library.localeCompare(b.library) != 0) return a.library.localeCompare(b.library)
+          else return a.name.localeCompare(b.name);
+        });
     }
   }
 
@@ -320,7 +329,7 @@ module.exports = class IBMiContent {
     if (config.enableSQL) {
       if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
 
-      results = await this.runSQL(`
+      const statement = `
         SELECT
           (b.avgrowsize - 12) as MBMXRL,
           a.iasp_number as MBASP,
@@ -333,12 +342,11 @@ module.exports = class IBMiContent {
             ON b.table_schema = a.table_schema AND
               b.table_name = a.table_name
         WHERE
-          a.table_schema = '${library}' 
-          ${sourceFile !== `*ALL` ? `AND a.table_name = '${sourceFile}'` : ``}
-          ${member ? `AND b.system_table_member like '${member}'` : ``}
-        ORDER BY
-          b.system_table_member
-      `)
+          a.table_schema = '${this.ibmi.sysNameInAmerican(library)}' 
+          ${sourceFile !== `*ALL` ? `AND a.table_name = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+          ${member ? `AND b.system_table_member like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
+      `;
+      results = await this.runSQL(statement);
 
     } else {
       const tempLib = config.tempLibrary;
@@ -358,24 +366,22 @@ module.exports = class IBMiContent {
         if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1);
         results = results.filter(row => row.MBNAME.startsWith(member));
       }
-
-      results = results.sort((a, b) => {
-        if (a.MBNAME < b.MBNAME) { return -1; }
-        if (a.MBNAME > b.MBNAME) { return 1; }
-        return 0;
-      });
     }
-
+    
     if (results.length === 0) return [];
+
+    results = results.sort((a, b) => {
+      return a.MBNAME.localeCompare(b.MBNAME);
+    });
 
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
 
     return results.map(result => ({
       asp: asp,
       library: library,
-      file: result.MBFILE,
-      name: result.MBNAME,
-      extension: result.MBSEU2,
+      file: this.ibmi.sysNameInLocal(result.MBFILE),
+      name: this.ibmi.sysNameInLocal(result.MBNAME),
+      extension: this.ibmi.sysNameInLocal(result.MBSEU2),
       recordLength: Number(result.MBMXRL),
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
     }));

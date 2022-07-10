@@ -61,12 +61,20 @@ module.exports = class IBMi {
       'QZDFMDB2.PGM': undefined,
     };
 
+    
+    /** @type {{[name: string]: string}} */
+    this.variantChars = {
+      american: `#@$`,
+      local: `#@$`
+    };
+    
     /** 
      * Strictly for storing errors from sendCommand.
      * Used when creating issues on GitHub.
      * @type {object[]} 
      * */
     this.lastErrors = [];
+    
   }
 
   /**
@@ -462,30 +470,69 @@ module.exports = class IBMi {
           }
 
           progress.report({
-            message: `Fetching system values.`
+            message: `Fetching conversion values.`
           });
 
-          // Next, we're going to see if we can get the QCCSID. Some things
-          // don't work without it!!!
+          // Next, we're going to see if we can get the CCSID from the user or the system.
+          // Some things don't work without it!!!
           try {
-            statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
-            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, null, 0, {
+            const CCSID_SYSVAL = -2;
+            statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
+            output = await this.sendCommand({
+              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, 
               stdin: statement
             });
 
-            if (typeof output === `string`) {
-              const rows = Tools.db2Parse(output);
-              const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
-              if (ccsid) {
-                this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+            if (output.stdout) {
+              const [row] = Tools.db2Parse(output.stdout);
+              if (row && row.CHARACTER_CODE_SET_ID !== `null`) {
+                this.qccsid = row.CHARACTER_CODE_SET_ID;
+              }
+            }
 
-                if (this.config.enableSQL) {
-                  if (ccsid.CURRENT_NUMERIC_VALUE === 65535) {
-                    await this.config.set(`enableSQL`, false);
-                    vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
-                  }
+            if (this.qccsid === undefined || this.qccsid === CCSID_SYSVAL) {
+              statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+              output = await this.sendCommand({
+                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                stdin: statement
+              });
+              
+              if (output.stdout) {
+                const rows = Tools.db2Parse(output.stdout);
+                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                if (ccsid) {
+                  this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
                 }
               }
+            }
+
+            if (this.config.enableSQL && this.qccsid === 65535) {
+              await this.config.set(`enableSQL`, false);
+              vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
+            }
+
+            progress.report({
+              message: `Fetching local encoding values.`
+            });
+  
+            statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+                      + `  values ( cast( x'7B' as varchar(1) )` 
+                      + `         , cast( x'7C' as varchar(1) )`
+                      + `         , cast( x'5B' as varchar(1) ) )`
+                      + `)`
+                      + `select HASH concat AT concat DOLLARSIGN as LOCAL`
+                      + `  from VARIANTS; `;
+            output = await this.sendCommand({
+              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+              stdin: statement
+            });
+            if (output.stdout) {
+              const [row] = Tools.db2Parse(output.stdout);
+              if (row && row.LOCAL !== `null`) {
+                this.variantChars.local = row.LOCAL;
+              }
+            } else {
+              throw new Error(`There was an error running the SQL statement.`);
             }
           } catch (e) {
             // Oh well!
@@ -669,4 +716,98 @@ module.exports = class IBMi {
   log(string) {
     this.outputChannel.appendLine(string);
   }
+
+  /**
+   * @param {string} string
+   * @returns {{asp?: string, library: string, file: string, member: string, extension: string, basename: string}}
+   */
+  parserMemberPath(string) {
+    const result = {
+      asp: undefined,
+      library: undefined,
+      file: undefined,
+      member: undefined,
+      extension: undefined,
+      basename: undefined,
+    };
+
+    const variant_chars_local = this.variantChars.local;
+    const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
+
+    // Remove leading slash
+    const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
+
+    if (path.length > 0) result.basename = path[path.length - 1];
+    if (path.length > 1) result.file = path[path.length - 2];
+    if (path.length > 2) result.library = path[path.length - 3];
+    if (path.length > 3) result.asp = path[path.length - 4];
+
+    if (!result.library || !result.file || !result.basename) {
+      throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
+    }
+    if (result.asp && !validQsysName.test(result.asp)) {
+      throw new Error(`Invalid ASP name: ${result.asp}`);
+    }
+    if (!validQsysName.test(result.library)) {
+      throw new Error(`Invalid Library name: ${result.library}`);
+    }
+    if (!validQsysName.test(result.file)) {
+      throw new Error(`Invalid Source File name: ${result.file}`);
+    }
+
+    if (!result.basename.includes(`.`)) {
+      throw new Error(`Source Type extension is required.`);
+    } else {
+      result.member = result.basename.substring(0, result.basename.lastIndexOf(`.`));
+      result.extension = result.basename.substring(result.basename.lastIndexOf(`.`) + 1);
+    }
+
+    if (!validQsysName.test(result.member)) {
+      throw new Error(`Invalid Source Member name: ${result.member}`);
+    }
+    // The extension/source type has nearly the same naming rules as
+    // the objects, except that a period is not allowed.  We can reuse
+    // the existing RegExp because result.extension is everything after
+    // the final period (so we know it won't contain a period).
+    if (!validQsysName.test(result.extension)) {
+      throw new Error(`Invalid Source Member Extension: ${result.extension}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * @param {string} string
+   * @returns {string} result
+   */
+  sysNameInLocal(string) {
+    const fromChars = this.variantChars.american;
+    const toChars = this.variantChars.local;
+
+    let result = string;
+
+    for (let i = 0; i < fromChars.length; i++) {
+      result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
+    };
+
+    return result;
+  }
+
+  /**
+   * @param {string} string
+   * @returns {string} result
+   */
+  sysNameInAmerican(string) {
+    const fromChars = this.variantChars.local;
+    const toChars = this.variantChars.american;
+
+    let result = string;
+
+    for (let i = 0; i < fromChars.length; i++) {
+      result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
+    };
+
+    return result;
+  }
+  
 }

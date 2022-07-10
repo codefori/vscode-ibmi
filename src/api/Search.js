@@ -42,7 +42,7 @@ module.exports = class Search {
     }
 
     const result = await connection.sendQsh({
-      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${lib}.LIB/${spf}.FILE/${memberFilter ? memberFilter : `*`}`,
+      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${connection.sysNameInAmerican(lib)}.LIB/${connection.sysNameInAmerican(spf)}.FILE/${memberFilter ? memberFilter : `*`}`,
     });
 
     //@ts-ignore stderr does exist.
@@ -64,6 +64,7 @@ module.exports = class Search {
       parts = line.split(`:`);
       currentFile = parts[0].substring(1).replace(`QSYS.LIB/`, ``); //Remove '/QSYS.LIB/'
       currentFile = currentFile.replace(`.LIB`, ``).replace(`.FILE`, ``).replace(`.MBR`, ``);
+      currentFile = connection.sysNameInLocal(currentFile);
 
       currentLine = Number(parts[1]);
 

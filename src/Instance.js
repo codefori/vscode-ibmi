@@ -366,7 +366,7 @@ module.exports = class Instance {
               try {
                 // If opening a source member, parse and validate the path.
                 if (!searchFor.startsWith(`/`)) {
-                  Tools.parserMemberPath(searchFor);
+                  connection.parserMemberPath(searchFor);
                 }
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, searchFor);
               } catch (e) {

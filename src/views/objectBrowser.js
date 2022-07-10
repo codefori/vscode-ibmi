@@ -57,11 +57,13 @@ module.exports = class objectBrowserTwoProvider {
           let path = node.path.split(`/`);
 
           //Running from right click
-          const fullName = await vscode.window.showInputBox({
+          let fullName = await vscode.window.showInputBox({
             prompt: `Name of new source member (member.ext)`
           });
 
           if (fullName) {
+            fullName = fullName.toUpperCase();
+
             const connection = instance.getConnection();
             const [name, extension] = fullName.split(`.`);
 
@@ -108,8 +110,8 @@ module.exports = class objectBrowserTwoProvider {
             const connection = instance.getConnection();
 
             try {
-              const oldData = Tools.parserMemberPath(node.path);
-              const newData = Tools.parserMemberPath(fullPath);
+              const oldData = connection.parserMemberPath(node.path);
+              const newData = connection.parserMemberPath(fullPath);
 
               vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
@@ -148,7 +150,7 @@ module.exports = class objectBrowserTwoProvider {
 
           if (result === `Yes`) {
             const connection = instance.getConnection();
-            const {library, file, member} = Tools.parserMemberPath(node.path);
+            const {library, file, member} = connection.parserMemberPath(node.path);
 
             try {
               await connection.remoteCommand(
@@ -172,7 +174,8 @@ module.exports = class objectBrowserTwoProvider {
       }),
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
         if (node) {
-          const {library, file, member, basename} = Tools.parserMemberPath(node.path);
+          const connection = instance.getConnection();
+          const {library, file, member, basename} = connection.parserMemberPath(node.path);
 
           const newText = await vscode.window.showInputBox({
             value: node.description,
@@ -201,7 +204,8 @@ module.exports = class objectBrowserTwoProvider {
       }),
       vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node) => {
         if (node) {
-          const oldMember = Tools.parserMemberPath(node.path);
+          const connection = instance.getConnection();
+          const oldMember = connection.parserMemberPath(node.path);
           const lib = oldMember.library;
           const spf = oldMember.file;
           let newBasename = await vscode.window.showInputBox({
@@ -211,8 +215,8 @@ module.exports = class objectBrowserTwoProvider {
 
           if (newBasename && newBasename.toUpperCase() !== oldMember.basename) {
             try {
-              const newMember = Tools.parserMemberPath(lib + `/` + spf + `/` + newBasename);
               const connection = instance.getConnection();
+              const newMember = connection.parserMemberPath(lib + `/` + spf + `/` + newBasename);
               if (oldMember.member !== newMember.member) {
                 await connection.remoteCommand(
                   `RNMM FILE(${lib}/${spf}) MBR(${oldMember.member}) NEWMBR(${newMember.member})`,
@@ -242,7 +246,8 @@ module.exports = class objectBrowserTwoProvider {
         let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
 
         if (originPath) {
-          const {asp, library, file, member} = Tools.parserMemberPath(node.path);
+          const connection = instance.getConnection();
+          const {asp, library, file, member} = connection.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
           try {
@@ -257,8 +262,9 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
         const contentApi = instance.getContent();
+        const connection = instance.getConnection();
 
-        const {asp, library, file, member, basename} = Tools.parserMemberPath(node.path);
+        const {asp, library, file, member, basename} = connection.parserMemberPath(node.path);
 
         const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
