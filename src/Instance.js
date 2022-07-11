@@ -573,6 +573,8 @@ module.exports = class Instance {
           })
         );
 
+        deployment.initialise(this);
+
         initialisedBefore = true;
       }
     }
