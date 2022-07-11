@@ -335,9 +335,11 @@ module.exports = class Instance {
               if (node) {
                 uri = node.resourceUri;
               } else {
+                const activeEditor = vscode.window.activeTextEditor;
+
                 const compareWith = await vscode.window.showInputBox({
-                  prompt: `Enter the path to compare with.`,
-                  value: `${selectedForCompare.toString()}`,
+                  prompt: `Enter the path to compare selected with`,
+                  value: `${activeEditor ? activeEditor.document.uri.toString() : selectedForCompare.toString()}`,
                   title: `Compare with`
                 })
 
