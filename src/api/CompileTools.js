@@ -209,7 +209,7 @@ module.exports = class CompileTools {
       if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
-    /** @type {object[]} */
+    /** @type {Action[]} */
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (uri.scheme === `file`) {
@@ -314,13 +314,8 @@ module.exports = class CompileTools {
             let baseDir = config.homeDirectory;
             let currentWorkspace;
 
-            if (evfeventInfo.workspace !== undefined) {
-              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
-              currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace];
-
-            } else {
-              currentWorkspace = vscode.workspace.workspaceFolders[0];
-            }
+            /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
+            currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace || 0];
 
             if (currentWorkspace) {
               baseDir = currentWorkspace.uri.fsPath;
@@ -427,6 +422,47 @@ module.exports = class CompileTools {
 
               if (command.includes(`*EVENTF`)) {
                 this.refreshDiagnostics(instance, evfeventInfo);
+              }
+            }
+
+            if (action.type === `file` && action.postDownload && action.postDownload.length) {
+              let currentWorkspace;
+
+              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
+              currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace || 0];
+
+              if (currentWorkspace) {
+                const clinet = connection.client;
+                const remoteDir = config.homeDirectory;
+                const localDir = currentWorkspace.uri.fsPath;
+
+                // First, we need to create the relative directories in the workspace
+                // incase they don't exist. For example, if the path is `.logs/joblog.json`
+                // then we would need to create `.logs`.
+                try {
+                  const directories = action.postDownload.map(downloadPath => {
+                    const pathInfo = path.parse(downloadPath);
+                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir)));
+                  });
+
+                  await Promise.all(directories);
+                } catch (e) {
+                  // We don't really care if it errors. The directories might already exist.
+                }
+
+                // Then we download the files that is specified.
+                const downloads = action.postDownload.map(
+                  downloadPath => clinet.getFile(path.join(localDir, downloadPath), path.posix.join(remoteDir, downloadPath))
+                );
+
+                Promise.all(downloads)
+                  .then(result => {
+                    // Done!
+                  })
+                  .catch(error => {
+                    vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
+                    console.log(error);
+                  });
               }
             }
 
@@ -670,6 +706,9 @@ module.exports = class CompileTools {
     }
   }
 
+  /**
+   * @returns {Promise<Action[]>}
+   */
   static async getLocalActions() {
     const workspaces = vscode.workspace.workspaceFolders;
     const actions = [];
@@ -680,6 +719,7 @@ module.exports = class CompileTools {
       for (const file of actionsFiles) {
         const actionsContent = await vscode.workspace.fs.readFile(file);
         try {
+          /** @type {Action[]} */
           const actionsJson = JSON.parse(actionsContent.toString());
 
           // Maybe one day replace this with real schema validation
