@@ -539,6 +539,7 @@ module.exports = class ifsBrowserProvider {
           items = objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
             .map(object => new Object(object.type, object.name, object.path));
+
           await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 
         } catch (e) {

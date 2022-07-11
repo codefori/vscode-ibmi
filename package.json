@@ -440,6 +440,14 @@
 								},
 								"description": "Extensions that can use this action"
 							},
+							"postDownload": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"description": "Relative path"
+								},
+								"description": "Remote files to download after the Action is complete. For local files only."
+							},
 							"name": {
 								"type": "string",
 								"description": "Action name"

@@ -194,6 +194,9 @@ module.exports = class CompileTools {
     /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} */
     let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: undefined};
 
+    /** @type {IBMi} */
+    const connection = instance.getConnection();
+
     /** @type {Configuration} */
     const config = instance.getConfig();
 
@@ -206,7 +209,7 @@ module.exports = class CompileTools {
       if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
     }
 
-    /** @type {object[]} */
+    /** @type {Action[]} */
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (uri.scheme === `file`) {
@@ -246,54 +249,52 @@ module.exports = class CompileTools {
           }
         }
 
-        let blank, asp, lib, file, fullName;
         let basename, name, ext, parent;
 
         switch (action.type) {
         case `member`:
-          const memberPath = uri.path.split(`/`);
-      
-          if (memberPath.length === 4) {
-            lib = memberPath[1];
-            file = memberPath[2];
-            fullName = memberPath[3];
-          } else {
-            asp = memberPath[1]
-            lib = memberPath[2];
-            file = memberPath[3];
-            fullName = memberPath[4];
-          }
-          name = fullName.substring(0, fullName.lastIndexOf(`.`));
-
-          ext = (fullName.includes(`.`) ? fullName.substring(fullName.lastIndexOf(`.`) + 1) : ``);
+          const memberDetail = connection.parserMemberPath(uri.path);
 
           evfeventInfo = {
-            asp,
-            lib: lib,
-            object: name,
-            ext
+            asp: memberDetail.asp,
+            lib: memberDetail.library,
+            object: memberDetail.member,
+            ext: memberDetail.extension
           };
 
-          command = command.replace(new RegExp(`&OPENLIBL`, `g`), lib.toLowerCase());
-          command = command.replace(new RegExp(`&OPENLIB`, `g`), lib);
+          command = command.replace(new RegExp(`&OPENLIBL`, `g`), memberDetail.library.toLowerCase());
+          command = command.replace(new RegExp(`&OPENLIB`, `g`), memberDetail.library);
 
-          command = command.replace(new RegExp(`&OPENSPFL`, `g`), file.toLowerCase());
-          command = command.replace(new RegExp(`&OPENSPF`, `g`), file);
+          command = command.replace(new RegExp(`&OPENSPFL`, `g`), memberDetail.file.toLowerCase());
+          command = command.replace(new RegExp(`&OPENSPF`, `g`), memberDetail.file);
 
-          command = command.replace(new RegExp(`&OPENMBRL`, `g`), name.toLowerCase());
-          command = command.replace(new RegExp(`&OPENMBR`, `g`), name);
+          command = command.replace(new RegExp(`&OPENMBRL`, `g`), memberDetail.member.toLowerCase());
+          command = command.replace(new RegExp(`&OPENMBR`, `g`), memberDetail.member);
 
-          command = command.replace(new RegExp(`&EXTL`, `g`), ext.toLowerCase());
-          command = command.replace(new RegExp(`&EXT`, `g`), ext);
+          command = command.replace(new RegExp(`&EXTL`, `g`), memberDetail.extension.toLowerCase());
+          command = command.replace(new RegExp(`&EXT`, `g`), memberDetail.extension);
 
           break;
 
         case `file`:
         case `streamfile`:
-          basename = path.posix.basename(uri.path);
-          name = basename.substring(0, basename.lastIndexOf(`.`));
-          ext = (basename.includes(`.`) ? basename.substring(basename.lastIndexOf(`.`) + 1) : ``);
-          parent = path.parse(path.parse(uri.path).dir).base;
+          const pathData = path.parse(uri.path);
+          basename = pathData.base;
+          name = pathData.name;
+          ext = pathData.ext ? (pathData.ext.startsWith(`.`) ? pathData.ext.substring(1) : pathData.ext) : ``;
+          parent = path.parse(pathData.dir).base;
+
+          // Logic to handle second extension, caused by bob.
+          const bobTypes = [`.PGM`];
+          const secondName = path.parse(name);
+          if (secondName.ext && bobTypes.includes(secondName.ext)) {
+            name = secondName.name;
+          }
+
+          // Remove bob text convention
+          if (name.includes(`-`)) {
+            name = name.substring(0, name.indexOf(`-`));
+          }
 
           evfeventInfo = {
             ...evfeventInfo,
@@ -313,13 +314,8 @@ module.exports = class CompileTools {
             let baseDir = config.homeDirectory;
             let currentWorkspace;
 
-            if (evfeventInfo.workspace !== undefined) {
-              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
-              currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace];
-
-            } else {
-              currentWorkspace = vscode.workspace.workspaceFolders[0];
-            }
+            /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
+            currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace || 0];
 
             if (currentWorkspace) {
               baseDir = currentWorkspace.uri.fsPath;
@@ -337,7 +333,7 @@ module.exports = class CompileTools {
             relativePath = path.relative(config.homeDirectory, uri.fsPath);
             command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
 
-            fullName = uri.path;
+            const fullName = uri.path;
             command = command.replace(new RegExp(`&FULLPATH`, `g`), fullName);
             break;
           }
@@ -355,7 +351,7 @@ module.exports = class CompileTools {
           break;
 
         case `object`:
-          [blank, lib, fullName] = uri.path.split(`/`);
+          const [_, lib, fullName] = uri.path.split(`/`);
           name = fullName.substring(0, fullName.lastIndexOf(`.`));
 
           evfeventInfo = {
@@ -380,7 +376,6 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-
           /** @type {any} */
           let commandResult, output;
           let executed = false;
@@ -424,8 +419,54 @@ module.exports = class CompileTools {
                 });
               }
 
+              outputChannel.append(`\n`);
               if (command.includes(`*EVENTF`)) {
+                outputChannel.appendLine(`Fetching ${evfeventInfo.lib}/${evfeventInfo.object}.`);
                 this.refreshDiagnostics(instance, evfeventInfo);
+              } else {
+                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching ${evfeventInfo.lib}/${evfeventInfo.object}.`);
+              }
+            }
+
+            if (action.type === `file` && action.postDownload && action.postDownload.length) {
+              let currentWorkspace;
+
+              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
+              currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace || 0];
+
+              if (currentWorkspace) {
+                const clinet = connection.client;
+                const remoteDir = config.homeDirectory;
+                const localDir = currentWorkspace.uri.fsPath;
+
+                // First, we need to create the relative directories in the workspace
+                // incase they don't exist. For example, if the path is `.logs/joblog.json`
+                // then we would need to create `.logs`.
+                try {
+                  const directories = action.postDownload.map(downloadPath => {
+                    const pathInfo = path.parse(downloadPath);
+                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir)));
+                  });
+
+                  await Promise.all(directories);
+                } catch (e) {
+                  // We don't really care if it errors. The directories might already exist.
+                }
+
+                // Then we download the files that is specified.
+                const downloads = action.postDownload.map(
+                  downloadPath => clinet.getFile(path.join(localDir, downloadPath), path.posix.join(remoteDir, downloadPath))
+                );
+
+                Promise.all(downloads)
+                  .then(result => {
+                    // Done!
+                    outputChannel.appendLine(`Downloaded files as part of Action: ${action.postDownload.join(`, `)}`);
+                  })
+                  .catch(error => {
+                    vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
+                    outputChannel.appendLine(`Failed to download a file after Action: ${error.message}`);
+                  });
               }
             }
 
@@ -669,6 +710,9 @@ module.exports = class CompileTools {
     }
   }
 
+  /**
+   * @returns {Promise<Action[]>}
+   */
   static async getLocalActions() {
     const workspaces = vscode.workspace.workspaceFolders;
     const actions = [];
@@ -679,6 +723,7 @@ module.exports = class CompileTools {
       for (const file of actionsFiles) {
         const actionsContent = await vscode.workspace.fs.readFile(file);
         try {
+          /** @type {Action[]} */
           const actionsJson = JSON.parse(actionsContent.toString());
 
           // Maybe one day replace this with real schema validation

@@ -372,7 +372,7 @@ module.exports = class Deployment {
         let path;
         if (node) {
           // Directory or filter can be chosen
-          path = node.path || node.library;
+          path = node.path;
         } else {
           path = await vscode.window.showInputBox({
             prompt: `Enter IFS directory to deploy to`,
@@ -380,7 +380,7 @@ module.exports = class Deployment {
         }
 
         if (path) {
-        /** @type {Storage} */
+          /** @type {Storage} */
           const storage = instance.getStorage();
 
           const chosenWorkspaceFolder = await Deployment.getWorkspaceFolder();
@@ -399,6 +399,53 @@ module.exports = class Deployment {
         }
       }),
     );
+  }
+
+  initialise(instance) {
+    const workspaces = vscode.workspace.workspaceFolders;
+
+    /** @type {IBMi} */
+    const connection = instance.getConnection();
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+    /** @type {Storage} */
+    const storage = instance.getStorage();
+
+    const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
+
+    if (workspaces.length === 1) {
+      const workspace = workspaces[0];
+
+      if (!existingPaths[workspace.uri.fsPath]) {
+        const possibleDeployDir = path.posix.join(`/`, `home`, connection.currentUser, `builds`, workspace.name);
+        vscode.window.showInformationMessage(
+          `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`, 
+          `Yes`, 
+          `Ignore`
+        ).then(async result => {
+          if (result === `Yes`) {
+            await connection.sendCommand({
+              command: `mkdir -p "${possibleDeployDir}"`
+            });
+
+            existingPaths[workspace.uri.fsPath] = possibleDeployDir;
+            try {
+              await storage.set(DEPLOYMENT_KEY, existingPaths);
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        });
+      }
+
+      vscode.window.showInformationMessage(
+        `Current library is set to ${config.currentLibrary}.`,
+        `Change`
+      ).then(result => {
+        if (result === `Change`)
+          vscode.commands.executeCommand(`code-for-ibmi.changeCurrentLibrary`);
+      });
+    }
   }
 
   static async getWorkspaceFolder() {
