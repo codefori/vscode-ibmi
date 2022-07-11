@@ -376,7 +376,6 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-
           /** @type {any} */
           let commandResult, output;
           let executed = false;
@@ -420,8 +419,12 @@ module.exports = class CompileTools {
                 });
               }
 
+              outputChannel.append(`\n`);
               if (command.includes(`*EVENTF`)) {
+                outputChannel.appendLine(`Fetching ${evfeventInfo.lib}/${evfeventInfo.object}.`);
                 this.refreshDiagnostics(instance, evfeventInfo);
+              } else {
+                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching ${evfeventInfo.lib}/${evfeventInfo.object}.`);
               }
             }
 
@@ -458,10 +461,11 @@ module.exports = class CompileTools {
                 Promise.all(downloads)
                   .then(result => {
                     // Done!
+                    outputChannel.appendLine(`Downloaded files as part of Action: ${action.postDownload.join(`, `)}`);
                   })
                   .catch(error => {
                     vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
-                    console.log(error);
+                    outputChannel.appendLine(`Failed to download a file after Action: ${error.message}`);
                   });
               }
             }
