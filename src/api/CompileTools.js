@@ -285,9 +285,9 @@ module.exports = class CompileTools {
           parent = path.parse(pathData.dir).base;
 
           // Logic to handle second extension, caused by bob.
-          const bobTypes = [`.PGM`];
+          const bobTypes = [`.PGM`, `.SRVPGM`];
           const secondName = path.parse(name);
-          if (secondName.ext && bobTypes.includes(secondName.ext)) {
+          if (secondName.ext && bobTypes.includes(secondName.ext.toUpperCase())) {
             name = secondName.name;
           }
 
