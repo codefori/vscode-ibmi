@@ -511,6 +511,8 @@ module.exports = class objectBrowserTwoProvider {
 
           await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
         } catch (e) {
+          console.log(e);
+
           // Work around since we can't get the member list if the users QCCSID is not setup.
           if (config.enableSQL) {
             if (e && e.message && e.message.includes(`CCSID`)) {
