@@ -769,7 +769,8 @@ module.exports = class IBMi {
     // the objects, except that a period is not allowed.  We can reuse
     // the existing RegExp because result.extension is everything after
     // the final period (so we know it won't contain a period).
-    if (!validQsysName.test(result.extension)) {
+    // But, a blank extension is valid.
+    if (result.extension && !validQsysName.test(result.extension)) {
       throw new Error(`Invalid Source Member Extension: ${result.extension}`);
     }
 
