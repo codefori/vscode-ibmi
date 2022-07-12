@@ -335,8 +335,8 @@ module.exports = class IBMiContent {
           a.iasp_number as MBASP,
           a.table_name AS MBFILE,
           b.system_table_member as MBNAME,
-          b.source_type as MBSEU2,
-          b.partition_text as MBMTXT
+          coalesce(b.source_type, '') as MBSEU2,
+          coalesce(b.partition_text, '') as MBMTXT
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
