@@ -1035,6 +1035,12 @@
 				"icon": "$(arrow-up)"
 			},
 			{
+				"command": "code-for-ibmi.createFilter",
+				"title": "Create filter",
+				"category": "IBM i",
+				"icon": "$(filter)"
+			},
+			{
 				"command": "code-for-ibmi.maintainFilter",
 				"title": "Maintain filter",
 				"category": "IBM i",
@@ -1191,7 +1197,7 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.maintainFilter",
+					"command": "code-for-ibmi.createFilter",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},

@@ -24,6 +24,11 @@ module.exports = class objectBrowserTwoProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async (node) => {
+        await FiltersUI.init(undefined);
+        this.refresh();
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node) => {
         await FiltersUI.init(node ? node.filter : undefined);
         this.refresh();
