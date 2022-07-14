@@ -363,8 +363,8 @@ module.exports = class IBMiContent {
 
       // There is no member parameter on the command so we have a slow filter.
       if (member) {
-        if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1);
-        results = results.filter(row => row.MBNAME.startsWith(member));
+        const pattern = new RegExp(`^` + member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+        results = results.filter(row => row.MBNAME.match(pattern));
       }
     }
     
