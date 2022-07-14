@@ -8,7 +8,7 @@ module.exports = class Configuration {
 
     this.host = base.host;
 
-    /** @type {{name: string, library: string, object: string, types: string[], member: string}[]} */
+    /** @type {{name: string, library: string, object: string, types: string[], member: string, memberType: string}[]} */
     this.objectFilters = base.objectFilters || [];
 
     /** @type {string[]} */

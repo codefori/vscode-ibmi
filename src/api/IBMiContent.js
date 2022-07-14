@@ -318,16 +318,18 @@ module.exports = class IBMiContent {
    * @param {string} [mbr]
    * @returns {Promise<{asp?: string, library: string, file: string, name: string, extension: string, recordLength: number, text: string}[]>} List of members 
    */
-  async getMemberList(lib, spf, mbr = `*`) {
+  async getMemberList(lib, spf, mbr = `*`, ext = `*`) {
     const config = this.ibmi.config;
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
+    let memberExt = (ext !== `*` ? ext : null);
 
     let results;
 
     if (config.enableSQL) {
       if (member) member = member.replace(/[*]/g, `%`);
+      if (memberExt) memberExt = memberExt.replace(/[*]/g, `%`);
 
       const statement = `
         SELECT
@@ -345,6 +347,7 @@ module.exports = class IBMiContent {
           a.table_schema = '${this.ibmi.sysNameInAmerican(library)}' 
           ${sourceFile !== `*ALL` ? `AND a.table_name = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
           ${member ? `AND rtrim(b.system_table_member) like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
+          ${memberExt ? `AND rtrim(b.source_type) like '${this.ibmi.sysNameInAmerican(memberExt)}'` : ``}
       `;
       results = await this.runSQL(statement);
 
@@ -361,10 +364,11 @@ module.exports = class IBMiContent {
         }
       }
 
-      // There is no member parameter on the command so we have a slow filter.
-      if (member) {
-        const pattern = new RegExp(`^` + member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
-        results = results.filter(row => row.MBNAME.match(pattern));
+      if (member || memberExt) {
+        let pattern, patternExt;
+        if (member) pattern = new RegExp(`^` + member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+        if (memberExt) patternExt = new RegExp(`^` + memberExt.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+        results = results.filter(row => ((pattern === undefined || pattern.test(row.MBNAME)) && (patternExt === undefined || patternExt.test(row.MBSEU2))));
       }
     }
     

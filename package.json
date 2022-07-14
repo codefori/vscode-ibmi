@@ -78,7 +78,8 @@
 										"library",
 										"object",
 										"types",
-										"member"
+										"member",
+                    "memberType"
 									],
 									"properties": {
 										"name": {
@@ -109,6 +110,12 @@
 										"member": {
 											"type": "string",
 											"description": "Member filter",
+											"maxLength": 10,
+											"default": "*"
+										},
+										"memberType": {
+											"type": "string",
+											"description": "Member type filter",
 											"maxLength": 10,
 											"default": "*"
 										}
