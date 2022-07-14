@@ -327,7 +327,7 @@ module.exports = class IBMiContent {
     let results;
 
     if (config.enableSQL) {
-      if (member && member.endsWith(`*`)) member = member.substring(0, member.length - 1) + `%`;
+      if (member) member = member.replace(/[*]/g, `%`);
 
       const statement = `
         SELECT
@@ -344,7 +344,7 @@ module.exports = class IBMiContent {
         WHERE
           a.table_schema = '${this.ibmi.sysNameInAmerican(library)}' 
           ${sourceFile !== `*ALL` ? `AND a.table_name = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
-          ${member ? `AND b.system_table_member like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
+          ${member ? `AND rtrim(b.system_table_member) like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
       `;
       results = await this.runSQL(statement);
 
