@@ -421,10 +421,10 @@ module.exports = class CompileTools {
 
               outputChannel.append(`\n`);
               if (command.includes(`*EVENTF`)) {
-                outputChannel.appendLine(`Fetching ${evfeventInfo.lib}/${evfeventInfo.object}.`);
+                outputChannel.appendLine(`Fetching errors from ${evfeventInfo.lib}/${evfeventInfo.object}.`);
                 this.refreshDiagnostics(instance, evfeventInfo);
               } else {
-                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching ${evfeventInfo.lib}/${evfeventInfo.object}.`);
+                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.lib}/${evfeventInfo.object}.`);
               }
             }
 
