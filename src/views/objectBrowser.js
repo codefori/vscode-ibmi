@@ -24,6 +24,11 @@ module.exports = class objectBrowserTwoProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async (node) => {
+        await FiltersUI.init(undefined);
+        this.refresh();
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node) => {
         await FiltersUI.init(node ? node.filter : undefined);
         this.refresh();
@@ -409,7 +414,8 @@ module.exports = class objectBrowserTwoProvider {
             library: newLibrary,
             object: `*ALL`,
             types: [`*ALL`],
-            member: `*`
+            member: `*`,
+            memberType: `*`
           });
 
           await config.set(`objectFilters`, filters);
@@ -506,7 +512,7 @@ module.exports = class objectBrowserTwoProvider {
         const path = spf.path.split(`/`);
 
         try {
-          const members = await content.getMemberList(path[0], path[1], filter.member);
+          const members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
           items = members.map(member => new Member(member));
 
           await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
@@ -566,13 +572,13 @@ module.exports = class objectBrowserTwoProvider {
 
 class Filter extends vscode.TreeItem {
   /**
-   * @param {{name: string, library: string, object: string, types: string[], member: string}} filter
+   * @param {{name: string, library: string, object: string, types: string[], member: string, memberType: string}} filter
    */
   constructor(filter) {
     super(filter.name, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.contextValue = `filter`;
-    this.description = `${filter.library}/${filter.object}/${filter.member} (${filter.types.join(`, `)})`;
+    this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType||`*`} (${filter.types.join(`, `)})`;
     this.library = filter.library;
     this.filter = filter.name;
   }

@@ -61,7 +61,12 @@ module.exports = class FiltersUI {
 
     field = new Field(`input`, `member`, `Member`);
     field.default = filter.member;
-    field.description = `Member name. Can be generic name with an asterisk. For example: <code>*</code>, or <code>CL*</code>.`;
+    field.description = `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`;
+    ui.addField(field);
+
+    field = new Field(`input`, `memberType`, `Member type`);
+    field.default = filter.memberType || `*`;
+    field.description = `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`;
     ui.addField(field);
 
     field = new Field(`submit`, `save`, `Save settings`);

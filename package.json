@@ -78,7 +78,8 @@
 										"library",
 										"object",
 										"types",
-										"member"
+										"member",
+                    "memberType"
 									],
 									"properties": {
 										"name": {
@@ -109,6 +110,12 @@
 										"member": {
 											"type": "string",
 											"description": "Member filter",
+											"maxLength": 10,
+											"default": "*"
+										},
+										"memberType": {
+											"type": "string",
+											"description": "Member type filter",
 											"maxLength": 10,
 											"default": "*"
 										}
@@ -1035,6 +1042,12 @@
 				"icon": "$(arrow-up)"
 			},
 			{
+				"command": "code-for-ibmi.createFilter",
+				"title": "Create filter",
+				"category": "IBM i",
+				"icon": "$(filter)"
+			},
+			{
 				"command": "code-for-ibmi.maintainFilter",
 				"title": "Maintain filter",
 				"category": "IBM i",
@@ -1191,7 +1204,7 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.maintainFilter",
+					"command": "code-for-ibmi.createFilter",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
