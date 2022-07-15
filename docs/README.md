@@ -408,12 +408,14 @@ Now a single change to the TARGET_RLSE custom variable can impact all the CRTBND
 
 ## Workspaces & Deployment (local development)
 
-It is possible for the user to deploy a workspace folder directly to the IBM i from VS Code.
+It is possible for the user to develop in a local workspace folder and deploy+compile on IBM i.
 
 If the user opens a Workspace before connecting to an IBM i:
 
-1. a new right-click option will appear on IFS directories and object filters to deploy to that directory or library
-2. a 'Deploy' button will appear on the status bar
+1. A new information messgae will show the user what their current library is,
+2. If this is the first time connecting with this workspace, it will prompt the user to set a default Deploy directory
+3. a new right-click option will appear on IFS directories and object filters to deploy to that directory or library
+4. a 'Deploy' button will appear on the status bar
 
 ### 1. Setting the deploy location
 
