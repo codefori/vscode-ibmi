@@ -3,9 +3,8 @@
 ## IBM i development extension for VS Code
 
 Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
-![intro_01.png](assets/intro_01.png)
 
-![intro_02.png](assets/intro_02.png)
+![intro_01.png](assets/intro_01.png)
 
 ## Requirements
 
@@ -17,16 +16,14 @@ Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual
 
 ## Installation
 
-From  VS Code Marketplace:  [Code-for-ibmi](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+From the Visual Studio Code Marketplace: [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
 
 Or from the Extensions icon in the Activity Bar (on the left):
 ![assets/install_01,png](assets/install_01.png)
 
 ### Recommended Extensions
 
-- [RPGLE language tools](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.vscode-rpgle) - Adds functionality to improve writing RPGLE.
-- [IBMi Languages](https://marketplace.visualstudio.com/items?itemName=barrettotte.ibmi-languages) - Syntax highlighting for RPG, RPGLE, CL, and DDS. Is usually installed automatically.
-- [IBM i Development Pack](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.ibm-i-development-pack) - a curated set of extensions built on or adding value to Code for IBM i.
+It's recommended you also install the [IBM i Development Pack](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.ibm-i-development-pack), a curated set of extensions built on or adding value to Code for IBM i. This includes database tools, RPGLE tools, COBOL tools, and more.
 
 ## Quick Start Guide
 
@@ -249,12 +246,6 @@ If you have *Log Compile Output* checked in settings (see *Settings: Global*, be
 
 An action is used to perform a task on a member, streamfile or other type of object. A comprehensive default set of actions is loaded directly from the extension. You can also easily change or add to actions--see *View/Change/Add Actions*, below.
 
-If you change or add actions as below, then all actions are saved in the ```code-for-ibmi.actions``` section in ```settings.json```. You can also edit the```code-for-ibmi.actions``` section manually. If it doesn't exist, you can create you own ```code-for-ibmi.actions``` section in ```settings.json```.  
-
-**Note:** When  a  ```code-for-ibmi.actions``` section  exists in ```settings.json``` the set of actions is loaded from there, not from the default set in the extension.
-
-<!-- ![assets/actions_01.png](assets/actions_01.png) -->
-
 Actions are defined commands used to perform tasks on members, streamfiles and other types of objects. For example, to compile a source file. Actions can be executed from two different places:
 
 - As you're writing code. For example, to compile a program or module.
@@ -295,9 +286,15 @@ In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We c
 
 When complete, **click Save**. If you simply close the tab, nothing will be saved.
 
+### Actions storage
+
+If you change or add actions as below, then all actions are saved in the ```code-for-ibmi.actions``` section in ```settings.json```. You can also edit the```code-for-ibmi.actions``` section manually. If it doesn't exist, you can create you own ```code-for-ibmi.actions``` section in ```settings.json```.  
+
+**Note:** When  a  ```code-for-ibmi.actions``` section  exists in ```settings.json``` the set of actions is loaded from there, not from the default set in the extension.
+
 ## Action Execution
 
-There are four varieties of Actions. They can:
+There are four varieties of Actions.:
 
 - if type is `file` and 'deploy first' is enabled, deploy the workspace, then:
 - execute immediately,
@@ -409,7 +406,7 @@ In all the  CRTBNDxxx actions add TGTRLS(&TARGET_RLSE), like this:
 
 Now a single change to the TARGET_RLSE custom variable can impact all the CRTBNDxxx actions.
 
-## Workspaces & Deployment
+## Workspaces & Deployment (local development)
 
 It is possible for the user to deploy a workspace folder directly to the IBM i from VS Code.
 
