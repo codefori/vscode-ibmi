@@ -323,7 +323,7 @@ module.exports = class objectBrowserTwoProvider {
                     message: `Fetching member list for ${node.path}.`
                   });
 
-                  members = await content.getMemberList(path[0], path[1]);
+                  members = await content.getMemberList(path[0], path[1], node.memberFilter);
 
                   if (members.length > 0) {
                     // NOTE: if more messages are added, lower the timeout interval
@@ -354,8 +354,20 @@ module.exports = class objectBrowserTwoProvider {
 
                     const results = await Search.searchMembers(instance, path[0], path[1], node.memberFilter, searchTerm);
 
+                    // Filter search result by member type filter.
+                    if (results.length > 0) {
+                      const patternExt = new RegExp(`^` + node.memberTypeFilter.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+                      results = results.filter(result => {
+                        const resultPath = result.path.split(`/`);
+                        const resultName = resultPath[resultPath.length-1];
+                        const member = members.find(member => member.name === resultName);
+                        return (member && patternExt.test(member.extension));
+                      })
+                    }
+
                     if (results.length > 0) {
 
+                      // Format result to include member type.
                       results.forEach(result => {
                         const resultPath = result.path.split(`/`);
                         const resultName = resultPath[resultPath.length-1];
@@ -500,7 +512,7 @@ module.exports = class objectBrowserTwoProvider {
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
         const objects = await content.getObjectList(filter);
         items = objects.map(object =>
-          object.attribute === `*PHY` ? new SPF(filter.name, object, filter.member) : new ILEObject(filter.name, object)
+          object.attribute === `*PHY` ? new SPF(filter.name, object, filter.member, filter.memberType) : new ILEObject(filter.name, object)
         );
         break;
 
@@ -589,12 +601,14 @@ class SPF extends vscode.TreeItem {
    * @param {string} filter Filter name
    * @param {{library: string, name: string, text: string, attribute?: string}} detail
    * @param {string} memberFilter Member filter string
+   * @param {string} memberTypeFilter Member type filter string
    */
-  constructor(filter, detail, memberFilter) {
+  constructor(filter, detail, memberFilter, memberTypeFilter) {
     super(detail.name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
 
     this.filter = filter;
     this.memberFilter = memberFilter;
+    this.memberTypeFilter = memberTypeFilter;
 
     this.contextValue = `SPF`;
     this.path = [detail.library, detail.name].join(`/`);
