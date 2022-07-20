@@ -1,8 +1,9 @@
 
 const vscode = require(`vscode`);
 
-let instance = require(`../Instance`);
+const instance = require(`../Instance`);
 
+const LAST_PROFILE_KEY = `currentProfile`;
 const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `ifsShortcuts`, `customVariables`];
 
 module.exports = class profilesProvider {
@@ -19,12 +20,12 @@ module.exports = class profilesProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async (existingProfile) => {
+      vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async (profileNode) => {
         const config = instance.getConfig();
 
         let currentProfiles = config.connectionProfiles;
 
-        const profileName = existingProfile || await vscode.window.showInputBox({
+        const profileName = profileNode ? profileNode.profile : await vscode.window.showInputBox({
           prompt: `Name of connection profile`
         });
 
@@ -55,14 +56,14 @@ module.exports = class profilesProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.deleteConnectionProfile`, async (profileName) => {
+      vscode.commands.registerCommand(`code-for-ibmi.deleteConnectionProfile`, async (profileNode) => {
         const config = instance.getConfig();
 
         const currentProfiles = config.connectionProfiles;
         const availableProfiles = currentProfiles.map(profile => profile.name);
 
         if (availableProfiles.length > 0) {
-          const chosenProfile = profileName || await vscode.window.showQuickPick(availableProfiles);
+          const chosenProfile = profileNode ? profileNode.profile : await vscode.window.showQuickPick(availableProfiles);
 
           if (chosenProfile) {
             const index = currentProfiles.findIndex(profile => profile.name === chosenProfile);
@@ -83,14 +84,15 @@ module.exports = class profilesProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async (profileName) => {
+      vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async (profileNode) => {
         const config = instance.getConfig();
+        const storage = instance.getStorage();
 
         const currentProfiles = config.connectionProfiles;
         const availableProfiles = currentProfiles.map(profile => profile.name);
 
         if (availableProfiles.length > 0) {
-          const chosenProfile = profileName || await vscode.window.showQuickPick(availableProfiles);
+          const chosenProfile = profileNode ? profileNode.profile : await vscode.window.showQuickPick(availableProfiles);
 
           if (chosenProfile) {
             let profile = currentProfiles.find(profile => profile.name === chosenProfile);
@@ -105,9 +107,12 @@ module.exports = class profilesProvider {
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
+                storage.set(LAST_PROFILE_KEY, chosenProfile),
               ]);
 
               vscode.window.showInformationMessage(`Switched to ${chosenProfile}.`);
+
+              this.refresh();
             }
           }
 
@@ -117,7 +122,6 @@ module.exports = class profilesProvider {
       })
     )
   }
-
 
   refresh() {
     const config = instance.getConfig();
@@ -142,10 +146,13 @@ module.exports = class profilesProvider {
 
     if (connection) {
       const config = instance.getConfig();
+      const storage = instance.getStorage();
+
+      const currentProfile = storage.get(LAST_PROFILE_KEY);
       const currentProfiles = config.connectionProfiles;
       const availableProfiles = currentProfiles.map(profile => profile.name);
 
-      items = availableProfiles.map(name => new Profile(name))
+      items = availableProfiles.map(name => new Profile(name, name === currentProfile))
     }
 
     return items;
@@ -155,11 +162,15 @@ module.exports = class profilesProvider {
 class Profile extends vscode.TreeItem {
   /**
    * @param {string} name
+   * @param {boolean} [active]
    */
-  constructor(name) {
+  constructor(name, active) {
     super(name, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = `profile`;
-    this.iconPath = new vscode.ThemeIcon(`star`);
+    this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `layers`);
+    this.description = active ? `Active` : ``;
+
+    this.profile = name;
   }
 }

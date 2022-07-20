@@ -881,7 +881,7 @@
 				"command": "code-for-ibmi.loadConnectionProfile",
 				"title": "Set active profile",
 				"category": "IBM i",
-				"icon": "$(list-tree)"
+				"icon": "$(arrow-circle-right)"
 			},
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
@@ -1210,11 +1210,6 @@
 					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
-					"command": "code-for-ibmi.loadConnectionProfile",
-					"group": "navigation",
-					"when": "view == profilesView"
-				},
-				{
 					"command": "code-for-ibmi.saveConnectionProfile",
 					"group": "navigation",
 					"when": "view == profilesView"
@@ -1315,7 +1310,7 @@
 				},
 				{
 					"command": "code-for-ibmi.loadConnectionProfile",
-					"when": "view == profiles && viewItem == profile",
+					"when": "view == profilesView && viewItem == profile",
 					"group": "inline"
 				},
 				{
@@ -1330,12 +1325,12 @@
 				},
 				{
 					"command": "code-for-ibmi.saveConnectionProfile",
-					"when": "view == profiles && viewItem == profile",
+					"when": "view == profilesView && viewItem == profile",
 					"group": "profiles@1"
 				},
 				{
 					"command": "code-for-ibmi.deleteConnectionProfile",
-					"when": "view == profiles && viewItem == profile",
+					"when": "view == profilesView && viewItem == profile",
 					"group": "profiles@2"
 				},
 				{
