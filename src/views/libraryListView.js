@@ -4,8 +4,6 @@ const vscode = require(`vscode`);
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
-const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `ifsShortcuts`, `customVariables`];
-
 module.exports = class libraryListProvider {
   /**
    * @param {vscode.ExtensionContext} context
@@ -157,70 +155,6 @@ module.exports = class libraryListProvider {
 
         }
       }),
-
-      vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async () => {
-        const config = instance.getConfig();
-
-        let currentProfiles = config.connectionProfiles;
-
-        const profileName = await vscode.window.showInputBox({
-          prompt: `Name of library list profile`
-        });
-
-        if (profileName) {
-          const existingIndex = currentProfiles.findIndex(profile => profile.name.toUpperCase() === profileName.toUpperCase());
-
-          if (existingIndex >= 0) {
-            for (const prop of profileProps) {
-              currentProfiles[existingIndex][prop] = config[prop];
-            }
-          } else {
-            let newProfile = {
-              name: profileName,
-            };
-
-            for (const prop of profileProps) {
-              newProfile[prop] = config[prop];
-            }
-
-            //@ts-ignore - no way because newProfile is built dynamically
-            currentProfiles.push(newProfile);
-          }
-
-          await config.set(`connectionProfiles`, currentProfiles);
-        }
-      }),
-
-      vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async () => {
-        const config = instance.getConfig();
-
-        const currentProfiles = config.connectionProfiles;
-        const availableProfiles = currentProfiles.map(profile => profile.name);
-
-        if (availableProfiles.length > 0) {
-          const chosenProfile = await vscode.window.showQuickPick(availableProfiles);
-
-          if (chosenProfile) {
-            let profile = currentProfiles.find(profile => profile.name === chosenProfile);
-
-            if (profile) {
-              profile = {...profile}; //We clone it.
-              delete profile.name;
-
-              await config.setMany(profile);
-
-              await Promise.all([
-                vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
-              ]);
-            }
-          }
-
-        } else {
-          vscode.window.showInformationMessage(`No profiles exist for this system.`);
-        }
-      })
     )
   }
 

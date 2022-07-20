@@ -872,6 +872,12 @@
 				"icon": "$(save-as)"
 			},
 			{
+				"command": "code-for-ibmi.deleteConnectionProfile",
+				"title": "Delete profile",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.loadConnectionProfile",
 				"title": "Set active profile",
 				"category": "IBM i",
@@ -1148,6 +1154,11 @@
 					"when": "code-for-ibmi:connected == true"
 				},
 				{
+					"id": "profilesView",
+					"name": "Connection Profiles",
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true"
+				},
+				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
 					"when": "code-for-ibmi:connected == true"
@@ -1196,12 +1207,17 @@
 				{
 					"command": "code-for-ibmi.saveConnectionProfile",
 					"group": "navigation",
-					"when": "view == libraryListView"
+					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
 					"command": "code-for-ibmi.loadConnectionProfile",
 					"group": "navigation",
-					"when": "view == libraryListView"
+					"when": "view == profilesView"
+				},
+				{
+					"command": "code-for-ibmi.saveConnectionProfile",
+					"group": "navigation",
+					"when": "view == profilesView"
 				},
 				{
 					"command": "code-for-ibmi.createFilter",
@@ -1298,6 +1314,11 @@
 					"group": "inline"
 				},
 				{
+					"command": "code-for-ibmi.loadConnectionProfile",
+					"when": "view == profiles && viewItem == profile",
+					"group": "inline"
+				},
+				{
 					"command": "code-for-ibmi.createMember",
 					"when": "viewItem == SPF",
 					"group": "inline"
@@ -1306,6 +1327,16 @@
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryRemove@1"
+				},
+				{
+					"command": "code-for-ibmi.saveConnectionProfile",
+					"when": "view == profiles && viewItem == profile",
+					"group": "profiles@1"
+				},
+				{
+					"command": "code-for-ibmi.deleteConnectionProfile",
+					"when": "view == profiles && viewItem == profile",
+					"group": "profiles@2"
 				},
 				{
 					"command": "code-for-ibmi.maintainFilter",

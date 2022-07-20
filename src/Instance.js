@@ -117,6 +117,7 @@ module.exports = class Instance {
     const helpView = require(`./views/helpView`);
 
     const libraryListView = require(`./views/libraryListView`);
+    const profilesView = require(`./views/profilesView`);
 
     const ifsBrowser = require(`./views/ifsBrowser`);
     const ifs = new (require(`./filesystems/ifs`));
@@ -219,7 +220,11 @@ module.exports = class Instance {
           vscode.window.registerTreeDataProvider(
             `libraryListView`,
             new libraryListView(context)
-          )
+          ),
+          vscode.window.registerTreeDataProvider(
+            `profilesView`,
+            new profilesView(context)
+          ),
         );
 
         let qsysFs, basicMemberSupport = true;
@@ -574,6 +579,9 @@ module.exports = class Instance {
             }
           })
         );
+
+        // Enable the profile view if profiles exist.
+        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
 
         deployment.initialise(this);
 
