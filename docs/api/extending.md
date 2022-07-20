@@ -147,7 +147,7 @@ This allows your extension to provide commands for specific types of objects or 
 [Read more about the when clause on the VS Code docs website.](https://code.visualstudio.com/api/references/when-clause-contexts)
 
 
-## Imports
+### Imports
 
 ```
 const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).exports;
@@ -156,10 +156,8 @@ const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibm
 `instance` has some methods for you to use:
 
 * `getConnection()`: [`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
-
 * `getContent(): `[`IBMiContent`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMiContent.js) to work with content on the current connection
   * This API should only be used to download and upload contents of streamfiles and members.
-
 * `getConfig(): `[`Configuration`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/Configuration.js) to get/set configuration for the current connection
 
 ### Temporary library
@@ -260,4 +258,23 @@ This will show a view when there is a connection:
         "when": "code-for-ibmi:connected == true"
       }]
     }
+```
+
+### Contributing Actions
+
+It is possible for the user to define their own Actions with Code for IBM i, but with this API your extension will be able to contribute Actions when your extension starts up. For example, if you were a change management vendor and you wanted to contribute an Action which calls a command on the system, you can use the API to add that.
+
+The `code-for-ibmi.registerActions` takes [`Action[]`](../../global.d.ts) as the parameter.
+
+```js
+vscode.commands.executeCommand(`code-for-ibmi.registerActions`, [
+  {
+    "type": "member",
+    "extensions": [
+      "GLOBAL"
+    ],
+    "name": "Check in member",
+    "command": "CHKINM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR)"
+  }
+]);
 ```

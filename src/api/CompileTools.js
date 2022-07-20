@@ -34,6 +34,9 @@ const ACTION_BUTTON_RUNNING = `$(sync~spin) Actions`;
 /** @type {{[key: string]: number}} Timestamp of when an action was last used. */
 let actionUsed = {};
 
+/** @type {Action[]} */
+let contributedActions = [];
+
 module.exports = class CompileTools {
 
   /**
@@ -66,7 +69,23 @@ module.exports = class CompileTools {
     if (!outputBarItem) {
       vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, () => {
         this.showOutput();
-      })
+      });
+
+      // This command allows other extensions to contribute Actions
+      // so the user doesn't have to set them up.
+      vscode.commands.registerCommand(`code-for-ibmi.registerActions`, 
+        /** @param {Action[]} newActions */
+        (newActions) => {
+          newActions.forEach((action, index) => {
+            if (this.isValidAction(action)) {
+              contributedActions.push(action);
+            } else {
+              this.appendOutput(`An extension tried to contribute an invalid Action: (index ${index})\n`);
+              this.appendOutput(JSON.stringify(action, null, 2) + `\n`);
+            }
+          });
+        }
+      )
 
       outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
       outputBarItem.command = {
@@ -729,16 +748,12 @@ module.exports = class CompileTools {
           // Maybe one day replace this with real schema validation
           if (Array.isArray(actionsJson)) {
             actionsJson.forEach((action, index) => {
-              if (
-                typeof action.name === `string` &&
-                typeof action.command === `string` &&
-                [`ile`, `pase`, `qsh`].includes(action.environment) &&
-                Array.isArray(action.extensions)
-              ) {
-                actions.push({
-                  ...action,
-                  type: `file`
-                });
+
+              // All location Actions are for local files
+              action.type = `file`;
+
+              if (this.isValidAction(action)) {
+                actions.push(action);
               } else {
                 throw new Error(`Invalid Action defined at index ${index}.`);
               }
@@ -752,5 +767,18 @@ module.exports = class CompileTools {
     }
 
     return actions;
+  }
+
+  /**
+   * @param {Action} action 
+   */
+  static isValidAction(action) {
+    return (
+      typeof action.name === `string` &&
+      typeof action.command === `string` &&
+      [`object`, `file`, `member`, `streamfile`].includes(action.type) &&
+      [`ile`, `pase`, `qsh`].includes(action.environment) &&
+      Array.isArray(action.extensions)
+    );
   }
 }
