@@ -2,24 +2,6 @@ It is possible to write VS Code extensions that are based on Code for IBM i. Tha
 
 For example, you might be a vendor that produces lists or HTML that you'd like to be accessible from within Visual Studio Code.
 
-## Imports
-
-```
-const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).exports;
-```
-
-`instance` has four methods for you to use:
-
-* `getConnection()`: [`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
-
-* `getContent(): `[`IBMiContent`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMiContent.js) to work with content on the current connection
-   * `IBMiContent` has methods to run SQL statements, get the contents of tables and read and write members/streamfiles.
-   * While this API is available, when running statements and (pase/ile) commands, you should the VS Code `commands` API instead (below).
-
-* `getConfig(): `[`Configuration`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/Configuration.js) to get/set configuration for the current connection
-
-* `on(event: string, callback: Function): void` to add an event handler. Available events:
-  * `connected` which can be used to determine when Code for IBM i has established a connection.
 
 ## Examples
 
@@ -27,33 +9,6 @@ See the following code bases for large examples of extensions that use Code for 
 
 * [VS Code extension to manage IBM i IWS services](https://github.com/halcyon-tech/vscode-ibmi-iws)
 * [Git for IBM i extension](https://github.com/halcyon-tech/git-client-ibmi)
-
-### Views
-
-Code for IBM i provides a context so you can control when a command, view, etc, can work. `code-for-ibmi.connected` can and should be used if your view depends on a connection. For example
-
-This will show a welcome view when there is no connection:
-
-```json
-		"viewsWelcome": [{
-			"view": "git-client-ibmi.commits",
-			"contents": "No connection found. Please connect to an IBM i.",
-			"when": "code-for-ibmi:connected !== true"
-		}],
-```
-
-This will show a view when there is a connection:
-
-```json
-    "views": {
-      "scm": [{
-        "id": "git-client-ibmi.commits",
-        "name": "Commits",
-        "contextualTitle": "IBM i",
-        "when": "code-for-ibmi:connected == true"
-      }]
-    }
-```
 
 ### Running commands with the user library list
 
@@ -135,8 +90,11 @@ context.subscriptions.push(
         const connection = instance.getConnection();
 
         try {
-          // Running a pase command. You should use `code-for-ibmi.runCommand` instead.
-          await connection.paseCommand(`rm -rf "${node.path}"`)
+          // Run a pase command
+          await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, {
+            command: `rm -rf "${node.path}`,
+            environment: `pase`,
+          });
 
           vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
@@ -188,9 +146,25 @@ This allows your extension to provide commands for specific types of objects or 
 
 [Read more about the when clause on the VS Code docs website.](https://code.visualstudio.com/api/references/when-clause-contexts)
 
+
+## Imports
+
+```
+const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).exports;
+```
+
+`instance` has some methods for you to use:
+
+* `getConnection()`: [`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
+
+* `getContent(): `[`IBMiContent`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMiContent.js) to work with content on the current connection
+  * This API should only be used to download and upload contents of streamfiles and members.
+
+* `getConfig(): `[`Configuration`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/Configuration.js) to get/set configuration for the current connection
+
 ### Temporary library
 
-Please remember that you cannot use `QTEMP` between commands since each command runs in a new job. Please refer to `instance.getConfig().tempLibrary` for a temporary library.
+Please remember that you cannot use `QTEMP` between commands since each command runs in a new job. Please refer to `instance.getConfig().tempLibrary` for the user temporary library.
 
 ### Storing config specific to the connection
 
@@ -259,4 +233,31 @@ function activate(context) {
     // do initial work
   }
 }
+```
+
+### Views
+
+Code for IBM i provides a context so you can control when a command, view, etc, can work. `code-for-ibmi.connected` can and should be used if your view depends on a connection. For example
+
+This will show a welcome view when there is no connection:
+
+```json
+		"viewsWelcome": [{
+			"view": "git-client-ibmi.commits",
+			"contents": "No connection found. Please connect to an IBM i.",
+			"when": "code-for-ibmi:connected !== true"
+		}],
+```
+
+This will show a view when there is a connection:
+
+```json
+    "views": {
+      "scm": [{
+        "id": "git-client-ibmi.commits",
+        "name": "Commits",
+        "contextualTitle": "IBM i",
+        "when": "code-for-ibmi:connected == true"
+      }]
+    }
 ```
