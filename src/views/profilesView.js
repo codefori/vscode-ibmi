@@ -22,6 +22,7 @@ module.exports = class profilesProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async (profileNode) => {
         const config = instance.getConfig();
+        const storage = instance.getStorage();
 
         let currentProfiles = config.connectionProfiles;
 
@@ -49,7 +50,10 @@ module.exports = class profilesProvider {
             currentProfiles.push(newProfile);
           }
 
-          await config.set(`connectionProfiles`, currentProfiles);
+          await Promise.all([
+            config.set(`connectionProfiles`, currentProfiles),
+            storage.set(LAST_PROFILE_KEY, profileName)
+          ]);
           this.refresh();
 
           vscode.window.showInformationMessage(`Saved current settings to ${profileName}.`);
