@@ -145,6 +145,32 @@ This allows your extension to provide commands for specific types of objects or 
 
 [Read more about the when clause on the VS Code docs website.](https://code.visualstudio.com/api/references/when-clause-contexts)
 
+## Views
+
+Code for IBM i provides a context so you can control when a command, view, etc, can work. `code-for-ibmi.connected` can and should be used if your view depends on a connection. For example
+
+This will show a welcome view when there is no connection:
+
+```json
+		"viewsWelcome": [{
+			"view": "git-client-ibmi.commits",
+			"contents": "No connection found. Please connect to an IBM i.",
+			"when": "code-for-ibmi:connected !== true"
+		}],
+```
+
+This will show a view when there is a connection:
+
+```json
+    "views": {
+      "scm": [{
+        "id": "git-client-ibmi.commits",
+        "name": "Commits",
+        "contextualTitle": "IBM i",
+        "when": "code-for-ibmi:connected == true"
+      }]
+    }
+```
 
 ## Imports
 
@@ -232,31 +258,4 @@ function activate(context) {
     // do initial work
   }
 }
-```
-
-### Views
-
-Code for IBM i provides a context so you can control when a command, view, etc, can work. `code-for-ibmi.connected` can and should be used if your view depends on a connection. For example
-
-This will show a welcome view when there is no connection:
-
-```json
-		"viewsWelcome": [{
-			"view": "git-client-ibmi.commits",
-			"contents": "No connection found. Please connect to an IBM i.",
-			"when": "code-for-ibmi:connected !== true"
-		}],
-```
-
-This will show a view when there is a connection:
-
-```json
-    "views": {
-      "scm": [{
-        "id": "git-client-ibmi.commits",
-        "name": "Commits",
-        "contextualTitle": "IBM i",
-        "when": "code-for-ibmi:connected == true"
-      }]
-    }
 ```
