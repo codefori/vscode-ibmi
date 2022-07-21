@@ -513,28 +513,22 @@ Multiple connections can be defined and some settings are specific to a connecti
 
 ### Profiles
 
-We call these connection specific settings a 'profile'. The settings stored into a profile are:
+A profile allows the user to switch between settings quickly. You could use a profile to quickly change library list and other items specific to a project. A profile stores this information:
 
-- Those settings maintained by clicking Settings in the status bar ![Profile Settings](assets/Connect_Profile_Setting_01.png)
-
-- The Home / working directory
-- The Current library
-- The Library list
+- The home / working directory
+- The current library
+- The library list
 - The IFS shortcuts
-- The Object browser list
-- The Database browser list
+- The object browser list
+- The database browser list
 
-Save the settings into a profile using the S**ave current settings button** on the USER LIBRARY LIST view.
+If you have no existing profiles, you can create your first one from the User Library List view:
+
 ![Save Profile](assets/Connect_Profile_Save_01.png)
 
-Give it a unique name, or use an existing name to overwrite an existing profile.
+After your first profile has been created, the Profiles view will become availabe. The Profiles view allows you to quickly switch between profiles, as well as update and delete existing profiles. The Profiles view will also show you what the last profile you set is.
 
-To load a profile, which would update the settings, use the **Set active profile** button on the Library List view.
-![Load profile](assets/Connect_Profile_Load_01.png)
-
-![Load profile](assets/Connect_Profile_Load_02.png)
-
-You might use this if you use a single box to manage many different applications that have different source files and/or library lists.
+**Changing any of the settings** will not update the profile. If you change the library list and want this to reflect on the profile, you can save over the profile or into a new one.
 
 #### Current library
 
