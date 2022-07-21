@@ -6,6 +6,7 @@
    - [Actions](pages/developing/actions/index.md)
       - [Execution](pages/developing/actions/execution.md)
       - [Custom Variables](pages/developing/actions/custom-vars.md)
+   - [ILEDocs](pages/developing/iledocs.md)
 - Tips
    - [Quick Start](pages/tips/quickstart.md)
    - [Tricks](pages/tips/tricks.md)
@@ -19,3 +20,4 @@
    - [Profiles](pages/settings/profiles.md)
    - [Connection](pages/settings/connection.md)
    - [Global](pages/settings/global.md)
+- [Extending](pages/api/extending.md)

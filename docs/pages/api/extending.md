@@ -2,8 +2,7 @@ It is possible to write VS Code extensions that are based on Code for IBM i. Tha
 
 For example, you might be a vendor that produces lists or HTML that you'd like to be accessible from within Visual Studio Code.
 
-
-## Examples
+### Examples
 
 See the following code bases for large examples of extensions that use Code for IBM i:
 
