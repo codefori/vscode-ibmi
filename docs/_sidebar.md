@@ -6,6 +6,11 @@
    - [Actions](pages/developing/actions/index.md)
       - [Execution](pages/developing/actions/execution.md)
       - [Custom Variables](pages/developing/actions/custom-vars.md)
+- Tips
+   - [Quick Start](pages/tips/quickstart.md)
+   - [Tricks](pages/tips/tricks.md)
+   - [Terminals](pages/tips/terminals.md)
+   - [CCSID](pages/tips/ccsid.md)
 - [Browsers](pages/browsers/index.md)
    - [User Library List](pages/browsers/user-library-list.md)
    - [Object Browser](pages/browsers/object-browser.md)
@@ -14,8 +19,3 @@
    - [Profiles](pages/settings/profiles.md)
    - [Connection](pages/settings/connection.md)
    - [Global](pages/settings/global.md)
-- Tips
-   - [Quick Start](pages/tips/quickstart.md)
-   - [Tricks](pages/tips/tricks.md)
-   - [Terminals](pages/tips/terminals.md)
-   - [CCSID](pages/tips/ccsid.md)
