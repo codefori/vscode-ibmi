@@ -27,7 +27,7 @@ module.exports = class profilesProvider {
         let currentProfiles = config.connectionProfiles;
 
         const profileName = profileNode ? profileNode.profile : await vscode.window.showInputBox({
-          prompt: `Name of connection profile`
+          prompt: `Name of profile`
         });
 
         if (profileName) {

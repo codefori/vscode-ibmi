@@ -137,13 +137,14 @@
 								"type": "array",
 								"items": {
 									"type": "object",
-									"title": "Connection profile profile",
+									"title": "Profiles",
 									"properties": {
 										"name": {
 											"type": "string",
 											"description": "Profile name"
 										}
-									}
+									},
+									"additionalProperties": true
 								},
 								"default": [],
 								"description": "A collection of connection settings to easily switch between them on this system."
@@ -1150,7 +1151,7 @@
 				},
 				{
 					"id": "profilesView",
-					"name": "Connection Profiles",
+					"name": "Profiles",
 					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true",
 					"visibility": "collapsed"
 				},

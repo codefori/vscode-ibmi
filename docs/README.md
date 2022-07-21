@@ -511,11 +511,11 @@ You can change the font size in the OUTPUT tab in your settings.json thus:
 
 Multiple connections can be defined and some settings are specific to a connection and can be saved for the connection and later reloaded.
 
-### Connection profiles
+### Profiles
 
- We call these connection specific settings a 'connection profile'. The settings stored into a profile are:
+We call these connection specific settings a 'profile'. The settings stored into a profile are:
 
-- Those settings maintained by clicking Settings in the status bar ![Connection Profile Settings](assets/Connect_Profile_Setting_01.png)
+- Those settings maintained by clicking Settings in the status bar ![Profile Settings](assets/Connect_Profile_Setting_01.png)
 
 - The Home / working directory
 - The Current library
