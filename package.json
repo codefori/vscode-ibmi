@@ -1149,14 +1149,15 @@
 					"when": "code-for-ibmi:connected == true"
 				},
 				{
+					"id": "profilesView",
+					"name": "Connection Profiles",
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true",
+					"visibility": "collapsed"
+				},
+				{
 					"id": "libraryListView",
 					"name": "User Library List",
 					"when": "code-for-ibmi:connected == true"
-				},
-				{
-					"id": "profilesView",
-					"name": "Connection Profiles",
-					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true"
 				},
 				{
 					"id": "objectBrowser",
