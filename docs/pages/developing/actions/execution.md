@@ -21,11 +21,11 @@ If the "Command to run" string has a leading "**?**", e.g., like this:
 
 It is displayed and you can edit it as needed.
 
-![Action Displayed for Modification](assets/actions_exec_01.png)
+![Action Displayed for Modification](../../../assets/actions_exec_01.png)
 
 For example, you might want to add **PARM('Douglas' 'Adams')** to the end.
 
-![Modified Action](assets/actions_exec_02.png)
+![Modified Action](../../../assets/actions_exec_02.png)
 
 ### Prompted
 
@@ -46,11 +46,11 @@ Suppose we have a "**Call program, prompt for parms**" action with the "Command 
 
 If we run the action it prompts like this:
 
-![Prompting Action Example 1](assets/actions_exec_03.png)
+![Prompting Action Example 1](../../../assets/actions_exec_03.png)
 
 If we complete the screen like this:
 
-![Completed Prompted Action](assets/actions_exec_04.png)
+![Completed Prompted Action](../../../assets/actions_exec_04.png)
 
 and click **Execute** a command like this is executed;
 
@@ -64,7 +64,7 @@ You can also use variables in the prompt string. If an action is defined like th
 
 &CURLIB will be substituted and the prompt will look like this when executed:
 
-![Prompted Action Example 2](assets/actions_exec_05.png)
+![Prompted Action Example 2](../../../assets/actions_exec_05.png)
 
 #### *Example 3*
 
@@ -75,4 +75,4 @@ The 'Command to run" string is defined like this:
 
 When executed, it prompts like this: 
 
-![Panel to the right](assets/compile_04.png)
+![Panel to the right](../../../assets/compile_04.png)

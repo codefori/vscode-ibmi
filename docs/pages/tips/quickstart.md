@@ -1,5 +1,3 @@
-## Quick Start Guide
-
 ### Make a connection
 
 1. Press F1

@@ -1,5 +1,3 @@
-## Tips & Tricks
-
 ### Comparing sources
 
 Compare two sources, whether they are members or streamfiles.
@@ -7,7 +5,7 @@ Compare two sources, whether they are members or streamfiles.
 1. right click on either type, choose 'Select for compare'
 2. right click the other source you'd like to compare with and choose 'Compare with Selected'
 
-![assets/compare_01.png](assets/compare_01.png)
+![assets/compare_01.png](../../assets/compare_01.png)
 
 ### Running SQL statement
 
@@ -17,7 +15,7 @@ It is also possible to run SQL statements right from the editor in an SQL file. 
 
 SQL result sets appear in the 'IBM i: Results' panel.
 
-![assets/db_03.png](assets/db_03.png)
+![assets/db_03.png](../../assets/db_03.png)
 
 Much like the SQL pre-processor, you can now run CL commands from an SQL scripts. As well as CL commands, you can also get your SQL result set back as `json` or `csv`.
 

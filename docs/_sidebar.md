@@ -2,14 +2,14 @@
    - [Login](pages/login.md)
 - Developing
    - [Editing and compiling](pages/developing/editing-compiling.md)
-   - [Local developing](pages/developing/local-development.md)
+   - [Local development](pages/developing/local-development.md)
    - [Actions](pages/developing/actions/index.md)
       - [Execution](pages/developing/actions/execution.md)
       - [Custom Variables](pages/developing/actions/custom-vars.md)
 - [Browsers](pages/browsers/index.md)
    - [User Library List](pages/browsers/user-library-list.md)
    - [Object Browser](pages/browsers/object-browser.md)
-   - [IFS Browser](pages/browsers/object-browser.md)
+   - [IFS Browser](pages/browsers/ifs-browser.md)
 - Settings
    - [Profiles](pages/settings/profiles.md)
    - [Connection](pages/settings/connection.md)

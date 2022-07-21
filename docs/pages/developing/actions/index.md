@@ -23,7 +23,7 @@ Example: to run the 'CRTBNDRPG' Action, you must open a source member with eithe
 ### View/Change/Add Actions
 
  Click **Actions** on the status bar, then view, change or add new Actions in this UI:
-![Action List UI](assets/actions_01.png)
+![Action List UI](../../../assets/actions_01.png)
 
 - Click on an action to change it.
 - Add actions with New Action.
@@ -31,7 +31,7 @@ Example: to run the 'CRTBNDRPG' Action, you must open a source member with eithe
 
 Adding or changing, you see this same UI:
 
-![Action edit UI](assets/actions_02.png)
+![Action edit UI](../../../assets/actions_02.png)
 
 In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We can change any of the properties.
 

@@ -1,5 +1,3 @@
-## Settings: Global
-
 These are setting  which affect the extension (and therefore *every* connection). To adjust the extension's global setting,  either:
 
 - Use the standard VS Code <kbd>Ctrl</kbd> + <kbd>,</kbd> and click Extensions
@@ -8,7 +6,7 @@ These are setting  which affect the extension (and therefore *every* connection)
 
 Settings for the extension will be under ```Code for IBM i```
 
-![assets/settings_01.png](assets/settings_01.png)
+![assets/settings_01.png](../../assets/settings_01.png)
 
 Most of the setting have a self explanatory description. A few have notes below.
 
@@ -31,10 +29,10 @@ These are the various setting relating to the items in the browsers, e.g., the l
 When enabled, spool files will be logged from the command execution.
 These spool files can be found under the **OUTPUT** tab (View->Output, or Ctrl + Shift + U). Select **IBM i Output** in the drop down on the right.
 
-![Panel on Right](assets/LogOutput_01.png)
+![Panel on Right](../../assets/LogOutput_01.png)
 
 You can clear the OUTPUT tab using the **Clear Output** icon on the right.
-![Clear output](assets/LogOutput_02.png)
+![Clear output](../../assets/LogOutput_02.png)
 
 You can change the font size in the OUTPUT tab in your settings.json thus:
 

@@ -1,5 +1,3 @@
-# Settings: Connection
-
 Multiple connections can be defined and some settings are specific to a connection and can be saved for the connection and later reloaded.
 
 ### Current library
