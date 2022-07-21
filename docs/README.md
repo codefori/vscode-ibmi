@@ -279,7 +279,7 @@ Adding or changing, you see this same UI:
 
 In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We can change any of the properties.
 
-- '**Command to run**' is the command that will be executed. Notice it has portions of text that start with an `&` (ampersand) - such text is a "variable" that will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified. Note that in addition to the supplied variables, you can create your own variables.  See "Custom Variables", below.
+- '**Command to run**' is the command that will be executed. Notice it has portions of text that start with an `&` (ampersand) - such text is a "variable" that will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified. In addition to the supplied variables, you can create your own variables.  See "Custom Variables", below.
 - '**Extensions**' defines the list of extensions that can use this Action. For `CRTBNDRPG`, that usually means only `RPGLE` and `RPG`, so we would enter: `RPGLE, RPG`.
 - '**Types**' determines which type of object can run this action. For example, if your Action only applies to source members, then choose 'Member' from the dropdown.
 - '**Environment**' determine where the command should be run. In this case, `CRTBNDRPG` needs to run in the ILE environment since it's an ILE command. You also have the option to run commands through PASE or QShell.
@@ -376,7 +376,7 @@ When executed, it prompts like this:
 ### Custom Variables
 
 You can create custom variable to use in your "Command to run" strings. To access custom variables:
- Use <kbd>F1</kbd>, then search for "IBM i Custom variables":
+ Use <kbd>F1</kbd>, then search for "IBM i: Custom variables":
 
  ![F1 + IBM i Custom Variable](assets/actions_custom_01.png)
  
@@ -521,6 +521,7 @@ A profile allows the user to switch between settings quickly. You could use a pr
 - The IFS shortcuts
 - The object browser list
 - The database browser list
+- Custom variables
 
 If you have no existing profiles, you can create your first one from the User Library List view:
 
