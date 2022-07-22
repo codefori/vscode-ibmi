@@ -375,6 +375,10 @@ module.exports = class objectBrowserTwoProvider {
                         result.path = result.path.toLowerCase();
                       });
 
+                      results = results.sort((a, b) => {
+                        return a.path.localeCompare(b.path);
+                      });
+                  
                       instance.setSearchResults(searchTerm, results);
 
                     } else {
