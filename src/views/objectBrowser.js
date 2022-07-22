@@ -355,7 +355,7 @@ module.exports = class objectBrowserTwoProvider {
                     let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter}.MBR`, searchTerm);
 
                     // Filter search result by member type filter.
-                    if (results.length > 0) {
+                    if (results.length > 0 && node.memberTypeFilter) {
                       const patternExt = new RegExp(`^` + node.memberTypeFilter.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
                       results = results.filter(result => {
                         const resultPath = result.path.split(`/`);
