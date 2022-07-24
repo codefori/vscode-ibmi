@@ -335,19 +335,19 @@ module.exports = class IBMiContent {
         SELECT
           (b.avgrowsize - 12) as MBMXRL,
           a.iasp_number as MBASP,
-          a.table_name AS MBFILE,
-          b.system_table_member as MBNAME,
-          coalesce(b.source_type, '') as MBSEU2,
+          cast(a.system_table_name as char(10) for bit data) AS MBFILE,
+          cast(b.system_table_member as char(10) for bit data) as MBNAME,
+          coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
           coalesce(b.partition_text, '') as MBMTXT
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
               b.table_name = a.table_name
         WHERE
-          a.table_schema = '${this.ibmi.sysNameInAmerican(library)}' 
-          ${sourceFile !== `*ALL` ? `AND a.table_name = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
-          ${member ? `AND rtrim(b.system_table_member) like '${this.ibmi.sysNameInAmerican(member)}'` : ``}
-          ${memberExt ? `AND rtrim(b.source_type) like '${this.ibmi.sysNameInAmerican(memberExt)}'` : ``}
+          cast(a.system_table_schema as char(10) for bit data) = '${library}' 
+          ${sourceFile !== `*ALL` ? `AND cast(a.system_table_name as char(10) for bit data) = '${sourceFile}'` : ``}
+          ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
+          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}
       `;
       results = await this.runSQL(statement);
 
@@ -383,9 +383,9 @@ module.exports = class IBMiContent {
     return results.map(result => ({
       asp: asp,
       library: library,
-      file: this.ibmi.sysNameInLocal(result.MBFILE),
-      name: this.ibmi.sysNameInLocal(result.MBNAME),
-      extension: this.ibmi.sysNameInLocal(result.MBSEU2),
+      file: result.MBFILE,
+      name: result.MBNAME,
+      extension: result.MBSEU2,
       recordLength: Number(result.MBMXRL),
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
     }));
