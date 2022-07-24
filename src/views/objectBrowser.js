@@ -371,9 +371,14 @@ module.exports = class objectBrowserTwoProvider {
                       results.forEach(result => {
                         const resultPath = result.path.split(`/`);
                         const resultName = resultPath[resultPath.length-1];
-                        result.path += `.${members.find(member => member.name === resultName).extension.toLowerCase()}`;
+                        result.path += `.${members.find(member => member.name === resultName).extension}`;
+                        result.path = result.path.toLowerCase();
                       });
 
+                      results = results.sort((a, b) => {
+                        return a.path.localeCompare(b.path);
+                      });
+                  
                       instance.setSearchResults(searchTerm, results);
 
                     } else {
