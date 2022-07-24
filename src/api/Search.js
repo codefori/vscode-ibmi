@@ -42,7 +42,7 @@ module.exports = class Search {
     }
 
     const result = await connection.sendQsh({
-      command: `/usr/bin/grep -in -F "${term}" ${asp}/QSYS.LIB/${connection.sysNameInAmerican(lib)}.LIB/${connection.sysNameInAmerican(spf)}.FILE/${memberFilter ? memberFilter : `*`}`,
+      command: `/usr/bin/grep -inHR -F "${term}" ${asp}/QSYS.LIB/${connection.sysNameInAmerican(lib)}.LIB/${connection.sysNameInAmerican(spf)}.FILE/${memberFilter ? connection.sysNameInAmerican(memberFilter) : `*`}`,
     });
 
     //@ts-ignore stderr does exist.
