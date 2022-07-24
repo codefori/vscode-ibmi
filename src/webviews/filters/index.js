@@ -17,6 +17,7 @@ module.exports = class FiltersUI {
     let filter;
 
     if (name) {
+      // If a name is provided, then find the existing filter
       existingConfigIndex = objectFilters.findIndex(filter => filter.name === name);
 
       if (existingConfigIndex >= 0) {
@@ -27,11 +28,12 @@ module.exports = class FiltersUI {
       }
 
     } else {
+      // Otherwise, set the default values
       filter = {
         name: `Filter ${objectFilters.length + 1}`,
         library: `QGPL`,
         object: `*`,
-        types: [`*ALL`],
+        types: [`*SRCPF`],
         member: `*`,
       }
     }
