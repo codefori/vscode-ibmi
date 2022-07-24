@@ -264,12 +264,15 @@ module.exports = class SettingsUI {
       {
         id: `saveAction`,
         label: `Save`,
-      },
-      {
-        id: `deleteAction`,
-        label: `Delete`,
       }
     ];
+    if (id >= 0) {
+      field.items.push(
+        {
+          id: `deleteAction`,
+          label: `Delete`,
+        });
+    };
     ui.addField(field);
 
     let {panel, data} = await ui.loadPage(`Work with Actions`);
