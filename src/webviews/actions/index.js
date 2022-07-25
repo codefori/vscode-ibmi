@@ -133,6 +133,7 @@ module.exports = class SettingsUI {
     let allActions = Configuration.get(`actions`);
     let currentAction;
     let uiTitle;
+    let stayOnPanel = true;
 
     if (id >= 0) {
       //Fetch existing action
@@ -285,47 +286,53 @@ module.exports = class SettingsUI {
       });
     ui.addField(field);
 
-    let {panel, data} = await ui.loadPage(uiTitle);
+    while (stayOnPanel === true) {
+      let {panel, data} = await ui.loadPage(uiTitle);
 
-    if (data) {
-      panel.dispose();
-      switch (data.buttons) {
-      case `deleteAction`:
-        const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, `Yes`, `No`)
-        if (result === `Yes`) {
-          allActions.splice(id, 1);
+      if (data) {
+        switch (data.buttons) {
+        case `deleteAction`:
+          const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, `Yes`, `No`)
+          if (result === `Yes`) {
+            allActions.splice(id, 1);
+            await Configuration.setGlobal(`actions`, allActions);
+            stayOnPanel=false;
+          }
+          break;
+
+        case `cancelAction`:
+          stayOnPanel=false;
+          break;
+
+        default:
+          // We don't want \r (Windows line endings)
+          data.command = data.command.replace(new RegExp(`\\\r`, `g`), ``);
+
+          const newAction = {
+            type: data.type,
+            extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
+            environment: data.environment,
+            name: data.name,
+            command: data.command,
+          };
+      
+          if (id >= 0) {
+            allActions[id] = newAction;
+          } else {
+            allActions.push(newAction);
+          }
+
           await Configuration.setGlobal(`actions`, allActions);
+          stayOnPanel=false;
+          break;
         }
-        break;
-
-      case `cancelAction`:
-        break;
-
-      default:
-        // We don't want \r (Windows line endings)
-        data.command = data.command.replace(new RegExp(`\\\r`, `g`), ``);
-
-        const newAction = {
-          type: data.type,
-          extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
-          environment: data.environment,
-          name: data.name,
-          command: data.command,
-        };
-    
-        if (id >= 0) {
-          allActions[id] = newAction;
-        } else {
-          allActions.push(newAction);
-        }
-
-        await Configuration.setGlobal(`actions`, allActions);
-        break;
+        
       }
 
+      panel.dispose();
     }
 
     this.MainMenu();
   }
-
+  
 }
