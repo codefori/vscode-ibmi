@@ -328,6 +328,9 @@ module.exports = class SettingsUI {
         }
         
       }
+      else {
+        stayOnPanel=false;
+      }
 
       panel.dispose();
     }
