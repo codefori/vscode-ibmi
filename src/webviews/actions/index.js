@@ -278,6 +278,11 @@ module.exports = class SettingsUI {
           label: `Delete`,
         });
     };
+    field.items.push(
+      {
+        id: `cancelAction`,
+        label: `Cancel`,
+      });
     ui.addField(field);
 
     let {panel, data} = await ui.loadPage(uiTitle);
@@ -291,6 +296,9 @@ module.exports = class SettingsUI {
           allActions.splice(id, 1);
           await Configuration.setGlobal(`actions`, allActions);
         }
+        break;
+
+      case `cancelAction`:
         break;
 
       default:
