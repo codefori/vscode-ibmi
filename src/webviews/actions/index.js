@@ -132,14 +132,17 @@ module.exports = class SettingsUI {
     const config = instance.getConfig();
     let allActions = Configuration.get(`actions`);
     let currentAction;
-    
+    let uiTitle;
+
     if (id >= 0) {
       //Fetch existing action
-
+      
       currentAction = allActions[id];
+      uiTitle = `Edit action "${currentAction.name}"`;
 
     } else if (ActionDefault) {
       currentAction = ActionDefault;
+      uiTitle = `Duplicate action "${currentAction.name}"`;
     } else {
       //Otherwise.. prefill with defaults
       currentAction = {
@@ -152,6 +155,7 @@ module.exports = class SettingsUI {
         name: ``,
         command: ``
       }
+      uiTitle = `Create action`;
     }
 
     if (currentAction.environment === undefined) currentAction.environment = `ile`;
@@ -276,7 +280,7 @@ module.exports = class SettingsUI {
     };
     ui.addField(field);
 
-    let {panel, data} = await ui.loadPage(`Work with Actions`);
+    let {panel, data} = await ui.loadPage(uiTitle);
 
     if (data) {
       panel.dispose();
