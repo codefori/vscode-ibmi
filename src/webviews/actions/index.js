@@ -115,9 +115,7 @@ module.exports = class SettingsUI {
         const index = action.value;
 
         const newAction = {...actions[index]};
-        actions.push(newAction);
-        await Configuration.setGlobal(`actions`, actions);
-        this.WorkAction(actions.length - 1);
+        this.WorkAction(-1, newAction);
       } else {
         this.MainMenu();
       }
@@ -128,8 +126,9 @@ module.exports = class SettingsUI {
   /**
    * Edit an existing action
    * @param {number} id Existing action index, or -1 for a brand new index
+   * @param {object} ActionDefault Default action properties
    */
-  static async WorkAction(id) {
+  static async WorkAction(id, ActionDefault) {
     const config = instance.getConfig();
     let allActions = Configuration.get(`actions`);
     let currentAction;
@@ -139,6 +138,8 @@ module.exports = class SettingsUI {
 
       currentAction = allActions[id];
 
+    } else if (ActionDefault) {
+      currentAction = ActionDefault;
     } else {
       //Otherwise.. prefill with defaults
       currentAction = {
