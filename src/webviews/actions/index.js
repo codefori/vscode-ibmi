@@ -292,7 +292,7 @@ module.exports = class SettingsUI {
       if (data) {
         switch (data.buttons) {
         case `deleteAction`:
-          const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, `Yes`, `No`)
+          const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, { modal:true }, `Yes`, `No`)
           if (result === `Yes`) {
             allActions.splice(id, 1);
             await Configuration.setGlobal(`actions`, allActions);
