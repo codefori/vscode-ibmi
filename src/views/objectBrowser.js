@@ -117,9 +117,16 @@ module.exports = class objectBrowserTwoProvider {
 
               vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
-              await connection.remoteCommand(
-                `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
-              )
+              try {
+                await connection.remoteCommand(
+                  `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
+                )
+              } catch (e) {
+                // Ignore CPF2869 Empty member is not copied.
+                if (!String(e).includes(`CPF2869`)) {
+                  throw (e)
+                }
+              }
 
               if (oldData.extension !== newData.extension) {
                 await connection.remoteCommand(
