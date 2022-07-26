@@ -67,31 +67,28 @@ module.exports = class objectBrowserTwoProvider {
           });
 
           if (fullName) {
-            fullName = fullName.toUpperCase();
+            const fullPath = `${node.path}/${fullName}`;
 
             const connection = instance.getConnection();
-            const [name, extension] = fullName.split(`.`);
 
-            if (extension !== undefined && extension.length > 0) {
-              try {
-                const uriPath = `${path[0]}/${path[1]}/${name}.${extension}`.toUpperCase();
+            try {
+              const newData = connection.parserMemberPath(fullPath);
 
-                vscode.window.showInformationMessage(`Creating and opening member ${uriPath}.`);
+              vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
-                await connection.remoteCommand(
-                  `ADDPFM FILE(${path[0]}/${path[1]}) MBR(${name}) SRCTYPE(${extension})`
-                );
+              await connection.remoteCommand(
+                `ADDPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`
+              )
 
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, uriPath);
-
-                if (Configuration.get(`autoRefresh`)) {
-                  this.refresh();
-                }
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error creating new member! ${e}`);
+              if (Configuration.get(`autoOpenFile`)) {
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
               }
-            } else {
-              vscode.window.showErrorMessage(`Extension must be provided when creating a member.`);
+
+              if (Configuration.get(`autoRefresh`)) {
+                this.refresh();
+              }
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error creating new member! ${e}`);
             }
           }
 
