@@ -255,7 +255,7 @@ module.exports = class objectBrowserTwoProvider {
               }
               if (oldMember.extension !== newMember.extension) {
                 await connection.remoteCommand(
-                  `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension})`,
+                  `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
                 );
               }
               if (Configuration.get(`autoRefresh`)) {
