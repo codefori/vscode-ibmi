@@ -117,6 +117,28 @@ module.exports = class objectBrowserTwoProvider {
 
               vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
+              let newMemberExists = true;
+              try {
+                await connection.remoteCommand(
+                  `CHKOBJ OBJ(${newData.library}/${newData.file}) OBJTYPE(*FILE) MBR(${newData.member})`,
+                )
+              } catch (e) {
+                if (String(e).includes(`CPF9815`)) {
+                  newMemberExists = false;
+                }
+              }
+
+              if (newMemberExists) {
+                const result = await vscode.window.showInformationMessage(`Are you sure you want overwrite member ${newData.member}?`, { modal:true }, `Yes`, `No`)
+                if (result === `Yes`) {
+                  await connection.remoteCommand(
+                    `RMVM FILE(${newData.library}/${newData.file}) MBR(${newData.member})`,
+                  )
+                } else {
+                  throw `Member ${newData.member} already exists!`
+                }
+              }
+
               try {
                 await connection.remoteCommand(
                   `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
