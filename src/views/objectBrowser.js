@@ -130,7 +130,7 @@ module.exports = class objectBrowserTwoProvider {
 
               if (oldData.extension !== newData.extension) {
                 await connection.remoteCommand(
-                  `CHGPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension})`,
+                  `CHGPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`,
                 );
               }
 
