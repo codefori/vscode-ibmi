@@ -79,7 +79,7 @@
 										"object",
 										"types",
 										"member",
-                    "memberType"
+										"memberType"
 									],
 									"properties": {
 										"name": {
@@ -662,7 +662,8 @@
 							],
 							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
 							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"RPGLE",
@@ -687,7 +688,8 @@
 							],
 							"name": "Run SQL Statements (RUNSQLSTM)",
 							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"cmd"
@@ -1089,6 +1091,18 @@
 				"title": "Close search view",
 				"category": "IBM i",
 				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.refreshActiveJobListView",
+				"title": "Refresh active job list view",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.EndJob",
+				"title": "End job",
+				"category": "IBM i",
+				"icon": "$(close)"
 			}
 		],
 		"keybindings": [
@@ -1168,6 +1182,11 @@
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
+					"when": "code-for-ibmi:connected == true"
+				},
+				{
+					"id": "activeJobListView",
+					"name": "My Active Job List",
 					"when": "code-for-ibmi:connected == true"
 				}
 			],
@@ -1270,6 +1289,11 @@
 					"command": "code-for-ibmi.closeSearchView",
 					"group": "navigation",
 					"when": "view == searchView"
+				},
+				{
+					"command": "code-for-ibmi.refreshActiveJobListView",
+					"group": "navigation",
+					"when": "view == activeJobListView"
 				}
 			],
 			"editor/title": [
@@ -1526,6 +1550,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "viewItem == object",
 					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.EndJob",
+					"when": "view == activeJobListView",
+					"group": "1_activeJobList@1"
 				}
 			]
 		},

@@ -131,6 +131,8 @@ module.exports = class Instance {
 
     const ColorProvider = require(`./languages/general/ColorProvider`);
 
+    const activeJobListView = require(`./views/activeJobListView`);
+
     if (instance.connection) {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
 
@@ -182,7 +184,8 @@ module.exports = class Instance {
         await Promise.all([
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
+          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
+          vscode.commands.executeCommand(`code-for-ibmi.refreshActiveJobListView`)
         ]);
         return;
 
@@ -276,6 +279,15 @@ module.exports = class Instance {
           vscode.window.registerTreeDataProvider(
             `objectBrowser`,
             new objectBrowser(context)
+          )
+        );
+
+        //********* Actrive Job List */
+
+        context.subscriptions.push(
+          vscode.window.registerTreeDataProvider(
+            `activeJobListView`,
+            new activeJobListView(context)
           )
         );
 
