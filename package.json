@@ -1553,7 +1553,7 @@
 				},
 				{
 					"command": "code-for-ibmi.EndJob",
-					"when": "view == activeJobListView",
+					"when": "view == activeJobListView && viewItem == activeJob",
 					"group": "1_activeJobList@1"
 				}
 			]

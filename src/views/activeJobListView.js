@@ -1,4 +1,22 @@
-
+/**
+ * 
+ * Structurer l'objet activeJob (Cf. objectBrowser)
+ * 
+ * List of subsystems :
+    SELECT SUBSYSTEM,
+        JOB_NAME,
+        JOB_STATUS
+    FROM TABLE (
+        QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => '*SBS')
+      ) A;
+  
+    List of job from a subsystem :
+    SELECT JOB_NAME, JOB_NAME_SHORT, JOB_USER, JOB_NUMBER
+    FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE', SUBSYSTEM_LIST_FILTER => 'GIGCPC')) X
+        WHERE JOB_TYPE not in ('SYS' , 'SBS')
+    ORDER BY TEMPORARY_STORAGE DESC;
+  
+ */
 const vscode = require(`vscode`);
 
 const EndjobUI = require(`../webviews/endjob`);
@@ -21,7 +39,7 @@ module.exports = class activeJobListProvider {
       vscode.commands.registerCommand(`code-for-ibmi.EndJob`, async (node) => {
         if (node) {
 
-          const paramEndjob = await EndjobUI.init(node.path.JOB_NAME_SHORT, node.path.JOB_USER, node.path.JOB_NUMBER);
+          const paramEndjob = await EndjobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
 
           if (paramEndjob !== null) {
             const connection = instance.getConnection();
@@ -63,26 +81,48 @@ module.exports = class activeJobListProvider {
    */
   async getChildren(element) {
     const content = instance.getContent();
-    // const config = instance.getConfig();
     const connection = instance.getConnection();
     let items = [], item, jobsName = [];
 
-    if (connection) {
-      try {
-        jobsName = await content.runSQL([`SELECT JOB_NAME, JOB_NAME_SHORT, JOB_USER, JOB_NUMBER FROM TABLE ( QSYS2.JOB_INFO() ) A
-        WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR')
-          AND JOB_STATUS = 'ACTIVE'`].join(` `));
+    if (element) {
+      // activeJob
+      switch (element.contextValue) {
+        case `subsystem`:
 
-      } catch (e) {
-        console.log(e);
-        item = new vscode.TreeItem(`Error loading active job.`);
-        vscode.window.showErrorMessage(e);
-        items = [item];
+        if (connection) {
+          try {
+            /** @type {subsystem} */ //@ts-ignore We know what is it based on contextValue.
+            const subsystem = element;
+            const jobs = await content.runSQL([`SELECT JOB_NAME "jobName", JOB_NAME_SHORT "jobNameShort", JOB_USER "jobUser", JOB_NUMBER "jobNumber" FROM TABLE ( QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE', SUBSYSTEM_LIST_FILTER => '${subsystem.path.name}')) A
+            WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR')`].join(` `));
+            items = jobs.map(job => new ActiveJob(job));
+
+          } catch (e) {
+            console.log(e);
+            item = new vscode.TreeItem(`Error loading jobs.`);
+            vscode.window.showErrorMessage(e);
+            items = [item];
+          }
+        }
+        break;
+      }
+    } else {
+      if (connection) {
+        try {
+
+          const objects = await content.runSQL([`SELECT SUBSYSTEM "name", SUBSYSTEM_LIBRARY_NAME "library" FROM TABLE (QSYS2.ACTIVE_JOB_INFO(JOB_NAME_FILTER => '*SBS') ) A`].join(` `));
+          items = objects.map(object => new SubSystem(object));
+
+        } catch (e) {
+          console.log(e);
+          item = new vscode.TreeItem(`Error loading subsystems.`);
+          vscode.window.showErrorMessage(e);
+          items = [item];
+        }
       }
 
+    // items = jobsName.map(jobName => new ActiveJob(jobName));
     }
-
-    items = jobsName.map(jobName => new ActiveJob(jobName));
 
     return items;
   }
@@ -102,12 +142,25 @@ module.exports = class activeJobListProvider {
   }
 }
 
+class SubSystem extends vscode.TreeItem {
+  /**
+   * @param {{name: string, library: string}} subsystem
+   */
+  constructor(subsystem) {
+    super(subsystem.name, vscode.TreeItemCollapsibleState.Collapsed);
+
+    this.contextValue = `subsystem`;
+    this.path = subsystem;
+    this.description = subsystem.library;
+  }
+}
+
 class ActiveJob extends vscode.TreeItem {
   /**
-   * @param {string} activeJob
+   * @param {{jobName: string, jobNameShort: string, jobUser: string, jobNumber: string}} activeJob
    */
   constructor(activeJob) {
-    super(activeJob["JOB_NAME"].toUpperCase(), vscode.TreeItemCollapsibleState.None);
+    super(activeJob.jobName, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = `activeJob`;
     this.path = activeJob;
