@@ -272,33 +272,53 @@ module.exports = class objectBrowserTwoProvider {
           const oldMember = connection.parserMemberPath(node.path);
           const lib = oldMember.library;
           const spf = oldMember.file;
-          let newBasename = await vscode.window.showInputBox({
-            value: oldMember.basename,
-            prompt: `Rename ${oldMember.basename}`
-          });
+          let fullPath = node.path;
+          let newBasename = oldMember.basename;
+          let newMember;
+          let newNameOK;
 
-          if (newBasename && newBasename.toUpperCase() !== oldMember.basename) {
-            try {
-              const connection = instance.getConnection();
-              const newMember = connection.parserMemberPath(lib + `/` + spf + `/` + newBasename);
-              if (oldMember.member !== newMember.member) {
-                await connection.remoteCommand(
-                  `RNMM FILE(${lib}/${spf}) MBR(${oldMember.member}) NEWMBR(${newMember.member})`,
-                );
+          do {
+            newBasename = await vscode.window.showInputBox({
+              value: newBasename,
+              prompt: `Rename ${oldMember.basename}`
+            });
+
+            if (newBasename) {
+              try {
+                newNameOK = true;
+                newMember = connection.parserMemberPath(lib + `/` + spf + `/` + newBasename);
+              } catch (e) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(`${e}`);
               }
-              if (oldMember.extension !== newMember.extension) {
-                await connection.remoteCommand(
-                  `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
-                );
-              }
-              if (Configuration.get(`autoRefresh`)) {
-                this.refresh();
-              }
-              else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
-            } catch(e) {
-              vscode.window.showErrorMessage(`Error renaming member! ${e}`);
             }
-          }
+
+            if (newBasename) {
+              if (newBasename.toUpperCase() === oldMember.basename) {
+                newNameOK = false;
+              } else {
+                try {
+                  if (oldMember.member !== newMember.member) {
+                    await connection.remoteCommand(
+                      `RNMM FILE(${lib}/${spf}) MBR(${oldMember.member}) NEWMBR(${newMember.member})`,
+                    );
+                  }
+                  if (oldMember.extension !== newMember.extension) {
+                    await connection.remoteCommand(
+                      `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
+                    );
+                  }
+                  if (Configuration.get(`autoRefresh`)) {
+                    this.refresh();
+                  }
+                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+                } catch(e) {
+                  newNameOK = false;
+                  vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+                }
+              }
+            }
+          } while(newBasename && !newNameOK)
         } else {
           //Running from command.
         }
