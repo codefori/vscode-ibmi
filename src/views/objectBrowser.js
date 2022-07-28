@@ -134,6 +134,7 @@ module.exports = class objectBrowserTwoProvider {
             });
 
             if (fullPath) {
+              fullPath = fullPath.toUpperCase();
               try {
                 newNameOK = true;
                 newData = connection.parserMemberPath(fullPath);
@@ -141,10 +142,13 @@ module.exports = class objectBrowserTwoProvider {
                 newNameOK = false;
                 vscode.window.showErrorMessage(`${e}`);
               }
+              if (newData.library === oldData.library && newData.file === oldData.file && newData.member === oldData.member) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(`Cannot copy member to itself!`);
+              }
             }
 
             if (fullPath && newNameOK) {
-              fullPath = fullPath.toUpperCase();
               vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
               try {
