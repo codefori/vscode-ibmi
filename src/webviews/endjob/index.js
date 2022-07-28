@@ -135,7 +135,12 @@ module.exports = class EndjobUI {
 
         let { panel, data } = await ui.loadPage(`Arrêter un travail (ENDJOB)`);
 
-        return data;
+        if (data) {
+            panel.dispose();
+            return data;
+        } else {
+            return;
+        }
     }
 
 }

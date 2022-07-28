@@ -1103,6 +1103,30 @@
 				"title": "End job",
 				"category": "IBM i",
 				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.ChgJob",
+				"title": "Change job",
+				"category": "IBM i",
+				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.HldJob",
+				"title": "Holdjob",
+				"category": "IBM i",
+				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.RlsJob",
+				"title": "Release job",
+				"category": "IBM i",
+				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.HistoryJob",
+				"title": "History job",
+				"category": "IBM i",
+				"icon": "$(close)"
 			}
 		],
 		"keybindings": [
@@ -1186,7 +1210,7 @@
 				},
 				{
 					"id": "activeJobListView",
-					"name": "My Active Job List",
+					"name": "Job Browser",
 					"when": "code-for-ibmi:connected == true"
 				}
 			],
@@ -1553,7 +1577,27 @@
 				},
 				{
 					"command": "code-for-ibmi.EndJob",
-					"when": "view == activeJobListView && viewItem == activeJob",
+					"when": "viewItem == activeJob || viewItem == myActiveJob",
+					"group": "1_activeJobList@1"
+				},
+				{
+					"command": "code-for-ibmi.ChgJob",
+					"when": "viewItem == activeJob || viewItem == myActiveJob",
+					"group": "1_activeJobList@1"
+				},
+				{
+					"command": "code-for-ibmi.HldJob",
+					"when": "viewItem == activeJob || viewItem == myActiveJob",
+					"group": "1_activeJobList@1"
+				},
+				{
+					"command": "code-for-ibmi.RlsJob",
+					"when": "viewItem == activeJob || viewItem == myActiveJob",
+					"group": "1_activeJobList@1"
+				},
+				{
+					"command": "code-for-ibmi.HistoryJob",
+					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
 				}
 			]
