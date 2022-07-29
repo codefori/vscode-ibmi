@@ -32,6 +32,9 @@ module.exports = class Configuration {
     /** @type {string} */
     this.homeDirectory = base.homeDirectory || `.`;
 
+    /** @type {{nameFilter: string, jobNameFilter: string, jobUserFilter: string, jobNumberFilter: string, profilFilter: string, subsystemFilter: string}[]} */
+    this.jobFilters = base.jobFilters || [];
+
     /** @type {boolean} Undefined means not created, so default to on */
     this.enableSQL = (base.enableSQL === true || base.enableSQL === undefined);
 

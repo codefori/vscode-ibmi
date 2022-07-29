@@ -4,7 +4,7 @@ const vscode = require(`vscode`);
 const instance = require(`../Instance`);
 
 const LAST_PROFILE_KEY = `currentProfile`;
-const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `ifsShortcuts`, `customVariables`];
+const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `ifsShortcuts`, `customVariables`, `jobFilters`];
 
 module.exports = class profilesProvider {
   /**
@@ -111,7 +111,7 @@ module.exports = class profilesProvider {
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
-                vscode.commands.executeCommand(`code-for-ibmi.refreshActiveJobListView`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshJobBrowser`),
                 storage.set(LAST_PROFILE_KEY, chosenProfile),
               ]);
 

@@ -133,6 +133,57 @@
 								"default": [],
 								"description": "Library list. Used in actions. Highest first."
 							},
+							"jobFilters": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"required": [
+										"nameFilter",
+										"jobNameFilter",
+										"jobUserFilter",
+										"jobNumberFilter",
+										"profilFilter",
+										"subsystemFilter"
+									],
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "Job filter name"
+										},
+										"jobNameFilter": {
+											"type": "string",
+											"description": "Job name",
+											"maxLength": 10,
+											"default": "*"
+										},
+										"jobUserFilter": {
+											"type": "string",
+											"description": "Job user",
+											"maxLength": 10,
+											"default": "*"
+										},
+										"jobNumberFilter": {
+											"type": "string",
+											"description": "Job Number",
+											"maxLength": 6,
+											"default": "*"
+										},
+										"profilFilter": {
+											"type": "string",
+											"description": "Current user profil",
+											"default": "*"
+										},
+										"subsystemFilter": {
+											"type": "string",
+											"description": "Subsystem",
+											"maxLength": 10,
+											"default": "*"
+										}
+									}
+								},
+								"default": [],
+								"description": "List of filters for Object List"
+							},
 							"connectionProfiles": {
 								"type": "array",
 								"items": {
@@ -1093,10 +1144,28 @@
 				"icon": "$(close)"
 			},
 			{
-				"command": "code-for-ibmi.refreshActiveJobListView",
-				"title": "Refresh active job list view",
+				"command": "code-for-ibmi.refreshJobBrowser",
+				"title": "Refresh job browser",
 				"category": "IBM i",
 				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.createJobFilter",
+				"title": "Create job filter",
+				"category": "IBM i",
+				"icon": "$(filter)"
+			},
+			{
+				"command": "code-for-ibmi.maintainJobFilter",
+				"title": "Maintain job filter",
+				"category": "IBM i",
+				"icon": "$(filter)"
+			},
+			{
+				"command": "code-for-ibmi.deleteJobFilter",
+				"title": "Delete job filter",
+				"category": "IBM i",
+				"icon": "$(remove)"
 			},
 			{
 				"command": "code-for-ibmi.EndJob",
@@ -1209,7 +1278,7 @@
 					"when": "code-for-ibmi:connected == true"
 				},
 				{
-					"id": "activeJobListView",
+					"id": "jobBrowser",
 					"name": "Job Browser",
 					"when": "code-for-ibmi:connected == true"
 				}
@@ -1315,9 +1384,14 @@
 					"when": "view == searchView"
 				},
 				{
-					"command": "code-for-ibmi.refreshActiveJobListView",
+					"command": "code-for-ibmi.refreshJobBrowser",
 					"group": "navigation",
-					"when": "view == activeJobListView"
+					"when": "view == jobBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createJobFilter",
+					"group": "navigation",
+					"when": "view == jobBrowser"
 				}
 			],
 			"editor/title": [
@@ -1599,6 +1673,19 @@
 					"command": "code-for-ibmi.HistoryJob",
 					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
+				},
+				{
+					"command": "code-for-ibmi.createJobFilter",
+					"group": "navigation",
+					"when": "view == jobBrowser"
+				},
+				{
+					"command": "code-for-ibmi.maintainJobFilter",
+					"when": "viewItem == jobFilter"
+				},
+				{
+					"command": "code-for-ibmi.deleteJobFilter",
+					"when": "viewItem == jobFilter"
 				}
 			]
 		},

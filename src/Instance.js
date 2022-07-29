@@ -131,7 +131,7 @@ module.exports = class Instance {
 
     const ColorProvider = require(`./languages/general/ColorProvider`);
 
-    const activeJobListView = require(`./views/activeJobListView`);
+    const jobBrowser = require(`./views/jobBrowser`);
 
     if (instance.connection) {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
@@ -185,7 +185,7 @@ module.exports = class Instance {
           vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
           vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
-          vscode.commands.executeCommand(`code-for-ibmi.refreshActiveJobListView`)
+          vscode.commands.executeCommand(`code-for-ibmi.refreshJobBrowser`)
         ]);
         return;
 
@@ -282,12 +282,12 @@ module.exports = class Instance {
           )
         );
 
-        //********* Actrive Job List */
+        //********* Job Browser */
 
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
-            `activeJobListView`,
-            new activeJobListView(context)
+            `jobBrowser`,
+            new jobBrowser(context)
           )
         );
 
