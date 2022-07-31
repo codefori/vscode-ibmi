@@ -1,4 +1,4 @@
-This page consists of fixes to weird errors users recieve. They are usually due to some weird system configuration.
+This page consists of fixes to weird errors users receive based on system configuration.
 
 ## Unexpected packet before version
 
