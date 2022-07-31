@@ -12,6 +12,7 @@
    - [Tricks](pages/tips/tricks.md)
    - [Terminals](pages/tips/terminals.md)
    - [CCSID](pages/tips/ccsid.md)
+   - [Setup](pages/tips/setup.md)
 - [Browsers](pages/browsers/index.md)
    - [User Library List](pages/browsers/user-library-list.md)
    - [Object Browser](pages/browsers/object-browser.md)
