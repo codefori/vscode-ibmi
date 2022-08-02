@@ -21,4 +21,6 @@
    - [Profiles](pages/settings/profiles.md)
    - [Connection](pages/settings/connection.md)
    - [Global](pages/settings/global.md)
+- Extensions
+   - [Db2 for i](pages/extensions/db2i.md)
 - [Extending](pages/api/extending.md)
