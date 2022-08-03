@@ -39,7 +39,7 @@ module.exports = class JobFiltersUI {
         jobNameFilter: `*`,
         jobUserFilter: `*`,
         jobNumberFilter: `*`,
-        profilFilter: `*`,
+        profileFilter: `*`,
         subsystemFilter: `*`,
       }
     }
@@ -67,8 +67,8 @@ module.exports = class JobFiltersUI {
     field.description = `Specify the job number assigned by the system. Can be an asterisk or a number. For example: <code>*</code>, or <code>123456</code>.`;
     ui.addField(field);
 
-    field = new Field(`input`, `profilFilter`, `Profil`);
-    field.default = filter.profilFilter || `*`;
+    field = new Field(`input`, `profileFilter`, `Profil`);
+    field.default = filter.profileFilter || `*`;
     field.description = `Specify the name of the current user profile under which the job is run. Can be generic name with an asterisk. For example: <code>*</code>, or <code>Q*</code>.`;
     ui.addField(field);
 

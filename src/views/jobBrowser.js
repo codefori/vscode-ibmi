@@ -2,7 +2,7 @@
 const vscode = require(`vscode`);
 
 // const EndjobUI = require(`../webviews/endjob`);
-const { EndjobUI, ChgjobUI, HldjobUI, RlsjobUI } = require(`../webviews/jobs`);
+const { EndjobUI, ChangejobUI, HoldjobUI, ReleaseJobUI } = require(`../webviews/jobs`);
 const HistoryJobUI = require(`../webviews/history`);
 
 const FiltersUI = require(`../webviews/jobs/filters`);
@@ -49,7 +49,7 @@ module.exports = class jobBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.refreshJobBrowser`, async () => {
         this.refresh();
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.EndJob`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.endJob`, async (node) => {
         if (node) {
 
           const paramEndjob = await EndjobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
@@ -73,7 +73,7 @@ module.exports = class jobBrowserProvider {
         }
         this.refresh();
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.HistoryJob`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.historyJob`, async (node) => {
         if (node) {
           const content = instance.getContent();
           const connection = instance.getConnection();
@@ -88,10 +88,10 @@ module.exports = class jobBrowserProvider {
         }
         this.refresh();
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.ChgJob`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.changeJob`, async (node) => {
         if (node) {
 
-          const paramChgjob = await ChgjobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
+          const paramChgjob = await ChangejobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
 
           if (paramChgjob !== undefined) {
             const connection = instance.getConnection();
@@ -234,10 +234,10 @@ module.exports = class jobBrowserProvider {
         }
         this.refresh();
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.HldJob`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.holdJob`, async (node) => {
         if (node) {
 
-          const paramHldjob = await HldjobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
+          const paramHldjob = await HoldjobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
 
           if (paramHldjob !== undefined) {
             const connection = instance.getConnection();
@@ -256,10 +256,10 @@ module.exports = class jobBrowserProvider {
         }
         this.refresh();
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.RlsJob`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.releaseJob`, async (node) => {
         if (node) {
 
-          const paramRlsjob = await RlsjobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
+          const paramRlsjob = await ReleaseJobUI.init(node.path.jobNameShort, node.path.jobUser, node.path.jobNumber);
 
           if (paramRlsjob !== undefined) {
             const connection = instance.getConnection();
@@ -319,8 +319,8 @@ module.exports = class jobBrowserProvider {
             whereClause += ` AND JOB_NUMBER like '${filter.jobNumberFilter}'`;
           }
 
-          if (filter.profilFilter != '*' && filter.profilFilter.length > 0) {
-            whereClause += ` AND AUTHORIZATION_NAME like '${filter.profilFilter}'`;
+          if (filter.profileFilter != '*' && filter.profileFilter.length > 0) {
+            whereClause += ` AND AUTHORIZATION_NAME like '${filter.profileFilter}'`;
           }
 
           // Don't want to search all and not blank
@@ -383,8 +383,8 @@ module.exports = class jobBrowserProvider {
             whereClause += ` AND JOB_NUMBER like '${filter.jobNumberFilter}'`;
           }
 
-          if (filter.profilFilter != '*' && filter.profilFilter.length > 0) {
-            whereClause += ` AND AUTHORIZATION_NAME like '${filter.profilFilter}'`;
+          if (filter.profileFilter != '*' && filter.profileFilter.length > 0) {
+            whereClause += ` AND AUTHORIZATION_NAME like '${filter.profileFilter}'`;
           }
 
           // Don't want to search all and not blank
@@ -492,13 +492,13 @@ const getNewFilter = () => {
 
 class JobFilter extends vscode.TreeItem {
   /**
-   * @param {{nameFilter: string, jobNameFilter: string, jobUserFilter: string, jobNumberFilter: string, profilFilter: string, subsystemFilter: string}} jobFilter
+   * @param {{nameFilter: string, jobNameFilter: string, jobUserFilter: string, jobNumberFilter: string, profileFilter: string, subsystemFilter: string}} jobFilter
    */
   constructor(jobFilter) {
     super(jobFilter.nameFilter, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.contextValue = `jobFilter`;
-    this.description = `${jobFilter.jobNumberFilter}/${jobFilter.jobUserFilter}/${jobFilter.jobNameFilter} (profil: ${jobFilter.profilFilter} - subsystem: ${jobFilter.subsystemFilter})`;
+    this.description = `${jobFilter.jobNumberFilter}/${jobFilter.jobUserFilter}/${jobFilter.jobNameFilter} (profil: ${jobFilter.profileFilter} - subsystem: ${jobFilter.subsystemFilter})`;
     this.filter = jobFilter.nameFilter;
   }
 }

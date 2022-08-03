@@ -142,7 +142,7 @@
 										"jobNameFilter",
 										"jobUserFilter",
 										"jobNumberFilter",
-										"profilFilter",
+										"profileFilter",
 										"subsystemFilter"
 									],
 									"properties": {
@@ -168,7 +168,7 @@
 											"maxLength": 6,
 											"default": "*"
 										},
-										"profilFilter": {
+										"profileFilter": {
 											"type": "string",
 											"description": "Current user profil",
 											"default": "*"
@@ -182,7 +182,7 @@
 									}
 								},
 								"default": [],
-								"description": "List of filters for Object List"
+								"description": "List of filters for Job Browser."
 							},
 							"connectionProfiles": {
 								"type": "array",
@@ -1168,31 +1168,31 @@
 				"icon": "$(remove)"
 			},
 			{
-				"command": "code-for-ibmi.EndJob",
+				"command": "code-for-ibmi.endJob",
 				"title": "End job",
 				"category": "IBM i",
 				"icon": "$(close)"
 			},
 			{
-				"command": "code-for-ibmi.ChgJob",
+				"command": "code-for-ibmi.changeJob",
 				"title": "Change job",
 				"category": "IBM i",
 				"icon": "$(close)"
 			},
 			{
-				"command": "code-for-ibmi.HldJob",
+				"command": "code-for-ibmi.holdJob",
 				"title": "Holdjob",
 				"category": "IBM i",
 				"icon": "$(close)"
 			},
 			{
-				"command": "code-for-ibmi.RlsJob",
+				"command": "code-for-ibmi.releaseJob",
 				"title": "Release job",
 				"category": "IBM i",
 				"icon": "$(close)"
 			},
 			{
-				"command": "code-for-ibmi.HistoryJob",
+				"command": "code-for-ibmi.historyJob",
 				"title": "History job",
 				"category": "IBM i",
 				"icon": "$(close)"
@@ -1650,27 +1650,27 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.EndJob",
+					"command": "code-for-ibmi.endJob",
 					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
 				},
 				{
-					"command": "code-for-ibmi.ChgJob",
+					"command": "code-for-ibmi.changeJob",
 					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
 				},
 				{
-					"command": "code-for-ibmi.HldJob",
+					"command": "code-for-ibmi.holdJob",
 					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
 				},
 				{
-					"command": "code-for-ibmi.RlsJob",
+					"command": "code-for-ibmi.releaseJob",
 					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
 				},
 				{
-					"command": "code-for-ibmi.HistoryJob",
+					"command": "code-for-ibmi.historyJob",
 					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
 				},

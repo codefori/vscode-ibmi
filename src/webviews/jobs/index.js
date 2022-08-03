@@ -169,7 +169,7 @@ class EndjobUI {
 /**
  * Change job
  */
-class ChgjobUI {
+class ChangejobUI {
 
     /**
      * @param {string} jobname
@@ -997,7 +997,7 @@ class ChgjobUI {
 /**
  * Hold job
  */
-class HldjobUI {
+class HoldjobUI {
 
     /**
      * @param {string} jobname
@@ -1104,7 +1104,7 @@ class HldjobUI {
 /**
  * Release Job
  */
-class RlsjobUI {
+class ReleaseJobUI {
 
     /**
      * @param {string} jobname
@@ -1179,4 +1179,4 @@ class RlsjobUI {
 
 }
 
-module.exports = {EndjobUI, ChgjobUI, HldjobUI, RlsjobUI};
+module.exports = {EndjobUI, ChangejobUI, HoldjobUI, ReleaseJobUI};
