@@ -1,6 +1,6 @@
 # Code for IBM i
 
-[GitHub star this repo 🌟](https://github.com/halcyon-tech/vscode-ibmi) &nbsp;and [Sponsor development on GitHub 🤝](https://github.com/sponsors/worksofliam?frequency=recurring&sponsor=worksofliam)
+[GitHub star this repo 🌟](https://github.com/halcyon-tech/vscode-ibmi)
 
 <img src="./icon.png" align="right">
 
