@@ -1,32 +1,71 @@
-# Code for IBM i
+# vscode-ibmi-ts README
 
-[GitHub star this repo 🌟](https://github.com/halcyon-tech/vscode-ibmi)
+This is the README for your extension "vscode-ibmi-ts". After writing up a brief description, we recommend including the following sections.
 
-<img src="./icon.png" align="right">
+## Features
 
-Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Edit and compile all ILE languages, view errors inline, content assist for RPGLE and CL, source date support, and much more. Code for IBM i has hundreds of daily users and over 6000 downloads. We strive on being open-source so we can best support our community.
+Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
 
-* [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) 💻
-* [Watch some tutorials](https://www.youtube.com/playlist?list=PLNl31cqBafCp-ml8WqPeriHWLD1bkg7KL) 📺
-* [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/) 📘
-* [See who's contributed](https://github.com/halcyon-tech/vscode-ibmi/blob/master/CONTRIBUTING.md) 🕶️
-* [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases) 🔎
-* Build from source (see below!) 🔨
-* [Use our IBM i API in your own extension](https://halcyon-tech.github.io/vscode-ibmi/#/pages/api/extending) 🛠
+For example if there is an image subfolder under your extension project workspace:
 
-![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/v/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
-![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/i/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
-![](https://img.shields.io/visual-studio-marketplace/r/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
-![](https://img.shields.io/github/contributors/halcyon-tech/vscode-ibmi?style=flat-square) 
-![](https://img.shields.io/github/issues-pr/halcyon-tech/vscode-ibmi?style=flat-square) 
-![https://github.com/halcyon-tech/vscode-ibmi/issues](https://img.shields.io/github/issues/halcyon-tech/vscode-ibmi?style=flat-square)
+\!\[feature X\]\(images/feature-x.png\)
+
+> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+
+## Requirements
+
+If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+
+## Extension Settings
+
+Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+
+For example:
+
+This extension contributes the following settings:
+
+* `myExtension.enable`: Enable/disable this extension.
+* `myExtension.thing`: Set to `blah` to do something.
+
+## Known Issues
+
+Calling out known issues can help limit users opening duplicate issues against your extension.
+
+## Release Notes
+
+Users appreciate release notes as you update your extension.
+
+### 1.0.0
+
+Initial release of ...
+
+### 1.0.1
+
+Fixed issue #.
+
+### 1.1.0
+
+Added features X, Y, and Z.
 
 ---
 
-### Building from source
+## Following extension guidelines
 
-1. This project requires VS Code and Node.js.
-2. fork & clone repo
-3. `npm i`
-4. 'Run Extension' from vscode debug.
+Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
 
+* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+
+## Working with Markdown
+
+You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+
+* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
+* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
+* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+
+## For more information
+
+* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
+* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+
+**Enjoy!**

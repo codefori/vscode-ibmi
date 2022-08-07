@@ -1,8 +1,5 @@
 {
-	// See https://go.microsoft.com/fwlink/?LinkId=733558
-	// for the documentation about the extensions.json format
-	"recommendations": [
-		"dbaeumer.vscode-eslint",
-		"tobermory.es6-string-html"
-	]
+  // See http://go.microsoft.com/fwlink/?LinkId=827846
+  // for the documentation about the extensions.json format
+  "recommendations": ["dbaeumer.vscode-eslint", "amodio.tsl-problem-matcher"]
 }
