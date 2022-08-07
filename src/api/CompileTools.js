@@ -149,9 +149,20 @@ module.exports = class CompileTools {
           const baseInfo = path.parse(file);
           const parentInfo = path.parse(baseInfo.dir);
 
-          const possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
+          let possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
           if (possibleFiles.length > 0) {
             ileDiagnostics.set(possibleFiles[0], diagnostics);
+          } else {
+            // Look in active text documents...
+            const upperParent = parentInfo.name.toUpperCase();
+            const upperName = baseInfo.name.toUpperCase();
+            possibleFiles = vscode.workspace.textDocuments
+              .filter(doc => doc.uri.scheme !== `git` && doc.uri.fsPath.toUpperCase().includes(`${upperParent}/${upperName}`))
+              .map(doc => doc.uri);
+
+            if (possibleFiles.length > 0) {
+              ileDiagnostics.set(possibleFiles[0], diagnostics);
+            }
           }
         } else {
           if (file.startsWith(`/`))
