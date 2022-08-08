@@ -64,6 +64,29 @@ const rows: Object[] = await vscode.commands.executeCommand(`code-for-ibmi.runQu
 const rows = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, statement);
 ```
 
+### Get members and streamfiles
+
+It is possible for extensions to utilise the file systems provided by Code for IBM i.
+
+`openTextDocument` returns a [`TextDocument`](https://code.visualstudio.com/api/references/vscode-api#TextDocument).
+
+**Getting a member**
+
+```js
+const doc = await vscode.workspace.openTextDocument(vscode.Uri.from({
+  scheme: `member`,
+  path: `/${library}/${file}/${name}.${extension}`
+}));
+```
+
+**Getting a streamfile**
+```js
+const doc = await vscode.workspace.openTextDocument(vscode.Uri.from({
+  scheme: `streamfile`,
+  path: streamfilePath
+}));
+```
+
 ### Right click options
 
 It is possible for your extension to add right click options to:
