@@ -56,7 +56,7 @@ const result = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, 
 
 Code for IBM i has a command that lets you run SQL statements and get a result back.
 
-```ts
+```js
 const rows: Object[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, statement);
 
 // or
