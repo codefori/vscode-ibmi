@@ -180,7 +180,7 @@
 							},
 							"autoClearTempData": {
 								"type": "boolean",
-								"default": false,
+								"default": true,
 								"description": "Automatically delete temporary objects from the temporary library on startup."
 							},
 							"enableSQL": {
