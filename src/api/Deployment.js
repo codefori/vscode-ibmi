@@ -60,7 +60,7 @@ module.exports = class Deployment {
           });
 
           if (chosenTypes) {
-          /** @type {Action[]} */
+            /** @type {Action[]} */
             const newActions = chosenTypes.map(type => localLanguageActions[type]).flat();
 
             const localActionsUri = vscode.Uri.file(path.join(chosenWorkspace.uri.fsPath, `.vscode`, `actions.json`));

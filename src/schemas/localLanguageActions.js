@@ -3,28 +3,28 @@ module.exports = {
   RPGLE: [
     {
       name: `Create RPGLE Program`,
-      command: `CRTBNDRPG PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      command: `CRTBNDRPG PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`RPGLE`]
     },
     {
       name: `Create RPGLE Module`,
-      command: `CRTRPGMOD MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      command: `CRTRPGMOD MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`RPGLE`]
     },
     {
       name: `Create SQLRPGLE Program`,
-      command: `CRTSQLRPGI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD)`,
+      command: `CRTSQLRPGI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) COMPILEOPT('TGTCCSID(*JOB)')`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`SQLRPGLE`]
     },
     {
       name: `Create SQLRPGLE Module`,
-      command: `CRTSQLRPGI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD)`,
+      command: `CRTSQLRPGI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) COMPILEOPT('TGTCCSID(*JOB)')`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`SQLRPGLE`]
@@ -47,14 +47,14 @@ module.exports = {
     },
     {
       name: `Create SQLCOBOL Program`,
-      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD)`,
+      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`SQLCBL`, `SQLCBBLE`]
     },
     {
       name: `Create SQLCOBOL Module`,
-      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD)`,
+      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [`SQLCBL`, `SQLCBBLE`]
@@ -63,7 +63,7 @@ module.exports = {
   C: [
     {
       name: `Create C Program`,
-      command: `CRTBNDC PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) `,
+      command: `CRTBNDC PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [
@@ -72,7 +72,7 @@ module.exports = {
     },
     {
       name: `Create C Module`,
-      command: `CRTCMOD MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      command: `CRTCMOD MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
       deployFirst: true,
       environment: `ile`,
       extensions: [
@@ -83,7 +83,7 @@ module.exports = {
   CPP: [
     {
       "name": `Create CPP Program`,
-      "command": `CRTBNDCPP PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      "command": `CRTBNDCPP PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
       "deployFirst": true,
       "environment": `ile`,
       "extensions": [
@@ -92,7 +92,7 @@ module.exports = {
     },
     {
       "name": `Create CPP Module`,
-      "command": `CRTCPPMOD MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      "command": `CRTCPPMOD MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTCCSID(*JOB)`,
       "deployFirst": true,
       "environment": `ile`,
       "extensions": [
