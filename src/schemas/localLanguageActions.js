@@ -163,5 +163,25 @@ module.exports = {
       environment: `pase`,
       deployFirst: true,
     }
+  ],
+  "ibmi-bob": [
+    {
+      "extensions": [
+        `GLOBAL`
+      ],
+      "name": `Build all`,
+      "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei build`,
+      environment: `pase`,
+      deployFirst: true,
+    },
+    {
+      "extensions": [
+        `GLOBAL`
+      ],
+      "name": `Build current`,
+      "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei compile -f &BASENAME`,
+      environment: `pase`,
+      deployFirst: true,
+    }
   ]
 }
