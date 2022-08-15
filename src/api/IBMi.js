@@ -78,8 +78,7 @@ module.exports = class IBMi {
   }
 
   /**
-   * @param {{name: string, host: string, port: number, username: string, password?: string,
-   *          privateKey?: string, keepaliveInterval?: number}} connectionObject
+   * @param {ConnectionData} connectionObject
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
   async connect(connectionObject) {
@@ -759,7 +758,7 @@ module.exports = class IBMi {
       throw new Error(`Source Type extension is required.`);
     } else {
       result.member = result.basename.substring(0, result.basename.lastIndexOf(`.`));
-      result.extension = result.basename.substring(result.basename.lastIndexOf(`.`) + 1);
+      result.extension = result.basename.substring(result.basename.lastIndexOf(`.`) + 1).trim();
     }
 
     if (!validQsysName.test(result.member)) {

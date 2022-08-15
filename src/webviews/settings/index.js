@@ -118,68 +118,70 @@ module.exports = class SettingsUI {
         field.description = `Enable CL content assist and hover support. After enabled and restarted, Code for IBM i will ask you to install the required tools for the feature to work. This will install programs into your temporary library.`;
         ui.addField(field);
 
-        ui.addField(new Field(`hr`));
+        if (connection.remoteFeatures.tn5250) { 
+          ui.addField(new Field(`hr`));
 
-        const encodings = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
+          const encodings = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
         
-        field = new Field(`select`, `encodingFor5250`, `5250 encoding`);
-        field.description = `The encoding for the 5250 emulator.`;
-        field.items = encodings.map(encoding => {
-          return {
-            selected: config.encodingFor5250 === encoding,
-            value: encoding,
-            description: encoding,
-            text: encoding,
-          };
-        });
-        field.items.push({
-          selected: config.encodingFor5250 === `default`,
-          value: `default`,
-          description: `Default`,
-          text: `Default`,
-        });
-        ui.addField(field);
-
-        const terminalTypes = [
-          { key: `IBM-3179-2`, text: `IBM-3179-2 (24x80 monochrome)` },
-          { key: `IBM-3180-2`, text: `IBM-3180-2 (27x132 monochrome)` },
-          { key: `IBM-3196-A1`, text: `IBM-3196-A1 (24x80 monochrome)` },
-          { key: `IBM-3477-FC`, text: `IBM-3477-FC (27x132 color)` },
-          { key: `IBM-3477-FG`, text: `IBM-3477-FG (27x132 monochrome)` },
-          { key: `IBM-5251-11`, text: `IBM-5251-11 (24x80 monochrome)` },
-          { key: `IBM-5291-1`, text: `IBM-5291-1 (24x80 monochrome)` },
-          { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
-        ];
-
-        field = new Field(`select`, `terminalFor5250`, `5250 Terminal Type`);
-        field.description = `The terminal type for the 5250 emulator.`;
-        field.items = [
-          {
-            selected: config.terminalFor5250 === `default`,
+          field = new Field(`select`, `encodingFor5250`, `5250 encoding`);
+          field.description = `The encoding for the 5250 emulator.`;
+          field.items = encodings.map(encoding => {
+            return {
+              selected: config.encodingFor5250 === encoding,
+              value: encoding,
+              description: encoding,
+              text: encoding,
+            };
+          });
+          field.items.push({
+            selected: config.encodingFor5250 === `default`,
             value: `default`,
             description: `Default`,
             text: `Default`,
-          },
-          ...terminalTypes.map(terminal => {
-            return {
-              selected: config.terminalFor5250 === terminal.key,
-              value: terminal.key,
-              description: terminal.key,
-              text: terminal.text,
-            };
-          })
-        ]
-        ui.addField(field);
+          });
+          ui.addField(field);
+
+          const terminalTypes = [
+            { key: `IBM-3179-2`, text: `IBM-3179-2 (24x80 monochrome)` },
+            { key: `IBM-3180-2`, text: `IBM-3180-2 (27x132 monochrome)` },
+            { key: `IBM-3196-A1`, text: `IBM-3196-A1 (24x80 monochrome)` },
+            { key: `IBM-3477-FC`, text: `IBM-3477-FC (27x132 color)` },
+            { key: `IBM-3477-FG`, text: `IBM-3477-FG (27x132 monochrome)` },
+            { key: `IBM-5251-11`, text: `IBM-5251-11 (24x80 monochrome)` },
+            { key: `IBM-5291-1`, text: `IBM-5291-1 (24x80 monochrome)` },
+            { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
+          ];
+
+          field = new Field(`select`, `terminalFor5250`, `5250 Terminal Type`);
+          field.description = `The terminal type for the 5250 emulator.`;
+          field.items = [
+            {
+              selected: config.terminalFor5250 === `default`,
+              value: `default`,
+              description: `Default`,
+              text: `Default`,
+            },
+            ...terminalTypes.map(terminal => {
+              return {
+                selected: config.terminalFor5250 === terminal.key,
+                value: terminal.key,
+                description: terminal.key,
+                text: terminal.text,
+              };
+            })
+          ]
+          ui.addField(field);
     
-        field = new Field(`checkbox`, `setDeviceNameFor5250`, `Set Device Name for 5250`);
-        field.default = (config.setDeviceNameFor5250 ? `checked` : ``);
-        field.description = `When enabled, the user will be able to enter a device name before the terminal starts.`;
-        ui.addField(field);
+          field = new Field(`checkbox`, `setDeviceNameFor5250`, `Set Device Name for 5250`);
+          field.default = (config.setDeviceNameFor5250 ? `checked` : ``);
+          field.description = `When enabled, the user will be able to enter a device name before the terminal starts.`;
+          ui.addField(field);
     
-        field = new Field(`input`, `connectringStringFor5250`, `Connection string for 5250`);
-        field.default = config.connectringStringFor5250;
-        field.description = `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`;
-        ui.addField(field);
+          field = new Field(`input`, `connectringStringFor5250`, `Connection string for 5250`);
+          field.default = config.connectringStringFor5250;
+          field.description = `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`;
+          ui.addField(field);
+        }
 
         ui.addField(new Field(`hr`));
     

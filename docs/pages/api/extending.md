@@ -2,15 +2,16 @@ It is possible to write VS Code extensions that are based on Code for IBM i. Tha
 
 For example, you might be a vendor that produces lists or HTML that you'd like to be accessible from within Visual Studio Code.
 
-
-## Examples
+# Examples
 
 See the following code bases for large examples of extensions that use Code for IBM i:
 
 * [VS Code extension to manage IBM i IWS services](https://github.com/halcyon-tech/vscode-ibmi-iws)
 * [Git for IBM i extension](https://github.com/halcyon-tech/git-client-ibmi)
 
-### Running commands with the user library list
+# Command APIs
+
+## Running commands with the user library list
 
 Code for IBM i ships a command that can be used by an extension to execute a remote command on the IBM i: `code-for-ibmi.runCommand`.
 
@@ -53,11 +54,11 @@ const result = await vscode.commands.executeCommand(`code-for-ibmi.runCommand`, 
 });
 ```
 
-### Running SQL queries
+## Running SQL queries
 
 Code for IBM i has a command that lets you run SQL statements and get a result back.
 
-```ts
+```js
 const rows: Object[] = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, statement);
 
 // or
@@ -65,7 +66,67 @@ const rows: Object[] = await vscode.commands.executeCommand(`code-for-ibmi.runQu
 const rows = await vscode.commands.executeCommand(`code-for-ibmi.runQuery`, statement);
 ```
 
-### Right click options
+## Get members and streamfiles
+
+It is possible for extensions to utilise the file systems provided by Code for IBM i.
+
+`openTextDocument` returns a [`TextDocument`](https://code.visualstudio.com/api/references/vscode-api#TextDocument).
+
+**Getting a member**
+
+```js
+const doc = await vscode.workspace.openTextDocument(vscode.Uri.from({
+  scheme: `member`,
+  path: `/${library}/${file}/${name}.${extension}`
+}));
+```
+
+**Getting a streamfile**
+```js
+const doc = await vscode.workspace.openTextDocument(vscode.Uri.from({
+  scheme: `streamfile`,
+  path: streamfilePath
+}));
+```
+
+## Connect to a system
+
+It is possible for your API to automate connecting to an IBM i instead of the user using the connection view.
+
+```js
+const connected: boolean = await vscode.commands.executeCommand(`code-for-ibmi.connectDirect`, ConnectionData);
+
+if (connected) {
+  // do a thing.
+} else {
+  // something went wrong.
+}
+```
+
+See `global.d.ts` for the `ConnectionData` interface.
+
+## Contributing Actions
+
+It is possible for the user to define their own Actions with Code for IBM i, but with this API your extension will be able to contribute Actions when your extension starts up. For example, if you were a change management vendor and you wanted to contribute an Action which calls a command on the system, you can use the API to add that.
+
+The `code-for-ibmi.registerActions` takes [`Action[]`](../../global.d.ts) as the parameter.
+
+```js
+vscode.commands.executeCommand(`code-for-ibmi.registerActions`, [
+  {
+    "type": "member",
+    "extensions": [
+      "GLOBAL"
+    ],
+    "name": "Check in member",
+    "command": "CHKINM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR)"
+  }
+]);
+```
+
+# Specifics
+
+## Right click options
 
 It is possible for your extension to add right click options to:
 
@@ -147,7 +208,32 @@ This allows your extension to provide commands for specific types of objects or 
 [Read more about the when clause on the VS Code docs website.](https://code.visualstudio.com/api/references/when-clause-contexts)
 
 
-### Imports
+Code for IBM i provides a context so you can control when a command, view, etc, can work. `code-for-ibmi.connected` can and should be used if your view depends on a connection. For example
+
+This will show a welcome view when there is no connection:
+
+```json
+		"viewsWelcome": [{
+			"view": "git-client-ibmi.commits",
+			"contents": "No connection found. Please connect to an IBM i.",
+			"when": "code-for-ibmi:connected !== true"
+		}],
+```
+
+This will show a view when there is a connection:
+
+```json
+    "views": {
+      "scm": [{
+        "id": "git-client-ibmi.commits",
+        "name": "Commits",
+        "contextualTitle": "IBM i",
+        "when": "code-for-ibmi:connected == true"
+      }]
+    }
+```
+
+# Imports
 
 ```
 const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibmi`).exports;
@@ -157,7 +243,8 @@ const { instance } = vscode.extensions.getExtension(`halcyontechltd.code-for-ibm
 
 * `getConnection()`: [`IBMi`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMi.js)`|undefined` to get the current connection. Will return `undefined` when the current workspace is not connected to a remote system.
 * `getContent(): `[`IBMiContent`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/IBMiContent.js) to work with content on the current connection
-  * This API should only be used to download and upload contents of streamfiles and members.
+  * This API should only be used to upload contents of streamfiles and members.
+
 * `getConfig(): `[`Configuration`](https://github.com/halcyon-tech/vscode-ibmi/blob/master/src/api/Configuration.js) to get/set configuration for the current connection
 
 ### Temporary library
@@ -258,23 +345,4 @@ This will show a view when there is a connection:
         "when": "code-for-ibmi:connected == true"
       }]
     }
-```
-
-### Contributing Actions
-
-It is possible for the user to define their own Actions with Code for IBM i, but with this API your extension will be able to contribute Actions when your extension starts up. For example, if you were a change management vendor and you wanted to contribute an Action which calls a command on the system, you can use the API to add that.
-
-The `code-for-ibmi.registerActions` takes [`Action[]`](../../global.d.ts) as the parameter.
-
-```js
-vscode.commands.executeCommand(`code-for-ibmi.registerActions`, [
-  {
-    "type": "member",
-    "extensions": [
-      "GLOBAL"
-    ],
-    "name": "Check in member",
-    "command": "CHKINM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR)"
-  }
-]);
 ```

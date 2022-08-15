@@ -53,7 +53,6 @@ module.exports = class Login {
           try {
             const connected = await connection.connect(data);
             if (connected.success) {
-    
               instance.setConnection(connection);
               instance.loadAllofExtension(context);
     
@@ -71,9 +70,16 @@ module.exports = class Login {
 
                 await Configuration.setGlobal(`connections`, existingConnections);
 
-                vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selection) => {
-                  if (selection === `Open configuration`) {
+                vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
+                  if (selectionA === `Open configuration`) {
                     vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+
+                  } else {
+                    vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
+                      if (selectionB === `Open configuration`) {
+                        vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                      }
+                    });
                   }
                 });
               } else {

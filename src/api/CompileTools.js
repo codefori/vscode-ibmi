@@ -168,9 +168,20 @@ module.exports = class CompileTools {
           const baseInfo = path.parse(file);
           const parentInfo = path.parse(baseInfo.dir);
 
-          const possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
+          let possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
           if (possibleFiles.length > 0) {
             ileDiagnostics.set(possibleFiles[0], diagnostics);
+          } else {
+            // Look in active text documents...
+            const upperParent = parentInfo.name.toUpperCase();
+            const upperName = baseInfo.name.toUpperCase();
+            possibleFiles = vscode.workspace.textDocuments
+              .filter(doc => doc.uri.scheme !== `git` && doc.uri.fsPath.toUpperCase().includes(`${upperParent}/${upperName}`))
+              .map(doc => doc.uri);
+
+            if (possibleFiles.length > 0) {
+              ileDiagnostics.set(possibleFiles[0], diagnostics);
+            }
           }
         } else {
           if (file.startsWith(`/`))
@@ -219,22 +230,30 @@ module.exports = class CompileTools {
     /** @type {Configuration} */
     const config = instance.getConfig();
 
-    const allActions = Configuration.get(`actions`);
-
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
-    const fragement = uri.fragment;
+    const fragement = uri.fragment.toUpperCase();
 
-    for (let action of allActions) {
-      if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
-    }
+    const allActions = [];
 
-    /** @type {Action[]} */
-    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
+    // First we grab the predefined Actions in the VS Code settings
+    const allDefinedActions = Configuration.get(`actions`);
+    allActions.push(...allDefinedActions);
 
+    // Then, if we're being called from a local file
+    // we fetch the Actions defined from the workspace.
     if (uri.scheme === `file`) {
       const localActions = await this.getLocalActions();
-      availableActions.push(...localActions);
+      allActions.push(...localActions);
     }
+
+    // We make sure all extensions are uppercase
+    allActions.forEach(action => {
+      if (action.extensions) action.extensions = action.extensions.map(ext => ext.toUpperCase());
+    });
+
+    // Then we get all the available Actions for the current context
+    /** @type {Action[]} */
+    const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
       const options = availableActions.map(item => ({

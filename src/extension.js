@@ -9,6 +9,7 @@ let instance = require(`./Instance`);
 let {CustomUI, Field} = require(`./api/CustomUI`);
 
 const connectionBrowser = require(`./views/connectionBrowser`);
+const IBMi = require("./api/IBMi");
 
 /**
  * @param {vscode.ExtensionContext} context
@@ -26,10 +27,29 @@ function activate(context) {
     vscode.window.registerTreeDataProvider(
       `connectionBrowser`,
       new connectionBrowser(context)
-    )
-  );
+    ),
 
-  context.subscriptions.push(
+    vscode.commands.registerCommand(`code-for-ibmi.connectDirect`, 
+      /**
+       * @param {ConnectionData} connectionData 
+       * @returns {Promise<Boolean>}
+       */
+      async (connectionData) => {
+        const existingConnection = instance.getConnection();
+
+        if (existingConnection) return false;
+
+        const connection = new IBMi();
+        const connected = await connection.connect(connectionData);
+        if (connected.success) {
+          instance.setConnection(connection);
+          instance.loadAllofExtension(context);
+        }
+
+        return connected.success;
+      }
+    ),
+
     vscode.workspace.onDidChangeConfiguration(async event => {
       const connection = instance.getConnection();
       if (connection) {

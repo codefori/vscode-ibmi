@@ -22,13 +22,19 @@ module.exports = class helpView {
       `Issue text goes here.`,
       ``,
       `* QCCSID: ${connection.qccsid}`,
-      `* Features enabled:`,
+      `* Features:`,
       ...Object.keys(connection.remoteFeatures).map(
         (feature) => `   * ${feature}: ${connection.remoteFeatures[feature] !== undefined}`
       ),
       `* SQL enabled: ${config.enableSQL}`,
       `* Source dates enabled: ${config.enableSourceDates}`,
       ``,
+      `Variants`,
+      `\`\`\`json`,
+      JSON.stringify(connection.variantChars, null, 2),
+      `\`\`\``,
+      ``,
+      `Errors:`,
       `\`\`\`json`,
       JSON.stringify(connection.lastErrors, null, 2),
       `\`\`\``,
@@ -36,11 +42,9 @@ module.exports = class helpView {
 
     const items = [
       new HelpItem(`book`, `Get started`, `https://halcyon-tech.github.io/vscode-ibmi/#/`),
-      new HelpItem(`star`, `Become a Patron`, `https://github.com/sponsors/worksofliam`),
       new HelpItem(`output`, `Open official Forum`, `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
       new HelpItem(`eye`, `Review Issues`, `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
       new HelpItem(`bug`, `Report an Issue`, `https://github.com/halcyon-tech/vscode-ibmi/issues/new?body=${encodeURIComponent(issueUrl)}`),
-      new HelpItem(`globe`, `Get Premium Support`, `https://github.com/sponsors/worksofliam`)
     ];
 
     return items;
