@@ -1007,6 +1007,11 @@
 				"icon": "$(cloud-upload)"
 			},
 			{
+				"command": "code-for-ibmi.launchActionsSetup",
+				"title": "Launch Actions Setup",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.addIFSShortcut",
 				"title": "Add IFS shortcut",
 				"category": "IBM i",

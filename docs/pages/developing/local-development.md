@@ -5,8 +5,10 @@ It is possible for the user to develop in a local workspace folder and deploy+co
 If the user opens a Workspace before connecting to an IBM i:
 
 1. A new information messgae will show the user what their current library is,
-2. If this is the first time connecting with this workspace, it will prompt the user to set a default Deploy directory
-3. a new right-click option will appear on IFS directories and object filters to deploy to that directory or library
+2. If this is the first time connecting with this workspace, it will 
+   * prompt the user to set a default Deploy directory, 
+   * if no `actions.json` file is found will ask the user if they'd like to create a default
+3. a new right-click option will appear on IFS directories to deploy to that directory
 4. a 'Deploy' button will appear on the status bar
 
 ## Guides
@@ -46,7 +48,7 @@ Here is an example `actions.json` setup, which requires deployment to happen bef
 [
   {
     "name": "Deploy & build 🔨",
-    "command": "/QOpenSys/pkgs/bin/bash -c \"error=*EVENTF lib1=&CURLIB makei -z &NAME.&EXT\"",
+    "command": "error=*EVENTF lib1=&CURLIB makei -z &NAME.&EXT",
     "extensions": [
       "GLOBAL"
     ],

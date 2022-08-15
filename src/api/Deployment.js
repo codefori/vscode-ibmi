@@ -6,6 +6,9 @@ const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
 const IBMiContent = require(`./IBMiContent`);
+const CompileTools = require(`./CompileTools`);
+
+const localLanguageActions = require(`../schemas/localLanguageActions`);
 
 const ignore = require(`ignore`).default;
 
@@ -45,6 +48,38 @@ module.exports = class Deployment {
     }
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.launchActionsSetup`, async () => {
+        const chosenWorkspace = await module.exports.getWorkspaceFolder();
+
+        if (chosenWorkspace) {
+          const types = Object.keys(localLanguageActions);
+        
+          const chosenTypes = await vscode.window.showQuickPick(types, {
+            canPickMany: true,
+            title: `Select available pre-defined actions`
+          });
+
+          if (chosenTypes) {
+            /** @type {Action[]} */
+            const newActions = chosenTypes.map(type => localLanguageActions[type]).flat();
+
+            const localActionsUri = vscode.Uri.file(path.join(chosenWorkspace.uri.fsPath, `.vscode`, `actions.json`));
+
+            try {
+              await vscode.workspace.fs.writeFile(
+                localActionsUri, 
+                Buffer.from(JSON.stringify(newActions, null, 2), `utf-8`)
+              );
+
+              vscode.workspace.openTextDocument(localActionsUri).then(doc => vscode.window.showTextDocument(doc));
+            } catch (e) {
+              console.log(e);
+              vscode.window.showErrorMessage(`Unable to create actions.json file.`);
+            }
+          }
+        }
+      }),
+
       /**
        * @param {number} document
        * @returns {Promise<{false|{workspace: number}}>}
@@ -342,6 +377,18 @@ module.exports = class Deployment {
           }
         });
       }
+
+      CompileTools.getLocalActions().then(result => {
+        if (result.length === 0) {
+          vscode.window.showInformationMessage(
+            `There are no local Actions defined for this project.`,
+            `Run Setup`
+          ).then(result => {
+            if (result === `Run Setup`)
+              vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
+          });
+        }
+      })
 
       vscode.window.showInformationMessage(
         `Current library is set to ${config.currentLibrary}.`,
