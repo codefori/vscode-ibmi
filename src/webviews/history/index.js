@@ -30,7 +30,6 @@ function getWebviewContent(historyLog) {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Job log</title>
         <style type="text/css">
-        /* DivTable.com */
         .divTable {
           display: table;
           width: 100%;
@@ -47,24 +46,16 @@ function getWebviewContent(historyLog) {
         }
 
         .divTableHead {
-          border: 0px solid #999999;
           display: table-cell;
           padding: 3px 10px;
           text-align: center;
         }
     
         .divTableHeading {
-          background-color: dimgray;
           display: table-header-group;
           font-weight: bold;
         }
-    
-        .divTableFoot {
-          background-color: #EEE;
-          display: table-footer-group;
-          font-weight: bold;
-        }
-    
+        
         .divTableBody {
           display: table-row-group;
         }

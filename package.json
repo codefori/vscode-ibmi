@@ -170,7 +170,7 @@
 										},
 										"profileFilter": {
 											"type": "string",
-											"description": "Current user profil",
+											"description": "Current user profile",
 											"default": "*"
 										},
 										"subsystemFilter": {
@@ -1181,7 +1181,7 @@
 			},
 			{
 				"command": "code-for-ibmi.holdJob",
-				"title": "Holdjob",
+				"title": "Hold job",
 				"category": "IBM i",
 				"icon": "$(close)"
 			},
@@ -1673,11 +1673,6 @@
 					"command": "code-for-ibmi.historyJob",
 					"when": "viewItem == activeJob || viewItem == myActiveJob",
 					"group": "1_activeJobList@1"
-				},
-				{
-					"command": "code-for-ibmi.createJobFilter",
-					"group": "navigation",
-					"when": "view == jobBrowser"
 				},
 				{
 					"command": "code-for-ibmi.maintainJobFilter",
