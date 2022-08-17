@@ -1,7 +1,6 @@
 
 const vscode = require(`vscode`);
 
-// const EndjobUI = require(`../webviews/endjob`);
 const { EndjobUI, ChangejobUI, HoldjobUI, ReleaseJobUI } = require(`../webviews/jobs`);
 const HistoryJobUI = require(`../webviews/history`);
 
@@ -425,25 +424,6 @@ module.exports = class jobBrowserProvider {
             }
           }
           break;
-
-        // case `activeJob`:
-
-        //   if (connection) {
-        //     try {
-        //       /** @type {subsystem} */ //@ts-ignore We know what is it based on contextValue.
-        //       const subsystem = element;
-        //       const jobs = await content.runSQL([`SELECT JOB_NAME "jobName", JOB_NAME_SHORT "jobNameShort", JOB_USER "jobUser", JOB_NUMBER "jobNumber" FROM TABLE ( QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE', SUBSYSTEM_LIST_FILTER => '${subsystem.path}')) A
-        //       WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR')`].join(` `));
-        //       items = jobs.map(job => new ActiveJob(job));
-
-        //     } catch (e) {
-        //       console.log(e);
-        //       item = new vscode.TreeItem(`Error loading jobs.`);
-        //       vscode.window.showErrorMessage(e);
-        //       items = [item];
-        //     }
-        //   }
-        //   break;
 
       }
     } else {
