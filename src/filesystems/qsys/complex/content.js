@@ -19,14 +19,16 @@ module.exports = class IBMiContent {
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} mbr 
+   * @param {string} ext
    */
-  static async downloadMemberContentWithDates(asp, lib, spf, mbr) {
+  static async downloadMemberContentWithDates(asp, lib, spf, mbr, ext) {
     const connection = instance.getConnection();
     const content = instance.getContent();
 
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
+    ext = ext.toUpperCase();
 
     const tempLib = connection.config.tempLibrary;
     const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
@@ -57,9 +59,10 @@ module.exports = class IBMiContent {
     }
   
     const sourceDates = rows.map(row => String(row.SRCDAT).padStart(6, `0`));
+    const joinChar = (ext===`INB`) ? `` : `\n`;
     const body = rows
       .map(row => row.SRCDTA)
-      .join(`\n`);
+      .join(joinChar);
 
     allSourceDates[alias] = sourceDates;
 
@@ -73,9 +76,10 @@ module.exports = class IBMiContent {
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} mbr 
+   * @param {string} ext 
    * @param {string} body 
    */
-  static async uploadMemberContentWithDates(asp, lib, spf, mbr, body) {
+  static async uploadMemberContentWithDates(asp, lib, spf, mbr, ext, body) {
     const connection = instance.getConnection();
     const setccsid = connection.remoteFeatures.setccsid;
 
@@ -88,8 +92,24 @@ module.exports = class IBMiContent {
     const tempRmt = connection.getTempRemote(lib + spf + mbr);
     const tmpobj = await tmpFile();
 
-    const sourceData = body.split(`\n`);
+    let sourceData = body.split(`\n`);
     const recordLength = recordLengths[alias] || DEFAULT_RECORD_LENGTH;
+
+    // Split JSON documents at record length. IBM i Notebooks support.
+    ext = ext.toUpperCase();
+    if (sourceData.length === 1 && ext === `INB`) {
+      let sourceJson = ``;
+      try {
+        sourceJson = JSON.parse(sourceData[0]);
+      } catch(e) {
+        // Invalid JSON string
+      }
+
+      if (sourceJson !== ``) {
+        const re = new RegExp(`.{1,${recordLength}}`,`g`);
+        sourceData = sourceData[0].match(re);
+      }
+    }
 
     const decimalSequence = sourceData.length >= 10000;
 

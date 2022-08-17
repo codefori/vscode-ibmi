@@ -18,9 +18,9 @@ module.exports = class ComplexQsysFs {
    */
   async readFile(uri) {
     const connection = instance.getConnection();
-    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
+    const {asp, library, file, member, extension} = connection.parserMemberPath(uri.path);
 
-    const memberContent = await contentApi.downloadMemberContentWithDates(asp, library, file, member);
+    const memberContent = await contentApi.downloadMemberContentWithDates(asp, library, file, member, extension);
 
     return new Uint8Array(Buffer.from(memberContent, `utf8`));
   }
@@ -40,9 +40,9 @@ module.exports = class ComplexQsysFs {
    */
   writeFile(uri, content, options) {
     const connection = instance.getConnection();
-    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
+    const {asp, library, file, member, extension} = connection.parserMemberPath(uri.path);
 
-    return contentApi.uploadMemberContentWithDates(asp, library, file, member, content.toString(`utf8`));
+    return contentApi.uploadMemberContentWithDates(asp, library, file, member, extension, content.toString(`utf8`));
   }
 
   /**
