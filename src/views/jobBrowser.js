@@ -1,7 +1,7 @@
 
 const vscode = require(`vscode`);
 
-const { EndjobUI, ChangejobUI, HoldjobUI, ReleaseJobUI } = require(`../webviews/jobs`);
+const { EndjobUI, ChangejobUI, HoldjobUI, ReleaseJobUI, PropertiesJobUI } = require(`../webviews/jobs`);
 const HistoryJobUI = require(`../webviews/history`);
 
 const FiltersUI = require(`../webviews/jobs/filters`);
@@ -75,7 +75,6 @@ module.exports = class jobBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.historyJob`, async (node) => {
         if (node) {
           const content = instance.getContent();
-          const connection = instance.getConnection();
           let items = [];
 
           const histories = await content.runSQL([`select message_timestamp "timestamp", ifnull(message_id, '') "messageId", severity "severity", trim(message_text) "texte" from table(qsys2.joblog_info('${node.path.jobName}')) a order by ordinal_position desc`].join(` `));
@@ -86,6 +85,37 @@ module.exports = class jobBrowserProvider {
 
         }
         this.refresh();
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.propertiesJob`, async (node) => {
+        if (node) {
+          const content = instance.getContent();
+          let items = [];
+
+          const properties = await content.runSQL([`SELECT IFNULL(x.job_name, ''), `
+            + ` IFNULL(x.job_status, '') "jobStatus",`
+            + ` IFNULL(x.job_user, '') "currentUser",`
+            + ` IFNULL(x.job_type_enhanced, '') "typeEnhanced",`
+            + ` IFNULL(x.job_entered_system_time, '0001-01-01 00:00:00') "enteredSystemTime",`
+            + ` IFNULL(x.job_active_time, '0001-01-01 00:00:00') "activeTime",`
+            + ` x.job_description_library CONCAT '/' CONCAT x.job_description "jobDescription",`
+            + ` IFNULL(x.submitter_job_name, '') "submitterJobName",`
+            + ` x.output_queue_library concat '/' concat x.output_queue_name "outputQueue",`
+            + ` ifnull(x.date_format, '') "dateFormat",`
+            + ` ifnull(x.date_separator, '') "dateSeparator",`
+            + ` ifnull(x.time_separator, '') "timeSeparator",`
+            + ` ifnull(x.decimal_format, '') "decimalFormat",`
+            + ` ifnull(x.language_id, '') "languageID",`
+            + ` ifnull(x.country_id, '') "countryID",`
+            + ` ifnull(x.sort_sequence_name, '') "sortSequence",`
+            + ` x.ccsid "ccsid"`
+            + ` FROM TABLE (QSYS2.JOB_INFO()) X`
+            + ` where x.job_name = '${node.path.jobName}' LIMIT 1`].join(` `));
+
+          items = properties.map(propertie => new PropertiesLog(propertie));
+
+          await PropertiesJobUI.init(items[0]);
+
+        }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.changeJob`, async (node) => {
         if (node) {
@@ -364,7 +394,7 @@ module.exports = class jobBrowserProvider {
 
             } catch (e) {
               console.log(e);
-              item = new vscode.TreeItem(`Error loading my jobs.`);
+              item = new vscode.TreeItem(`Error loading jobs.`);
               vscode.window.showErrorMessage(e);
               items = [item];
             }
@@ -418,7 +448,7 @@ module.exports = class jobBrowserProvider {
 
             } catch (e) {
               console.log(e);
-              item = new vscode.TreeItem(`Error loading my jobs.`);
+              item = new vscode.TreeItem(`Error loading jobs.`);
               vscode.window.showErrorMessage(e);
               items = [item];
             }
@@ -519,5 +549,29 @@ class JobLog {
     this.messageId = jobLog.messageId;
     this.severity = jobLog.severity;
     this.texte = jobLog.texte;
+  }
+}
+
+class PropertiesLog {
+  /**
+   * @param {{jobStatus: string, currentUser: string, typeEnhanced: string, enteredSystemTime: string, activeTime: string, jobDescription: string, submitterJobName: string, outputQueue: string, dateFormat: string, dateSeparator: string, timeSeparator: string, decimalFormat: string, languageID: string, countryID: string, sortSequence: string, ccsid: number}} propertiesLog
+   */
+  constructor(propertiesLog) {
+    this.jobStatus = propertiesLog.jobStatus;
+    this.currentUser = propertiesLog.currentUser;
+    this.typeEnhanced = propertiesLog.typeEnhanced;
+    this.enteredSystemTime = propertiesLog.enteredSystemTime;
+    this.activeTime = propertiesLog.activeTime;
+    this.jobDescription = propertiesLog.jobDescription;
+    this.submitterJobName = propertiesLog.submitterJobName;
+    this.outputQueue = propertiesLog.outputQueue;
+    this.dateFormat = propertiesLog.dateFormat;
+    this.dateSeparator = propertiesLog.dateSeparator;
+    this.timeSeparator = propertiesLog.timeSeparator;
+    this.decimalFormat = propertiesLog.decimalFormat;
+    this.languageID = propertiesLog.languageID;
+    this.countryID = propertiesLog.countryID;
+    this.sortSequence = propertiesLog.sortSequence;
+    this.ccsid = propertiesLog.ccsid;
   }
 }

@@ -1149,4 +1149,121 @@ class ReleaseJobUI {
 
 }
 
-module.exports = {EndjobUI, ChangejobUI, HoldjobUI, ReleaseJobUI};
+/**
+ * Properties Job
+ */
+class PropertiesJobUI {
+
+    /**
+     * @param {{jobStatus: string, currentUser: string, typeEnhanced: string, enteredSystemTime: string, activeTime: string, jobDescription: string, submitterJobName: string, outputQueue: string, dateFormat: string, dateSeparator: string, timeSeparator: string, decimalFormat: string, languageID: string, countryID: string, sortSequence: string, ccsid: number}} propertiesLog
+     */
+    static async init(propertiesLog) {
+        let ui = new CustomUI();
+
+        if (propertiesLog) {
+
+            let field;
+
+            field = new Field(`paragraph`, `description`, `<h1>Job properties</h1>`);
+            ui.addField(field);
+
+            field = new Field(`input`, `jobStatus`, `Status`);
+            field.default = propertiesLog.jobStatus;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `jobuser`, `Current user`);
+            field.default = propertiesLog.currentUser;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `typeEnhanced`, `Type enhanced`);
+            field.default = propertiesLog.typeEnhanced;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `enteredSystemTime`, `Entered in the system`);
+            field.default = propertiesLog.enteredSystemTime;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `activeTime`, `Active time`);
+            field.default = propertiesLog.activeTime;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `jobDescription`, `Job description`);
+            field.default = propertiesLog.jobDescription;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `submitterJobName`, `Submitter job name`);
+            field.default = propertiesLog.submitterJobName;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `outputQueue`, `Output queue`);
+            field.default = propertiesLog.outputQueue;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `dateFormat`, `Date format`);
+            field.default = propertiesLog.dateFormat;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `dateSeparator`, `Date separator`);
+            field.default = propertiesLog.dateSeparator;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `timeSeparator`, `Time separator`);
+            field.default = propertiesLog.timeSeparator;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `decimalFormat`, `Decimal format`);
+            field.default = propertiesLog.decimalFormat;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `languageID`, `Language ID`);
+            field.default = propertiesLog.languageID;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `countryID`, `Country ID`);
+            field.default = propertiesLog.countryID;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `sortSequence`, `Sort sequence`);
+            field.default = propertiesLog.sortSequence;
+            field.readonly = true;
+            ui.addField(field);
+
+            field = new Field(`input`, `ccsid`, `CCSID`);
+            field.default = propertiesLog.ccsid.toString();
+            field.readonly = true;
+            ui.addField(field);
+
+            // field = new Field(`submit`, `save`, `Release Job`);
+            // ui.addField(field);
+
+        } else {
+            // @TODO: Do something
+        }
+
+        let { panel, data } = await ui.loadPage(`Job properties`);
+
+        if (data) {
+            panel.dispose();
+            return data;
+        } else {
+            return;
+        }
+    }
+
+}
+
+module.exports = {EndjobUI, ChangejobUI, HoldjobUI, ReleaseJobUI, PropertiesJobUI};
