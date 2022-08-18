@@ -339,7 +339,7 @@ module.exports = class CompileTools {
             if (currentWorkspace) {
               baseDir = currentWorkspace.uri.fsPath;
               
-              relativePath = path.relative(baseDir, uri.fsPath);
+              relativePath = path.posix.relative(baseDir, uri.fsPath).split(path.sep).join(path.posix.sep);
               command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
   
               // We need to make sure the remote path is posix
@@ -349,7 +349,7 @@ module.exports = class CompileTools {
             break;
 
           case `streamfile`:
-            relativePath = path.relative(config.homeDirectory, uri.fsPath);
+            relativePath = path.posix.relative(config.homeDirectory, uri.fsPath).split(path.sep).join(path.posix.sep);
             command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
 
             const fullName = uri.path;
