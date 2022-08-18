@@ -15,7 +15,11 @@ If the user opens a Workspace before connecting to an IBM i:
 * A [video tutorial on YouTube](https://www.youtube.com/watch?v=XuiGyWptgDA&t=425s), showing the setup from scratch.
 * Easily cloning from [Azure DevOps](./azure.md).
 
-## 1. Setting the deploy location
+## 1. Opening a Workspace Folder
+
+Opening a folder in Visual Studio Code adds that folder to that Workspace. You need at least one folder open in the Visual Studio Code workspace for local development.
+
+## 2. Setting the deploy location
 
 In the IFS Browser, the user can right-click on any directory and select the 'Deploy Workspace to location' option.  In the Object Browser, the user can right-click on any filter and select the 'Deploy Workspace to location' option. 
 
@@ -25,7 +29,7 @@ The user can change the deploy kicatuib at any by using the same right-click opt
 
 When the user has used the right-click option, they will be asked if they want to run the deploy then.
 
-## 2. The Deploy button / Running the deployment process
+## 3. The Deploy button / Running the deployment process
 
 Using the 'Deploy' button will start the deployment process. For the deployment process to run, VS Code needs to know which folder/library to deploy to and will fail if it has not been setup correctly. If the workspace has more than one folder, the user will have to select which folder they want to deploy.
 
@@ -37,7 +41,7 @@ There are three options for deployment:
 
 The user can also defined Actions that are for the 'file' (local) type to run the deploy before running the Action.
 
-## 3. Workspace Actions (deploy & build)
+## 4. Workspace Actions (deploy & build)
 
 Similar to other repository settings, users can now store Actions as part of the Workspace. Users can now create `.vscode/actions.json` inside of your Workspace, and can contain Actions that are specific to that Workspace. That configuration file should also be checked into git for that application.
 
