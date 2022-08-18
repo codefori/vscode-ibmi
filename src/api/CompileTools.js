@@ -190,6 +190,22 @@ module.exports = class CompileTools {
     string = string.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
     string = string.replace(new RegExp(`&HOME`, `g`), config.homeDirectory);
 
+    //We have to reverse it because `liblist -a` adds the next item to the top always 
+    let libl = config.libraryList.slice(0).reverse();
+
+    libl = libl.map(library => {
+      //We use this for special variables in the libl
+      switch (library) {
+      case `&BUILDLIB`:
+      case `&CURLIB`: 
+        return config.currentLibrary;
+      default: return library;
+      }
+    });
+
+    string = string.replace(new RegExp(`&LIBLC`, `g`), libl.join(`,`));
+    string = string.replace(new RegExp(`&LIBLS`, `g`), libl.join(` `));
+
     for (const variable of config.customVariables) {
       string = string.replace(new RegExp(`&${variable.name}`, `g`), variable.value);
     }
@@ -530,8 +546,9 @@ module.exports = class CompileTools {
     libl = libl.map(library => {
       //We use this for special variables in the libl
       switch (library) {
-      case `&BUILDLIB`: return config.currentLibrary;
-      case `&CURLIB`: return config.currentLibrary;
+      case `&BUILDLIB`:
+      case `&CURLIB`: 
+        return config.currentLibrary;
       default: return library;
       }
     });
