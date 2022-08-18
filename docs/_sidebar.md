@@ -2,7 +2,9 @@
    - [Login](pages/login.md)
 - Developing
    - [Editing and compiling](pages/developing/editing-compiling.md)
-   - [Local development](pages/developing/local-development.md)
+   - Local Development
+      - [Getting started](pages/developing/local/getting-started.md)
+      - [Azure DevOps](pages/developing/local/azure.md)
    - [Actions](pages/developing/actions/index.md)
       - [Execution](pages/developing/actions/execution.md)
       - [Custom Variables](pages/developing/actions/custom-vars.md)

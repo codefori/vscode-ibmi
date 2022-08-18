@@ -1,5 +1,3 @@
-# Workspaces & Deployment (local development)
-
 It is possible for the user to develop in a local workspace folder and deploy+compile on IBM i.
 
 If the user opens a Workspace before connecting to an IBM i:
@@ -15,6 +13,7 @@ If the user opens a Workspace before connecting to an IBM i:
 
 * This step-by-step guide [in the rpg-git-book](https://worksofliam.github.io/rpg-git-book/7-tooling-vscode.html).
 * A [video tutorial on YouTube](https://www.youtube.com/watch?v=XuiGyWptgDA&t=425s), showing the setup from scratch.
+* Easily cloning from [Azure DevOps](./azure.md).
 
 ## 1. Setting the deploy location
 
@@ -41,6 +40,10 @@ The user can also defined Actions that are for the 'file' (local) type to run th
 ## 3. Workspace Actions (deploy & build)
 
 Similar to other repository settings, users can now store Actions as part of the Workspace. Users can now create `.vscode/actions.json` inside of your Workspace, and can contain Actions that are specific to that Workspace. That configuration file should also be checked into git for that application.
+
+There is a tool that can generate an initial `actions.json` file for you. After connecting to a system, open the command palette (F1) and search for 'Launch Actions Setup'. This shows a multi-select window where the user can pick which technologies they're using. Based on the selection, an `actions.json` will be created.
+
+![](../../assets/actions_tool.png)
 
 Here is an example `actions.json` setup, which requires deployment to happen before triggering BoB. VS Code will prompt content assist when working with `actions.json`. You could replace BoB with any build system here (e.g. make, or perhaps a vendor-specific tool.).
 
