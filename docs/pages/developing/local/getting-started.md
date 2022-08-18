@@ -47,7 +47,7 @@ Similar to other repository settings, users can now store Actions as part of the
 
 There is a tool that can generate an initial `actions.json` file for you. After connecting to a system, open the command palette (F1) and search for 'Launch Actions Setup'. This shows a multi-select window where the user can pick which technologies they're using. Based on the selection, an `actions.json` will be created.
 
-![](../../assets/actions_tool.png)
+![](../../../assets/actions_tool.png)
 
 Here is an example `actions.json` setup, which requires deployment to happen before triggering BoB. VS Code will prompt content assist when working with `actions.json`. You could replace BoB with any build system here (e.g. make, or perhaps a vendor-specific tool.).
 
