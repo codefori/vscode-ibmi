@@ -13,7 +13,7 @@ If the user opens a Workspace before connecting to an IBM i:
 
 * This step-by-step guide [in the rpg-git-book](https://worksofliam.github.io/rpg-git-book/7-tooling-vscode.html).
 * A [video tutorial on YouTube](https://www.youtube.com/watch?v=XuiGyWptgDA&t=425s), showing the setup from scratch.
-* Easily cloning from [Azure DevOps](./azure.md).
+* Easily cloning from [Azure DevOps](azure.md).
 
 ## 1. Opening a Workspace Folder
 

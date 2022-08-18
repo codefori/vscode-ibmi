@@ -18,4 +18,4 @@ Now the source code is on your local machine, you can go ahead and connect to yo
 
 ![](../../../assets/azure-4.png)
 
-From here, you can start developing and compiling. If this is your first time, be sure to read the [Local Development](./local-development.md) documentation to understand what the deploy directory is used for and how to run compile commands.
+From here, you can start developing and compiling. If this is your first time, be sure to read the [Local Development](getting-started.md) documentation to understand what the deploy directory is used for and how to run compile commands.
