@@ -227,7 +227,7 @@ module.exports = class CompileTools {
     variables[`&LIBLS`] = libl.join(` `);
 
     for (const variable of config.customVariables) {
-      variables[variable.name] = variable.value;
+      variables[`&${variable.name.toUpperCase()}`] = variable.value;
     }
 
     return variables;
