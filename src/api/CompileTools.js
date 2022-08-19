@@ -2,6 +2,8 @@
 const vscode = require(`vscode`);
 const path = require(`path`);
 
+const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
+
 const errorHandlers = require(`./errors/index`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
@@ -269,6 +271,10 @@ module.exports = class CompileTools {
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
+      if (Configuration.get(`clearOutputEveryTime`)) {
+        outputChannel.clear();
+      }
+
       const options = availableActions.map(item => ({
         name: item.name,
         time: actionUsed[item.name] || 0
@@ -379,6 +385,16 @@ module.exports = class CompileTools {
               // We need to make sure the remote path is posix
               fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
               variables[`&FULLPATH`] = fullPath;
+
+              try {
+                const gitApi = gitExtension.getAPI(1);
+                if (gitApi.repositories && gitApi.repositories.length > 0) {
+                  const repo = await gitApi.repositories[0];
+                  const branch = repo.state.HEAD.name;
+
+                  variables[`&BRANCH`] = branch;
+                }
+              } catch (e) {}
             }
             break;
 
@@ -433,10 +449,6 @@ module.exports = class CompileTools {
           let executed = false;
 
           actionsBarItem.text = ACTION_BUTTON_RUNNING;
-
-          if (Configuration.get(`clearOutputEveryTime`)) {
-            outputChannel.clear();
-          }
 
           command = this.replaceValues(command, variables);
 
