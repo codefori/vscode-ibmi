@@ -206,6 +206,7 @@ module.exports = class CompileTools {
     variables[`&CURLIB`] = config.currentLibrary;
     variables[`\\*CURLIB`] = config.currentLibrary;
     variables[`&USERNAME`] = connection.currentUser;
+    variables[`{usrprf}`] = connection.currentUser;
     variables[`&HOME`] = config.homeDirectory;
 
     //We have to reverse it because `liblist -a` adds the next item to the top always 
@@ -385,6 +386,7 @@ module.exports = class CompileTools {
               // We need to make sure the remote path is posix
               fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
               variables[`&FULLPATH`] = fullPath;
+              variables[`{path}`] = fullPath;
 
               try {
                 const gitApi = gitExtension.getAPI(1);
@@ -393,6 +395,7 @@ module.exports = class CompileTools {
                   const branch = repo.state.HEAD.name;
 
                   variables[`&BRANCH`] = branch;
+                  variables[`{branch}`] = branch;
                 }
               } catch (e) {}
             }
@@ -410,6 +413,7 @@ module.exports = class CompileTools {
           variables[`&PARENT`] = parent;
 
           variables[`&BASENAME`] = basename;
+          variables[`{filename}`] = basename;
 
           variables[`&NAMEL`] = name.toLowerCase();
           variables[`&NAME`] = name;
