@@ -186,7 +186,8 @@ module.exports = class CompileTools {
    */
   static replaceValues(string, variables) {
     Object.keys(variables).forEach(key => {
-      string = string.replace(new RegExp(key, `g`), variables[key]);
+      if (variables[key])
+        string = string.replace(new RegExp(key, `g`), variables[key]);
     })
 
     return string;
