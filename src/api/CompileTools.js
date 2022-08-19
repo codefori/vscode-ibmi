@@ -259,8 +259,8 @@ module.exports = class CompileTools {
     // Then, if we're being called from a local file
     // we fetch the Actions defined from the workspace.
     if (uri.scheme === `file`) {
-      const localActions = await this.getLocalActions();
-      allActions.push(...localActions);
+      const [localActions, iProjActions] = await Promise.all([this.getLocalActions(), this.getiProjActions()]);
+      allActions.push(...localActions, ...iProjActions);
     }
 
     // We make sure all extensions are uppercase
@@ -818,6 +818,57 @@ module.exports = class CompileTools {
                 throw new Error(`Invalid Action defined at index ${index}.`);
               }
             })
+          }
+        } catch (e) {
+          // ignore
+          this.appendOutput(`Error parsing ${file.fsPath}: ${e.message}\n`);
+        }
+      };
+    }
+
+    return actions;
+  }
+
+  /**
+   * Gets actions from the `iproj.json` file
+   * @returns {Promise<Action[]>}
+   */
+  static async getiProjActions() {
+    const workspaces = vscode.workspace.workspaceFolders;
+
+    /** @type {Action[]} */
+    const actions = [];
+
+    if (workspaces && workspaces.length > 0) {
+      const iprojectFiles = await vscode.workspace.findFiles(`**/iproj.json`);
+
+      for (const file of iprojectFiles) {
+        const iProjectContent = await vscode.workspace.fs.readFile(file);
+        try {
+          const iProject = JSON.parse(iProjectContent.toString());
+
+          const description = iProject.description || `iproj.json`
+
+          if (iProject.buildCommand) {
+            actions.push({
+              name: `${description} (build)`,
+              command: iProject.buildCommand,
+              environment: `pase`,
+              extensions: [`GLOBAL`],
+              deployFirst: true,
+              type: `file`,
+            });
+          }
+
+          if (iProject.compileCommand) {
+            actions.push({
+              name: `${description} (compile)`,
+              command: `ERR=*EVENTF ${iProject.compileCommand}`,
+              environment: `pase`,
+              extensions: [`GLOBAL`],
+              deployFirst: true,
+              type: `file`,
+            });
           }
         } catch (e) {
           // ignore
