@@ -81,8 +81,8 @@ module.exports = class Handler {
       }),
 
       vscode.window.onDidChangeTextEditorSelection(event => {
-        if (config.sourceDateGutter) {
-          const editor = event.textEditor;
+        const editor = event.textEditor;
+        if (config.sourceDateGutter && editor.document.isDirty) {
           this.refreshGutter(editor);
         }
       }),
