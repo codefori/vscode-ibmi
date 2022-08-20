@@ -166,10 +166,15 @@ module.exports = class Handler {
     const currentDate = this.currentStamp();
 
     diff.changes.forEach(change => {
+      console.log(change);
       const startIndex = change.modifiedStartLineNumber - 1;
-      const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber ? 1 : 0); 
-      const changedLines = change.modifiedEndLineNumber >= change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
-      newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
+      if (change.modifiedStartLineNumber === change.modifiedEndLineNumber) {
+        newDates[startIndex] = currentDate
+      } else {
+        const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber ? 1 : 0); 
+        const changedLines = change.modifiedEndLineNumber > change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
+        newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
+      }
     });
 
     return newDates;
