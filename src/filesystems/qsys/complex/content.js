@@ -126,6 +126,7 @@ module.exports = class IBMiContent {
     );
 
     baseSource[alias] = body;
+    baseDates[alias] = newDates;
   }
 
   /**
