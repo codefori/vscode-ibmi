@@ -951,6 +951,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.member.newDateSearch",
+				"title": "Apply Source Date Filter",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.refreshIFSBrowser",
 				"title": "Refresh IFS List",
 				"category": "IBM i",
