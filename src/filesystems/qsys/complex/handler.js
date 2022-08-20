@@ -1,9 +1,17 @@
 const vscode = require(`vscode`);
-const Tools = require(`../../../api/Tools`);
+const { DiffComputer } = require(`vscode-diff`)
 
 const instance = require(`../../../Instance`);
 
-let { allSourceDates, recordLengths } = require(`./data`);
+const diffOptions = {
+  shouldPostProcessCharChanges: false,
+  shouldIgnoreTrimWhitespace: true,
+  shouldMakePrettyDiff: false,
+  shouldComputeCharChanges: true,
+  maxComputationTime: 1000
+}
+
+let { baseDates, recordLengths, baseSource } = require(`./data`);
 
 const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 
@@ -19,7 +27,7 @@ const annotationDecoration = vscode.window.createTextEditorDecorationType({
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
 });
 
-module.exports = class {
+module.exports = class Handler {
   static begin(context) {
     const config = instance.getConfig();
 
@@ -67,75 +75,6 @@ module.exports = class {
     );
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeTextDocument(event => {
-        if (event.document.uri.scheme === `member`) {
-          const connection = instance.getConnection();
-          const path = event.document.uri.path;
-          const {library, file, member} = connection.parserMemberPath(path);
-
-          const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
-
-          let sourceDates = allSourceDates[alias];
-          if (sourceDates) {
-            for (const change of event.contentChanges) {
-              
-              const startLineNumber = change.range.start.line;
-              const endLineNumber = change.range.end.line;
-
-              const startChar = change.range.start.character;
-              const endChar = change.range.end.character;
-              const line = startLineNumber;
-
-              const currentDate = this.currentStamp();
-  
-              const startNewLine = change.text[0] === `\n`;
-
-              // Is a space
-              if (change.text.trim() === ``) {
-              // Removing a line
-                if (startLineNumber < endLineNumber) {
-                  const lineCount = endLineNumber - startLineNumber;
-                  sourceDates.splice(line+1, lineCount);
-                  return;
-
-                } else if (
-                  startLineNumber !== endLineNumber
-                ) {
-                  // Backspace within a line
-                  sourceDates.splice(line, 0, currentDate);
-                  return;
-                } else if (
-                  startLineNumber === endLineNumber
-                ) {
-                  //backspace
-                  if (startNewLine === false) {
-                    sourceDates[line] = currentDate;
-                    return;
-                  }
-                }
-              } else if (startNewLine === false) {
-                sourceDates[line] = currentDate;
-              }
-  
-              // Contains new lines
-              if (change.text.indexOf(`\n`) !== -1) {
-                const len = change.text.split(`\n`).length - 1;
-  
-                if (change.text[0] !== `\n`) {
-                  sourceDates[line] = currentDate;
-                }
-  
-                // Multiple newlines
-                const newSourceDates = Array(len).fill(currentDate);
-                sourceDates.splice(line+1, 0, ...newSourceDates);
-              }
-            }
-          }
-        }
-      })
-    );
-
-    context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => {
         const currentValue = config.sourceDateGutter;
         config.set(`sourceDateGutter`, !currentValue);
@@ -154,6 +93,19 @@ module.exports = class {
             this.refreshGutter(editor);
           }
         }
+      }),
+
+      vscode.workspace.onDidCloseTextDocument(document => {
+        // Clean up things when a member is closed
+        if (document.uri.scheme === `member` && document.isClosed) {
+          const connection = instance.getConnection();
+          const {library, file, member} = connection.parserMemberPath(document.uri.path);
+    
+          const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
+          
+          baseDates[alias] = undefined;
+          baseSource[alias] = undefined;
+        }
       })
     );
   }
@@ -169,16 +121,18 @@ module.exports = class {
 
       const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
 
-      const sourceDates = allSourceDates[alias];
+      const sourceDates = baseDates[alias];
 
       if (sourceDates) {
+        const document = editor.document;
+        const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
 
         /** @type {vscode.DecorationOptions[]} */
         let annotations = [];
 
         const currentDate = this.currentStamp();
 
-        for (let cLine = 0; cLine < sourceDates.length && cLine < editor.document.lineCount; cLine++) {
+        for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
           annotations.push({
             range: new vscode.Range(
               new vscode.Position(cLine, 0),
@@ -186,8 +140,8 @@ module.exports = class {
             ),
             renderOptions: {
               before: {
-                contentText: sourceDates[cLine],
-                color: currentDate === sourceDates[cLine] ? highlightedColor : undefined
+                contentText: dates[cLine],
+                color: currentDate === dates[cLine] ? highlightedColor : undefined
               },
             },
           });
@@ -198,6 +152,28 @@ module.exports = class {
     }
   }
 
+  /**
+   * @param {string} alias 
+   * @param {string} body 
+   */
+  static calcNewSourceDates(alias, body) {
+    const newDates = baseDates[alias].slice();
+    const oldSource = baseSource[alias];
+
+    const diffComputer = new DiffComputer(oldSource.split(`\n`), body.split(`\n`), diffOptions);
+    const diff = diffComputer.computeDiff();
+
+    const currentDate = this.currentStamp();
+
+    diff.changes.forEach(change => {
+      const startIndex = change.modifiedStartLineNumber - 1;
+      const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber ? 1 : 0); 
+      const changedLines = change.modifiedEndLineNumber >= change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
+      newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
+    });
+
+    return newDates;
+  }
 
   /**
    * @returns {string} Stamp in format for source date
