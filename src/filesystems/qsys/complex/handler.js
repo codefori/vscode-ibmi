@@ -34,23 +34,13 @@ module.exports = class {
       vscode.workspace.onDidChangeTextDocument(event => {
         const document = event.document;
         if (document && document.uri.scheme === `member`) {
+          const connection = instance.getConnection();
           clearTimeout(editTimeout);
 
           editTimeout = setTimeout(() => {
-            const path = document.uri.path.split(`/`);
-            let lib, file, fullName;
+            const path = connection.parserMemberPath(document.uri.path);
+            let lib = path.library, file = path.file, fullName = path.member;
 
-            if (path.length === 4) {
-              lib = path[1];
-              file = path[2];
-              fullName = path[3];
-            } else {
-              lib = path[2];
-              file = path[3];
-              fullName = path[4];
-            }
-
-            fullName = fullName.substring(0, fullName.lastIndexOf(`.`));
             const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
             const recordLength = recordLengths[alias];
 
@@ -82,7 +72,6 @@ module.exports = class {
           const connection = instance.getConnection();
           const path = event.document.uri.path;
           const {library, file, member} = connection.parserMemberPath(path);
-
 
           const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
 
