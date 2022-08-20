@@ -13,9 +13,10 @@ const diffOptions = {
 
 let { baseDates, recordLengths, baseSource } = require(`./data`);
 
-const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
+const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
+const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
 
-const annotationDecoration = vscode.window.createTextEditorDecorationType({
+const gutterDecor = vscode.window.createTextEditorDecorationType({
   before: {
     color: new vscode.ThemeColor(`editorLineNumber.foreground`),
     textDecoration: `none`,
@@ -27,6 +28,18 @@ const annotationDecoration = vscode.window.createTextEditorDecorationType({
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
 });
 
+const lineDecor = vscode.window.createTextEditorDecorationType({
+  backgroundColor: new vscode.ThemeColor(`diffEditor.insertedTextBackground`),
+  rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen,
+});
+
+
+const SD_BASE = `$(history) Date Search`;
+const SD_ACTIVE = `$(history) Since `;
+
+/** @type {number|undefined} */
+let highlightSince;
+
 module.exports = class Handler {
   static begin(context) {
     const config = instance.getConfig();
@@ -34,6 +47,17 @@ module.exports = class Handler {
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
 
     let editTimeout;
+
+    const sourceDateSearchBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+    sourceDateSearchBarItem.command = {
+      command: `code-for-ibmi.member.newDateSearch`,
+      title: `Change Search Date Filter`,
+    };
+    sourceDateSearchBarItem.tooltip = `Search lines by source date`;
+    sourceDateSearchBarItem.text = SD_BASE;
+    sourceDateSearchBarItem.show();
+
+    context.subscriptions.push(sourceDateSearchBarItem);
 
     /** 
      * Provides the quick fixes on errors.
@@ -47,7 +71,7 @@ module.exports = class Handler {
 
           editTimeout = setTimeout(() => {
             const path = connection.parserMemberPath(document.uri.path);
-            let lib = path.library, file = path.file, fullName = path.member;
+            const lib = path.library, file = path.file, fullName = path.member;
 
             const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
             const recordLength = recordLengths[alias];
@@ -75,23 +99,68 @@ module.exports = class Handler {
     );
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, async () => {
         const currentValue = config.sourceDateGutter;
-        config.set(`sourceDateGutter`, !currentValue);
+        await config.set(`sourceDateGutter`, !currentValue);
+
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          this.refreshGutter(editor);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => {
+        sourceDateSearchBarItem.text = SD_BASE;
+        highlightSince = undefined;
+
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          this.refreshGutter(editor);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => {
+
+        vscode.window.showInputBox({
+          value: this.currentStamp(),
+          prompt: `Show everything on or after date provided`,
+          title: `Source Date search`,
+          validateInput: (input) => {
+            if (input.length !== 6) {
+              return `Source date must be length of 6. (YYMMDD)`
+            }
+
+            if (Number.isNaN(input)) {
+              return `Value provided is not a valid number.`
+            }
+          }
+        }).then(async value => {
+          if (value) {
+            sourceDateSearchBarItem.text = SD_ACTIVE + value;
+            highlightSince = Number(value);
+          } else {
+            sourceDateSearchBarItem.text = SD_BASE;
+            highlightSince = undefined;
+          }
+
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            await config.set(`sourceDateGutter`, true);
+            this.refreshGutter(editor);
+          }
+        })
       }),
 
       vscode.window.onDidChangeTextEditorSelection(event => {
         const editor = event.textEditor;
-        if (config.sourceDateGutter && editor.document.isDirty) {
+        if (editor.document.isDirty) {
           this.refreshGutter(editor);
         }
       }),
 
       vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) {
-          if (config.sourceDateGutter) {
-            this.refreshGutter(editor);
-          }
+          this.refreshGutter(editor);
         }
       }),
 
@@ -116,42 +185,67 @@ module.exports = class Handler {
   static refreshGutter(editor) {
     if (editor.document.uri.scheme === `member`) {
       const connection = instance.getConnection();
-      const path = editor.document.uri.path;
-      const {library, file, member} = connection.parserMemberPath(path);
+      const config = instance.getConfig();
 
-      const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
+      if (config.sourceDateGutter) {
+        const path = editor.document.uri.path;
+        const {library, file, member} = connection.parserMemberPath(path);
 
-      const sourceDates = baseDates[alias];
+        const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
 
-      if (sourceDates) {
-        const document = editor.document;
-        const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
+        const sourceDates = baseDates[alias];
 
-        /** @type {vscode.DecorationOptions[]} */
-        let annotations = [];
+        if (sourceDates) {
+          const document = editor.document;
+          const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
 
-        const currentDate = this.currentStamp();
+          /** @type {vscode.DecorationOptions[]} */
+          let lineGutters = [];
 
-        const hoverMessage = new vscode.MarkdownString(`[Show changes since last save](command:workbench.files.action.compareWithSaved)`);
-        hoverMessage.isTrusted = true;
+          /** @type {vscode.DecorationOptions[]} */
+          let changedLined = [];
 
-        for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
-          annotations.push({
-            hoverMessage,
-            range: new vscode.Range(
-              new vscode.Position(cLine, 0),
-              new vscode.Position(cLine, 0)
-            ),
-            renderOptions: {
-              before: {
-                contentText: dates[cLine],
-                color: currentDate === dates[cLine] ? highlightedColor : undefined
+          const currentDate = this.currentStamp();
+
+          const markdownString = [
+            `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`, 
+            `---`,
+            `${highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`
+          ];
+
+          if (highlightSince) markdownString.push(`---`, `Changes since ${String(highlightSince) == currentDate ? `today` : highlightSince} highlighted`)
+
+          const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n`));
+          hoverMessage.isTrusted = true;
+
+          for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
+            const highlightForSearch = highlightSince && Number(dates[cLine]) >= highlightSince;
+
+            lineGutters.push({
+              hoverMessage,
+              range: new vscode.Range(
+                new vscode.Position(cLine, 0),
+                new vscode.Position(cLine, 0)
+              ),
+              renderOptions: {
+                before: {
+                  contentText: dates[cLine],
+                  color: highlightForSearch ? seachGutterColor : (currentDate === dates[cLine] ? editedTodayColor : undefined)
+                },
               },
-            },
-          });
-        }
+            });
 
-        editor.setDecorations(annotationDecoration, annotations);
+            if (highlightForSearch) {
+              changedLined.push({
+                hoverMessage,
+                range: document.lineAt(cLine).range
+              })
+            }
+          }
+
+          editor.setDecorations(gutterDecor, lineGutters);
+          editor.setDecorations(lineDecor, changedLined);
+        }
       }
     }
   }
