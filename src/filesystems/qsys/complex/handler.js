@@ -132,8 +132,12 @@ module.exports = class Handler {
 
         const currentDate = this.currentStamp();
 
+        const hoverMessage = new vscode.MarkdownString(`[Show changes since last save](command:workbench.files.action.compareWithSaved)`);
+        hoverMessage.isTrusted = true;
+
         for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
           annotations.push({
+            hoverMessage,
             range: new vscode.Range(
               new vscode.Position(cLine, 0),
               new vscode.Position(cLine, 0)
