@@ -46,7 +46,8 @@ module.exports = class Handler {
 
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
 
-    let editTimeout;
+    let lineEditedBefore;
+    let lengthTimeout;
 
     const sourceDateSearchBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
     sourceDateSearchBarItem.command = {
@@ -67,9 +68,9 @@ module.exports = class Handler {
         const document = event.document;
         if (document && document.uri.scheme === `member`) {
           const connection = instance.getConnection();
-          clearTimeout(editTimeout);
+          clearTimeout(lengthTimeout);
 
-          editTimeout = setTimeout(() => {
+          lengthTimeout = setTimeout(() => {
             const path = connection.parserMemberPath(document.uri.path);
             const lib = path.library, file = path.file, fullName = path.member;
 
@@ -105,7 +106,7 @@ module.exports = class Handler {
 
         const editor = vscode.window.activeTextEditor;
         if (editor) {
-          this.refreshGutter(editor);
+          this.refreshGutter(editor.document);
         }
       }),
 
@@ -115,7 +116,7 @@ module.exports = class Handler {
 
         const editor = vscode.window.activeTextEditor;
         if (editor) {
-          this.refreshGutter(editor);
+          this.refreshGutter(editor.document);
         }
       }),
 
@@ -146,21 +147,28 @@ module.exports = class Handler {
           const editor = vscode.window.activeTextEditor;
           if (editor) {
             await config.set(`sourceDateGutter`, true);
-            this.refreshGutter(editor);
+            this.refreshGutter(editor.document);
           }
         })
       }),
 
-      vscode.window.onDidChangeTextEditorSelection(event => {
-        const editor = event.textEditor;
-        if (editor.document.isDirty) {
-          this.refreshGutter(editor);
+      vscode.workspace.onDidChangeTextDocument(event => {
+        const document = event.document;
+
+        if (document.isDirty) {
+          const currentEditingLine = event.contentChanges.length === 1 && event.contentChanges[0].range.isSingleLine ? event.contentChanges[0].range.start.line : undefined;
+          
+          if (lineEditedBefore === undefined || currentEditingLine !== lineEditedBefore) {
+            this.refreshGutter(document);
+          }
+
+          lineEditedBefore = currentEditingLine;
         }
       }),
 
       vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) {
-          this.refreshGutter(editor);
+          this.refreshGutter(editor.document);
         }
       }),
 
@@ -180,15 +188,15 @@ module.exports = class Handler {
   }
 
   /**
-   * @param {vscode.TextEditor} editor 
+   * @param {vscode.TextDocument} document 
    */
-  static refreshGutter(editor) {
-    if (editor.document.uri.scheme === `member`) {
+  static refreshGutter(document) {
+    if (document.uri.scheme === `member`) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
 
       if (config.sourceDateGutter) {
-        const path = editor.document.uri.path;
+        const path = document.uri.path;
         const {library, file, member} = connection.parserMemberPath(path);
 
         const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
@@ -196,7 +204,6 @@ module.exports = class Handler {
         const sourceDates = baseDates[alias];
 
         if (sourceDates) {
-          const document = editor.document;
           const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
 
           /** @type {vscode.DecorationOptions[]} */
@@ -243,8 +250,11 @@ module.exports = class Handler {
             }
           }
 
-          editor.setDecorations(gutterDecor, lineGutters);
-          editor.setDecorations(lineDecor, changedLined);
+          const activeEditor = vscode.window.activeTextEditor;
+          if (activeEditor.document.uri.fsPath === document.uri.fsPath) {
+            activeEditor.setDecorations(gutterDecor, lineGutters);
+            activeEditor.setDecorations(lineDecor, changedLined);
+          }
         }
       }
     }
