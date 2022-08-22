@@ -267,9 +267,14 @@ module.exports = class Handler {
       console.log(change);
       const startIndex = change.modifiedStartLineNumber - 1;
       if (change.modifiedStartLineNumber === change.modifiedEndLineNumber) {
-        newDates[startIndex] = currentDate
+        if (change.originalEndLineNumber === 0) {
+          // New line was added
+          newDates.splice(startIndex, 0, ...Array(1).fill(currentDate));
+        } else {
+          newDates[startIndex] = currentDate;
+        }
       } else {
-        const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber ? 1 : 0); 
+        const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber || change.originalStartLineNumber <= change.originalEndLineNumber ? change.originalEndLineNumber - change.originalStartLineNumber + 1 : 0); 
         const changedLines = change.modifiedEndLineNumber > change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
         newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
       }
