@@ -1,6 +1,6 @@
-## Editing and Compiling
+# Editing and Compiling
 
-### Editing
+## Editing
 
 Click on a source member or stream file in the browser to open it. You can have multiple sources open.
 
@@ -17,11 +17,18 @@ To maximize your editing tab try:
 
   Click **Help** in the menu for  tips, tricks, editing keyboard shortcuts and tutorials.
 
-### Source dates
+## Source dates
 
-Source date support must be enabled and are disabled by default. This can be changed in the Connection Settings. 
+Source date support must be enabled and are disabled by default. This can be changed in the Connection Settings. There is additional settings to display a source date gutter. The gutter shows you the source date on each line, and will highlights edited on the current day.
 
-### Compiling
+Hovering over the source date gutter which display some hover text with links:
+
+* To display changes since last local save
+* Feature to highlight source dates/lines after a certain date
+
+As well as the gutter hover items, there is a new status bar item to enable the source date filter. The filter will remain on all source files while it is active.
+
+## Compiling
 
 Compile the **active tab** with Ctrl+E.
 
@@ -34,7 +41,7 @@ If the compile completes without error you will see an informational message lik
 
 ![Compile successful](../../assets/EditComp-03.png)
 
-### Compile Errors
+## Compile Errors
 
 If the compile fails, you will see an error message like this:
 
@@ -60,7 +67,7 @@ You can remove all the squiggly line using F1 and searching for IBM i Clear Diag
 
 ![Clear diagnostics](../../assets/EditComp-08.png)
 
-### Compile Listing
+## Compile Listing
 
 If you have *Log Compile Output* checked in settings (see *Settings: Global*, below), then compile listings are found under the Output tab by selecting IBM i Output.  Use the shortcut Output icon on the tool bar to jump to the compile listing.
 
