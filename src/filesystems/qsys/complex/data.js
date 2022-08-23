@@ -1,7 +1,11 @@
 
 module.exports = {
   /** @type {{[path: string]: string[]}} */
-  allSourceDates: {},
+  baseDates: {},
+
+  /** @type {{[path: string]: string}} */
+  baseSource: {},
+
   /** @type {{[path: string]: number}} */
-  recordLengths: {},
+  recordLengths: {}
 };

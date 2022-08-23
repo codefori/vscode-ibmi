@@ -1,5 +1,5 @@
-let IBMi = require(`../../../api/IBMi`);
 let instance = require(`../../../Instance`);
+const Handler = require(`./handler`);
 
 const util = require(`util`);
 const fs = require(`fs`);
@@ -9,7 +9,7 @@ const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const DEFAULT_RECORD_LENGTH = 80;
-let { allSourceDates, recordLengths } = require(`./data`);
+let { baseDates, baseSource, recordLengths } = require(`./data`);
 
 module.exports = class IBMiContent {
   /**
@@ -61,7 +61,8 @@ module.exports = class IBMiContent {
       .map(row => row.SRCDTA)
       .join(`\n`);
 
-    allSourceDates[alias] = sourceDates;
+    baseDates[alias] = sourceDates;
+    baseSource[alias] = body;
 
     return body;
 
@@ -82,7 +83,6 @@ module.exports = class IBMiContent {
     const tempLib = connection.config.tempLibrary;
     const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
     const aliasPath = `${tempLib}.${alias}`;
-    const sourceDates = allSourceDates[alias];
 
     const client = connection.client;
     const tempRmt = connection.getTempRemote(lib + spf + mbr);
@@ -93,6 +93,8 @@ module.exports = class IBMiContent {
 
     const decimalSequence = sourceData.length >= 10000;
 
+    const newDates = Handler.calcNewSourceDates(alias, body);
+
     let rows = [],
       sequence = 0;
     for (let i = 0; i < sourceData.length; i++) {
@@ -102,7 +104,7 @@ module.exports = class IBMiContent {
       }
         
       rows.push(
-        `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${this.escapeString(sourceData[i])}')`,
+        `(${sequence}, ${newDates[i] ? newDates[i].padEnd(6, `0`) : `0`}, '${this.escapeString(sourceData[i])}')`,
       );
     }
 
@@ -122,7 +124,9 @@ module.exports = class IBMiContent {
     await connection.remoteCommand(
       `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
     );
-  
+
+    baseSource[alias] = body;
+    baseDates[alias] = newDates;
   }
 
   /**

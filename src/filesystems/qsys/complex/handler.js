@@ -1,13 +1,22 @@
 const vscode = require(`vscode`);
-const Tools = require(`../../../api/Tools`);
+const { DiffComputer } = require(`vscode-diff`)
 
 const instance = require(`../../../Instance`);
 
-let { allSourceDates, recordLengths } = require(`./data`);
+const diffOptions = {
+  shouldPostProcessCharChanges: false,
+  shouldIgnoreTrimWhitespace: true,
+  shouldMakePrettyDiff: false,
+  shouldComputeCharChanges: true,
+  maxComputationTime: 1000
+}
 
-const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
+let { baseDates, recordLengths, baseSource } = require(`./data`);
 
-const annotationDecoration = vscode.window.createTextEditorDecorationType({
+const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
+const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
+
+const gutterDecor = vscode.window.createTextEditorDecorationType({
   before: {
     color: new vscode.ThemeColor(`editorLineNumber.foreground`),
     textDecoration: `none`,
@@ -19,13 +28,37 @@ const annotationDecoration = vscode.window.createTextEditorDecorationType({
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
 });
 
-module.exports = class {
+const lineDecor = vscode.window.createTextEditorDecorationType({
+  backgroundColor: new vscode.ThemeColor(`diffEditor.insertedTextBackground`),
+  rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen,
+});
+
+
+const SD_BASE = `$(history) Date Search`;
+const SD_ACTIVE = `$(history) Since `;
+
+/** @type {number|undefined} */
+let highlightSince;
+
+module.exports = class Handler {
   static begin(context) {
     const config = instance.getConfig();
 
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
 
-    let editTimeout;
+    let lineEditedBefore;
+    let lengthTimeout;
+
+    const sourceDateSearchBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right);
+    sourceDateSearchBarItem.command = {
+      command: `code-for-ibmi.member.newDateSearch`,
+      title: `Change Search Date Filter`,
+    };
+    sourceDateSearchBarItem.tooltip = `Search lines by source date`;
+    sourceDateSearchBarItem.text = SD_BASE;
+    sourceDateSearchBarItem.show();
+
+    context.subscriptions.push(sourceDateSearchBarItem);
 
     /** 
      * Provides the quick fixes on errors.
@@ -34,23 +67,13 @@ module.exports = class {
       vscode.workspace.onDidChangeTextDocument(event => {
         const document = event.document;
         if (document && document.uri.scheme === `member`) {
-          clearTimeout(editTimeout);
+          const connection = instance.getConnection();
+          clearTimeout(lengthTimeout);
 
-          editTimeout = setTimeout(() => {
-            const path = document.uri.path.split(`/`);
-            let lib, file, fullName;
+          lengthTimeout = setTimeout(() => {
+            const path = connection.parserMemberPath(document.uri.path);
+            const lib = path.library, file = path.file, fullName = path.member;
 
-            if (path.length === 4) {
-              lib = path[1];
-              file = path[2];
-              fullName = path[3];
-            } else {
-              lib = path[2];
-              file = path[3];
-              fullName = path[4];
-            }
-
-            fullName = fullName.substring(0, fullName.lastIndexOf(`.`));
             const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
             const recordLength = recordLengths[alias];
 
@@ -77,138 +100,198 @@ module.exports = class {
     );
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeTextDocument(event => {
-        if (event.document.uri.scheme === `member`) {
-          const connection = instance.getConnection();
-          const path = event.document.uri.path;
-          const {library, file, member} = connection.parserMemberPath(path);
-
-
-          const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
-
-          let sourceDates = allSourceDates[alias];
-          if (sourceDates) {
-            for (const change of event.contentChanges) {
-              
-              const startLineNumber = change.range.start.line;
-              const endLineNumber = change.range.end.line;
-
-              const startChar = change.range.start.character;
-              const endChar = change.range.end.character;
-              const line = startLineNumber;
-
-              const currentDate = this.currentStamp();
-  
-              const startNewLine = change.text[0] === `\n`;
-
-              // Is a space
-              if (change.text.trim() === ``) {
-              // Removing a line
-                if (startLineNumber < endLineNumber) {
-                  const lineCount = endLineNumber - startLineNumber;
-                  sourceDates.splice(line+1, lineCount);
-                  return;
-
-                } else if (
-                  startLineNumber !== endLineNumber
-                ) {
-                  // Backspace within a line
-                  sourceDates.splice(line, 0, currentDate);
-                  return;
-                } else if (
-                  startLineNumber === endLineNumber
-                ) {
-                  //backspace
-                  if (startNewLine === false) {
-                    sourceDates[line] = currentDate;
-                    return;
-                  }
-                }
-              } else if (startNewLine === false) {
-                sourceDates[line] = currentDate;
-              }
-  
-              // Contains new lines
-              if (change.text.indexOf(`\n`) !== -1) {
-                const len = change.text.split(`\n`).length - 1;
-  
-                if (change.text[0] !== `\n`) {
-                  sourceDates[line] = currentDate;
-                }
-  
-                // Multiple newlines
-                const newSourceDates = Array(len).fill(currentDate);
-                sourceDates.splice(line+1, 0, ...newSourceDates);
-              }
-            }
-          }
-        }
-      })
-    );
-
-    context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, async () => {
         const currentValue = config.sourceDateGutter;
-        config.set(`sourceDateGutter`, !currentValue);
+        await config.set(`sourceDateGutter`, !currentValue);
+
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          this.refreshGutter(editor.document);
+        }
       }),
 
-      vscode.window.onDidChangeTextEditorSelection(event => {
-        if (config.sourceDateGutter) {
-          const editor = event.textEditor;
-          this.refreshGutter(editor);
+      vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => {
+        sourceDateSearchBarItem.text = SD_BASE;
+        highlightSince = undefined;
+
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          this.refreshGutter(editor.document);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => {
+
+        vscode.window.showInputBox({
+          value: this.currentStamp(),
+          prompt: `Show everything on or after date provided`,
+          title: `Source Date search`,
+          validateInput: (input) => {
+            if (input.length !== 6) {
+              return `Source date must be length of 6. (YYMMDD)`
+            }
+
+            if (Number.isNaN(input)) {
+              return `Value provided is not a valid number.`
+            }
+          }
+        }).then(async value => {
+          if (value) {
+            sourceDateSearchBarItem.text = SD_ACTIVE + value;
+            highlightSince = Number(value);
+          } else {
+            sourceDateSearchBarItem.text = SD_BASE;
+            highlightSince = undefined;
+          }
+
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            await config.set(`sourceDateGutter`, true);
+            this.refreshGutter(editor.document);
+          }
+        })
+      }),
+
+      vscode.workspace.onDidChangeTextDocument(event => {
+        const document = event.document;
+
+        if (document.isDirty) {
+          const currentEditingLine = event.contentChanges.length === 1 && event.contentChanges[0].range.isSingleLine ? event.contentChanges[0].range.start.line : undefined;
+          
+          if (lineEditedBefore === undefined || currentEditingLine !== lineEditedBefore) {
+            this.refreshGutter(document);
+          }
+
+          lineEditedBefore = currentEditingLine;
         }
       }),
 
       vscode.window.onDidChangeActiveTextEditor(editor => {
         if (editor) {
-          if (config.sourceDateGutter) {
-            this.refreshGutter(editor);
-          }
+          this.refreshGutter(editor.document);
+        }
+      }),
+
+      vscode.workspace.onDidCloseTextDocument(document => {
+        // Clean up things when a member is closed
+        if (document.uri.scheme === `member` && document.isClosed) {
+          const connection = instance.getConnection();
+          const {library, file, member} = connection.parserMemberPath(document.uri.path);
+    
+          const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
+          
+          baseDates[alias] = undefined;
+          baseSource[alias] = undefined;
         }
       })
     );
   }
 
   /**
-   * @param {vscode.TextEditor} editor 
+   * @param {vscode.TextDocument} document 
    */
-  static refreshGutter(editor) {
-    if (editor.document.uri.scheme === `member`) {
+  static refreshGutter(document) {
+    if (document.uri.scheme === `member`) {
       const connection = instance.getConnection();
-      const path = editor.document.uri.path;
-      const {library, file, member} = connection.parserMemberPath(path);
+      const config = instance.getConfig();
 
-      const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
+      if (config.sourceDateGutter) {
+        const path = document.uri.path;
+        const {library, file, member} = connection.parserMemberPath(path);
 
-      const sourceDates = allSourceDates[alias];
+        const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
 
-      if (sourceDates) {
+        const sourceDates = baseDates[alias];
 
-        /** @type {vscode.DecorationOptions[]} */
-        let annotations = [];
+        if (sourceDates) {
+          const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
 
-        const currentDate = this.currentStamp();
+          /** @type {vscode.DecorationOptions[]} */
+          let lineGutters = [];
 
-        for (let cLine = 0; cLine < sourceDates.length && cLine < editor.document.lineCount; cLine++) {
-          annotations.push({
-            range: new vscode.Range(
-              new vscode.Position(cLine, 0),
-              new vscode.Position(cLine, 0)
-            ),
-            renderOptions: {
-              before: {
-                contentText: sourceDates[cLine],
-                color: currentDate === sourceDates[cLine] ? highlightedColor : undefined
+          /** @type {vscode.DecorationOptions[]} */
+          let changedLined = [];
+
+          const currentDate = this.currentStamp();
+
+          const markdownString = [
+            `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`, 
+            `---`,
+            `${highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`
+          ];
+
+          if (highlightSince) markdownString.push(`---`, `Changes since ${String(highlightSince) == currentDate ? `today` : highlightSince} highlighted`)
+
+          const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n`));
+          hoverMessage.isTrusted = true;
+
+          for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
+            const highlightForSearch = highlightSince && Number(dates[cLine]) >= highlightSince;
+
+            lineGutters.push({
+              hoverMessage,
+              range: new vscode.Range(
+                new vscode.Position(cLine, 0),
+                new vscode.Position(cLine, 0)
+              ),
+              renderOptions: {
+                before: {
+                  contentText: dates[cLine],
+                  color: highlightForSearch ? seachGutterColor : (currentDate === dates[cLine] ? editedTodayColor : undefined)
+                },
               },
-            },
-          });
-        }
+            });
 
-        editor.setDecorations(annotationDecoration, annotations);
+            if (highlightForSearch) {
+              changedLined.push({
+                hoverMessage,
+                range: document.lineAt(cLine).range
+              })
+            }
+          }
+
+          const activeEditor = vscode.window.activeTextEditor;
+          if (activeEditor.document.uri.fsPath === document.uri.fsPath) {
+            activeEditor.setDecorations(gutterDecor, lineGutters);
+            activeEditor.setDecorations(lineDecor, changedLined);
+          }
+        }
       }
     }
   }
 
+  /**
+   * @param {string} alias 
+   * @param {string} body 
+   */
+  static calcNewSourceDates(alias, body) {
+    const newDates = baseDates[alias].slice();
+    const oldSource = baseSource[alias];
+
+    const diffComputer = new DiffComputer(oldSource.split(`\n`), body.split(`\n`), diffOptions);
+    const diff = diffComputer.computeDiff();
+
+    const currentDate = this.currentStamp();
+
+    diff.changes.forEach(change => {
+      console.log(change);
+      const startIndex = change.modifiedStartLineNumber - 1;
+      if (change.modifiedStartLineNumber === change.modifiedEndLineNumber) {
+        if (change.originalEndLineNumber === 0) {
+          // New line was added
+          newDates.splice(startIndex, 0, ...Array(1).fill(currentDate));
+        } else {
+          newDates[startIndex] = currentDate;
+        }
+      } else {
+        const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber || change.originalStartLineNumber <= change.originalEndLineNumber ? change.originalEndLineNumber - change.originalStartLineNumber + 1 : 0); 
+        const changedLines = change.modifiedEndLineNumber > change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
+        newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
+      }
+    });
+
+    return newDates;
+  }
 
   /**
    * @returns {string} Stamp in format for source date

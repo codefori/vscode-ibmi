@@ -85,7 +85,7 @@
 										"object",
 										"types",
 										"member",
-                    "memberType"
+										"memberType"
 									],
 									"properties": {
 										"name": {
@@ -668,7 +668,8 @@
 							],
 							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
 							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"RPGLE",
@@ -693,7 +694,8 @@
 							],
 							"name": "Run SQL Statements (RUNSQLSTM)",
 							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"cmd"
@@ -946,6 +948,11 @@
 			{
 				"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
 				"title": "Upload and replace",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.member.newDateSearch",
+				"title": "Apply Source Date Filter",
 				"category": "IBM i"
 			},
 			{
@@ -1575,6 +1582,7 @@
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1",
+		"vscode-diff": "^2.0.2",
 		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
