@@ -1,10 +1,12 @@
-on: pull_request
+on:
+  pull_request_review:
+    types: [submitted]
     
 jobs:
   release:
     name: Pre-release
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'prerelease')
+    if: contains(github.event.pull_request.labels.*.name, 'prerelease') && github.event.review.state == 'approved'
     steps:
       - uses: actions/checkout@v2
         with:
