@@ -1,0 +1,19 @@
+on: pull_request
+    
+jobs:
+  release:
+    name: Pre-release
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'prerelease')
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - run: npm install
+      - run: node ./node_modules/eslint/bin/eslint src/** --no-error-on-unmatched-pattern
+      
+      - run: npm install -g vsce
+      - name: Publish pre-release to Marketplace
+        run: vsce publish --pre-release -p $PUBLISHER_TOKEN
+        env:
+          PUBLISHER_TOKEN: ${{ secrets.PUBLISHER_TOKEN }}
