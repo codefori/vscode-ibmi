@@ -44,3 +44,23 @@ $ ps -ef | grep sshd
 ```
 
 The issue should now be resolved.
+
+## Connection using SSH private key always fails 
+
+On some platforms (e.g., Linux PopOS) your connection using SSH private key may fail with a message like:
+```
+Error while signing data with privateKey: error:06000066:public key routines:OPENSSL_internal:DECODE_ERROR
+```
+This may occur if the OpenSSL routines on your platform used by Code for IBM i have problems with the default public key format.
+
+### Fix by making copy of private key in PEM format
+
+You can solve this by creating a second instance of your extant public key in PEM format to sit alongside your default key. For instance, if your public key is `$HOME/.ssh/id_rsa` you can do the following:
+```
+cd $HOME/.ssh
+cp id_rsa id_rsa_original
+ssh-keygen -p -f id_rsa -m PEM
+mv id_rsa id_rsa.pem
+mv id_rsa_original id_rsa
+```
+Now configure the Code for IBM i connection using `id_rsa.pem` instead of `id_rsa`. In this way, your original key is still there to make connections as always, and you have a new copy in PEM format using which Code for IBM i connections operate correctly.
