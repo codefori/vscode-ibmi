@@ -450,16 +450,6 @@ module.exports = class objectBrowserTwoProvider {
               }
             });
 
-          // Save connection profile ?
-          vscode.window.showInformationMessage(`Would you like to save the profile?`, `Yes`, `No`)
-            .then(async result => {
-              switch (result) {
-                case `Yes`:
-                  vscode.commands.executeCommand('code-for-ibmi.saveConnectionProfile');
-
-                  break;
-              }
-            });
         } else {
           vscode.window.showErrorMessage(`Library name too long.`);
         }
