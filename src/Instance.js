@@ -393,24 +393,31 @@ module.exports = class Instance {
               });
             });
 
-            if (list.length > 0) {
-              list.push(`Clear list`);
+            list.push(`Clear list`);
 
-              vscode.window.showQuickPick(list, {
-                placeHolder: `Go to file..`
-              }).then(async (selection) => {
-                if (selection) {
-                  if (selection === `Clear list`) {
-                    instance.storage.set(`sourceList`, {});
-                    vscode.window.showInformationMessage(`Cleared list.`);
-                  } else {
-                    vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);
-                  }
+            const quickPick = vscode.window.createQuickPick();
+            quickPick.items = list.map(item => ({ label: item }));
+            quickPick.placeholder = `Go to file..`;
+
+            quickPick.onDidChangeValue(() => {
+              // INJECT user values into proposed values
+              if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+            })
+
+            quickPick.onDidAccept(() => {
+              const selection = quickPick.selectedItems[0].label;
+              if (selection) {
+                if (selection === `Clear list`) {
+                  instance.storage.set(`sourceList`, {});
+                  vscode.window.showInformationMessage(`Cleared list.`);
+                } else {
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);
                 }
-              })
-            } else {
-              vscode.window.showErrorMessage(`No files to select from.`);
-            }
+              }
+              quickPick.hide()
+            })
+            quickPick.onDidHide(() => quickPick.dispose());
+            quickPick.show();
           })
         )
 
