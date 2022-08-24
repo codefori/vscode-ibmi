@@ -25,6 +25,9 @@ let connectedBarItem;
 /** @type {vscode.StatusBarItem} */
 let terminalBarItem;
 
+/** @type {vscode.StatusBarItem} */
+let disconnectBarItem;
+
 let initialisedBefore = false;
 
 /** @type {vscode.Uri} */
@@ -163,6 +166,19 @@ module.exports = class Instance {
 
       connectedBarItem.text = `$(settings-gear) Settings: ${config.name}`;
       connectedBarItem.show();
+
+      if (!disconnectBarItem) {
+        disconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 12);
+        disconnectBarItem.command = {
+          command: `code-for-ibmi.disconnect`,
+          title: `Disconnect from system`
+        }
+        disconnectBarItem.tooltip = `Disconnect from system.`;
+        disconnectBarItem.text = `$(debug-disconnect)`;
+        context.subscriptions.push(disconnectBarItem);
+      }
+
+      disconnectBarItem.show();
 
       if (!terminalBarItem) {
         terminalBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
