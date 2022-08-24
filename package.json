@@ -1288,6 +1288,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "resourceScheme == member || resourceScheme == streamfile",
 					"group": "navigation@1"
+				},
+				{
+					"command": "code-for-ibmi.clearDiagnostics",
+					"when": "resourceScheme == member || resourceScheme == streamfile",
+					"group": "navigation@2"
 				}
 			],
 			"view/item/context": [
