@@ -34,6 +34,7 @@ module.exports = class libraryListProvider {
 
         if (newLibrary && newLibrary !== currentLibrary) {
           await config.set(`currentLibrary`, newLibrary);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
         }
       }),
 
@@ -230,6 +231,11 @@ module.exports = class libraryListProvider {
     let items = [];
 
     if (connection) {
+      let currentLibrary = new Library(config.currentLibrary.toUpperCase());
+      currentLibrary.contextValue = `currentLibrary`;
+      currentLibrary.description = `(current library)`;
+      items.push(currentLibrary);
+
       const libraryList = config.libraryList;
 
       for (let library of libraryList) {
