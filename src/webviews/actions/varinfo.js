@@ -4,7 +4,9 @@ const generic = [
   {name: `&amp;CURLIB`, text: `Current library, changable in Library List`},
   {name: `&amp;USERNAME`, text: `Username for connection`},
   {name: `&amp;HOME`, text: `Current home/working directory, changable in IFS Browser`},
-  {name: `&amp;BUILDIB`, text: `The same as <code>&amp;CURLIB</code>`}
+  {name: `&amp;BUILDIB`, text: `The same as <code>&amp;CURLIB</code>`},
+  {name: `&amp;LIBLC`, text: `Library list delimited by comma`},
+  {name: `&amp;LIBLS`, text: `Library list delimited by space`}
 ];
 
 module.exports = {

@@ -21,17 +21,17 @@ Opening a folder in Visual Studio Code adds that folder to that Workspace. You n
 
 ## 2. Setting the deploy location
 
-In the IFS Browser, the user can right-click on any directory and select the 'Deploy Workspace to location' option.  In the Object Browser, the user can right-click on any filter and select the 'Deploy Workspace to location' option. 
+If it is the first time connecting with the workspace it will prompt the user to set a default Deploy directory.
 
-If their workspace has more than one folder opened, the user will be prompted to choose which folder will be deployed to that directory/library. The user needs to have this location setup before they can deploy your workspace.
+![](../../../assets/local_1.png)
 
-The user can change the deploy kicatuib at any by using the same right-click option on another directory or library.
+If you would prefer to change the default location, the user can right-click on any directory in the IFS Browser and select the 'Deploy Workspace to location' option.
 
-When the user has used the right-click option, they will be asked if they want to run the deploy then.
+The user can change the deploy directory at any by using the same right-click option on another directory.
 
 ## 3. The Deploy button / Running the deployment process
 
-Using the 'Deploy' button will start the deployment process. For the deployment process to run, VS Code needs to know which folder/library to deploy to and will fail if it has not been setup correctly. If the workspace has more than one folder, the user will have to select which folder they want to deploy.
+Using the 'Deploy' button on the status bar will start the deployment process. If the workspace has more than one folder, the user will have to select which folder they want to deploy.
 
 There are three options for deployment:
 
@@ -43,7 +43,7 @@ The user can also defined Actions that are for the 'file' (local) type to run th
 
 ## 4. Workspace Actions (deploy & build)
 
-Similar to other repository settings, users can now store Actions as part of the Workspace. Users can now create `.vscode/actions.json` inside of your Workspace, and can contain Actions that are specific to that Workspace. That configuration file should also be checked into git for that application.
+Similar to other repository settings, users can now store Actions as part of the Workspace. Users can now create `.vscode/actions.json` inside of your Workspace, and can contain Actions that are specific to that Workspace. That configuration file should also be checked into git for that application. Alternatively, if you're using [the new `iproj.json` standard](https://ibm.github.io/ibmi-bob/#/prepare-the-project/project-metadata), the `buildCommand` and `compileCommand` will also appear as Actions automatically.
 
 There is a tool that can generate an initial `actions.json` file for you. After connecting to a system, open the command palette (F1) and search for 'Launch Actions Setup'. This shows a multi-select window where the user can pick which technologies they're using. Based on the selection, an `actions.json` will be created.
 
@@ -54,8 +54,17 @@ Here is an example `actions.json` setup, which requires deployment to happen bef
 ```json
 [
   {
-    "name": "Deploy & build 🔨",
-    "command": "error=*EVENTF lib1=&CURLIB makei -z &NAME.&EXT",
+    "name": "Deploy & build with ibmi-bob 🔨",
+    "command": "error=*EVENTF lib1=&CURLIB makei -f &BASENAME",
+    "extensions": [
+      "GLOBAL"
+    ],
+    "environment": "pase",
+    "deployFirst": true
+  },
+  {
+    "name": "Deploy & build with GNU Make 🔨",
+    "command": "/QOpenSys/pkgs/bin/gmake &BASENAME BIN_LIB=&CURLIB",
     "extensions": [
       "GLOBAL"
     ],

@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.5.5",
+	"version": "1.5.7",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -22,7 +22,7 @@
 	},
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.60.0"
+		"vscode": "^1.66.0"
 	},
 	"categories": [
 		"Other"
@@ -49,6 +49,12 @@
 					"actions.json"
 				],
 				"url": "./src/schemas/actions.json"
+			},
+			{
+				"fileMatch": [
+					"iproj.json"
+				],
+				"url": "./src/schemas/iproj.json"
 			}
 		],
 		"configuration": {
@@ -1282,6 +1288,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "resourceScheme == member || resourceScheme == streamfile",
 					"group": "navigation@1"
+				},
+				{
+					"command": "code-for-ibmi.clearDiagnostics",
+					"when": "resourceScheme == member || resourceScheme == streamfile",
+					"group": "navigation@2"
 				}
 			],
 			"view/item/context": [
@@ -1553,7 +1564,7 @@
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
 		"@types/node": "^12.11.7",
-		"@types/vscode": "^1.60.0",
+		"@types/vscode": "^1.66.0",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"semver": "^7.3.5",
