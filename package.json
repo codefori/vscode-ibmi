@@ -373,10 +373,10 @@
 					"default": true,
 					"description": "When enabled, files will automatically be opened when copied or moved/renamed."
 				},
-				"code-for-ibmi.showReconnectButton": {
+				"code-for-ibmi.showConnectionButtons": {
 					"type": "boolean",
 					"default": false,
-					"description": "If enabled, a new button will be shown in the toolbar to force reconnect to the IBM i. Requires restart if changed."
+					"description": "If enabled, new buttons will be shown in the toolbar to force reconnect to the IBM i and to disconnect from the server. Requires restart if changed."
 				},
 				"code-for-ibmi.tryNewErrorParser": {
 					"type": "boolean",
