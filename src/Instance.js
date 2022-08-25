@@ -149,7 +149,7 @@ module.exports = class Instance {
         context.subscriptions.push(reconnectBarItem);
       }
 
-      if (Configuration.get(`showReconnectButton`)) {
+      if (Configuration.get(`showConnectionButtons`)) {
         reconnectBarItem.tooltip = `Force reconnect to system.`;
         reconnectBarItem.text = `$(extensions-remote)`;
         reconnectBarItem.show();
@@ -173,12 +173,14 @@ module.exports = class Instance {
           command: `code-for-ibmi.disconnect`,
           title: `Disconnect from system`
         }
-        disconnectBarItem.tooltip = `Disconnect from system.`;
-        disconnectBarItem.text = `$(debug-disconnect)`;
         context.subscriptions.push(disconnectBarItem);
       }
 
-      disconnectBarItem.show();
+      if (Configuration.get(`showConnectionButtons`)) {
+        disconnectBarItem.tooltip = `Disconnect from system.`;
+        disconnectBarItem.text = `$(debug-disconnect)`;
+        disconnectBarItem.show();
+      }
 
       if (!terminalBarItem) {
         terminalBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
