@@ -142,6 +142,9 @@ module.exports = class objectBrowserTwoProvider {
                 newNameOK = false;
                 vscode.window.showErrorMessage(`${e}`);
               }
+            }
+
+            if (fullPath && newNameOK) {
               if (newData.library === oldData.library && newData.file === oldData.file && newData.member === oldData.member) {
                 newNameOK = false;
                 vscode.window.showErrorMessage(`Cannot copy member to itself!`);
