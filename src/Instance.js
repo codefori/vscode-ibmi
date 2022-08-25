@@ -363,25 +363,6 @@ module.exports = class Instance {
           })
         );
 
-        context.subscriptions.push(
-          vscode.commands.registerCommand(`code-for-ibmi.openFileByPath`, async () => {
-            const searchFor = await vscode.window.showInputBox({
-              prompt: `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`
-            });
-
-            if (searchFor) {
-              try {
-                // If opening a source member, parse and validate the path.
-                if (!searchFor.startsWith(`/`)) {
-                  connection.parserMemberPath(searchFor);
-                }
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, searchFor);
-              } catch (e) {
-                vscode.window.showErrorMessage(e.message);
-              }
-            }
-          }),
-
           vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async () => {
             const sources = instance.storage.get(`sourceList`);
             const dirs = Object.keys(sources);
@@ -397,7 +378,7 @@ module.exports = class Instance {
 
             const quickPick = vscode.window.createQuickPick();
             quickPick.items = list.map(item => ({ label: item }));
-            quickPick.placeholder = `Go to file..`;
+            quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`;
 
             quickPick.onDidChangeValue(() => {
               // INJECT user values into proposed values
