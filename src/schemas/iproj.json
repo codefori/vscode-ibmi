@@ -1,0 +1,73 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "description": {
+            "type": "string",
+            "description": "Descriptive application name"
+        },
+        "version": {
+            "type": "string",
+            "description": "version of this file format, used for migration purposes "
+        },
+        "includePath": {
+            "type": "array",
+            "description": "directories to be searched for includes/copy file (can contain variable references)",
+            "items": {    
+                "type": "string"
+            }
+        },
+        "repository": {
+            "type": "string",
+            "description": "URL of repository of this projects home"
+        },
+        "objlib": {
+            "type": "string",
+            "description": "target library for compiled objects (if not specified defaults to *CURLIB)"
+        },
+        "curlib": {
+            "type": "string",
+            "description": "library that is CURLIB in the LIBL for project's connection.  Note that if objlib is not specified, then this will also serve as the objlib"
+        },
+        "preUsrlibl": {
+            "type": "array",
+            "description": "libraries to add at the beginning of the user portion of the LIBL (can contain references to named libraries)",
+            "items": {    
+                "type": "string"
+            }
+        },
+        "postUsrlibl": {
+            "type": "array",
+            "description": "libraries to add at the end of the user portion of the LIBL (can contain references to named libraries)",
+            "items": {    
+                "type": "string"
+            }
+        },
+        "license": {
+            "type": "string",
+            "description": "licensing terms for this project"
+        },
+        "setIBMiEnvCmd": {
+            "type": "array",
+            "description": "list of CL commands to be executed whenever this project connects to the IBM i.  Typically this involves LIBL, ENVVAR and iASP setup.",
+            "items": {    
+                "type": "string"
+            }
+        },
+        "buildCommand": {
+            "type": "string",
+            "description": "PASE command line used to build this entire project. The following substitution variables are supported:\n {filename} resolves to the base file name being edited.\n {path} resolves to the full IFS path corresponding to the source in the editor.\n {host} resolves to the IBM i hostname.\n {usrprf} the user profile that the command will be executed under.\n {branch} resolves to the name of the current git branch if this project is managed by git.\nYou also have access to standard Code for IBM i variables, like &CURLIB."
+        },
+        "compileCommand": {
+            "type": "string",
+            "description": "PASE command line used to compile a specific source file in this project. The following substitution variables are supported:\n {filename} resolves to the base file name being edited.\n {path} resolves to the full IFS path corresponding to the source in the editor.\n {host} resolves to the IBM i hostname.\n {usrprf} the user profile that the command will be executed under.\n {branch} resolves to the name of the current git branch if this project is managed by git.\nYou also have access to standard Code for IBM i variables, like &CURLIB."
+        },
+        "extensions": {
+            "type": "object",
+            "description": "attributes used by external software vendors to provide additional functionality",
+            "items": {
+                "type": "object"
+            }
+        }
+    }
+ }

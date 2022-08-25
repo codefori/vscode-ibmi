@@ -2,16 +2,19 @@
    - [Login](pages/login.md)
 - Developing
    - [Editing and compiling](pages/developing/editing-compiling.md)
-   - [Local development](pages/developing/local-development.md)
    - [Actions](pages/developing/actions/index.md)
       - [Execution](pages/developing/actions/execution.md)
       - [Custom Variables](pages/developing/actions/custom-vars.md)
    - [ILEDocs](pages/developing/iledocs.md)
+   - Local Development
+      - [Getting started](pages/developing/local/getting-started.md)
+      - [Azure DevOps](pages/developing/local/azure.md)
 - Tips
    - [Quick Start](pages/tips/quickstart.md)
    - [Tricks](pages/tips/tricks.md)
    - [Terminals](pages/tips/terminals.md)
    - [CCSID](pages/tips/ccsid.md)
+   - [Setup](pages/tips/setup.md)
 - [Browsers](pages/browsers/index.md)
    - [User Library List](pages/browsers/user-library-list.md)
    - [Object Browser](pages/browsers/object-browser.md)
@@ -20,4 +23,7 @@
    - [Profiles](pages/settings/profiles.md)
    - [Connection](pages/settings/connection.md)
    - [Global](pages/settings/global.md)
+- Extensions
+   - [RPGLE language tools](pages/extensions/rpgle.md)
+   - [Db2 for i](pages/extensions/db2i.md)
 - [Extending](pages/api/extending.md)

@@ -17,6 +17,10 @@ To maximize your editing tab try:
 
   Click **Help** in the menu for  tips, tricks, editing keyboard shortcuts and tutorials.
 
+### Source dates
+
+Source date support must be enabled and are disabled by default. This can be changed in the Connection Settings. 
+
 ### Compiling
 
 Compile the **active tab** with Ctrl+E.

@@ -31,7 +31,19 @@ module.exports = class Login {
     ui.addField(new Field(`password`, `password`, `Password`));
     ui.addField(new Field(`checkbox`, `savePassword`, `Save Password`));
     ui.addField(new Field(`file`, `privateKey`, `Private Key`));    
-    ui.addField(new Field(`submit`, `submitButton`, `Connect`));
+    
+    let field = new Field(`buttons`);
+    field.items = [
+      {
+        id: `connect`,
+        label: `Connect`,
+      },
+      {
+        id: `saveExit`,
+        label: `Save & Exit`,
+      }
+    ];
+    ui.addField(field);
 
     const {panel, data} = await ui.loadPage(`IBM i Login`);
 
@@ -46,46 +58,64 @@ module.exports = class Login {
         if (existingConnection) {
           vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
         } else {
-          vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
+          
+          let newConnection = (!existingConnections.some(item => item.name === data.name));
+          if (newConnection) {
+            // New connection!
+            existingConnections.push({
+              name: data.name,
+              host: data.host,
+              port: data.port,
+              username: data.username,
+              privateKey: data.privateKey
+            });
 
-          const connection = new IBMi();
-    
-          try {
-            const connected = await connection.connect(data);
-            if (connected.success) {
-    
-              instance.setConnection(connection);
-              instance.loadAllofExtension(context);
-    
-              if (!existingConnections.some(item => item.name === data.name)) {
-                // New connection!
-                existingConnections.push({
-                  name: data.name,
-                  host: data.host,
-                  port: data.port,
-                  username: data.username,
-                  privateKey: data.privateKey
-                });
+            if(data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
 
-                if(data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
+            await Configuration.setGlobal(`connections`, existingConnections);
+            vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+          }
 
-                await Configuration.setGlobal(`connections`, existingConnections);
+          switch(data.buttons) {
+          case `saveExit`:
+            vscode.window.showInformationMessage(`Connection to ${data.host} saved!`);
+            break;
+          case `connect`:
+            vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
+            const connection = new IBMi();
+      
+            try {
+              const connected = await connection.connect(data);
+              if (connected.success) {
+                instance.setConnection(connection);
+                instance.loadAllofExtension(context);
+      
+                if (newConnection) {
+                  
+                  vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
+                    if (selectionA === `Open configuration`) {
+                      vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
 
-                vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selection) => {
-                  if (selection === `Open configuration`) {
-                    vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
-                  }
-                });
+                    } else {
+                      vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
+                        if (selectionB === `Open configuration`) {
+                          vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                        }
+                      });
+                    }
+                  });
+                } else {
+                  vscode.window.showInformationMessage(`Connected to ${data.host}!`);
+                }
+      
               } else {
-                vscode.window.showInformationMessage(`Connected to ${data.host}!`);
+                vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
               }
-    
-            } else {
-              vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
+      
+            } catch (e) { 
+              vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
             }
-    
-          } catch (e) {
-            vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
+            break;
           }
 
         }

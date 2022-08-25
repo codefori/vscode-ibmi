@@ -6,6 +6,9 @@ const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
 const IBMiContent = require(`./IBMiContent`);
+const CompileTools = require(`./CompileTools`);
+
+const localLanguageActions = require(`../schemas/localLanguageActions`);
 
 const ignore = require(`ignore`).default;
 
@@ -45,6 +48,38 @@ module.exports = class Deployment {
     }
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.launchActionsSetup`, async () => {
+        const chosenWorkspace = await module.exports.getWorkspaceFolder();
+
+        if (chosenWorkspace) {
+          const types = Object.keys(localLanguageActions);
+        
+          const chosenTypes = await vscode.window.showQuickPick(types, {
+            canPickMany: true,
+            title: `Select available pre-defined actions`
+          });
+
+          if (chosenTypes) {
+            /** @type {Action[]} */
+            const newActions = chosenTypes.map(type => localLanguageActions[type]).flat();
+
+            const localActionsUri = vscode.Uri.file(path.join(chosenWorkspace.uri.fsPath, `.vscode`, `actions.json`));
+
+            try {
+              await vscode.workspace.fs.writeFile(
+                localActionsUri, 
+                Buffer.from(JSON.stringify(newActions, null, 2), `utf-8`)
+              );
+
+              vscode.workspace.openTextDocument(localActionsUri).then(doc => vscode.window.showTextDocument(doc));
+            } catch (e) {
+              console.log(e);
+              vscode.window.showErrorMessage(`Unable to create actions.json file.`);
+            }
+          }
+        }
+      }),
+
       /**
        * @param {number} document
        * @returns {Promise<{false|{workspace: number}}>}
@@ -127,6 +162,12 @@ module.exports = class Deployment {
                     else {
                       changes = await repository.state.workingTreeChanges;
                     }
+
+                    console.log(changes);
+
+                    // Do not attempt to upload deleted files.
+                    // https://github.com/microsoft/vscode/blob/main/extensions/git/src/api/git.d.ts#L69
+                    changes = changes.filter(change => change.status !== 6);
                     
                     if (changes.length > 0) {
                       const uploads = changes.map(change => {
@@ -149,45 +190,7 @@ module.exports = class Deployment {
                             concurrency: 5
                           });
                         } else {
-                          // Upload changes to QSYS
-                          const uploadUris = uploads.map(upload => upload.uri);
-                          let index = 0;
-
-                          for (const uri of uploadUris) {
-                            const relative = path.relative(folder.uri.fsPath, uri.fsPath);
-                            const pathParts = relative.toUpperCase().split(path.sep);
-                            const baseInfo = path.parse(relative);
-      
-                            index += 1;
-      
-                            // directory / file.ext
-                            if (pathParts.length === 2 && pathParts[0].match(/^[A-Z]/i)) {
-                              if (baseInfo.ext.length > 1) {
-
-                                if (!sourceFilesCreated.includes(pathParts[0])) {
-                                  sourceFilesCreated.push(pathParts[0]);
-                                  try {
-                                    await connection.remoteCommand(`CRTSRCPF FILE(${remotePath}/${pathParts[0]}) RCDLEN(112)`);
-                                  } catch (e) {
-                                  // We likely don't care that it fails.
-                                  }
-                                }
-      
-                                try {
-                                  await connection.remoteCommand(`ADDPFM FILE(${remotePath}/${pathParts[0]}) MBR(${baseInfo.name}) SRCTYPE(${baseInfo.ext.substring(1)})`);
-                                } catch (e) {
-                                  // We likely don't care that it fails. It might already exist?
-                                }
-      
-                                const fileContent = await vscode.workspace.fs.readFile(uri);
-                                await content.uploadMemberContent(undefined, remotePath, pathParts[0], baseInfo.name, fileContent);
-    
-                                this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`,`)}`);
-                              }
-                            } else {
-                              // Bad extension
-                            }
-                          }
+                          throw new Error(`Unable to determine where to upload workspace.`)
                         }
                         this.button.text = BUTTON_BASE;
                         this.deploymentLog.appendLine(`Deployment finished.`);
@@ -274,71 +277,8 @@ module.exports = class Deployment {
                       return false;
                     }
                   } else {
-                    // Upload/write to QSYS
-                    const uploads = await vscode.workspace.findFiles(`**`, ``);
-
-                    let index = -1;
-
-                    for (const uri of uploads) {
-                      const relative = path.relative(folder.uri.fsPath, uri.fsPath);
-                      const pathParts = relative.toUpperCase().split(path.sep);
-                      const baseInfo = path.parse(relative);
-
-                      index += 1;
-
-                      // directory / file.ext
-                      if (pathParts.length === 2 && pathParts[0].match(/^[A-Z]/i)) {
-                        if (ignoreRules) {
-                          if (ignoreRules.ignores(relative)) {
-                            // Skip because it's part of the .gitignore
-                            continue;
-                          }
-                        }
-
-                        if (pathParts[0].length <= 10 && baseInfo.name.length <= 10 && baseInfo.ext.length > 1) {
-                          progress.report({ message: `Deploying ${relative} (${index + 1}/${uploads.length})` });
-
-                          if (!sourceFilesCreated.includes(pathParts[0])) {
-                            sourceFilesCreated.push(pathParts[0]);
-                            try {
-                              await connection.remoteCommand(`CRTSRCPF FILE(${remotePath}/${pathParts[0]}) RCDLEN(112)`);
-                            } catch (e) {
-                            // We likely don't care that it fails.
-                            }
-                          }
-
-                          try {
-                            await connection.remoteCommand(`ADDPFM FILE(${remotePath}/${pathParts[0]}) MBR(${baseInfo.name}) SRCTYPE(${baseInfo.ext.substring(1)})`);
-                          } catch (e) {
-                            // We likely don't care that it fails. It might already exist?
-                          }
-
-                          try {
-                            const fileContent = await vscode.workspace.fs.readFile(uri);
-                            await content.uploadMemberContent(undefined, remotePath, pathParts[0], baseInfo.name, fileContent);
-
-                            progress.report({ message: `Deployed ${relative}` });
-                            this.deploymentLog.appendLine(`SUCCESS: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`/`)}`);
-
-                          } catch (error) {
-                            // Failed to upload a file. Fail deploy.
-                            progress.report({ message: `Failed to deploy ${relative}` });
-                            this.deploymentLog.appendLine(`FAILED: ${relative} -> ${[remotePath, pathParts[0], baseInfo.name].join(`/`)}: ${error}`);
-                            return false;
-                          }
-                        } else {
-                          this.deploymentLog.appendLine(`SKIPPED: ${relative}}`);
-                        }
-                      } else {
-                        // Bad extension
-                      }
-                    }
-
-                    progress.report({ message: `Deployment finished.` });
-                    this.deploymentLog.appendLine(`Deployment finished.`);
-
-                    // All good uploading!
-                    return true;
+                    this.deploymentLog.appendLine(`Deployment cancelled. Not sure where to deploy workspace.`);
+                    return false;
                   }
                 });
 
@@ -413,7 +353,7 @@ module.exports = class Deployment {
 
     const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
 
-    if (workspaces.length === 1) {
+    if (workspaces && workspaces.length === 1) {
       const workspace = workspaces[0];
 
       if (!existingPaths[workspace.uri.fsPath]) {
@@ -437,6 +377,18 @@ module.exports = class Deployment {
           }
         });
       }
+
+      CompileTools.getLocalActions().then(result => {
+        if (result.length === 0) {
+          vscode.window.showInformationMessage(
+            `There are no local Actions defined for this project.`,
+            `Run Setup`
+          ).then(result => {
+            if (result === `Run Setup`)
+              vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
+          });
+        }
+      })
 
       vscode.window.showInformationMessage(
         `Current library is set to ${config.currentLibrary}.`,
