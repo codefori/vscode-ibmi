@@ -118,7 +118,7 @@ module.exports = class SettingsUI {
         field.description = `Enable CL content assist and hover support. After enabled and restarted, Code for IBM i will ask you to install the required tools for the feature to work. This will install programs into your temporary library.`;
         ui.addField(field);
 
-        if (connection.remoteFeatures.tn5250) { 
+        if (connection && connection.remoteFeatures.tn5250) { 
           ui.addField(new Field(`hr`));
 
           const encodings = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
