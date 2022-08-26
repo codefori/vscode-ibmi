@@ -284,12 +284,14 @@ module.exports = class Instance {
 
         //********* Job Browser */
 
-        context.subscriptions.push(
-          vscode.window.registerTreeDataProvider(
-            `jobBrowser`,
-            new jobBrowser(context)
-          )
-        );
+        if (config.enableSQL){
+          context.subscriptions.push(
+            vscode.window.registerTreeDataProvider(
+              `jobBrowser`,
+              new jobBrowser(context)
+            )
+          );
+        }
 
         //********* Search View */
 
