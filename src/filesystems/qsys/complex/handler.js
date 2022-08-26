@@ -324,18 +324,11 @@ module.exports = class Handler {
     diff.changes.forEach(change => {
       console.log(change);
       const startIndex = change.modifiedStartLineNumber - 1;
-      if (change.modifiedStartLineNumber === change.modifiedEndLineNumber) {
-        if (change.originalEndLineNumber === 0) {
-          // New line was added
-          newDates.splice(startIndex, 0, ...Array(1).fill(currentDate));
-        } else {
-          newDates[startIndex] = currentDate;
-        }
-      } else {
-        const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber || change.originalStartLineNumber < change.originalEndLineNumber ? change.originalEndLineNumber - change.originalStartLineNumber + 1 : 0); 
-        const changedLines = change.modifiedEndLineNumber > change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
-        newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
-      }
+
+      const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber || change.originalStartLineNumber <= change.originalEndLineNumber ? change.originalEndLineNumber - change.originalStartLineNumber + 1 : 0); 
+      const changedLines = change.modifiedEndLineNumber >= change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
+      newDates.splice(startIndex + (change.modifiedEndLineNumber === 0 ? 1 : 0), removedLines, ...Array(changedLines).fill(currentDate));
+    
     });
 
     return newDates;
