@@ -1337,6 +1337,11 @@
 					"group": "inline"
 				},
 				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "libraryChangeCurrent@1"
+				},
+				{
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "view == libraryListView && viewItem == library",
 					"group": "libraryRemove@1"
