@@ -9,7 +9,7 @@ let instance = require(`./Instance`);
 let {CustomUI, Field} = require(`./api/CustomUI`);
 
 const connectionBrowser = require(`./views/connectionBrowser`);
-const IBMi = require("./api/IBMi");
+const IBMi = require(`./api/IBMi`);
 
 /**
  * @param {vscode.ExtensionContext} context
