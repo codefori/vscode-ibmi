@@ -33,12 +33,13 @@ const lineDecor = vscode.window.createTextEditorDecorationType({
   rangeBehavior: vscode.DecorationRangeBehavior.OpenOpen,
 });
 
-
 const SD_BASE = `$(history) Date Search`;
 const SD_ACTIVE = `$(history) Since `;
 
 /** @type {number|undefined} */
 let highlightSince;
+/** @type {number|undefined} */
+let highlightBefore;
 
 module.exports = class Handler {
   static begin(context) {
@@ -113,6 +114,7 @@ module.exports = class Handler {
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => {
         sourceDateSearchBarItem.text = SD_BASE;
         highlightSince = undefined;
+        highlightBefore = undefined;
 
         const editor = vscode.window.activeTextEditor;
         if (editor) {
@@ -121,27 +123,38 @@ module.exports = class Handler {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => {
-
         vscode.window.showInputBox({
           value: this.currentStamp(),
           prompt: `Show everything on or after date provided`,
           title: `Source Date search`,
+          ignoreFocusOut: true,
           validateInput: (input) => {
-            if (input.length !== 6) {
-              return `Source date must be length of 6. (YYMMDD)`
+            const ranges = input.split(`-`);
+
+            if (ranges.length > 2) {
+              return `Up to two ranges allowed. (FROM-TO, both YYMMDD)`;
             }
 
-            if (Number.isNaN(input)) {
-              return `Value provided is not a valid number.`
+            for (let date of ranges) {
+              if (date.length !== 6) {
+                return `Source date ${date} must be length of 6. (YYMMDD)`;
+              }
+
+              if (Number.isNaN(Number.parseFloat(date))) {
+                return `Value ${date} is not a valid number.`;
+              }
             }
           }
         }).then(async value => {
           if (value) {
             sourceDateSearchBarItem.text = SD_ACTIVE + value;
-            highlightSince = Number(value);
+            const dates = value.split(`-`);
+            highlightSince = Number(dates[0]);
+            highlightBefore = dates[1] !== undefined ? Number(dates[1]) : undefined;
           } else {
             sourceDateSearchBarItem.text = SD_BASE;
             highlightSince = undefined;
+            highlightBefore = undefined;
           }
 
           const editor = vscode.window.activeTextEditor;
@@ -233,28 +246,35 @@ module.exports = class Handler {
 
           // Due to the way source dates are stored, we're doing some magic.
           // Dates are stored in zoned/character columns, which means 26th 
-          // August 2022 is 220826, 4th May 1997 means 970826.
+          // August 2022 is 220826, 4th May 1997 means 970504.
 
           // We support the ability to search and highlight dates after a
           // certain date. The issue with these dates value when converted
-          // to numeric is that 970826 is more than 220826, even though
-          // 220826 is after 970826 in terms of dates.
+          // to numeric is that 970504 is more than 220826, even though
+          // 220826 is after 970504 in terms of dates.
 
           // To get around this, if the line date or search date is less than
           // or equal to the date of today, we add 1000000 (one million).
-          // 220826 + 1000000 = 1220826, which is more than 970826.
+          // 220826 + 1000000 = 1220826, which is more than 970504.
 
-          const currentHighlight = highlightSince ? highlightSince + (highlightSince <= currentDateNumber ? 1000000 : 0) : undefined;
+          const currentHighlightSince = highlightSince ? highlightSince + (highlightSince <= currentDateNumber ? 1000000 : 0) : undefined;
+          const currentHighlightBefore = highlightBefore ? highlightBefore + (highlightBefore <= currentDateNumber ? 1000000 : 0) : undefined;
 
           for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
             let highlightForSearch = false;
-            if (currentHighlight) {
-              let lineDateNumber = Number(dates[cLine]);
-              if (lineDateNumber <= currentDateNumber && lineDateNumber !== 0) {
-                lineDateNumber += 1000000;
-              }
-              highlightForSearch = lineDateNumber >= currentHighlight;
+
+            // Add 1000000 to date if less than today.
+            let lineDateNumber = Number(dates[cLine]);
+            if (lineDateNumber <= currentDateNumber && lineDateNumber !== 0) {
+              lineDateNumber += 1000000;
             }
+
+            if (currentHighlightSince && currentHighlightBefore)
+              highlightForSearch = lineDateNumber >= currentHighlightSince && lineDateNumber <= currentHighlightBefore;
+            else if (currentHighlightSince)
+              highlightForSearch = lineDateNumber >= currentHighlightSince;
+            else if (currentHighlightBefore)
+              highlightForSearch = lineDateNumber <= currentHighlightBefore;
 
             lineGutters.push({
               hoverMessage,
