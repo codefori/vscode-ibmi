@@ -363,44 +363,43 @@ module.exports = class Instance {
           })
         );
 
-          vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async () => {
-            const sources = instance.storage.get(`sourceList`);
-            const dirs = Object.keys(sources);
-            let list = [];
+        vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async () => {
+          const sources = instance.storage.get(`sourceList`);
+          const dirs = Object.keys(sources);
+          let list = [];
 
-            dirs.forEach(dir => {
-              sources[dir].forEach(source => {
-                list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
-              });
+          dirs.forEach(dir => {
+            sources[dir].forEach(source => {
+              list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
             });
+          });
 
-            list.push(`Clear list`);
+          list.push(`Clear list`);
 
-            const quickPick = vscode.window.createQuickPick();
-            quickPick.items = list.map(item => ({ label: item }));
-            quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`;
+          const quickPick = vscode.window.createQuickPick();
+          quickPick.items = list.map(item => ({ label: item }));
+          quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`;
 
-            quickPick.onDidChangeValue(() => {
-              // INJECT user values into proposed values
-              if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
-            })
-
-            quickPick.onDidAccept(() => {
-              const selection = quickPick.selectedItems[0].label;
-              if (selection) {
-                if (selection === `Clear list`) {
-                  instance.storage.set(`sourceList`, {});
-                  vscode.window.showInformationMessage(`Cleared list.`);
-                } else {
-                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);
-                }
-              }
-              quickPick.hide()
-            })
-            quickPick.onDidHide(() => quickPick.dispose());
-            quickPick.show();
+          quickPick.onDidChangeValue(() => {
+            // INJECT user values into proposed values
+            if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
           })
-        )
+
+          quickPick.onDidAccept(() => {
+            const selection = quickPick.selectedItems[0].label;
+            if (selection) {
+              if (selection === `Clear list`) {
+                instance.storage.set(`sourceList`, {});
+                vscode.window.showInformationMessage(`Cleared list.`);
+              } else {
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);
+              }
+            }
+            quickPick.hide()
+          })
+          quickPick.onDidHide(() => quickPick.dispose());
+          quickPick.show();
+        })
 
         // ********* CL content assist */
         if (config.clContentAssistEnabled) {
