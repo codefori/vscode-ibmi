@@ -127,124 +127,124 @@ module.exports = class jobBrowserProvider {
 
             let chgjobCommand = `CHGJOB JOB(${paramChgjob.jobnumber}/${paramChgjob.jobuser}/${paramChgjob.jobname})`;
 
-            if (paramChgjob.JOBPTY != '*SAME') {
+            if (paramChgjob.JOBPTY != `*SAME`) {
               chgjobCommand += ` JOBPTY(${paramChgjob.JOBPTY})`;
             }
-            if (paramChgjob.OUTPTY != '*SAME') {
+            if (paramChgjob.OUTPTY != `*SAME`) {
               chgjobCommand += ` OUTPTY(${paramChgjob.OUTPTY})`;
             }
-            if (paramChgjob.PRTDEV != '*SAME') {
+            if (paramChgjob.PRTDEV != `*SAME`) {
               chgjobCommand += ` PRTDEV(${paramChgjob.PRTDEV})`;
             }
-            if (paramChgjob.OUTQ != '*SAME') {
+            if (paramChgjob.OUTQ != `*SAME`) {
               chgjobCommand += ` OUTQ(${paramChgjob.OUTQ})`;
             }
-            if (paramChgjob.RUNPTY != '*SAME') {
+            if (paramChgjob.RUNPTY != `*SAME`) {
               chgjobCommand += ` RUNPTY(${paramChgjob.RUNPTY})`;
             }
-            if (paramChgjob.JOBQ != '*SAME') {
+            if (paramChgjob.JOBQ != `*SAME`) {
               chgjobCommand += ` JOBQ(${paramChgjob.JOBQ})`;
             }
-            if (paramChgjob.PRTTXT != '*SAME') {
+            if (paramChgjob.PRTTXT != `*SAME`) {
               chgjobCommand += ` PRTTXT(${paramChgjob.PRTTXT})`;
             }
-            if (paramChgjob.LOG != '*SAME') {
+            if (paramChgjob.LOG != `*SAME`) {
               chgjobCommand += ` LOG(${paramChgjob.LOG})`;
             }
-            if (paramChgjob.LOGCLPGM != '*SAME') {
+            if (paramChgjob.LOGCLPGM != `*SAME`) {
               chgjobCommand += ` LOGCLPGM(${paramChgjob.LOGCLPGM})`;
             }
-            if (paramChgjob.LOGOUTPUT != '*SAME') {
+            if (paramChgjob.LOGOUTPUT != `*SAME`) {
               chgjobCommand += ` LOGOUTPUT(${paramChgjob.LOGOUTPUT})`;
             }
-            if (paramChgjob.JOBMSGQFL != '*SAME') {
+            if (paramChgjob.JOBMSGQFL != `*SAME`) {
               chgjobCommand += ` JOBMSGQFL(${paramChgjob.JOBMSGQFL})`;
             }
-            if (paramChgjob.INQMSGRPY != '*SAME') {
+            if (paramChgjob.INQMSGRPY != `*SAME`) {
               chgjobCommand += ` INQMSGRPY(${paramChgjob.INQMSGRPY})`;
             }
-            if (paramChgjob.BRKMSG != '*SAME') {
+            if (paramChgjob.BRKMSG != `*SAME`) {
               chgjobCommand += ` BRKMSG(${paramChgjob.BRKMSG})`;
             }
-            if (paramChgjob.STSMSG != '*SAME') {
+            if (paramChgjob.STSMSG != `*SAME`) {
               chgjobCommand += ` STSMSG(${paramChgjob.STSMSG})`;
             }
-            if (paramChgjob.DDMCNV != '*SAME') {
+            if (paramChgjob.DDMCNV != `*SAME`) {
               chgjobCommand += ` DDMCNV(${paramChgjob.DDMCNV})`;
             }
-            if (paramChgjob.SCDDATE != '*SAME') {
+            if (paramChgjob.SCDDATE != `*SAME`) {
               chgjobCommand += ` SCDDATE(${paramChgjob.SCDDATE})`;
             }
-            if (paramChgjob.SCDTIME != '*SAME') {
+            if (paramChgjob.SCDTIME != `*SAME`) {
               chgjobCommand += ` SCDTIME(${paramChgjob.SCDTIME})`;
             }
-            if (paramChgjob.DATE != '*SAME') {
+            if (paramChgjob.DATE != `*SAME`) {
               chgjobCommand += ` DATE(${paramChgjob.DATE})`;
             }
-            if (paramChgjob.DATFMT != '*SAME') {
+            if (paramChgjob.DATFMT != `*SAME`) {
               chgjobCommand += ` DATFMT(${paramChgjob.DATFMT})`;
             }
-            if (paramChgjob.DATSEP != '*SAME') {
+            if (paramChgjob.DATSEP != `*SAME`) {
               chgjobCommand += ` DATSEP(${paramChgjob.DATSEP})`;
             }
-            if (paramChgjob.TIMSEP != '*SAME') {
+            if (paramChgjob.TIMSEP != `*SAME`) {
               chgjobCommand += ` TIMSEP(${paramChgjob.TIMSEP})`;
             }
-            if (paramChgjob.SWS != '*SAME') {
+            if (paramChgjob.SWS != `*SAME`) {
               chgjobCommand += ` SWS(${paramChgjob.SWS})`;
             }
-            if (paramChgjob.TIMESLICE != '*SAME') {
+            if (paramChgjob.TIMESLICE != `*SAME`) {
               chgjobCommand += ` TIMESLICE(${paramChgjob.TIMESLICE})`;
             }
-            if (paramChgjob.PURGE != '*SAME') {
+            if (paramChgjob.PURGE != `*SAME`) {
               chgjobCommand += ` PURGE(${paramChgjob.PURGE})`;
             }
-            if (paramChgjob.DFTWAIT != '*SAME') {
+            if (paramChgjob.DFTWAIT != `*SAME`) {
               chgjobCommand += ` DFTWAIT(${paramChgjob.DFTWAIT})`;
             }
-            if (paramChgjob.DEVRCYACN != '*SAME') {
+            if (paramChgjob.DEVRCYACN != `*SAME`) {
               chgjobCommand += ` DEVRCYACN(${paramChgjob.DEVRCYACN})`;
             }
-            if (paramChgjob.TSEPOOL != '*SAME') {
+            if (paramChgjob.TSEPOOL != `*SAME`) {
               chgjobCommand += ` TSEPOOL(${paramChgjob.TSEPOOL})`;
             }
-            if (paramChgjob.PRTKEYFMT != '*SAME') {
+            if (paramChgjob.PRTKEYFMT != `*SAME`) {
               chgjobCommand += ` PRTKEYFMT(${paramChgjob.PRTKEYFMT})`;
             }
-            if (paramChgjob.SRTSEQ != '*SAME') {
+            if (paramChgjob.SRTSEQ != `*SAME`) {
               chgjobCommand += ` SRTSEQ(${paramChgjob.SRTSEQ})`;
             }
-            if (paramChgjob.LANGID != '*SAME') {
+            if (paramChgjob.LANGID != `*SAME`) {
               chgjobCommand += ` LANGID(${paramChgjob.LANGID})`;
             }
-            if (paramChgjob.CNTRYID != '*SAME') {
+            if (paramChgjob.CNTRYID != `*SAME`) {
               chgjobCommand += ` CNTRYID(${paramChgjob.CNTRYID})`;
             }
-            if (paramChgjob.CCSID != '*SAME') {
+            if (paramChgjob.CCSID != `*SAME`) {
               chgjobCommand += ` CCSID(${paramChgjob.CCSID})`;
             }
-            if (paramChgjob.DECFMT != '*SAME') {
+            if (paramChgjob.DECFMT != `*SAME`) {
               chgjobCommand += ` DECFMT(${paramChgjob.DECFMT})`;
             }
-            if (paramChgjob.CHRIDCTL != '*SAME') {
+            if (paramChgjob.CHRIDCTL != `*SAME`) {
               chgjobCommand += ` CHRIDCTL(${paramChgjob.CHRIDCTL})`;
             }
-            if (paramChgjob.SPLFACN != '*SAME') {
+            if (paramChgjob.SPLFACN != `*SAME`) {
               chgjobCommand += ` SPLFACN(${paramChgjob.SPLFACN})`;
             }
-            if (paramChgjob.WLCGRP != '*SAME') {
+            if (paramChgjob.WLCGRP != `*SAME`) {
               chgjobCommand += ` WLCGRP(${paramChgjob.WLCGRP})`;
             }
-            if (paramChgjob.CPUTIME != '*SAME') {
+            if (paramChgjob.CPUTIME != `*SAME`) {
               chgjobCommand += ` CPUTIME(${paramChgjob.CPUTIME})`;
             }
-            if (paramChgjob.MAXTMPSTG != '*SAME') {
+            if (paramChgjob.MAXTMPSTG != `*SAME`) {
               chgjobCommand += ` MAXTMPSTG(${paramChgjob.MAXTMPSTG})`;
             }
-            if (paramChgjob.PRCRSCPTY != '*SAME') {
+            if (paramChgjob.PRCRSCPTY != `*SAME`) {
               chgjobCommand += ` PRCRSCPTY(${paramChgjob.PRCRSCPTY})`;
             }
-            if (paramChgjob.DUPJOBOPT != '*SAME') {
+            if (paramChgjob.DUPJOBOPT != `*SAME`) {
               chgjobCommand += ` DUPJOBOPT(${paramChgjob.DUPJOBOPT})`;
             }
 
@@ -331,129 +331,129 @@ module.exports = class jobBrowserProvider {
     const connection = instance.getConnection();
     const config = instance.getConfig();
 
-    let items = [], item, whereClause = '' , filterClause = '';
-    
+    let items = [], item, whereClause = ``, filterClause = ``;
+
     if (element) {
       let filter;
 
       switch (element.contextValue) {
-        case `jobFilter`:
+      case `jobFilter`:
 
-          /** @type {JobFilter} */ //@ts-ignore We know what is it based on contextValue.
-          const jobFilter = element;
+        /** @type {JobFilter} */ //@ts-ignore We know what is it based on contextValue.
+        const jobFilter = element;
 
-          filter = config.jobFilters.find(filter => filter.nameFilter === jobFilter.filter);
+        filter = config.jobFilters.find(filter => filter.nameFilter === jobFilter.filter);
 
-          if (filter.jobNumberFilter != '*' && filter.jobNumberFilter.length > 0) {
-            whereClause += ` AND JOB_NUMBER like '${filter.jobNumberFilter}'`;
+        if (filter.jobNumberFilter != `*` && filter.jobNumberFilter.length > 0) {
+          whereClause += ` AND JOB_NUMBER like '${filter.jobNumberFilter}'`;
+        }
+
+        if (filter.profileFilter != `*` && filter.profileFilter.length > 0) {
+          whereClause += ` AND AUTHORIZATION_NAME like '${filter.profileFilter}'`;
+        }
+
+        // Don't want to search all and not blank
+        if (filter.jobNameFilter != `*` && filter.jobNameFilter.length > 0) {
+          if (filter.jobNameFilter.search(`[*]`)) {
+            // Joker
+            whereClause += ` AND JOB_NAME_SHORT like '${filter.jobNameFilter.replace(`*`, `%`)}'`;
+          } else {
+            // Exact search
+            filterClause += ` , JOB_NAME_FILTER => '${filter.jobNameFilter}'`;
           }
+        }
 
-          if (filter.profileFilter != '*' && filter.profileFilter.length > 0) {
-            whereClause += ` AND AUTHORIZATION_NAME like '${filter.profileFilter}'`;
+        // Don't want to search all and not blank
+        if (filter.subsystemFilter != `*` && filter.subsystemFilter.length > 0) {
+          if (filter.subsystemFilter.search(`[*]`)) {
+            // Joker
+            whereClause += ` AND SUBSYSTEM like '${filter.subsystemFilter.replace(`*`, `%`)}'`;
+          } else {
+            // Exact search
+            filterClause += ` , SUBSYSTEM_LIST_FILTER => '${filter.subsystemFilter}'`;
           }
+        }
 
-          // Don't want to search all and not blank
-          if (filter.jobNameFilter != '*' && filter.jobNameFilter.length > 0) {
-            if (filter.jobNameFilter.search('[*]')) {
-              // Joker
-              whereClause += ` AND JOB_NAME_SHORT like '${filter.jobNameFilter.replace('*', '%')}'`;
-            } else {
-              // Exact search
-              filterClause += ` , JOB_NAME_FILTER => '${filter.jobNameFilter}'`;
-            }
+        // Don't want to search all and not blank
+        if (filter.jobUserFilter != `*` && filter.jobUserFilter.length > 0) {
+          if (filter.jobUserFilter.search(`[*]`)) {
+            // Joker
+            whereClause += ` AND JOB_USER like '${filter.jobUserFilter.replace(`*`, `%`)}'`;
+          } else {
+            // Exact search
+            whereClause += ` AND JOB_USER = '${filter.jobUserFilter}'`;
+            // filterClause += ` , CURRENT_USER_LIST_FILTER => '${filter.jobUser}'`;
           }
+        }
 
-          // Don't want to search all and not blank
-          if (filter.subsystemFilter != '*' && filter.subsystemFilter.length > 0) {
-            if (filter.subsystemFilter.search('[*]')) {
-              // Joker
-              whereClause += ` AND SUBSYSTEM like '${filter.subsystemFilter.replace('*', '%')}'`;
-            } else {
-              // Exact search
-              filterClause += ` , SUBSYSTEM_LIST_FILTER => '${filter.subsystemFilter}'`;
-            }
+        if (connection) {
+          try {
+            const subSystems = await content.runSQL([`SELECT SUBSYSTEM "name" FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
+            WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} group by SUBSYSTEM order by SUBSYSTEM`].join(` `));
+            items = subSystems.map(subSystem => new SubSystem(filter.nameFilter, subSystem));
+
+          } catch (e) {
+            console.log(e);
+            item = new vscode.TreeItem(`Error loading jobs.`);
+            vscode.window.showErrorMessage(e);
+            items = [item];
           }
+        }
+        break;
 
-          // Don't want to search all and not blank
-          if (filter.jobUserFilter != '*' && filter.jobUserFilter.length > 0) {
-            if (filter.jobUserFilter.search('[*]')) {
-              // Joker
-              whereClause += ` AND JOB_USER like '${filter.jobUserFilter.replace('*', '%')}'`;
-            } else {
-              // Exact search
-              whereClause += ` AND JOB_USER = '${filter.jobUserFilter}'`;
-              // filterClause += ` , CURRENT_USER_LIST_FILTER => '${filter.jobUser}'`;
-            }
+      case `subsystem`:
+
+        /** @type {SubSystem} */ //@ts-ignore We know what is it based on contextValue.
+        const subSystem = element;
+
+        filter = config.jobFilters.find(filter => filter.nameFilter === subSystem.filter);
+
+        if (filter.jobNumberFilter != `*` && filter.jobNumberFilter.length > 0) {
+          whereClause += ` AND JOB_NUMBER like '${filter.jobNumberFilter}'`;
+        }
+
+        if (filter.profileFilter != `*` && filter.profileFilter.length > 0) {
+          whereClause += ` AND AUTHORIZATION_NAME like '${filter.profileFilter}'`;
+        }
+
+        // Don't want to search all and not blank
+        if (filter.jobNameFilter != `*` && filter.jobNameFilter.length > 0) {
+          if (filter.jobNameFilter.search(`[*]`)) {
+            // Joker
+            whereClause += ` AND JOB_NAME_SHORT like '${filter.jobNameFilter.replace(`*`, `%`)}'`;
+          } else {
+            // Exact search
+            filterClause += ` , JOB_NAME_FILTER => '${filter.jobNameFilter}'`;
           }
+        }
 
-          if (connection) {
-            try {
-              const subSystems = await content.runSQL([`SELECT SUBSYSTEM "name" FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
-              WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} group by SUBSYSTEM order by SUBSYSTEM`].join(` `));
-              items = subSystems.map(subSystem => new SubSystem(filter.nameFilter, subSystem));
+        filterClause += ` , SUBSYSTEM_LIST_FILTER => '${subSystem.path}'`;
 
-            } catch (e) {
-              console.log(e);
-              item = new vscode.TreeItem(`Error loading jobs.`);
-              vscode.window.showErrorMessage(e);
-              items = [item];
-            }
+        // Don't want to search all and not blank
+        if (filter.jobUserFilter != `*` && filter.jobUserFilter.length > 0) {
+          if (filter.jobUserFilter.search(`[*]`)) {
+            // Joker
+            whereClause += ` AND JOB_USER like '${filter.jobUserFilter.replace(`*`, `%`)}'`;
+          } else {
+            // Exact search
+            whereClause += ` AND JOB_USER = '${filter.jobUserFilter}'`;
           }
-          break;
+        }
 
-        case `subsystem`:
+        if (connection) {
+          try {
+            const jobs = await content.runSQL([`SELECT JOB_NAME "jobName", JOB_NAME_SHORT "jobNameShort", JOB_USER "jobUser", JOB_NUMBER "jobNumber", JOB_STATUS "jobStatus" FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
+            WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} order by SUBSYSTEM, JOB_NAME_SHORT`].join(` `));
+            items = jobs.map(job => new ActiveJob(job));
 
-          /** @type {SubSystem} */ //@ts-ignore We know what is it based on contextValue.
-          const subSystem = element;
-
-          filter = config.jobFilters.find(filter => filter.nameFilter === subSystem.filter);
-
-          if (filter.jobNumberFilter != '*' && filter.jobNumberFilter.length > 0) {
-            whereClause += ` AND JOB_NUMBER like '${filter.jobNumberFilter}'`;
+          } catch (e) {
+            console.log(e);
+            item = new vscode.TreeItem(`Error loading jobs.`);
+            vscode.window.showErrorMessage(e);
+            items = [item];
           }
-
-          if (filter.profileFilter != '*' && filter.profileFilter.length > 0) {
-            whereClause += ` AND AUTHORIZATION_NAME like '${filter.profileFilter}'`;
-          }
-
-          // Don't want to search all and not blank
-          if (filter.jobNameFilter != '*' && filter.jobNameFilter.length > 0) {
-            if (filter.jobNameFilter.search('[*]')) {
-              // Joker
-              whereClause += ` AND JOB_NAME_SHORT like '${filter.jobNameFilter.replace('*', '%')}'`;
-            } else {
-              // Exact search
-              filterClause += ` , JOB_NAME_FILTER => '${filter.jobNameFilter}'`;
-            }
-          }
-
-          filterClause += ` , SUBSYSTEM_LIST_FILTER => '${subSystem.path}'`;
-
-          // Don't want to search all and not blank
-          if (filter.jobUserFilter != '*' && filter.jobUserFilter.length > 0) {
-            if (filter.jobUserFilter.search('[*]')) {
-              // Joker
-              whereClause += ` AND JOB_USER like '${filter.jobUserFilter.replace('*', '%')}'`;
-            } else {
-              // Exact search
-              whereClause += ` AND JOB_USER = '${filter.jobUserFilter}'`;
-            }
-          }
-
-          if (connection) {
-            try {
-              const jobs = await content.runSQL([`SELECT JOB_NAME "jobName", JOB_NAME_SHORT "jobNameShort", JOB_USER "jobUser", JOB_NUMBER "jobNumber" FROM TABLE (QSYS2.ACTIVE_JOB_INFO(DETAILED_INFO => 'NONE' ${filterClause} )) A
-              WHERE JOB_TYPE NOT IN ('SBS', 'SYS', 'RDR', 'WTR') ${whereClause} order by SUBSYSTEM, JOB_NAME_SHORT`].join(` `));
-              items = jobs.map(job => new ActiveJob(job));
-
-            } catch (e) {
-              console.log(e);
-              item = new vscode.TreeItem(`Error loading jobs.`);
-              vscode.window.showErrorMessage(e);
-              items = [item];
-            }
-          }
-          break;
+        }
+        break;
 
       }
     } else {
@@ -530,12 +530,13 @@ class SubSystem extends vscode.TreeItem {
 
 class ActiveJob extends vscode.TreeItem {
   /**
-   * @param {{jobName: string, jobNameShort: string, jobUser: string, jobNumber: string}} activeJob
+   * @param {{jobName: string, jobNameShort: string, jobUser: string, jobNumber: string, jobStatus: string}} activeJob
    */
   constructor(activeJob) {
     super(activeJob.jobName, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = `activeJob`;
+    this.description = `(${activeJob.jobStatus})`;
     this.path = activeJob;
   }
 }
