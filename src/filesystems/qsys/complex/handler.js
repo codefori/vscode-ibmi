@@ -218,6 +218,7 @@ module.exports = class Handler {
           let changedLined = [];
 
           const currentDate = this.currentStamp();
+          const currentDateNumber = Number(currentDate);
 
           const markdownString = [
             `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`, 
@@ -230,8 +231,30 @@ module.exports = class Handler {
           const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n`));
           hoverMessage.isTrusted = true;
 
+          // Due to the way source dates are stored, we're doing some magic.
+          // Dates are stored in zoned/character columns, which means 26th 
+          // August 2022 is 220826, 4th May 1997 means 970826.
+
+          // We support the ability to search and highlight dates after a
+          // certain date. The issue with these dates value when converted
+          // to numeric is that 970826 is more than 220826, even though
+          // 220826 is after 970826 in terms of dates.
+
+          // To get around this, if the line date or search date is less than
+          // or equal to the date of today, we add 1000000 (one million).
+          // 220826 + 1000000 = 1220826, which is more than 970826.
+
+          const currentHighlight = highlightSince ? highlightSince + (highlightSince <= currentDateNumber ? 1000000 : 0) : undefined;
+
           for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
-            const highlightForSearch = highlightSince && Number(dates[cLine]) >= highlightSince;
+            let highlightForSearch = false;
+            if (currentHighlight) {
+              let lineDateNumber = Number(dates[cLine]);
+              if (lineDateNumber <= currentDateNumber && lineDateNumber !== 0) {
+                lineDateNumber += 1000000;
+              }
+              highlightForSearch = lineDateNumber >= currentHighlight;
+            }
 
             lineGutters.push({
               hoverMessage,
