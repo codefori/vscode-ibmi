@@ -442,11 +442,11 @@ module.exports = class objectBrowserTwoProvider {
           await vscode.window.showInformationMessage(`Would you like to add the new library to the library list?`, `Yes`, `No`)
             .then(async result => {
               switch (result) {
-                case `Yes`:
-                  await vscode.commands.executeCommand('code-for-ibmi.addToLibraryList',newLibrary);
-                  if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand('code-for-ibmi.refreshLibraryListView');
+              case `Yes`:
+                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, newLibrary);
+                if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
 
-                  break;
+                break;
               }
             });
 
