@@ -30,7 +30,7 @@ Below are some available lint configs. [See the `rpglint.json` schema for the mo
 
 | Type | Rule | Value | Description |
 |---|---|---|---|
-| 🌟 | indent | number | Indent for RPGLE. This will override the VS Code default. |
+| 🌟 | indent | number | Indent for RPGLE. |
 | 🌟 | BlankStructNamesCheck | boolean | Struct names cannot be blank (*N). |
 | 🌟 | QualifiedCheck | boolean | Struct names must be qualified (QUALIFIED). |
 | 🌟 | PrototypeCheck | boolean | Prototypes can only be defined with either EXT, EXTPGM or EXTPROC |
