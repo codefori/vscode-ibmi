@@ -284,7 +284,7 @@ module.exports = class Handler {
           newDates[startIndex] = currentDate;
         }
       } else {
-        const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber || change.originalStartLineNumber <= change.originalEndLineNumber ? change.originalEndLineNumber - change.originalStartLineNumber + 1 : 0); 
+        const removedLines = (change.modifiedEndLineNumber < change.modifiedStartLineNumber || change.originalStartLineNumber < change.originalEndLineNumber ? change.originalEndLineNumber - change.originalStartLineNumber + 1 : 0); 
         const changedLines = change.modifiedEndLineNumber > change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
         newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
       }
