@@ -292,7 +292,6 @@ module.exports = class Handler {
 
             if (highlightForSearch) {
               changedLined.push({
-                hoverMessage,
                 range: document.lineAt(cLine).range
               })
             }
