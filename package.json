@@ -1209,11 +1209,6 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.changeCurrentLibrary",
-					"group": "navigation",
-					"when": "view == libraryListView"
-				},
-				{
 					"command": "code-for-ibmi.addToLibraryList",
 					"group": "navigation",
 					"when": "view == libraryListView"
@@ -1336,6 +1331,16 @@
 					"command": "code-for-ibmi.createMember",
 					"when": "viewItem == SPF",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "libraryChangeCurrent@1"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",
