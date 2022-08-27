@@ -904,12 +904,6 @@
 				"icon": "$(search)"
 			},
 			{
-				"command": "code-for-ibmi.openFileByPath",
-				"title": "Open File",
-				"category": "IBM i",
-				"icon": "$(files)"
-			},
-			{
 				"command": "code-for-ibmi.createMember",
 				"title": "Create Member",
 				"category": "IBM i",
@@ -1113,11 +1107,6 @@
 				"command": "code-for-ibmi.goToFile",
 				"key": "ctrl+alt+p",
 				"mac": "cmd+alt+p"
-			},
-			{
-				"command": "code-for-ibmi.openFileByPath",
-				"key": "ctrl+alt+o",
-				"mac": "cmd+alt+o"
 			},
 			{
 				"command": "code-for-ibmi.showAdditionalSettings",
