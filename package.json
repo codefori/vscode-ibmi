@@ -1109,6 +1109,11 @@
 				"mac": "cmd+alt+p"
 			},
 			{
+				"command": "code-for-ibmi.goToFile",
+				"key": "ctrl+alt+o",
+				"mac": "cmd+alt+o"
+			},
+			{
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"key": "ctrl+alt+,",
 				"mac": "cmd+alt+,"
