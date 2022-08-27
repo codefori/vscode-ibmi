@@ -834,7 +834,8 @@
 			{
 				"command": "code-for-ibmi.clearDiagnostics",
 				"title": "Clear diagnostics.",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(clear-all)"
 			},
 			{
 				"command": "code-for-ibmi.runAction",
