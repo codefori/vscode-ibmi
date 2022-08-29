@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.5.1",
+	"version": "1.5.9",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -22,7 +22,7 @@
 	},
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.60.0"
+		"vscode": "^1.66.0"
 	},
 	"categories": [
 		"Other"
@@ -49,6 +49,12 @@
 					"actions.json"
 				],
 				"url": "./src/schemas/actions.json"
+			},
+			{
+				"fileMatch": [
+					"iproj.json"
+				],
+				"url": "./src/schemas/iproj.json"
 			}
 		],
 		"configuration": {
@@ -231,7 +237,7 @@
 							},
 							"autoClearTempData": {
 								"type": "boolean",
-								"default": false,
+								"default": true,
 								"description": "Automatically delete temporary objects from the temporary library on startup."
 							},
 							"enableSQL": {
@@ -418,10 +424,10 @@
 					"default": true,
 					"description": "When enabled, files will automatically be opened when copied or moved/renamed."
 				},
-				"code-for-ibmi.showReconnectButton": {
+				"code-for-ibmi.showConnectionButtons": {
 					"type": "boolean",
 					"default": false,
-					"description": "If enabled, a new button will be shown in the toolbar to force reconnect to the IBM i. Requires restart if changed."
+					"description": "If enabled, new buttons will be shown in the toolbar to force reconnect to the IBM i and to disconnect from the server. Requires restart if changed."
 				},
 				"code-for-ibmi.tryNewErrorParser": {
 					"type": "boolean",
@@ -881,7 +887,8 @@
 			{
 				"command": "code-for-ibmi.clearDiagnostics",
 				"title": "Clear diagnostics.",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(clear-all)"
 			},
 			{
 				"command": "code-for-ibmi.runAction",
@@ -948,12 +955,6 @@
 				"title": "Search Source File",
 				"category": "IBM i",
 				"icon": "$(search)"
-			},
-			{
-				"command": "code-for-ibmi.openFileByPath",
-				"title": "Open File",
-				"category": "IBM i",
-				"icon": "$(files)"
 			},
 			{
 				"command": "code-for-ibmi.createMember",
@@ -1058,6 +1059,11 @@
 				"title": "Set Deploy Workspace Location",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "code-for-ibmi.launchActionsSetup",
+				"title": "Launch Actions Setup",
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.addIFSShortcut",
@@ -1210,7 +1216,7 @@
 				"mac": "cmd+alt+p"
 			},
 			{
-				"command": "code-for-ibmi.openFileByPath",
+				"command": "code-for-ibmi.goToFile",
 				"key": "ctrl+alt+o",
 				"mac": "cmd+alt+o"
 			},
@@ -1309,11 +1315,6 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.changeCurrentLibrary",
-					"group": "navigation",
-					"when": "view == libraryListView"
-				},
-				{
 					"command": "code-for-ibmi.addToLibraryList",
 					"group": "navigation",
 					"when": "view == libraryListView"
@@ -1399,6 +1400,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "resourceScheme == member || resourceScheme == streamfile",
 					"group": "navigation@1"
+				},
+				{
+					"command": "code-for-ibmi.clearDiagnostics",
+					"when": "resourceScheme == member || resourceScheme == streamfile",
+					"group": "navigation@2"
 				}
 			],
 			"view/item/context": [
@@ -1441,6 +1447,16 @@
 					"command": "code-for-ibmi.createMember",
 					"when": "viewItem == SPF",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "libraryChangeCurrent@1"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",
@@ -1702,12 +1718,10 @@
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
-		"@types/mocha": "^8.0.4",
 		"@types/node": "^12.11.7",
-		"@types/vscode": "^1.60.0",
+		"@types/vscode": "^1.66.0",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
-		"mocha": "^8.2.1",
 		"semver": "^7.3.5",
 		"typescript": "^4.1.3",
 		"vscode-test": "^1.5.0",

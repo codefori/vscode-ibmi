@@ -2,6 +2,8 @@
 const vscode = require(`vscode`);
 const path = require(`path`);
 
+const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
+
 const errorHandlers = require(`./errors/index`);
 const IBMi = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
@@ -149,9 +151,20 @@ module.exports = class CompileTools {
           const baseInfo = path.parse(file);
           const parentInfo = path.parse(baseInfo.dir);
 
-          const possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
+          let possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
           if (possibleFiles.length > 0) {
             ileDiagnostics.set(possibleFiles[0], diagnostics);
+          } else {
+            // Look in active text documents...
+            const upperParent = parentInfo.name.toUpperCase();
+            const upperName = baseInfo.name.toUpperCase();
+            possibleFiles = vscode.workspace.textDocuments
+              .filter(doc => doc.uri.scheme !== `git` && doc.uri.fsPath.toUpperCase().includes(`${upperParent}/${upperName}`))
+              .map(doc => doc.uri);
+
+            if (possibleFiles.length > 0) {
+              ileDiagnostics.set(possibleFiles[0], diagnostics);
+            }
           }
         } else {
           if (file.startsWith(`/`))
@@ -166,24 +179,58 @@ module.exports = class CompileTools {
     }
   }
 
-  static handleDefaultVariables(instance, string) {
+  /**
+   * 
+   * @param {string} string 
+   * @param {{[name: string]: string}} variables 
+   */
+  static replaceValues(string, variables) {
+    Object.keys(variables).forEach(key => {
+      if (variables[key])
+        string = string.replace(new RegExp(key, `g`), variables[key]);
+    })
+
+    return string;
+  }
+
+  static getDefaultVariables(instance) {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
     /** @type {Configuration} */
     const config = instance.getConfig();
+    
+    /** @type {{[name: string]: string}} */
+    const variables = {};
 
-    string = string.replace(new RegExp(`&BUILDLIB`, `g`), config.currentLibrary);
-    string = string.replace(new RegExp(`&CURLIB`, `g`), config.currentLibrary);
-    string = string.replace(new RegExp(`\\*CURLIB`, `g`), config.currentLibrary);
-    string = string.replace(new RegExp(`&USERNAME`, `g`), connection.currentUser);
-    string = string.replace(new RegExp(`&HOME`, `g`), config.homeDirectory);
+    variables[`&BUILDLIB`] = config.currentLibrary;
+    variables[`&CURLIB`] = config.currentLibrary;
+    variables[`\\*CURLIB`] = config.currentLibrary;
+    variables[`&USERNAME`] = connection.currentUser;
+    variables[`{usrprf}`] = connection.currentUser;
+    variables[`&HOME`] = config.homeDirectory;
+
+    //We have to reverse it because `liblist -a` adds the next item to the top always 
+    let libl = config.libraryList.slice(0).reverse();
+
+    libl = libl.map(library => {
+      //We use this for special variables in the libl
+      switch (library) {
+      case `&BUILDLIB`:
+      case `&CURLIB`: 
+        return config.currentLibrary;
+      default: return library;
+      }
+    });
+
+    variables[`&LIBLC`] = libl.join(`,`);
+    variables[`&LIBLS`] = libl.join(` `);
 
     for (const variable of config.customVariables) {
-      string = string.replace(new RegExp(`&${variable.name}`, `g`), variable.value);
+      variables[`&${variable.name.toUpperCase()}`] = variable.value;
     }
 
-    return string;
+    return variables;
   }
 
   /**
@@ -212,8 +259,8 @@ module.exports = class CompileTools {
     // Then, if we're being called from a local file
     // we fetch the Actions defined from the workspace.
     if (uri.scheme === `file`) {
-      const localActions = await this.getLocalActions();
-      allActions.push(...localActions);
+      const [localActions, iProjActions] = await Promise.all([this.getLocalActions(), this.getiProjActions()]);
+      allActions.push(...localActions, ...iProjActions);
     }
 
     // We make sure all extensions are uppercase
@@ -226,6 +273,10 @@ module.exports = class CompileTools {
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
+      if (Configuration.get(`clearOutputEveryTime`)) {
+        outputChannel.clear();
+      }
+
       const options = availableActions.map(item => ({
         name: item.name,
         time: actionUsed[item.name] || 0
@@ -259,6 +310,9 @@ module.exports = class CompileTools {
 
         let basename, name, ext, parent;
 
+        /** @type {{[name: string]: string}} */
+        const variables = {};
+
         switch (action.type) {
         case `member`:
           const memberDetail = connection.parserMemberPath(uri.path);
@@ -270,18 +324,17 @@ module.exports = class CompileTools {
             ext: memberDetail.extension
           };
 
-          command = command.replace(new RegExp(`&OPENLIBL`, `g`), memberDetail.library.toLowerCase());
-          command = command.replace(new RegExp(`&OPENLIB`, `g`), memberDetail.library);
+          variables[`&OPENLIBL`] = memberDetail.library.toLowerCase();
+          variables[`&OPENLIB`] = memberDetail.library;
 
-          command = command.replace(new RegExp(`&OPENSPFL`, `g`), memberDetail.file.toLowerCase());
-          command = command.replace(new RegExp(`&OPENSPF`, `g`), memberDetail.file);
+          variables[`&OPENSPFL`] = memberDetail.file.toLowerCase();
+          variables[`&OPENSPF`] = memberDetail.file;
 
-          command = command.replace(new RegExp(`&OPENMBRL`, `g`), memberDetail.member.toLowerCase());
-          command = command.replace(new RegExp(`&OPENMBR`, `g`), memberDetail.member);
+          variables[`&OPENMBRL`] = memberDetail.member.toLowerCase();
+          variables[`&OPENMBR`] = memberDetail.member;
 
-          command = command.replace(new RegExp(`&EXTL`, `g`), memberDetail.extension.toLowerCase());
-          command = command.replace(new RegExp(`&EXT`, `g`), memberDetail.extension);
-
+          variables[`&EXTL`] = memberDetail.extension.toLowerCase();
+          variables[`&EXT`] = memberDetail.extension;
           break;
 
         case `file`:
@@ -317,7 +370,7 @@ module.exports = class CompileTools {
 
           switch (action.type) {
           case `file`:
-            command = command.replace(new RegExp(`&LOCALPATH`, `g`), uri.fsPath);
+            variables[`&LOCALPATH`] = uri.fsPath;
 
             let baseDir = config.homeDirectory;
             let currentWorkspace;
@@ -328,34 +381,46 @@ module.exports = class CompileTools {
             if (currentWorkspace) {
               baseDir = currentWorkspace.uri.fsPath;
               
-              relativePath = path.relative(baseDir, uri.fsPath);
-              command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
+              relativePath = path.posix.relative(baseDir, uri.fsPath).split(path.sep).join(path.posix.sep);
+              variables[`&RELATIVEPATH`] = relativePath;
   
               // We need to make sure the remote path is posix
               fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
-              command = command.replace(new RegExp(`&FULLPATH`, `g`), fullPath);
+              variables[`&FULLPATH`] = fullPath;
+              variables[`{path}`] = fullPath;
+
+              try {
+                const gitApi = gitExtension.getAPI(1);
+                if (gitApi.repositories && gitApi.repositories.length > 0) {
+                  const repo = await gitApi.repositories[0];
+                  const branch = repo.state.HEAD.name;
+
+                  variables[`&BRANCH`] = branch;
+                  variables[`{branch}`] = branch;
+                }
+              } catch (e) {}
             }
             break;
 
           case `streamfile`:
-            relativePath = path.relative(config.homeDirectory, uri.fsPath);
-            command = command.replace(new RegExp(`&RELATIVEPATH`, `g`), relativePath);
+            relativePath = path.posix.relative(config.homeDirectory, uri.fsPath).split(path.sep).join(path.posix.sep);
+            variables[`&RELATIVEPATH`] = relativePath;
 
             const fullName = uri.path;
-            command = command.replace(new RegExp(`&FULLPATH`, `g`), fullName);
+            variables[`&FULLPATH`] = fullName;
             break;
           }
 
-          command = command.replace(new RegExp(`&PARENT`, `g`), parent);
+          variables[`&PARENT`] = parent;
 
-          command = command.replace(new RegExp(`&BASENAME`, `g`), basename);
+          variables[`&BASENAME`] = basename;
+          variables[`{filename}`] = basename;
 
-          command = command.replace(new RegExp(`&NAMEL`, `g`), name.toLowerCase());
-          command = command.replace(new RegExp(`&NAME`, `g`), name);
+          variables[`&NAMEL`] = name.toLowerCase();
+          variables[`&NAME`] = name;
 
-          command = command.replace(new RegExp(`&EXTL`, `g`), ext.toLowerCase());
-          command = command.replace(new RegExp(`&EXT`, `g`), ext);
-
+          variables[`&EXTL`] = ext.toLowerCase();
+          variables[`&EXT`] = ext;
           break;
 
         case `object`:
@@ -369,30 +434,28 @@ module.exports = class CompileTools {
             ext: extension
           };
 
-          command = command.replace(new RegExp(`&LIBRARYL`, `g`), lib.toLowerCase());
-          command = command.replace(new RegExp(`&LIBRARY`, `g`), lib);
+          variables[`&LIBRARYL`] = lib.toLowerCase();
+          variables[`&LIBRARY`] = lib;
 
-          command = command.replace(new RegExp(`&NAMEL`, `g`), name.toLowerCase());
-          command = command.replace(new RegExp(`&NAME`, `g`), name);
+          variables[`&NAMEL`] = name.toLowerCase();
+          variables[`&NAME`] = name;
 
-          command = command.replace(new RegExp(`&TYPEL`, `g`), extension.toLowerCase());
-          command = command.replace(new RegExp(`&TYPE`, `g`), extension);
+          variables[`&TYPEL`] = extension.toLowerCase();
+          variables[`&TYPE`] = extension;
 
-          command = command.replace(new RegExp(`&EXTL`, `g`), extension.toLowerCase());
-          command = command.replace(new RegExp(`&EXT`, `g`), extension);
+          variables[`&EXTL`] = extension.toLowerCase();
+          variables[`&EXT`] = extension;
           break;
         }
 
         if (command) {
           /** @type {any} */
-          let commandResult, output;
+          let commandResult;
           let executed = false;
 
           actionsBarItem.text = ACTION_BUTTON_RUNNING;
 
-          if (Configuration.get(`clearOutputEveryTime`)) {
-            outputChannel.clear();
-          }
+          command = this.replaceValues(command, variables);
 
           try {
             commandResult = await this.runCommand(instance, {
@@ -519,13 +582,17 @@ module.exports = class CompileTools {
     libl = libl.map(library => {
       //We use this for special variables in the libl
       switch (library) {
-      case `&BUILDLIB`: return config.currentLibrary;
-      case `&CURLIB`: return config.currentLibrary;
+      case `&BUILDLIB`:
+      case `&CURLIB`: 
+        return config.currentLibrary;
       default: return library;
       }
     });
 
-    commandString = this.handleDefaultVariables(instance, commandString);
+    commandString = this.replaceValues(
+      commandString, 
+      this.getDefaultVariables(instance)
+    );
 
     if (commandString.startsWith(`?`)) {
       commandString = await vscode.window.showInputBox({prompt: `Run Command`, value: commandString.substring(1)})
@@ -751,6 +818,57 @@ module.exports = class CompileTools {
                 throw new Error(`Invalid Action defined at index ${index}.`);
               }
             })
+          }
+        } catch (e) {
+          // ignore
+          this.appendOutput(`Error parsing ${file.fsPath}: ${e.message}\n`);
+        }
+      };
+    }
+
+    return actions;
+  }
+
+  /**
+   * Gets actions from the `iproj.json` file
+   * @returns {Promise<Action[]>}
+   */
+  static async getiProjActions() {
+    const workspaces = vscode.workspace.workspaceFolders;
+
+    /** @type {Action[]} */
+    const actions = [];
+
+    if (workspaces && workspaces.length > 0) {
+      const iprojectFiles = await vscode.workspace.findFiles(`**/iproj.json`);
+
+      for (const file of iprojectFiles) {
+        const iProjectContent = await vscode.workspace.fs.readFile(file);
+        try {
+          const iProject = JSON.parse(iProjectContent.toString());
+
+          const description = iProject.description || `iproj.json`
+
+          if (iProject.buildCommand) {
+            actions.push({
+              name: `${description} (build)`,
+              command: iProject.buildCommand,
+              environment: `pase`,
+              extensions: [`GLOBAL`],
+              deployFirst: true,
+              type: `file`,
+            });
+          }
+
+          if (iProject.compileCommand) {
+            actions.push({
+              name: `${description} (compile)`,
+              command: `ERR=*EVENTF ${iProject.compileCommand}`,
+              environment: `pase`,
+              extensions: [`GLOBAL`],
+              deployFirst: true,
+              type: `file`,
+            });
           }
         } catch (e) {
           // ignore

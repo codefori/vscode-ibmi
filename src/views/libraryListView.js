@@ -34,6 +34,7 @@ module.exports = class libraryListProvider {
 
         if (newLibrary && newLibrary !== currentLibrary) {
           await config.set(`currentLibrary`, newLibrary);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
         }
       }),
 
@@ -72,14 +73,19 @@ module.exports = class libraryListProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async () => {
+      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = '') => {
         const config = instance.getConfig();
+        let addingLib;
 
         let libraryList = [...config.libraryList];
 
-        const addingLib = await vscode.window.showInputBox({
-          prompt: `Library to add`
-        });
+        if(newLibrary == ''){
+          addingLib = await vscode.window.showInputBox({
+            prompt: `Library to add`
+          });
+        } else {
+          addingLib = newLibrary;
+        }
 
         if (addingLib) {
           if (addingLib.length <= 10) {
@@ -225,6 +231,11 @@ module.exports = class libraryListProvider {
     let items = [];
 
     if (connection) {
+      let currentLibrary = new Library(config.currentLibrary.toUpperCase());
+      currentLibrary.contextValue = `currentLibrary`;
+      currentLibrary.description = `(current library)`;
+      items.push(currentLibrary);
+
       const libraryList = config.libraryList;
 
       for (let library of libraryList) {

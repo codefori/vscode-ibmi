@@ -24,9 +24,11 @@ module.exports = class profilesProvider {
         const config = instance.getConfig();
         const storage = instance.getStorage();
 
+		const currentProfile = storage.get(LAST_PROFILE_KEY);													 
         let currentProfiles = config.connectionProfiles;
 
         const profileName = profileNode ? profileNode.profile : await vscode.window.showInputBox({
+		  value: currentProfile,						
           prompt: `Name of profile`
         });
 
