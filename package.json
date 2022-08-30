@@ -335,6 +335,15 @@
 									}
 								},
 								"default": []
+							},
+							"prevCurLibs": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"lib": "IBM i library name"
+								},
+								"default": [],
+								"description": "List of libraries previously used as current library."
 							}
 						}
 					}
