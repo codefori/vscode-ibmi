@@ -320,13 +320,35 @@ module.exports = class Handler {
 
     const currentDate = this.currentStamp();
 
-    diff.changes.forEach(change => {
-      console.log(change);
-      const startIndex = change.modifiedStartLineNumber - 1;
 
-      const removedLines = (change.originalStartLineNumber > 0 && (change.modifiedEndLineNumber < change.modifiedStartLineNumber || change.originalStartLineNumber <= change.originalEndLineNumber) ? change.originalEndLineNumber - change.originalStartLineNumber + 1 : 0); 
-      const changedLines = change.modifiedEndLineNumber >= change.modifiedStartLineNumber ? (change.modifiedEndLineNumber - change.modifiedStartLineNumber) + 1 : 0;
-      newDates.splice(startIndex + (change.modifiedEndLineNumber === 0 ? 1 : 0), removedLines, ...Array(changedLines).fill(currentDate));
+    console.log(diff.changes);
+    diff.changes.forEach(change => {
+      let startIndex = change.modifiedStartLineNumber - 1;
+      let removedLines = 0;
+      let changedLines = 0;
+
+      if (change.originalEndLineNumber === 0) {
+        // New line was added 
+        // at index (modifiedStartLineNumber-1)
+        removedLines = 0;
+        changedLines = change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1;
+      } else
+      if (change.modifiedEndLineNumber === 0) {
+        // Line removed
+        // at index (modifiedStartIndex-1)
+        // for lines (originalEndLineNumber - originalStartLineNumber)
+        startIndex = change.originalStartLineNumber - 1;
+        removedLines = change.originalEndLineNumber - change.originalStartLineNumber + 1
+      } else
+      if (change.modifiedEndLineNumber >= change.modifiedStartLineNumber) {
+        // Lines added
+        // at index (change.modifiedStartLineNumber-1)
+        // on lines (modifiedEndLineNumber - modifiedStartLineNumber + 1) 
+        removedLines = 1;
+        changedLines = change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1;
+      }
+
+      newDates.splice(startIndex, removedLines, ...Array(changedLines).fill(currentDate));
     
     });
 
