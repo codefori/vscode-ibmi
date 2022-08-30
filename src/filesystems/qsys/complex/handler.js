@@ -34,7 +34,7 @@ const lineDecor = vscode.window.createTextEditorDecorationType({
 });
 
 const SD_BASE = `$(history) Date Search`;
-const SD_ACTIVE = `$(history) Since `;
+const SD_ACTIVE = `$(history) From `;
 
 /** @type {number|undefined} */
 let highlightSince;
@@ -140,8 +140,8 @@ module.exports = class Handler {
                 return `Source date ${date} must be length of 6. (YYMMDD)`;
               }
 
-              if (Number.isNaN(Number.parseFloat(date))) {
-                return `Value ${date} is not a valid number.`;
+              if (/^\d+$/.test(date) === false) {
+                return `Value ${date} is not a valid date.`;
               }
             }
           }
@@ -239,7 +239,7 @@ module.exports = class Handler {
             `${highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`
           ];
 
-          if (highlightSince) markdownString.push(`---`, `Changes since ${String(highlightSince) == currentDate ? `today` : highlightSince} highlighted`)
+          if (highlightSince) markdownString.push(`---`, `Changes from ${String(highlightSince) == currentDate ? `today` : highlightSince} highlighted`)
 
           const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n`));
           hoverMessage.isTrusted = true;
