@@ -11,6 +11,7 @@ module.exports = class objectBrowserProvider {
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
+    this.attemptingConnection = false;
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
 
@@ -18,21 +19,28 @@ module.exports = class objectBrowserProvider {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.connect`, () => {
+        if (this.attemptingConnection) return;
         LoginPanel.show(context);
       }),
       
-      vscode.commands.registerCommand(`code-for-ibmi.connectPrevious`, (name) => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectPrevious`, async (name) => {
+        if (this.attemptingConnection) return;
+
+        this.attemptingConnection = true;
+
         switch (typeof name) {
-        case `string`:
-          LoginPanel.LoginToPrevious(name, context);
+        case `string`: // Name of connection object
+          await LoginPanel.LoginToPrevious(name, context);
           break;
-        case `object`:
-          LoginPanel.LoginToPrevious(name.name, context);
+        case `object`: // Usually a connection object
+          await LoginPanel.LoginToPrevious(name.name, context);
           break;
         default:
           vscode.window.showErrorMessage(`Use the Server Browser to select which system to connect to.`);
           break;
         }
+
+        this.attemptingConnection = false;
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshConnections`, () => {
@@ -40,6 +48,8 @@ module.exports = class objectBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (element) => {
+        if (this.attemptingConnection) return;
+
         if (element) {
           vscode.window.showWarningMessage(
             `Are you sure you want to delete the connection ${element.label}?`,
