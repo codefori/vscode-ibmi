@@ -379,9 +379,9 @@ module.exports = class CompileTools {
             currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace || 0];
 
             if (currentWorkspace) {
-              baseDir = currentWorkspace.uri.fsPath;
+              baseDir = currentWorkspace.uri.path;
               
-              relativePath = path.posix.relative(baseDir, uri.fsPath).split(path.sep).join(path.posix.sep);
+              relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
               variables[`&RELATIVEPATH`] = relativePath;
   
               // We need to make sure the remote path is posix
