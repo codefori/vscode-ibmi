@@ -3,8 +3,6 @@ const vscode = require(`vscode`);
 
 let instance = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
-const { list } = require("../../dist/extension");
-const { getConnection } = require("../Instance");
 
 module.exports = class libraryListProvider {
   /**
