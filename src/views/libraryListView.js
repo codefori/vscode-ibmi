@@ -43,6 +43,10 @@ module.exports = class libraryListProvider {
         quickPick.onDidChangeValue(() => {
           if (quickPick.value === ``) {
             quickPick.items = list.map(lib => ({ label: lib }));
+            if (quickPick.items.length > 0) {
+              quickPick.items = [{ label: `Recently used`, kind: vscode.QuickPickItemKind.Separator }].concat(quickPick.items);
+              quickPick.items = quickPick.items.concat([{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }]);
+            }
           } else if (!list.includes(quickPick.value.toUpperCase())) {
             quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
           }
