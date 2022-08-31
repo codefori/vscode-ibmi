@@ -29,14 +29,16 @@ module.exports = class libraryListProvider {
         const currentLibrary = config.currentLibrary.toUpperCase();
         let prevCurLibs = Object.values(instance.getStorage().get(`prevCurLibs`));
         let list = [...prevCurLibs];
-
-        if (list.length > 0) {
-          list.push(`Clear list`);
-        }
+        const clearList = `$(trash) Clear list`;
 
         const quickPick = vscode.window.createQuickPick();
         quickPick.items = list.map(lib => ({ label: lib }));
+        if (quickPick.items.length > 0) {
+          quickPick.items = [{ label: `Recently used`, kind: vscode.QuickPickItemKind.Separator }].concat(quickPick.items);
+          quickPick.items = quickPick.items.concat([{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }]);
+        }
         quickPick.placeholder = `Enter library to set as current library`;
+        quickPick.title = `Change current library`;
 
         quickPick.onDidChangeValue(() => {
           if (quickPick.value === ``) {
@@ -49,11 +51,12 @@ module.exports = class libraryListProvider {
         quickPick.onDidAccept( async () => {
           const newLibrary = quickPick.selectedItems[0].label;
           if (newLibrary) {
-            if (newLibrary === `Clear list`) {
+            if (newLibrary === clearList) {
               await instance.getStorage().set(`prevCurLibs`, {});
               list = [];
               quickPick.items = list.map(lib => ({ label: lib }));
               vscode.window.showInformationMessage(`Cleared list.`);
+              quickPick.show();
             } else {
               if (newLibrary !== currentLibrary) {
                 let newLibraryOK = true;
