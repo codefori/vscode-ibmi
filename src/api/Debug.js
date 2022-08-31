@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <<<<<<<< HEAD:src/api/Debug.js
 const vscode = require(`vscode`);
 const path = require(`path`);
@@ -10,6 +11,13 @@ import path from "path";
 >>>>>>>> 3570d93 (Initial setup):src/api/debug/index.ts
 
 import * as certificates from "./certificates";
+=======
+const vscode = require(`vscode`);
+const path = require(`path`);
+
+const Configuration = require(`./Configuration`);
+const IBMi = require(`./IBMi`);
+>>>>>>> 497ac05 (Initial debug command)
 
 /**
  * @param {*} instance 
@@ -80,6 +88,7 @@ exports.initialise = (instance, context) => {
           });
         }
       }
+<<<<<<< HEAD
     }),
     vscode.commands.registerCommand(`code-for-ibmi.debug.runSetup`, async () => {
       const connection = instance.connection;
@@ -132,6 +141,8 @@ exports.initialise = (instance, context) => {
       } else {
         vscode.window.showErrorMessage(`No connection to IBM i available.`);
       }
+=======
+>>>>>>> 497ac05 (Initial debug command)
     })
   )
 }
