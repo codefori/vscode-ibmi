@@ -27,7 +27,7 @@ module.exports = class libraryListProvider {
         const connection = instance.getConnection();
         const config = instance.getConfig();
         const currentLibrary = config.currentLibrary.toUpperCase();
-        let prevCurLibs = config.prevCurLibs;
+        let prevCurLibs = Object.values(instance.getStorage().get(`prevCurLibs`));
         let list = [...prevCurLibs];
 
         if (list.length > 0) {
@@ -50,7 +50,7 @@ module.exports = class libraryListProvider {
           const newLibrary = quickPick.selectedItems[0].label;
           if (newLibrary) {
             if (newLibrary === `Clear list`) {
-              await config.set(`prevCurLibs`, []);
+              await instance.getStorage().set(`prevCurLibs`, {});
               list = [];
               quickPick.items = list.map(lib => ({ label: lib }));
               vscode.window.showInformationMessage(`Cleared list.`);
@@ -69,7 +69,7 @@ module.exports = class libraryListProvider {
                   vscode.window.showInformationMessage(`Changed current library to ${newLibrary}.`);
                   prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
                   prevCurLibs.splice(0, 0, currentLibrary);
-                  await config.set(`prevCurLibs`, prevCurLibs);
+                  await instance.getStorage().set(`prevCurLibs`, prevCurLibs);
                   if (Configuration.get(`autoRefresh`)) this.refresh();
                 }
               } else {

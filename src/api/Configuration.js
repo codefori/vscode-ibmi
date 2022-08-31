@@ -79,9 +79,6 @@ module.exports = class Configuration {
 
     /** @type {boolean} */
     this.autoSaveBeforeAction = (base.autoSaveBeforeAction === true);
-
-    /** @type {string[]} */
-    this.prevCurLibs = base.prevCurLibs || [];
   }
 
   /**
