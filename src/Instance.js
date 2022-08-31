@@ -7,7 +7,7 @@ const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
 const Configuration = require(`./api/Configuration`);
 const Storage = require(`./api/Storage`);
-const Tools = require(`./api/Tools`);
+const Debug = require(`./api/Debug`);
 
 const Terminal = require(`./api/terminal`);
 const Deployment = require(`./api/Deployment`);
@@ -138,6 +138,7 @@ module.exports = class Instance {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
 
       CompileTools.register(context);
+      Debug.initialise(this, context);
 
       if (!reconnectBarItem) {
         reconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 11);

@@ -740,6 +740,11 @@
 		},
 		"commands": [
 			{
+				"command": "code-for-ibmi.debug.activeEditor",
+				"title": "Start Debugging Active Source",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.connect",
 				"title": "New Connection",
 				"category": "IBM i",
