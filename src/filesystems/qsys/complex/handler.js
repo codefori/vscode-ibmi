@@ -169,14 +169,17 @@ module.exports = class Handler {
         const document = event.document;
 
         if (document.isDirty) {
-          const currentEditingLine = 
+          const isSingleLine = 
             event.contentChanges.length === 1 && 
             event.contentChanges[0].range.isSingleLine && 
-            !event.contentChanges[0].text.includes(`\n`) && 
-            event.contentChanges[0].range.start.character === 0 
-              ? event.contentChanges[0].range.start.line : undefined;
+            !event.contentChanges[0].text.includes(`\n`);
+
+          const currentEditingLine = isSingleLine ? event.contentChanges[0].range.start.line : undefined;
+
+          const editedBefore = isSingleLine && currentEditingLine === lineEditedBefore;
+          const doRefresh = (!editedBefore || currentEditingLine !== lineEditedBefore || (event.contentChanges[0] && event.contentChanges[0].range.start.character === 0));
           
-          if (lineEditedBefore === undefined || currentEditingLine !== lineEditedBefore) {
+          if (doRefresh) {
             this.refreshGutter(document);
           }
 
