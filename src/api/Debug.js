@@ -85,8 +85,15 @@ exports.startDebug = async (instance, options) => {
   /** @type {IBMi} */
   const connection = instance.getConnection();
   const port = `8005`; //TODO: make configurable
-  const updateProductionFiles = false;
-  const enableDebugTracing = true;
+  const updateProductionFiles = false; // TODO: configurable
+  const enableDebugTracing = false; // TODO: configurable
+
+  const secure = false; // TODO: make configurable
+
+  if (secure) {
+    // TODO: automatically download .p12, decode and place into local filesystem
+    process.env[`DEBUG_CA_PATH`] = `/Users/barry/Downloads/merlin-https-cert.ca.crt`
+  }
 
   const config = {
     "type": `IBMiDebug`,
@@ -96,8 +103,8 @@ exports.startDebug = async (instance, options) => {
     "password": options.password,
     "host": connection.currentHost,
     "port": port,
-    "secure": true,  // Enforce secure mode
-    "ignoreCertificateErrors": false,
+    "secure": secure,  // Enforce secure mode
+    "ignoreCertificateErrors": !secure,
     "library": options.library.toUpperCase(),
     "program": options.object.toUpperCase(),
     "startBatchJobCommand": `SBMJOB CMD(CALL PGM(` + options.library + `/` + options.object + `))`,
