@@ -40,6 +40,11 @@ exports.initialise = (instance, context) => {
       break;
     }
 
+    // Remove .pgm ending potentially
+    qualifiedPath.object = qualifiedPath.object.toUpperCase();
+    if (qualifiedPath.object.endsWith(`.PGM`))
+      qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
+
     return qualifiedPath;
   }
 

@@ -762,7 +762,8 @@
 			{
 				"command": "code-for-ibmi.debug.activeEditor",
 				"title": "Start Debugging Active Source",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(debug-alt)"
 			},
 			{
 				"command": "code-for-ibmi.connect",
@@ -1488,14 +1489,19 @@
 			],
 			"editor/title": [
 				{
-					"command": "code-for-ibmi.runAction",
-					"when": "resourceScheme == member || resourceScheme == streamfile",
+					"command": "code-for-ibmi.debug.activeEditor",
+					"when": "code-for-ibmi:connected == true && !inDebugMode",
 					"group": "navigation@1"
 				},
 				{
-					"command": "code-for-ibmi.clearDiagnostics",
-					"when": "resourceScheme == member || resourceScheme == streamfile",
+					"command": "code-for-ibmi.runAction",
+					"when": "code-for-ibmi:connected == true",
 					"group": "navigation@2"
+				},
+				{
+					"command": "code-for-ibmi.clearDiagnostics",
+					"when": "code-for-ibmi:connected == true",
+					"group": "navigation@3"
 				}
 			],
 			"view/item/context": [
