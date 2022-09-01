@@ -29,26 +29,25 @@ module.exports = class libraryListProvider {
         const currentLibrary = config.currentLibrary.toUpperCase();
         let prevCurLibs = Object.values(instance.getStorage().get(`prevCurLibs`));
         let list = [...prevCurLibs];
+        const listHeader = [
+          { label: `Currently active`, kind: vscode.QuickPickItemKind.Separator },
+          { label: currentLibrary},
+          { label: `Recently used`, kind: vscode.QuickPickItemKind.Separator }
+        ];
         const clearList = `$(trash) Clear list`;
+        const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
         const quickPick = vscode.window.createQuickPick();
-        quickPick.items = list.map(lib => ({ label: lib }));
-        if (quickPick.items.length > 0) {
-          quickPick.items = [{ label: `Recently used`, kind: vscode.QuickPickItemKind.Separator }].concat(quickPick.items);
-          quickPick.items = quickPick.items.concat([{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }]);
-        }
-        quickPick.placeholder = `Enter library to set as current library`;
+        quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
+        quickPick.placeholder = `Filter or new library to set as current library`;
         quickPick.title = `Change current library`;
 
         quickPick.onDidChangeValue(() => {
           if (quickPick.value === ``) {
-            quickPick.items = list.map(lib => ({ label: lib }));
-            if (quickPick.items.length > 0) {
-              quickPick.items = [{ label: `Recently used`, kind: vscode.QuickPickItemKind.Separator }].concat(quickPick.items);
-              quickPick.items = quickPick.items.concat([{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }]);
-            }
+            quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
           } else if (!list.includes(quickPick.value.toUpperCase())) {
-            quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+            quickPick.items = [{label: quickPick.value.toUpperCase()}].concat(listHeader)
+              .concat(list.map(lib => ({ label : lib })))
           }
         })
 
@@ -80,7 +79,8 @@ module.exports = class libraryListProvider {
                   if (Configuration.get(`autoRefresh`)) this.refresh();
                 }
               } else {
-                vscode.window.showErrorMessage(`${newLibrary} is already current library.`)
+                quickPick.hide();
+                vscode.window.showInformationMessage(`${newLibrary} is already current library.`)
               }
             }
           }
