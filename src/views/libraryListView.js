@@ -24,18 +24,69 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
+        const connection = instance.getConnection();
         const config = instance.getConfig();
         const currentLibrary = config.currentLibrary.toUpperCase();
+        let prevCurLibs = Object.values(instance.getStorage().get(`prevCurLibs`));
+        let list = [...prevCurLibs];
+        const listHeader = [
+          { label: `Currently active`, kind: vscode.QuickPickItemKind.Separator },
+          { label: currentLibrary},
+          { label: `Recently used`, kind: vscode.QuickPickItemKind.Separator }
+        ];
+        const clearList = `$(trash) Clear list`;
+        const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
-        const newLibrary = await vscode.window.showInputBox({
-          prompt: `Changing current library/schema`,
-          value: currentLibrary
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
+        quickPick.placeholder = `Filter or new library to set as current library`;
+        quickPick.title = `Change current library`;
+
+        quickPick.onDidChangeValue(() => {
+          if (quickPick.value === ``) {
+            quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
+          } else if (!list.includes(quickPick.value.toUpperCase())) {
+            quickPick.items = [{label: quickPick.value.toUpperCase()}].concat(listHeader)
+              .concat(list.map(lib => ({ label : lib })))
+          }
+        })
+
+        quickPick.onDidAccept( async () => {
+          const newLibrary = quickPick.selectedItems[0].label;
+          if (newLibrary) {
+            if (newLibrary === clearList) {
+              await instance.getStorage().set(`prevCurLibs`, {});
+              list = [];
+              quickPick.items = list.map(lib => ({ label: lib }));
+              vscode.window.showInformationMessage(`Cleared list.`);
+              quickPick.show();
+            } else {
+              if (newLibrary !== currentLibrary) {
+                let newLibraryOK = true;
+                try {
+                  await connection.remoteCommand(`CHGCURLIB ${newLibrary}`);
+                } catch (e) {
+                  vscode.window.showErrorMessage(e);
+                  newLibraryOK = false;
+                }
+                if (newLibraryOK) {
+                  quickPick.hide();
+                  await config.set(`currentLibrary`, newLibrary);
+                  vscode.window.showInformationMessage(`Changed current library to ${newLibrary}.`);
+                  prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
+                  prevCurLibs.splice(0, 0, currentLibrary);
+                  await instance.getStorage().set(`prevCurLibs`, prevCurLibs);
+                  if (Configuration.get(`autoRefresh`)) this.refresh();
+                }
+              } else {
+                quickPick.hide();
+                vscode.window.showInformationMessage(`${newLibrary} is already current library.`)
+              }
+            }
+          }
         });
-
-        if (newLibrary && newLibrary !== currentLibrary) {
-          await config.set(`currentLibrary`, newLibrary);
-          if (Configuration.get(`autoRefresh`)) this.refresh();
-        }
+        quickPick.onDidHide(() => quickPick.dispose());
+        quickPick.show();
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
