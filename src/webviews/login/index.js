@@ -139,7 +139,7 @@ module.exports = class Login {
       // If the user is already connected and trying to connect to a different system, disconnect them first
       if (name !== instance.getConnection().currentConnectionName) {
         vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-        if (!instance.disconnect()) return;
+        if (!instance.disconnect()) return false;
       }
     }
 
@@ -174,10 +174,14 @@ module.exports = class Login {
         } else {
           vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
         }
+
+        return true;
       } catch (e) {
         vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e.message}`);
       }
     }
+
+    return false;
   }
   
 }

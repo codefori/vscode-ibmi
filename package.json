@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.5.7",
+	"version": "1.5.10",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -836,7 +836,8 @@
 			{
 				"command": "code-for-ibmi.clearDiagnostics",
 				"title": "Clear diagnostics.",
-				"category": "IBM i"
+				"category": "IBM i",
+				"icon": "$(clear-all)"
 			},
 			{
 				"command": "code-for-ibmi.runAction",
@@ -903,12 +904,6 @@
 				"title": "Search Source File",
 				"category": "IBM i",
 				"icon": "$(search)"
-			},
-			{
-				"command": "code-for-ibmi.openFileByPath",
-				"title": "Open File",
-				"category": "IBM i",
-				"icon": "$(files)"
 			},
 			{
 				"command": "code-for-ibmi.createMember",
@@ -1121,7 +1116,7 @@
 				"mac": "cmd+alt+p"
 			},
 			{
-				"command": "code-for-ibmi.openFileByPath",
+				"command": "code-for-ibmi.goToFile",
 				"key": "ctrl+alt+o",
 				"mac": "cmd+alt+o"
 			},
@@ -1211,11 +1206,6 @@
 				},
 				{
 					"command": "code-for-ibmi.changeUserLibraryList",
-					"group": "navigation",
-					"when": "view == libraryListView"
-				},
-				{
-					"command": "code-for-ibmi.changeCurrentLibrary",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
@@ -1342,6 +1332,16 @@
 					"command": "code-for-ibmi.createMember",
 					"when": "viewItem == SPF",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.changeCurrentLibrary",
+					"when": "view == libraryListView && viewItem == currentLibrary",
+					"group": "libraryChangeCurrent@1"
 				},
 				{
 					"command": "code-for-ibmi.removeFromLibraryList",

@@ -60,40 +60,55 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
         if (node) {
           let path = node.path.split(`/`);
-
+          
           //Running from right click
-          let fullName = await vscode.window.showInputBox({
-            prompt: `Name of new source member (member.ext)`
-          });
+          
+          const connection = instance.getConnection();
+          let fullPath;
+          let fullName = ``;
+          let newData;
+          let newNameOK;
 
-          if (fullName) {
-            fullName = fullName.toUpperCase();
+          do {
+            fullName = await vscode.window.showInputBox({
+              prompt: `Name of new source member (member.ext)`,
+              value: fullName
+            });
 
-            const connection = instance.getConnection();
-            const [name, extension] = fullName.split(`.`);
-
-            if (extension !== undefined && extension.length > 0) {
+            if (fullName) {
+              fullName = fullName.toUpperCase();
               try {
-                const uriPath = `${path[0]}/${path[1]}/${name}.${extension}`.toUpperCase();
+                newNameOK = true;
+                fullPath = `${node.path}/${fullName}`;
+                newData = connection.parserMemberPath(fullPath);
+              } catch (e) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(`${e}`);
+              }
+            }
 
-                vscode.window.showInformationMessage(`Creating and opening member ${uriPath}.`);
+            if (fullName && newNameOK) {
+              try {
+                fullPath = fullPath.toUpperCase();
+                vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
                 await connection.remoteCommand(
-                  `ADDPFM FILE(${path[0]}/${path[1]}) MBR(${name}) SRCTYPE(${extension})`
-                );
+                  `ADDPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`
+                )
 
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, uriPath);
+                if (Configuration.get(`autoOpenFile`)) {
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                }
 
                 if (Configuration.get(`autoRefresh`)) {
                   this.refresh();
                 }
               } catch (e) {
-                vscode.window.showErrorMessage(`Error creating new member! ${e}`);
+                newNameOK = false;
+                vscode.window.showErrorMessage(`Error creating member ${fullPath}! ${e}`);
               }
-            } else {
-              vscode.window.showErrorMessage(`Extension must be provided when creating a member.`);
             }
-          }
+          } while(fullName && !newNameOK)
 
         } else {
           //Running from command
@@ -104,44 +119,95 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node) => {
         if (node) {
           //Running from right click
-          let fullPath = await vscode.window.showInputBox({
-            prompt: `New path for copy of source member`,
-            value: node.path
-          });
 
-          if (fullPath) {
-            fullPath = fullPath.toUpperCase();
+          const connection = instance.getConnection();
+          const oldData = connection.parserMemberPath(node.path);
+          let fullPath = node.path;
+          let fullName = ``;
+          let newData;
+          let newNameOK;
 
-            const connection = instance.getConnection();
+          do {
+            fullPath = await vscode.window.showInputBox({
+              prompt: `New path for copy of source member`,
+              value: fullPath
+            });
 
-            try {
-              const oldData = connection.parserMemberPath(node.path);
-              const newData = connection.parserMemberPath(fullPath);
-
-              vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
-
-              await connection.remoteCommand(
-                `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
-              )
-
-              if (oldData.extension !== newData.extension) {
-                await connection.remoteCommand(
-                  `CHGPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension})`,
-                );
+            if (fullPath) {
+              fullPath = fullPath.toUpperCase();
+              try {
+                newNameOK = true;
+                newData = connection.parserMemberPath(fullPath);
+              } catch (e) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(`${e}`);
               }
-
-              if (Configuration.get(`autoOpenFile`)) {
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
-              }
-
-              if (Configuration.get(`autoRefresh`)) {
-                this.refresh();
-              }
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error creating new member! ${e}`);
             }
 
-          }
+            if (fullPath && newNameOK) {
+              if (newData.library === oldData.library && newData.file === oldData.file && newData.member === oldData.member) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(`Cannot copy member to itself!`);
+              }
+            }
+
+            if (fullPath && newNameOK) {
+              vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
+
+              try {
+                let newMemberExists = true;
+                try {
+                  await connection.remoteCommand(
+                    `CHKOBJ OBJ(${newData.library}/${newData.file}) OBJTYPE(*FILE) MBR(${newData.member})`,
+                  )
+                } catch (e) {
+                  if (String(e).includes(`CPF9815`)) {
+                    newMemberExists = false;
+                  }
+                }
+
+                if (newMemberExists) {
+                  const result = await vscode.window.showInformationMessage(`Are you sure you want overwrite member ${newData.member}?`, { modal:true }, `Yes`, `No`)
+                  if (result === `Yes`) {
+                    await connection.remoteCommand(
+                      `RMVM FILE(${newData.library}/${newData.file}) MBR(${newData.member})`,
+                    )
+                  } else {
+                    throw `Member ${newData.member} already exists!`
+                  }
+                }
+
+                try {
+                  await connection.remoteCommand(
+                    `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
+                  )
+                } catch (e) {
+                  // Ignore CPF2869 Empty member is not copied.
+                  if (!String(e).includes(`CPF2869`)) {
+                    throw (e)
+                  }
+                }
+
+                if (oldData.extension !== newData.extension) {
+                  await connection.remoteCommand(
+                    `CHGPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`,
+                  );
+                }
+
+                if (Configuration.get(`autoOpenFile`)) {
+                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                }
+
+                if (Configuration.get(`autoRefresh`)) {
+                  this.refresh();
+                }
+              } catch (e) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(`Error creating new member! ${e}`);
+              }
+              
+            }
+          } while(fullPath && !newNameOK)
 
         } else {
           //Running from command. Perhaps get active editor?
@@ -213,33 +279,53 @@ module.exports = class objectBrowserTwoProvider {
           const oldMember = connection.parserMemberPath(node.path);
           const lib = oldMember.library;
           const spf = oldMember.file;
-          let newBasename = await vscode.window.showInputBox({
-            value: oldMember.basename,
-            prompt: `Rename ${oldMember.basename}`
-          });
+          let fullPath = node.path;
+          let newBasename = oldMember.basename;
+          let newMember;
+          let newNameOK;
 
-          if (newBasename && newBasename.toUpperCase() !== oldMember.basename) {
-            try {
-              const connection = instance.getConnection();
-              const newMember = connection.parserMemberPath(lib + `/` + spf + `/` + newBasename);
-              if (oldMember.member !== newMember.member) {
-                await connection.remoteCommand(
-                  `RNMM FILE(${lib}/${spf}) MBR(${oldMember.member}) NEWMBR(${newMember.member})`,
-                );
+          do {
+            newBasename = await vscode.window.showInputBox({
+              value: newBasename,
+              prompt: `Rename ${oldMember.basename}`
+            });
+
+            if (newBasename) {
+              try {
+                newNameOK = true;
+                newMember = connection.parserMemberPath(lib + `/` + spf + `/` + newBasename);
+              } catch (e) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(`${e}`);
               }
-              if (oldMember.extension !== newMember.extension) {
-                await connection.remoteCommand(
-                  `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension})`,
-                );
-              }
-              if (Configuration.get(`autoRefresh`)) {
-                this.refresh();
-              }
-              else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
-            } catch(e) {
-              vscode.window.showErrorMessage(`Error renaming member! ${e}`);
             }
-          }
+
+            if (newBasename) {
+              if (newBasename.toUpperCase() === oldMember.basename) {
+                newNameOK = false;
+              } else {
+                try {
+                  if (oldMember.member !== newMember.member) {
+                    await connection.remoteCommand(
+                      `RNMM FILE(${lib}/${spf}) MBR(${oldMember.member}) NEWMBR(${newMember.member})`,
+                    );
+                  }
+                  if (oldMember.extension !== newMember.extension) {
+                    await connection.remoteCommand(
+                      `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
+                    );
+                  }
+                  if (Configuration.get(`autoRefresh`)) {
+                    this.refresh();
+                  }
+                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+                } catch(e) {
+                  newNameOK = false;
+                  vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+                }
+              }
+            }
+          } while(newBasename && !newNameOK)
         } else {
           //Running from command.
         }
