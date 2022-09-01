@@ -347,7 +347,7 @@ module.exports = class Handler {
         // Lines added
         // at index (change.modifiedStartLineNumber-1)
         // on lines (modifiedEndLineNumber - modifiedStartLineNumber + 1) 
-        removedLines = 1;
+        removedLines = change.originalEndLineNumber - change.originalStartLineNumber + 1;
         changedLines = change.modifiedEndLineNumber - change.modifiedStartLineNumber + 1;
       }
 
