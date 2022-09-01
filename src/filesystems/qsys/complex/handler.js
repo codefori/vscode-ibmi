@@ -340,7 +340,7 @@ module.exports = class Handler {
         // Line removed
         // at index (modifiedStartIndex-1)
         // for lines (originalEndLineNumber - originalStartLineNumber)
-        startIndex = change.originalStartLineNumber - 1;
+        startIndex = change.modifiedStartLineNumber;
         removedLines = change.originalEndLineNumber - change.originalStartLineNumber + 1
       } else
       if (change.modifiedEndLineNumber >= change.modifiedStartLineNumber) {
