@@ -6,6 +6,9 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'build')
     steps:
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
       - uses: actions/checkout@v2
         with:
           fetch-depth: 1
