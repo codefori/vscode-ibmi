@@ -278,21 +278,16 @@ module.exports = class libraryListProvider {
    */
   async getChildren() {
     const connection = instance.getConnection();
+    const content = instance.getContent();
     const config = instance.getConfig();
+    const currentLibrary = config.currentLibrary.toUpperCase();
     let items = [];
 
     if (connection) {
-      let currentLibrary = new Library(config.currentLibrary.toUpperCase());
-      currentLibrary.contextValue = `currentLibrary`;
-      currentLibrary.description = `(current library)`;
-      items.push(currentLibrary);
-
-      const libraryList = config.libraryList;
-
-      for (let library of libraryList) {
-        library = library.toUpperCase();
-        items.push(new Library(library));
-      }
+      const libraries = await content.getLibraryList(new Array(config.currentLibrary).concat(config.libraryList));
+      items = libraries.map(lib => {
+        return new Library(lib.name, lib.text, lib.attribute, (lib.name === currentLibrary ? `currentLibrary` : `library`));
+      });
     }
 
     return items;
@@ -302,11 +297,16 @@ module.exports = class libraryListProvider {
 class Library extends vscode.TreeItem {
   /**
    * @param {string} library
+   * @param {string?} text
+   * @param {string?} attribute
+   * @param {string?} context
    */
-  constructor(library) {
+  constructor(library, text = ``, attribute = ``, context = `library`) {
     super(library.toUpperCase(), vscode.TreeItemCollapsibleState.None);
 
-    this.contextValue = `library`;
+    this.contextValue = context;
     this.path = library;
+    this.description = (context === `currentLibrary` ? `(current library) ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
+
   }
 }
