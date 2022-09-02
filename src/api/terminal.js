@@ -81,25 +81,26 @@ module.exports = class Terminal {
           },
           handleInput: (data) => {
             if (type === `5250`) {
-              let buffer = Buffer.from(data);
+              const buffer = Buffer.from(data);
 
               switch (buffer[0]) {
               case 127: //Backspace
                 //Move back one, space, move back again - deletes a character
-                buffer = Buffer.from([
+                channel.stdin.write(Buffer.from([
                   27, 79, 68, //Move back one
                   27, 91, 51, 126 //Delete character
-                ]);
+                ]));
+                break;
+              default:
+                channel.stdin.write(data);
                 break;
               }
-
-              channel.stdin.write(buffer.toString());
             } else {
               channel.stdin.write(data);
             }
           },
           setDimensions: (dim) => {
-            channel.setWindow(dim.rows, dim.columns, 0, 0);
+            channel.setWindow(dim.rows, dim.columns, `500`, `500`);
           },
         },
       });
