@@ -7,7 +7,7 @@ const diffOptions = {
   shouldPostProcessCharChanges: false,
   shouldIgnoreTrimWhitespace: true,
   shouldMakePrettyDiff: false,
-  shouldComputeCharChanges: true,
+  shouldComputeCharChanges: false,
   maxComputationTime: 1000
 }
 
