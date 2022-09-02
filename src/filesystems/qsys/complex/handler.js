@@ -285,7 +285,7 @@ module.exports = class Handler {
                 new vscode.Position(cLine, 0),
                 new vscode.Position(cLine, 0)
               ),
-              renderOptions: {
+              renderOptions: { 
                 before: {
                   contentText: dates[cLine],
                   color: highlightForSearch ? seachGutterColor : (currentDate === dates[cLine] ? editedTodayColor : undefined)
