@@ -1555,7 +1555,7 @@
 		]
 	},
 	"scripts": {
-		"lint": "eslint .",
+		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
 		"package": "vsce package",
 		"build": "rm -rf dist && tsc",

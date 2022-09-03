@@ -8,6 +8,7 @@
 		],
 		"allowJs": true,
 		"esModuleInterop": true,
+		"checkJs": false,
 		"sourceMap": true,
 		"rootDir": "src",
 		"strict": true   /* enable all strict type-checking options */
