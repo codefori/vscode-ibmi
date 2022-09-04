@@ -124,13 +124,13 @@ module.exports = class libraryListProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = '') => {
+      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = ``) => {
         const config = instance.getConfig();
         let addingLib;
 
         let libraryList = [...config.libraryList];
 
-        if(newLibrary == ''){
+        if(newLibrary == ``){
           addingLib = await vscode.window.showInputBox({
             prompt: `Library to add`
           });
