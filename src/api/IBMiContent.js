@@ -273,7 +273,7 @@ module.exports = class IBMiContent {
         const library = libraries[i];
         await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       };
-      let results = await this.getTable(tempLib, TempName, TempName, true);
+      results = await this.getTable(tempLib, TempName, TempName, true);
 
       if (results.length === 1) {
         if (results[0].ODOBNM.trim() === ``) {
@@ -281,7 +281,7 @@ module.exports = class IBMiContent {
         }
       };
 
-      results = results.filter(object => (libraries.includes(object.ODOBNM)));
+      results = results.filter(object => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
 
     };
 
@@ -289,7 +289,7 @@ module.exports = class IBMiContent {
 
     return results
       .map(object => ({
-        name: this.ibmi.sysNameInLocal(object.ODOBNM),
+        name: config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
         attribute: object.ODOBAT,
         text: object.ODOBTX
       }))
