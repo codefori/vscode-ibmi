@@ -1,43 +1,53 @@
 
-const vscode = require(`vscode`);
+import * as vscode from "vscode";
+import Configuration from "./api/Configuration";
+import IBMi from "./api/IBMi";
+import IBMiContent from "./api/IBMiContent";
+import Storage from "./api/Storage";
 const path = require(`path`);
 
-const IBMi = require(`./api/IBMi`);
-const IBMiContent = require(`./api/IBMiContent`);
 const CompileTools = require(`./api/CompileTools`);
-const Configuration = require(`./api/Configuration`);
-const Storage = require(`./api/Storage`);
-const Tools = require(`./api/Tools`);
 
 const Terminal = require(`./api/terminal`);
 const Deployment = require(`./api/Deployment`);
 
 const { CustomUI, Field } = require(`./api/CustomUI`);
 
-const searchView = require(`./views/searchView`);
+import {searchView, IResult} from "./views/searchView";
 
-/** @type {vscode.StatusBarItem} */
-let reconnectBarItem;
-
-/** @type {vscode.StatusBarItem} */
-let connectedBarItem;
-
-/** @type {vscode.StatusBarItem} */
-let terminalBarItem;
-
-/** @type {vscode.StatusBarItem} */
-let disconnectBarItem;
+let reconnectBarItem: vscode.StatusBarItem;
+let connectedBarItem: vscode.StatusBarItem;
+let terminalBarItem: vscode.StatusBarItem;
+let disconnectBarItem: vscode.StatusBarItem;
 
 let initialisedBefore = false;
 
-/** @type {vscode.Uri} */
-let selectedForCompare;
+let selectedForCompare: vscode.Uri;
 
-/** @type {searchView} */
-let searchViewContext;
+let searchViewContext: searchView;
 
-module.exports = class Instance {
-  static setupEmitter() {
+export class instance {
+  static connection: IBMi|undefined;
+  static content: IBMiContent|undefined;
+  static storage: Storage|undefined;
+  static emitter: vscode.EventEmitter<any>|undefined;
+  static events: {event: string, func: Function}[];
+
+  static getConnection() {
+    return this.connection;
+  }
+  static getConfig () {
+    return this.connection?.config;
+  }
+  static getContent () {
+    return instance.content;
+  }
+  static getStorage () {
+    return instance.storage;
+  }
+};
+
+export function setupEmitter() {
     instance.emitter = new vscode.EventEmitter();
     instance.events = [];
 
@@ -47,29 +57,18 @@ module.exports = class Instance {
     })
   }
 
-  /**
-   * @param {IBMi} conn
-   */
-  static setConnection(conn) {
-    instance.connection = conn;
-    instance.content = new IBMiContent(instance.connection);
+export function setConnection(conn: IBMi) {
+  instance.connection = conn;
+  instance.content = new IBMiContent(instance.connection);
 
-    vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-  };
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+};
 
-  static getConnection() {return instance.connection};
-  static getConfig() {return instance.connection.config};
-  static getContent() {return instance.content};
-  static getStorage() {return instance.storage};
+export function setSearchResults(term: string, results: IResult[]) {
+  searchViewContext.setResults(term, results);
+}
 
-  static setSearchResults(term, results) {
-    searchViewContext.setResults(term, results);
-  }
-
-  /**
-   * @returns {Promise<boolean>} Indicates whether it was disconnect succesfully or not.
-   */
-  static async disconnect() {
+export async function disconnect(): Promise<boolean> {
     let doDisconnect = true;
 
     for (const document of vscode.workspace.textDocuments) {
@@ -92,7 +91,7 @@ module.exports = class Instance {
       }
     }
 
-    if (doDisconnect) {
+    if (doDisconnect && instance.connection) {
       //Dispose of any vscode related internals.
       instance.connection.subscriptions.forEach(subscription => subscription.dispose());
 
@@ -109,13 +108,12 @@ module.exports = class Instance {
     return doDisconnect;
   }
 
-  /**
-   * We call this after we have made a connect to the IBM i to load the rest of the plugin in.
-   * @param {vscode.ExtensionContext} context
-   */
-  static async loadAllofExtension(context) {
-    const connection = this.getConnection();
-    const config = this.getConfig();
+export async function loadAllofExtension(context: vscode.ExtensionContext) {
+    const connection = instance.getConnection();
+    const config = instance.getConfig();
+
+    if (!connection) return;
+    if (!config) return;
 
     const helpView = require(`./views/helpView`);
 
@@ -211,7 +209,7 @@ module.exports = class Instance {
             if (instance.connection) {
               connectedBarItem.hide();
               vscode.window.showInformationMessage(`Disconnecting from ${instance.connection.currentHost}.`);
-              this.disconnect();
+              disconnect();
             } else {
               vscode.window.showErrorMessage(`Not currently connected to any system.`);
             }
@@ -221,7 +219,7 @@ module.exports = class Instance {
         actionsUI.init(context);
         variablesUI.init(context);
 
-        const deployment = new Deployment(context, this);
+        const deployment = new Deployment(context, instance);
 
         //********* Help view */
 
@@ -382,12 +380,15 @@ module.exports = class Instance {
         );
 
         vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async () => {
-          const sources = instance.storage.get(`sourceList`);
+          const storage = instance.getStorage();
+          if (!storage) return;
+
+          const sources = storage.get(`sourceList`);
           const dirs = Object.keys(sources);
-          let list = [];
+          let list: string[] = [];
 
           dirs.forEach(dir => {
-            sources[dir].forEach(source => {
+            sources[dir].forEach((source: string) => {
               list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
             });
           });
@@ -407,7 +408,7 @@ module.exports = class Instance {
             const selection = quickPick.selectedItems[0].label;
             if (selection) {
               if (selection === `Clear list`) {
-                instance.storage.set(`sourceList`, {});
+                storage.set(`sourceList`, {});
                 vscode.window.showInformationMessage(`Cleared list.`);
               } else {
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);
@@ -443,14 +444,14 @@ module.exports = class Instance {
             if (node) {
               const uri = node.resourceUri || node;
 
-              CompileTools.RunAction(this, uri);
+              CompileTools.RunAction(instance, uri);
 
             } else {
               const editor = vscode.window.activeTextEditor;
-              const uri = editor.document.uri;
               let willRun = false;
 
               if (editor) {
+                const uri = editor.document.uri;
                 willRun = true;
                 if (config.autoSaveBeforeAction) {
                   await editor.document.save();
@@ -474,23 +475,30 @@ module.exports = class Instance {
                     }
                   }
                 }
-              }
 
-              if (willRun) {
-                const scheme = uri.scheme;
-                switch (scheme) {
-                case `member`:
-                case `streamfile`:
-                case `file`:
-                  CompileTools.RunAction(this, uri);
-                  break;
+                if (willRun) {
+                  const scheme = uri.scheme;
+                  switch (scheme) {
+                  case `member`:
+                  case `streamfile`:
+                  case `file`:
+                    CompileTools.RunAction(instance, uri);
+                    break;
+                  }
                 }
               }
             }
           }),
 
           vscode.commands.registerCommand(`code-for-ibmi.openErrors`, async () => {
-            const detail = {
+            interface ObjectDetail {
+              asp?: string;
+              lib: string;
+              object: string;
+              ext?: string;
+            }
+
+            const detail: ObjectDetail = {
               asp: undefined,
               lib: ``,
               object: ``,
@@ -538,7 +546,7 @@ module.exports = class Instance {
                 if (lib && object) {
                   detail.lib = lib;
                   detail.object = object;
-                  CompileTools.refreshDiagnostics(this, detail);
+                  CompileTools.refreshDiagnostics(instance, detail);
                 } else {
                   vscode.window.showErrorMessage(`Format incorrect. Use LIB/OBJECT`);
                 }
@@ -547,19 +555,20 @@ module.exports = class Instance {
           }),
 
           vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-            Terminal.select(this);
+            Terminal.select(instance);
           }),
 
           vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
             if (detail && detail.command) {
-              return CompileTools.runCommand(this, detail);
+              return CompileTools.runCommand(instance, detail);
             } else {
               return null;
             }
           }),
           vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement) => {
-            if (statement) {
-              return instance.content.runSQL(statement);
+            const content = instance.getContent();
+            if (statement && content) {
+              return content.runSQL(statement);
             } else {
               return null;
             }
@@ -571,7 +580,7 @@ module.exports = class Instance {
             if (title && fields && callback) {
               const ui = new CustomUI();
 
-              fields.forEach(field => {
+              fields.forEach((field: any) => {
                 const uiField = new Field(field.type, field.id, field.label);
                 Object.keys(field).forEach(key => {
                   uiField[key] = field[key];
@@ -588,37 +597,22 @@ module.exports = class Instance {
         // Enable the profile view if profiles exist.
         vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
 
-        deployment.initialise(this);
+        deployment.initialise(instance);
 
         initialisedBefore = true;
       }
     }
 
-    instance.emitter.fire(`connected`);
+    if (instance.emitter)
+      instance.emitter.fire(`connected`);
   }
 
   /**
    * Register event
-   * @param {string} event
-   * @param {Function} func
    */
-  static on(event, func) {
-    instance.events.push({
-      event,
-      func
-    });
-  }
-};
-
-let instance = {
-  /** @type {IBMi} */
-  connection: undefined,
-  /** @type {IBMiContent} */
-  content: undefined, //IBM,
-  /** @type {Storage} */
-  storage: undefined,
-  /** @type {vscode.EventEmitter} */
-  emitter: undefined,
-  /** @type {{event: string, func: Function}[]} */
-  events: []
-};
+export function on(event: string, func: Function) {
+  instance.events.push({
+    event,
+    func
+  });
+}

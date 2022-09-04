@@ -4,7 +4,7 @@ const IBMi = require(`../../api/IBMi`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 const Configuration = require(`../../api/Configuration`);
 
-let instance = require(`../../Instance`);
+let {instance, disconnect, setConnection, loadAllofExtension} = require(`../../Instance`);
 
 module.exports = class Login {
 
@@ -15,7 +15,7 @@ module.exports = class Login {
   static async show(context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-      if (!instance.disconnect()) return;
+      if (!disconnect()) return;
     }
 
     let existingConnections = Configuration.get(`connections`);
@@ -87,8 +87,8 @@ module.exports = class Login {
             try {
               const connected = await connection.connect(data);
               if (connected.success) {
-                instance.setConnection(connection);
-                instance.loadAllofExtension(context);
+                setConnection(connection);
+                loadAllofExtension(context);
       
                 if (newConnection) {
                   
@@ -139,7 +139,7 @@ module.exports = class Login {
       // If the user is already connected and trying to connect to a different system, disconnect them first
       if (name !== instance.getConnection().currentConnectionName) {
         vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-        if (!instance.disconnect()) return false;
+        if (!disconnect()) return false;
       }
     }
 
@@ -168,8 +168,8 @@ module.exports = class Login {
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
 
-          instance.setConnection(connection);
-          instance.loadAllofExtension(context);
+          setConnection(connection);
+          loadAllofExtension(context);
 
         } else {
           vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);

@@ -1,7 +1,7 @@
 
 const vscode = require(`vscode`);
 
-const instance = require(`../Instance`);
+const {instance} = require(`../Instance`);
 
 const LAST_PROFILE_KEY = `currentProfile`;
 const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `ifsShortcuts`, `customVariables`];
@@ -24,11 +24,11 @@ module.exports = class profilesProvider {
         const config = instance.getConfig();
         const storage = instance.getStorage();
 
-		const currentProfile = storage.get(LAST_PROFILE_KEY);													 
+        const currentProfile = storage.get(LAST_PROFILE_KEY);													 
         let currentProfiles = config.connectionProfiles;
 
         const profileName = profileNode ? profileNode.profile : await vscode.window.showInputBox({
-		  value: currentProfile,						
+		      value: currentProfile,						
           prompt: `Name of profile`
         });
 

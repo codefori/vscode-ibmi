@@ -1,5 +1,5 @@
 let IBMi = require(`../../../api/IBMi`);
-let instance = require(`../../../Instance`);
+let {instance} = require(`../../../Instance`);
 
 const util = require(`util`);
 const fs = require(`fs`);

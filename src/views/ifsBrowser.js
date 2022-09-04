@@ -3,7 +3,7 @@ const vscode = require(`vscode`);
 const os = require(`os`);
 const path = require(`path`);
 
-let instance = require(`../Instance`);
+let {instance, setSearchResults} = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 const Search = require(`../api/Search`);
 const Tools = require(`../api/Tools`);
@@ -452,7 +452,7 @@ module.exports = class ifsBrowserProvider {
 
                 if (results.length > 0) {
 
-                  instance.setSearchResults(searchTerm, results);
+                  setSearchResults(searchTerm, results);
 
                 } else {
                   vscode.window.showInformationMessage(`No results found.`);

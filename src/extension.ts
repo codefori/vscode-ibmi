@@ -4,7 +4,7 @@ import {ExtensionContext, window, commands, workspace} from "vscode";
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import instance from './Instance';
+import {setupEmitter, instance, setConnection, loadAllofExtension} from './Instance';
 import {CustomUI, Field} from "./api/CustomUI";
 
 import connectionBrowser from "./views/connectionBrowser";
@@ -17,7 +17,7 @@ export function activate(context: ExtensionContext) {
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   //We setup the event emitter.
-  instance.setupEmitter();
+  setupEmitter();
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
@@ -38,8 +38,8 @@ export function activate(context: ExtensionContext) {
         const connection = new IBMi();
         const connected = await connection.connect(connectionData);
         if (connected.success) {
-          instance.setConnection(connection);
-          instance.loadAllofExtension(context);
+          setConnection(connection);
+          loadAllofExtension(context);
         }
 
         return connected.success;

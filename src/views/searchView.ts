@@ -1,20 +1,23 @@
 
-const vscode = require(`vscode`);
+import vscode from "vscode";
+import { TreeDataProvider } from "vscode";
 const path = require(`path`);
 
-module.exports = class searchView {
-  /**
-   * @param {vscode.ExtensionContext} context
-   */
-  constructor(context) {
-    this.emitter = new vscode.EventEmitter();
-    this.onDidChangeTreeData = this.emitter.event;
+export interface IResult {
+  path: string;
+  lines: {
+    number: number, content: string
+  }[];
+}
 
-    this.term = ``;
+export class searchView implements TreeDataProvider<any> {
+  private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
+  readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
-    /** @type {{path: string, lines: {number: number, content: string}[]}[]} */
-    this.results = [];
+  term: string = ``;
+  results: IResult[] = [];
 
+  constructor(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.refreshSearchView`, async () => {
         this.refresh();
@@ -26,14 +29,11 @@ module.exports = class searchView {
     )
   }
 
-  /**
-   * @param {boolean} visable
-   **/
-  setViewVisable(visable) {
+  setViewVisable(visable: boolean) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisable`, visable);
   }
 
-  setResults(term, results) {
+  setResults(term: string, results: IResult[]) {
     this.term = term;
     this.results = results;
     this.refresh();
@@ -43,23 +43,19 @@ module.exports = class searchView {
   }
 
   refresh() {
-    this.emitter.fire();
+    this._onDidChangeTreeData.fire();
   }
 
-  /**
-   * @param {vscode.TreeItem} element
-   * @returns {vscode.TreeItem};
-   */
-  getTreeItem(element) {
+  getTreeItem(element: vscode.TreeItem) {
     return element;
   }
 
   /**
    * @param {HitSource} hitSource
-   * @returns {Promise<vscode.TreeItem[]>};
+   * @returns {};
    */
-  async getChildren(hitSource) {
-    let items = [];
+  async getChildren(hitSource: HitSource): Promise<vscode.TreeItem[]> {
+    let items: vscode.TreeItem[] = [];
 
     if (hitSource) {
       const file = this.results.find(file => file.path === hitSource.path);
@@ -79,7 +75,8 @@ module.exports = class searchView {
 }
 
 class HitSource extends vscode.TreeItem {
-  constructor(hitPath, hits) {
+  path: string;
+  constructor(hitPath: string, hits: number) {
     super(path.posix.basename(hitPath), vscode.TreeItemCollapsibleState.Expanded);
 
     this.contextValue = `hitSource`;
@@ -91,9 +88,10 @@ class HitSource extends vscode.TreeItem {
 }
 
 class LineHit extends vscode.TreeItem {
-  constructor(term, hitPath, line, content) {
-    /** @type {[number, number][]} */
-    const highlights = [];
+  path: string;
+
+  constructor(term: string, hitPath: string, line: number, content: string) {
+    const highlights: [number, number][] = [];
 
     const upperContent = content.trim().toUpperCase();
     const upperTerm = term.toUpperCase();
@@ -118,7 +116,7 @@ class LineHit extends vscode.TreeItem {
     this.contextValue = `lineHit`;
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-    this.description = line;
+    this.description = String(line);
     this.path = hitPath;
 
     this.command = {

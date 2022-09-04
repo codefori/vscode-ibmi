@@ -5,7 +5,7 @@ const fs = require(`fs`);
 
 const parseString = util.promisify(require(`xml2js`).parseString);
 
-const instance = require(`../../Instance`);
+const {instance} = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
 const IBMi = require(`../../api/IBMi`);
 
