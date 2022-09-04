@@ -282,9 +282,14 @@ module.exports = class libraryListProvider {
     const config = instance.getConfig();
     const currentLibrary = config.currentLibrary.toUpperCase();
     let items = [];
+    let libraries = [];
 
     if (connection) {
-      const libraries = await content.getLibraryList(new Array(config.currentLibrary).concat(config.libraryList));
+      if (config.showDescInLibList === true) {
+        libraries = await content.getLibraryList(new Array(config.currentLibrary).concat(config.libraryList));
+      } else {
+        libraries = new Array(config.currentLibrary).concat(config.libraryList).map(lib => { return { name: lib, text: ``, attribute: `` }});
+      }
       items = libraries.map(lib => {
         return new Library(lib.name, lib.text, lib.attribute, (lib.name === currentLibrary ? `currentLibrary` : `library`));
       });
