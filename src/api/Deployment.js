@@ -2,7 +2,7 @@
 const path = require(`path`);
 const vscode = require(`vscode`);
 
-const IBMi = require(`./IBMi`);
+const {default: IBMi} = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
 const IBMiContent = require(`./IBMiContent`);

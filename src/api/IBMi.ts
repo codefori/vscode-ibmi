@@ -25,7 +25,7 @@ let remoteApps = [
   }
 ];
 
-module.exports = class IBMi {
+export default class IBMi {
   client: node_ssh.NodeSSH;
   currentHost: string;
   currentPort: number;
