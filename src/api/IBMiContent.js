@@ -249,6 +249,55 @@ module.exports = class IBMiContent {
   }
 
   /**
+   * Get list of libraries with description and attribute
+   * @param {string[]} libraries Array of libraries to retrieve
+   * @returns {Promise<{name: string, text: string, attribute: string}[]>} List of libraries
+   */
+  async getLibraryList(libraries) {
+    const config = this.ibmi.config;
+    const tempLib = this.ibmi.config.tempLibrary;
+    const TempName = Tools.makeid();
+    let results;
+
+    if (config.enableSQL) {
+      const statement = `
+        select os.OBJNAME as ODOBNM
+             , coalesce(os.OBJTEXT, '') as ODOBTX
+             , os.OBJATTRIBUTE as ODOBAT
+          from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs
+             , table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
+      `;
+      results = await this.runSQL(statement);
+    } else {
+      for (let i = 0; i < libraries.length; i++) {
+        const library = libraries[i];
+        await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+      };
+      results = await this.getTable(tempLib, TempName, TempName, true);
+
+      if (results.length === 1) {
+        if (results[0].ODOBNM.trim() === ``) {
+          return []
+        }
+      };
+
+      results = results.filter(object => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
+    };
+
+    if (results.length === 0) return [];
+
+    return results
+      .map(object => ({
+        name: config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
+        attribute: object.ODOBAT,
+        text: object.ODOBTX
+      }))
+      .sort((a, b) => {
+        return (libraries.indexOf(a.name) - libraries.indexOf(b.name));
+      });
+  }
+
+  /**
    * @param {{library: string, object?: string, types?: string[]}} filters 
    * @returns {Promise<{library: string, name: string, type: string, text: string, attribute: string, count?: number}[]>} List of members 
    */

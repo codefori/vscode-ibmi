@@ -43,7 +43,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `clContentAssistEnabled`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `clContentAssistEnabled`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -72,6 +72,11 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
         field.default = (config.enableSQL ? `checked` : ``);
         field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID is 65535, it is recommend SQL is disabled. When disabled, will use import files where possible.`;
+        ui.addField(field);
+
+        field = new Field(`checkbox`, `showDescInLibList`, `Show description of libraries in User Library List view`);
+        field.default = (config.showDescInLibList ? `checked` : ``);
+        field.description = `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceASP`, `Source ASP`);

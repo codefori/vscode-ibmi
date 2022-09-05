@@ -335,6 +335,11 @@
 									}
 								},
 								"default": []
+							},
+							"showDescInLibList": {
+								"type": "boolean",
+								"default": false,
+								"description": "Show description of libraries in User Library List (recommended to also enable SQL)."
 							}
 						}
 					}
