@@ -1,6 +1,7 @@
 
 import * as vscode from "vscode";
 import Configuration from "./api/Configuration";
+import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
 import Storage from "./api/Storage";
@@ -26,26 +27,7 @@ let selectedForCompare: vscode.Uri;
 
 let searchViewContext: searchView;
 
-export class instance {
-  static connection: IBMi|undefined;
-  static content: IBMiContent|undefined;
-  static storage: Storage|undefined;
-  static emitter: vscode.EventEmitter<any>|undefined;
-  static events: {event: string, func: Function}[];
-
-  static getConnection() {
-    return this.connection;
-  }
-  static getConfig () {
-    return this.connection?.config;
-  }
-  static getContent () {
-    return instance.content;
-  }
-  static getStorage () {
-    return instance.storage;
-  }
-};
+export let instance = new Instance();
 
 export function setupEmitter() {
     instance.emitter = new vscode.EventEmitter();
