@@ -85,7 +85,7 @@
 										"object",
 										"types",
 										"member",
-                    "memberType"
+										"memberType"
 									],
 									"properties": {
 										"name": {
@@ -668,7 +668,8 @@
 							],
 							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
 							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"RPGLE",
@@ -693,7 +694,8 @@
 							],
 							"name": "Run SQL Statements (RUNSQLSTM)",
 							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
-						},						{
+						},
+						{
 							"type": "streamfile",
 							"extensions": [
 								"cmd"
@@ -1553,10 +1555,10 @@
 		]
 	},
 	"scripts": {
-		"lint": "eslint .",
+		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
-		"test": "node ./test/runTest.js",
 		"package": "vsce package",
+		"build": "rm -rf dist && tsc",
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch"
@@ -1564,11 +1566,13 @@
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
 		"@types/node": "^12.11.7",
+		"@types/source-map-support": "^0.5.6",
 		"@types/vscode": "^1.66.0",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"semver": "^7.3.5",
-		"typescript": "^4.1.3",
+		"ts-loader": "^9.3.1",
+		"typescript": "^4.8.2",
 		"vscode-test": "^1.5.0",
 		"webpack": "^5.24.3",
 		"webpack-cli": "^4.5.0"
@@ -1579,6 +1583,7 @@
 		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",
+		"source-map-support": "^0.5.21",
 		"tmp": "^0.2.1",
 		"xml2js": "^0.4.23"
 	},

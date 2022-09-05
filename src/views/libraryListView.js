@@ -1,7 +1,7 @@
 
 const vscode = require(`vscode`);
 
-let instance = require(`../Instance`);
+let {instance} = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
 module.exports = class libraryListProvider {

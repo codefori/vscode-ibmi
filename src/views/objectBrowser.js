@@ -8,7 +8,7 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const FiltersUI = require(`../webviews/filters`);
 
-let instance = require(`../Instance`);
+let {instance, setSearchResults} = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
 const Search = require(`../api/Search`);
@@ -465,7 +465,7 @@ module.exports = class objectBrowserTwoProvider {
                         return a.path.localeCompare(b.path);
                       });
                   
-                      instance.setSearchResults(searchTerm, results);
+                      setSearchResults(searchTerm, results);
 
                     } else {
                       vscode.window.showInformationMessage(`No results found.`);
@@ -528,11 +528,11 @@ module.exports = class objectBrowserTwoProvider {
           await vscode.window.showInformationMessage(`Would you like to add the new library to the library list?`, `Yes`, `No`)
             .then(async result => {
               switch (result) {
-                case `Yes`:
-                  await vscode.commands.executeCommand('code-for-ibmi.addToLibraryList',newLibrary);
-                  if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand('code-for-ibmi.refreshLibraryListView');
+              case `Yes`:
+                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`,newLibrary);
+                if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
 
-                  break;
+                break;
               }
             });
 
