@@ -248,9 +248,9 @@ module.exports = class IBMiContent {
     
   }
 
-
   /**
-   * @param {string[]} libraries
+   * Get list of libraries with description and attribute
+   * @param {string[]} libraries Array of libraries to retrieve
    * @returns {Promise<{name: string, text: string, attribute: string}[]>} List of libraries
    */
   async getLibraryList(libraries) {
@@ -282,7 +282,6 @@ module.exports = class IBMiContent {
       };
 
       results = results.filter(object => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
-
     };
 
     if (results.length === 0) return [];
