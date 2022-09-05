@@ -1,8 +1,8 @@
 
-const vscode = require(`vscode`);
+import * as vscode from "vscode";
+import * as node_ssh from "node-ssh";
+import Configuration from "./Configuration";
 
-const node_ssh = require(`node-ssh`);
-const Configuration = require(`./Configuration`);
 const Tools = require(`./Tools`);
 const path = require(`path`);
 
@@ -26,19 +26,35 @@ let remoteApps = [
 ];
 
 module.exports = class IBMi {
+  client: node_ssh.NodeSSH;
+  currentHost: string;
+  currentPort: number;
+  currentUser: string;
+  currentConnectionName: string;
+  tempRemoteFiles: {[name: string]: string};
+  defaultUserLibraries: string[];
+  outputChannel: vscode.OutputChannel;
+  subscriptions: vscode.Disposable[];
+  aspInfo: {[id: number]: string};
+  qccsid: number|null;
+  remoteFeatures: {[name: string]: string|undefined};
+  variantChars: {american: string, local: string};
+  lastErrors: object[];
+  config?: Configuration;
+
   constructor() {
     this.client = new node_ssh.NodeSSH;
     this.currentHost = ``;
     this.currentPort = 22;
     this.currentUser = ``;
+    this.currentConnectionName = ``;
     
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
 
-    /** @type {vscode.OutputChannel} */
     this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i`);
 
-    /** @type {vscode.Disposable[]} List of vscode disposables */
+    /** List of vscode disposables */
     this.subscriptions = [this.outputChannel];
 
     /**
@@ -48,10 +64,8 @@ module.exports = class IBMi {
      */
     this.aspInfo = {};
 
-    /** @type {number|null} */
     this.qccsid = null;
 
-    /** @type {{[name: string]: string}} */
     this.remoteFeatures = {
       git: undefined,
       grep: undefined,
@@ -61,8 +75,6 @@ module.exports = class IBMi {
       'QZDFMDB2.PGM': undefined,
     };
 
-    
-    /** @type {{[name: string]: string}} */
     this.variantChars = {
       american: `#@$`,
       local: `#@$`
@@ -71,17 +83,15 @@ module.exports = class IBMi {
     /** 
      * Strictly for storing errors from sendCommand.
      * Used when creating issues on GitHub.
-     * @type {object[]} 
      * */
     this.lastErrors = [];
     
   }
 
   /**
-   * @param {ConnectionData} connectionObject
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject) {
+  async connect(connectionObject: ConnectionData): Promise<{success: boolean, error?: any}> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
@@ -228,7 +238,7 @@ module.exports = class IBMi {
 
           tempLibrarySet = true;
 
-        } catch (e) {
+        } catch (e: any) {
           let [errorcode, errortext] = e.split(`:`);
 
           switch (errorcode) {
@@ -310,6 +320,7 @@ module.exports = class IBMi {
             .catch(e => { 
               // CPF2125: No objects deleted.
               if (!e.startsWith(`CPF2125`)) {
+                // @ts-ignore We know the config exists.
                 vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
                   if (choice === `View log`) {
                     this.outputChannel.show();
@@ -326,6 +337,7 @@ module.exports = class IBMi {
             })
             .catch(e => { 
               // CPF2125: No objects deleted.
+              // @ts-ignore We know the config exists.
               vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
                 if (choice === `View log`) {
                   this.outputChannel.show();
@@ -449,13 +461,13 @@ module.exports = class IBMi {
           //not have to provide the ASP in the settings.
           try {
             statement = `SELECT * FROM QSYS2.ASP_INFO`;
-            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, null, 0, {
+            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 0, {
               stdin: statement
             });
 
             if (typeof output === `string`) {
               const rows = Tools.db2Parse(output);
-              rows.forEach(row => {
+              rows.forEach((row: any) => {
                 if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
                   this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
                 }
@@ -498,7 +510,7 @@ module.exports = class IBMi {
               
               if (output.stdout) {
                 const rows = Tools.db2Parse(output.stdout);
-                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                const ccsid = rows.find((row: any) => row.SYSTEM_VALUE_NAME === `QCCSID`);
                 if (ccsid) {
                   this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
                 }
@@ -589,11 +601,10 @@ module.exports = class IBMi {
   }
 
   /**
-   * 
    * @param {string} command 
    * @param {string} [directory] If not passed, will use current home directory
    */
-  remoteCommand(command, directory) {
+  remoteCommand(command: string, directory?: string) {
     //execCommand does not crash..
     // escape $ and "
     command = command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
@@ -601,14 +612,7 @@ module.exports = class IBMi {
     return this.paseCommand(`system "` + command + `"`, directory);
   }
 
-  /**
-   * @param {{
-   *   command: string|string[], 
-   *   directory?: string,
-   *   onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string
-   * }} options
-   */
-  async sendQsh(options) {
+  async sendQsh(options: CommandData) {
     let qshCommand;
 
     if (Array.isArray(options.command)) {
@@ -626,15 +630,9 @@ module.exports = class IBMi {
   }
 
   /**
-   * 
-   * @param {string} command 
-   * @param {null|string} [directory] If null/not passed, will default to home directory
-   * @param {number} [returnType] If not passed, will default to 0. Accepts 0 or 1
-   * @param {{onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string}} [standardIO]
-   * @returns {Promise<string|{code: number, stdout: string, stderr: string}>}
    * @deprecated Use sendCommand instead
    */
-  async paseCommand(command, directory = this.config.homeDirectory, returnType = 0, standardIO = {}) {
+  async paseCommand(command: string, directory = this.config?.homeDirectory, returnType = 0, standardIO: StandardIO = {}): Promise<String|CommandResult> {
     const result = await this.sendCommand({
       command,
       directory,
@@ -649,17 +647,9 @@ module.exports = class IBMi {
     }
   }
 
-  /**
-   * @param {{
-   *   command: string, 
-   *   directory?: string,
-   *   onStdout?: (data: Buffer) => void, onStderr?: (data: Buffer) => void, stdin?: string
-   * }} options
-   * @returns {Promise<{code: number, stdout: string, stderr: string}>}
-   */
-  async sendCommand(options) {
+  async sendCommand(options: CommandData): Promise<CommandResult> {
     const command = options.command;
-    const directory = options.directory || this.config.homeDirectory;
+    const directory = options.directory || this.config?.homeDirectory;
 
     this.outputChannel.append(`${directory}: ${command}\n`);
     if (options && options.stdin) {
@@ -699,12 +689,12 @@ module.exports = class IBMi {
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
    */
-  getTempRemote(key) {
-
+  getTempRemote(key: string) {
     if (this.tempRemoteFiles[key] !== undefined) {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
-    } else {
+    } else
+    if (this.config) {
       let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
       console.log(`Using new temp: ` + value);
       this.tempRemoteFiles[key] = value;
@@ -712,16 +702,12 @@ module.exports = class IBMi {
     }
   }
 
-  log(string) {
+  log(string: string) {
     this.outputChannel.appendLine(string);
   }
 
-  /**
-   * @param {string} string
-   * @returns {{asp?: string, library: string, file: string, member: string, extension: string, basename: string}}
-   */
-  parserMemberPath(string) {
-    const result = {
+  parserMemberPath(string: string): MemberParts {
+    const result: MemberParts = {
       asp: undefined,
       library: undefined,
       file: undefined,
@@ -780,7 +766,7 @@ module.exports = class IBMi {
    * @param {string} string
    * @returns {string} result
    */
-  sysNameInLocal(string) {
+  sysNameInLocal(string: string) {
     const fromChars = this.variantChars.american;
     const toChars = this.variantChars.local;
 
@@ -797,7 +783,7 @@ module.exports = class IBMi {
    * @param {string} string
    * @returns {string} result
    */
-  sysNameInAmerican(string) {
+  sysNameInAmerican(string: string) {
     const fromChars = this.variantChars.local;
     const toChars = this.variantChars.american;
 
