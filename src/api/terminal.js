@@ -1,7 +1,7 @@
 
 const vscode = require(`vscode`);
 const Configuration = require(`./Configuration`);
-const IBMi = require(`./IBMi`);
+const {default: IBMi} = require(`./IBMi`);
 
 module.exports = class Terminal {
   static select(instance) {

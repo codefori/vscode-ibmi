@@ -1,4 +1,4 @@
-let IBMi = require(`../../../api/IBMi`);
+let {default: IBMi} = require(`../../../api/IBMi`);
 let {instance} = require(`../../../Instance`);
 
 const util = require(`util`);

@@ -7,7 +7,7 @@ const parseString = util.promisify(require(`xml2js`).parseString);
 
 const {instance} = require(`../../Instance`);
 const Configuration = require(`../../api/Configuration`);
-const IBMi = require(`../../api/IBMi`);
+const {default: IBMi} = require(`../../api/IBMi`);
 
 const gencmdxml = require(`./gencmdxml.js`).join(`\n`);
 

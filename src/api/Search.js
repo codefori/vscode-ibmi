@@ -1,6 +1,6 @@
 
 const Configuration = require(`./Configuration`);
-const IBMi = require(`./IBMi`);
+const {default: IBMi} = require(`./IBMi`);
 const IBMiContent = require(`./IBMiContent`);
 const Tools = require(`./Tools`);
 

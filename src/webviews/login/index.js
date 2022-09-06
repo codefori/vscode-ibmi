@@ -1,6 +1,6 @@
 const vscode = require(`vscode`);
 
-const IBMi = require(`../../api/IBMi`);
+const {default: IBMi} = require(`../../api/IBMi`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 const Configuration = require(`../../api/Configuration`);
 

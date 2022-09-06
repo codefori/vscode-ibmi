@@ -1,4 +1,4 @@
-const IBMi = require(`./IBMi`);
+const {default: IBMi} = require(`./IBMi`);
 
 const path = require(`path`);
 const util = require(`util`);

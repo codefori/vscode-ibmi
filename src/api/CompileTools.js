@@ -5,7 +5,7 @@ const path = require(`path`);
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
 const errorHandlers = require(`./errors/index`);
-const IBMi = require(`./IBMi`);
+const {default: IBMi} = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 
