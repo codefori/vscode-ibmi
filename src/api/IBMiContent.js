@@ -269,10 +269,7 @@ module.exports = class IBMiContent {
       `;
       results = await this.runSQL(statement);
     } else {
-      for (let i = 0; i < libraries.length; i++) {
-        const library = libraries[i];
-        await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-      };
+      await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName, true);
 
       if (results.length === 1) {
