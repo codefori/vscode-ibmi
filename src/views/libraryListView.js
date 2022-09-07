@@ -290,8 +290,8 @@ module.exports = class libraryListProvider {
       } else {
         libraries = [config.currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` }});
       }
-      items = libraries.map(lib => {
-        return new Library(lib.name, lib.text, lib.attribute, (lib.name === currentLibrary ? `currentLibrary` : `library`));
+      items = libraries.map((lib, index) => {
+        return new Library(lib.name, lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
       });
     }
 
