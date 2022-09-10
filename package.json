@@ -1098,6 +1098,12 @@
 				"icon": "$(file-directory-create)"
 			},
 			{
+				"command": "code-for-ibmi.changeObjectDesc",
+				"title": "Change object description",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
 				"command": "code-for-ibmi.closeSearchView",
 				"title": "Close search view",
 				"category": "IBM i",
@@ -1539,6 +1545,11 @@
 					"command": "code-for-ibmi.setDeployLocation",
 					"when": "view == objectBrowser && viewItem == filter && code-for-ibmi:workspace == true",
 					"group": "3_ifsTransfer@3"
+				},
+				{
+					"command": "code-for-ibmi.changeObjectDesc",
+					"when": "view == objectBrowser && viewItem == object",
+					"group": "1_objActions@1"
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",

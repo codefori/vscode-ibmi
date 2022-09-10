@@ -580,7 +580,53 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.changeObjectDesc`, async (node) => {
+        if (node) {
+          let newText = node.text;
+          let newTextOK;
+          do {
+            newText = await vscode.window.showInputBox({
+              prompt: `Change object description for ${node.path}, *BLANK for no description`,
+              value: newText
+            });
+
+            if (newText) {
+              newTextOK = false;
+              if (newText.length > 50) {
+                vscode.window.showErrorMessage(`Object description must be 50 chars or less.`);
+              } else {
+                newTextOK = true;
+              }
+            }
+
+            if (newText && newTextOK) {
+              const escapedText = newText.replace(/'/g, `''`);
+              const connection = instance.getConnection();
+
+              try {
+                await connection.remoteCommand(
+                  `CHGOBJD OBJ(${node.path}) OBJTYPE(*${node.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
+                );
+                if (Configuration.get(`autoRefresh`)) {
+                  vscode.window.showInformationMessage(`Changed object description for ${node.path} *${node.type}.`);
+                  this.refresh();
+                } else {
+                  vscode.window.showInformationMessage(`Changed object description. Reload required.`);
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error changing description for ${node.path}! ${e}`);
+                newTextOK = false;
+              }
+            }
+          } while(newText && !newTextOK)
+        } else {
+          //Running from command
+          console.log(this);
+        }
       })
+
     )
   }
 
@@ -741,6 +787,7 @@ class ILEObject extends vscode.TreeItem {
     this.type = type;
     this.description = text + (attribute ? ` (${attribute.toLowerCase()})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
+    this.text = text;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
