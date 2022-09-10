@@ -1104,6 +1104,12 @@
 				"icon": "$(arrow-up)"
 			},
 			{
+				"command": "code-for-ibmi.sortFilters",
+				"title": "Sort filters",
+				"category": "IBM i",
+				"icon": "$(list-ordered)"
+			},
+			{
 				"command": "code-for-ibmi.refreshObjectBrowser",
 				"title": "Refresh Object Browser",
 				"category": "IBM i",
@@ -1295,6 +1301,11 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.sortFilters",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
