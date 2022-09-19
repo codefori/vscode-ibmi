@@ -1240,6 +1240,11 @@
 					"when": "view == libraryListView"
 				},
 				{
+					"command": "code-for-ibmi.refreshLibraryListView",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
 					"command": "code-for-ibmi.changeWorkingDirectory",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
