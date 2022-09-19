@@ -281,15 +281,24 @@ module.exports = class IBMiContent {
       results = results.filter(object => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
     };
 
-    if (results.length === 0) return [];
-
     results = results.map(object => ({
       name: config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
       attribute: object.ODOBAT,
       text: object.ODOBTX
     }));
 
-    return libraries.map(lib => {return results.find(info => info.name === lib)});
+    return libraries.map(lib => {
+      const index = results.findIndex(info => info.name === lib);
+      if (index >= 0) {
+        return results[index];
+      } else {
+        return {
+          name: lib,
+          attribute: ``,
+          text: `*** NOT FOUND ***`
+        };
+      }
+    });
   }
 
   /**
