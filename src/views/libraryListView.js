@@ -242,8 +242,8 @@ module.exports = class libraryListProvider {
     /** @type {object} */
     const result = await connection.sendQsh({
       command: [
-        `liblist -d ` + connection.defaultUserLibraries.join(` `),
-        ...newLibl.map(lib => `liblist -a ` + lib)
+        `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
       ]
     });
 
