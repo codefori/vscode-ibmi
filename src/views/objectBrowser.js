@@ -102,19 +102,16 @@ module.exports = class objectBrowserTwoProvider {
 
         let objectFilters = config.objectFilters;
 
-        try {
-          objectFilters.sort(function(a, b){
-            const x = a.name.toLowerCase();
-            const y = b.name.toLowerCase();
-            if (x < y) {return -1;}
-            if (x > y) {return 1;}
-            return 0;
-          });
-          await config.set(`objectFilters`, objectFilters);
-          if (Configuration.get(`autoRefresh`)) this.refresh();
-        } catch (e) {
-          console.log(e);
-        }
+        objectFilters.sort(function(a, b){
+          const x = a.name.toLowerCase();
+          const y = b.name.toLowerCase();
+          if (x < y) {return -1;}
+          if (x > y) {return 1;}
+          return 0;
+        });
+
+        await config.set(`objectFilters`, objectFilters);
+        if (Configuration.get(`autoRefresh`)) this.refresh();
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, async () => {
