@@ -212,6 +212,21 @@ module.exports = class libraryListProvider {
 
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.validateLibraryList`, async () => {
+        const config = instance.getConfig();
+        let libraryList = [...config.libraryList];
+        const badLibs = await this.validateLibraryList(libraryList);
+
+        if (badLibs.length > 0) {
+          libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+          vscode.window.showWarningMessage(`The following libraries were removed from the updated library list as they are invalid: ${badLibs.join(`, `)}`);
+          await config.set(`libraryList`, libraryList);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        } else {
+          vscode.window.showInformationMessage(`Library list were validated without any errors.`);
+        }
+      }),
     )
   }
 

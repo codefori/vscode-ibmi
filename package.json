@@ -881,6 +881,12 @@
 				"icon": "$(arrow-down)"
 			},
 			{
+				"command": "code-for-ibmi.validateLibraryList",
+				"title": "Validate library list",
+				"category": "IBM i",
+				"icon": "$(check)"
+			},
+			{
 				"command": "code-for-ibmi.saveConnectionProfile",
 				"title": "Save current settings into profile",
 				"category": "IBM i",
@@ -1236,6 +1242,11 @@
 				},
 				{
 					"command": "code-for-ibmi.showVariableMaintenance",
+					"group": "navigation",
+					"when": "view == libraryListView"
+				},
+				{
+					"command": "code-for-ibmi.validateLibraryList",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
