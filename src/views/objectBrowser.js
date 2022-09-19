@@ -318,7 +318,7 @@ module.exports = class objectBrowserTwoProvider {
                   if (Configuration.get(`autoRefresh`)) {
                     this.refresh();
                   }
-                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+                  else vscode.window.showInformationMessage(`Renamed member. Refresh object browser.`);
                 } catch(e) {
                   newNameOK = false;
                   vscode.window.showErrorMessage(`Error renaming member! ${e}`);
@@ -608,7 +608,7 @@ module.exports = class objectBrowserTwoProvider {
                   vscode.window.showInformationMessage(`Changed object description for ${node.path} *${node.type}.`);
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Changed object description. Reload required.`);
+                  vscode.window.showInformationMessage(`Changed object description. Refresh object browser.`);
                 }
               } catch (e) {
                 vscode.window.showErrorMessage(`Error changing description for ${node.path}! ${e}`);
