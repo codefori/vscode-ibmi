@@ -632,9 +632,9 @@ module.exports = class CompileTools {
       case `qsh`:
         commandResult = await connection.sendQsh({
           command: [
-            `liblist -d ` + connection.defaultUserLibraries.join(` `),
-            `liblist -c ` + config.currentLibrary,
-            `liblist -a ` + libl.join(` `),
+            `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+            `liblist -c ` + config.currentLibrary.replace(/\$/g, `\\$`),
+            `liblist -a ` + libl.join(` `).replace(/\$/g, `\\$`),
             ...commands,
           ],
           directory: cwd,
@@ -648,9 +648,9 @@ module.exports = class CompileTools {
 
         commandResult = await connection.sendQsh({
           command: [
-            `liblist -d ` + connection.defaultUserLibraries.join(` `),
-            `liblist -c ` + config.currentLibrary,
-            `liblist -a ` + libl.join(` `),
+            `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+            `liblist -c ` + config.currentLibrary.replace(/\$/g, `\\$`),
+            `liblist -a ` + libl.join(` `).replace(/\$/g, `\\$`),
             ...commands.map(command => 
               `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
             ),
