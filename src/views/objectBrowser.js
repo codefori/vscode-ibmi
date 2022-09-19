@@ -589,23 +589,18 @@ module.exports = class objectBrowserTwoProvider {
           do {
             newText = await vscode.window.showInputBox({
               prompt: `Change object description for ${node.path}, *BLANK for no description`,
-              value: newText
+              value: newText,
+              validateInput: newText => {
+                return newText.length <= 50 ? null : `Object description must be 50 chars or less.`;
+              }
             });
 
             if (newText) {
-              newTextOK = false;
-              if (newText.length > 50) {
-                vscode.window.showErrorMessage(`Object description must be 50 chars or less.`);
-              } else {
-                newTextOK = true;
-              }
-            }
-
-            if (newText && newTextOK) {
               const escapedText = newText.replace(/'/g, `''`);
               const connection = instance.getConnection();
 
               try {
+                newTextOK = true;
                 await connection.remoteCommand(
                   `CHGOBJD OBJ(${node.path}) OBJTYPE(*${node.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
                 );
