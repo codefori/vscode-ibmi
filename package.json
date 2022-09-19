@@ -393,10 +393,10 @@
 					"default": true,
 					"description": "If enabled, listings will refresh when items are interacted with (create, copy, delele, etc). Turn this off if you find performance is bad."
 				},
-				"code-for-ibmi.ObjectBrowser.showNamesInUppercase": {
+				"code-for-ibmi.ObjectBrowser.showNamesInLowercase": {
 					"type": "boolean",
-					"default": false,
-					"description": "If enabled, names and types of object and members will be shown in uppercase (like in 5250 sessions)"
+					"default": true,
+					"description": "If enabled, names and types of object and members will be shown in lowercase. If disabled, the names will be shown as is on the server (like in 5250 sessions)"
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",

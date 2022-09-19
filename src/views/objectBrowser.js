@@ -603,7 +603,7 @@ module.exports = class objectBrowserTwoProvider {
   async getChildren(element) {
     const content = instance.getContent();
     const config = instance.getConfig();
-    const objectNamesUpper = Configuration.get(`ObjectBrowser.showNamesInUppercase`);
+    const objectNamesLower = Configuration.get(`ObjectBrowser.showNamesInLowercase`);
     let items = [], item;
 
     if (element) {
@@ -616,7 +616,7 @@ module.exports = class objectBrowserTwoProvider {
 
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
         let objects = await content.getObjectList(filter);
-        if (!objectNamesUpper || objectNamesUpper === false) {
+        if (objectNamesLower === true) {
           objects = objects.map(object => {
             object.name = object.name.toLocaleLowerCase();
             object.type = object.type.toLocaleLowerCase();
@@ -638,7 +638,7 @@ module.exports = class objectBrowserTwoProvider {
 
         try {
           let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
-          if (!objectNamesUpper || objectNamesUpper === false) {
+          if (objectNamesLower === true) {
             members = members.map(member => {
               member.file = member.file.toLocaleLowerCase();
               member.name = member.name.toLocaleLowerCase();
