@@ -1,6 +1,6 @@
 
 const vscode = require(`vscode`);
-const Instance = require(`../Instance`);
+let {instance} = require(`../Instance`);
 
 module.exports = class helpView {
   /**
@@ -15,8 +15,8 @@ module.exports = class helpView {
    * @returns {Promise<HelpItem[]>};
    */
   async getChildren() {
-    const connection = Instance.getConnection();
-    const config = Instance.getConfig();
+    const connection = instance.getConnection();
+    const config = instance.getConfig();
 
     const issueUrl = [
       `Issue text goes here.`,
