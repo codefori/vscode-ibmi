@@ -269,10 +269,7 @@ module.exports = class IBMiContent {
       `;
       results = await this.runSQL(statement);
     } else {
-      for (let i = 0; i < libraries.length; i++) {
-        const library = libraries[i];
-        await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-      };
+      await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName, true);
 
       if (results.length === 1) {
@@ -284,17 +281,24 @@ module.exports = class IBMiContent {
       results = results.filter(object => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
     };
 
-    if (results.length === 0) return [];
+    results = results.map(object => ({
+      name: config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
+      attribute: object.ODOBAT,
+      text: object.ODOBTX
+    }));
 
-    return results
-      .map(object => ({
-        name: config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
-        attribute: object.ODOBAT,
-        text: object.ODOBTX
-      }))
-      .sort((a, b) => {
-        return (libraries.indexOf(a.name) - libraries.indexOf(b.name));
-      });
+    return libraries.map(lib => {
+      const index = results.findIndex(info => info.name === lib);
+      if (index >= 0) {
+        return results[index];
+      } else {
+        return {
+          name: lib,
+          attribute: ``,
+          text: `*** NOT FOUND ***`
+        };
+      }
+    });
   }
 
   /**

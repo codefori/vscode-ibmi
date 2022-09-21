@@ -212,6 +212,21 @@ module.exports = class libraryListProvider {
 
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.cleanupLibraryList`, async () => {
+        const config = instance.getConfig();
+        let libraryList = [...config.libraryList];
+        const badLibs = await this.validateLibraryList(libraryList);
+
+        if (badLibs.length > 0) {
+          libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+          vscode.window.showWarningMessage(`The following libraries were removed from the updated library list as they are invalid: ${badLibs.join(`, `)}`);
+          await config.set(`libraryList`, libraryList);
+          if (Configuration.get(`autoRefresh`)) this.refresh();
+        } else {
+          vscode.window.showInformationMessage(`Library list were validated without any errors.`);
+        }
+      }),
     )
   }
 
@@ -290,8 +305,8 @@ module.exports = class libraryListProvider {
       } else {
         libraries = [config.currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` }});
       }
-      items = libraries.map(lib => {
-        return new Library(lib.name, lib.text, lib.attribute, (lib.name === currentLibrary ? `currentLibrary` : `library`));
+      items = libraries.map((lib, index) => {
+        return new Library(lib.name, lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
       });
     }
 
