@@ -213,7 +213,7 @@ module.exports = class libraryListProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.validateLibraryList`, async () => {
+      vscode.commands.registerCommand(`code-for-ibmi.cleanupLibraryList`, async () => {
         const config = instance.getConfig();
         let libraryList = [...config.libraryList];
         const badLibs = await this.validateLibraryList(libraryList);

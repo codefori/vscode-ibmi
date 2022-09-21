@@ -881,8 +881,8 @@
 				"icon": "$(arrow-down)"
 			},
 			{
-				"command": "code-for-ibmi.validateLibraryList",
-				"title": "Validate library list",
+				"command": "code-for-ibmi.cleanupLibraryList",
+				"title": "Cleanup library list",
 				"category": "IBM i",
 				"icon": "$(check)"
 			},
@@ -1242,12 +1242,12 @@
 				},
 				{
 					"command": "code-for-ibmi.showVariableMaintenance",
-					"group": "navigation",
+					"group": "",
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.validateLibraryList",
-					"group": "navigation",
+					"command": "code-for-ibmi.cleanupLibraryList",
+					"group": "",
 					"when": "view == libraryListView"
 				},
 				{
