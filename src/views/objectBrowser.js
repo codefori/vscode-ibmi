@@ -741,6 +741,7 @@ module.exports = class objectBrowserTwoProvider {
     const content = instance.getContent();
     const config = instance.getConfig();
     const objectNamesLower = Configuration.get(`ObjectBrowser.showNamesInLowercase`);
+    const objectSortOrder = Configuration.get(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
     let items = [], item;
 
     if (element) {
@@ -752,7 +753,7 @@ module.exports = class objectBrowserTwoProvider {
         const obj = element;
 
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
-        let objects = await content.getObjectList(filter);
+        let objects = await content.getObjectList(filter, objectSortOrder);
         if (objectNamesLower === true) {
           objects = objects.map(object => {
             object.name = object.name.toLocaleLowerCase();
