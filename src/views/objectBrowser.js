@@ -603,6 +603,7 @@ module.exports = class objectBrowserTwoProvider {
   async getChildren(element) {
     const content = instance.getContent();
     const config = instance.getConfig();
+    const objectNamesLower = Configuration.get(`ObjectBrowser.showNamesInLowercase`);
     let items = [], item;
 
     if (element) {
@@ -614,9 +615,17 @@ module.exports = class objectBrowserTwoProvider {
         const obj = element;
 
         filter = config.objectFilters.find(filter => filter.name === obj.filter);
-        const objects = await content.getObjectList(filter);
+        let objects = await content.getObjectList(filter);
+        if (objectNamesLower === true) {
+          objects = objects.map(object => {
+            object.name = object.name.toLocaleLowerCase();
+            object.type = object.type.toLocaleLowerCase();
+            object.attribute = object.attribute.toLocaleLowerCase();
+            return object;
+          })
+        };
         items = objects.map(object =>
-          object.attribute === `*PHY` ? new SPF(filter.name, object, filter.member, filter.memberType) : new ILEObject(filter.name, object)
+          object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(filter.name, object, filter.member, filter.memberType) : new ILEObject(filter.name, object)
         );
         break;
 
@@ -628,7 +637,15 @@ module.exports = class objectBrowserTwoProvider {
         const path = spf.path.split(`/`);
 
         try {
-          const members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
+          let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
+          if (objectNamesLower === true) {
+            members = members.map(member => {
+              member.file = member.file.toLocaleLowerCase();
+              member.name = member.name.toLocaleLowerCase();
+              member.extension = member.extension.toLocaleLowerCase();
+              return member;
+            })
+          };
           items = members.map(member => new Member(member));
 
           await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
@@ -708,7 +725,7 @@ class SPF extends vscode.TreeItem {
    * @param {string} memberTypeFilter Member type filter string
    */
   constructor(filter, detail, memberFilter, memberTypeFilter) {
-    super(detail.name.toLowerCase(), vscode.TreeItemCollapsibleState.Collapsed);
+    super(detail.name, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.filter = filter;
     this.memberFilter = memberFilter;
@@ -732,14 +749,14 @@ class ILEObject extends vscode.TreeItem {
 
     const icon = objectIcons[type] || objectIcons[``];
 
-    super(`${name.toLowerCase()}.${type.toLowerCase()}`);
+    super(`${name}.${type}`);
 
     this.filter = filter;
 
     this.contextValue = `object`;
     this.path = `${library}/${name}`;
     this.type = type;
-    this.description = text + (attribute ? ` (${attribute.toLowerCase()})` : ``);
+    this.description = text + (attribute ? ` (${attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
 
     this.resourceUri = vscode.Uri.from({
@@ -754,7 +771,7 @@ class Member extends vscode.TreeItem {
   constructor(member) {
     const path = `${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`;
 
-    super(`${member.name}.${member.extension}`.toLowerCase());
+    super(`${member.name}.${member.extension}`);
 
     this.contextValue = `member`;
     this.description = member.text;
