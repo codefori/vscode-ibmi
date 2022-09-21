@@ -379,7 +379,7 @@ module.exports = class objectBrowserTwoProvider {
                   if (Configuration.get(`autoRefresh`)) {
                     this.refresh();
                   }
-                  else vscode.window.showInformationMessage(`Renamed member. Reload required.`);
+                  else vscode.window.showInformationMessage(`Renamed member. Refresh object browser.`);
                 } catch(e) {
                   newNameOK = false;
                   vscode.window.showErrorMessage(`Error renaming member! ${e}`);
@@ -641,7 +641,48 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.changeObjectDesc`, async (node) => {
+        if (node) {
+          let newText = node.text;
+          let newTextOK;
+          do {
+            newText = await vscode.window.showInputBox({
+              prompt: `Change object description for ${node.path}, *BLANK for no description`,
+              value: newText,
+              validateInput: newText => {
+                return newText.length <= 50 ? null : `Object description must be 50 chars or less.`;
+              }
+            });
+
+            if (newText) {
+              const escapedText = newText.replace(/'/g, `''`).replace(/`/g, `\\\``);
+              const connection = instance.getConnection();
+
+              try {
+                newTextOK = true;
+                await connection.remoteCommand(
+                  `CHGOBJD OBJ(${node.path}) OBJTYPE(*${node.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
+                );
+                if (Configuration.get(`autoRefresh`)) {
+                  vscode.window.showInformationMessage(`Changed object description for ${node.path} *${node.type}.`);
+                  this.refresh();
+                } else {
+                  vscode.window.showInformationMessage(`Changed object description. Refresh object browser.`);
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error changing description for ${node.path}! ${e}`);
+                newTextOK = false;
+              }
+            }
+          } while(newText && !newTextOK)
+        } else {
+          //Running from command
+          console.log(this);
+        }
       })
+
     )
   }
 
@@ -854,6 +895,7 @@ class ILEObject extends vscode.TreeItem {
     this.type = type;
     this.description = text + (attribute ? ` (${attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
+    this.text = text;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
