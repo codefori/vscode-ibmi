@@ -944,5 +944,15 @@ const objectIcons = {
   'CMD': `terminal`,
   'MODULE': `extensions`,
   'PGM': `file-binary`,
+  'DTAARA': `clippy`,
+  'DTAQ': `list-ordered`,
+  'JOBQ': `checklist`,
+  'LIB': `library`,
+  'MEDDFN': `save-all`,
+  'OUTQ': `symbol-enum`,
+  'PNLGRP': `book`,
+  'SBSD': `server-process`,
+  'SRVPGM': `file-submodule`,
+  'USRSPC': `chrome-maximize`,
   '': `circle-large-outline`
 }
