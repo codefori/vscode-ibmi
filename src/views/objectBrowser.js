@@ -596,7 +596,7 @@ module.exports = class objectBrowserTwoProvider {
             });
 
             if (newText) {
-              const escapedText = newText.replace(/'/g, `''`);
+              const escapedText = newText.replace(/'/g, `''`).replace(/`/g, `\\\``);
               const connection = instance.getConnection();
 
               try {
