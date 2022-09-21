@@ -53,6 +53,67 @@ module.exports = class objectBrowserTwoProvider {
         }
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.moveFilterUp`, async (node) => {
+        if (node) {
+          try {
+            await this.moveFilterInList(node.filter, `UP`);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } catch(e) {
+            console.log(e);
+          };
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveFilterDown`, async (node) => {
+        if (node) {
+          try {
+            await this.moveFilterInList(node.filter, `DOWN`);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } catch(e) {
+            console.log(e);
+          };
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveFilterToTop`, async (node) => {
+        if (node) {
+          try {
+            await this.moveFilterInList(node.filter, `TOP`);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } catch(e) {
+            console.log(e);
+          };
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveFilterToBottom`, async (node) => {
+        if (node) {
+          try {
+            await this.moveFilterInList(node.filter, `BOTTOM`);
+            if (Configuration.get(`autoRefresh`)) this.refresh();
+          } catch(e) {
+            console.log(e);
+          };
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.sortFilters`, async (node) => {
+        const config = instance.getConfig();
+
+        let objectFilters = config.objectFilters;
+
+        objectFilters.sort(function(a, b){
+          const x = a.name.toLowerCase();
+          const y = b.name.toLowerCase();
+          if (x < y) {return -1;}
+          if (x > y) {return 1;}
+          return 0;
+        });
+
+        await config.set(`objectFilters`, objectFilters);
+        if (Configuration.get(`autoRefresh`)) this.refresh();
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, async () => {
         this.refresh();
       }),
@@ -582,6 +643,41 @@ module.exports = class objectBrowserTwoProvider {
         }
       })
     )
+  }
+
+  async moveFilterInList(filterName, filterMovement) {
+    filterMovement = filterMovement.toUpperCase();
+    if (![`TOP`, `UP`, `DOWN`, `BOTTOM`].includes(filterMovement)) throw `Illegal filter movement value specified`;
+
+    const config = instance.getConfig();
+
+    let objectFilters = config.objectFilters;
+    const from = objectFilters.findIndex(filter => filter.name === filterName);
+    let to;
+
+    if (from === -1) throw `Filter ${filterName} is not found in list`;
+    if (from === 0 && [`TOP`, `UP`].includes(filterMovement)) throw `Filter ${filterName} is at top of list`;
+    if (from === objectFilters.length && [`DOWN`, `BOTTOM`].includes(filterMovement)) throw `Filter ${filterName} is at bottom of list`;
+
+    switch(filterMovement) {
+    case `TOP`:
+      to = 0;
+      break;
+    case `UP`:
+      to = from - 1;
+      break;
+    case `DOWN`:
+      to = from + 1;
+      break;
+    case `BOTTOM`:
+      to = objectFilters.length;
+      break;
+    }
+
+    const filter = objectFilters[from];
+    objectFilters.splice(from, 1);
+    objectFilters.splice(to, 0, filter);
+    await config.set(`objectFilters`, objectFilters);
   }
 
   refresh() {

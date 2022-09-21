@@ -1085,6 +1085,36 @@
 				"icon": "$(remove)"
 			},
 			{
+				"command": "code-for-ibmi.moveFilterUp",
+				"title": "Move filter up",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "code-for-ibmi.moveFilterDown",
+				"title": "Move filter down",
+				"category": "IBM i",
+				"icon": "$(arrow-down)"
+			},
+			{
+				"command": "code-for-ibmi.moveFilterToTop",
+				"title": "Move filter to top",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "code-for-ibmi.moveFilterToBottom",
+				"title": "Move filter to bottom",
+				"category": "IBM i",
+				"icon": "$(arrow-up)"
+			},
+			{
+				"command": "code-for-ibmi.sortFilters",
+				"title": "Sort filters",
+				"category": "IBM i",
+				"icon": "$(list-ordered)"
+			},
+			{
 				"command": "code-for-ibmi.refreshObjectBrowser",
 				"title": "Refresh Object Browser",
 				"category": "IBM i",
@@ -1280,6 +1310,11 @@
 					"when": "view == objectBrowser"
 				},
 				{
+					"command": "code-for-ibmi.sortFilters",
+					"group": "navigation",
+					"when": "view == objectBrowser"
+				},
+				{
 					"command": "code-for-ibmi.closeSearchView",
 					"group": "navigation",
 					"when": "view == searchView"
@@ -1365,11 +1400,33 @@
 				},
 				{
 					"command": "code-for-ibmi.maintainFilter",
-					"when": "viewItem == filter"
+					"when": "viewItem == filter",
+					"group": "4_filters@1"
 				},
 				{
 					"command": "code-for-ibmi.deleteFilter",
-					"when": "viewItem == filter"
+					"when": "viewItem == filter",
+					"group": "4_filters@2"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterUp",
+					"when": "viewItem == filter",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterDown",
+					"when": "viewItem == filter",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterToTop",
+					"when": "viewItem == filter",
+					"group": "5_filters@1"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterToBottom",
+					"when": "viewItem == filter",
+					"group": "5_filters@2"
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
