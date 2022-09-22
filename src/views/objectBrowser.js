@@ -681,8 +681,122 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
-      })
+      }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.copyObject`, async (node) => {
+        if (node) {
+          let newPath = node.path;
+          let newPathOK;
+          do {
+            newPath = await vscode.window.showInputBox({
+              prompt: `Create duplicate object to new library/object`,
+              value: newPath,
+              validateInput: newPath => {
+                let splitPath = newPath.split(`/`);
+                if (splitPath.length != 2) return `Invalid path: ${newPath}. Use format LIB/OBJ`;
+                return newPath.length <= 21 ? null : `Object path must be 21 chars or less.`;
+              }
+            });
+
+            if (newPath) {
+              const [oldLibrary, oldObject] = node.path.split(`/`);
+              const escapedPath = newPath.replace(/'/g, `''`).replace(/`/g, `\\\``);
+              const [newLibrary, newObject] = escapedPath.split(`/`);
+              const connection = instance.getConnection();
+
+              try {
+                newPathOK = true;
+                await connection.remoteCommand(
+                  `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
+                );
+                if (Configuration.get(`autoRefresh`)) {
+                  vscode.window.showInformationMessage(`Copied object to ${escapedPath}.`);
+                  this.refresh();
+                } else {
+                  vscode.window.showInformationMessage(`Copied object to ${escapedPath}. Refresh object browser.`);
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error copying object ${node.path}! ${e}`);
+                newPathOK = false;
+              }
+            }
+          } while(newPath && !newPathOK)
+        } else {
+          //Running from command
+          console.log(this);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.deleteObject`, async (node) => {
+
+        if (node) {
+          //Running from right click
+          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+
+          if (result === `Yes`) {
+            const connection = instance.getConnection();
+            const [library, object] = node.path.split(`/`);
+
+            try {
+              await connection.remoteCommand(
+                `DLTOBJ OBJ(${node.path}) OBJTYPE(*${node.type})`,
+              );
+
+              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+
+              if (Configuration.get(`autoRefresh`)) {
+                this.refresh();
+              }
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting object! ${e}`);
+            }
+
+          }
+        } else {
+          //Running from command
+          console.log(this);
+        }
+      }), 
+
+      vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node) => {
+        if (node) {
+          let [,newObject] = node.path.split(`/`);
+          let newObjectOK;
+          do {
+            newObject = await vscode.window.showInputBox({
+              prompt: `Rename object`,
+              value: newObject,
+              validateInput: newObject => {
+                return newObject.length <= 10 ? null : `Object name must be 10 chars or less.`;
+              }
+            });
+
+            if (newObject) {
+              const escapedObject = newObject.replace(/'/g, `''`).replace(/`/g, `\\\``).split(`/`);
+              const connection = instance.getConnection();
+
+              try {
+                newObjectOK = true;
+                await connection.remoteCommand(
+                  `RNMOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) NEWOBJ(${escapedObject})`
+                );
+                if (Configuration.get(`autoRefresh`)) {
+                  vscode.window.showInformationMessage(`Renamed object to ${escapedObject}.`);
+                  this.refresh();
+                } else {
+                  vscode.window.showInformationMessage(`Renamed object to ${escapedObject}. Refresh object browser.`);
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error renaming object ${node.path}! ${e}`);
+                newObjectOK = false;
+              }
+            }
+          } while(newObject && !newObjectOK)
+        } else {
+          //Running from command
+          console.log(this);
+        }
+      })
     )
   }
 
