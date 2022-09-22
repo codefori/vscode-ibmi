@@ -711,10 +711,10 @@ module.exports = class objectBrowserTwoProvider {
                   `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
                 );
                 if (Configuration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Copied object to ${escapedPath} *${node.type}.`);
+                  vscode.window.showInformationMessage(`Copied object ${node.path} *${node.type} to ${escapedPath}.`);
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Copied object to ${escapedPath}. Refresh object browser.`);
+                  vscode.window.showInformationMessage(`Copied object ${node.path} *${node.type} to ${escapedPath}. Refresh object browser.`);
                 }
               } catch (e) {
                 vscode.window.showErrorMessage(`Error copying object ${node.path}! ${e}`);
@@ -743,7 +743,7 @@ module.exports = class objectBrowserTwoProvider {
                 `DLTOBJ OBJ(${node.path}) OBJTYPE(*${node.type})`,
               );
 
-              vscode.window.showInformationMessage(`Deleted ${node.path}  *${node.type}.`);
+              vscode.window.showInformationMessage(`Deleted ${node.path} *${node.type}.`);
 
               if (Configuration.get(`autoRefresh`)) {
                 this.refresh();
@@ -782,10 +782,10 @@ module.exports = class objectBrowserTwoProvider {
                   `RNMOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) NEWOBJ(${escapedObject})`
                 );
                 if (Configuration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Renamed object to ${escapedObject} *${node.type}.`);
+                  vscode.window.showInformationMessage(`Renamed object ${node.path} *${node.type} to ${escapedObject}.`);
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Renamed object to ${escapedObject}. Refresh object browser.`);
+                  vscode.window.showInformationMessage(`Renamed object ${node.path} *${node.type} to ${escapedObject}. Refresh object browser.`);
                 }
               } catch (e) {
                 vscode.window.showErrorMessage(`Error renaming object ${node.path}! ${e}`);
