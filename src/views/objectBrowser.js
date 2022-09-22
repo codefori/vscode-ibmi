@@ -711,7 +711,7 @@ module.exports = class objectBrowserTwoProvider {
                   `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
                 );
                 if (Configuration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Copied object to ${escapedPath}.`);
+                  vscode.window.showInformationMessage(`Copied object to ${escapedPath} *${node.type}.`);
                   this.refresh();
                 } else {
                   vscode.window.showInformationMessage(`Copied object to ${escapedPath}. Refresh object browser.`);
@@ -743,7 +743,7 @@ module.exports = class objectBrowserTwoProvider {
                 `DLTOBJ OBJ(${node.path}) OBJTYPE(*${node.type})`,
               );
 
-              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+              vscode.window.showInformationMessage(`Deleted ${node.path}  *${node.type}.`);
 
               if (Configuration.get(`autoRefresh`)) {
                 this.refresh();
@@ -782,7 +782,7 @@ module.exports = class objectBrowserTwoProvider {
                   `RNMOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) NEWOBJ(${escapedObject})`
                 );
                 if (Configuration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Renamed object to ${escapedObject}.`);
+                  vscode.window.showInformationMessage(`Renamed object to ${escapedObject} *${node.type}.`);
                   this.refresh();
                 } else {
                   vscode.window.showInformationMessage(`Renamed object to ${escapedObject}. Refresh object browser.`);
@@ -823,7 +823,7 @@ module.exports = class objectBrowserTwoProvider {
                   `MOVOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) TOLIB(${newLibrary})`
                 );
                 if (Configuration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Moved object to ${escapedLibrary}.`);
+                  vscode.window.showInformationMessage(`Moved object to ${escapedLibrary} *${node.type}.`);
                   this.refresh();
                 } else {
                   vscode.window.showInformationMessage(`Moved object to ${escapedLibrary}. Refresh object browser.`);
