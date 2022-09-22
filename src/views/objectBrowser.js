@@ -694,7 +694,8 @@ module.exports = class objectBrowserTwoProvider {
               validateInput: newPath => {
                 let splitPath = newPath.split(`/`);
                 if (splitPath.length != 2) return `Invalid path: ${newPath}. Use format LIB/OBJ`;
-                return newPath.length <= 21 ? null : `Object path must be 21 chars or less.`;
+                if (splitPath[0].length > 10) return `Library must be 10 chars or less.`;
+                if (splitPath[1].length > 10) return `Object name must be 10 chars or less.`;
               }
             });
 
