@@ -797,6 +797,47 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.moveObject`, async (node) => {
+        if (node) {
+          let [newLibrary,] = node.path.split(`/`);
+          let newLibraryOK;
+          do {
+            newLibrary = await vscode.window.showInputBox({
+              prompt: `Move object to new library`,
+              value: newLibrary,
+              validateInput: newLibrary => {
+                return newLibrary.length <= 10 ? null : `Library must be 10 chars or less.`;
+
+              }
+            });
+
+            if (newLibrary) {
+              const escapedLibrary = newLibrary.replace(/'/g, `''`).replace(/`/g, `\\\``);
+              const connection = instance.getConnection();
+
+              try {
+                newLibraryOK = true;
+                await connection.remoteCommand(
+                  `MOVOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) TOLIB(${newLibrary})`
+                );
+                if (Configuration.get(`autoRefresh`)) {
+                  vscode.window.showInformationMessage(`Moved object to ${escapedLibrary}.`);
+                  this.refresh();
+                } else {
+                  vscode.window.showInformationMessage(`Moved object to ${escapedLibrary}. Refresh object browser.`);
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error moving object ${node.path}! ${e}`);
+                newLibraryOK = false;
+              }
+            }
+          } while(newLibrary && !newLibraryOK)
+        } else {
+          //Running from command
+          console.log(this);
+        }
       })
     )
   }

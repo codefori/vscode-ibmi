@@ -1163,6 +1163,12 @@
 				"icon": "$(symbol-file)"
 			},
 			{
+				"command": "code-for-ibmi.moveObject",
+				"title": "Move object",
+				"category": "IBM i",
+				"icon": "$(symbol-file)"
+			},
+			{
 				"command": "code-for-ibmi.closeSearchView",
 				"title": "Close search view",
 				"category": "IBM i",
@@ -1661,6 +1667,11 @@
 					"command": "code-for-ibmi.renameObject",
 					"when": "view == objectBrowser && viewItem == object",
 					"group": "1_objActions@4"
+				},
+				{
+					"command": "code-for-ibmi.moveObject",
+					"when": "view == objectBrowser && viewItem == object",
+					"group": "1_objActions@5"
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
