@@ -823,10 +823,10 @@ module.exports = class objectBrowserTwoProvider {
                   `MOVOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) TOLIB(${newLibrary})`
                 );
                 if (Configuration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Moved object to ${escapedLibrary} *${node.type}.`);
+                  vscode.window.showInformationMessage(`Moved object ${node.path} *${node.type} to ${escapedLibrary}.`);
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Moved object to ${escapedLibrary}. Refresh object browser.`);
+                  vscode.window.showInformationMessage(`Moved object ${node.path} to ${escapedLibrary}. Refresh object browser.`);
                 }
               } catch (e) {
                 vscode.window.showErrorMessage(`Error moving object ${node.path}! ${e}`);
