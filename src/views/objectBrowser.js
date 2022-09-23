@@ -732,7 +732,7 @@ module.exports = class objectBrowserTwoProvider {
 
         if (node) {
           //Running from right click
-          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path} *${node.type}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
             const connection = instance.getConnection();
