@@ -902,6 +902,12 @@ class ILEObject extends vscode.TreeItem {
       path: `/${library}/${name}.${type}`,
       fragment: attribute ? attribute : undefined
     });
+
+    this.command = {
+      command: `vscode.open`,
+      title: `Open`,
+      arguments: [this.resourceUri]
+    };
   }
 }
 
