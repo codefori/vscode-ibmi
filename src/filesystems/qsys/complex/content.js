@@ -41,7 +41,12 @@ module.exports = class IBMiContent {
       if (result.length > 0) {
         recordLengths[alias] = result[0].LENGTH;
       } else {
-        recordLengths[alias] = DEFAULT_RECORD_LENGTH;
+        const result = await content.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
+        if (result.length > 0) {
+          recordLengths[alias] = result[0].LENGTH;
+        } else {
+          recordLengths[alias] = DEFAULT_RECORD_LENGTH;
+        }
       }
     }
   
