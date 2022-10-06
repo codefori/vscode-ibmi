@@ -20,6 +20,9 @@
         .sidebar>h1 img {
             max-width: 3em;
         }
+        nav.app-nav li ul {
+        min-width: 130px;
+      }
     </style>
 </head>
 
@@ -29,22 +32,44 @@
     <script>
         window.$docsify = {
             name: 'Code for IBM i',
+            nameLink: {
+                '/fr-FR/': '#/fr-FR/',
+                '/': '#/',
+            },
             repo: 'https://github.com/halcyon-tech/code-for-ibmi',
             logo: "media/icon.png",
             loadSidebar: true,
+            autoHeader: true,
+            loadNavbar: true,
+            mergeNavbar: true,
             auto2top: true,
-            subMaxLevel: 2
-            // coverpage: true
+            subMaxLevel: 2,
+            relativePath: true,
+            alias: {
+                '/.*/_navbar.md': '/_navbar.md',
+                '/test/(.*)':'/fr-FR/$1',
+            },
+            search: {
+                noData: {
+                    '/fr-FR/': 'Que dalle !',
+                    '/': 'No results!',
+                },
+            paths: 'auto',
+            placeholder: {
+                    '/fr-FR/': 'Recherche',
+                    '/': 'Search',
+                },
+            pathNamespaces: ['/fr-FR'],
+        },              // coverpage: true
         }
     </script>
 
     <!-- Docsify v4 -->
     <script src="https://unpkg.com/docsify/lib/docsify.min.js"></script>
     <script src="https://unpkg.com/docsify-themeable"></script>
-
+    <script src="//cdn.jsdelivr.net/npm/docsify/lib/plugins/emoji.min.js"></script>
     <!-- plugins -->
     <script src="https://unpkg.com/docsify/lib/plugins/search.js"></script>
-
     <!-- Add Prism syntax highlighting here: -->
     <!-- <script src="//cdn.jsdelivr.net/npm/prismjs/components/prism-markdown.min.js"></script> -->
 </body>
