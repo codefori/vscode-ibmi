@@ -1,4 +1,4 @@
-- [Code for IBM i]()
+- [Code for IBM i](/)
    - [Login](/pages/login.md)
 - Developing
    - [Editing and compiling](/pages/developing/editing-compiling.md)
