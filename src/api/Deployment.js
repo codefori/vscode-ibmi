@@ -112,7 +112,7 @@ module.exports = class Deployment {
           if (remotePath) {
             const chosen = await vscode.window.showQuickPick(
               [
-                { label: `Changes`, description: `${changedFiles.length} change${changedFiles.length !== 1 ? `s` : ``} detected` },
+                { label: `Changes`, description: `${changedFiles.length} change${changedFiles.length !== 1 ? `s` : ``} detected since last upload` },
                 { label: `Working Changes`, description: `Unstaged changes in git` },
                 { label: `Staged Changes`, description: `` },
                 { label: `All`, description: `Every file in the local workspace` },
