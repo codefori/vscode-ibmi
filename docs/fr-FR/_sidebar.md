@@ -1,6 +1,6 @@
 - [Code for IBM i](/fr-FR/)  
    - [Connexion](/fr-FR/pages/login.md)  
-- Developing
+- Développement
    - [Édition et compilation](/fr-FR/pages/developing/editing-compiling.md)  
    - [Actions](/fr-FR/pages/developing/actions/index.md)  
       - [Execution](/fr-FR/pages/developing/actions/execution.md)  
@@ -9,7 +9,7 @@
    - Local Development
       - [Pour Démarrer](/fr-FR/pages/developing/local/getting-started.md)  
       - [Azure DevOps](/fr-FR/pages/developing/local/azure.md)  
-- Tips
+- Astuces
    - [Démarrage rapide](/fr-FR/pages/tips/quickstart.md)  
    - [Astuces](/fr-FR/pages/tips/tricks.md)  
    - [Terminaux](/fr-FR/pages/tips/terminals.md)  

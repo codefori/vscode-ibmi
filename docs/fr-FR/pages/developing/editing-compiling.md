@@ -1,66 +1,66 @@
 
-### Editing
+### Edition
 
-Click on a source member or stream file in the browser to open it. You can have multiple sources open.
+Cliquez sur un membre source ou un fichier (IFS) dans le navigateur pour l'ouvrir.Vous pouvez avoir plusieurs sources ouverts.
 
  ![Editing example](../../assets/EditComp-01.png)
 
-Now you can edit the source using all the features of VS Code.
+Maintenant vous pouvez modifier le source à l'aide de toutes les fonctionnalités de VS Code.
 
-To maximize your editing tab try:
+Pour agrandir votre volet d'édition, essayez:
 
-- Hide/show the side bar with **Ctrl+B**. (Or using the View menu.)
-- Toggle Full screen with **F11**
+- Cacher/Afficher la barre latérale avec **Ctrl+B**. (Ou en utilisant le Menu "View".)
+- Basculer en plein écran avec **F11**
   
   ![Editing max space](../../assets/EditComp-02.png)
 
-  Click **Help** in the menu for  tips, tricks, editing keyboard shortcuts and tutorials.
+  Cliquez sur **Help** dans le menu pour les conseils, les astuces, l'édition des raccourcis clavier et les tutoriels.
 
-### Source dates
+### Dates de source
 
-Source date support must be enabled and are disabled by default. This can be changed in the Connection Settings. 
+La prise en charge de la date des sources doit être activée. Elle est désactivée par défaut.Cela peut être modifié dans les paramètres de connexion. 
 
-### Compiling
+### Compilation
 
-Compile the **active tab** with Ctrl+E.
+Compilez le **Volet Actif** avec Ctrl+E.
 
-- If there are unsaved changes, you will be told it first must be saved, and also given the option to always save before a compile.
-If you click **Save Automatically**, sequent compile requests will always save first if there are changes. (In *Settings: Connection*, below, you can turn off the auto save option.)
+- S'il y a des modifications non sauvegardées, on vous demande de les enregistrer. On vous propose également de toujours enregistrer avant une compilation.
+Si vous cliquez **Save Automatically**, les demandes de compilation suivantes enregistreront toujours les changements avant la compilation. (Dans *Settings: Connection*, Ci-dessous, vous pouvez désactiver l'option.)
 
-- If there is more than one compile option for your source type, select the appropriate one.
+- S'il y a plus d'une option de compilation pour votre type de source, sélectionnez celle qui est appropriée.
 
-If the compile completes without error you will see an informational message like this:
+Si la compilation se termine sans erreur, vous verrez un message d'information comme celui-ci:
 
 ![Compile successful](../../assets/EditComp-03.png)
 
-### Compile Errors
+### Erreurs de compilation
 
-If the compile fails, you will see an error message like this:
+Si la compilation échoue, vous verrez un message d'erreur comme celui-ci:
 
 ![Complile failed](../../assets/EditComp-04.png)
 
-In the source, the errors will be highlighted with squiggly lines, and if you hover over the squiggly line you see details of the error:
+Dans la source, les erreurs sont mises en évidence avec des lignes en surbrillance, si vous survolez la ligne en surbrillance, vous verrez les détails de l'erreur:
 
 ![Squiggly errors](../../assets/EditComp-05.png)
 
-You can jump to the next error with **F8**.  **Shift+F8** for the previous error.
+Vous pouvez passer à la prochaine erreur avec **F8**.  **Shift+F8** pour l'erreur précédente.
 
 ![F8 next error](../../assets/EditComp-05A.png)
 
-If you have the PROBLEMS tab open in the Panel, it shows the list of errors. Clicking on a line in the PROBLEMS tab will take you to the line in the source. (Ctrl+J opens the panel, Ctrk+Shift+M opens the PROBLEMS tab.)
+Si vous avez l'onglet PROBLEMS ouvert, il affiche la liste des erreurs. Cliquer sur une ligne de l'onglet PROBLEMS tab vous emmènes à la ligne dans la source. (Ctrl+J Ouvre le panneau, Ctrk+Shift+M ouvre l'onglet PROBLEMS.)
 
 ![Problems tab](../../assets/EditComp-06.png)
 
-Decide which Errors, Warnings or Info messages to show using the Filter icon. If you have been compiling several sources then you may also want to check **Show Active File Only**;
+Décidez quelles erreurs *Errors*, Avertissements *Warnings* ou messages d'informations *infos* vous voulez afficher en utilisant l'icône de filtre. Si vous avez compilé plusieurs sources, vous pouvez également vérifier **Show Active File Only**;
 
 ![Errors filter](../../assets/EditComp-07.png)
 
-You can remove all the squiggly line using F1 and searching for IBM i Clear Diagnostics:
+Vous pouvez supprimer toutes les lignes à l'aide de F1 et rechercher *IBM i Clear Diagnostics*:
 
 ![Clear diagnostics](../../assets/EditComp-08.png)
 
-### Compile Listing
+### Liste de compilation
 
-If you have *Log Compile Output* checked in settings (see *Settings: Global*, below), then compile listings are found under the Output tab by selecting IBM i Output.  Use the shortcut Output icon on the tool bar to jump to the compile listing.
+Si vous avez *Log Compile Output* choisi dans le paramétrage (voir *Settings: Global*, ci-dessous), Alors, les listes de compilation sont trouvées sous l'onglet *Output* en sélectionnant l'item *IBM i Output*.  Vous pouvez aussi utiliser le raccourci *Output* via l'icône sur la barre d'outils pour afficher la liste de compilation.
 
 ![Output button](../../assets/EditComp-09.png)

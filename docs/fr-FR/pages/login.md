@@ -33,4 +33,4 @@ Pour fermer une connexion et se déconnecter, appuyez sur <kbd>F1</kbd>, recherc
 
 Si votre connexion est instable et parfois se perd, vérifiez le paramètre "Show Reconnect Button". Voir *Settings: Global*, ci-dessous. Cela ajoutera un bouton "Force reconnect to system" à la barre de tâches.
 
-![Bouton de reconnexion](../assets/connect_06.png)
+![Reconnect Button](../assets/connect_06.png)
