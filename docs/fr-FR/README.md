@@ -1,42 +1,42 @@
 # Code for IBM i
 
-## IBM i development extension for VS Code
+## Une extension pour le développement IBM i avec VS Code 
 
-Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual Studio Code.
+Maintenez et Compilez vos RPGLE, CL, COBOL, C/CPP sur l'IBM i depuis Visual Studio Code.
 
 ![intro_01.png](assets/intro_01.png)
 
-## Requirements
+## Prérequis
 
-- SSH Daemon must be started on IBM i.
-   - (Licensed program 5733-SC1 provides SSH support.)
-   - `STRTCPSVR *SSHD` starts the daemon.
-   - User `QSSHD` is enabled.
-- Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos).
+- Le Démon SSH doit être démarrer sur l'IBM i.
+   - (Le programme sous license 5733-SC1 propose un support SSH.)
+   - `STRTCPSVR *SSHD` démarre le démon.
+   - L'utilisateur `QSSHD` est actif.
+- Une connaissance de base des concepts de VS Code. Une introduction se trouve [içi](https://code.visualstudio.com/docs/getstarted/introvideos).
 
 ## Installation
 
-From the Visual Studio Code Marketplace: [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
+Depuis la "Marketplace" de Visual Studio Code: [Code for IBM i](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi)
 
-Or from the Extensions icon in the Activity Bar (on the left):
+Ou via l'icône des Extensions dans la barre d'activité (à gauche) :
 ![assets/install_01,png](assets/install_01.png)
 
-### Recommended Extensions
+### Extensions recommandées
 
-It's recommended you also install the [IBM i Development Pack](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.ibm-i-development-pack), a curated set of extensions built on or adding value to Code for IBM i. This includes database tools, RPGLE tools, COBOL tools, and more.
+Il est recommandé d'installer également le [IBM i Development Pack](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.ibm-i-development-pack), Un ensemble d'extensions construites avec ou pour ajouter de la valeur à Code for IBM I. Cela inclut des outils pour la base de données, RPGLE, COBOL , et bien plus.
 
-## Extension Development
+## Développement d'extension
 
-1. clone repo
+1. cloner le dépôt  
 2. ```npm i```
-3. 'Run extension' from VS Code debug.
+3. 'Run extension' depuis le débogage de VS Code.
 
-## Getting Started
+## Guide de démarrage
 
-To work on this documentation:
+Pour travailler sur cette documentation:
 
-- clone repo
-- install docsify ```npm i docsify-cli -g```
-- run local with ```docsify serve docs/```
-- by default, runs on http://localhost:3000
-- Read more about [Docsify](https://docsify.js.org/#/)
+- cloner le dépôt
+- installer "docsify" ```npm i docsify-cli -g```
+- lancer en local avec ```docsify serve docs/```
+- par défaut, cela se lance sur http://localhost:3000
+- Pour aller plus loin [Docsify](https://docsify.js.org/#/)
