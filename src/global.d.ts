@@ -9,6 +9,7 @@ interface StandardIO {
 interface CommandData extends StandardIO {
   command: string;
   directory?: string;
+  env?: {[name: string]: string};
 }
 
 interface CommandResult {

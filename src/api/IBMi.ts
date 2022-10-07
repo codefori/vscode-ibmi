@@ -648,10 +648,19 @@ export default class IBMi {
   }
 
   async sendCommand(options: CommandData): Promise<CommandResult> {
-    const command = options.command;
+    let commands = [];
+    if (options.env) {
+      commands.push(...Object.keys(options.env).map(envVar => `export ${envVar}="${
+        options.env ? options.env[envVar].replace(/\$/g, `\\$`).replace(/"/g, `\\"`) : ``
+      }"`))
+    }
+
+    commands.push(options.command);
+
+    const command = commands.join(` && `);
     const directory = options.directory || this.config?.homeDirectory;
 
-    this.outputChannel.append(`${directory}: ${command}\n`);
+    this.outputChannel.append(`${directory}: ${options.command}\n`);
     if (options && options.stdin) {
       this.outputChannel.append(`${options.stdin}\n`);
     }
