@@ -1,34 +1,33 @@
-In Code for IBM i, there is the ability to open a 5250 terminal in it's own tab. This means that all almost all developer needs are integrated into the editor. You have the choice of launching a 5250 terminal or a pase shell right in the editor.
+Dans Code for IBM i, Il y a la possibilité d'ouvrir un terminal 5250 dans son propre onglet. Cela signifie que presque tous les besoins des développeurs sont intégrés dans l'éditeur. Vous avez le choix de lancer un terminal de 5250 ou un shell Pase dans l'éditeur.
 
 ![Screenshot 2021-12-06 at 12 07 22 PM](https://user-images.githubusercontent.com/3708366/144915006-20d44162-23ec-4f04-beec-889f989cd497.png)
 
-_Shows explorer, RPGLE code, problems, outline view and 5250 terminal._
+_Affiche explorer, RPGLE code, problems, outline view and 5250 terminal._
 
-## Termimal requirements
+## Prérequis Terminal
+Auparavant, pour utiliser l'environnement PASE, vous deviez utiliser le terminal VScode pour vous connecter au système (en utilisant SSH). Bien que cela fonctionnait bien, mais cela vous obligeait à vous connecter une deuxième fois - car vous deviez déjà être connecté pour utiliser Code For IBM i.
 
-Previously, to bring up the pase environment, you had to use the VS Code termimal to log into the system again (using SSH). While this worked fine, it still meant that you had to log in a second time - because you would have already connected when using Code for IBM i.
-
-Now, there is a new clickable button to select which Termimal you want to launch:
+Maintenant, il y a un nouveau bouton cliquable pour sélectionner le terminal que vous souhaitez lancer:
 
 ![image](https://user-images.githubusercontent.com/3708366/144915672-6f2dbea4-c3cc-453c-8cdf-43297e9cf602.png)
 
-Clicking the Terminals button which launch a quick pick menu, where you can select which Terminal type you want. It will use the existing connection you have in Code for IBM i.
+Le bouton `Terminals` lance un menu de choix rapide, où vous pouvez sélectionner le type de terminal. Il utilisera la connexion existante dont vous disposez avec Code for IBM i.
 
-* PASE: will launch into the pase environment
-* 5250: will launch a 5250 emulator right into the connected system. For this functionality, `tn5250` must be installed on the remote system. This can be installed via yum.
+* PASE: lancera un terminal dans l'environnement Pase
+* 5250: lancera un émulateur 5250 directement dans le système connecté. Pour cette fonctionnalité, `tn5250` doit être installé sur le système distant. Cela peut être installé via Yum.
 
-## 5250 requirements & settings
+## Prérequis 5250 et paramétrage
 
-The only requirement to launch a 5250 emulator is to have tn5250 installed. This can be [installed via yum](https://www.seidengroup.com/php-documentation/how-to-set-up-the-ibm-i-open-source-environment/). After you have it installed, you're good to go!
+La seule exigence pour lancer un émulateur 5250 est d'installer TN5250. Cela peut se faire via [installed via yum](https://www.seidengroup.com/php-documentation/how-to-set-up-the-ibm-i-open-source-environment/). Après l'avoir installé, vous êtes prêt à y aller!
 
-Code for IBM i provides additional settings so you can setup your termimal how you like. The most common setting is likely the CCSID mapping configuration, which lets you set the encoding for the terminal.
+Code for IBM i fournit des paramètres supplémentaires afin que vous puissiez configurer votre terminal comme vous le souhaitez. Le paramètre le plus courant est probablement la configuration du CCSID, qui vous permet de définir le codage du terminal.
 
 ![image](https://user-images.githubusercontent.com/3708366/144916702-79ba1d15-ab1f-4248-abed-8b19c84715c9.png)
 
 ## FAQ
 
-- **Do the function keys work?** Yes.
-- **It is possible to do a system request?** Yes. Use Command+C.
-- **How do I end my session?** Use the Terminal bin in VS Code.
-- **I am stuck with `Cursor in protected area of display.`!** Use Command+A to get attention, then use F12 to go back.
-- **What are all the key bindings?** [Check them out here](https://linux.die.net/man/1/tn5250).
+- **Les touches de fonction fonctionnent-elles ?** Oui.
+- **Il est possible de faire une demande système ?** Oui.Utilisez  Command+C.
+- **Comment terminer ma session ?** Utilisez le bac terminal dansVS Code.
+- **Je suis coincé avec `Cursor in protected area of display.`!** Utilisez Command+A pour reprendre la main, puis F12 pour revenir en arrière.
+- **Comment sont traduites toutes les touches de fonctions?** [Vérifiez-les ici](https://linux.die.net/man/1/tn5250).

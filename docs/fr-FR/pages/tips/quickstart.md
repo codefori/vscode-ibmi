@@ -1,29 +1,29 @@
-### Make a connection
+### Établir une connexion
 
-1. Press F1
-2. Find 'IBM i: New Connection'
-3. Enter in your connection details in the window that opens
-4. Hit Connect
+1. Pressez `F1`
+2. Trouvez `IBM i: New Connection`
+3. Saisissez les informations de votre connexion dans la fenêtre qui s'ouvre
+4. Appuyez sur `Connect`
 
-Tip: next time, try using 'IBM i: Connect to previous'
+Astuce: La prochaine fois, essayez d'utiliser `IBM i: Connect to previous`
 
-### Browse/Edit source members
+### Parcourir / modifier les membres sources
 
-1. Connect to your system.
-2. Find the OBJECT BROWSER and click **+ Create new filter**.
-3. Complete the new filter dialog, following the descriptive text, ensuring:
-   a. That **Object** is the source physical file you want to edit.
-   b. That  **Object type filter** is set to *SRCPF.
-4. Save settings
-5. Click on the filter to expand the members in the source file.
-6. Click on a member to open it.
+1. Connectez-vous à votre système.
+2. Trouvez l'explorateur s'objet `OBJECT BROWSER`  et cliquez `Create new filter`.
+3. Complétez la boîte de dialogue du nouveau filtre, en suivant le texte descriptif, en vous assurant:
+   a. Que `Object` est le fichier physique source que vous souhaitez modifier.
+   b. Que  `Object type filter`est positionné sur `*SRCPF`.
+4. Enregistrez les paramètres
+5. Cliquez sur le filtre pour afficher la liste des membres du fichier source.
+6. Cliquez sur un membre pour l'ouvrir.
 
- **Note:** There is no member locking and the extension defaults to not retaining source dates.
+ **Note:** Il n'y a pas de verrouillage des membres et le paramétrage par défaut de l'extension ne met pas à jour les dates de source.
 
-### How do I compile my source code?
+### Comment compiler mon code source?
 
-1. Edit your library list in the 'USER LIBRARY LIST' browser. (Each connection has its own library list.)
-2. Open the source you want to compile.
-3. Use Ctrl+E or Cmd+E to compile your source.
-4. If you have more than one compile option available to you for the type of source, select the appropriate one.
-5. If you are using `*EVENTF`, the error listing should automatically load in the PROBLEMS tab.
+1. Modifiez votre liste de bibliothèque dans l'explorateur `USER LIBRARY LIST`. (Chaque connexion a sa propre liste de bibliothèques.)
+2. Ouvrez la source que vous souhaitez compiler.
+3. Utilisez `Ctrl+E` ou `Cmd+E` pour compiler votre source.
+4. Si vous avez plus d'une commande de compilation à votre disposition pour ce type de source, sélectionnez la plus appropriée.
+5. Si vous utilisez `*EVENTF`, La liste des erreurs doit se charger automatiquement dans l'onglet `PROBLEMS`.

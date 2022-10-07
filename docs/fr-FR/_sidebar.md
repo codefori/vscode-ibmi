@@ -19,7 +19,7 @@
    - [Liste des bibliothèques utilisateur](/fr-FR/pages/browsers/user-library-list.md)  
    - [Explorateur d'objet](/fr-FR/pages/browsers/object-browser.md)  
    - [Explorateur IFS](/fr-FR/pages/browsers/ifs-browser.md)
-- Réglages
+- Paramétrages
    - [Profils](/fr-FR/pages/settings/profiles.md)
    - [Connexions](/fr-FR/pages/settings/connection.md)
    - [Généraux](/fr-FR/pages/settings/global.md)

@@ -1,4 +1,4 @@
-## C'est quoi une action?
+### C'est quoi une action?
 
 Une action est utilisée pour effectuer une tâche sur un membre, un fichier (IFS) ou tout autre type d'objet.  
 Un ensemble complet d'actions définies par défaut est chargé à partir de l'extension.  
