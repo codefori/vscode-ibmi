@@ -529,7 +529,7 @@ module.exports = class objectBrowserTwoProvider {
                       setSearchResults(searchTerm, results);
 
                     } else {
-                      vscode.window.showInformationMessage(`No results found.`);
+                      vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${node.path}.`);
                     }
 
                   } else {
