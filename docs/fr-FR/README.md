@@ -1,6 +1,6 @@
 # Code for IBM i
 
-## Une extension pour le développement IBM i avec VS Code 
+## Développer sur l'IBM i avec VS Code 
 
 Maintenez et Compilez vos RPGLE, CL, COBOL, C/CPP sur l'IBM i depuis Visual Studio Code.
 

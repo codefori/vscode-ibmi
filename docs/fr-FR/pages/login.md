@@ -1,36 +1,36 @@
-### Connect First Time
+### Se connectez la première fois
 
-Click the IBM i icon.
+Cliquez sur l’icône IBM i.
 
 ![](../assets/connect_01.png)
 
-Click 'Connect to an IBM i'
+Cliquez 'Connect to an IBM i'
 
 ![](../assets/connect_02.png)
 
-Complete this form. (You need either a password or a private key)
+Complétez ce formulaire.(Vous avez besoin d'un mot de passe ou d'une clé privée)
 
 ![](../assets/connect_03.png)
 
-Alternatively, press <kbd>F1</kbd>, search for ```IBM i: New Connection```, and complete the above form.
+Ou, appuyez sur <kbd>F1</kbd>, recherchez ```IBM i: New Connection```, et remplissez le formulaire ci-dessus.
 
-### Connect Subsequent
+### Se connectez ultérieurement
 
-If you have already connected to an IBM i system, click on the conection in the IBM i: SERVERS browser.
+Si vous êtes déjà connecté à un système IBM I, cliquez sur la connexion à l'IBM I dans le navigateur de serveurs "SERVERS".
 
 ![](../assets/connect_04.png)
 
-After logging in, a status bar item will appear showing the name
-of the IBM i system you are connected to.
+Après la connexion, un élément dans la barre d'état apparaîtra affichant le nom
+du système IBM I auquel vous êtes connecté.
 
 ![assets/connect_05.png](../assets/connect_05.png)
 
-### Logout (Disconnect)
+### Se déconnectez
 
-To close a connection and logout out, press <kbd>F1</kbd>, search for ```IBM i: Disconnect from current connection```
+Pour fermer une connexion et se déconnecter, appuyez sur <kbd>F1</kbd>, recherchez ```IBM i: Disconnect from current connection```
 
-### Unstable Connections (Reconnect)
+### Se reconnectez (connexion instable)
 
-If your connection is unstable and is sometimes lost, check the setting "Show Reconnect Button". See *Settings: Global*, below. This will add a "Force reconnect to system" button to the task bar.
+Si votre connexion est instable et parfois se perd, vérifiez le paramètre "Show Reconnect Button". Voir *Settings: Global*, ci-dessous. Cela ajoutera un bouton "Force reconnect to system" à la barre de tâches.
 
-![Reconnect Button](../assets/connect_06.png)
+![Bouton de reconnexion](../assets/connect_06.png)
