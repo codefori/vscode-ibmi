@@ -15,10 +15,10 @@
    - [Terminaux](/fr-FR/pages/tips/terminals.md)  
    - [CCSID](/fr-FR/pages/tips/ccsid.md)  
    - [Installer](/fr-FR/pages/tips/setup.md)  
-- [Navigateurs](/fr-FR/pages/browsers/index.md)  
+- [Explorateurs](/fr-FR/pages/browsers/index.md)  
    - [Liste des bibliothèques utilisateur](/fr-FR/pages/browsers/user-library-list.md)  
-   - [Navigateur d'objet](/fr-FR/pages/browsers/object-browser.md)  
-   - [Navigateur IFS](/fr-FR/pages/browsers/ifs-browser.md)
+   - [Explorateur d'objet](/fr-FR/pages/browsers/object-browser.md)  
+   - [Explorateur IFS](/fr-FR/pages/browsers/ifs-browser.md)
 - Réglages
    - [Profils](/fr-FR/pages/settings/profiles.md)
    - [Connexions](/fr-FR/pages/settings/connection.md)

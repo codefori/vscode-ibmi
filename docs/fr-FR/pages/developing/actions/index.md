@@ -1,49 +1,48 @@
-## What are Actions?
+## C'est quoi une action?
 
-An action is used to perform a task on a member, streamfile or other type of object. A comprehensive default set of actions is loaded directly from the extension. You can also easily change or add to actions--see *View/Change/Add Actions*, below.
+Une action est utilisée pour effectuer une tâche sur un membre, un fichier (IFS) ou tout autre type d'objet. Un ensemble complet d'actions définies par défaut est chargé à partir de l'extension. Vous pouvez également changer ou ajouter facilement des actions --voir *View/Change/Add Actions*, ci-dessous.
 
-Actions are defined commands used to perform tasks on members, streamfiles and other types of objects. For example, to compile a source file. Actions can be executed from two different places:
+Les actions sont des commandes prédéfinies utilisées pour effectuer des tâches sur les membres, les fichiers et d'autres types d'objets. Par exemple, pour compiler un fichier source.Les actions peuvent être exécutées à partir de deux endroits différents:
 
-- As you're writing code. For example, to compile a program or module.
-- When you right click on a member, streamfile or an object from the OBJECT BROWSER.
+- Pendant que vous écrivez du code.Par exemple, pour compiler un programme ou un module.
+- Lorsque vous cliquez avec le bouton droit sur un membre, un fichier ou un objet à partir de l'explorateur d'object *OBJECT BROWSER*.
 
-A comprehensive set of Actions is provided, but you can add more or change the ones provided.
+Un ensemble complet d'actions est fourni, mais vous pouvez ajouter ou modifier une action.
 
-### Running an Action
-
-To run an Action, open a source member (or IFS streamfile) and press the shortcut key:
+### Exécuter une action
+Pour exécuter une action, ouvrez un membre source (ou un fichier IFS) et appuyez sur la touche de raccourci:
 
 - Windows: Control + E
 - Mac: Command + E
 
-This shows a dropdown of the available Actions for the open file. Use the arrow keys to select which Action to run and hit enter to select it.
+Cela affiche une liste déroulante avec des actions disponibles pour le fichier ouvert. Utilisez les touches ⬆ ⬇ pour faire défiler les actions et appuyer sur Entrée pour en sélectionner une.
 
-Example: to run the 'CRTBNDRPG' Action, you must open a source member with either `RPG` or `RPGLE` as the extension. Then, when you use the Run Action shortcut (above), you will see the list of available Actions.
+Exemple: Pour exécuter l'action 'CRTBNDRPG', vous devez ouvrir un membre source avec l'extension `RPG` ou `RPGLE`. Ensuite, lorsque vous utilisez le raccourci *Actions* (ci-dessous), vous accédez à la liste des actions disponibles.
 
-### View/Change/Add Actions
+### Afficher/modifier/ajouter des actions
 
- Click **Actions** on the status bar, then view, change or add new Actions in this UI:
+ Cliquez sur**Actions** dans la barre d'état, puis affichez, modifiez ou ajoutez de nouvelles actions via l'interface utilisateur:
 ![Action List UI](../../../assets/actions_01.png)
 
-- Click on an action to change it.
-- Add actions with New Action.
-- Copy an existing action and modify it with Duplicate.
+- Cliquez sur une action pour la changer.
+- Ajouter des actions avec *New Action*.
+- Copiez une action existante et modifiez-la avec *Duplicate*.
 
-Adding or changing, you see this same UI:
+En Ajout ou modification, vous voyez cette même interface utilisateur:
 
 ![Action edit UI](../../../assets/actions_02.png)
 
-In the example above we are editing 'Create Bound RPG Program (CRTBNDRPG)'. We can change any of the properties.
+Dans l'exemple ci-dessus, nous modifions 'Create Bound RPG Program (CRTBNDRPG)'. Nous pouvons changer chacune de ces propriétés.
 
-- '**Command to run**' is the command that will be executed. Notice it has portions of text that start with an `&` (ampersand) - such text is a "variable" that will be substituted when the action is run. Commands can have different variables based on what 'Type' (member, streamfile, object) is specified. Note that in addition to the supplied variables, you can create your own variables.  See "Custom Variables", below.
-- '**Extensions**' defines the list of extensions that can use this Action. For `CRTBNDRPG`, that usually means only `RPGLE` and `RPG`, so we would enter: `RPGLE, RPG`.
-- '**Types**' determines which type of object can run this action. For example, if your Action only applies to source members, then choose 'Member' from the dropdown.
-- '**Environment**' determine where the command should be run. In this case, `CRTBNDRPG` needs to run in the ILE environment since it's an ILE command. You also have the option to run commands through PASE or QShell.
+- '**Command to run**' est la commande qui sera exécutée. Remarquer il y a des parties de texte qui commencent par un `&` (ampersand) - Un tel texte est une "variable" qui sera remplacée lorsque l'action sera exécutée. Les commandes peuvent avoir différentes variables en fonction du 'Type' (Membre, fichier, objet) spécifié. Notez qu'en plus des variables fournies, vous pouvez créer vos propres variables.  Voir "Variables personnalisées", ci-dessous.
+- '**Extensions**' définit la liste des extensions qui peuvent utiliser cette action. Pour `CRTBNDRPG`, on vise seulement `RPGLE` et `RPG`, alors nous pouvons saisir: `RPGLE, RPG`.
+- '**Types**' détermine quel type d'objet peut exécuter cette action. Par exemple, si votre action ne s'applique qu'aux membres sources, alors choisissez 'Member' dans la liste déroulante.
+- '**Environment**' détermine où la commande doit être exécutée. Dans ce cas, `CRTBNDRPG` doit s'exécuter dans l'environnement ILE car c'est une commande ILE. Vous avez la possibilité d'exécuter les commandes également via PASE ou QShell.
 
-When complete, **click Save**. If you simply close the tab, nothing will be saved.
+Une fois terminé, cliquer sur **Save**. Si vous fermez simplement l'onglet, rien ne sera enregistré.
 
-### Actions storage
+### Stockage des actions
 
-If you change or add actions as below, then all actions are saved in the ```code-for-ibmi.actions``` section in ```settings.json```. You can also edit the```code-for-ibmi.actions``` section manually. If it doesn't exist, you can create you own ```code-for-ibmi.actions``` section in ```settings.json```.  
+Si vous modifiez ou ajoutez des actions comme ci-dessus, toutes les actions sont enregistrées dans la section ```code-for-ibmi.actions``` de ```settings.json```. Vous pouvez aussi modifier la section ```code-for-ibmi.actions``` manuellement. S'il n'existe pas, vous pouvez créer votre section ```code-for-ibmi.actions``` dans ```settings.json```.  
 
-**Note:** When  a  ```code-for-ibmi.actions``` section  exists in ```settings.json``` the set of actions is loaded from there, not from the default set in the extension.
+**Note:** Lorsqu'une section ```code-for-ibmi.actions``` existe dans ```settings.json``` l'ensemble des actions est chargé à partir de celui-ci, et non à partir de l'ensemble des actions par défaut de l'extension.

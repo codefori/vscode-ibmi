@@ -1,7 +1,7 @@
 
 ### Edition
 
-Cliquez sur un membre source ou un fichier (IFS) dans le navigateur pour l'ouvrir.Vous pouvez avoir plusieurs sources ouverts.
+Cliquez sur un membre source ou un fichier (IFS) dans l'explorateur pour l'ouvrir.Vous pouvez avoir plusieurs sources ouverts.
 
  ![Editing example](../../assets/EditComp-01.png)
 

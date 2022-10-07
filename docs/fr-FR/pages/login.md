@@ -16,7 +16,7 @@ Ou, appuyez sur <kbd>F1</kbd>, recherchez ```IBM i: New Connection```, et rempli
 
 ### Se connectez ultérieurement
 
-Si vous êtes déjà connecté à un système IBM I, cliquez sur la connexion à l'IBM I dans le navigateur de serveurs "SERVERS".
+Si vous êtes déjà connecté à un système IBM I, cliquez sur la connexion à l'IBM I dans l'explorateur de connexion "SERVERS".
 
 ![](../assets/connect_04.png)
 

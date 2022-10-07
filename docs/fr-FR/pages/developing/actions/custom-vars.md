@@ -1,31 +1,31 @@
-You can create custom variable to use in your "Command to run" strings. To access custom variables:
+Vous pouvez créer une variable personnalisée à utiliser dans l'instruction de votre action. Pour accéder aux variables personnalisées:
 
-Use <kbd>F1</kbd>, then search for "IBM i Custom variables":
+Utilisez <kbd>F1</kbd>, puis recherchez "IBM i Custom variables":
 
  ![F1 + IBM i Custom Variable](../../../assets/actions_custom_01.png)
  
- Or from the User Library List browser:
+ ou depuis l'explorateur de la liste des bibliothèques utilisateur:
 
 ![Library List Browser](../../../assets/actions_custom_01a.png)
 
-In the **Work with Variables** tab, click on **New Variable** to add your variable:
+dans le volet **Work with Variables**, cliquez sur **New Variable** pour ajouter votre variable:
 
  ![Work with Variables](../../../assets/actions_custom_02.png)
  
- Here we are adding a variable named &TARGET_RLSE.
+ Ici, nous ajoutons une variable nommée &TARGET_RLSE.
 
  ![Adding TARGET_RLSE](../../../assets/actions_custom_03.png)
 
-Press Save and the list of custom variables is shown:
+Appuyez sur **save** et la liste des variables personnalisées s'affiche:
 
 ![Variables list after Save](../../../assets/actions_custom_04.png)
 
-Click on a custom variable to change it or delete it.
+Cliquez sur une variable personnalisée pour la modifier ou la supprimer.
 
-#### *Example Usage*
+#### *Exemple d'utilisation*
 
-In all the  CRTBNDxxx actions add TGTRLS(&TARGET_RLSE), like this:
+Dans toutes les actions CRTBNDxxx ajoutez la variable TGTRLS(&TARGET_RLSE), comme cela:
 
 `?CRTBNDCL PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE)  TGTRLS(&TARGET_RLSE)`
 
-Now a single change to the TARGET_RLSE custom variable can impact all the CRTBNDxxx actions.
+Maintenant un seul changement à la variable TARGET_RLSE affectera toutes les actions CRTBNDxxx.
