@@ -38,10 +38,17 @@ module.exports = class Deployment {
     }
     this.button.text = BUTTON_BASE;
 
-    context.subscriptions.push(this.button, this.deploymentLog);
+    /** @type {{[id: string]: vscode.Uri}} */
+    this.changes = {};
+
+    context.subscriptions.push(
+      this.button, 
+      this.deploymentLog
+    );
 
     if (vscode.workspace.workspaceFolders) {
       if (vscode.workspace.workspaceFolders.length > 0) {
+        context.subscriptions.push(this.buildWatcher());
         vscode.commands.executeCommand(`setContext`, `code-for-ibmi:workspace`, true);
         this.button.show();
       }
@@ -85,20 +92,10 @@ module.exports = class Deployment {
        * @returns {Promise<{false|{workspace: number}}>}
        */
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, async (workspaceIndex) => {
-
-        /** @type {IBMi} */
-        const connection = instance.getConnection();
-
         /** @type {Storage} */
         const storage = instance.getStorage();
-
-        /** @type {IBMiContent} */
-        const content = instance.getContent();
         
         let folder;
-
-        /** @type {string[]} */
-        const sourceFilesCreated = [];
 
         if (workspaceIndex) {
           folder = vscode.workspace.workspaceFolders.find(dir => dir.index === workspaceIndex);
@@ -111,12 +108,18 @@ module.exports = class Deployment {
           const remotePath = existingPaths[folder.uri.fsPath];
 
           if (remotePath) {
-            const method = await vscode.window.showQuickPick(
-              [`Working Changes`, `Staged Changes`, `All`],
+            const chosen = await vscode.window.showQuickPick(
+              [
+                { label: `Working Changes`, description: `Unstaged changes in git` },
+                { label: `Staged Changes`, description: `` },
+                { label: `Changes`, description: `${Object.keys(this.changes).length} changes detected` },
+                { label: `All`, description: `Every file in the local workspace` },
+              ],
               { placeHolder: `Select deployment method to ${remotePath}` }
             );
 
-            if (method) {
+            if (chosen) {
+              const method = chosen.label;
               /** @type {IBMi} */
               const ibmi = instance.getConnection();
 
@@ -134,6 +137,19 @@ module.exports = class Deployment {
 
               const client = ibmi.client;
               this.deploymentLog.clear();
+
+              // get the .gitignore file from workspace
+              const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
+
+              let ignoreRules = ignore({ignorecase: true}).add(`.git`);
+
+              if (gitignores.length > 0) {
+                // get the content from the file
+                const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
+                ignoreRules.add(gitignoreContent.split(`\n`));
+              }
+
+              this.changes = {};
 
               let useStagedChanges = true;
               let changeType = `staged`;
@@ -199,11 +215,7 @@ module.exports = class Deployment {
                         return folder.index;
                       } catch (e) {
                         this.button.text = BUTTON_BASE;
-                        vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
-                          if (action === `View Log`) {
-                            this.deploymentLog.show();
-                          }
-                        });
+                        Deployment.showErrorButton();
                       
                         this.deploymentLog.appendLine(`Deployment failed.`);
                         this.deploymentLog.appendLine(e);
@@ -222,19 +234,45 @@ module.exports = class Deployment {
 
                 break;
 
+              case `Changes`:
+                const changedFiles = Object.values(this.changes);
+                
+                if (changedFiles.length > 0) {
+                  const uploads = changedFiles.map(fileUri => {
+                    const relative = path.relative(folder.uri.path, fileUri.path).replace(new RegExp(`\\\\`, `g`), `/`);
+                    const remote = path.posix.join(remotePath, relative);
+                    return {
+                      local: fileUri._fsPath,
+                      remote: remote,
+                      uri: fileUri
+                    };
+                  });
+                  
+                  this.button.text = BUTTON_WORKING;
+
+                  try {
+                    await client.putFiles(uploads, {
+                      concurrency: 5
+                    });
+
+                    this.button.text = BUTTON_BASE;
+                    this.deploymentLog.appendLine(`Deployment finished.`);
+                    vscode.window.showInformationMessage(`Deployment finished.`);
+
+                    return folder.index;
+                  } catch (e) {
+                    Deployment.showErrorButton();
+                    this.deploymentLog.appendLine(`Deployment failed.`);
+                    this.deploymentLog.appendLine(e);
+                  }
+                } else {
+                  vscode.window.showWarningMessage(`No changes to deploy.`);
+                }
+
+                break;
+
               case `All`: // Uploads entire directory
                 this.button.text = BUTTON_WORKING;
-                
-                // get the .gitignore file from workspace
-                const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
-
-                let ignoreRules = ignore({ignorecase: true}).add(`.git`);
-
-                if (gitignores.length > 0) {
-                  // get the content from the file
-                  const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
-                  ignoreRules.add(gitignoreContent.split(`\n`));
-                }
 
                 const uploadResult = await vscode.window.withProgress({
                   location: vscode.ProgressLocation.Notification,
@@ -288,11 +326,7 @@ module.exports = class Deployment {
                   return folder.index;
                   
                 } else {
-                  vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
-                    if (action === `View Log`) {
-                      this.deploymentLog.show();
-                    }
-                  });
+                  Deployment.showErrorButton();
                 }
 
                 break;
@@ -339,6 +373,27 @@ module.exports = class Deployment {
         }
       }),
     );
+  }
+
+  async buildWatcher() {
+    const invalidFs = [`member`, `streamfile`]
+    const watcher = vscode.workspace.createFileSystemWatcher(`**`);
+
+    watcher.onDidChange(uri => {
+      if (invalidFs.includes(uri.scheme)) return;
+
+      this.changes[uri.fsPath] = uri;
+    });
+    watcher.onDidCreate(uri => {
+      this.changes[uri.fsPath] = uri;
+    });
+    watcher.onDidDelete(uri => {
+      if (invalidFs.includes(uri.scheme)) return;
+
+      this.changes[uri.fsPath] = undefined;
+    });
+
+    return watcher;
   }
 
   initialise(instance) {
@@ -398,6 +453,14 @@ module.exports = class Deployment {
           vscode.commands.executeCommand(`code-for-ibmi.changeCurrentLibrary`);
       });
     }
+  }
+
+  static async showErrorButton() {
+    vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
+      if (action === `View Log`) {
+        this.deploymentLog.show();
+      }
+    });
   }
 
   static async getWorkspaceFolder() {
