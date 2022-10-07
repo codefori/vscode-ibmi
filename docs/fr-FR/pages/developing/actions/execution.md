@@ -4,6 +4,7 @@ Il existe quatre sortes d'actions:
 - elle s'exécute immédiatement,
 - ou elle s'affiche pour être complétée ou modifiée,
 - ou elle affiche une interface utilisateur pour les paramètres.
+
 ### Exécution immédiate
 
 Si nous avons une commande "**Call program**" avec une instruction comme cela:

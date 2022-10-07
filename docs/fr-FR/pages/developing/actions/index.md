@@ -1,10 +1,13 @@
 ## C'est quoi une action?
 
-Une action est utilisée pour effectuer une tâche sur un membre, un fichier (IFS) ou tout autre type d'objet. Un ensemble complet d'actions définies par défaut est chargé à partir de l'extension. Vous pouvez également changer ou ajouter facilement des actions --voir *View/Change/Add Actions*, ci-dessous.
+Une action est utilisée pour effectuer une tâche sur un membre, un fichier (IFS) ou tout autre type d'objet.  
+Un ensemble complet d'actions définies par défaut est chargé à partir de l'extension.  
+Vous pouvez également changer ou ajouter facilement des actions --voir *Afficher/modifier/ajouter des actions*, ci-dessous.
 
-Les actions sont des commandes prédéfinies utilisées pour effectuer des tâches sur les membres, les fichiers et d'autres types d'objets. Par exemple, pour compiler un fichier source.Les actions peuvent être exécutées à partir de deux endroits différents:
+Les actions sont des commandes prédéfinies, utilisées pour effectuer des tâches sur les membres, les fichiers et d'autres types d'objets.  Par exemple, pour compiler un fichier source.  Les actions peuvent être exécutées à partir de deux endroits :
 
-- Pendant que vous écrivez du code.Par exemple, pour compiler un programme ou un module.
+- Pendant que vous écrivez du code.  
+  Par exemple, pour compiler un programme ou un module.
 - Lorsque vous cliquez avec le bouton droit sur un membre, un fichier ou un objet à partir de l'explorateur d'object *OBJECT BROWSER*.
 
 Un ensemble complet d'actions est fourni, mais vous pouvez ajouter ou modifier une action.
@@ -15,13 +18,16 @@ Pour exécuter une action, ouvrez un membre source (ou un fichier IFS) et appuye
 - Windows: Control + E
 - Mac: Command + E
 
-Cela affiche une liste déroulante avec des actions disponibles pour le fichier ouvert. Utilisez les touches ⬆ ⬇ pour faire défiler les actions et appuyer sur Entrée pour en sélectionner une.
+Cela affiche une liste déroulante avec des actions disponibles pour le fichier ouvert.  
+Utilisez les touches ⬆ ⬇ pour faire défiler les actions et appuyer sur Entrée pour en sélectionner une.
 
-Exemple: Pour exécuter l'action 'CRTBNDRPG', vous devez ouvrir un membre source avec l'extension `RPG` ou `RPGLE`. Ensuite, lorsque vous utilisez le raccourci *Actions* (ci-dessous), vous accédez à la liste des actions disponibles.
+Exemple:  
+    Pour exécuter l'action 'CRTBNDRPG', vous devez ouvrir un membre source avec l'extension `RPG` ou `RPGLE`.  
+    Ensuite, lorsque vous utilisez le raccourci *Actions* (ci-dessous), vous accédez à la liste des actions disponibles.
 
 ### Afficher/modifier/ajouter des actions
 
- Cliquez sur**Actions** dans la barre d'état, puis affichez, modifiez ou ajoutez de nouvelles actions via l'interface utilisateur:
+ Cliquez sur **Actions** dans la barre d'état, puis affichez, modifiez ou ajoutez de nouvelles actions via l'interface utilisateur:
 ![Action List UI](../../../assets/actions_01.png)
 
 - Cliquez sur une action pour la changer.
