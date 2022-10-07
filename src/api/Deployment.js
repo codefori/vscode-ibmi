@@ -107,12 +107,14 @@ module.exports = class Deployment {
           const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
           const remotePath = existingPaths[folder.uri.fsPath];
 
+          const changedFiles = Object.values(this.changes);
+
           if (remotePath) {
             const chosen = await vscode.window.showQuickPick(
               [
+                { label: `Changes`, description: `${changedFiles.length} change${changedFiles.length !== 1 ? `s` : ``} detected` },
                 { label: `Working Changes`, description: `Unstaged changes in git` },
                 { label: `Staged Changes`, description: `` },
-                { label: `Changes`, description: `${Object.keys(this.changes).length} changes detected` },
                 { label: `All`, description: `Every file in the local workspace` },
               ],
               { placeHolder: `Select deployment method to ${remotePath}` }
@@ -140,16 +142,12 @@ module.exports = class Deployment {
 
               // get the .gitignore file from workspace
               const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
-
               let ignoreRules = ignore({ignorecase: true}).add(`.git`);
-
               if (gitignores.length > 0) {
                 // get the content from the file
                 const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
                 ignoreRules.add(gitignoreContent.split(`\n`));
               }
-
-              this.changes = {};
 
               let useStagedChanges = true;
               let changeType = `staged`;
@@ -179,8 +177,6 @@ module.exports = class Deployment {
                       changes = await repository.state.workingTreeChanges;
                     }
 
-                    console.log(changes);
-
                     // Do not attempt to upload deleted files.
                     // https://github.com/microsoft/vscode/blob/main/extensions/git/src/api/git.d.ts#L69
                     changes = changes.filter(change => change.status !== 6);
@@ -189,6 +185,7 @@ module.exports = class Deployment {
                       const uploads = changes.map(change => {
                         const relative = path.relative(folder.uri.path, change.uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
                         const remote = path.posix.join(remotePath, relative);
+                        this.deploymentLog.appendLine(`UPLOADING: ${change.uri.fsPath} -> ${remote}`);
                         return {
                           local: change.uri._fsPath,
                           remote: remote,
@@ -211,6 +208,8 @@ module.exports = class Deployment {
                         this.button.text = BUTTON_BASE;
                         this.deploymentLog.appendLine(`Deployment finished.`);
                         vscode.window.showInformationMessage(`Deployment finished.`);
+
+                        this.changes = {};
 
                         return folder.index;
                       } catch (e) {
@@ -235,19 +234,18 @@ module.exports = class Deployment {
                 break;
 
               case `Changes`:
-                const changedFiles = Object.values(this.changes);
-                
                 if (changedFiles.length > 0) {
                   const uploads = changedFiles.map(fileUri => {
                     const relative = path.relative(folder.uri.path, fileUri.path).replace(new RegExp(`\\\\`, `g`), `/`);
                     const remote = path.posix.join(remotePath, relative);
+                    this.deploymentLog.appendLine(`UPLOADING: ${fileUri.fsPath} -> ${remote}`);
                     return {
                       local: fileUri._fsPath,
                       remote: remote,
                       uri: fileUri
                     };
                   });
-                  
+
                   this.button.text = BUTTON_WORKING;
 
                   try {
@@ -258,6 +256,7 @@ module.exports = class Deployment {
                     this.button.text = BUTTON_BASE;
                     this.deploymentLog.appendLine(`Deployment finished.`);
                     vscode.window.showInformationMessage(`Deployment finished.`);
+                    this.changes = {};
 
                     return folder.index;
                   } catch (e) {
@@ -305,6 +304,7 @@ module.exports = class Deployment {
 
                       progress.report({ message: `Deployment finished.` });
                       this.deploymentLog.appendLine(`Deployment finished.`);
+                      this.changes = {};
 
                       return true;
                     } catch (e) {
@@ -376,21 +376,23 @@ module.exports = class Deployment {
   }
 
   async buildWatcher() {
-    const invalidFs = [`member`, `streamfile`]
+    const invalidFs = [`member`, `streamfile`];
     const watcher = vscode.workspace.createFileSystemWatcher(`**`);
 
     watcher.onDidChange(uri => {
       if (invalidFs.includes(uri.scheme)) return;
-
+      if (uri.fsPath.includes(`.git`)) return;
       this.changes[uri.fsPath] = uri;
     });
     watcher.onDidCreate(uri => {
+      if (invalidFs.includes(uri.scheme)) return;
+      if (uri.fsPath.includes(`.git`)) return;
       this.changes[uri.fsPath] = uri;
     });
     watcher.onDidDelete(uri => {
       if (invalidFs.includes(uri.scheme)) return;
-
-      this.changes[uri.fsPath] = undefined;
+      if (uri.fsPath.includes(`.git`)) return;
+      delete this.changes[uri.fsPath];
     });
 
     return watcher;
