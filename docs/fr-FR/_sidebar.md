@@ -14,7 +14,7 @@
    - [Astuces](/fr-FR/pages/tips/tricks.md)  
    - [Terminaux](/fr-FR/pages/tips/terminals.md)  
    - [CCSID](/fr-FR/pages/tips/ccsid.md)  
-   - [Installer](/fr-FR/pages/tips/setup.md)  
+   - [Configurer](/fr-FR/pages/tips/setup.md)  
 - [Explorateurs](/fr-FR/pages/browsers/index.md)  
    - [Liste des bibliothèques utilisateur](/fr-FR/pages/browsers/user-library-list.md)  
    - [Explorateur d'objet](/fr-FR/pages/browsers/object-browser.md)  
