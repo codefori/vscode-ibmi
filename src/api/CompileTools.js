@@ -460,7 +460,8 @@ module.exports = class CompileTools {
           try {
             commandResult = await this.runCommand(instance, {
               environment,
-              command
+              command,
+              env: variables
             });
 
             if (commandResult) {
@@ -562,8 +563,8 @@ module.exports = class CompileTools {
   /**
    * Execute command
    * @param {*} instance
-   * @param {{environment?: "ile"|"qsh"|"pase", command: string, cwd?: string}} options 
-   * @returns {Promise<{stdout: string, stderr: string, code?: number, command: string}|null>}
+   * @param {RemoteCommand} options 
+   * @returns {Promise<CommandResult|null>}
    */
   static async runCommand(instance, options) {
     /** @type {IBMi} */
@@ -622,9 +623,20 @@ module.exports = class CompileTools {
 
       switch (options.environment) {
       case `pase`:
+
+        // We build environment variables for the environment to be ready
+        const envVars = {};
+        Object
+          .entries({...(options.env ? options.env : {}), ...this.getDefaultVariables(instance)})
+          .filter(item => item[0].startsWith(`&`))
+          .forEach(item => {
+            envVars[item[0].substring(1)] = item[1];
+          });
+
         commandResult = await connection.sendCommand({
           command: commands.join(` && `), 
           directory: cwd,
+          env: envVars,
           ...callbacks
         });
         break;
@@ -645,7 +657,6 @@ module.exports = class CompileTools {
       case `ile`:
       default:
         // escape $ and # in commands
-
         commandResult = await connection.sendQsh({
           command: [
             `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),

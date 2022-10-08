@@ -6,6 +6,16 @@ interface StandardIO {
   stdin?: string;
 }
 
+/**
+ * External interface for extensions to call `code-for-ibmi.runCommand`
+ */
+interface RemoteCommand {
+  command: string;
+  environment?: "ile"|"qsh"|"pase";
+  cwd?: string;
+  env?: {[name: string]: string};
+}
+
 interface CommandData extends StandardIO {
   command: string;
   directory?: string;
@@ -13,9 +23,10 @@ interface CommandData extends StandardIO {
 }
 
 interface CommandResult {
-  code: number|null;
+  code?: number;
   stdout: string;
   stderr: string;
+  command?: string;
 }
 
 interface MemberParts {
