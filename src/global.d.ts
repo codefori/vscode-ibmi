@@ -23,7 +23,7 @@ interface CommandData extends StandardIO {
 }
 
 interface CommandResult {
-  code?: number;
+  code: number|null;
   stdout: string;
   stderr: string;
   command?: string;
