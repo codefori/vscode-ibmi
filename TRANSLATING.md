@@ -2,7 +2,7 @@
 
 ## Translating is Contributing !
 
-Translating the documentation Web site is contributing to Code For IBMI , so please reade [CONTRIBUTING](CONTRIBUTING.md) before.
+Translating the documentation Web site is contributing to Code For IBMI , so please read [CONTRIBUTING](CONTRIBUTING.md) before.
 
 ## Docsify
 > A magical documentation site generator.
@@ -15,11 +15,11 @@ This site is in English by default but it's possible to add a new langage to imp
 
 Please read above How to initiate or How to help in a new translating. 
 
-**Add a new langage** is to add a new folder under [docs](./docs/) folder with all docs's markdown files translate.
-To be meaningful we called this folder with the [ISO Langage Code table](http://www.lingoes.net/en/translator/langcode.htm)  
+**Add a new langage** is to add a new folder under [docs](./docs/) folder with all docs's markdown files translated.
+To be meaningful we call this folder with the [ISO Langage Code table](http://www.lingoes.net/en/translator/langcode.htm)  
 
 So for french we used **fr-FR**.  
-then the user's site switches between all the différents translations using the translations *navbar* in the right corner.
+then the user switches between all the langages using the translations *navbar* in the right corner.
 
 ## Process to add a new langage
 We choose to use french translation as an example to explain the process.  
@@ -31,11 +31,11 @@ We choose to use french translation as an example to explain the process.
  :eye_speech_bubble: To make me easier the translating,I'm using this useful extension [Vscode Google Translate](https://marketplace.visualstudio.com/items?itemName=funkyremi.vscode-google-translate)  
 
     1. Add the new langage in the [navbar](./docs/_navbar.md) using the [ISO Langage Code table](http://www.lingoes.net/en/translator/langcode.htm). 
-    1. Copy the [docs](./docs/) folder to the [/docs/fr-FR](./docs/fr-FR/) folder.
+    1. Copy the [docs](./docs/) folder as the [/docs/fr-FR](./docs/fr-FR/) folder.
     1. Remove the _navbar.md under the [/docs/fr-FR](./docs/fr-FR/) folder. 
-    1. start translating the [side bar](./docs/fr-FR/_sidebar.md) and the [readme](./docs/fr-FR/README.md).
-    1. then you can test your job.
-    1. and/or translate all the markdown files under your folder.
+    1. Start translating the [side bar](./docs/fr-FR/_sidebar.md) and the [readme](./docs/fr-FR/README.md).
+    1. Then you can test your job.
+    1. And/or translate all the markdown files under your folder.
 1. Testing locally
     1. Open a terminal in VSC
     1. Type 
