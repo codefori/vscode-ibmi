@@ -1,22 +1,20 @@
-This page consists of fixes to weird errors users receive based on system configuration.
+Cette page propose des correctifs à des erreurs bizarres que les utilisateurs rencontrent en fonction de la configuration du système.
 
 ## Unexpected packet before version
 
-This error appears when you have lines in startup files that write to standard out. Usually the main issue is when the following commands exist in the `.bashrc` file (non-login startup file).
+Cette erreur apparaît lorsque vous avez des lignes de code dans les fichiers de démarrage qui écrivent dans la sortie standard (*standard out*). Habituellement, le problème principal survient lorsque les commandes suivantes existent dans le fichier `.bashrc` (Fichier de démarrage sans connexion).
 
 * `echo`
-* `liblist` - this is a new bash builtin on IBM i which adds to the library list, but also writes to standard out.
+* `liblist` - Ceci est une fonction intégrée au bash sur IBM I qui modifie la liste des bibliothèques, mais elle écrit aussi dans la sortie standard.
 
-You can see the original [issue on GitHub](https://github.com/halcyon-tech/vscode-ibmi/issues/325):
+Vous pouvez voir le [problème originel sur GitHub](https://github.com/halcyon-tech/vscode-ibmi/issues/325):
 
-> This was my 'a-ha' moment as I did recently change my `~/.bashrc` file on the IBMi to pump out some general output. And sure enough, when I toggle the `~/.bashrc` file between writing to stdout and not writing to stdout, I am seeing the issue appear/disappear (respectively).
+> C'est un peu ma dernière prise de conscience car j'ai récemment changé mon fichier `~ / .bashrc` sur l'IBMI pour supprimer certaines sorties. Et en effet, quand je bascule entre le fichier `~/.bashrc` qui écrit dans 'stdout' et celui qui n'y écrit pas , Je vois que le problème apparaît / disparaît (respectivement).
 >
-> The best solution, for me, is to keep the shell initialization that writes to stdout in my `~/.profile` file which will not execute via an SFTP connection. That, however, is outside the scope of this extension.
+> La meilleure solution, pour moi, est de conserver les commandes shell qui écrivent dans le STDOUT dans mon fichier `~/.profile`. Car ce fichier ne s'exécutera pas via une connexion SFTP. Ce qui est en dehors de la portée de cette extension.
+## exécution de SQL sans résultat
 
-## No results from SQL execution
-
-When executing an SQL statement, no messages or results are appearing. This has been happening when the SSHD has not started up correctly. You may see in the Code for IBM i output is returning something like the following:
-
+Lors de l'exécution d'une instruction SQL, aucun message ou résultat n'apparaît. Cela s'est produit lorsque le SSHD n'a pas démarré correctement. Vous pouvez voir dans la sortie (output) de code pour IBM I quelque chose comme ce qui suit:
 ```
 /home/NUJKJ: LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"
 select srcdat, rtrim(srcdta) as srcdta from ILEDITOR.QGPL_QCLSRC_A_CHGUSR_C
@@ -28,34 +26,34 @@ select srcdat, rtrim(srcdta) as srcdta from ILEDITOR.QGPL_QCLSRC_A_CHGUSR_C
 }
 ```
 
-### Potential fix
+### Correction potentielle
 
-If you run `ps -ef | grep sshd` and see `/QOpenSys/usr/sbin/sshd`, this fix may work for you.
+Si vous lancez la commande `ps -ef | grep sshd` et voyez en résultat `/QOpenSys/usr/sbin/sshd`, cette solution peut marcher pour vous.
 
-1. End the current SSHD instance: `ENDTCPSVR SERVER(*SSHD)`.
-2. Start the SSHD up again: `STRTCPSVR SERVER(*SSHD)`.
-3. In a pase shell, run `ps -ef | grep sshd`.
+1. Mettre fin à l'instance SSHD actuelle: `ENDTCPSVR SERVER(*SSHD)`.
+2. Relancer le serveur SSHD: `STRTCPSVR SERVER(*SSHD)`.
+3. Dans le shell PASE, lancez `ps -ef | grep sshd`.
 
-You should now see that the SSHD has started up from a different place.
+Vous devriez maintenant voir que le SSHD s'est lancé à un autre endroit.
 
 ```
 $ ps -ef | grep sshd
  qsecofr    107      1   0   Jul 15      -  0:00 /QOpenSys/QIBM/ProdData/SC1/OpenSSH/sbin/sshd
 ```
 
-The issue should now be resolved.
+Le problème doit maintenant être résolu.
 
-## Connection using SSH private key always fails 
+## La connexion utilisant la clé privée SSH échoue toujours 
 
-On some platforms (e.g., Linux PopOS) your connection using SSH private key may fail with a message like:
+Sur certaines plates-formes (par exemple, Linux Popos), votre connexion à l'aide de la clé privée SSH peut échouer avec un message comme:
 ```
 Error while signing data with privateKey: error:06000066:public key routines:OPENSSL_internal:DECODE_ERROR
 ```
-This may occur if the OpenSSL routines on your platform used by Code for IBM i have problems with the default public key format.
+Cela peut se produire si les routines OpenSSL de votre plate-forme utilisées par Code pour IBM ont des problèmes avec le format de clé publique par défaut.
 
-### Fix by making copy of private key in PEM format
+### Correction en faisant une copie de la clé privée au format PEM
 
-You can solve this by creating a second instance of your extant public key in PEM format to sit alongside your default key. For instance, if your public key is `$HOME/.ssh/id_rsa` you can do the following:
+Vous pouvez résoudre ce problème en créant une deuxième instance de votre clé publique existante au format PEM pour la déposer aux côtés de votre clé par défaut. Par exemple, si votre clé publique est `$ home / .ssh / id_rsa`, vous pouvez effectuer ce qui suit:
 ```
 cd $HOME/.ssh
 cp id_rsa id_rsa_original
@@ -63,4 +61,4 @@ ssh-keygen -p -f id_rsa -m PEM
 mv id_rsa id_rsa.pem
 mv id_rsa_original id_rsa
 ```
-Now configure the Code for IBM i connection using `id_rsa.pem` instead of `id_rsa`. In this way, your original key is still there to make connections as always, and you have a new copy in PEM format using which Code for IBM i connections operate correctly.
+Configurez la connexion de code for IBM I pour utiliser la clé `id_rsa.pem` à  la place de `id_rsa`. De cette façon, votre clé d'origine est toujours là pour établir des connexions comme toujours, et vous avez une nouvelle copie au format PEM pour que les connexions de Code for IBMi fonctionnent correctement.
