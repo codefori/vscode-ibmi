@@ -12,7 +12,9 @@ Maintain and compile your RPGLE, CL, COBOL, C/CPP on the IBM i right from Visual
    - (Licensed program 5733-SC1 provides SSH support.)
    - `STRTCPSVR *SSHD` starts the daemon.
    - User `QSSHD` is enabled.
-- Some familarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos).
+- Some familiarity with VS Code. An introduction can be found [here](https://code.visualstudio.com/docs/getstarted/introvideos).
+
+Optionally, ensure you know how to connect to pase from a shell. See this [official IBM i OSS docs](https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-1-install-an-ssh-client).
 
 ## Installation
 
