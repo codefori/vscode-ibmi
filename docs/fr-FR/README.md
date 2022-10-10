@@ -8,7 +8,7 @@ Maintenez et Compilez vos RPGLE, CL, COBOL, C/CPP sur l'IBM i depuis Visual Stud
 
 ## Prérequis
 
-- Le Démon SSH doit être démarrer sur l'IBM i.
+- Le Démon SSH doit être démarré sur l'IBM i.
    - (Le programme sous license 5733-SC1 propose un support SSH.)
    - `STRTCPSVR *SSHD` démarre le démon.
    - L'utilisateur `QSSHD` est actif.
