@@ -1,52 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
-    <meta charset="UTF-8">
-    <title>code-for-ibmi Documentation</title>
-    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-    <meta name="description" content="IBM i development extension for VS Code">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/docsify-themeable/dist/css/theme-simple.css"
-    />
-    <style>
-        /* cover image fix */
-        
-        section.cover.show {
-            height: 100%;
-        }
-        .sidebar>h1 img {
-            max-width: 3em;
-        }
-    </style>
-</head>
-
-<body>
-    <div id="app">Loading...</div>
-
-    <script>
-        window.$docsify = {
-            name: 'Code for IBM i',
-            repo: 'https://github.com/halcyon-tech/code-for-ibmi',
-            logo: "media/icon.png",
-            loadSidebar: true,
-            auto2top: true,
-            subMaxLevel: 2
-            // coverpage: true
-        }
-    </script>
-
-    <!-- Docsify v4 -->
-    <script src="https://unpkg.com/docsify/lib/docsify.min.js"></script>
-    <script src="https://unpkg.com/docsify-themeable"></script>
-
-    <!-- plugins -->
-    <script src="https://unpkg.com/docsify/lib/plugins/search.js"></script>
-
-    <!-- Add Prism syntax highlighting here: -->
-    <!-- <script src="//cdn.jsdelivr.net/npm/prismjs/components/prism-markdown.min.js"></script> -->
-</body>
+    <head>
+        <script>
+            // Since the docs now exist in a different repo, we need to redirect to that page.
+            const url = `https://halcyon-tech.github.io/docs/${window.location.hash}`;
+            console.log(`going to ${url}`);
+            window.location.replace(url);
+        </script>
+    </head>
 
 </html>
