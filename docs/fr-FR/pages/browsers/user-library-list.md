@@ -1,3 +1,5 @@
-The User Library List is is set initially from your user profile.  Add libraries as needed using the "**+**" icon.  Remove a library from the library list by right clicking on it.
+La liste des bibliothèques utilisateur est initialement définie à partir de votre profil utilisateur.  
+Ajoutez des bibliothèques selon vos besoins en utilisant l'icône "** + **".  
+Supprimer une bibliothèque de la liste des bibliothèques en cliquant avec le bouton droit sur celle-ci.
 
-The User Library List is used when *Actions* (see below) are executed.
+La liste des bibliothèques utilisateur est utilisée pour l’exécution des **Actions** (voir ci-dessous).

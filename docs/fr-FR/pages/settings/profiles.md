@@ -1,17 +1,22 @@
 
-A profile allows the user to switch between settings quickly. You could use a profile to quickly change library list and other items specific to a project. A profile stores this information:
+Un profil permet à l'utilisateur de basculer rapidement entre différents paramétrages.  
+Vous pouvez utiliser un profil pour modifier rapidement la liste des bibliothèques et d'autres éléments spécifiques à un projet.  
+Un profil stocke ces informations:
 
-- The home / working directory
-- The current library
-- The library list
-- The IFS shortcuts
-- The object browser list
-- The database browser list
+- Le répertoire personnel sur l'IFS (/home)
+- LA bibliothèque courante (CURRENT)
+- La liste des bibliothèques
+- Les raccourcis IFS
+- Les filtres de l'explorateur d'objets
+- Les filtres de l'explorateur de Base de données
 
-If you have no existing profiles, you can create your first one from the User Library List view:
+Si vous n'avez pas de profils, vous pouvez créer votre premier profil à partir des icônes de l'explorateur de la liste des bibliothèques d'utilisateurs:
 
 ![Save Profile](../../assets/Connect_Profile_Save_01.png)
 
-After your first profile has been created, the Profiles view will become availabe. The Profiles view allows you to quickly switch between profiles, as well as update and delete existing profiles. The Profiles view will also show you what the last profile you set is.
+Une fois votre premier profil créé, l'explorateur des profils est disponible.  
+Cette vue permet de basculer rapidement entre les différents profils, mais aussi mettre à jour et supprimer un profil existant.  
+Elle affiche aussi le profil en cours.
 
-**Changing any of the settings** will not update the profile. If you change the library list and want this to reflect on the profile, you can save over the profile or into a new one.
+**La modification du paramétrage** ne mets pas à jour le profil.  
+Si vous souhaitez reporter vos modifications sur le profil , vous devez les enregistrer sur ce profil ou sur un nouveau.

@@ -1,37 +1,40 @@
-Multiple connections can be defined and some settings are specific to a connection and can be saved for the connection and later reloaded.
+Plusieurs connexions peuvent être définies.  
+Certains paramètres sont spécifiques à une connexion et peuvent être enregistrés pour la connexion puis recharger ultérieurement.
 
 ### Current library
 
-The library which will be set as the current library during compilation.
+Cette bibliothèque sera choisie comme la bibliothèque courante lors de la compilation.
 
-You can change the current library with the 'Change build library' command (F1 -> Change build library).
+Vous pouvez modifier la bibliothèque actuelle avec la commande `Change build library` (ou  `F1 -> Change build library`).
 
-### Home Directory
+### Home Directory 
 
-Home directory for user. This directory is also the root for the IFS browser.
+Répertoire courant de l'utilisateur (/home).
+Ce répertoire est la racine dans l'explorateur IFS.
 
 ### Temporary library
 
-Temporary library. Stores temporary objects used by Code for i. Will be created automatically if it does not exist. Cannot be QTEMP.
-Default value: ILEDITOR.
-Note: If your IBM i runs replication software, there is no need to replicate the temporary library. Your sysadmin may add it to the list of objects to be ignored.
+la **bibliothèque temporaire** stocke les objets temporaires utilisés par Code For IBM i. Si elle n'existe pas, elle est créée automatiquement. Elle ne peut pas être *QTEMP*.
+La valeur par défaut est *ILEDITOR*.  
+
+Remarque: Si votre IBM I utilise un logiciel de réplication, il n'est pas nécessaire de répliquer la bibliothèque temporaire.Votre administrateur système peut l'ajouter à la liste des objets à ignorer.
 
 ### Temporary IFS directory
 
-Temporary IFS directory. Stores temporary IFS files used by Code for i. Will be created automatically if it does not exist. Must be in root or QOpenSys filesystem.
-Default value: /tmp.
-Note: If your IBM i runs replication software, there is no need to replicate the temporary directory. Your sysadmin may add it to the list of path to be ignored.
-It is safe to have files created by Code for i automatically deleted during maintenance or IPL.
+Le **répertoire temporaire** stocke les fichiers IFS temporaires utilisés par Code for IBM i. Si il n'existe pas, il est créé automatiquement . Il doit se trouver dans *root* ou *QOpenSys*.
+La valeur par défaut est */tmp*.  
+Remarque: Si votre IBM I utilise un logiciel de réplication, il n'est pas nécessaire de reproduire le répertoire temporaire.Votre administrateur système peut l'ajouter à la liste des chemins à ignorer.
+Il est conseillé de prévoir la suppression automatique des fichiers créés par Code For IBM i lors de la maintenance ou IPL.
 
 ### Source ASP
 
-If source files are located in a specific ASP, specify here.
-Otherwise, leave blank.
+Si les fichiers source sont situés dans un ASP spécifique, spécifiez le ici.
+Sinon, laissez à blanc.
 
 ### Enable source dates
 
-When checked, source dates will be retained.
+Sélectionné, les dates de source seront conservées.
 
 ### Source Dates in Gutter
 
-When checked, source dates will be displayed in the gutter.
+Sélectionné, les dates de source seront affichées dans le gutter (partie gauche au niveau d'une ligne de source).

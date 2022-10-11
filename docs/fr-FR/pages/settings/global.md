@@ -1,40 +1,42 @@
-These are setting  which affect the extension (and therefore *every* connection). To adjust the extension's global setting,  either:
+Ces paramètres affectent l'extension (et donc *toutes* les connexions).  
+Pour ajuster le paramètre global de l'extension, soit:
 
-- Use the standard VS Code <kbd>Ctrl</kbd> + <kbd>,</kbd> and click Extensions
-- or click File/Preferences/Settings and click Extensions
--or  press <kbd>F1</kbd>, search for ```Preferences: Open Settings (UI)``` and click extensions.
+- Utilisez la touche standard de VS Code <kbd>Ctrl</kbd> + <kbd>,</kbd> and cliquez `Extensions`
+- ou  cliquez  sur `File/Preferences/Settings` puis `Extensions`
+-or  press <kbd>F1</kbd>, search for ```Preferences: Open Settings (UI)``` and cliquez `Extensions`.
 
-Settings for the extension will be under ```Code for IBM i```
+Les paramètres de l'extension sont sous ```Code for IBM i```
 
 ![assets/settings_01.png](../../assets/settings_01.png)
 
-Most of the setting have a self explanatory description. A few have notes below.
+La plupart des paramètres ont une note explicative.
+Voici quelques précisions ci-dessous : 
 
-**It is not recommended editing the JSON manually. If you do, restart/reload VS Code so Code for IBM i can pickup the changes.**
+**Il n'est pas recommandé de modifier le JSON manuellement.Si vous le faites, redémarrez / rechargez Vs Code ainsi Code For IBM i prendra en charge les modifications.**
 
 ### Actions
 
-Actions can be edited in settings.json, but also more easily by clicking **Actions** in the status bar. See *Actions*, above.
+Les actions peuvent être modifiées dans **Settings.json** , mais c'est plus facile en cliquant **Actions** dans la barre d'état. Voir *Actions*, plus haut.
 
 ### Connections
 
-Connections can be edited in settings.json, but you'd typically add additional connections as in *Connect First Time*, above.
+Les connexions peuvent être modifiées dans **Settings.json**, mais il est préférable d'ajouter comme vu précédemment dans *Se Connecter pour la première fois*.
 
 ### Connection Settings
 
-These are the various setting relating to the items in the browsers, e.g., the list of source files in the OBJECT BROWSER. While these can be edited in settings.json, most can be more easily maintained by clicking or right clicking on an item in the browser.
+Ce sont les différents paramètres relatifs aux éléments des explorateurs, par exemple, les filtres de fichiers sources dans l'explorateur d'objet. Bien que ceux-ci puissent être modifiés dans Settings.json, la plupart peuvent être plus facilement maintenus en cliquant ou en cliquant avec le bouton droit sur un élément de l'explorateur.
 
 ### Log Compile Output
 
-When enabled, spool files will be logged from the command execution.
-These spool files can be found under the **OUTPUT** tab (View->Output, or Ctrl + Shift + U). Select **IBM i Output** in the drop down on the right.
+Lorsqu'il est activé, des fichiers 'Spoules' sont enregistrés suite à l'exécution d'une commande ou action.
+Ces fichiers de 'spoule' peuvent être trouvés sous le volet **OUTPUT** (View->Output, ou Ctrl + Shift + U). Sélectionner **IBM i Output** dans la liste déroulante à droite.
 
 ![Panel on Right](../../assets/LogOutput_01.png)
 
-You can clear the OUTPUT tab using the **Clear Output** icon on the right.
+Vous pouvez remettre à blanc l'onglet de sortie à l'aide de l'icône **Clear Output** sur la droite.
 ![Clear output](../../assets/LogOutput_02.png)
 
-You can change the font size in the OUTPUT tab in your settings.json thus:
+Vous pouvez modifier la taille de la police dans le volet OUTPUT tab dans le fichier settings.json :
 
 ````json
 "[Log]": {

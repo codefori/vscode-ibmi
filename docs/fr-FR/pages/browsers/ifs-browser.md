@@ -1,6 +1,7 @@
-This shows directories and files in the IFS.  Click on a source file to open it in the editor.
+Cette vue affiche les répertoires et les fichiers de l'IFS.  
+Cliquez sur un fichier source pour l'ouvrir dans l'éditeur.
 
-Add extra shortcuts as needed:
+Ajoutez des raccourcis supplémentaires si besoin:
 
 ![Add shortcut](../../assets/BrowserIFS_01.png)
 

@@ -1,49 +1,50 @@
-The Object Browser allows you to interact with libraries, files, source files, programs and other types of objects. Subset the objects you want to work with by creating a filter or filters.
+L'explorateur d'objets vous permet d'interagir avec les bibliothèques, les fichiers, les fichiers source, les programmes et autres types d'objets. Sélectionnez un sous-ensemble d'objets avec lesquels vous souhaitez travailler en créant un filtre ou des filtres.
 
-#### Create First Filter
+### Créer le premier filtre
 
-Click on the **+ Create new filter** prompt to create your first filter (or click on the filter icon):
+Cliquez sur **+ Create new filter** pour créer votre premier filtre (ou cliquez sur l'icône de filtre):
 
 ![Create New filter](../../assets/Browser_03.png)
 
-Complete the new filter dialog. The explanatory text in the Create Filter dialog explains the options:
+Complétez la boîte de dialogue pour le nouveau filtre.  
+Les différentes options sont expliquées via un texte dans la boîte de dialogue:
 
 ![New Filter dialog](../../assets/Browser_04.png)
 
-**Click SAVE to create the new filter.**
+Cliquez sur **Save Settings** pour créer le nouveau filtre.
 
-The above filter example lists all source files in library LENNONS1:
+L'exemple de filtre ci-dessus répertorie tous les fichiers source dans la bibliothèque LENNONS1:
 
 ![Expanded filter](../../assets/Browser_05.png)
 
-Note that the filter name has the filter definition the right.
+Notez que le nom du filtre inclut sa définition à droite.
 
-#### Create Additional Filters
+### Créer des filtres supplémentaires
 
-To create another filter,  click the filter icon to open up the new filter dialog.
+Pour créer un autre filtre, cliquez sur l'icône du filtre pour ouvrir la boîte de dialogue **Filter:New**.
 
 ![Additional Filters](../../assets/Browser_06.png)
 
-#### Filter Examples
+### Exemples de filtre
 
-**Single File Filter**
+**Filtre sur un fichier unique**
 
 ![Single file filter](../../assets/Browser_07.png)
 
-**Subsetted source member example**
+**Sélection de membres sources**
 
 A single source file files subsetting just some members:
 
 ![Subset Members](../../assets/Browser_08.png)
 
-**Non Source Example**
+**Sélection de programmes (objets)**
 
-Some programs in a library:
+Les programmes SQL* d'une bibliothèque:
 
 ![programs filter](../../assets/Browser_09.png)
 
-#### Maintaining Filters
+### Maintenir des filtres
 
-Changing a filter definition is quick and easy. Just right click on the filter and chose **Maintain filter** to open up the filter dialog. Or chose **Delete filter** to remove the filter definition.
+Changer une définition de filtre est rapide et facile.Faites un clic droit sur le filtre et choisissez  **Maintain filter** pour ouvrir la boite de dialogue du filtre.ou choisissez **Delete filter** pour le supprimer.
 
 ![Maintian filter](../../assets/Browser_10.png)

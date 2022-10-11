@@ -33,7 +33,20 @@ We choose to use french translation as an example to explain the process.
     1. Add the new langage in the [navbar](./docs/_navbar.md) using the [ISO Langage Code table](http://www.lingoes.net/en/translator/langcode.htm). 
     1. Copy the [docs](./docs/) folder as the [/docs/fr-FR](./docs/fr-FR/) folder.
     1. Remove the _navbar.md under the [/docs/fr-FR](./docs/fr-FR/) folder. 
-    1. Start translating the [side bar](./docs/fr-FR/_sidebar.md) and the [readme](./docs/fr-FR/README.md).
+    1. Start translating the [side bar](./docs/fr-FR/_sidebar.md) 
+        You have to cchange all the path to yours pages by adding the directory (/fr-FR/) in this case ..
+        ```
+        - [Code for IBM i](/)
+          - [Login](/pages/login.md)
+        ...  
+        ```
+        to 
+        ```
+        - [Code for IBM i](/fr-FR/)  
+          - [Connexion](/fr-FR/pages/login.md)  
+        ...  
+        ```
+    1. Then you can translate the [readme](./docs/fr-FR/README.md).
     1. Then you can test your job.
     1. And/or translate all the markdown files under your folder.
 1. Testing locally
