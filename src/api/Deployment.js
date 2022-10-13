@@ -214,7 +214,7 @@ module.exports = class Deployment {
                         return folder.index;
                       } catch (e) {
                         this.button.text = BUTTON_BASE;
-                        Deployment.showErrorButton();
+                        this.showErrorButton();
                       
                         this.deploymentLog.appendLine(`Deployment failed.`);
                         this.deploymentLog.appendLine(e);
@@ -235,6 +235,8 @@ module.exports = class Deployment {
 
               case `Changes`:
                 if (changedFiles.length > 0) {
+
+                  //TODO: validate list against ignore file
                   const uploads = changedFiles.map(fileUri => {
                     const relative = path.relative(folder.uri.path, fileUri.path).replace(new RegExp(`\\\\`, `g`), `/`);
                     const remote = path.posix.join(remotePath, relative);
@@ -260,7 +262,7 @@ module.exports = class Deployment {
 
                     return folder.index;
                   } catch (e) {
-                    Deployment.showErrorButton();
+                    this.showErrorButton();
                     this.deploymentLog.appendLine(`Deployment failed.`);
                     this.deploymentLog.appendLine(e);
                   }
@@ -326,7 +328,7 @@ module.exports = class Deployment {
                   return folder.index;
                   
                 } else {
-                  Deployment.showErrorButton();
+                  this.showErrorButton();
                 }
 
                 break;
@@ -457,7 +459,7 @@ module.exports = class Deployment {
     }
   }
 
-  static async showErrorButton() {
+  async showErrorButton() {
     vscode.window.showErrorMessage(`Deployment failed.`, `View Log`).then(async (action) => {
       if (action === `View Log`) {
         this.deploymentLog.show();
