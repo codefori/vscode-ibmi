@@ -262,6 +262,7 @@ module.exports = class Deployment {
 
                     return folder.index;
                   } catch (e) {
+                    this.button.text = BUTTON_BASE;
                     this.showErrorButton();
                     this.deploymentLog.appendLine(`Deployment failed.`);
                     this.deploymentLog.appendLine(e);
