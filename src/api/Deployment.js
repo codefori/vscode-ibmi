@@ -107,7 +107,25 @@ module.exports = class Deployment {
           const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
           const remotePath = existingPaths[folder.uri.fsPath];
 
-          const changedFiles = Object.values(this.changes);
+          // get the .gitignore file from workspace
+          const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
+          let ignoreRules = ignore({ignorecase: true}).add(`.git`);
+          if (gitignores.length > 0) {
+            // get the content from the file
+            const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
+            ignoreRules.add(gitignoreContent.split(`\n`));
+          }
+
+          const changedFiles = Object.values(this.changes)                    
+            .filter(uri => {
+            // We don't want stuff in the gitignore
+              if (ignoreRules) {
+                const relative = path.relative(folder.uri.path, uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
+                return !ignoreRules.ignores(relative);
+              }
+
+              return true;
+            });
 
           if (remotePath) {
             const chosen = await vscode.window.showQuickPick(
@@ -139,15 +157,6 @@ module.exports = class Deployment {
 
               const client = ibmi.client;
               this.deploymentLog.clear();
-
-              // get the .gitignore file from workspace
-              const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
-              let ignoreRules = ignore({ignorecase: true}).add(`.git`);
-              if (gitignores.length > 0) {
-                // get the content from the file
-                const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
-                ignoreRules.add(gitignoreContent.split(`\n`));
-              }
 
               let useStagedChanges = true;
               let changeType = `staged`;
@@ -236,17 +245,17 @@ module.exports = class Deployment {
               case `Changes`:
                 if (changedFiles.length > 0) {
 
-                  //TODO: validate list against ignore file
-                  const uploads = changedFiles.map(fileUri => {
-                    const relative = path.relative(folder.uri.path, fileUri.path).replace(new RegExp(`\\\\`, `g`), `/`);
-                    const remote = path.posix.join(remotePath, relative);
-                    this.deploymentLog.appendLine(`UPLOADING: ${fileUri.fsPath} -> ${remote}`);
-                    return {
-                      local: fileUri._fsPath,
-                      remote: remote,
-                      uri: fileUri
-                    };
-                  });
+                  const uploads = changedFiles
+                    .map(fileUri => {
+                      const relative = path.relative(folder.uri.path, fileUri.path).replace(new RegExp(`\\\\`, `g`), `/`);
+                      const remote = path.posix.join(remotePath, relative);
+                      this.deploymentLog.appendLine(`UPLOADING: ${fileUri.fsPath} -> ${remote}`);
+                      return {
+                        local: fileUri._fsPath,
+                        remote: remote,
+                        uri: fileUri
+                      };
+                    });
 
                   this.button.text = BUTTON_WORKING;
 
