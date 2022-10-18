@@ -396,7 +396,12 @@
 				"code-for-ibmi.ObjectBrowser.showNamesInLowercase": {
 					"type": "boolean",
 					"default": true,
-					"description": "If enabled, names and types of object and members will be shown in lowercase. If disabled, the names will be shown as is on the server (like in 5250 sessions)"
+					"description": "If enabled, names and types of object and members will be shown in lowercase. If disabled, the names will be shown as is on the server (like in 5250 sessions)."
+				},
+				"code-for-ibmi.ObjectBrowser.sortObjectsByName": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",

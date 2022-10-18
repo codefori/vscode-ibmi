@@ -6,6 +6,7 @@ let fs = require(`fs`);
 const tmp = require(`tmp`);
 const csv = require(`csv/sync`);
 const Tools = require(`./Tools`);
+const Objects = require(`../schemas/Objects`)
 
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
@@ -303,9 +304,10 @@ module.exports = class IBMiContent {
 
   /**
    * @param {{library: string, object?: string, types?: string[]}} filters 
+   * @param {string?} sortOrder
    * @returns {Promise<{library: string, name: string, type: string, text: string, attribute: string, count?: number}[]>} List of members 
    */
-  async getObjectList(filters) {
+  async getObjectList(filters, sortOrder = `name`) {
     const library = filters.library.toUpperCase();
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
@@ -350,6 +352,8 @@ module.exports = class IBMiContent {
         }
       }
 
+      const internalObjType = Objects.getObjectTypeMap();
+
       return results
         .map(object => ({
           library,
@@ -360,7 +364,12 @@ module.exports = class IBMiContent {
         }))
         .sort((a, b) => {
           if (a.library.localeCompare(b.library) != 0) return a.library.localeCompare(b.library)
-          else return a.name.localeCompare(b.name);
+          else if (sortOrder === `name`) return a.name.localeCompare(b.name)
+          else {
+            if (internalObjType.get(a.type) < internalObjType.get(b.type)) return -1;
+            else if (internalObjType.get(a.type) > internalObjType.get(b.type)) return 1;
+            else return a.name.localeCompare(b.name);
+          }
         });
     }
   }
@@ -499,4 +508,5 @@ module.exports = class IBMiContent {
 
     return errors;
   }
+
 }
