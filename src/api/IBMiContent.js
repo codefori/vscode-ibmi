@@ -6,7 +6,7 @@ let fs = require(`fs`);
 const tmp = require(`tmp`);
 const csv = require(`csv/sync`);
 const Tools = require(`./Tools`);
-const Objects = require(`../schemas/Objects`)
+const {ObjectTypes} = require(`../schemas/Objects`);
 
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
@@ -352,8 +352,6 @@ module.exports = class IBMiContent {
         }
       }
 
-      const internalObjType = Objects.getObjectTypeMap();
-
       return results
         .map(object => ({
           library,
@@ -366,8 +364,8 @@ module.exports = class IBMiContent {
           if (a.library.localeCompare(b.library) != 0) return a.library.localeCompare(b.library)
           else if (sortOrder === `name`) return a.name.localeCompare(b.name)
           else {
-            if (internalObjType.get(a.type) < internalObjType.get(b.type)) return -1;
-            else if (internalObjType.get(a.type) > internalObjType.get(b.type)) return 1;
+            if (ObjectTypes.get(a.type) < ObjectTypes.get(b.type)) return -1;
+            else if (ObjectTypes.get(a.type) > ObjectTypes.get(b.type)) return 1;
             else return a.name.localeCompare(b.name);
           }
         });
