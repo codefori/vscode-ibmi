@@ -33,7 +33,7 @@ module.exports = class IBMiContent {
     const aliasPath = `${tempLib}.${alias}`;
   
     try {
-      await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for ${lib}.${spf}("${mbr}")`);
+      await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${lib}"."${spf}"("${mbr}")`);
     } catch (e) {}
 
     if (recordLengths[alias] === undefined) {
