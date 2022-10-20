@@ -5,7 +5,6 @@ const vscode = require(`vscode`);
 const {default: IBMi} = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
-const IBMiContent = require(`./IBMiContent`);
 const CompileTools = require(`./CompileTools`);
 
 const localLanguageActions = require(`../schemas/localLanguageActions`);
@@ -95,6 +94,7 @@ module.exports = class Deployment {
         /** @type {Storage} */
         const storage = instance.getStorage();
         
+        /** @type {vscode.WorkspaceFolder} */
         let folder;
 
         if (workspaceIndex) {
@@ -108,7 +108,7 @@ module.exports = class Deployment {
           const remotePath = existingPaths[folder.uri.fsPath];
 
           // get the .gitignore file from workspace
-          const gitignores = await vscode.workspace.findFiles(`**/.gitignore`, ``, 1);
+          const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, `**/.gitignore`), ``, 1);
           let ignoreRules = ignore({ignorecase: true}).add(`.git`);
           if (gitignores.length > 0) {
             // get the content from the file
@@ -121,7 +121,16 @@ module.exports = class Deployment {
             // We don't want stuff in the gitignore
               if (ignoreRules) {
                 const relative = path.relative(folder.uri.path, uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
-                return !ignoreRules.ignores(relative);
+                if (relative) {
+                  return !ignoreRules.ignores(relative);
+                }
+              }
+
+              // Bad way of checking if the file is a directory or not.
+              // putFiles below does not support directory creation.
+              const basename = path.basename(uri.path);
+              if (!basename.includes(`.`)) {
+                return false;
               }
 
               return true;
@@ -130,7 +139,7 @@ module.exports = class Deployment {
           if (remotePath) {
             const chosen = await vscode.window.showQuickPick(
               [
-                { label: `Changes`, description: `${changedFiles.length} change${changedFiles.length !== 1 ? `s` : ``} detected since last upload` },
+                { label: `Changes`, description: `${changedFiles.length} change${changedFiles.length !== 1 ? `s` : ``} detected since last upload. ${changedFiles === 0 ? `Will skip deploy step.` : ``}` },
                 { label: `Working Changes`, description: `Unstaged changes in git` },
                 { label: `Staged Changes`, description: `` },
                 { label: `All`, description: `Every file in the local workspace` },
@@ -277,9 +286,9 @@ module.exports = class Deployment {
                     this.deploymentLog.appendLine(e);
                   }
                 } else {
-                  vscode.window.showWarningMessage(`No changes to deploy.`);
+                  // Skip upload, but still run the Action
+                  return folder.index;
                 }
-
                 break;
 
               case `All`: // Uploads entire directory
