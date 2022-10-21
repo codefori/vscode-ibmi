@@ -29,7 +29,7 @@ module.exports = class IBMiContent {
     mbr = mbr.toUpperCase();
 
     const tempLib = connection.config.tempLibrary;
-    const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
+    const alias = `${lib}_${spf}_${mbr}`.replace(/\./g, `_`);
     const aliasPath = `${tempLib}.${alias}`;
   
     try {
