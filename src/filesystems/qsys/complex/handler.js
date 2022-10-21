@@ -3,7 +3,7 @@ const Tools = require(`../../../api/Tools`);
 
 const {instance} = require(`../../../Instance`);
 
-let { allSourceDates, recordLengths } = require(`./data`);
+let { allSourceDates, recordLengths, getAliasName } = require(`./data`);
 
 const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 
@@ -51,7 +51,7 @@ module.exports = class {
             }
 
             fullName = fullName.substring(0, fullName.lastIndexOf(`.`));
-            const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
+            const alias = getAliasName(lib, file, fullName);
             const recordLength = recordLengths[alias];
 
             /** @type {vscode.Diagnostic[]} */
@@ -84,7 +84,7 @@ module.exports = class {
           const {library, file, member} = connection.parserMemberPath(path);
 
 
-          const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
+          const alias = getAliasName(library, file, member);
 
           let sourceDates = allSourceDates[alias];
           if (sourceDates) {
@@ -178,7 +178,7 @@ module.exports = class {
       const path = editor.document.uri.path;
       const {library, file, member} = connection.parserMemberPath(path);
 
-      const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
+      const alias = getAliasName(library, file, member);;
 
       const sourceDates = allSourceDates[alias];
 
