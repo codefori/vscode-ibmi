@@ -9,7 +9,7 @@ const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const DEFAULT_RECORD_LENGTH = 80;
-let { allSourceDates, recordLengths } = require(`./data`);
+let { allSourceDates, recordLengths, getAliasName } = require(`./data`);
 
 module.exports = class IBMiContent {
   /**
@@ -29,11 +29,11 @@ module.exports = class IBMiContent {
     mbr = mbr.toUpperCase();
 
     const tempLib = connection.config.tempLibrary;
-    const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
+    const alias = getAliasName(lib, spf, mbr);
     const aliasPath = `${tempLib}.${alias}`;
   
     try {
-      await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for ${lib}.${spf}("${mbr}")`);
+      await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${lib}"."${spf}"("${mbr}")`);
     } catch (e) {}
 
     if (recordLengths[alias] === undefined) {
@@ -85,7 +85,7 @@ module.exports = class IBMiContent {
     const setccsid = connection.remoteFeatures.setccsid;
 
     const tempLib = connection.config.tempLibrary;
-    const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
+    const alias = getAliasName(lib, spf, mbr);
     const aliasPath = `${tempLib}.${alias}`;
     const sourceDates = allSourceDates[alias];
 
