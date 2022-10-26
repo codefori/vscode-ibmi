@@ -897,10 +897,16 @@
 				"icon": "$(check)"
 			},
 			{
+				"command": "code-for-ibmi.newConnectionProfile",
+				"title": "Save current settings to new profile",
+				"category": "IBM i",
+				"icon": "$(save-as)"
+			},
+			{
 				"command": "code-for-ibmi.saveConnectionProfile",
 				"title": "Save current settings into profile",
 				"category": "IBM i",
-				"icon": "$(save-as)"
+				"icon": "$(save)"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnectionProfile",
@@ -1291,12 +1297,12 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.saveConnectionProfile",
+					"command": "code-for-ibmi.newConnectionProfile",
 					"group": "navigation",
 					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
-					"command": "code-for-ibmi.saveConnectionProfile",
+					"command": "code-for-ibmi.newConnectionProfile",
 					"group": "navigation",
 					"when": "view == profilesView"
 				},

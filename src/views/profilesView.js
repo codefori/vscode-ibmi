@@ -20,6 +20,11 @@ module.exports = class profilesProvider {
         this.refresh();
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.newConnectionProfile`, () => {
+        // Call it with no profile parameter
+        vscode.commands.executeCommand(`code-for-ibmi.saveConnectionProfile`);
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async (profileNode) => {
         const config = instance.getConfig();
         const storage = instance.getStorage();
