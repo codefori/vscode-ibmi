@@ -118,19 +118,14 @@ module.exports = class Deployment {
 
           const changedFiles = Object.values(this.changes)                    
             .filter(uri => {
-            // We don't want stuff in the gitignore
+              if (uri === undefined) return false;
+              
+              // We don't want stuff in the gitignore
               if (ignoreRules) {
                 const relative = path.relative(folder.uri.path, uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
                 if (relative) {
                   return !ignoreRules.ignores(relative);
                 }
-              }
-
-              // Bad way of checking if the file is a directory or not.
-              // putFiles below does not support directory creation.
-              const basename = path.basename(uri.path);
-              if (!basename.includes(`.`)) {
-                return false;
               }
 
               return true;
@@ -400,20 +395,26 @@ module.exports = class Deployment {
     const invalidFs = [`member`, `streamfile`];
     const watcher = vscode.workspace.createFileSystemWatcher(`**`);
 
-    watcher.onDidChange(uri => {
+    watcher.onDidChange(async uri => {
       if (invalidFs.includes(uri.scheme)) return;
       if (uri.fsPath.includes(`.git`)) return;
-      this.changes[uri.fsPath] = uri;
+      const stat = await vscode.workspace.fs.stat(uri);
+      if (stat.type === vscode.FileType.File) {
+        this.changes[uri.fsPath] = uri;
+      }
     });
-    watcher.onDidCreate(uri => {
+    watcher.onDidCreate(async uri => {
       if (invalidFs.includes(uri.scheme)) return;
       if (uri.fsPath.includes(`.git`)) return;
-      this.changes[uri.fsPath] = uri;
+      const stat = await vscode.workspace.fs.stat(uri);
+      if (stat.type === vscode.FileType.File) {
+        this.changes[uri.fsPath] = uri;
+      }
     });
-    watcher.onDidDelete(uri => {
+    watcher.onDidDelete(async uri => {
       if (invalidFs.includes(uri.scheme)) return;
       if (uri.fsPath.includes(`.git`)) return;
-      delete this.changes[uri.fsPath];
+      this.changes[uri.fsPath] = undefined;
     });
 
     return watcher;
