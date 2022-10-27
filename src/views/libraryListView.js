@@ -130,7 +130,7 @@ module.exports = class libraryListProvider {
 
         let libraryList = [...config.libraryList];
 
-        if(newLibrary == ``){
+        if(typeof newLibrary !== `string` || newLibrary == ``){
           addingLib = await vscode.window.showInputBox({
             prompt: `Library to add`
           });
