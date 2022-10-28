@@ -244,7 +244,7 @@ module.exports = class IBMiContent {
       return csv.parse(result, {
         columns: true,
         skip_empty_lines: true,
-        autoParse: true,
+        cast: true,
       });
     }
     
