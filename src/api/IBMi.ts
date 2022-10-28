@@ -42,6 +42,8 @@ export default class IBMi {
   lastErrors: object[];
   config?: Configuration;
 
+  commandsExecuted: number = 0;
+
   constructor() {
     this.client = new node_ssh.NodeSSH;
     this.currentHost = ``;
@@ -651,6 +653,8 @@ export default class IBMi {
     const command = options.command;
     const directory = options.directory || this.config?.homeDirectory;
 
+    this.determineClear()
+
     this.outputChannel.append(`${directory}: ${command}\n`);
     if (options && options.stdin) {
       this.outputChannel.append(`${options.stdin}\n`);
@@ -685,6 +689,15 @@ export default class IBMi {
     return result;
   }
 
+  private determineClear() {
+    if (this.commandsExecuted > 150) {
+      this.outputChannel.clear();
+      this.commandsExecuted = 0;
+    }
+
+    this.commandsExecuted += 1;
+  }
+
   /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
@@ -700,10 +713,6 @@ export default class IBMi {
       this.tempRemoteFiles[key] = value;
       return value;
     }
-  }
-
-  log(string: string) {
-    this.outputChannel.appendLine(string);
   }
 
   parserMemberPath(string: string): MemberParts {
