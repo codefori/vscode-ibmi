@@ -15,6 +15,7 @@ const Deployment = require(`./api/Deployment`);
 const { CustomUI, Field } = require(`./api/CustomUI`);
 
 import {searchView, IResult} from "./views/searchView";
+import { HelpView } from "./views/helpView";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -27,7 +28,7 @@ let selectedForCompare: vscode.Uri;
 
 let searchViewContext: searchView;
 
-export let instance = new Instance();
+export const instance = new Instance();
 
 export function setupEmitter() {
     instance.emitter = new vscode.EventEmitter();
@@ -96,8 +97,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     if (!connection) return;
     if (!config) return;
-
-    const helpView = require(`./views/helpView`);
 
     const libraryListView = require(`./views/libraryListView`);
     const profilesView = require(`./views/profilesView`);
@@ -208,7 +207,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
             `helpView`,
-            new helpView()
+            new HelpView()
           )
         );
 
