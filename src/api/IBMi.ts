@@ -1,10 +1,10 @@
 
 import * as vscode from "vscode";
 import * as node_ssh from "node-ssh";
-import Configuration from "./Configuration";
+import { ConnectionConfiguration } from "./Configuration";
 
-const Tools = require(`./Tools`);
-const path = require(`path`);
+import Tools from './Tools';
+import path from 'path';
 
 let remoteApps = [
   {
@@ -31,16 +31,16 @@ export default class IBMi {
   currentPort: number;
   currentUser: string;
   currentConnectionName: string;
-  tempRemoteFiles: {[name: string]: string};
+  tempRemoteFiles: { [name: string]: string };
   defaultUserLibraries: string[];
   outputChannel: vscode.OutputChannel;
   subscriptions: vscode.Disposable[];
-  aspInfo: {[id: number]: string};
-  qccsid: number|null;
-  remoteFeatures: {[name: string]: string|undefined};
-  variantChars: {american: string, local: string};
+  aspInfo: { [id: number]: string };
+  qccsid: number | null;
+  remoteFeatures: { [name: string]: string | undefined };
+  variantChars: { american: string, local: string };
   lastErrors: object[];
-  config?: Configuration;
+  config?: ConnectionConfiguration.Parameters;
 
   commandsExecuted: number = 0;
 
@@ -50,7 +50,7 @@ export default class IBMi {
     this.currentPort = 22;
     this.currentUser = ``;
     this.currentConnectionName = ``;
-    
+
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
 
@@ -81,24 +81,24 @@ export default class IBMi {
       american: `#@$`,
       local: `#@$`
     };
-    
+
     /** 
      * Strictly for storing errors from sendCommand.
      * Used when creating issues on GitHub.
      * */
     this.lastErrors = [];
-    
+
   }
 
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData): Promise<{success: boolean, error?: any}> {
+  async connect(connectionObject: ConnectionData): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
       if (!connectionObject.privateKey) (connectionObject.privateKey = null);
-      
+
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Connecting`,
@@ -115,7 +115,7 @@ export default class IBMi {
         this.currentUser = connectionObject.username;
 
         let tempLibrarySet = false;
-        
+
         const disconnected = async () => {
           const choice = await vscode.window.showWarningMessage(`Connection list`, {
             modal: true,
@@ -138,8 +138,7 @@ export default class IBMi {
         });
 
         //Load existing config
-        /** @type {Configuration} */
-        this.config = await Configuration.load(this.currentConnectionName);
+        this.config = await ConnectionConfiguration.load(this.currentConnectionName);
 
         progress.report({
           message: `Checking home directory.`
@@ -162,8 +161,7 @@ export default class IBMi {
           if (this.config.homeDirectory === `.`) {
             // New connections always have `.` as the initial value
             // But set the value to the real path
-            this.config.set(`homeDirectory`, defaultHomeDir);
-
+            this.config.homeDirectory = defaultHomeDir;
           } else {
             //If they have one set, check it exists.
             const pwdResult = await this.sendCommand({
@@ -171,7 +169,7 @@ export default class IBMi {
             });
             if (pwdResult.stderr) {
               //If it doesn't exist, reset it
-              this.config.set(`homeDirectory`, defaultHomeDir);
+              this.config.homeDirectory = defaultHomeDir;
               progress.report({
                 message: `Configured home directory reset to ${defaultHomeDir}.`
               });
@@ -182,9 +180,9 @@ export default class IBMi {
         //Set a default IFS listing
         if (this.config.ifsShortcuts.length === 0) {
           if (defaultHomeDir) {
-            await this.config.set(`ifsShortcuts`, [this.config.homeDirectory]);
+            this.config.ifsShortcuts = [this.config.homeDirectory];
           } else {
-            await this.config.set(`ifsShortcuts`, [`/`]);
+            this.config.ifsShortcuts = [`/`];
           }
         }
 
@@ -211,19 +209,23 @@ export default class IBMi {
               type = line.substring(12);
 
               switch (type) {
-              case `USR`:
-                this.defaultUserLibraries.push(lib);
-                break;
-                
-              case `CUR`:
-                currentLibrary = lib;
-                break;
+                case `USR`:
+                  this.defaultUserLibraries.push(lib);
+                  break;
+
+                case `CUR`:
+                  currentLibrary = lib;
+                  break;
               }
             }
 
             //If this is the first time the config is made, then these arrays will be empty
-            if (this.config.currentLibrary.length === 0) await this.config.set(`currentLibrary`, currentLibrary);
-            if (this.config.libraryList.length === 0) await this.config.set(`libraryList`, this.defaultUserLibraries);
+            if (this.config.currentLibrary.length === 0) {
+              this.config.currentLibrary = currentLibrary;
+            }
+            if (this.config.libraryList.length === 0) {
+              this.config.libraryList = this.defaultUserLibraries;
+            }
           }
         }
 
@@ -244,35 +246,35 @@ export default class IBMi {
           let [errorcode, errortext] = e.split(`:`);
 
           switch (errorcode) {
-          case `CPF2158`: //Library X exists in ASP device ASP X.
-          case `CPF2111`: //Already exists, hopefully ok :)
-            tempLibrarySet = true;
-            break;
-            
-          case `CPD0032`: //Can't use CRTLIB
-            try {
-              await this.remoteCommand(
-                `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-                undefined
-              );
-
-              //We're all good if no errors
+            case `CPF2158`: //Library X exists in ASP device ASP X.
+            case `CPF2111`: //Already exists, hopefully ok :)
               tempLibrarySet = true;
-            } catch (e) {
-              if (currentLibrary) {
-                if (currentLibrary.startsWith(`Q`)) {
-                  //Temporary library not created. Some parts of the extension will not run without a temporary library.
-                } else {
-                  this.config.tempLibrary = currentLibrary;
+              break;
 
-                  //Using ${currentLibrary} as the temporary library for temporary data.
-                  await this.config.set(`tempLibrary`, currentLibrary);
+            case `CPD0032`: //Can't use CRTLIB
+              try {
+                await this.remoteCommand(
+                  `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+                  undefined
+                );
 
-                  tempLibrarySet = true;
+                //We're all good if no errors
+                tempLibrarySet = true;
+              } catch (e) {
+                if (currentLibrary) {
+                  if (currentLibrary.startsWith(`Q`)) {
+                    //Temporary library not created. Some parts of the extension will not run without a temporary library.
+                  } else {
+                    this.config.tempLibrary = currentLibrary;
+
+                    //Using ${currentLibrary} as the temporary library for temporary data.
+                    this.config.tempLibrary = currentLibrary;
+
+                    tempLibrarySet = true;
+                  }
                 }
               }
-            }
-            break;
+              break;
           }
 
           console.log(e);
@@ -296,16 +298,16 @@ export default class IBMi {
           let result = await this.sendCommand({
             command: `mkdir -p ${this.config.tempDir}`
           });
-          if(result.code === 0) {
+          if (result.code === 0) {
             // Directory created
             tempDirSet = true;
           } else {
             // Directory not created
           }
         }
-        
+
         if (!tempDirSet) {
-          await this.config.set(`tempDir`, `/tmp`);
+          this.config.tempDir = `/tmp`;
         }
 
         if (tempLibrarySet && this.config.autoClearTempData) {
@@ -319,7 +321,7 @@ export default class IBMi {
             .then(result => {
               // All good!
             })
-            .catch(e => { 
+            .catch(e => {
               // CPF2125: No objects deleted.
               if (!e.startsWith(`CPF2125`)) {
                 // @ts-ignore We know the config exists.
@@ -332,12 +334,12 @@ export default class IBMi {
             });
 
           this.sendCommand({
-            command: `rm -f ${path.posix.join(this.config.tempDir,`vscodetemp*`)}`
+            command: `rm -f ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
           })
             .then(result => {
               // All good!
             })
-            .catch(e => { 
+            .catch(e => {
               // CPF2125: No objects deleted.
               // @ts-ignore We know the config exists.
               vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
@@ -351,7 +353,7 @@ export default class IBMi {
         progress.report({
           message: `Checking for bad data areas.`
         });
-        
+
         try {
           await this.remoteCommand(
             `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
@@ -363,20 +365,20 @@ export default class IBMi {
             modal: true,
           }, `Delete`, `Read more`).then(choice => {
             switch (choice) {
-            case `Delete`:
-              this.remoteCommand(
-                `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
-              )
-                .then(() => {
-                  vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
-                })
-                .catch(e => {
-                  vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
-                });
-              break;
-            case `Read more`:
-              vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
-              break;
+              case `Delete`:
+                this.remoteCommand(
+                  `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
+                )
+                  .then(() => {
+                    vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                  })
+                  .catch(e => {
+                    vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                  });
+                break;
+              case `Read more`:
+                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                break;
             }
           });
         } catch (e) {
@@ -393,20 +395,20 @@ export default class IBMi {
             modal: false,
           }, `Delete`, `Read more`).then(choice => {
             switch (choice) {
-            case `Delete`:
-              this.remoteCommand(
-                `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
-              )
-                .then(() => {
-                  vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
-                })
-                .catch(e => {
-                  vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
-                });
-              break;
-            case `Read more`:
-              vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
-              break;
+              case `Delete`:
+                this.remoteCommand(
+                  `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
+                )
+                  .then(() => {
+                    vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                  })
+                  .catch(e => {
+                    vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                  });
+                break;
+              case `Read more`:
+                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                break;
             }
           });
         } catch (e) {
@@ -432,7 +434,7 @@ export default class IBMi {
             progress.report({
               message: `Checking installed components on host IBM i: ${feature.path}`
             });
-        
+
             const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
             if (typeof call === `string`) {
               const files = call.split(`\n`);
@@ -492,7 +494,7 @@ export default class IBMi {
             const CCSID_SYSVAL = -2;
             statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
             output = await this.sendCommand({
-              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, 
+              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
               stdin: statement
             });
 
@@ -509,7 +511,7 @@ export default class IBMi {
                 command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
                 stdin: statement
               });
-              
+
               if (output.stdout) {
                 const rows = Tools.db2Parse(output.stdout);
                 const ccsid = rows.find((row: any) => row.SYSTEM_VALUE_NAME === `QCCSID`);
@@ -520,21 +522,21 @@ export default class IBMi {
             }
 
             if (this.config.enableSQL && this.qccsid === 65535) {
-              await this.config.set(`enableSQL`, false);
+              this.config.enableSQL = false;
               vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
             }
 
             progress.report({
               message: `Fetching local encoding values.`
             });
-  
+
             statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-                      + `  values ( cast( x'7B' as varchar(1) )` 
-                      + `         , cast( x'7C' as varchar(1) )`
-                      + `         , cast( x'5B' as varchar(1) ) )`
-                      + `)`
-                      + `select HASH concat AT concat DOLLARSIGN as LOCAL`
-                      + `  from VARIANTS; `;
+              + `  values ( cast( x'7B' as varchar(1) )`
+              + `         , cast( x'7C' as varchar(1) )`
+              + `         , cast( x'5B' as varchar(1) ) )`
+              + `)`
+              + `select HASH concat AT concat DOLLARSIGN as LOCAL`
+              + `  from VARIANTS; `;
             output = await this.sendCommand({
               command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
               stdin: statement
@@ -558,7 +560,7 @@ export default class IBMi {
             progress.report({
               message: `SQL program not installed. Disabling SQL.`
             });
-            await this.config.set(`enableSQL`, false);
+            this.config.enableSQL = false;
           }
         }
 
@@ -574,9 +576,9 @@ export default class IBMi {
             vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
               .then(result => {
                 switch (result) {
-                case `Open Settings`:
-                  vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
-                  break;
+                  case `Open Settings`:
+                    vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                    break;
                 }
               });
           }
@@ -601,6 +603,9 @@ export default class IBMi {
         success: false,
         error: e
       };
+    }
+    finally{
+      ConnectionConfiguration.update(this.config!);
     }
   }
 
@@ -636,7 +641,7 @@ export default class IBMi {
   /**
    * @deprecated Use sendCommand instead
    */
-  async paseCommand(command: string, directory = this.config?.homeDirectory, returnType = 0, standardIO: StandardIO = {}): Promise<String|CommandResult> {
+  async paseCommand(command: string, directory = this.config?.homeDirectory, returnType = 0, standardIO: StandardIO = {}): Promise<String | CommandResult> {
     const result = await this.sendCommand({
       command,
       directory,
@@ -709,12 +714,12 @@ export default class IBMi {
       console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
       return this.tempRemoteFiles[key];
     } else
-    if (this.config) {
-      let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
-      console.log(`Using new temp: ` + value);
-      this.tempRemoteFiles[key] = value;
-      return value;
-    }
+      if (this.config) {
+        let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
+        console.log(`Using new temp: ` + value);
+        this.tempRemoteFiles[key] = value;
+        return value;
+      }
   }
 
   parserMemberPath(string: string): MemberParts {
@@ -806,5 +811,5 @@ export default class IBMi {
 
     return result;
   }
-  
+
 }
