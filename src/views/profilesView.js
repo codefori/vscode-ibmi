@@ -33,7 +33,7 @@ module.exports = class profilesProvider {
         let currentProfiles = config.connectionProfiles;
 
         const profileName = profileNode ? profileNode.profile : await vscode.window.showInputBox({
-		      value: currentProfile,						
+	  value: typeof currentProfile === `object` ? `` : currentProfile,
           prompt: `Name of profile`
         });
 
