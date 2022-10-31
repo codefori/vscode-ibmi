@@ -989,11 +989,11 @@ module.exports = class objectBrowserTwoProvider {
    */
   storeMemberList(path, list) {
     const storage = instance.getStorage();
-    const existingDirs = storage.get(`sourceList`);
+    const existingDirs = storage.getSourceList();
 
     existingDirs[path] = list;
 
-    return storage.set(`sourceList`, existingDirs);
+    return storage.setSourceList(existingDirs);
   }
 }
 

@@ -4,7 +4,7 @@ import Configuration from "./api/Configuration";
 import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
-import Storage from "./api/Storage";
+import {Storage} from "./api/Storage";
 const path = require(`path`);
 
 const CompileTools = require(`./api/CompileTools`);
@@ -364,12 +364,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           const storage = instance.getStorage();
           if (!storage) return;
 
-          const sources = storage.get(`sourceList`);
+          const sources = storage.getSourceList();
           const dirs = Object.keys(sources);
           let list: string[] = [];
 
           dirs.forEach(dir => {
-            sources[dir].forEach((source: string) => {
+            sources[dir].forEach(source => {
               list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
             });
           });
@@ -389,7 +389,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selection = quickPick.selectedItems[0].label;
             if (selection) {
               if (selection === `Clear list`) {
-                storage.set(`sourceList`, {});
+                storage.setSourceList({});
                 vscode.window.showInformationMessage(`Cleared list.`);
               } else {
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);

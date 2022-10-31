@@ -4,16 +4,14 @@ const vscode = require(`vscode`);
 
 const {default: IBMi} = require(`./IBMi`);
 const Configuration = require(`./Configuration`);
-const Storage = require(`./Storage`);
 const CompileTools = require(`./CompileTools`);
 
 const localLanguageActions = require(`../schemas/localLanguageActions`);
+const { Storage } = require(`./Storage`);
 
 const ignore = require(`ignore`).default;
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
-
-const DEPLOYMENT_KEY = `deployment`;
 
 const BUTTON_BASE = `$(cloud-upload) Deploy`;
 const BUTTON_WORKING = `$(sync~spin) Deploying`;
@@ -104,7 +102,7 @@ module.exports = class Deployment {
         }
 
         if (folder) {
-          const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
+          const existingPaths = storage.getDeployment();
           const remotePath = existingPaths[folder.uri.fsPath];
 
           // get the .gitignore file from workspace
@@ -381,9 +379,9 @@ module.exports = class Deployment {
           const chosenWorkspaceFolder = await Deployment.getWorkspaceFolder();
 
           if (chosenWorkspaceFolder) {
-            const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
+            const existingPaths = storage.getDeployment();
             existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
-            await storage.set(DEPLOYMENT_KEY, existingPaths);
+            await storage.setDeployment(existingPaths);
 
             vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`).then(async (choice) => {
               if (choice === `Deploy now`) {
@@ -429,7 +427,7 @@ module.exports = class Deployment {
     /** @type {Storage} */
     const storage = instance.getStorage();
 
-    const existingPaths = storage.get(DEPLOYMENT_KEY) || {};
+    const existingPaths = storage.getDeployment();
 
     if (workspaces && workspaces.length === 1) {
       const workspace = workspaces[0];
@@ -448,7 +446,7 @@ module.exports = class Deployment {
 
             existingPaths[workspace.uri.fsPath] = possibleDeployDir;
             try {
-              await storage.set(DEPLOYMENT_KEY, existingPaths);
+              await storage.setDeployment(existingPaths);
             } catch (e) {
               console.log(e);
             }

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import IBMi from "./IBMi";
 import IBMiContent from "./IBMiContent";
-import Storage from "./Storage";
+import {Storage} from "./Storage";
 
 export default class Instance {
     connection: IBMi|undefined;

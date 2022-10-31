@@ -26,8 +26,9 @@ module.exports = class libraryListProvider {
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
         const connection = instance.getConnection();
         const config = instance.getConfig();
+        const storage = instance.getStorage();
         const currentLibrary = config.currentLibrary.toUpperCase();
-        let prevCurLibs = Object.values(instance.getStorage().get(`prevCurLibs`));
+        let prevCurLibs = storage.getPreviousCurLibs();
         let list = [...prevCurLibs];
         const listHeader = [
           { label: `Currently active`, kind: vscode.QuickPickItemKind.Separator },
@@ -50,12 +51,12 @@ module.exports = class libraryListProvider {
               .concat(list.map(lib => ({ label : lib })))
           }
         })
-
+        
         quickPick.onDidAccept( async () => {
           const newLibrary = quickPick.selectedItems[0].label;
           if (newLibrary) {
             if (newLibrary === clearList) {
-              await instance.getStorage().set(`prevCurLibs`, {});
+              await storage.setPreviousCurLibs([]);
               list = [];
               quickPick.items = list.map(lib => ({ label: lib }));
               vscode.window.showInformationMessage(`Cleared list.`);
@@ -75,7 +76,7 @@ module.exports = class libraryListProvider {
                   vscode.window.showInformationMessage(`Changed current library to ${newLibrary}.`);
                   prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
                   prevCurLibs.splice(0, 0, currentLibrary);
-                  await instance.getStorage().set(`prevCurLibs`, prevCurLibs);
+                  await storage.setPreviousCurLibs(prevCurLibs);
                   if (Configuration.get(`autoRefresh`)) this.refresh();
                 }
               } else {
