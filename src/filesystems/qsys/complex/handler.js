@@ -1,5 +1,4 @@
 const vscode = require(`vscode`);
-const Tools = require(`../../../api/Tools`);
 
 const {instance} = require(`../../../Instance`);
 

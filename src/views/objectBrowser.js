@@ -12,7 +12,6 @@ let {instance, setSearchResults} = require(`../Instance`);
 const Configuration = require(`../api/Configuration`);
 
 const Search = require(`../api/Search`);
-const Tools = require(`../api/Tools`);
 
 module.exports = class objectBrowserTwoProvider {
   /**

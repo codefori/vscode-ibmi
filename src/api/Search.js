@@ -2,7 +2,7 @@
 const Configuration = require(`./Configuration`);
 const {default: IBMi} = require(`./IBMi`);
 const IBMiContent = require(`./IBMiContent`);
-const Tools = require(`./Tools`);
+const {Tools} = require(`./Tools`);
 
 module.exports = class Search {
   /**

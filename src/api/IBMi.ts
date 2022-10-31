@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import * as node_ssh from "node-ssh";
 import Configuration from "./Configuration";
 
-const Tools = require(`./Tools`);
+import {Tools} from './Tools';
 const path = require(`path`);
 
 let remoteApps = [
@@ -498,7 +498,7 @@ export default class IBMi {
 
             if (output.stdout) {
               const [row] = Tools.db2Parse(output.stdout);
-              if (row && row.CHARACTER_CODE_SET_ID !== `null`) {
+              if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
                 this.qccsid = row.CHARACTER_CODE_SET_ID;
               }
             }
@@ -512,8 +512,8 @@ export default class IBMi {
               
               if (output.stdout) {
                 const rows = Tools.db2Parse(output.stdout);
-                const ccsid = rows.find((row: any) => row.SYSTEM_VALUE_NAME === `QCCSID`);
-                if (ccsid) {
+                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
                   this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
                 }
               }
@@ -541,7 +541,7 @@ export default class IBMi {
             });
             if (output.stdout) {
               const [row] = Tools.db2Parse(output.stdout);
-              if (row && row.LOCAL !== `null`) {
+              if (row && row.LOCAL !== `null` && typeof row.LOCAL === 'string') {
                 this.variantChars.local = row.LOCAL;
               }
             } else {
