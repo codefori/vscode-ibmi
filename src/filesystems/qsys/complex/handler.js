@@ -1,6 +1,5 @@
 const vscode = require(`vscode`);
 const { ConnectionConfiguration } = require(`../../../api/Configuration`);
-
 const {instance} = require(`../../../Instance`);
 
 let { allSourceDates, recordLengths, getAliasName } = require(`./data`);
