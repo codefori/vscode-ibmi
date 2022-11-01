@@ -1,5 +1,6 @@
 /** @type {{[language: string]: Action[]}} */
-module.exports = {
+
+export const LocalLanguageActions : Record<string, Action[]> = {
   RPGLE: [
     {
       name: `Create RPGLE Program`,
