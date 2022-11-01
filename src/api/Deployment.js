@@ -97,7 +97,7 @@ module.exports = class Deployment {
         /** @type {vscode.WorkspaceFolder} */
         let folder;
 
-        if (workspaceIndex) {
+        if (workspaceIndex >= 0) {
           folder = vscode.workspace.workspaceFolders.find(dir => dir.index === workspaceIndex);
         } else {
           folder = await Deployment.getWorkspaceFolder();
@@ -456,7 +456,7 @@ module.exports = class Deployment {
         });
       }
 
-      CompileTools.getLocalActions().then(result => {
+      CompileTools.getLocalActions(workspace).then(result => {
         if (result.length === 0) {
           vscode.window.showInformationMessage(
             `There are no local Actions defined for this project.`,
