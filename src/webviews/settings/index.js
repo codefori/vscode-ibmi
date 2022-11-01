@@ -194,7 +194,7 @@ module.exports = class SettingsUI {
         field = new Field(`submit`, `save`, `Save settings`);
         ui.addField(field);
     
-        let {panel, data} = await ui.loadPage(`ConnectionConfiguration: ${name}`);
+        let {panel, data} = await ui.loadPage(`Settings: ${name}`);
     
         if (data) {
           panel.dispose();
@@ -281,7 +281,7 @@ module.exports = class SettingsUI {
 
           ui.addField(new Field(`submit`, `submitButton`, `Save`));
 
-          const {panel, data} = await ui.loadPage(`Login ConnectionConfiguration: ${name}`);
+          const {panel, data} = await ui.loadPage(`Login Settings: ${name}`);
 
           if (data) {
             panel.dispose();
