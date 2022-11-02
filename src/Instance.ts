@@ -9,7 +9,7 @@ const path = require(`path`);
 
 const CompileTools = require(`./api/CompileTools`);
 
-const Terminal = require(`./api/terminal`);
+import {Terminal} from './api/terminal';
 const Deployment = require(`./api/Deployment`);
 
 const { CustomUI, Field } = require(`./api/CustomUI`);
