@@ -537,7 +537,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }),
 
           vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-            Terminal.select(instance);
+            Terminal.selectAndOpen(instance);
           }),
 
           vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
