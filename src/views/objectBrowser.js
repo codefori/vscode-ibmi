@@ -9,10 +9,8 @@ const writeFileAsync = util.promisify(fs.writeFile);
 const FiltersUI = require(`../webviews/filters`);
 
 let {instance, setSearchResults} = require(`../Instance`);
-const Configuration = require(`../api/Configuration`);
-
+const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
 const Search = require(`../api/Search`);
-const Tools = require(`../api/Tools`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -36,6 +34,7 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteFilter`, async (node) => {
         if (node) {
+          /** @type {ConnectionConfiguration.Parameters} */
           const config = instance.getConfig();
           const filterName = node.filter;
 
@@ -45,7 +44,7 @@ module.exports = class objectBrowserTwoProvider {
 
               if (index > -1) {
                 config.objectFilters.splice(index, 1);
-                config.set(`objectFilters`, config.objectFilters);
+                await ConnectionConfiguration.update(config);
                 this.refresh();
               }
             }
@@ -57,7 +56,7 @@ module.exports = class objectBrowserTwoProvider {
         if (node) {
           try {
             await this.moveFilterInList(node.filter, `UP`);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           } catch(e) {
             console.log(e);
           };
@@ -68,7 +67,7 @@ module.exports = class objectBrowserTwoProvider {
         if (node) {
           try {
             await this.moveFilterInList(node.filter, `DOWN`);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           } catch(e) {
             console.log(e);
           };
@@ -79,7 +78,7 @@ module.exports = class objectBrowserTwoProvider {
         if (node) {
           try {
             await this.moveFilterInList(node.filter, `TOP`);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           } catch(e) {
             console.log(e);
           };
@@ -90,7 +89,7 @@ module.exports = class objectBrowserTwoProvider {
         if (node) {
           try {
             await this.moveFilterInList(node.filter, `BOTTOM`);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           } catch(e) {
             console.log(e);
           };
@@ -98,6 +97,7 @@ module.exports = class objectBrowserTwoProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.sortFilters`, async (node) => {
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
 
         let objectFilters = config.objectFilters;
@@ -110,8 +110,9 @@ module.exports = class objectBrowserTwoProvider {
           return 0;
         });
 
-        await config.set(`objectFilters`, objectFilters);
-        if (Configuration.get(`autoRefresh`)) this.refresh();
+        config.objectFilters = objectFilters;
+        await ConnectionConfiguration.update(config);
+        if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, async () => {
@@ -157,11 +158,11 @@ module.exports = class objectBrowserTwoProvider {
                   `ADDPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`
                 )
 
-                if (Configuration.get(`autoOpenFile`)) {
+                if (GlobalConfiguration.get(`autoOpenFile`)) {
                   vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
                 }
 
-                if (Configuration.get(`autoRefresh`)) {
+                if (GlobalConfiguration.get(`autoRefresh`)) {
                   this.refresh();
                 }
               } catch (e) {
@@ -255,11 +256,11 @@ module.exports = class objectBrowserTwoProvider {
                   );
                 }
 
-                if (Configuration.get(`autoOpenFile`)) {
+                if (GlobalConfiguration.get(`autoOpenFile`)) {
                   vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
                 }
 
-                if (Configuration.get(`autoRefresh`)) {
+                if (GlobalConfiguration.get(`autoRefresh`)) {
                   this.refresh();
                 }
               } catch (e) {
@@ -291,7 +292,7 @@ module.exports = class objectBrowserTwoProvider {
 
               vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-              if (Configuration.get(`autoRefresh`)) {
+              if (GlobalConfiguration.get(`autoRefresh`)) {
                 this.refresh();
               }
             } catch (e) {
@@ -323,7 +324,7 @@ module.exports = class objectBrowserTwoProvider {
                 `CHGPFM FILE(${library}/${file}) MBR(${member}) TEXT('${escapedText}')`,
               );
 
-              if (Configuration.get(`autoRefresh`)) {
+              if (GlobalConfiguration.get(`autoRefresh`)) {
                 this.refresh();
               }
             } catch (e) {
@@ -376,7 +377,7 @@ module.exports = class objectBrowserTwoProvider {
                       `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
                     );
                   }
-                  if (Configuration.get(`autoRefresh`)) {
+                  if (GlobalConfiguration.get(`autoRefresh`)) {
                     this.refresh();
                   }
                   else vscode.window.showInformationMessage(`Renamed member. Refresh object browser.`);
@@ -446,6 +447,7 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node) => {
         if (node) {
+          /** @type {ConnectionConfiguration.Parameters} */
           const config = instance.getConfig();
           const content = instance.getContent();
 
@@ -552,6 +554,7 @@ module.exports = class objectBrowserTwoProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createLibrary`, async () => {
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
         const connection = instance.getConnection();
 
@@ -582,8 +585,9 @@ module.exports = class objectBrowserTwoProvider {
             memberType: `*`
           });
 
-          await config.set(`objectFilters`, filters);
-          if (Configuration.get(`autoRefresh`)) this.refresh();
+          config.objectFilters = filters;
+          ConnectionConfiguration.update(config);
+          if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
 
           // Add to library list ?
           await vscode.window.showInformationMessage(`Would you like to add the new library to the library list?`, `Yes`, `No`)
@@ -591,7 +595,7 @@ module.exports = class objectBrowserTwoProvider {
               switch (result) {
               case `Yes`:
                 await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`,newLibrary);
-                if (Configuration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+                if (GlobalConfiguration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
 
                 break;
               }
@@ -604,6 +608,7 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node) => {
         if (node) {
+          /** @type {ConnectionConfiguration.Parameters} */
           const config = instance.getConfig();
           const filter = config.objectFilters.find(filter => filter.name === node.filter);
 
@@ -626,7 +631,7 @@ module.exports = class objectBrowserTwoProvider {
                   `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`
                 );
 
-                if (Configuration.get(`autoRefresh`)) {
+                if (GlobalConfiguration.get(`autoRefresh`)) {
                   this.refresh();
                 }
               } catch (e) {
@@ -665,7 +670,7 @@ module.exports = class objectBrowserTwoProvider {
                 await connection.remoteCommand(
                   `CHGOBJD OBJ(${node.path}) OBJTYPE(*${node.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
                 );
-                if (Configuration.get(`autoRefresh`)) {
+                if (GlobalConfiguration.get(`autoRefresh`)) {
                   vscode.window.showInformationMessage(`Changed object description for ${node.path} *${node.type}.`);
                   this.refresh();
                 } else {
@@ -710,7 +715,7 @@ module.exports = class objectBrowserTwoProvider {
                 await connection.remoteCommand(
                   `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
                 );
-                if (Configuration.get(`autoRefresh`)) {
+                if (GlobalConfiguration.get(`autoRefresh`)) {
                   vscode.window.showInformationMessage(`Copied object ${node.path} *${node.type} to ${escapedPath}.`);
                   this.refresh();
                 } else {
@@ -745,7 +750,7 @@ module.exports = class objectBrowserTwoProvider {
 
               vscode.window.showInformationMessage(`Deleted ${node.path} *${node.type}.`);
 
-              if (Configuration.get(`autoRefresh`)) {
+              if (GlobalConfiguration.get(`autoRefresh`)) {
                 this.refresh();
               }
             } catch (e) {
@@ -781,7 +786,7 @@ module.exports = class objectBrowserTwoProvider {
                 await connection.remoteCommand(
                   `RNMOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) NEWOBJ(${escapedObject})`
                 );
-                if (Configuration.get(`autoRefresh`)) {
+                if (GlobalConfiguration.get(`autoRefresh`)) {
                   vscode.window.showInformationMessage(`Renamed object ${node.path} *${node.type} to ${escapedObject}.`);
                   this.refresh();
                 } else {
@@ -822,7 +827,7 @@ module.exports = class objectBrowserTwoProvider {
                 await connection.remoteCommand(
                   `MOVOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) TOLIB(${newLibrary})`
                 );
-                if (Configuration.get(`autoRefresh`)) {
+                if (GlobalConfiguration.get(`autoRefresh`)) {
                   vscode.window.showInformationMessage(`Moved object ${node.path} *${node.type} to ${escapedLibrary}.`);
                   this.refresh();
                 } else {
@@ -845,7 +850,8 @@ module.exports = class objectBrowserTwoProvider {
   async moveFilterInList(filterName, filterMovement) {
     filterMovement = filterMovement.toUpperCase();
     if (![`TOP`, `UP`, `DOWN`, `BOTTOM`].includes(filterMovement)) throw `Illegal filter movement value specified`;
-
+    
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     let objectFilters = config.objectFilters;
@@ -874,7 +880,8 @@ module.exports = class objectBrowserTwoProvider {
     const filter = objectFilters[from];
     objectFilters.splice(from, 1);
     objectFilters.splice(to, 0, filter);
-    await config.set(`objectFilters`, objectFilters);
+    config.objectFilters = objectFilters;
+    await ConnectionConfiguration.update(config);
   }
 
   refresh() {
@@ -895,9 +902,10 @@ module.exports = class objectBrowserTwoProvider {
    */
   async getChildren(element) {
     const content = instance.getContent();
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
-    const objectNamesLower = Configuration.get(`ObjectBrowser.showNamesInLowercase`);
-    const objectSortOrder = Configuration.get(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+    const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
+    const objectSortOrder = GlobalConfiguration.get(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
     let items = [], item;
 
     if (element) {
@@ -955,7 +963,8 @@ module.exports = class objectBrowserTwoProvider {
                 }
               });
 
-              config.set(`enableSQL`, false);
+              config.enableSQL = false;
+              await ConnectionConfiguration.update(config);
               this.refresh();
             }
           } else {

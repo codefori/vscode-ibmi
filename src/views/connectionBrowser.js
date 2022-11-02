@@ -1,8 +1,7 @@
 
 const vscode = require(`vscode`);
 
-const Configuration = require(`../api/Configuration`);
-
+const {GlobalConfiguration} = require(`../api/Configuration`);
 const LoginPanel = require(`../webviews/login`);
 const settingsUI = require(`../webviews/settings`);
 
@@ -57,14 +56,14 @@ module.exports = class objectBrowserProvider {
           ).then(async (value) => {
             if (value === `Yes`) {
               // First remove the connection details
-              const connections = Configuration.get(`connections`);
+              const connections = GlobalConfiguration.get(`connections`);
               const newConnections = connections.filter(connection => connection.name !== element.label);
-              await Configuration.setGlobal(`connections`, newConnections);
+              await GlobalConfiguration.set(`connections`, newConnections);
 
               // Also remove the connection settings
-              const connectionSettings = Configuration.get(`connectionSettings`);
+              const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
               const newConnectionSettings = connectionSettings.filter(connection => connection.name !== element.label);
-              await Configuration.setGlobal(`connectionSettings`, newConnectionSettings);
+              await GlobalConfiguration.set(`connectionSettings`, newConnectionSettings);
 
               // Then remove the password
               context.secrets.delete(`${element.label}_password`);
@@ -95,7 +94,7 @@ module.exports = class objectBrowserProvider {
   async getChildren() {
     let items = [];
 
-    const connections = Configuration.get(`connections`);
+    const connections = GlobalConfiguration.get(`connections`);
 
     for (const connection of connections) {
       items.push(new Server(connection.name, connection.username, connection.host));

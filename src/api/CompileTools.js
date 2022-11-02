@@ -6,7 +6,7 @@ const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
 const errorHandlers = require(`./errors/index`);
 const {default: IBMi} = require(`./IBMi`);
-const Configuration = require(`./Configuration`);
+const {GlobalConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 
 const diagnosticSeverity = {
@@ -80,7 +80,7 @@ module.exports = class CompileTools {
       outputBarItem.text = `$(three-bars) Output`;
     }
 
-    if (Configuration.get(`logCompileOutput`)) {
+    if (GlobalConfiguration.get(`logCompileOutput`)) {
       outputBarItem.show();
     }
   }
@@ -99,7 +99,7 @@ module.exports = class CompileTools {
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
@@ -108,7 +108,7 @@ module.exports = class CompileTools {
     const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
     let errors;
-    if (Configuration.get(`tryNewErrorParser`)) {
+    if (GlobalConfiguration.get(`tryNewErrorParser`)) {
       errors = errorHandlers.new(lines);
     } else {
       errors = errorHandlers.old(lines);
@@ -197,7 +197,7 @@ module.exports = class CompileTools {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     
     /** @type {{[name: string]: string}} */
@@ -246,7 +246,7 @@ module.exports = class CompileTools {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
@@ -255,7 +255,7 @@ module.exports = class CompileTools {
     const allActions = [];
 
     // First we grab the predefined Actions in the VS Code settings
-    const allDefinedActions = Configuration.get(`actions`);
+    const allDefinedActions = GlobalConfiguration.get(`actions`);
     allActions.push(...allDefinedActions);
 
     // Then, if we're being called from a local file
@@ -278,7 +278,7 @@ module.exports = class CompileTools {
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
-      if (Configuration.get(`clearOutputEveryTime`)) {
+      if (GlobalConfiguration.get(`clearOutputEveryTime`)) {
         outputChannel.clear();
       }
 
@@ -487,7 +487,7 @@ module.exports = class CompileTools {
                 executed = false;
                 vscode.window.showErrorMessage(
                   `Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`,
-                  Configuration.get(`logCompileOutput`) ? `Show Output` : undefined
+                  GlobalConfiguration.get(`logCompileOutput`) ? `Show Output` : undefined
                 ).then(async (item) => {
                   if (item === `Show Output`) {
                     this.showOutput();
@@ -574,7 +574,7 @@ module.exports = class CompileTools {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     
     const cwd = options.cwd;
@@ -657,7 +657,7 @@ module.exports = class CompileTools {
             `liblist -c ` + config.currentLibrary.replace(/\$/g, `\\$`),
             `liblist -a ` + libl.join(` `).replace(/\$/g, `\\$`),
             ...commands.map(command => 
-              `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
+              `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
             ),
           ],
           directory: cwd,

@@ -1,14 +1,15 @@
 // The module 'vscode' contains the VS Code extensibility API
-import {ExtensionContext, window, commands, workspace} from "vscode";
+import { ExtensionContext, window, commands, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import {setupEmitter, instance, setConnection, loadAllofExtension} from './Instance';
-import {CustomUI, Field} from "./api/CustomUI";
+import { setupEmitter, instance, setConnection, loadAllofExtension } from './Instance';
+import { CustomUI, Field } from "./api/CustomUI";
 
 import connectionBrowser from "./views/connectionBrowser";
 import IBMi from "./api/IBMi";
+import { ConnectionConfiguration } from "./api/Configuration";
 
 export function activate(context: ExtensionContext) {
 
@@ -25,7 +26,7 @@ export function activate(context: ExtensionContext) {
       new connectionBrowser(context)
     ),
 
-    commands.registerCommand(`code-for-ibmi.connectDirect`, 
+    commands.registerCommand(`code-for-ibmi.connectDirect`,
       /**
        * @param {ConnectionData} connectionData 
        * @returns {Promise<Boolean>}
@@ -51,17 +52,15 @@ export function activate(context: ExtensionContext) {
       if (connection) {
         const config = instance.getConfig();
 
-        if (config) {
-          if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
-            await config.reload();
-          }
+        if (config && event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
+          Object.assign(config, (await ConnectionConfiguration.load(config.name)));
         }
       }
     })
   )
 
-  return {instance, CustomUI, Field, baseContext: context};
+  return { instance, CustomUI, Field, baseContext: context };
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

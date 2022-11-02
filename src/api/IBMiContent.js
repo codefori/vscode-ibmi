@@ -257,7 +257,7 @@ module.exports = class IBMiContent {
    */
   async getLibraryList(libraries) {
     const config = this.ibmi.config;
-    const tempLib = this.ibmi.config.tempLibrary;
+    const tempLib = config.tempLibrary;
     const TempName = Tools.makeid();
     let results;
 
