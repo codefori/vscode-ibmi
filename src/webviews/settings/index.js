@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-const Configuration = require(`../../api/Configuration`);
+const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
 let {instance} = require(`../../Instance`);
 
 module.exports = class SettingsUI {
@@ -15,11 +15,12 @@ module.exports = class SettingsUI {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server) => {
-        const connectionSettings = Configuration.get(`connectionSettings`);
+        const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
         const connection = instance.getConnection();
 
         let name;
         let existingConfigIndex;
+        /** @type {ConnectionConfiguration.Parameters} */
         let config;
 
         if (server) {
@@ -35,7 +36,7 @@ module.exports = class SettingsUI {
 
         } else {
           if (connection) {
-            config = await instance.getConfig();
+            config = instance.getConfig();
             name = config.name;
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
@@ -219,7 +220,7 @@ module.exports = class SettingsUI {
               };
 
               connectionSettings[existingConfigIndex] = config;
-              await Configuration.setGlobal(`connectionSettings`, connectionSettings);
+              await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
             }
           } else {
             if (connection) {
@@ -227,7 +228,8 @@ module.exports = class SettingsUI {
                 restart = true;
               }
               
-              await config.setMany(data);
+              Object.assign(config, data);
+              await ConnectionConfiguration.update(config);
             }
           }
 
@@ -244,7 +246,7 @@ module.exports = class SettingsUI {
 
       vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server) => {
         if (server) {
-          const connections = Configuration.get(`connections`);
+          const connections = GlobalConfiguration.get(`connections`);
           const name = server.name;
 
           const connectionIdx = connections.findIndex(item => item.name === name);
@@ -300,7 +302,7 @@ module.exports = class SettingsUI {
             };
 
             connections[connectionIdx] = connection;
-            await Configuration.setGlobal(`connections`, connections);
+            await GlobalConfiguration.set(`connections`, connections);
           }
         }
       })

@@ -1,21 +1,21 @@
 
 import * as vscode from "vscode";
-import Configuration from "./api/Configuration";
 import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
 import Storage from "./api/Storage";
-const path = require(`path`);
+import path from 'path';
 
 const CompileTools = require(`./api/CompileTools`);
 
 const Terminal = require(`./api/terminal`);
 const Deployment = require(`./api/Deployment`);
 
-const { CustomUI, Field } = require(`./api/CustomUI`);
+import { CustomUI, Field } from './api/CustomUI';
 
 import {searchView, IResult} from "./views/searchView";
 import { HelpView } from "./views/helpView";
+import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -128,7 +128,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         context.subscriptions.push(reconnectBarItem);
       }
 
-      if (Configuration.get(`showConnectionButtons`)) {
+      if (GlobalConfiguration.get<boolean>(`showConnectionButtons`)) {
         reconnectBarItem.tooltip = `Force reconnect to system.`;
         reconnectBarItem.text = `$(extensions-remote)`;
         reconnectBarItem.show();
@@ -155,7 +155,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         context.subscriptions.push(disconnectBarItem);
       }
 
-      if (Configuration.get(`showConnectionButtons`)) {
+      if (GlobalConfiguration.get<boolean>(`showConnectionButtons`)) {
         disconnectBarItem.tooltip = `Disconnect from system.`;
         disconnectBarItem.text = `$(debug-disconnect)`;
         disconnectBarItem.show();
@@ -408,7 +408,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         }
 
         // ********* Color provider */
-        if (Configuration.get(`showSeuColors`)) {
+        if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
           new ColorProvider(context);
         }
 
@@ -446,7 +446,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                       willRun = true;
                       break;
                     case `Save automatically`:
-                      config.set(`autoSaveBeforeAction`, true);
+                      config.autoSaveBeforeAction = true;
+                      await ConnectionConfiguration.update(config);
                       await editor.document.save();
                       willRun = true;
                       break;
@@ -563,11 +564,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               fields.forEach((field: any) => {
                 const uiField = new Field(field.type, field.id, field.label);
-                Object.keys(field).forEach(key => {
-                  uiField[key] = field[key];
-                });
-
-                ui.addField(uiField);
+                ui.addField(Object.assign(uiField, field));
               });
 
               ui.loadPage(title, callback);

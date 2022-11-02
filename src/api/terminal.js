@@ -1,6 +1,5 @@
 
 const vscode = require(`vscode`);
-const Configuration = require(`./Configuration`);
 const {default: IBMi} = require(`./IBMi`);
 
 module.exports = class Terminal {
@@ -8,7 +7,7 @@ module.exports = class Terminal {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const configuration = instance.getConfig();
 
     const types = [`PASE`, `5250`];

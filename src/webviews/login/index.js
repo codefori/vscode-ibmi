@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 
 const {default: IBMi} = require(`../../api/IBMi`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
-const Configuration = require(`../../api/Configuration`);
+const {GlobalConfiguration} = require(`../../api/Configuration`);
 
 let {instance, disconnect, setConnection, loadAllofExtension} = require(`../../Instance`);
 
@@ -18,7 +18,7 @@ module.exports = class Login {
       if (!disconnect()) return;
     }
 
-    let existingConnections = Configuration.get(`connections`);
+    let existingConnections = GlobalConfiguration.get(`connections`);
 
     let ui = new CustomUI();
 
@@ -72,7 +72,7 @@ module.exports = class Login {
 
             if(data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
 
-            await Configuration.setGlobal(`connections`, existingConnections);
+            await GlobalConfiguration.set(`connections`, existingConnections);
             vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
           }
 
@@ -143,7 +143,7 @@ module.exports = class Login {
       }
     }
 
-    const existingConnections = Configuration.get(`connections`);
+    const existingConnections = GlobalConfiguration.get(`connections`);
     let connectionConfig = existingConnections.find(item => item.name === name);
  
     if (connectionConfig) {

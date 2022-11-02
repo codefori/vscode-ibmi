@@ -3,12 +3,11 @@ const path = require(`path`);
 const vscode = require(`vscode`);
 
 const {default: IBMi} = require(`./IBMi`);
-const Configuration = require(`./Configuration`);
 const Storage = require(`./Storage`);
 const CompileTools = require(`./CompileTools`);
 
 const localLanguageActions = require(`../schemas/localLanguageActions`);
-
+const { ConnectionConfiguration } = require(`./Configuration`);
 const ignore = require(`ignore`).default;
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
@@ -97,7 +96,7 @@ module.exports = class Deployment {
         /** @type {vscode.WorkspaceFolder} */
         let folder;
 
-        if (workspaceIndex) {
+        if (workspaceIndex >= 0) {
           folder = vscode.workspace.workspaceFolders.find(dir => dir.index === workspaceIndex);
         } else {
           folder = await Deployment.getWorkspaceFolder();
@@ -152,16 +151,15 @@ module.exports = class Deployment {
               /** @type {IBMi} */
               const ibmi = instance.getConnection();
 
-              /** @type {Configuration} */
+              /** @type {ConnectionConfiguration.Parameters} */
               const config = instance.getConfig();
 
               const isIFS = remotePath.startsWith(`/`);
 
-              if (isIFS) {
-                if (config.homeDirectory !== remotePath) {
-                  await config.set(`homeDirectory`, remotePath);
-                  vscode.window.showInformationMessage(`Home directory set to ${remotePath} for deployment.`);
-                }
+              if (isIFS && config && config.homeDirectory !== remotePath) {
+                config.homeDirectory = remotePath;
+                await ConnectionConfiguration.update(config);
+                vscode.window.showInformationMessage(`Home directory set to ${remotePath} for deployment.`);
               }
 
               const client = ibmi.client;
@@ -424,7 +422,7 @@ module.exports = class Deployment {
 
     /** @type {IBMi} */
     const connection = instance.getConnection();
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     /** @type {Storage} */
     const storage = instance.getStorage();
@@ -456,7 +454,7 @@ module.exports = class Deployment {
         });
       }
 
-      CompileTools.getLocalActions().then(result => {
+      CompileTools.getLocalActions(workspace).then(result => {
         if (result.length === 0) {
           vscode.window.showInformationMessage(
             `There are no local Actions defined for this project.`,

@@ -1,4 +1,5 @@
 const vscode = require(`vscode`);
+const { ConnectionConfiguration } = require(`../../../api/Configuration`);
 
 const {instance} = require(`../../../Instance`);
 
@@ -20,6 +21,7 @@ const annotationDecoration = vscode.window.createTextEditorDecorationType({
 
 module.exports = class {
   static begin(context) {
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
@@ -146,9 +148,10 @@ module.exports = class {
     );
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, async () => {
         const currentValue = config.sourceDateGutter;
-        config.set(`sourceDateGutter`, !currentValue);
+        config.sourceDateGutter = !currentValue;
+        await ConnectionConfiguration.update(config);
       }),
 
       vscode.window.onDidChangeTextEditorSelection(event => {
