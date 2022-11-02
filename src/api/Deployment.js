@@ -5,8 +5,9 @@ const vscode = require(`vscode`);
 const {default: IBMi} = require(`./IBMi`);
 const CompileTools = require(`./CompileTools`);
 
-const localLanguageActions = require(`../schemas/localLanguageActions`);
+
 const { ConnectionConfiguration } = require(`./Configuration`);
+const localLanguageActions = require(`../schemas/localLanguageActions`);
 const { Storage } = require(`./Storage`);
 
 const ignore = require(`ignore`).default;
