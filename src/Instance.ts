@@ -8,7 +8,7 @@ import path from 'path';
 
 const CompileTools = require(`./api/CompileTools`);
 
-import {Terminal} from './api/terminal';
+import {Terminal} from './api/Terminal';
 const Deployment = require(`./api/Deployment`);
 
 import { CustomUI, Field } from './api/CustomUI';
