@@ -9,7 +9,7 @@ const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const DEFAULT_RECORD_LENGTH = 80;
-let { allSourceDates, recordLengths, getAliasName } = require(`./data`);
+let { baseDates: allSourceDates, recordLengths, getAliasName } = require(`./data`);
 
 module.exports = class IBMiContent {
   /**
@@ -39,11 +39,11 @@ module.exports = class IBMiContent {
     if (recordLengths[alias] === undefined) {
       const result = await content.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
       if (result.length > 0) {
-        recordLengths[alias] = result[0].LENGTH;
+        recordLengths[alias] = Number(result[0].LENGTH);
       } else {
         const result = await content.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
         if (result.length > 0) {
-          recordLengths[alias] = result[0].LENGTH;
+          recordLengths[alias] = Number(result[0].LENGTH);
         } else {
           recordLengths[alias] = DEFAULT_RECORD_LENGTH;
         }

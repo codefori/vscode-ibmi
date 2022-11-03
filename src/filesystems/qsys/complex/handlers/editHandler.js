@@ -1,8 +1,8 @@
 const vscode = require(`vscode`);
-const { ConnectionConfiguration } = require(`../../../api/Configuration`);
-const {instance} = require(`../../../Instance`);
+const { ConnectionConfiguration } = require(`../../../../api/Configuration`);
+const {instance} = require(`../../../../Instance`);
 
-let { allSourceDates, recordLengths, getAliasName } = require(`./data`);
+let { baseDates, recordLengths, getAliasName } = require(`../data`);
 
 const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 
@@ -86,7 +86,7 @@ module.exports = class {
 
           const alias = getAliasName(library, file, member);
 
-          let sourceDates = allSourceDates[alias];
+          let sourceDates = baseDates[alias];
           if (sourceDates) {
             for (const change of event.contentChanges) {
               
@@ -181,7 +181,7 @@ module.exports = class {
 
       const alias = getAliasName(library, file, member);;
 
-      const sourceDates = allSourceDates[alias];
+      const sourceDates = baseDates[alias];
 
       if (sourceDates) {
 

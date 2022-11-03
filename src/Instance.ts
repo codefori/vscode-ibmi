@@ -17,6 +17,8 @@ import {searchView, IResult} from "./views/searchView";
 import { HelpView } from "./views/helpView";
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 
+import getComplexHandler from "./filesystems/qsys/complex/handlers";
+
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
 let terminalBarItem: vscode.StatusBarItem;
@@ -229,7 +231,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (config.enableSourceDates) {
           if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
             basicMemberSupport = false;
-            require(`./filesystems/qsys/complex/handler`).begin(context);
+            getComplexHandler(context, "edit");
             qsysFs = new (require(`./filesystems/qsys/complex`));
 
             if (connection.qccsid === 65535) {
