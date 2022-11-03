@@ -6,6 +6,7 @@
 		"lib": [
 			"es6"
 		],
+		"forceConsistentCasingInFileNames": true,
 		"allowJs": true,
 		"esModuleInterop": true,
 		"checkJs": false,
