@@ -1270,7 +1270,7 @@
 				{
 					"id": "searchView",
 					"name": "Results",
-					"when": "code-for-ibmi:searchViewVisable == true"
+					"when": "code-for-ibmi:searchViewVisible == true"
 				}
 			]
 		},

@@ -13,9 +13,10 @@ const Deployment = require(`./api/Deployment`);
 
 import { CustomUI, Field } from './api/CustomUI';
 
-import {searchView, IResult} from "./views/searchView";
+import {SearchView} from "./views/searchView";
 import { HelpView } from "./views/helpView";
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import { Search } from "./api/Search";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -26,7 +27,7 @@ let initialisedBefore = false;
 
 let selectedForCompare: vscode.Uri;
 
-let searchViewContext: searchView;
+let searchViewContext: SearchView;
 
 export const instance = new Instance();
 
@@ -47,7 +48,7 @@ export function setConnection(conn: IBMi) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
 };
 
-export function setSearchResults(term: string, results: IResult[]) {
+export function setSearchResults(term: string, results: Search.Result[]) {
   searchViewContext.setResults(term, results);
 }
 
@@ -278,7 +279,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
         //********* Search View */
 
-        searchViewContext = new searchView(context);
+        searchViewContext = new SearchView(context);
 
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
