@@ -5,9 +5,8 @@ const fs = require(`fs`);
 
 const parseString = util.promisify(require(`xml2js`).parseString);
 
-const instance = require(`../../Instance`);
-const Configuration = require(`../../api/Configuration`);
-const IBMi = require(`../../api/IBMi`);
+const {instance} = require(`../../Instance`);
+const {default: IBMi} = require(`../../api/IBMi`);
 
 const gencmdxml = require(`./gencmdxml.js`).join(`\n`);
 
@@ -308,7 +307,7 @@ module.exports = class CLCommands {
 
     const content = instance.getContent();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const tempLib = config.tempLibrary;
@@ -331,7 +330,7 @@ module.exports = class CLCommands {
 
     const content = instance.getContent();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const tempLib = config.tempLibrary;

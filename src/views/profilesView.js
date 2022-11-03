@@ -1,7 +1,8 @@
 
 const vscode = require(`vscode`);
+const { ConnectionConfiguration } = require(`../api/Configuration`);
 
-const instance = require(`../Instance`);
+const {instance} = require(`../Instance`);
 
 const LAST_PROFILE_KEY = `currentProfile`;
 const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `ifsShortcuts`, `customVariables`];
@@ -20,15 +21,21 @@ module.exports = class profilesProvider {
         this.refresh();
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.newConnectionProfile`, () => {
+        // Call it with no profile parameter
+        vscode.commands.executeCommand(`code-for-ibmi.saveConnectionProfile`);
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.saveConnectionProfile`, async (profileNode) => {
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
         const storage = instance.getStorage();
 
-		    const currentProfile = storage.get(LAST_PROFILE_KEY);													 
+        const currentProfile = storage.get(LAST_PROFILE_KEY);													 
         let currentProfiles = config.connectionProfiles;
 
         const profileName = profileNode ? profileNode.profile : await vscode.window.showInputBox({
-		  value: currentProfile,						
+		      value: typeof currentProfile === `string` ? currentProfile : ``,
           prompt: `Name of profile`
         });
 
@@ -52,8 +59,9 @@ module.exports = class profilesProvider {
             currentProfiles.push(newProfile);
           }
 
+          config.connectionProfiles = currentProfiles;
           await Promise.all([
-            config.set(`connectionProfiles`, currentProfiles),
+            ConnectionConfiguration.update(config),
             storage.set(LAST_PROFILE_KEY, profileName)
           ]);
           this.refresh();
@@ -63,6 +71,7 @@ module.exports = class profilesProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteConnectionProfile`, async (profileNode) => {
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
 
         const currentProfiles = config.connectionProfiles;
@@ -78,7 +87,8 @@ module.exports = class profilesProvider {
               vscode.window.showWarningMessage(`Are you sure you want to delete the ${chosenProfile} profile?`, `Yes`, `No`).then(async result => {
                 if (result === `Yes`) {
                   currentProfiles.splice(index, 1);
-                  await config.set(`connectionProfiles`, currentProfiles);
+                  config.connectionProfiles = currentProfiles;
+                  await ConnectionConfiguration.update(config)
                   this.refresh();
                 }
               })
@@ -91,6 +101,7 @@ module.exports = class profilesProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async (profileNode) => {
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
         const storage = instance.getStorage();
 
@@ -106,8 +117,8 @@ module.exports = class profilesProvider {
             if (profile) {
               profile = {...profile}; //We clone it.
               delete profile.name;
-
-              await config.setMany(profile);
+              Object.assign(config, profile);
+              await ConnectionConfiguration.update(config);
 
               await Promise.all([
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
@@ -130,6 +141,7 @@ module.exports = class profilesProvider {
   }
 
   refresh() {
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
     this.emitter.fire();
@@ -151,6 +163,7 @@ module.exports = class profilesProvider {
     let items = [];
 
     if (connection) {
+      /** @type {ConnectionConfiguration.Parameters} */
       const config = instance.getConfig();
       const storage = instance.getStorage();
 

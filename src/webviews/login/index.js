@@ -1,10 +1,10 @@
 const vscode = require(`vscode`);
 
-const IBMi = require(`../../api/IBMi`);
+const {default: IBMi} = require(`../../api/IBMi`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
-const Configuration = require(`../../api/Configuration`);
+const {GlobalConfiguration} = require(`../../api/Configuration`);
 
-let instance = require(`../../Instance`);
+let {instance, disconnect, setConnection, loadAllofExtension} = require(`../../Instance`);
 
 module.exports = class Login {
 
@@ -15,10 +15,10 @@ module.exports = class Login {
   static async show(context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-      if (!instance.disconnect()) return;
+      if (!disconnect()) return;
     }
 
-    let existingConnections = Configuration.get(`connections`);
+    let existingConnections = GlobalConfiguration.get(`connections`);
 
     let ui = new CustomUI();
 
@@ -72,7 +72,7 @@ module.exports = class Login {
 
             if(data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
 
-            await Configuration.setGlobal(`connections`, existingConnections);
+            await GlobalConfiguration.set(`connections`, existingConnections);
             vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
           }
 
@@ -87,8 +87,8 @@ module.exports = class Login {
             try {
               const connected = await connection.connect(data);
               if (connected.success) {
-                instance.setConnection(connection);
-                instance.loadAllofExtension(context);
+                setConnection(connection);
+                loadAllofExtension(context);
       
                 if (newConnection) {
                   
@@ -139,11 +139,11 @@ module.exports = class Login {
       // If the user is already connected and trying to connect to a different system, disconnect them first
       if (name !== instance.getConnection().currentConnectionName) {
         vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
-        if (!instance.disconnect()) return false;
+        if (!disconnect()) return false;
       }
     }
 
-    const existingConnections = Configuration.get(`connections`);
+    const existingConnections = GlobalConfiguration.get(`connections`);
     let connectionConfig = existingConnections.find(item => item.name === name);
  
     if (connectionConfig) {
@@ -168,8 +168,8 @@ module.exports = class Login {
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
 
-          instance.setConnection(connection);
-          instance.loadAllofExtension(context);
+          setConnection(connection);
+          loadAllofExtension(context);
 
         } else {
           vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);

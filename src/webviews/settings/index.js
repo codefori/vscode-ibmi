@@ -2,8 +2,8 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-const Configuration = require(`../../api/Configuration`);
-let instance = require(`../../Instance`);
+const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
+let {instance} = require(`../../Instance`);
 
 module.exports = class SettingsUI {
 
@@ -15,11 +15,12 @@ module.exports = class SettingsUI {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server) => {
-        const connectionSettings = Configuration.get(`connectionSettings`);
+        const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
         const connection = instance.getConnection();
 
         let name;
         let existingConfigIndex;
+        /** @type {ConnectionConfiguration.Parameters} */
         let config;
 
         if (server) {
@@ -35,7 +36,7 @@ module.exports = class SettingsUI {
 
         } else {
           if (connection) {
-            config = await instance.getConfig();
+            config = instance.getConfig();
             name = config.name;
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
@@ -43,7 +44,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `enableSourceDates`, `clContentAssistEnabled`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `clContentAssistEnabled`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -72,6 +73,11 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
         field.default = (config.enableSQL ? `checked` : ``);
         field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID is 65535, it is recommend SQL is disabled. When disabled, will use import files where possible.`;
+        ui.addField(field);
+
+        field = new Field(`checkbox`, `showDescInLibList`, `Show description of libraries in User Library List view`);
+        field.default = (config.showDescInLibList ? `checked` : ``);
+        field.description = `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`;
         ui.addField(field);
     
         field = new Field(`input`, `sourceASP`, `Source ASP`);
@@ -214,7 +220,7 @@ module.exports = class SettingsUI {
               };
 
               connectionSettings[existingConfigIndex] = config;
-              await Configuration.setGlobal(`connectionSettings`, connectionSettings);
+              await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
             }
           } else {
             if (connection) {
@@ -222,7 +228,8 @@ module.exports = class SettingsUI {
                 restart = true;
               }
               
-              await config.setMany(data);
+              Object.assign(config, data);
+              await ConnectionConfiguration.update(config);
             }
           }
 
@@ -239,7 +246,7 @@ module.exports = class SettingsUI {
 
       vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server) => {
         if (server) {
-          const connections = Configuration.get(`connections`);
+          const connections = GlobalConfiguration.get(`connections`);
           const name = server.name;
 
           const connectionIdx = connections.findIndex(item => item.name === name);
@@ -295,7 +302,7 @@ module.exports = class SettingsUI {
             };
 
             connections[connectionIdx] = connection;
-            await Configuration.setGlobal(`connections`, connections);
+            await GlobalConfiguration.set(`connections`, connections);
           }
         }
       })

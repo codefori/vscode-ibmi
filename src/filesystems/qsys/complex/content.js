@@ -1,5 +1,5 @@
-let instance = require(`../../../Instance`);
-const Handler = require(`./handler`);
+let {default: IBMi} = require(`../../../api/IBMi`);
+let {instance} = require(`../../../Instance`);
 
 const util = require(`util`);
 const fs = require(`fs`);
@@ -9,7 +9,8 @@ const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const DEFAULT_RECORD_LENGTH = 80;
-let { baseDates, baseSource, recordLengths } = require(`./data`);
+const Handler = require(`./handler`);
+let { baseSource, recordLengths, getAliasName, baseDates } = require(`./data`);
 
 module.exports = class IBMiContent {
   /**
@@ -29,19 +30,24 @@ module.exports = class IBMiContent {
     mbr = mbr.toUpperCase();
 
     const tempLib = connection.config.tempLibrary;
-    const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
+    const alias = getAliasName(lib, spf, mbr);
     const aliasPath = `${tempLib}.${alias}`;
   
     try {
-      await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for ${lib}.${spf}("${mbr}")`);
+      await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${lib}"."${spf}"("${mbr}")`);
     } catch (e) {}
 
     if (recordLengths[alias] === undefined) {
       const result = await content.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
       if (result.length > 0) {
-        recordLengths[alias] = result[0].LENGTH;
+        recordLengths[alias] = Number(result[0].LENGTH);
       } else {
-        recordLengths[alias] = DEFAULT_RECORD_LENGTH;
+        const result = await content.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
+        if (result.length > 0) {
+          recordLengths[alias] = Number(result[0].LENGTH);
+        } else {
+          recordLengths[alias] = DEFAULT_RECORD_LENGTH;
+        }
       }
     }
   
@@ -81,7 +87,7 @@ module.exports = class IBMiContent {
     const setccsid = connection.remoteFeatures.setccsid;
 
     const tempLib = connection.config.tempLibrary;
-    const alias = `${lib}_${spf}_${mbr.replace(/\./g, `_`)}`;
+    const alias = getAliasName(lib, spf, mbr);
     const aliasPath = `${tempLib}.${alias}`;
 
     const client = connection.client;

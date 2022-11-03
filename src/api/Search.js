@@ -1,8 +1,8 @@
 
-const Configuration = require(`./Configuration`);
-const IBMi = require(`./IBMi`);
+const {GlobalConfiguration} = require(`./Configuration`);
+const {default: IBMi} = require(`./IBMi`);
 const IBMiContent = require(`./IBMiContent`);
-const Tools = require(`./Tools`);
+const {Tools} = require(`./Tools`);
 
 module.exports = class Search {
   /**
@@ -17,7 +17,7 @@ module.exports = class Search {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     /** @type {IBMiContent} */
@@ -115,7 +115,7 @@ module.exports = class Search {
       term = term.replace(/"/g, `\\\\"`);
 
       /** @type {string[]} */
-      const dirsToIgnore = Configuration.get(`grepIgnoreDirs`);
+      const dirsToIgnore = GlobalConfiguration.get(`grepIgnoreDirs`);
       let ignoreString = ``;
 
       if (dirsToIgnore.length > 0) {

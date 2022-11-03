@@ -1,7 +1,9 @@
 const vscode = require(`vscode`);
-const { DiffComputer } = require(`vscode-diff`)
+const { ConnectionConfiguration } = require(`../../../api/Configuration`);
+const { DiffComputer } = require(`vscode-diff`);
 
-const instance = require(`../../../Instance`);
+const {instance} = require(`../../../Instance`);
+let { baseSource, baseDates, recordLengths, getAliasName } = require(`./data`);
 
 const diffOptions = {
   shouldPostProcessCharChanges: false,
@@ -10,8 +12,6 @@ const diffOptions = {
   shouldComputeCharChanges: false,
   maxComputationTime: 1000
 }
-
-let { baseDates, recordLengths, baseSource } = require(`./data`);
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);
@@ -43,6 +43,7 @@ let highlightBefore;
 
 module.exports = class Handler {
   static begin(context) {
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
@@ -75,7 +76,8 @@ module.exports = class Handler {
             const path = connection.parserMemberPath(document.uri.path);
             const lib = path.library, file = path.file, fullName = path.member;
 
-            const alias = `${lib}_${file}_${fullName.replace(/\./g, `_`)}`;
+            const alias = getAliasName(lib, file, fullName);
+
             const recordLength = recordLengths[alias];
 
             /** @type {vscode.Diagnostic[]} */
@@ -103,7 +105,7 @@ module.exports = class Handler {
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, async () => {
         const currentValue = config.sourceDateGutter;
-        await config.set(`sourceDateGutter`, !currentValue);
+        config.sourceDateGutter = !currentValue;
 
         const editor = vscode.window.activeTextEditor;
         if (editor) {
@@ -159,7 +161,7 @@ module.exports = class Handler {
 
           const editor = vscode.window.activeTextEditor;
           if (editor) {
-            await config.set(`sourceDateGutter`, true);
+            config.sourceDateGutter = true;
             this.refreshGutter(editor.document);
           }
         })
@@ -219,8 +221,7 @@ module.exports = class Handler {
       if (config.sourceDateGutter) {
         const path = document.uri.path;
         const {library, file, member} = connection.parserMemberPath(path);
-
-        const alias = `${library}_${file}_${member.replace(/\./g, `_`)}`;
+        const alias = getAliasName(library, file, member);;
 
         const sourceDates = baseDates[alias];
 

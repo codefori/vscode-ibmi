@@ -1,8 +1,8 @@
 const vscode = require(`vscode`);
-
+const {ConnectionConfiguration} = require(`../../api/Configuration`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-let instance = require(`../../Instance`);
+let {instance} = require(`../../Instance`);
 
 module.exports = class FiltersUI {
 
@@ -10,6 +10,7 @@ module.exports = class FiltersUI {
    * @param {string} name
    */
   static async init(name) {
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     const objectFilters = config.objectFilters;
 
@@ -102,8 +103,7 @@ module.exports = class FiltersUI {
             ...data,
           };
 
-          objectFilters[existingConfigIndex] = filter;
-          await config.set(`objectFilters`, objectFilters);
+          objectFilters[existingConfigIndex] = filter;          
         }
       } else {
         existingConfigIndex = objectFilters.findIndex(cFilter => cFilter.name === data.name);
@@ -112,9 +112,11 @@ module.exports = class FiltersUI {
           data.name = `${data.name.trim()} (2)`;
         }
 
-        objectFilters.push(data);
-        await config.set(`objectFilters`, objectFilters);
+        objectFilters.push(data);        
       }
+
+      config.objectFilters = objectFilters;
+      await ConnectionConfiguration.update(config);
     }
 
 

@@ -1,11 +1,12 @@
-const IBMi = require(`./IBMi`);
+const {default: IBMi} = require(`./IBMi`);
 
 const path = require(`path`);
 const util = require(`util`);
 let fs = require(`fs`);
 const tmp = require(`tmp`);
 const csv = require(`csv/sync`);
-const Tools = require(`./Tools`);
+const {Tools} = require(`./Tools`);
+const {ObjectTypes} = require(`../schemas/Objects`);
 
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
@@ -96,7 +97,7 @@ module.exports = class IBMiContent {
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
 
-    const path = Tools.qualifyPath(asp, lib, spf, mbr);
+    const path = Tools.qualifyPath(lib, spf, mbr, asp);
     const tempRmt = this.ibmi.getTempRemote(path);
     const tmpobj = await tmpFile();
     const client = this.ibmi.client;
@@ -147,7 +148,7 @@ module.exports = class IBMiContent {
     mbr = mbr.toUpperCase();
 
     const client = this.ibmi.client;
-    const path = Tools.qualifyPath(asp, lib, spf, mbr);
+    const path = Tools.qualifyPath(lib, spf, mbr, asp);
     const tempRmt = this.ibmi.getTempRemote(path);
     const tmpobj = await tmpFile();
 
@@ -169,7 +170,7 @@ module.exports = class IBMiContent {
   /**
    * Run an SQL statement
    * @param {string} statement
-   * @returns {Promise<any[]>} Result set
+   * @returns {Promise<Tools.DB2Row[]>} Result set
    */
   async runSQL(statement) {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
@@ -217,7 +218,7 @@ module.exports = class IBMiContent {
       return data;
 
     } else {
-      const tempRmt = this.ibmi.getTempRemote(Tools.qualifyPath(undefined, lib, file, mbr));
+      const tempRmt = this.ibmi.getTempRemote(Tools.qualifyPath(lib, file, mbr));
 
       await this.ibmi.remoteCommand(
         `QSYS/CPYTOIMPF FROMFILE(` +
@@ -243,16 +244,71 @@ module.exports = class IBMiContent {
       return csv.parse(result, {
         columns: true,
         skip_empty_lines: true,
+        cast: true,
       });
     }
     
   }
 
   /**
+   * Get list of libraries with description and attribute
+   * @param {string[]} libraries Array of libraries to retrieve
+   * @returns {Promise<{name: string, text: string, attribute: string}[]>} List of libraries
+   */
+  async getLibraryList(libraries) {
+    const config = this.ibmi.config;
+    const tempLib = config.tempLibrary;
+    const TempName = Tools.makeid();
+    let results;
+
+    if (config.enableSQL) {
+      const statement = `
+        select os.OBJNAME as ODOBNM
+             , coalesce(os.OBJTEXT, '') as ODOBTX
+             , os.OBJATTRIBUTE as ODOBAT
+          from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs
+             , table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
+      `;
+      results = await this.runSQL(statement);
+    } else {
+      await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+      results = await this.getTable(tempLib, TempName, TempName, true);
+
+      if (results.length === 1) {
+        if (results[0].ODOBNM.trim() === ``) {
+          return []
+        }
+      };
+
+      results = results.filter(object => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
+    };
+
+    results = results.map(object => ({
+      name: config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
+      attribute: object.ODOBAT,
+      text: object.ODOBTX
+    }));
+
+    return libraries.map(lib => {
+      const index = results.findIndex(info => info.name === lib);
+      if (index >= 0) {
+        return results[index];
+      } else {
+        return {
+          name: lib,
+          attribute: ``,
+          text: `*** NOT FOUND ***`
+        };
+      }
+    });
+  }
+
+  /**
    * @param {{library: string, object?: string, types?: string[]}} filters 
+   * @param {string?} sortOrder
    * @returns {Promise<{library: string, name: string, type: string, text: string, attribute: string, count?: number}[]>} List of members 
    */
-  async getObjectList(filters) {
+  async getObjectList(filters, sortOrder = `name`) {
     const library = filters.library.toUpperCase();
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
@@ -307,7 +363,12 @@ module.exports = class IBMiContent {
         }))
         .sort((a, b) => {
           if (a.library.localeCompare(b.library) != 0) return a.library.localeCompare(b.library)
-          else return a.name.localeCompare(b.name);
+          else if (sortOrder === `name`) return a.name.localeCompare(b.name)
+          else {
+            if (ObjectTypes.get(a.type) < ObjectTypes.get(b.type)) return -1;
+            else if (ObjectTypes.get(a.type) > ObjectTypes.get(b.type)) return 1;
+            else return a.name.localeCompare(b.name);
+          }
         });
     }
   }
@@ -446,4 +507,5 @@ module.exports = class IBMiContent {
 
     return errors;
   }
+
 }

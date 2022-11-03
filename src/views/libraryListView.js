@@ -1,8 +1,8 @@
 
 const vscode = require(`vscode`);
 
-let instance = require(`../Instance`);
-const Configuration = require(`../api/Configuration`);
+let {instance} = require(`../Instance`);
+const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
 
 module.exports = class libraryListProvider {
   /**
@@ -25,6 +25,7 @@ module.exports = class libraryListProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
         const connection = instance.getConnection();
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
         const currentLibrary = config.currentLibrary.toUpperCase();
         let prevCurLibs = Object.values(instance.getStorage().get(`prevCurLibs`));
@@ -71,12 +72,13 @@ module.exports = class libraryListProvider {
                 }
                 if (newLibraryOK) {
                   quickPick.hide();
-                  await config.set(`currentLibrary`, newLibrary);
+                  config.currentLibrary = newLibrary;
+                  await ConnectionConfiguration.update(config);
                   vscode.window.showInformationMessage(`Changed current library to ${newLibrary}.`);
                   prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
                   prevCurLibs.splice(0, 0, currentLibrary);
                   await instance.getStorage().set(`prevCurLibs`, prevCurLibs);
-                  if (Configuration.get(`autoRefresh`)) this.refresh();
+                  if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
                 }
               } else {
                 quickPick.hide();
@@ -91,6 +93,7 @@ module.exports = class libraryListProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
         const connection = instance.getConnection();
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
         const libraryList = config.libraryList;
 
@@ -119,18 +122,20 @@ module.exports = class libraryListProvider {
             }
           }
 
-          await config.set(`libraryList`, newLibraryList);
-          if (Configuration.get(`autoRefresh`)) this.refresh();
+          config.libraryList = newLibraryList;
+          await ConnectionConfiguration.update(config);
+          if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
         }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = ``) => {
+        /** @type {ConnectionConfiguration.Parameters} */
         const config = instance.getConfig();
         let addingLib;
 
         let libraryList = [...config.libraryList];
 
-        if (newLibrary == ``){
+        if(typeof newLibrary !== `string` || newLibrary == ``){
           addingLib = await vscode.window.showInputBox({
             prompt: `Library to add`
           });
@@ -148,8 +153,9 @@ module.exports = class libraryListProvider {
               vscode.window.showWarningMessage(`The following libraries were removed from the updated library list as they are invalid: ${badLibs.join(`, `)}`);
             }
 
-            await config.set(`libraryList`, libraryList);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            config.libraryList = libraryList;
+            await ConnectionConfiguration.update(config);
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           } else {
             vscode.window.showErrorMessage(`Library is too long.`);
           }
@@ -159,6 +165,7 @@ module.exports = class libraryListProvider {
       vscode.commands.registerCommand(`code-for-ibmi.removeFromLibraryList`, async (node) => {
         if (node) {
           //Running from right click
+          /** @type {ConnectionConfiguration.Parameters} */
           const config = instance.getConfig();
 
           let libraryList = config.libraryList;
@@ -167,8 +174,9 @@ module.exports = class libraryListProvider {
           if (index >= 0) {
             libraryList.splice(index, 1);
 
-            await config.set(`libraryList`, libraryList);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            config.libraryList = libraryList;
+            await ConnectionConfiguration.update(config);
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           }
         }
       }),
@@ -176,6 +184,7 @@ module.exports = class libraryListProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveLibraryUp`, async (node) => {
         if (node) {
           //Running from right click
+          /** @type {ConnectionConfiguration.Parameters} */
           const config = instance.getConfig();
 
           let libraryList = config.libraryList;
@@ -186,8 +195,9 @@ module.exports = class libraryListProvider {
             libraryList.splice(index, 1);
             libraryList.splice(index-1, 0, library);
 
-            await config.set(`libraryList`, libraryList);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            config.libraryList = libraryList;
+            await ConnectionConfiguration.update(config);
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           }
 
         }
@@ -196,6 +206,7 @@ module.exports = class libraryListProvider {
       vscode.commands.registerCommand(`code-for-ibmi.moveLibraryDown`, async (node) => {
         if (node) {
           //Running from right click
+          /** @type {ConnectionConfiguration.Parameters} */
           const config = instance.getConfig();
 
           let libraryList = config.libraryList;
@@ -206,10 +217,28 @@ module.exports = class libraryListProvider {
             libraryList.splice(index, 1);
             libraryList.splice(index+1, 0, library);
 
-            await config.set(`libraryList`, libraryList);
-            if (Configuration.get(`autoRefresh`)) this.refresh();
+            config.libraryList = libraryList;
+            await ConnectionConfiguration.update(config);
+            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
           }
 
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.cleanupLibraryList`, async () => {
+        /** @type {ConnectionConfiguration.Parameters} */
+        const config = instance.getConfig();
+        let libraryList = [...config.libraryList];
+        const badLibs = await this.validateLibraryList(libraryList);
+
+        if (badLibs.length > 0) {
+          libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+          vscode.window.showWarningMessage(`The following libraries were removed from the updated library list as they are invalid: ${badLibs.join(`, `)}`);
+          config.libraryList = libraryList;
+          await ConnectionConfiguration.update(config);
+          if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+        } else {
+          vscode.window.showInformationMessage(`Library list were validated without any errors.`);
         }
       }),
     )
@@ -242,8 +271,8 @@ module.exports = class libraryListProvider {
     /** @type {object} */
     const result = await connection.sendQsh({
       command: [
-        `liblist -d ` + connection.defaultUserLibraries.join(` `),
-        ...newLibl.map(lib => `liblist -a ` + lib)
+        `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
       ]
     });
 
@@ -278,21 +307,22 @@ module.exports = class libraryListProvider {
    */
   async getChildren() {
     const connection = instance.getConnection();
+    const content = instance.getContent();
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
+    const currentLibrary = config.currentLibrary.toUpperCase();
     let items = [];
+    let libraries = [];
 
     if (connection) {
-      let currentLibrary = new Library(config.currentLibrary.toUpperCase());
-      currentLibrary.contextValue = `currentLibrary`;
-      currentLibrary.description = `(current library)`;
-      items.push(currentLibrary);
-
-      const libraryList = config.libraryList;
-
-      for (let library of libraryList) {
-        library = library.toUpperCase();
-        items.push(new Library(library));
+      if (config.showDescInLibList === true) {
+        libraries = await content.getLibraryList([config.currentLibrary, ...config.libraryList]);
+      } else {
+        libraries = [config.currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` }});
       }
+      items = libraries.map((lib, index) => {
+        return new Library(lib.name, lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
+      });
     }
 
     return items;
@@ -302,11 +332,16 @@ module.exports = class libraryListProvider {
 class Library extends vscode.TreeItem {
   /**
    * @param {string} library
+   * @param {string?} text
+   * @param {string?} attribute
+   * @param {string?} context
    */
-  constructor(library) {
+  constructor(library, text = ``, attribute = ``, context = `library`) {
     super(library.toUpperCase(), vscode.TreeItemCollapsibleState.None);
 
-    this.contextValue = `library`;
+    this.contextValue = context;
     this.path = library;
+    this.description = (context === `currentLibrary` ? `(current library) ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
+
   }
 }
