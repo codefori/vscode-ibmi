@@ -44,7 +44,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `clContentAssistEnabled`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `sourceDateMode`, `clContentAssistEnabled`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -110,6 +110,24 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `enableSourceDates`, `Enable Source Dates`);
         field.default = (config.enableSourceDates ? `checked` : ``);
         field.description = `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`;
+        ui.addField(field);
+
+        field = new Field(`select`, `sourceDateMode`, `Source date tracking mode`);
+        field.description = `Determine which method should be used to track changes while editing source members.`;
+        field.items = [
+          {
+            selected: config.sourceDateMode === `edit`,
+            value: `edit`,
+            description: `Edit mode`,
+            text: `Tracks changes in a simple manner. When a line is changed, the date is updated. (Default)`,
+          },
+          {
+            selected: config.sourceDateMode === `diff`,
+            value: `diff`,
+            description: `Diff mode`,
+            text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
+          },
+        ]
         ui.addField(field);
             
         field = new Field(`checkbox`, `sourceDateGutter`, `Source Dates in Gutter`);

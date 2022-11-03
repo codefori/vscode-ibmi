@@ -231,7 +231,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (config.enableSourceDates) {
           if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
             basicMemberSupport = false;
-            getComplexHandler(context, "edit");
+            getComplexHandler(context, config.sourceDateMode);
             qsysFs = new (require(`./filesystems/qsys/complex`));
 
             if (connection.qccsid === 65535) {

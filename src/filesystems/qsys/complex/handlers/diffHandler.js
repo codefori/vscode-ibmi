@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 const { ConnectionConfiguration } = require(`../../../../api/Configuration`);
 const { DiffComputer } = require(`vscode-diff`);
 
-const {instance} = require(`../../../../Instance`);
+const global = require(`../../../../Instance`);
 let { baseSource, baseDates, recordLengths, getAliasName } = require(`../data`);
 
 const diffOptions = {
@@ -44,6 +44,7 @@ let highlightBefore;
 module.exports = class Handler {
   static begin(context) {
     /** @type {ConnectionConfiguration.Parameters} */
+    const instance = global.instance;
     const config = instance.getConfig();
 
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
@@ -215,6 +216,7 @@ module.exports = class Handler {
    */
   static refreshGutter(document) {
     if (document.uri.scheme === `member`) {
+      const instance = global.instance;
       const connection = instance.getConnection();
       const config = instance.getConfig();
 
@@ -322,8 +324,7 @@ module.exports = class Handler {
     const diffComputer = new DiffComputer(oldSource.split(`\n`), body.split(`\n`), diffOptions);
     const diff = diffComputer.computeDiff();
 
-    const currentDate = this.currentStamp();
-
+    const currentDate = Handler.currentStamp();
 
     console.log(diff.changes);
     diff.changes.forEach(change => {

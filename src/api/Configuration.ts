@@ -29,6 +29,7 @@ export namespace ConnectionConfiguration {
     autoConvertIFSccsid: boolean;
     hideCompileErrors: string[];
     enableSourceDates: boolean;
+    sourceDateMode: "edit"|"diff";
     sourceDateGutter: boolean;
     clContentAssistEnabled: boolean;
     encodingFor5250: string;
@@ -90,6 +91,7 @@ export namespace ConnectionConfiguration {
       autoConvertIFSccsid : (parameters.autoConvertIFSccsid === true),
       hideCompileErrors : parameters.hideCompileErrors || [],
       enableSourceDates : parameters.enableSourceDates === true,
+      sourceDateMode : parameters.sourceDateMode || "edit",
       sourceDateGutter : parameters.sourceDateGutter === true,
       clContentAssistEnabled : (parameters.clContentAssistEnabled === true),
       encodingFor5250 : parameters.encodingFor5250 || `default`,

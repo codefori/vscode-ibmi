@@ -231,6 +231,12 @@
 								"default": false,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
+							"sourceDateMode": {
+								"type": "string",
+								"default": "edit",
+								"enum": ["edit", "diff"],
+								"description": "Determine which method should be used to track changes to source dates for source member."
+							},
 							"sourceDateGutter": {
 								"type": "boolean",
 								"default": false,
@@ -824,6 +830,11 @@
 			{
 				"command": "code-for-ibmi.toggleSourceDateGutter",
 				"title": "Toggle Source Date Gutter",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.member.newDateSearch",
+				"title": "Apply Source Date Filter",
 				"category": "IBM i"
 			},
 			{

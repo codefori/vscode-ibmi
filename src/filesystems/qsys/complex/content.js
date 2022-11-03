@@ -8,8 +8,10 @@ const tmp = require(`tmp`);
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
 
+const {calcNewSourceDates} = require(`./handlers/diffHandler`);
+
 const DEFAULT_RECORD_LENGTH = 80;
-let { baseDates: allSourceDates, recordLengths, getAliasName } = require(`./data`);
+let { baseDates, recordLengths, getAliasName, baseSource } = require(`./data`);
 
 module.exports = class IBMiContent {
   /**
@@ -23,12 +25,13 @@ module.exports = class IBMiContent {
   static async downloadMemberContentWithDates(asp, lib, spf, mbr) {
     const connection = instance.getConnection();
     const content = instance.getContent();
+    const config = connection.config;
 
     lib = lib.toUpperCase();
     spf = spf.toUpperCase();
     mbr = mbr.toUpperCase();
 
-    const tempLib = connection.config.tempLibrary;
+    const tempLib = config.tempLibrary;
     const alias = getAliasName(lib, spf, mbr);
     const aliasPath = `${tempLib}.${alias}`;
   
@@ -66,7 +69,11 @@ module.exports = class IBMiContent {
       .map(row => row.SRCDTA)
       .join(`\n`);
 
-    allSourceDates[alias] = sourceDates;
+    baseDates[alias] = sourceDates;
+
+    if (config.sourceDateMode === `diff`) {
+      baseSource[alias] = body;
+    }
 
     return body;
 
@@ -83,11 +90,13 @@ module.exports = class IBMiContent {
   static async uploadMemberContentWithDates(asp, lib, spf, mbr, body) {
     const connection = instance.getConnection();
     const setccsid = connection.remoteFeatures.setccsid;
+    const config = connection.config;
 
-    const tempLib = connection.config.tempLibrary;
+    const tempLib = config.tempLibrary;
     const alias = getAliasName(lib, spf, mbr);
     const aliasPath = `${tempLib}.${alias}`;
-    const sourceDates = allSourceDates[alias];
+    
+    const sourceDates = config.sourceDateMode === `edit` ? baseDates[alias] : calcNewSourceDates(alias, body);
 
     const client = connection.client;
     const tempRmt = connection.getTempRemote(lib + spf + mbr);
@@ -128,6 +137,10 @@ module.exports = class IBMiContent {
       `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
     );
   
+    if (config.sourceDateMode === `diff`) {
+      baseSource[alias] = body;
+      baseDates[alias] = sourceDates;
+    }
   }
 
   /**
