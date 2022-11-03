@@ -622,13 +622,7 @@ export default class IBMi {
   }
 
   async sendQsh(options: CommandData) {
-    let qshCommand;
-
-    if (Array.isArray(options.command)) {
-      qshCommand = options.command.join(`;`);
-    } else {
-      qshCommand = options.command;
-    }
+    const qshCommand = options.command;
 
     options.stdin = qshCommand;
 
