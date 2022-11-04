@@ -45,3 +45,7 @@ interface ConnectionData {
   privateKey: string|null;
   keepaliveInterval: number;
 }
+
+interface Server {
+  name : string
+}

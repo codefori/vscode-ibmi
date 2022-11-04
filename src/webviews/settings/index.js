@@ -14,7 +14,7 @@ module.exports = class SettingsUI {
   static init(context) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (/** @type {Server} */ server) => {
         const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
         const connection = instance.getConnection();
 
@@ -262,7 +262,7 @@ module.exports = class SettingsUI {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (/** @type {Server} */ server) => {
         if (server) {
           const connections = GlobalConfiguration.get(`connections`);
           const name = server.name;
