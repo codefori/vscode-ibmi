@@ -5,7 +5,7 @@ const path = require(`path`);
 
 let {instance, setSearchResults} = require(`../Instance`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
-const Search = require(`../api/Search`);
+const {Search} = require(`../api/Search`);
 const {Tools} = require(`../api/Tools`);
 
 module.exports = class ifsBrowserProvider {

@@ -10,7 +10,7 @@ const FiltersUI = require(`../webviews/filters`);
 
 let {instance, setSearchResults} = require(`../Instance`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
-const Search = require(`../api/Search`);
+const {Search} = require(`../api/Search`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
