@@ -1,8 +1,8 @@
 
 const vscode = require(`vscode`);
-const contentApi = require(`./complex/content`);
+const contentApi = require(`./content`);
 
-const {instance} = require(`../../Instance`);
+const {instance} = require(`../../../Instance`);
 
 module.exports = class ComplexQsysFs {
   constructor() {

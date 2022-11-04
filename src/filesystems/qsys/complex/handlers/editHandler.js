@@ -1,8 +1,8 @@
 const vscode = require(`vscode`);
-const { ConnectionConfiguration } = require(`../../../api/Configuration`);
-const {instance} = require(`../../../Instance`);
+const { ConnectionConfiguration } = require(`../../../../api/Configuration`);
+const global = require(`../../../../Instance`);
 
-let { allSourceDates, recordLengths, getAliasName } = require(`./data`);
+let { baseDates, recordLengths, getAliasName } = require(`../data`);
 
 const highlightedColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 
@@ -21,6 +21,7 @@ const annotationDecoration = vscode.window.createTextEditorDecorationType({
 module.exports = class {
   static begin(context) {
     /** @type {ConnectionConfiguration.Parameters} */
+    const instance = global.instance;
     const config = instance.getConfig();
 
     const lengthDiagnostics = vscode.languages.createDiagnosticCollection(`Record Lengths`);
@@ -86,7 +87,7 @@ module.exports = class {
 
           const alias = getAliasName(library, file, member);
 
-          let sourceDates = allSourceDates[alias];
+          let sourceDates = baseDates[alias];
           if (sourceDates) {
             for (const change of event.contentChanges) {
               
@@ -175,13 +176,14 @@ module.exports = class {
    */
   static refreshGutter(editor) {
     if (editor.document.uri.scheme === `member`) {
+      const instance = global.instance;
       const connection = instance.getConnection();
       const path = editor.document.uri.path;
       const {library, file, member} = connection.parserMemberPath(path);
 
       const alias = getAliasName(library, file, member);;
 
-      const sourceDates = allSourceDates[alias];
+      const sourceDates = baseDates[alias];
 
       if (sourceDates) {
 
