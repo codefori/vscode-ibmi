@@ -10,7 +10,7 @@ const FiltersUI = require(`../webviews/filters`);
 
 let {instance, setSearchResults} = require(`../Instance`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
-const Search = require(`../api/Search`);
+const {Search} = require(`../api/Search`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -998,11 +998,11 @@ module.exports = class objectBrowserTwoProvider {
    */
   storeMemberList(path, list) {
     const storage = instance.getStorage();
-    const existingDirs = storage.get(`sourceList`);
+    const existingDirs = storage.getSourceList();
 
     existingDirs[path] = list;
 
-    return storage.set(`sourceList`, existingDirs);
+    return storage.setSourceList(existingDirs);
   }
 }
 

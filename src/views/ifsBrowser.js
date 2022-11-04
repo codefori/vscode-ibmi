@@ -5,7 +5,7 @@ const path = require(`path`);
 
 let {instance, setSearchResults} = require(`../Instance`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
-const Search = require(`../api/Search`);
+const {Search} = require(`../api/Search`);
 const {Tools} = require(`../api/Tools`);
 
 module.exports = class ifsBrowserProvider {
@@ -590,11 +590,11 @@ module.exports = class ifsBrowserProvider {
    */
   storeIFSList(path, list) {
     const storage = instance.getStorage();
-    const existingDirs = storage.get(`sourceList`) || {};
+    const existingDirs = storage.getSourceList();
 
     existingDirs[path] = list;
 
-    return storage.set(`sourceList`, existingDirs);
+    return storage.setSourceList(existingDirs);
   }
 }
 

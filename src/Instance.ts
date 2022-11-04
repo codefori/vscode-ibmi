@@ -3,8 +3,8 @@ import * as vscode from "vscode";
 import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
-import Storage from "./api/Storage";
-import path from 'path';
+import {Storage} from "./api/Storage";
+const path = require(`path`);
 
 const CompileTools = require(`./api/CompileTools`);
 
@@ -13,9 +13,10 @@ const Deployment = require(`./api/Deployment`);
 
 import { CustomUI, Field } from './api/CustomUI';
 
-import {searchView, IResult} from "./views/searchView";
+import {SearchView} from "./views/searchView";
 import { HelpView } from "./views/helpView";
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import { Search } from "./api/Search";
 
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
 
@@ -28,7 +29,7 @@ let initialisedBefore = false;
 
 let selectedForCompare: vscode.Uri;
 
-let searchViewContext: searchView;
+let searchViewContext: SearchView;
 
 export const instance = new Instance();
 
@@ -49,7 +50,7 @@ export function setConnection(conn: IBMi) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
 };
 
-export function setSearchResults(term: string, results: IResult[]) {
+export function setSearchResults(term: string, results: Search.Result[]) {
   searchViewContext.setResults(term, results);
 }
 
@@ -280,7 +281,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
         //********* Search View */
 
-        searchViewContext = new searchView(context);
+        searchViewContext = new SearchView(context);
 
         context.subscriptions.push(
           vscode.window.registerTreeDataProvider(
@@ -366,12 +367,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           const storage = instance.getStorage();
           if (!storage) return;
 
-          const sources = storage.get(`sourceList`);
+          const sources = storage.getSourceList();
           const dirs = Object.keys(sources);
           let list: string[] = [];
 
           dirs.forEach(dir => {
-            sources[dir].forEach((source: string) => {
+            sources[dir].forEach(source => {
               list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
             });
           });
@@ -391,7 +392,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selection = quickPick.selectedItems[0].label;
             if (selection) {
               if (selection === `Clear list`) {
-                storage.set(`sourceList`, {});
+                storage.setSourceList({});
                 vscode.window.showInformationMessage(`Cleared list.`);
               } else {
                 vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);

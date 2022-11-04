@@ -1,21 +1,14 @@
 
 import vscode from "vscode";
 import { TreeDataProvider } from "vscode";
-const path = require(`path`);
+import path from 'path';
+import { Search } from "../api/Search";
 
-export interface IResult {
-  path: string;
-  lines: {
-    number: number, content: string
-  }[];
-}
-
-export class searchView implements TreeDataProvider<any> {
+export class SearchView implements TreeDataProvider<any> {
+  private _term = ``;
+  private _results: Search.Result[] = [];
   private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
-
-  term: string = ``;
-  results: IResult[] = [];
 
   constructor(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -24,20 +17,20 @@ export class searchView implements TreeDataProvider<any> {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => {
-        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisable`, false);
+        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false);
       }),
     )
   }
 
-  setViewVisable(visable: boolean) {
-    vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisable`, visable);
+  setViewVisible(visible: boolean) {
+    vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, visible);
   }
 
-  setResults(term: string, results: IResult[]) {
-    this.term = term;
-    this.results = results;
+  setResults(term: string, results: Search.Result[]) {
+    this._term = term;
+    this._results = results;
     this.refresh();
-    this.setViewVisable(true);
+    this.setViewVisible(true);
 
     vscode.commands.executeCommand(`searchView.focus`)
   }
@@ -50,50 +43,38 @@ export class searchView implements TreeDataProvider<any> {
     return element;
   }
 
-  /**
-   * @param {HitSource} hitSource
-   * @returns {};
-   */
   async getChildren(hitSource: HitSource): Promise<vscode.TreeItem[]> {
-    let items: vscode.TreeItem[] = [];
-
-    if (hitSource) {
-      const file = this.results.find(file => file.path === hitSource.path);
-      if (file) {
-        file.lines.forEach(line => {
-          items.push(new LineHit(this.term, file.path, line.number, line.content));
-        });
-      }
+    if (!hitSource) {
+      return this._results.map(result => new HitSource(result, this._term));
     } else {
-      this.results.forEach(file => {
-        items.push(new HitSource(file.path, file.lines.length));
-      });
+      return hitSource.getChildren();
     }
-
-    return items;
   }
 }
 
 class HitSource extends vscode.TreeItem {
-  path: string;
-  constructor(hitPath: string, hits: number) {
-    super(path.posix.basename(hitPath), vscode.TreeItemCollapsibleState.Expanded);
+  private readonly _path: string;
 
+  constructor(readonly result: Search.Result, readonly term: string) {
+    super(path.posix.basename(result.path), vscode.TreeItemCollapsibleState.Expanded);
+
+    const hits = result.lines.length;
     this.contextValue = `hitSource`;
-    
     this.iconPath = vscode.ThemeIcon.File;
     this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
-    this.path = hitPath;
+    this._path = result.path;   
+  }
+
+  async getChildren() : Promise<LineHit[]> {
+    return this.result.lines.map(line => new LineHit(this.term, this._path, line));
   }
 }
 
 class LineHit extends vscode.TreeItem {
-  path: string;
-
-  constructor(term: string, hitPath: string, line: number, content: string) {
+  constructor(term: string, readonly path: string, line: Search.Line) {
     const highlights: [number, number][] = [];
 
-    const upperContent = content.trim().toUpperCase();
+    const upperContent = line.content.trim().toUpperCase();
     const upperTerm = term.toUpperCase();
     let index = 0;
 
@@ -102,27 +83,26 @@ class LineHit extends vscode.TreeItem {
       while (index >= 0) {
         index = upperContent.indexOf(upperTerm, index);
         if (index >= 0) {
-          highlights.push([index, index+term.length]);
+          highlights.push([index, index + term.length]);
           index += term.length;
         }
       }
     }
 
     super({
-      label: content.trim(),
+      label: line.content.trim(),
       highlights
     });
 
     this.contextValue = `lineHit`;
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-    this.description = String(line);
-    this.path = hitPath;
+    this.description = String(line.number);
 
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open`,
-      arguments: [hitPath, line-1]
+      arguments: [this.path, line.number - 1]
     };
   }
 }
