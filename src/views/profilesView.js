@@ -4,7 +4,6 @@ const { ConnectionConfiguration } = require(`../api/Configuration`);
 
 const {instance} = require(`../Instance`);
 
-const LAST_PROFILE_KEY = `currentProfile`;
 const profileProps = [`currentLibrary`, `homeDirectory`, `libraryList`, `objectFilters`, `ifsShortcuts`, `customVariables`];
 
 module.exports = class profilesProvider {
@@ -31,11 +30,11 @@ module.exports = class profilesProvider {
         const config = instance.getConfig();
         const storage = instance.getStorage();
 
-        const currentProfile = storage.get(LAST_PROFILE_KEY);													 
+        const currentProfile = storage.getLastProfile();													 
         let currentProfiles = config.connectionProfiles;
 
         const profileName = profileNode ? profileNode.profile : await vscode.window.showInputBox({
-		      value: typeof currentProfile === `string` ? currentProfile : ``,
+	        value: currentProfile || ``,
           prompt: `Name of profile`
         });
 
@@ -62,7 +61,7 @@ module.exports = class profilesProvider {
           config.connectionProfiles = currentProfiles;
           await Promise.all([
             ConnectionConfiguration.update(config),
-            storage.set(LAST_PROFILE_KEY, profileName)
+            storage.setLastProfile(profileName)
           ]);
           this.refresh();
 
@@ -124,7 +123,7 @@ module.exports = class profilesProvider {
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
                 vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
-                storage.set(LAST_PROFILE_KEY, chosenProfile),
+                storage.setLastProfile(chosenProfile),
               ]);
 
               vscode.window.showInformationMessage(`Switched to ${chosenProfile}.`);
@@ -167,7 +166,7 @@ module.exports = class profilesProvider {
       const config = instance.getConfig();
       const storage = instance.getStorage();
 
-      const currentProfile = storage.get(LAST_PROFILE_KEY);
+      const currentProfile = storage.getLastProfile();
       const currentProfiles = config.connectionProfiles;
       const availableProfiles = currentProfiles.map(profile => profile.name);
 
