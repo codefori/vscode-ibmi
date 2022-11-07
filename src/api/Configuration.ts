@@ -38,6 +38,7 @@ export namespace ConnectionConfiguration {
     connectringStringFor5250: string;
     autoSaveBeforeAction: boolean;
     showDescInLibList: boolean;
+    [name: string]: any;
   }
 
   export interface ObjectFilters {
@@ -70,6 +71,7 @@ export namespace ConnectionConfiguration {
 
   function initialize(parameters: Partial<Parameters>) : Parameters{
     return {
+      ...parameters,
       name : parameters.name!,
       host : parameters.host || '',
       objectFilters : parameters.objectFilters || [],
