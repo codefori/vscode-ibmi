@@ -7,7 +7,7 @@ import { ExtensionContext, window, commands, workspace } from "vscode";
 import { setupEmitter, instance, setConnection, loadAllofExtension } from './Instance';
 import { CustomUI, Field } from "./api/CustomUI";
 
-import connectionBrowser from "./views/connectionBrowser";
+import {ObjectBrowserProvider} from "./views/ConnectionBrowser";
 import IBMi from "./api/IBMi";
 import { ConnectionConfiguration } from "./api/Configuration";
 
@@ -23,15 +23,11 @@ export function activate(context: ExtensionContext) {
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `connectionBrowser`,
-      new connectionBrowser(context)
+      new ObjectBrowserProvider(context)
     ),
 
     commands.registerCommand(`code-for-ibmi.connectDirect`,
-      /**
-       * @param {ConnectionData} connectionData 
-       * @returns {Promise<Boolean>}
-       */
-      async (connectionData) => {
+      async (connectionData : ConnectionData) : Promise<boolean> => {
         const existingConnection = instance.getConnection();
 
         if (existingConnection) return false;
