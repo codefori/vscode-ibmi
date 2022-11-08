@@ -7,7 +7,7 @@ const CompileTools = require(`./CompileTools`);
 
 
 const { ConnectionConfiguration } = require(`./Configuration`);
-const localLanguageActions = require(`../schemas/localLanguageActions`);
+const {LocalLanguageActions} = require(`../schemas/LocalLanguageActions`);
 const { Storage } = require(`./Storage`);
 
 const ignore = require(`ignore`).default;
@@ -57,7 +57,7 @@ module.exports = class Deployment {
         const chosenWorkspace = await module.exports.getWorkspaceFolder();
 
         if (chosenWorkspace) {
-          const types = Object.keys(localLanguageActions);
+          const types = Object.keys(LocalLanguageActions);
         
           const chosenTypes = await vscode.window.showQuickPick(types, {
             canPickMany: true,
@@ -66,7 +66,7 @@ module.exports = class Deployment {
 
           if (chosenTypes) {
             /** @type {Action[]} */
-            const newActions = chosenTypes.map(type => localLanguageActions[type]).flat();
+            const newActions = chosenTypes.map(type => LocalLanguageActions[type]).flat();
 
             const localActionsUri = vscode.Uri.file(path.join(chosenWorkspace.uri.fsPath, `.vscode`, `actions.json`));
 
@@ -111,7 +111,7 @@ module.exports = class Deployment {
           let ignoreRules = ignore({ignorecase: true}).add(`.git`);
           if (gitignores.length > 0) {
             // get the content from the file
-            const gitignoreContent = await (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
+            const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
             ignoreRules.add(gitignoreContent.split(`\n`));
           }
 
