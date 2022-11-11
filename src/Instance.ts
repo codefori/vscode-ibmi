@@ -19,6 +19,7 @@ import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuratio
 import { Search } from "./api/Search";
 
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
+import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -113,8 +114,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     const variablesUI = require(`./webviews/variables`);
 
     const CLCommands = require(`./languages/clle/clCommands`);
-
-    const ColorProvider = require(`./languages/general/ColorProvider`);
 
     if (instance.connection) {
       instance.storage = new Storage(context, instance.connection.currentConnectionName);
@@ -412,7 +411,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
         // ********* Color provider */
         if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
-          new ColorProvider(context);
+          SEUColorProvider.intitialize(context);
         }
 
         //********* Actions */
