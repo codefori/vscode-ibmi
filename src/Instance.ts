@@ -19,9 +19,9 @@ import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuratio
 import { Search } from "./api/Search";
 
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
-import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
