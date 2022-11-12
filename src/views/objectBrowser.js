@@ -1056,7 +1056,7 @@ class ILEObject extends vscode.TreeItem {
 
     this.filter = filter;
 
-    this.contextValue = `object`;
+    this.contextValue = `object.${type}`;
     this.path = `${library}/${name}`;
     this.type = type;
     this.description = text + (attribute ? ` (${attribute})` : ``);
