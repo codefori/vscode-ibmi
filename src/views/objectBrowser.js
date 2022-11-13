@@ -1,4 +1,3 @@
-
 const vscode = require(`vscode`);
 const fs = require(`fs`);
 const os = require(`os`);
@@ -11,6 +10,7 @@ const FiltersUI = require(`../webviews/filters`);
 let {instance, setSearchResults} = require(`../Instance`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
 const {Search} = require(`../api/Search`);
+const {ObjectCommands, getDefaultObjectAction} = require(`../api/ObjectsActions`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -844,7 +844,12 @@ module.exports = class objectBrowserTwoProvider {
           console.log(this);
         }
       })
-    )
+    );
+
+    //Register all Object commands
+    context.subscriptions.push(
+      ObjectCommands.map(action => vscode.commands.registerCommand(action.command, action.action))
+    );
   }
 
   async moveFilterInList(filterName, filterMovement) {
@@ -1042,38 +1047,47 @@ class SPF extends vscode.TreeItem {
   }
 }
 
+//TODO Seb J.: once converted to TypeScript, this should implement IBMiObject
 class ILEObject extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
-   * @param {{library: string, name: string, type: string, text: string, attribute?: string}} objectInfo
+   * @param {IBMiObject} object
    */
-  constructor(filter, {library, name, type, text, attribute}) {
-    if (type.startsWith(`*`)) type = type.substring(1);
+  constructor(filter, object) {
+    const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
 
     const icon = objectIcons[type.toUpperCase()] || objectIcons[``];
 
-    super(`${name}.${type}`);
+    super(`${object.name}.${type}`);
 
     this.filter = filter;
 
     this.contextValue = `object.${type}`;
-    this.path = `${library}/${name}`;
+    this.path = `${object.library}/${object.name}`;
     this.type = type;
-    this.description = text + (attribute ? ` (${attribute})` : ``);
+    this.description = object.text + (object.attribute ? ` (${object.attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.text = text;
+    this.text = object.text;
 
-    this.resourceUri = vscode.Uri.from({
-      scheme: `object`,
-      path: `/${library}/${name}.${type}`,
-      fragment: attribute ? attribute : undefined
-    });
+    const defaultAction = getDefaultObjectAction(type);
+    
+    if(defaultAction){
+      this.command = {
+        command: defaultAction.command,
+        title: defaultAction.title,
+        arguments: [object] //TODO Seb J.: should be [this] once converted to TypeScript
+      };
+    }
+    else{
+      //display object description?
+    }
 
-    this.command = {
-      command: `vscode.open`,
-      title: `Open`,
-      arguments: [this.resourceUri]
-    };
+    //TODO Seb J.: IBMiObject interface (TypeScript much?)
+    this.library = object.library;
+    this.name = object.name;
+    this.text = object.text;
+    this.attribute = object.attribute;
+    //TODO Seb J.
   }
 }
 
