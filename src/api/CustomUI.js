@@ -47,12 +47,12 @@ class CustomUI {
       panel.webview.onDidReceiveMessage(
         message => {
           didSubmit = true;
-          callback({panel, data: message});
+          callback({ panel, data: message });
         }
       );
-  
+
       panel.onDidDispose(() => {
-        if (!didSubmit) callback({panel, data: null});
+        if (!didSubmit) callback({ panel, data: null });
       });
 
     } else {
@@ -60,19 +60,19 @@ class CustomUI {
         panel.webview.onDidReceiveMessage(
           message => {
             didSubmit = true;
-            resolve({panel, data: message});
+            resolve({ panel, data: message });
           }
         );
-    
+
         panel.onDidDispose(() => {
-          if (!didSubmit) resolve({panel, data: null});
+          if (!didSubmit) resolve({ panel, data: null });
         });
       });
     }
   }
 
   getHTML(panel) {
-    const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
+    const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
 
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
@@ -211,8 +211,8 @@ class CustomUI {
 
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
-              ${trees.map(tree => { 
-                return /*js*/`
+              ${trees.map(tree => {
+      return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
                   currentTree.addEventListener('vsc-select', (event) => {
@@ -222,7 +222,7 @@ class CustomUI {
                     }
                   });
                   `
-              })}
+    })}
             });
 
         }())
@@ -232,7 +232,7 @@ class CustomUI {
   }
 }
 
-class Field  {
+class Field {
   /**
    * 
    * @param {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
@@ -248,7 +248,7 @@ class Field  {
 
     /** @type {string} */
     this.label = label;
-    
+
     /** @type {string|undefined} */
     this.description = undefined;
 
@@ -267,6 +267,12 @@ class Field  {
     */
     this.multiline = undefined;
 
+    /** 
+       * Used only for `input` type
+       * @type {number} 
+      */
+    this.maxLength = 0;
+
     /** @type {{label: string, value: string}[]|{selected?: boolean, value: string, description: string, text: string}[]|{label: string, id: string}[]|undefined} Used for select & button types. */
     this.items = undefined;
 
@@ -277,20 +283,20 @@ class Field  {
     this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
 
     switch (this.type) {
-    case `submit`:
-      return `<vscode-button id="${this.id}">${this.label}</vscode-button>`;
+      case `submit`:
+        return `<vscode-button id="${this.id}">${this.label}</vscode-button>`;
 
-    case `buttons`:
-      return `
+      case `buttons`:
+        return `
         <vscode-form-item>
           ${this.items.map(item => `<vscode-button id="${item.id}" style="margin:3px">${item.label}</vscode-button>`).join(``)}
         </vscode-form-item>`;
 
-    case `hr`:
-      return `<hr />`;
+      case `hr`:
+        return `<hr />`;
 
-    case `checkbox`:
-      return `
+      case `checkbox`:
+        return `
         <vscode-form-item>
           <vscode-form-control>
           <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
@@ -298,39 +304,39 @@ class Field  {
           </vscode-form-control>
         </vscode-form-item>`;
 
-    case `tabs`:
-      return `
+      case `tabs`:
+        return `
         <vscode-tabs selectedIndex="${this.default || 0}">
-          ${this.items.map(item => 
-            `
+          ${this.items.map(item =>
+          `
             <header slot="header">${item.label}</header>
             <section>
               ${item.value}
             </section>
             `
-          ).join(``)}
+        ).join(``)}
         </vscode-tabs>
       `
 
-    case `input`:
-      return `
+      case `input`:
+        return `
       <vscode-form-item>
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
-              <vscode-inputbox class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
+              <vscode-inputbox class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``} ${this.maxLength > 0 ? `maxLength="${this.maxLength}"` : ``}></vscode-inputbox>
           </vscode-form-control>
       </vscode-form-item>
       `;
-      
-    case `paragraph`:
-      return `
+
+      case `paragraph`:
+        return `
       <vscode-form-item>
           <vscode-form-description>${this.label}</vscode-form-description>
       </vscode-form-item>
       `;
-    case `file`:
-      return `
+      case `file`:
+        return `
         <vscode-form-item>
             <vscode-form-label>${this.label}</vscode-form-label>
             ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
@@ -339,8 +345,8 @@ class Field  {
             </vscode-form-control>
         </vscode-form-item>
         `;
-    case `password`:
-      return `
+      case `password`:
+        return `
       <vscode-form-item>
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
@@ -350,8 +356,8 @@ class Field  {
       </vscode-form-item>
       `;
 
-    case `tree`:
-      return `
+      case `tree`:
+        return `
       <vscode-form-item>
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
@@ -361,8 +367,8 @@ class Field  {
       </vscode-form-item>
       `;
 
-    case `select`:
-      return `
+      case `select`:
+        return `
       <vscode-form-item>
           <vscode-form-label>${this.label}</vscode-form-label>
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
@@ -378,4 +384,4 @@ class Field  {
   }
 }
 
-module.exports = {CustomUI, Field};
+module.exports = { CustomUI, Field };
