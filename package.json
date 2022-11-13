@@ -1191,6 +1191,11 @@
 				"icon": "$(symbol-file)"
 			},
 			{
+				"command": "code-for-ibmi.editDataArea",
+				"title": "Edit Data Area",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.closeSearchView",
 				"title": "Close search view",
 				"category": "IBM i",
@@ -1696,6 +1701,11 @@
 					"group": "1_objActions@5"
 				},
 				{
+					"command": "code-for-ibmi.editDataArea",
+					"when": "view == objectBrowser && viewItem == object.dtaara",
+					"group": "1_objDtaaraActions@1"
+				},
+				{
 					"command": "code-for-ibmi.createSourceFile",
 					"when": "view == objectBrowser && viewItem == filter",
 					"group": "1_LibActions@1"
@@ -1705,6 +1715,12 @@
 					"when": "viewItem =~ /^object/",
 					"group": "1_workspace@1"
 				}
+			],
+			"commandPalette": [
+				{
+					"command": "code-for-ibmi.editDataArea",
+					"when": "never"
+				}
 			]
 		},
 		"viewsWelcome": [
@@ -1712,7 +1728,7 @@
 				"view": "connectionBrowser",
 				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
 			}
-		]
+		]				
 	},
 	"scripts": {
 		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",

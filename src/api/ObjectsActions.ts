@@ -11,7 +11,14 @@ interface ObjectAction {
 }
 
 const objectActions: ObjectActions = {
-    
+    dtaara: [
+        {
+            command: `code-for-ibmi.editDataArea`,
+            title: 'Edit Data Area',
+            default: true,
+            action: editDataArea
+        }
+    ]
 };
 
 export const ObjectCommands = Object.entries(objectActions).flatMap(oa => oa[1]);
