@@ -134,7 +134,7 @@ class CustomUI {
                 if (event)
                     event.preventDefault();
     
-                var data = {};
+                let data = {};
 
                 if (buttonValue) {
                   data['buttons'] = buttonValue;
@@ -143,11 +143,11 @@ class CustomUI {
                 for (const field of submitfields) {
                   var fieldType = document.getElementById(field).nodeName.toLowerCase();
                    switch (fieldType) {
-                    case "vscode-checkbox"
-                    :data[field] = document.getElementById(field).checked;
-                    break;
-                    default
-                    :data[field] = document.getElementById(field).value;
+                    case "vscode-checkbox":
+                      data[field] = document.getElementById(field).checked;
+                      break;
+                    default:
+                      data[field] = document.getElementById(field).value;
                   }
                 }
 
@@ -235,12 +235,12 @@ class CustomUI {
 class Field {
   /**
    * 
-   * @param {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
+   * @param {"input"|"password"|"number|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
    * @param {string} [id] 
    * @param {string} [label] 
    */
   constructor(type, id, label) {
-    /** @type {"input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} */
+    /** @type {"input"|"password"|"number|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} */
     this.type = type;
 
     /** @type {string} */
@@ -256,7 +256,7 @@ class Field {
     this.default = undefined;
 
     /** 
-     * Used only for `input` type
+     * Used only for `input` and `number` types
      * @type {boolean|undefined} 
     */
     this.readonly = undefined;
@@ -268,10 +268,22 @@ class Field {
     this.multiline = undefined;
 
     /** 
-       * Used only for `input` type
+       * Used only for `input` type; set text max length
        * @type {number} 
       */
     this.maxLength = 0;
+
+    /** 
+    * Used only for `number` type; maximum allowed value
+    * @type {number | undefined} 
+    */
+    this.max = undefined;
+
+    /** 
+    * Used only for `number` type; minimum allowed value
+    * @type {number | undefined} 
+    */
+   this.min = undefined;
 
     /** @type {{label: string, value: string}[]|{selected?: boolean, value: string, description: string, text: string}[]|{label: string, id: string}[]|undefined} Used for select & button types. */
     this.items = undefined;
@@ -325,6 +337,17 @@ class Field {
           ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
           <vscode-form-control>
               <vscode-inputbox class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``} ${this.maxLength > 0 ? `maxLength="${this.maxLength}"` : ``}></vscode-inputbox>
+          </vscode-form-control>
+      </vscode-form-item>
+      `;
+
+      case `number`:
+        return /*html*/`
+      <vscode-form-item>
+          <vscode-form-label>${this.label}</vscode-form-label>
+          ${this.description ? `<vscode-form-description>${this.description}</vscode-form-description>` : ``}
+          <vscode-form-control>
+              <vscode-inputbox type="number" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.max > 0 ? `max="${this.max}"` : ``} ${this.min > 0 ? `min="${this.min}"` : ``}></vscode-inputbox>
           </vscode-form-control>
       </vscode-form-item>
       `;
