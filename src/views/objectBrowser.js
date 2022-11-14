@@ -1062,14 +1062,14 @@ class ILEObject extends vscode.TreeItem {
 
     this.filter = filter;
 
-    this.contextValue = `object.${type}`;
+    this.contextValue = `object.${type.toLowerCase()}`;
     this.path = `${object.library}/${object.name}`;
     this.type = type;
     this.description = object.text + (object.attribute ? ` (${object.attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
     this.text = object.text;
 
-    const defaultAction = getDefaultObjectAction(type);
+    const defaultAction = getDefaultObjectAction(type.toLowerCase());
     
     if(defaultAction){
       this.command = {
