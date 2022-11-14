@@ -10,6 +10,8 @@ class CustomUI {
     this.fields = [];
     /** @type {vscode.ViewColumn} */
     this.viewColumn = viewColumn;
+    /** @type {boolean} */
+    this.isForm = true;
   }
 
   /** 
@@ -105,11 +107,9 @@ class CustomUI {
     </head>
     
     <body>
-    
-        <div id="laforma">
-            ${this.fields.map(field => field.getHTML()).join(``)}
-        </div>
-    
+        ${this.isForm ? `<div id="laforma">` : ``}
+        ${this.fields.map(field => field.getHTML()).join(``)}
+        ${this.isForm ? `</div>` : ``}
     </body>
     
     <script>
