@@ -1196,6 +1196,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.displayCommand",
+				"title": "Display command",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.closeSearchView",
 				"title": "Close search view",
 				"category": "IBM i",
@@ -1706,6 +1711,11 @@
 					"group": "1_objDtaaraActions@1"
 				},
 				{
+					"command": "code-for-ibmi.displayCommand",
+					"when": "view == objectBrowser && viewItem == object.cmd",
+					"group": "1_objCmdActions@1"
+				},
+				{
 					"command": "code-for-ibmi.createSourceFile",
 					"when": "view == objectBrowser && viewItem == filter",
 					"group": "1_LibActions@1"
@@ -1719,6 +1729,10 @@
 			"commandPalette": [
 				{
 					"command": "code-for-ibmi.editDataArea",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.displayCommand",
 					"when": "never"
 				}
 			]

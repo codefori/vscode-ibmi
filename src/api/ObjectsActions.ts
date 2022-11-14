@@ -1,4 +1,5 @@
 import vscode from "vscode";
+import { displayCommand } from "../webviews/objects/Cmd";
 import { editDataArea } from "../webviews/objects/Dtaara"
 type ObjectType = string
 type ObjectActions = Record<ObjectType, ObjectAction[]>;
@@ -17,6 +18,14 @@ const objectActions: ObjectActions = {
             title: 'Edit Data Area',
             default: true,
             action: editDataArea
+        }
+    ],
+    cmd : [
+        {
+            command: `code-for-ibmi.displayCommand`,
+            title: 'Display command',
+            default: true,
+            action: displayCommand
         }
     ]
 };
