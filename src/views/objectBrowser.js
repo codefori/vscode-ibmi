@@ -1050,7 +1050,7 @@ class ILEObject extends vscode.TreeItem {
   constructor(filter, {library, name, type, text, attribute}) {
     if (type.startsWith(`*`)) type = type.substring(1);
 
-    const icon = objectIcons[type] || objectIcons[``];
+    const icon = objectIcons[type.toUpperCase()] || objectIcons[``];
 
     super(`${name}.${type}`);
 
