@@ -5,9 +5,11 @@ const vscode = require(`vscode`);
 const vscodeweb = require(`@bendera/vscode-webview-elements/dist/bundled`);
 
 class CustomUI {
-  constructor() {
+  constructor(/** @type {vscode.ViewColumn} */ viewColumn = vscode.ViewColumn.Beside) {
     /** @type {Field[]} */
     this.fields = [];
+    /** @type {vscode.ViewColumn} */
+    this.viewColumn = viewColumn;
   }
 
   /** 
@@ -33,7 +35,7 @@ class CustomUI {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
-      vscode.ViewColumn.Beside,
+      this.viewColumn,
       {
         enableScripts: true
       }
@@ -74,7 +76,7 @@ class CustomUI {
   getHTML(panel) {
     const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
 
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `custom`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     return /*html*/`
@@ -235,7 +237,7 @@ class CustomUI {
 class Field {
   /**
    * 
-   * @param {"input"|"password"|"number|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
+   * @param {"input"|"password"|"number|"custom"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr"} type 
    * @param {string} [id] 
    * @param {string} [label] 
    */
@@ -402,7 +404,10 @@ class Field {
           </vscode-form-control>
       </vscode-form-item>
       `
-
+      
+      //Seb: yup, not ideal...just a band aid until I convert this bad boy to TypeScript 😅
+      case `custom`:
+        return this.label;
     }
   }
 }

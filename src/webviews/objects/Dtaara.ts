@@ -21,7 +21,7 @@ export async function editDataArea(object: IBMiObject) {
         const length = Number(dtaara.LENGTH!);
         const decimalPosition = Number(dtaara.DECIMAL_POSITIONS || 0);
 
-        const ui = new CustomUI();
+        const ui = new CustomUI(vscode.ViewColumn.One);
 
         ui.addField(new Field("paragraph", "",
             `<b>Type: </b>${type}<br />
