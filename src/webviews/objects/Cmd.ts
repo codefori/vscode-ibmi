@@ -23,7 +23,7 @@ export async function displayCommand(object: IBMiObject) {
                 if (parsed) {
                     parsed.forEach(processDetailValue);
 
-                    const ui = new CustomUI();
+                    const ui = new CustomUI(vscode.ViewColumn.One);
                     ui.isForm = false;
                     ui.addField(new Field('custom', "", renderTable(parsed)));
                     ui.loadPage(`Command detail: ${library}/${name}`);
@@ -126,7 +126,7 @@ function renderTable(details: CommandDetail[]): string {
       <vscode-table-header-cell>Value</vscode-table-header-cell>
     </vscode-table-header>
     <vscode-table-body slot="body">
-      ${details.map(renderRow).join("\n")}      
+      ${details.map(renderRow).join("\n")}
     </vscode-table-body>
   </vscode-table>`;
 }
