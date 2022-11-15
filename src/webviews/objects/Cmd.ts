@@ -122,7 +122,7 @@ function renderTable(details: CommandDetail[]): string {
     return /* html */ `<vscode-table style="height: 100vh" columns='["250px", "100px", "auto"]' zebra bordered resizable>
     <vscode-table-header slot="header">
       <vscode-table-header-cell>Name</vscode-table-header-cell>  
-      <vscode-table-header-cell>Property</vscode-table-header-cell>      
+      <vscode-table-header-cell>Keyword</vscode-table-header-cell>      
       <vscode-table-header-cell>Value</vscode-table-header-cell>
     </vscode-table-header>
     <vscode-table-body slot="body">
