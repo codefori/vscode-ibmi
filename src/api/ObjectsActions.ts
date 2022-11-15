@@ -1,6 +1,7 @@
 import vscode from "vscode";
 import { displayCommand } from "../webviews/objects/Cmd";
 import { editDataArea } from "../webviews/objects/Dtaara"
+import { displayProgram } from "../webviews/objects/Pgm";
 type ObjectType = string
 type ObjectActions = Record<ObjectType, ObjectAction[]>;
 
@@ -27,7 +28,23 @@ const objectActions: ObjectActions = {
             default: true,
             action: displayCommand
         }
-    ]
+    ],
+    pgm: [
+        {
+            command: `code-for-ibmi.displayProgram`,
+            title: 'Display program',
+            default: true,
+            action: displayProgram
+        }
+    ],
+    srvpgm: [
+        {
+            command: `code-for-ibmi.displayServiceProgram`,
+            title: 'Display service program',
+            default: true,
+            action: displayProgram
+        }
+    ],
 };
 
 export const ObjectCommands = Object.entries(objectActions).flatMap(oa => oa[1]);

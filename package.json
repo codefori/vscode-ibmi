@@ -1201,6 +1201,16 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.displayProgram",
+				"title": "Display program",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.displayServiceProgram",
+				"title": "Display service program",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.closeSearchView",
 				"title": "Close search view",
 				"category": "IBM i",
@@ -1714,6 +1724,16 @@
 					"command": "code-for-ibmi.displayCommand",
 					"when": "view == objectBrowser && viewItem == object.cmd",
 					"group": "1_objCmdActions@1"
+				},				
+				{
+					"command": "code-for-ibmi.displayProgram",
+					"when": "view == objectBrowser && viewItem == object.pgm",
+					"group": "1_objPgmActions@1"
+				},
+				{
+					"command": "code-for-ibmi.displayServiceProgram",
+					"when": "view == objectBrowser && viewItem == object.srvpgm",
+					"group": "1_objSrvPgmActions@1"
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
@@ -1733,6 +1753,14 @@
 				},
 				{
 					"command": "code-for-ibmi.displayCommand",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.displayProgram",
+					"when": "never"
+				},				
+				{
+					"command": "code-for-ibmi.displayServiceProgram",
 					"when": "never"
 				}
 			]
