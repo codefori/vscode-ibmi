@@ -22,78 +22,7 @@ export async function displayProgram(object: IBMiObject) {
     const [programInfo] = await content.runSQL(`Select ${selectClause} From QSYS2.PROGRAM_INFO Where PROGRAM_LIBRARY = '${library}' And PROGRAM_NAME = '${name}'`);
     const type = String(programInfo.PROGRAM_TYPE).toUpperCase();
     const objectType = String(programInfo.OBJECT_TYPE).toUpperCase();
-      
-    if(programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE){
-      programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE = `${programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE_LIBRARY}/${programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE}`;
-      programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE_LIBRARY = null;
-    }
-
-    if(programInfo.EXPORT_SOURCE_FILE){
-      programInfo.EXPORT_SOURCE_FILE = `${programInfo.EXPORT_SOURCE_LIBRARY}/${programInfo.EXPORT_SOURCE_FILE},${programInfo.EXPORT_SOURCE_FILE_MEMBER}`;
-      programInfo.EXPORT_SOURCE_LIBRARY = null;
-      programInfo.EXPORT_SOURCE_FILE_MEMBER = null;
-    }
-
-    if(programInfo.PROCEDURE_EXPORTS){
-      programInfo.PROCEDURE_EXPORTS = `${programInfo.PROCEDURE_EXPORTS} / ${programInfo.MAXIMUM_PROCEDURE_EXPORTS}`;
-      programInfo.MAXIMUM_PROCEDURE_EXPORTS = null;
-    }
-
-    if(programInfo.AUXILIARY_STORAGE_SEGMENTS){
-      programInfo.AUXILIARY_STORAGE_SEGMENTS = `${programInfo.AUXILIARY_STORAGE_SEGMENTS} / ${programInfo.MAXIMUM_AUXILIARY_STORAGE_SEGMENTS}`;
-      programInfo.MAXIMUM_AUXILIARY_STORAGE_SEGMENTS = null;
-    }
-
-    if(programInfo.PROGRAM_SIZE){
-      programInfo.PROGRAM_SIZE = `${programInfo.PROGRAM_SIZE} / ${programInfo.MAXIMUM_PROGRAM_SIZE}`;
-      programInfo.MAXIMUM_PROGRAM_SIZE = null;
-    }
-
-    if(programInfo.MODULES){
-      programInfo.MODULES = `${programInfo.MODULES} / ${programInfo.MAXIMUM_MODULES}`;
-      programInfo.MAXIMUM_MODULES = null;
-    }
-
-    if(programInfo.STRING_DIRECTORY_SIZE){
-      programInfo.STRING_DIRECTORY_SIZE = `${programInfo.STRING_DIRECTORY_SIZE} / ${programInfo.MAXIMUM_STRING_DIRECTORY_SIZE}`;
-      programInfo.MAXIMUM_STRING_DIRECTORY_SIZE = null;
-    }
-
-    if(programInfo.SERVICE_PROGRAMS){
-      programInfo.SERVICE_PROGRAMS = `${programInfo.SERVICE_PROGRAMS} / ${programInfo.MAXIMUM_SERVICE_PROGRAMS}`;
-      programInfo.MAXIMUM_SERVICE_PROGRAMS = null;
-    }
-
-    if(programInfo.COPYRIGHT_STRING_SIZE){
-      programInfo.COPYRIGHT_STRING_SIZE = `${programInfo.COPYRIGHT_STRING_SIZE} / ${programInfo.MAXIMUM_COPYRIGHT_STRING_SIZE}`;
-      programInfo.MAXIMUM_COPYRIGHT_STRING_SIZE = null;
-    }
-
-    if(programInfo.DATA_EXPORTS){
-      programInfo.DATA_EXPORTS = `${programInfo.DATA_EXPORTS} / ${programInfo.MAXIMUM_DATA_EXPORTS}`;
-      programInfo.MAXIMUM_DATA_EXPORTS = null;
-    }
-
-    if(programInfo.SOURCE_FILE){
-      programInfo.SOURCE_FILE = `${programInfo.SOURCE_FILE_LIBRARY}/${programInfo.SOURCE_FILE},${programInfo.SOURCE_FILE_MEMBER}`;
-      programInfo.SOURCE_FILE_LIBRARY = null;
-      programInfo.SOURCE_FILE_MEMBER = null;
-    }
-
-    if(programInfo.SORT_SEQUENCE && programInfo.SORT_SEQUENCE_LIBRARY){
-      programInfo.SORT_SEQUENCE = `${programInfo.SORT_SEQUENCE_LIBRARY}/${programInfo.SORT_SEQUENCE}`;
-      programInfo.SORT_SEQUENCE_LIBRARY = null;
-    }
-
-    if(programInfo.SQL_SORT_SEQUENCE && programInfo.SQL_SORT_SEQUENCE_LIBRARY){
-      programInfo.SQL_SORT_SEQUENCE = `${programInfo.SQL_SORT_SEQUENCE_LIBRARY}/${programInfo.SQL_SORT_SEQUENCE}`;
-      programInfo.SQL_SORT_SEQUENCE_LIBRARY = null;
-    }
-
-    if(programInfo.SQL_PACKAGE_LIBRARY && programInfo.SQL_PACKAGE){
-      programInfo.SQL_PACKAGE = `${programInfo.SQL_PACKAGE_LIBRARY}/${programInfo.SQL_PACKAGE}`;
-      programInfo.SQL_PACKAGE_LIBRARY = null;
-    }
+    reorganizeFields(programInfo);    
     
     const title = `${type} ${objectType === '*PGM' ? "Program" : "Service program"}: ${library}/${name}`;
     const table = new Field('custom', "", renderTable(title, programInfo));
@@ -165,4 +94,78 @@ function renderRow(column: string, value: string): string {
 </vscode-table-row>`;
 }
 
+
+function reorganizeFields(programInfo: Tools.DB2Row) {
+  if(programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE){
+    programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE = `${programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE_LIBRARY}/${programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE}`;
+    programInfo.PROGRAM_ENTRY_PROCEDURE_MODULE_LIBRARY = null;
+  }
+
+  if(programInfo.EXPORT_SOURCE_FILE){
+    programInfo.EXPORT_SOURCE_FILE = `${programInfo.EXPORT_SOURCE_LIBRARY}/${programInfo.EXPORT_SOURCE_FILE},${programInfo.EXPORT_SOURCE_FILE_MEMBER}`;
+    programInfo.EXPORT_SOURCE_LIBRARY = null;
+    programInfo.EXPORT_SOURCE_FILE_MEMBER = null;
+  }
+
+  if(programInfo.PROCEDURE_EXPORTS){
+    programInfo.PROCEDURE_EXPORTS = `${programInfo.PROCEDURE_EXPORTS} / ${programInfo.MAXIMUM_PROCEDURE_EXPORTS}`;
+    programInfo.MAXIMUM_PROCEDURE_EXPORTS = null;
+  }
+
+  if(programInfo.AUXILIARY_STORAGE_SEGMENTS){
+    programInfo.AUXILIARY_STORAGE_SEGMENTS = `${programInfo.AUXILIARY_STORAGE_SEGMENTS} / ${programInfo.MAXIMUM_AUXILIARY_STORAGE_SEGMENTS}`;
+    programInfo.MAXIMUM_AUXILIARY_STORAGE_SEGMENTS = null;
+  }
+
+  if(programInfo.PROGRAM_SIZE){
+    programInfo.PROGRAM_SIZE = `${programInfo.PROGRAM_SIZE} / ${programInfo.MAXIMUM_PROGRAM_SIZE}`;
+    programInfo.MAXIMUM_PROGRAM_SIZE = null;
+  }
+
+  if(programInfo.MODULES){
+    programInfo.MODULES = `${programInfo.MODULES} / ${programInfo.MAXIMUM_MODULES}`;
+    programInfo.MAXIMUM_MODULES = null;
+  }
+
+  if(programInfo.STRING_DIRECTORY_SIZE){
+    programInfo.STRING_DIRECTORY_SIZE = `${programInfo.STRING_DIRECTORY_SIZE} / ${programInfo.MAXIMUM_STRING_DIRECTORY_SIZE}`;
+    programInfo.MAXIMUM_STRING_DIRECTORY_SIZE = null;
+  }
+
+  if(programInfo.SERVICE_PROGRAMS){
+    programInfo.SERVICE_PROGRAMS = `${programInfo.SERVICE_PROGRAMS} / ${programInfo.MAXIMUM_SERVICE_PROGRAMS}`;
+    programInfo.MAXIMUM_SERVICE_PROGRAMS = null;
+  }
+
+  if(programInfo.COPYRIGHT_STRING_SIZE){
+    programInfo.COPYRIGHT_STRING_SIZE = `${programInfo.COPYRIGHT_STRING_SIZE} / ${programInfo.MAXIMUM_COPYRIGHT_STRING_SIZE}`;
+    programInfo.MAXIMUM_COPYRIGHT_STRING_SIZE = null;
+  }
+
+  if(programInfo.DATA_EXPORTS){
+    programInfo.DATA_EXPORTS = `${programInfo.DATA_EXPORTS} / ${programInfo.MAXIMUM_DATA_EXPORTS}`;
+    programInfo.MAXIMUM_DATA_EXPORTS = null;
+  }
+
+  if(programInfo.SOURCE_FILE){
+    programInfo.SOURCE_FILE = `${programInfo.SOURCE_FILE_LIBRARY}/${programInfo.SOURCE_FILE},${programInfo.SOURCE_FILE_MEMBER}`;
+    programInfo.SOURCE_FILE_LIBRARY = null;
+    programInfo.SOURCE_FILE_MEMBER = null;
+  }
+
+  if(programInfo.SORT_SEQUENCE && programInfo.SORT_SEQUENCE_LIBRARY){
+    programInfo.SORT_SEQUENCE = `${programInfo.SORT_SEQUENCE_LIBRARY}/${programInfo.SORT_SEQUENCE}`;
+    programInfo.SORT_SEQUENCE_LIBRARY = null;
+  }
+
+  if(programInfo.SQL_SORT_SEQUENCE && programInfo.SQL_SORT_SEQUENCE_LIBRARY){
+    programInfo.SQL_SORT_SEQUENCE = `${programInfo.SQL_SORT_SEQUENCE_LIBRARY}/${programInfo.SQL_SORT_SEQUENCE}`;
+    programInfo.SQL_SORT_SEQUENCE_LIBRARY = null;
+  }
+
+  if(programInfo.SQL_PACKAGE_LIBRARY && programInfo.SQL_PACKAGE){
+    programInfo.SQL_PACKAGE = `${programInfo.SQL_PACKAGE_LIBRARY}/${programInfo.SQL_PACKAGE}`;
+    programInfo.SQL_PACKAGE_LIBRARY = null;
+  }
+}
 
