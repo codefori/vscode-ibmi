@@ -816,6 +816,12 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.hexEditor.openFile",
+				"title": "Open in Hex Editor",
+				"category": "IBM i",
+				"icon": "$(go-to-file)"
+			},
+			{
 				"command": "code-for-ibmi.goToFile",
 				"title": "Go to file...",
 				"category": "IBM i",
@@ -1505,6 +1511,11 @@
 					"command": "code-for-ibmi.compareWithSelected",
 					"when": "viewItem == member || viewItem == streamfile",
 					"group": "2_compare@2"
+				},
+				{
+					"command": "code-for-ibmi.hexEditor.openFile",
+					"when": "viewItem == member || viewItem == streamfile",
+					"group": "3_hex@1"
 				},
 				{
 					"command": "code-for-ibmi.createMember",

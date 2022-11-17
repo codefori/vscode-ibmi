@@ -557,6 +557,51 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               return null;
             }
           }),
+          vscode.commands.registerCommand(`code-for-ibmi.hexEditor.openFile`, async (node?: vscode.TreeItem) => {
+            let validUri;
+
+            if (config.autoConvertIFSccsid) {
+              // Since this converts everything to UTF8, we don't really want that for the hex view
+              config.autoConvertIFSccsid = false;
+              await ConnectionConfiguration.update(config);
+
+              vscode.window.showInformationMessage(`Auto convert of IFS CCSID disabled for connection due to usage of Hex Viewer.`)
+            }
+
+            if (node && node.resourceUri) {
+              validUri = node.resourceUri;
+            } else {
+              const activeEditor = vscode.window.activeTextEditor;
+              if (activeEditor) {
+                validUri = activeEditor.document.uri;
+              }
+            }
+
+            if (validUri) {
+              if (validUri.scheme === `member`) {
+                const memberDetail = connection.parserMemberPath(validUri.path);
+
+                validUri = vscode.Uri.from({
+                  scheme: `streamfile`,
+                  path: [
+                    ``,
+                    ...(memberDetail.asp ? [memberDetail.asp] : []),
+                    `QSYS.LIB`,
+                    `${memberDetail.library}.LIB`,
+                    `${memberDetail.file}.FILE`,
+                    `${memberDetail.member}.MBR`
+                  ].join(`/`)
+                })
+              }
+
+              try {
+                await vscode.commands.executeCommand(`hexEditor.openFile`, validUri);
+              } catch (e) {
+                vscode.window.showWarningMessage(`Microsoft Hex Editor extension is required to view the hex of files.`);
+                vscode.commands.executeCommand(`extension.open`, `ms-vscode.hexeditor`);
+              }
+            }
+          })
         );
 
         context.subscriptions.push(
