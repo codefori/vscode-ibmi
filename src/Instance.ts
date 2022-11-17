@@ -105,6 +105,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     const libraryListView = require(`./views/libraryListView`);
     const ifsBrowser = require(`./views/ifsBrowser`);
     const ifs = new (require(`./filesystems/ifs`));
+    const raw = new (require(`./filesystems/raw`));
 
     const objectBrowser = require(`./views/objectBrowser`);
 
@@ -265,6 +266,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         context.subscriptions.push(
           //@ts-ignore
           vscode.workspace.registerFileSystemProvider(`streamfile`, ifs, {
+            isCaseSensitive: false
+          })
+        );
+
+        //********* Raw files on the file system */
+
+        context.subscriptions.push(
+          vscode.workspace.registerFileSystemProvider(`ibmi`, raw, {
             isCaseSensitive: false
           })
         );
@@ -594,8 +603,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 })
               }
 
+              if (validUri.scheme === `streamfile`) {
+                validUri = vscode.Uri.from({
+                  scheme: `ibmi`,
+                  path: validUri.path
+                });
+              }
+
               try {
-                await vscode.commands.executeCommand(`hexEditor.openFile`, validUri);
+                await vscode.commands.executeCommand(`vscode.openWith`, validUri, `hexEditor.hexedit`);
               } catch (e) {
                 vscode.window.showWarningMessage(`Microsoft Hex Editor extension is required to view the hex of files.`);
                 vscode.commands.executeCommand(`extension.open`, `ms-vscode.hexeditor`);

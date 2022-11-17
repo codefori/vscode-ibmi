@@ -22,6 +22,20 @@ module.exports = class IBMiContent {
     this.ibmi = instance;
   }
 
+  async download(remotePath, localPath = null) {
+    const client = this.ibmi.client;
+    if (localPath == null) localPath = await tmpFile();
+    await client.getFile(localPath, remotePath);
+    return readFileAsync(localPath);
+  }
+
+  async upload(remotePath, content) {
+    const client = this.ibmi.client;
+    let tmpobj = await tmpFile();
+    await writeFileAsync(tmpobj, content);
+    return client.putFile(tmpobj, remotePath);
+  }
+
   /**
    * @param {string} remotePath 
    * @param {string} localPath 
