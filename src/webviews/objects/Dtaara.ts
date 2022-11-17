@@ -11,8 +11,9 @@ export async function editDataArea(object: IBMiObject) {
         const name = object.name.toUpperCase();
         const [dtaara] = await content.runSQL(
             `Select DATA_AREA_TYPE, LENGTH, DECIMAL_POSITIONS, DATA_AREA_VALUE
-            From QSYS2.DATA_AREA_INFO
-            Where DATA_AREA_LIBRARY = '${library}' And DATA_AREA_NAME = '${name}'
+            From TABLE(QSYS2.DATA_AREA_INFO(
+                DATA_AREA_NAME => '${name}',
+                DATA_AREA_LIBRARY => '${library}'))
             Fetch first row only`
         );
 
