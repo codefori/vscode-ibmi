@@ -19,6 +19,7 @@ import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuratio
 import { Search } from "./api/Search";
 
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
+import { ProfilesView } from "./views/ProfilesView";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -102,8 +103,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     if (!config) return;
 
     const libraryListView = require(`./views/libraryListView`);
-    const profilesView = require(`./views/profilesView`);
-
     const ifsBrowser = require(`./views/ifsBrowser`);
     const ifs = new (require(`./filesystems/ifs`));
 
@@ -223,7 +222,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           ),
           vscode.window.registerTreeDataProvider(
             `profilesView`,
-            new profilesView(context)
+            new ProfilesView(context)
           ),
         );
 

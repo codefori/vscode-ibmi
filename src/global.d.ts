@@ -49,3 +49,7 @@ interface ConnectionData {
 interface Server {
   name : string
 }
+
+interface Profile {
+  profile : string
+}
