@@ -1054,19 +1054,22 @@ class ILEObject extends vscode.TreeItem {
 
     super(`${name}.${type}`);
 
+    const trimText = text.trim();
+    const trimAttr = attribute.trim();
+
     this.filter = filter;
 
     this.contextValue = `object`;
     this.path = `${library}/${name}`;
     this.type = type;
-    this.description = text + (attribute ? ` (${attribute})` : ``);
+    this.description = trimText + (trimAttr ? ` (${attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.text = text;
+    this.text = trimText;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
       path: `/${library}/${name}.${type}`,
-      fragment: attribute ? attribute : undefined
+      fragment: trimAttr ? trimAttr : undefined
     });
 
     this.command = {
