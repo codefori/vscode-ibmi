@@ -22,7 +22,6 @@ import getComplexHandler from "./filesystems/qsys/complex/handlers";
 import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 
-
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
 let terminalBarItem: vscode.StatusBarItem;
@@ -186,7 +185,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return;
 
     } else {
-
       context.subscriptions.push(
         vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async () => {
           if (instance.connection) {

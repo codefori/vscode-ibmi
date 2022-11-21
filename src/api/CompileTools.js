@@ -168,9 +168,9 @@ module.exports = class CompileTools {
           }
         } else {
           if (file.startsWith(`/`))
-            ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+            ileDiagnostics.set(vscode.Uri.from({scheme: `streamfile`, path: file}), diagnostics);
           else
-            ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
+            ileDiagnostics.set(vscode.Uri.from({scheme: `member`, path: `/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`}), diagnostics);
         }
       }
 

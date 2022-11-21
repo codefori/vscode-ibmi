@@ -1042,6 +1042,13 @@
 				"icon": "$(cloud-upload)"
 			},
 			{
+				"command": "code-for-ibmi.launchDeploy",
+				"title": "Deploy Workspace",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)",
+				"enablement": "workspaceFolderCount >= 1"
+			},
+			{
 				"command": "code-for-ibmi.setDeployLocation",
 				"title": "Set Deploy Workspace Location",
 				"category": "IBM i",
@@ -1202,6 +1209,12 @@
 				"command": "code-for-ibmi.runAction",
 				"key": "ctrl+e",
 				"mac": "cmd+e"
+			},
+			{
+				"command": "code-for-ibmi.launchDeploy",
+				"key": "ctrl+shift+e",
+				"mac": "cmd+shift+e",
+				"when": "workspaceFolderCount >= 1 && code-for-ibmi:connected == true"
 			},
 			{
 				"command": "code-for-ibmi.goToFile",
@@ -1652,7 +1665,7 @@
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == ifsBrowser && viewItem == directory && code-for-ibmi:workspace == true",
+					"when": "view == ifsBrowser && viewItem == directory && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{
@@ -1662,12 +1675,12 @@
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == ifsBrowser && viewItem == shortcut && code-for-ibmi:workspace == true",
+					"when": "view == ifsBrowser && viewItem == shortcut && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == objectBrowser && viewItem == filter && code-for-ibmi:workspace == true",
+					"when": "view == objectBrowser && viewItem == filter && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{

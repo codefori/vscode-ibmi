@@ -47,7 +47,6 @@ module.exports = class Deployment {
     if (vscode.workspace.workspaceFolders) {
       if (vscode.workspace.workspaceFolders.length > 0) {
         context.subscriptions.push(this.buildWatcher());
-        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:workspace`, true);
         this.button.show();
       }
     }
