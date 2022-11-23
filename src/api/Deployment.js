@@ -402,10 +402,14 @@ module.exports = class Deployment {
       if (uri.fsPath.includes(`.git`)) return;
       this.changes[uri.fsPath] = uri;
     });
-    watcher.onDidCreate(uri => {
+    watcher.onDidCreate(async uri => {
       if (invalidFs.includes(uri.scheme)) return;
       if (uri.fsPath.includes(`.git`)) return;
-      this.changes[uri.fsPath] = uri;
+      const fileStat = await vscode.workspace.fs.stat(uri);
+
+      if (fileStat.type === vscode.FileType.File) {
+        this.changes[uri.fsPath] = uri;
+      }
     });
     watcher.onDidDelete(uri => {
       if (invalidFs.includes(uri.scheme)) return;
