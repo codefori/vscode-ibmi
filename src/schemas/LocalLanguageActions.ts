@@ -1,4 +1,4 @@
-export const LocalLanguageActions : Record<string, Action[]> = {
+export const LocalLanguageActions: Record<string, Action[]> = {
   RPGLE: [
     {
       name: `Create RPGLE Program`,
@@ -172,6 +172,10 @@ export const LocalLanguageActions : Record<string, Action[]> = {
       "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei build`,
       environment: `pase`,
       deployFirst: true,
+      postDownload: [
+        ".logs/joblog.json",
+        ".logs/output.log"
+      ]
     },
     {
       "extensions": [
@@ -181,6 +185,10 @@ export const LocalLanguageActions : Record<string, Action[]> = {
       "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei compile -f &BASENAME`,
       environment: `pase`,
       deployFirst: true,
+      postDownload: [
+        ".logs/joblog.json",
+        ".logs/output.log"
+      ]
     }
   ]
 }
