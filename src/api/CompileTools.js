@@ -8,6 +8,7 @@ const errorHandlers = require(`./errors/index`);
 const {default: IBMi} = require(`./IBMi`);
 const {GlobalConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
+const {Terminal: {createTerminal}} = require(`./Terminal`);
 
 const PORT_MIN = 40000;
 const PORT_MAX = 50000;
@@ -496,9 +497,11 @@ module.exports = class CompileTools {
 
           actionsBarItem.text = ACTION_BUTTON_RUNNING;
 
-          if (action.debug) {
-            const port = getPort();
+          const port = getPort();
+          variables[`&PORT`] = String(port);
+          command = this.replaceValues(command, variables);
 
+          if (action.debug) {
             /** @type {RemoteDebugConfig} */
             const debugConfig = {
               type: action.debug,
@@ -509,104 +512,108 @@ module.exports = class CompileTools {
             };
 
             try {
-              this.launchRemoteDebug(debugConfig);
-              variables[`&PORT`] = String(port);
-            } catch (e) {
-              vscode.window.showErrorMessage(e.message || e)
-            }
-          }
-
-          command = this.replaceValues(command, variables);
-
-          try {
-            commandResult = await this.runCommand(instance, {
-              environment,
-              command
-            });
-
-            if (commandResult) {
-              command = commandResult.command;
-              const possibleObject = this.getObjectFromCommand(command);
-
-              if (possibleObject) {
-                evfeventInfo = {
-                  ...evfeventInfo,
-                  ...possibleObject
-                };
-              }
-
-              if (commandResult.code === 0 || commandResult.code === null) {
-                executed = true;
-                vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
+              await createTerminal(connection, {
+                type: `PASE`,
+                singleCommand: `cd ${config.homeDirectory} && ${command}`
+              });
+              await this.launchRemoteDebug(debugConfig);
               
-              } else {
-                executed = false;
-                vscode.window.showErrorMessage(
-                  `Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`,
-                  GlobalConfiguration.get(`logCompileOutput`) ? `Show Output` : undefined
-                ).then(async (item) => {
-                  if (item === `Show Output`) {
-                    this.showOutput();
-                  }
-                });
-              }
-
-              outputChannel.append(`\n`);
-              if (command.includes(`*EVENTF`)) {
-                outputChannel.appendLine(`Fetching errors from ${evfeventInfo.lib}/${evfeventInfo.object}.`);
-                this.refreshDiagnostics(instance, evfeventInfo);
-              } else {
-                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.lib}/${evfeventInfo.object}.`);
-              }
+            } catch (e) {
+              vscode.window.showErrorMessage(e.message || e);
             }
 
-            if (action.type === `file` && action.postDownload && action.postDownload.length) {
-              let currentWorkspace;
-
-              /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
-              currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace || 0];
-
-              if (currentWorkspace) {
-                const clinet = connection.client;
-                const remoteDir = config.homeDirectory;
-                const localDir = currentWorkspace.uri.fsPath;
-
-                // First, we need to create the relative directories in the workspace
-                // incase they don't exist. For example, if the path is `.logs/joblog.json`
-                // then we would need to create `.logs`.
-                try {
-                  const directories = action.postDownload.map(downloadPath => {
-                    const pathInfo = path.parse(downloadPath);
-                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir)));
-                  });
-
-                  await Promise.all(directories);
-                } catch (e) {
-                  // We don't really care if it errors. The directories might already exist.
+          } else {
+            try {
+              commandResult = await this.runCommand(instance, {
+                environment,
+                command
+              });
+  
+              if (commandResult) {
+                command = commandResult.command;
+                const possibleObject = this.getObjectFromCommand(command);
+  
+                if (possibleObject) {
+                  evfeventInfo = {
+                    ...evfeventInfo,
+                    ...possibleObject
+                  };
                 }
-
-                // Then we download the files that is specified.
-                const downloads = action.postDownload.map(
-                  downloadPath => clinet.getFile(path.join(localDir, downloadPath), path.posix.join(remoteDir, downloadPath))
-                );
-
-                Promise.all(downloads)
-                  .then(result => {
-                    // Done!
-                    outputChannel.appendLine(`Downloaded files as part of Action: ${action.postDownload.join(`, `)}`);
-                  })
-                  .catch(error => {
-                    vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
-                    outputChannel.appendLine(`Failed to download a file after Action: ${error.message}`);
+  
+                if (commandResult.code === 0 || commandResult.code === null) {
+                  executed = true;
+                  vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
+                
+                } else {
+                  executed = false;
+                  vscode.window.showErrorMessage(
+                    `Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`,
+                    GlobalConfiguration.get(`logCompileOutput`) ? `Show Output` : undefined
+                  ).then(async (item) => {
+                    if (item === `Show Output`) {
+                      this.showOutput();
+                    }
                   });
+                }
+  
+                outputChannel.append(`\n`);
+                if (command.includes(`*EVENTF`)) {
+                  outputChannel.appendLine(`Fetching errors from ${evfeventInfo.lib}/${evfeventInfo.object}.`);
+                  this.refreshDiagnostics(instance, evfeventInfo);
+                } else {
+                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.lib}/${evfeventInfo.object}.`);
+                }
               }
+  
+              if (action.type === `file` && action.postDownload && action.postDownload.length) {
+                let currentWorkspace;
+  
+                /** @type {vscode.WorkspaceFolder} *///@ts-ignore We know it's a number
+                currentWorkspace = vscode.workspace.workspaceFolders[evfeventInfo.workspace || 0];
+  
+                if (currentWorkspace) {
+                  const clinet = connection.client;
+                  const remoteDir = config.homeDirectory;
+                  const localDir = currentWorkspace.uri.fsPath;
+  
+                  // First, we need to create the relative directories in the workspace
+                  // incase they don't exist. For example, if the path is `.logs/joblog.json`
+                  // then we would need to create `.logs`.
+                  try {
+                    const directories = action.postDownload.map(downloadPath => {
+                      const pathInfo = path.parse(downloadPath);
+                      return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir)));
+                    });
+  
+                    await Promise.all(directories);
+                  } catch (e) {
+                    // We don't really care if it errors. The directories might already exist.
+                  }
+  
+                  // Then we download the files that is specified.
+                  const downloads = action.postDownload.map(
+                    downloadPath => clinet.getFile(path.join(localDir, downloadPath), path.posix.join(remoteDir, downloadPath))
+                  );
+  
+                  Promise.all(downloads)
+                    .then(result => {
+                      // Done!
+                      outputChannel.appendLine(`Downloaded files as part of Action: ${action.postDownload.join(`, `)}`);
+                    })
+                    .catch(error => {
+                      vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
+                      outputChannel.appendLine(`Failed to download a file after Action: ${error.message}`);
+                    });
+                }
+              }
+  
+            } catch (e) {
+              outputChannel.append(`${e}\n`);
+              executed = false;
+  
+              vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
             }
-
-          } catch (e) {
-            outputChannel.append(`${e}\n`);
-            executed = false;
-
-            vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
+  
           }
 
           actionsBarItem.text = ACTION_BUTTON_BASE;
@@ -662,9 +669,6 @@ module.exports = class CompileTools {
     }
 
     if (commandString) {
-
-      vscode.window.createTerminal()
-
       const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
       outputChannel.append(`\n\n`);

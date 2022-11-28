@@ -28,6 +28,8 @@ export namespace Terminal {
     terminal?: string
     name?: string
     connectionString?: string
+    /** Single command  */
+    singleCommand?: string
   }
 
   export function selectAndOpen(instance: Instance) {
@@ -71,7 +73,7 @@ export namespace Terminal {
     }
   }
 
-  function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
+  export function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
 
     connection.client.requestShell().then(channel => {
@@ -91,9 +93,8 @@ export namespace Terminal {
             channel.close();
           },
           handleInput: (data: string) => {
+            const buffer = Buffer.from(data);
             if (terminalSettings.type === TerminalType._5250) {
-              const buffer = Buffer.from(data);
-
               switch (buffer[0]) {
                 case 127: //Backspace
                   //Move back one, space, move back again - deletes a character
@@ -108,6 +109,16 @@ export namespace Terminal {
               }
             } else {
               channel.stdin.write(data);
+
+              // When singleCommand is being used
+              // Control + C is trigger to kill the terminal
+              if (terminalSettings.singleCommand && buffer[0] === 3) {
+                writeEmitter.fire(`Ending terminal\r\n`);
+                channel.close();
+
+                if (terminalSettings.singleCommand) 
+                  emulatorTerminal.dispose();
+              }
             }
           },
           setDimensions: (dim: vscode.TerminalDimensions) => {
@@ -148,6 +159,8 @@ export namespace Terminal {
           terminalSettings.connectionString || `localhost`,
           `\n`
         ].join(` `));
+      } else if (terminalSettings.singleCommand) {
+        channel.stdin.write(`${terminalSettings.singleCommand} && exit\n`);
       } else {
         channel.stdin.write(`echo "Terminal started. Thanks for using Code for IBM i"\n`);
       }
