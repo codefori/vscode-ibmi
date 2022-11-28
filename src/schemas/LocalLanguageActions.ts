@@ -190,5 +190,26 @@ export const LocalLanguageActions: Record<string, Action[]> = {
         ".logs/output.log"
       ]
     }
+  ],
+  "Node.js": [
+    {
+      "extensions": [
+        "GLOBAL"
+      ],
+      "name": "npm install",
+      "command": "npm i",
+      "environment": "pase",
+      "deployFirst": true
+    },
+    {
+      "extensions": [
+        "GLOBAL"
+      ],
+      "name": "Deploy Node.js and debug",
+      "command": "node --inspect-brk=0.0.0.0:&PORT index.js",
+      "environment": "pase",
+      "deployFirst": true,
+      "debug": "node"
+    }
   ]
 }

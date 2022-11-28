@@ -71,6 +71,16 @@
               "type": "string",
               "title": "Relative path."
             }
+          },
+          "debug": {
+            "$id": "#/actions/items/anyOf/0/properties/debug",
+            "type": "string",
+            "title": "Remote Debug",
+            "description": "Which environment should start debugging.",
+            "default": "node",
+            "enum": [
+              "node"
+            ]
           }
         },
         "additionalProperties": true

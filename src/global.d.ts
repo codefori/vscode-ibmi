@@ -1,5 +1,4 @@
 
-
 interface StandardIO {
   onStdout?: (data: Buffer) => void;
   onStderr?: (data: Buffer) => void;
@@ -26,6 +25,18 @@ interface MemberParts {
   basename: string|undefined;
 }
 
+type DeployResult = false | DeploySuccessData;
+interface DeploySuccessData {workspace: number, remoteRoot: string}
+
+interface RemoteDebugConfig {
+  type: "node";
+  /** @type {vscode.WorkspaceFolder} */
+  workspace: any;
+  address: string;
+  port: number;
+  remoteRoot: string;
+}
+
 interface Action {
   name: string;
   command: string;
@@ -34,6 +45,7 @@ interface Action {
   extensions: string[];
   deployFirst?: boolean;
   postDownload?: string[];
+  debug?: "node"
 }
 
 interface ConnectionData {

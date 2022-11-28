@@ -9,6 +9,10 @@ const {default: IBMi} = require(`./IBMi`);
 const {GlobalConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 
+const PORT_MIN = 40000;
+const PORT_MAX = 50000;
+const getPort = () => {return Number((Math.random() * (PORT_MAX - PORT_MIN) + PORT_MIN).toFixed(0))};
+
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
   10: vscode.DiagnosticSeverity.Information,
@@ -234,6 +238,38 @@ module.exports = class CompileTools {
   }
 
   /**
+   * @param {RemoteDebugConfig} config
+   */
+  static async launchRemoteDebug(config) {
+    /** @type {vscode.WorkspaceFolder} */
+    const workspace = config.workspace;
+
+    switch (config.type) {
+    case `node`:
+      vscode.debug.startDebugging(workspace, {
+        type: `node`,
+        name: `Attach to remote`,
+        request: `attach`,
+        localRoot: workspace.uri.fsPath,
+        address: config.address,
+        port: config.port,
+        remoteRoot: config.remoteRoot,
+        skipFiles: [
+          `<node_internals>/**`
+        ],
+        restart: {
+          delay: 1000,
+          maxAttempts: 3
+        },
+      })
+      break;
+    
+    default:
+      break;
+    }
+  }
+
+  /**
    * @param {*} instance
    * @param {vscode.Uri} uri 
    */
@@ -302,11 +338,11 @@ module.exports = class CompileTools {
         environment = action.environment || `ile`;
 
         if (workspaceFolder && action.type === `file` && action.deployFirst) {
-          /** @type {number|false} */
+          /** @type {number|DeployResult} */
           const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, workspaceFolder.index);
 
           if (deployResult !== false) {
-            evfeventInfo.workspace = deployResult;
+            evfeventInfo.workspace = deployResult.workspace;
           } else {
             vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);
             return;
@@ -459,6 +495,22 @@ module.exports = class CompileTools {
           let executed = false;
 
           actionsBarItem.text = ACTION_BUTTON_RUNNING;
+
+          if (action.debug) {
+            const port = getPort();
+
+            /** @type {RemoteDebugConfig} */
+            const debugConfig = {
+              type: action.debug,
+              remoteRoot: config.homeDirectory,
+              address: connection.currentHost,
+              workspace: workspaceFolder,
+              port,
+            };
+
+            this.launchRemoteDebug(debugConfig);
+            variables[`&PORT`] = String(port);
+          }
 
           command = this.replaceValues(command, variables);
 
