@@ -508,8 +508,12 @@ module.exports = class CompileTools {
               port,
             };
 
-            this.launchRemoteDebug(debugConfig);
-            variables[`&PORT`] = String(port);
+            try {
+              this.launchRemoteDebug(debugConfig);
+              variables[`&PORT`] = String(port);
+            } catch (e) {
+              vscode.window.showErrorMessage(e.message || e)
+            }
           }
 
           command = this.replaceValues(command, variables);
@@ -658,6 +662,8 @@ module.exports = class CompileTools {
     }
 
     if (commandString) {
+
+      vscode.window.createTerminal()
 
       const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
