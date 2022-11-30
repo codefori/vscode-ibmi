@@ -471,21 +471,25 @@ module.exports = class CompileTools {
           command = this.replaceValues(command, variables);
 
           if (action.debug) {
+            if (action.environment === `pase`) {
             /** @type {RemoteDebugConfig} */
-            const debugConfig = {
-              type: action.debug,
-              remoteRoot: config.homeDirectory,
-              address: connection.currentHost,
-              workspace: workspaceFolder,
-              port,
-            };
+              const debugConfig = {
+                type: action.debug,
+                remoteRoot: config.homeDirectory,
+                address: connection.currentHost,
+                workspace: workspaceFolder,
+                port,
+              };
 
-            try {
-              await backgroundPaseTask(connection, `cd ${config.homeDirectory} && ${command}`)
-              await launchRemoteDebug(debugConfig);
+              try {
+                await backgroundPaseTask(connection, `cd ${config.homeDirectory} && ${command}`)
+                await launchRemoteDebug(debugConfig);
               
-            } catch (e) {
-              vscode.window.showErrorMessage(e.message || e);
+              } catch (e) {
+                vscode.window.showErrorMessage(e.message || e);
+              }
+            } else {
+              vscode.window.showErrorMessage(`Debug mode only supports running commands in the pase environment.`);
             }
 
           } else {
