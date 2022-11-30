@@ -1,5 +1,5 @@
 
-import vscode from 'vscode';
+import vscode, { Pseudoterminal } from 'vscode';
 import IBMi from './IBMi';
 import Instance from './Instance';
 
@@ -28,8 +28,6 @@ export namespace Terminal {
     terminal?: string
     name?: string
     connectionString?: string
-    /** Single command  */
-    singleCommand?: string
   }
 
   export function selectAndOpen(instance: Instance) {
@@ -73,7 +71,7 @@ export namespace Terminal {
     }
   }
 
-  export function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
+  function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
 
     connection.client.requestShell().then(channel => {
@@ -109,16 +107,6 @@ export namespace Terminal {
               }
             } else {
               channel.stdin.write(data);
-
-              // When singleCommand is being used
-              // Control + C is trigger to kill the terminal
-              if (terminalSettings.singleCommand && buffer[0] === 3) {
-                writeEmitter.fire(`Ending terminal\r\n`);
-                channel.close();
-
-                if (terminalSettings.singleCommand) 
-                  emulatorTerminal.dispose();
-              }
             }
           },
           setDimensions: (dim: vscode.TerminalDimensions) => {
@@ -159,11 +147,86 @@ export namespace Terminal {
           terminalSettings.connectionString || `localhost`,
           `\n`
         ].join(` `));
-      } else if (terminalSettings.singleCommand) {
-        channel.stdin.write(`${terminalSettings.singleCommand} && exit\n`);
       } else {
         channel.stdin.write(`echo "Terminal started. Thanks for using Code for IBM i"\n`);
       }
     });
+  }
+
+  export async function backgroundPaseTask(connection: IBMi, command: string) {
+    const channel = await connection.client.requestShell();
+
+    const customExecutor = new vscode.CustomExecution(async resolvedDef => {
+      const writeEmitter = new vscode.EventEmitter<string>();
+      const endEmitter = new vscode.EventEmitter<number>();
+
+      channel.stdout.on(`data`, (data: any) => {
+        const content = data.toString().replace(new RegExp(`\n`, `g`), `\n\r`);
+        writeEmitter.fire(content);
+      });
+      channel.stderr.on(`data`, (data: any) => {
+        const content = data.toString().replace(new RegExp(`\n`, `g`), `\n\r`);
+        writeEmitter.fire(content);
+      });
+      channel.on(`close`, () => {
+        channel.destroy();
+      });
+      channel.on(`exit`, (code: number, signal: any, coreDump: boolean, desc: string) => {
+        writeEmitter.fire(`----------\r\n`);
+        if (code === 0) {
+          writeEmitter.fire(`Completed successfully.\r\n`);
+        }
+        else if (code) {
+          writeEmitter.fire(`Exited with error code ${code}.\r\n`);
+        }
+        else {
+          writeEmitter.fire(`Exited with signal ${signal}.\r\n`);
+        }
+        endEmitter.fire(code);
+      });
+      channel.on(`error`, (err: Error) => {
+        vscode.window.showErrorMessage(`Connection error: ${err.message}`);
+        endEmitter.fire(1);
+        channel.destroy();
+      });
+
+      const pty: Pseudoterminal = {
+        onDidWrite: writeEmitter.event,
+        open: () => {
+          //writeEmitter.fire(headerContent);
+          channel.stdin.write(`${command} && exit\n`);
+        },
+        close: () => {
+          channel.stdin.write(Buffer.from([3]));
+          channel.close();
+          writeEmitter.dispose();
+          endEmitter.dispose();
+        },
+        onDidClose: endEmitter.event,
+        handleInput: (data: string) => {
+          const buffer = Buffer.from(data);
+
+          if (buffer[0] === 3) {
+            writeEmitter.fire(`Ending terminal\r\n`);
+            endEmitter.fire(0);
+          }
+        }
+      };
+
+      return pty;
+    });
+
+    const task = new vscode.Task(
+      {type: `action`}, 
+      vscode.TaskScope.Global, 
+      `pase`, 
+      `IBM i`,
+      customExecutor
+    );
+
+    task.isBackground = true;
+    task.detail = command;
+
+    return await vscode.tasks.executeTask(task);
   }
 }

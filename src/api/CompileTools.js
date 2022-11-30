@@ -8,7 +8,7 @@ const errorHandlers = require(`./errors/index`);
 const {default: IBMi} = require(`./IBMi`);
 const {GlobalConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
-const {Terminal: {createTerminal}} = require(`./Terminal`);
+const {Terminal: {backgroundPaseTask}} = require(`./Terminal`);
 
 const PORT_MIN = 40000;
 const PORT_MAX = 50000;
@@ -249,7 +249,7 @@ module.exports = class CompileTools {
     case `node`:
       vscode.debug.startDebugging(workspace, {
         type: `node`,
-        name: `Attach to remote`,
+        name: `Node.js Attach`,
         request: `attach`,
         localRoot: workspace.uri.fsPath,
         address: config.address,
@@ -257,11 +257,26 @@ module.exports = class CompileTools {
         remoteRoot: config.remoteRoot,
         skipFiles: [
           `<node_internals>/**`
-        ],
-        restart: {
-          delay: 1000,
-          maxAttempts: 3
+        ]
+      });
+      break;
+
+    case `python`:
+      vscode.debug.startDebugging(workspace, {
+        "name": `Python: Attach`,
+        "type": `python`,
+        "request": `attach`,
+        "connect": {
+          "host": config.address,
+          "port": config.port
         },
+        "pathMappings": [
+          {
+            "localRoot": workspace.uri.fsPath, // Maps C:\Users\user1\project1
+            "remoteRoot": config.remoteRoot // To current working directory ~/project1
+          }
+        ],
+        "justMyCode": true
       })
       break;
     
@@ -512,10 +527,7 @@ module.exports = class CompileTools {
             };
 
             try {
-              await createTerminal(connection, {
-                type: `PASE`,
-                singleCommand: `cd ${config.homeDirectory} && ${command}`
-              });
+              await backgroundPaseTask(connection, `cd ${config.homeDirectory} && ${command}`)
               await this.launchRemoteDebug(debugConfig);
               
             } catch (e) {

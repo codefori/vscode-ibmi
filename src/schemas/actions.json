@@ -79,7 +79,8 @@
             "description": "Which environment should start debugging.",
             "default": "node",
             "enum": [
-              "node"
+              "node",
+              "python"
             ]
           }
         },

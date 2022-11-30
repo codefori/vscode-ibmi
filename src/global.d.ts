@@ -45,7 +45,7 @@ interface Action {
   extensions: string[];
   deployFirst?: boolean;
   postDownload?: string[];
-  debug?: "node"
+  debug?: "node"|"python"
 }
 
 interface ConnectionData {
