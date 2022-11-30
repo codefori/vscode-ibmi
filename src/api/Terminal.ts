@@ -207,6 +207,7 @@ export namespace Terminal {
           const buffer = Buffer.from(data);
 
           if (buffer[0] === 3) {
+            channel.stdin.write(data);
             writeEmitter.fire(`Ending terminal\r\n`);
             endEmitter.fire(0);
           }
