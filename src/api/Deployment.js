@@ -86,7 +86,7 @@ module.exports = class Deployment {
 
       /**
        * @param {number} document
-       * @returns {Promise<{false|{workspace: number}}>}
+       * @returns {Promise<{false|number}>}
        */
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, async (workspaceIndex) => {
         /** @type {Storage} */
@@ -137,7 +137,7 @@ module.exports = class Deployment {
           if (remotePath) {
             const chosen = await vscode.window.showQuickPick(
               [
-                { label: `Changes`, description: `${changedFiles.length} change${changedFiles.length !== 1 ? `s` : ``} detected since last upload. ${changedFiles === 0 ? `Will skip deploy step.` : ``}` },
+                { label: `Changes`, description: `${changedFiles.length} change${changedFiles.length !== 1 ? `s` : ``} detected since last upload. ${changedFiles.length === 0 ? `Will skip deploy step.` : ``}` },
                 { label: `Working Changes`, description: `Unstaged changes in git` },
                 { label: `Staged Changes`, description: `` },
                 { label: `All`, description: `Every file in the local workspace` },
