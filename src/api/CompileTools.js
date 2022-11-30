@@ -465,7 +465,8 @@ module.exports = class CompileTools {
           try {
             commandResult = await this.runCommand(instance, {
               environment,
-              command
+              command,
+              asTask: true
             });
 
             if (commandResult) {
@@ -567,7 +568,7 @@ module.exports = class CompileTools {
   /**
    * Execute command
    * @param {*} instance
-   * @param {{environment?: "ile"|"qsh"|"pase", command: string, cwd?: string}} options 
+   * @param {{environment?: "ile"|"qsh"|"pase", command: string, cwd?: string, asTask?: boolean}} options 
    * @returns {Promise<{stdout: string, stderr: string, code?: number, command: string}|null>}
    */
   static async runCommand(instance, options) {
@@ -609,20 +610,68 @@ module.exports = class CompileTools {
 
       const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
-      outputChannel.append(`\n\n`);
-      outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-      outputChannel.append(`Library list: ` + config.libraryList.join(` `) + `\n`);
-      outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
+      /** @type {vscode.EventEmitter|undefined} */
+      let writeEmitter, endEmitter;
+      if (options.asTask) {
+        writeEmitter = new vscode.EventEmitter();
+        endEmitter = new vscode.EventEmitter();
+      }
 
-      const callbacks = {
-        /** @param {Buffer} data */
-        onStdout: (data) => {
-          outputChannel.append(data.toString());
-        },
-        /** @param {Buffer} data */
-        onStderr: (data) => {
+      /** @param {Buffer} data */
+      const handleData = (data) => {
+        if (writeEmitter) {
+          const content = data.toString().replace(new RegExp(`\n`, `g`), `\n\r`);
+          writeEmitter.fire(content);
+        } else {
           outputChannel.append(data.toString());
         }
+      }
+
+      const callbacks = {
+        onStdout: handleData,
+        onStderr: handleData
+      }
+
+      /** @type {vscode.TaskExecution|undefined} */
+      let runningTask;
+
+      const headerContent = [
+        ``,
+        `Current library: ` + config.currentLibrary,
+        `Library list: ` + config.libraryList.join(` `),
+        `Commands:\n${commands.map(command => `\t${command}\n`).join(``)}`,
+        ``
+      ].join(`\n\r`);
+
+      if (options.asTask) {
+
+        const customExecutor = new vscode.CustomExecution(async resolvedDef => {
+          return {
+            onDidWrite: writeEmitter.event,
+            open: () => {
+              writeEmitter.fire(headerContent);
+            },
+            close: () => {
+            },
+            onDidClose: endEmitter.event,
+          };
+        });
+
+        const task = new vscode.Task(
+          {type: `action`}, 
+          vscode.TaskScope.Global, 
+          `${options.environment} action`, 
+          `IBM i`,
+          customExecutor
+        );
+
+        task.isBackground = false;
+        task.detail = options.command;
+
+        runningTask = await vscode.tasks.executeTask(task);
+
+      } else {
+        outputChannel.appendLine(headerContent);
       }
 
       switch (options.environment) {
@@ -665,6 +714,11 @@ module.exports = class CompileTools {
         });
         break;
       }
+
+      if (endEmitter) endEmitter.fire();
+
+      if (endEmitter) endEmitter.dispose();
+      if (endEmitter) writeEmitter.dispose();
 
       //@ts-ignore We know it is an object
       commandResult.command = commandString;
