@@ -234,7 +234,10 @@
 							"sourceDateMode": {
 								"type": "string",
 								"default": "edit",
-								"enum": ["edit", "diff"],
+								"enum": [
+									"edit",
+									"diff"
+								],
 								"description": "Determine which method should be used to track changes to source dates for source member."
 							},
 							"sourceDateGutter": {
@@ -1685,27 +1688,27 @@
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@1"
 				},
 				{
 					"command": "code-for-ibmi.copyObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@3"
 				},
 				{
 					"command": "code-for-ibmi.renameObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@4"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@5"
 				},
 				{
@@ -1715,7 +1718,7 @@
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "viewItem == object",
+					"when": "viewItem =~ /^object/",
 					"group": "1_workspace@1"
 				}
 			]

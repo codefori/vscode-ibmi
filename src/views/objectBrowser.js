@@ -8,9 +8,9 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const FiltersUI = require(`../webviews/filters`);
 
-let {instance, setSearchResults} = require(`../Instance`);
-const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
-const {Search} = require(`../api/Search`);
+let { instance, setSearchResults } = require(`../Instance`);
+const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
+const { Search } = require(`../api/Search`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -57,7 +57,7 @@ module.exports = class objectBrowserTwoProvider {
           try {
             await this.moveFilterInList(node.filter, `UP`);
             if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-          } catch(e) {
+          } catch (e) {
             console.log(e);
           };
         }
@@ -68,7 +68,7 @@ module.exports = class objectBrowserTwoProvider {
           try {
             await this.moveFilterInList(node.filter, `DOWN`);
             if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-          } catch(e) {
+          } catch (e) {
             console.log(e);
           };
         }
@@ -79,7 +79,7 @@ module.exports = class objectBrowserTwoProvider {
           try {
             await this.moveFilterInList(node.filter, `TOP`);
             if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-          } catch(e) {
+          } catch (e) {
             console.log(e);
           };
         }
@@ -90,7 +90,7 @@ module.exports = class objectBrowserTwoProvider {
           try {
             await this.moveFilterInList(node.filter, `BOTTOM`);
             if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-          } catch(e) {
+          } catch (e) {
             console.log(e);
           };
         }
@@ -102,11 +102,11 @@ module.exports = class objectBrowserTwoProvider {
 
         let objectFilters = config.objectFilters;
 
-        objectFilters.sort(function(a, b){
+        objectFilters.sort(function (a, b) {
           const x = a.name.toLowerCase();
           const y = b.name.toLowerCase();
-          if (x < y) {return -1;}
-          if (x > y) {return 1;}
+          if (x < y) { return -1; }
+          if (x > y) { return 1; }
           return 0;
         });
 
@@ -122,9 +122,9 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
         if (node) {
           let path = node.path.split(`/`);
-          
+
           //Running from right click
-          
+
           const connection = instance.getConnection();
           let fullPath;
           let fullName = ``;
@@ -170,7 +170,7 @@ module.exports = class objectBrowserTwoProvider {
                 vscode.window.showErrorMessage(`Error creating member ${fullPath}! ${e}`);
               }
             }
-          } while(fullName && !newNameOK)
+          } while (fullName && !newNameOK)
 
         } else {
           //Running from command
@@ -229,7 +229,7 @@ module.exports = class objectBrowserTwoProvider {
                 }
 
                 if (newMemberExists) {
-                  const result = await vscode.window.showInformationMessage(`Are you sure you want overwrite member ${newData.member}?`, { modal:true }, `Yes`, `No`)
+                  const result = await vscode.window.showInformationMessage(`Are you sure you want overwrite member ${newData.member}?`, { modal: true }, `Yes`, `No`)
                   if (result === `Yes`) {
                     await connection.remoteCommand(
                       `RMVM FILE(${newData.library}/${newData.file}) MBR(${newData.member})`,
@@ -267,9 +267,9 @@ module.exports = class objectBrowserTwoProvider {
                 newNameOK = false;
                 vscode.window.showErrorMessage(`Error creating new member! ${e}`);
               }
-              
+
             }
-          } while(fullPath && !newNameOK)
+          } while (fullPath && !newNameOK)
 
         } else {
           //Running from command. Perhaps get active editor?
@@ -283,7 +283,7 @@ module.exports = class objectBrowserTwoProvider {
 
           if (result === `Yes`) {
             const connection = instance.getConnection();
-            const {library, file, member} = connection.parserMemberPath(node.path);
+            const { library, file, member } = connection.parserMemberPath(node.path);
 
             try {
               await connection.remoteCommand(
@@ -308,7 +308,7 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
         if (node) {
           const connection = instance.getConnection();
-          const {library, file, member, basename} = connection.parserMemberPath(node.path);
+          const { library, file, member, basename } = connection.parserMemberPath(node.path);
 
           const newText = await vscode.window.showInputBox({
             value: node.description,
@@ -381,13 +381,13 @@ module.exports = class objectBrowserTwoProvider {
                     this.refresh();
                   }
                   else vscode.window.showInformationMessage(`Renamed member. Refresh object browser.`);
-                } catch(e) {
+                } catch (e) {
                   newNameOK = false;
                   vscode.window.showErrorMessage(`Error renaming member! ${e}`);
                 }
               }
             }
-          } while(newBasename && !newNameOK)
+          } while (newBasename && !newNameOK)
         } else {
           //Running from command.
         }
@@ -400,7 +400,7 @@ module.exports = class objectBrowserTwoProvider {
 
         if (originPath) {
           const connection = instance.getConnection();
-          const {asp, library, file, member} = connection.parserMemberPath(node.path);
+          const { asp, library, file, member } = connection.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
           try {
@@ -417,7 +417,7 @@ module.exports = class objectBrowserTwoProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
 
-        const {asp, library, file, member, basename} = connection.parserMemberPath(node.path);
+        const { asp, library, file, member, basename } = connection.parserMemberPath(node.path);
 
         const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
@@ -508,7 +508,7 @@ module.exports = class objectBrowserTwoProvider {
                       const patternExt = new RegExp(`^` + node.memberTypeFilter.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
                       results = results.filter(result => {
                         const resultPath = result.path.split(`/`);
-                        const resultName = resultPath[resultPath.length-1];
+                        const resultName = resultPath[resultPath.length - 1];
                         const member = members.find(member => member.name === resultName);
                         return (member && patternExt.test(member.extension));
                       })
@@ -519,7 +519,7 @@ module.exports = class objectBrowserTwoProvider {
                       // Format result to include member type.
                       results.forEach(result => {
                         const resultPath = result.path.split(`/`);
-                        const resultName = resultPath[resultPath.length-1];
+                        const resultName = resultPath[resultPath.length - 1];
                         result.path += `.${members.find(member => member.name === resultName).extension}`;
                         result.path = result.path.toLowerCase();
                       });
@@ -527,7 +527,7 @@ module.exports = class objectBrowserTwoProvider {
                       results = results.sort((a, b) => {
                         return a.path.localeCompare(b.path);
                       });
-                  
+
                       setSearchResults(searchTerm, results);
 
                     } else {
@@ -594,9 +594,8 @@ module.exports = class objectBrowserTwoProvider {
             .then(async result => {
               switch (result) {
               case `Yes`:
-                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`,newLibrary);
+                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, newLibrary);
                 if (GlobalConfiguration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-
                 break;
               }
             });
@@ -681,7 +680,7 @@ module.exports = class objectBrowserTwoProvider {
                 newTextOK = false;
               }
             }
-          } while(newText && !newTextOK)
+          } while (newText && !newTextOK)
         } else {
           //Running from command
           console.log(this);
@@ -726,7 +725,7 @@ module.exports = class objectBrowserTwoProvider {
                 newPathOK = false;
               }
             }
-          } while(newPath && !newPathOK)
+          } while (newPath && !newPathOK)
         } else {
           //Running from command
           console.log(this);
@@ -762,11 +761,11 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
-      }), 
+      }),
 
       vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node) => {
         if (node) {
-          let [,newObject] = node.path.split(`/`);
+          let [, newObject] = node.path.split(`/`);
           let newObjectOK;
           do {
             newObject = await vscode.window.showInputBox({
@@ -797,7 +796,7 @@ module.exports = class objectBrowserTwoProvider {
                 newObjectOK = false;
               }
             }
-          } while(newObject && !newObjectOK)
+          } while (newObject && !newObjectOK)
         } else {
           //Running from command
           console.log(this);
@@ -838,7 +837,7 @@ module.exports = class objectBrowserTwoProvider {
                 newLibraryOK = false;
               }
             }
-          } while(newLibrary && !newLibraryOK)
+          } while (newLibrary && !newLibraryOK)
         } else {
           //Running from command
           console.log(this);
@@ -850,7 +849,7 @@ module.exports = class objectBrowserTwoProvider {
   async moveFilterInList(filterName, filterMovement) {
     filterMovement = filterMovement.toUpperCase();
     if (![`TOP`, `UP`, `DOWN`, `BOTTOM`].includes(filterMovement)) throw `Illegal filter movement value specified`;
-    
+
     /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
@@ -862,7 +861,7 @@ module.exports = class objectBrowserTwoProvider {
     if (from === 0 && [`TOP`, `UP`].includes(filterMovement)) throw `Filter ${filterName} is at top of list`;
     if (from === objectFilters.length && [`DOWN`, `BOTTOM`].includes(filterMovement)) throw `Filter ${filterName} is at bottom of list`;
 
-    switch(filterMovement) {
+    switch (filterMovement) {
     case `TOP`:
       to = 0;
       break;
@@ -1014,7 +1013,7 @@ class Filter extends vscode.TreeItem {
     super(filter.name, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.contextValue = `filter`;
-    this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType||`*`} (${filter.types.join(`, `)})`;
+    this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
     this.library = filter.library;
     this.filter = filter.name;
   }
@@ -1042,34 +1041,36 @@ class SPF extends vscode.TreeItem {
   }
 }
 
+//TODO Seb J.: once converted to TypeScript, this should implement IBMiObject
 class ILEObject extends vscode.TreeItem {
   /**
    * @param {string} filter Filter name
-   * @param {{library: string, name: string, type: string, text: string, attribute?: string}} objectInfo
+   * @param {IBMiObject} object
    */
-  constructor(filter, {library, name, type, text, attribute}) {
-    if (type.startsWith(`*`)) type = type.substring(1);
+  constructor(filter, object) {
+    const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
 
     const icon = objectIcons[type.toUpperCase()] || objectIcons[``];
 
-    super(`${name}.${type}`);
-
-    const trimText = text.trim();
-    const trimAttr = attribute.trim();
+    super(`${object.name}.${type}`);
 
     this.filter = filter;
 
-    this.contextValue = `object`;
-    this.path = `${library}/${name}`;
+    this.library = object.library;
+    this.name = object.name;
+    this.attribute = object.attribute ? object.attribute.trim() : undefined;
+    this.text = object.text.trim();
+    this.path = `${object.library}/${object.name}`;
     this.type = type;
-    this.description = trimText + (trimAttr ? ` (${attribute})` : ``);
+    this.description = this.text + (this.attribute ? ` (${this.attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.text = trimText;
+
+    this.contextValue = `object.${type.toLowerCase()}${this.attribute ? `.${this.attribute}` : ``}`;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
-      path: `/${library}/${name}.${type}`,
-      fragment: trimAttr ? trimAttr : undefined
+      path: `/${this.library}/${this.name}.${type}`,
+      fragment: this.attribute
     });
 
     this.command = {

@@ -12,25 +12,25 @@ interface CommandData extends StandardIO {
 }
 
 interface CommandResult {
-  code: number|null;
+  code: number | null;
   stdout: string;
   stderr: string;
 }
 
 interface MemberParts {
-  asp: string|undefined;
-  library: string|undefined;
-  file: string|undefined;
-  member: string|undefined;
-  extension: string|undefined;
-  basename: string|undefined;
+  asp: string | undefined;
+  library: string | undefined;
+  file: string | undefined;
+  member: string | undefined;
+  extension: string | undefined;
+  basename: string | undefined;
 }
 
 interface Action {
   name: string;
   command: string;
-  type?: "member"|"streamfile"|"object"|"file";
-  environment: "ile"|"qsh"|"pase";
+  type?: "member" | "streamfile" | "object" | "file";
+  environment: "ile" | "qsh" | "pase";
   extensions: string[];
   deployFirst?: boolean;
   postDownload?: string[];
@@ -42,14 +42,22 @@ interface ConnectionData {
   port: number;
   username: string;
   password?: string;
-  privateKey: string|null;
+  privateKey: string | null;
   keepaliveInterval: number;
 }
 
 interface Server {
-  name : string
+  name: string
 }
 
 interface Profile {
-  profile : string
+  profile: string
+}
+
+interface IBMiObject {
+  library: string,
+  name: string,
+  type: string,
+  text: string,
+  attribute?: string
 }
