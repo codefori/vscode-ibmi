@@ -34,7 +34,8 @@ export function launchRemoteDebug(config: RemoteDebugConfig) {
           "remoteRoot": config.remoteRoot // To current working directory ~/project1
         }
       ],
-      "justMyCode": true
+      "stopOnEntry": true,
+      "justMyCode": false
     })
     break;
   
