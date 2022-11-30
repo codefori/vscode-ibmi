@@ -482,8 +482,11 @@ module.exports = class CompileTools {
               };
 
               try {
-                await backgroundPaseTask(connection, `cd ${config.homeDirectory} && ${command}`)
-                await launchRemoteDebug(debugConfig);
+                const timeOut = action.debug === `node` ? 200 : 3000;
+                await backgroundPaseTask(connection, `cd ${config.homeDirectory} && ${command}`);
+                setTimeout(() => {
+                  launchRemoteDebug(debugConfig);
+                }, timeOut);
               
               } catch (e) {
                 vscode.window.showErrorMessage(e.message || e);

@@ -216,7 +216,7 @@ export const LocalLanguageActions: Record<string, Action[]> = {
     {
       extensions: [`GLOBAL`],
       name: `Deploy Python and debug`,
-      command: `python -m debugpy --listen 0.0.0.0:&PORT --wait-for-client &RELATIVEPATH`,
+      command: `source ~/envs/debug/bin/activate && python -m debugpy --listen 0.0.0.0:&PORT --wait-for-client &RELATIVEPATH`,
       environment: `pase`,
       deployFirst: true,
       debug: "python"

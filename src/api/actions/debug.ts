@@ -16,7 +16,11 @@ export function launchRemoteDebug(config: RemoteDebugConfig) {
       remoteRoot: config.remoteRoot,
       skipFiles: [
         `<node_internals>/**`
-      ]
+      ],
+      restart: {
+        delay: 500,
+        maxAttempts: 3
+      }
     });
 
   case `python`:
@@ -35,7 +39,7 @@ export function launchRemoteDebug(config: RemoteDebugConfig) {
         }
       ],
       "stopOnEntry": true,
-      "justMyCode": false
+      "justMyCode": false,
     })
     break;
   
