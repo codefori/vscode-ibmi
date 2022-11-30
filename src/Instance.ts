@@ -6,7 +6,7 @@ import IBMiContent from "./api/IBMiContent";
 import { Storage } from "./api/Storage";
 const path = require(`path`);
 
-const CompileTools = require(`./api/CompileTools`);
+const CompileTools = require(`./api/actions/CompileTools`);
 
 import { Terminal } from './api/Terminal';
 const Deployment = require(`./api/Deployment`);

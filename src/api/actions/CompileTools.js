@@ -4,11 +4,12 @@ const path = require(`path`);
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
-const errorHandlers = require(`./errors/index`);
-const {default: IBMi} = require(`./IBMi`);
-const {GlobalConfiguration} = require(`./Configuration`);
-const { CustomUI, Field } = require(`./CustomUI`);
-const {Terminal: {backgroundPaseTask}} = require(`./Terminal`);
+const errorHandlers = require(`../errors/index`);
+const {default: IBMi} = require(`../IBMi`);
+const {GlobalConfiguration} = require(`../Configuration`);
+const { CustomUI, Field } = require(`../CustomUI`);
+const {Terminal: {backgroundPaseTask}} = require(`../Terminal`);
+const {launchRemoteDebug} = require(`./debug`);
 
 const PORT_MIN = 40000;
 const PORT_MAX = 50000;
@@ -236,53 +237,6 @@ module.exports = class CompileTools {
     }
 
     return variables;
-  }
-
-  /**
-   * @param {RemoteDebugConfig} config
-   */
-  static async launchRemoteDebug(config) {
-    /** @type {vscode.WorkspaceFolder} */
-    const workspace = config.workspace;
-
-    switch (config.type) {
-    case `node`:
-      vscode.debug.startDebugging(workspace, {
-        type: `node`,
-        name: `Node.js Attach`,
-        request: `attach`,
-        localRoot: workspace.uri.fsPath,
-        address: config.address,
-        port: config.port,
-        remoteRoot: config.remoteRoot,
-        skipFiles: [
-          `<node_internals>/**`
-        ]
-      });
-      break;
-
-    case `python`:
-      vscode.debug.startDebugging(workspace, {
-        "name": `Python: Attach`,
-        "type": `python`,
-        "request": `attach`,
-        "connect": {
-          "host": config.address,
-          "port": config.port
-        },
-        "pathMappings": [
-          {
-            "localRoot": workspace.uri.fsPath, // Maps C:\Users\user1\project1
-            "remoteRoot": config.remoteRoot // To current working directory ~/project1
-          }
-        ],
-        "justMyCode": true
-      })
-      break;
-    
-    default:
-      break;
-    }
   }
 
   /**
@@ -528,7 +482,7 @@ module.exports = class CompileTools {
 
             try {
               await backgroundPaseTask(connection, `cd ${config.homeDirectory} && ${command}`)
-              await this.launchRemoteDebug(debugConfig);
+              await launchRemoteDebug(debugConfig);
               
             } catch (e) {
               vscode.window.showErrorMessage(e.message || e);

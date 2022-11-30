@@ -29,7 +29,7 @@ type DeployResult = false | DeploySuccessData;
 interface DeploySuccessData {workspace: number, remoteRoot: string}
 
 interface RemoteDebugConfig {
-  type: "node";
+  type: "node"|"python";
   /** @type {vscode.WorkspaceFolder} */
   workspace: any;
   address: string;

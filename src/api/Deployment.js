@@ -3,7 +3,7 @@ const path = require(`path`);
 const vscode = require(`vscode`);
 
 const {default: IBMi} = require(`./IBMi`);
-const CompileTools = require(`./CompileTools`);
+const CompileTools = require(`./actions/CompileTools`);
 
 
 const { ConnectionConfiguration } = require(`./Configuration`);
