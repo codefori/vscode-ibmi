@@ -30,8 +30,8 @@ let actionsBarItem;
 /** @type {vscode.StatusBarItem} */
 let outputBarItem;
 
-const ACTION_BUTTON_BASE = `$(file-binary) Actions`;
-const ACTION_BUTTON_RUNNING = `$(sync~spin) Actions`;
+const OUTPUT_BUTTON_BASE = `$(three-bars) Output`;
+const OUTPUT_BUTTON_RUNNING = `$(sync~spin) Output`;
 
 /** @type {{[key: string]: number}} Timestamp of when an action was last used. */
 let actionUsed = {};
@@ -60,7 +60,7 @@ module.exports = class CompileTools {
       };
       context.subscriptions.push(actionsBarItem);
 
-      actionsBarItem.text = ACTION_BUTTON_BASE;
+      actionsBarItem.text = `$(file-binary) Actions`;
     }
 
     actionsBarItem.show();
@@ -458,7 +458,7 @@ module.exports = class CompileTools {
           let commandResult;
           let executed = false;
 
-          actionsBarItem.text = ACTION_BUTTON_RUNNING;
+          outputBarItem.text = OUTPUT_BUTTON_RUNNING;
 
           command = this.replaceValues(command, variables);
 
@@ -553,7 +553,7 @@ module.exports = class CompileTools {
             vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
 
-          actionsBarItem.text = ACTION_BUTTON_BASE;
+          outputBarItem.text = OUTPUT_BUTTON_BASE;
 
         }
       }
