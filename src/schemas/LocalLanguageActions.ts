@@ -1,5 +1,4 @@
-/** @type {{[language: string]: Action[]}} */
-module.exports = {
+export const LocalLanguageActions: Record<string, Action[]> = {
   RPGLE: [
     {
       name: `Create RPGLE Program`,
@@ -173,6 +172,10 @@ module.exports = {
       "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei build`,
       environment: `pase`,
       deployFirst: true,
+      postDownload: [
+        ".logs/joblog.json",
+        ".logs/output.log"
+      ]
     },
     {
       "extensions": [
@@ -182,6 +185,10 @@ module.exports = {
       "command": `OPT=*EVENTF BUILDLIB=&CURLIB /QOpenSys/pkgs/bin/makei compile -f &BASENAME`,
       environment: `pase`,
       deployFirst: true,
+      postDownload: [
+        ".logs/joblog.json",
+        ".logs/output.log"
+      ]
     }
   ]
 }

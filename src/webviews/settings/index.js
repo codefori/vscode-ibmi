@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-const Configuration = require(`../../api/Configuration`);
+const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
 let {instance} = require(`../../Instance`);
 
 module.exports = class SettingsUI {
@@ -14,12 +14,13 @@ module.exports = class SettingsUI {
   static init(context) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server) => {
-        const connectionSettings = Configuration.get(`connectionSettings`);
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (/** @type {Server} */ server) => {
+        const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
         const connection = instance.getConnection();
 
         let name;
         let existingConfigIndex;
+        /** @type {ConnectionConfiguration.Parameters} */
         let config;
 
         if (server) {
@@ -35,7 +36,7 @@ module.exports = class SettingsUI {
 
         } else {
           if (connection) {
-            config = await instance.getConfig();
+            config = instance.getConfig();
             name = config.name;
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
@@ -43,7 +44,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `clContentAssistEnabled`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `sourceDateMode`, `clContentAssistEnabled`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -109,6 +110,24 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `enableSourceDates`, `Enable Source Dates`);
         field.default = (config.enableSourceDates ? `checked` : ``);
         field.description = `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`;
+        ui.addField(field);
+
+        field = new Field(`select`, `sourceDateMode`, `Source date tracking mode`);
+        field.description = `Determine which method should be used to track changes while editing source members.`;
+        field.items = [
+          {
+            selected: config.sourceDateMode === `edit`,
+            value: `edit`,
+            description: `Edit mode`,
+            text: `Tracks changes in a simple manner. When a line is changed, the date is updated. (Default)`,
+          },
+          {
+            selected: config.sourceDateMode === `diff`,
+            value: `diff`,
+            description: `Diff mode`,
+            text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
+          },
+        ]
         ui.addField(field);
             
         field = new Field(`checkbox`, `sourceDateGutter`, `Source Dates in Gutter`);
@@ -219,7 +238,7 @@ module.exports = class SettingsUI {
               };
 
               connectionSettings[existingConfigIndex] = config;
-              await Configuration.setGlobal(`connectionSettings`, connectionSettings);
+              await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
             }
           } else {
             if (connection) {
@@ -227,7 +246,8 @@ module.exports = class SettingsUI {
                 restart = true;
               }
               
-              await config.setMany(data);
+              Object.assign(config, data);
+              await ConnectionConfiguration.update(config);
             }
           }
 
@@ -242,9 +262,9 @@ module.exports = class SettingsUI {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (/** @type {Server} */ server) => {
         if (server) {
-          const connections = Configuration.get(`connections`);
+          const connections = GlobalConfiguration.get(`connections`);
           const name = server.name;
 
           const connectionIdx = connections.findIndex(item => item.name === name);
@@ -300,7 +320,7 @@ module.exports = class SettingsUI {
             };
 
             connections[connectionIdx] = connection;
-            await Configuration.setGlobal(`connections`, connections);
+            await GlobalConfiguration.set(`connections`, connections);
           }
         }
       })
