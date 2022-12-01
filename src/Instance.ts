@@ -403,9 +403,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         })
 
         // ********* CL content assist */
-        if (config.clContentAssistEnabled) {
-          const clInstance = new CLCommands(context);
-          clInstance.init();
+        const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
+        if (clExtension) {
+          CLCommands.init();
         }
 
         // ********* Color provider */
