@@ -406,12 +406,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         quickPick.show();
       })
 
-      // ********* CL content assist */
-      if (config.clContentAssistEnabled) {
-        const clInstance = new CLCommands(context);
-        clInstance.init();
-      }
-
       // ********* Color provider */
       if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
         SEUColorProvider.intitialize(context);

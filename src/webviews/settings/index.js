@@ -44,7 +44,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `sourceDateMode`, `clContentAssistEnabled`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `sourceDateMode`, `tempDir`];
         let restart = false;
 
         let ui = new CustomUI();
@@ -133,13 +133,6 @@ module.exports = class SettingsUI {
         field = new Field(`checkbox`, `sourceDateGutter`, `Source Dates in Gutter`);
         field.default = (config.sourceDateGutter ? `checked` : ``);
         field.description = `When enabled, source dates will be displayed in the gutter.`;
-        ui.addField(field);
-
-        ui.addField(new Field(`hr`));
-    
-        field = new Field(`checkbox`, `clContentAssistEnabled`, `Enable CL Content Assist`);
-        field.default = (config.clContentAssistEnabled ? `checked` : ``);
-        field.description = `Enable CL content assist and hover support. After enabled and restarted, Code for IBM i will ask you to install the required tools for the feature to work. This will install programs into your temporary library.`;
         ui.addField(field);
 
         if (connection && connection.remoteFeatures.tn5250) { 

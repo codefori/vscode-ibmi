@@ -242,11 +242,6 @@
 								"default": false,
 								"description": "When enabled along with enableSourceDates, Code for IBM i will display the source date in the gutter of source members."
 							},
-							"clContentAssistEnabled": {
-								"type": "boolean",
-								"default": false,
-								"description": "Enables the CL content assist and hover support."
-							},
 							"encodingFor5250": {
 								"type": "string",
 								"default": "default",
