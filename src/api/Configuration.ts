@@ -31,7 +31,6 @@ export namespace ConnectionConfiguration {
     enableSourceDates: boolean;
     sourceDateMode: "edit"|"diff";
     sourceDateGutter: boolean;
-    clContentAssistEnabled: boolean;
     encodingFor5250: string;
     terminalFor5250: string;
     setDeviceNameFor5250: boolean;
@@ -95,7 +94,6 @@ export namespace ConnectionConfiguration {
       enableSourceDates : parameters.enableSourceDates === true,
       sourceDateMode : parameters.sourceDateMode || "edit",
       sourceDateGutter : parameters.sourceDateGutter === true,
-      clContentAssistEnabled : (parameters.clContentAssistEnabled === true),
       encodingFor5250 : parameters.encodingFor5250 || `default`,
       terminalFor5250 : parameters.terminalFor5250 || `default`,
       setDeviceNameFor5250 : (parameters.setDeviceNameFor5250 === true),

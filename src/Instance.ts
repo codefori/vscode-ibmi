@@ -251,8 +251,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         })
       );
 
-      //********* IFS Browser */
+      // ********* CL content assist */
+      const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
+      if (clExtension) {
+        CLCommands.init();
+      }
 
+      //********* IFS Browser */
       context.subscriptions.push(
         vscode.window.registerTreeDataProvider(
           `ifsBrowser`,
@@ -400,12 +405,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         quickPick.onDidHide(() => quickPick.dispose());
         quickPick.show();
       })
-
-      // ********* CL content assist */
-      if (config.clContentAssistEnabled) {
-        const clInstance = new CLCommands(context);
-        clInstance.init();
-      }
 
       // ********* Color provider */
       if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
