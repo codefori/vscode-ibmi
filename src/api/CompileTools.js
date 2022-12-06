@@ -153,7 +153,7 @@ module.exports = class CompileTools {
 
           let possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
           if (possibleFiles.length > 0) {
-            ileDiagnostics.set(possibleFiles[0], diagnostics);
+            ileDiagnostics.set(possibleFiles.find(uri => uri.path.includes(baseInfo.base)), diagnostics);
           } else {
             // Look in active text documents...
             const upperParent = parentInfo.name.toUpperCase();
