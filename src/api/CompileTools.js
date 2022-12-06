@@ -103,12 +103,18 @@ module.exports = class CompileTools {
     const config = instance.getConfig();
 
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
+    /** @type {string[]} */
     const lines = tableData.map(row => row.EVFEVENT);
 
     const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
     let errors;
-    if (GlobalConfiguration.get(`tryNewErrorParser`)) {
+
+    let useNewHandler = GlobalConfiguration.get(`tryNewErrorParser`);
+    const expandedErrors = lines.some(line => line.includes(`EXPANSION`));
+    if (useNewHandler && !expandedErrors) useNewHandler = false;
+
+    if (useNewHandler) {
       errors = errorHandlers.new(lines);
     } else {
       errors = errorHandlers.old(lines);
