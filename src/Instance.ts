@@ -554,6 +554,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             return null;
           }
         }),
+        vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key, newValue) => {
+          const connectionKey = `${connection.currentConnectionName}_${key}`;
+          if (newValue) {
+            await context.secrets.store(connectionKey, newValue);
+            return newValue;
+          }
+
+          const value = context.secrets.get(connectionKey);
+        })
       );
 
       context.subscriptions.push(
