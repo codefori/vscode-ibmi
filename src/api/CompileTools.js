@@ -6,7 +6,7 @@ const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
 const errorHandlers = require(`./errors/index`);
 const {default: IBMi} = require(`./IBMi`);
-const {GlobalConfiguration} = require(`./Configuration`);
+const {GlobalConfiguration, ConnectionConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 
 const diagnosticSeverity = {
@@ -613,7 +613,6 @@ module.exports = class CompileTools {
     }
 
     if (commandString) {
-
       const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
       outputChannel.append(`\n\n`);
@@ -634,8 +633,8 @@ module.exports = class CompileTools {
 
       switch (options.environment) {
       case `pase`:
-
         // We build environment variables for the environment to be ready
+        /** @type {{[name: string]: string}} */
         const envVars = {};
         Object
           .entries({...(options.env ? options.env : {}), ...this.getDefaultVariables(instance)})
@@ -659,7 +658,7 @@ module.exports = class CompileTools {
             `liblist -c ` + config.currentLibrary.replace(/\$/g, `\\$`),
             `liblist -a ` + libl.join(` `).replace(/\$/g, `\\$`),
             ...commands,
-          ],
+          ].join(` && `),
           directory: cwd,
           ...callbacks
         });
@@ -676,7 +675,7 @@ module.exports = class CompileTools {
             ...commands.map(command => 
               `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
             ),
-          ],
+          ].join(` && `),
           directory: cwd,
           ...callbacks
         });
