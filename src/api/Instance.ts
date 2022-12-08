@@ -14,6 +14,13 @@ export default class Instance {
     constructor() {
         this.events = [];
     }
+
+    on(event: string, func: Function) {
+      this.events.push({
+        event,
+        func
+      });
+    }
   
     getConnection() {
       return this.connection;

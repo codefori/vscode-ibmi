@@ -583,13 +583,3 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   if (instance.emitter)
     instance.emitter.fire(`connected`);
 }
-
-/**
- * Register event
- */
-export function on(event: string, func: Function) {
-  instance.events.push({
-    event,
-    func
-  });
-}
