@@ -6,7 +6,7 @@ const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
 const errorHandlers = require(`./errors/index`);
 const {default: IBMi} = require(`./IBMi`);
-const Configuration = require(`./Configuration`);
+const {GlobalConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 
 const diagnosticSeverity = {
@@ -30,8 +30,8 @@ let actionsBarItem;
 /** @type {vscode.StatusBarItem} */
 let outputBarItem;
 
-const ACTION_BUTTON_BASE = `$(file-binary) Actions`;
-const ACTION_BUTTON_RUNNING = `$(sync~spin) Actions`;
+const OUTPUT_BUTTON_BASE = `$(three-bars) Output`;
+const OUTPUT_BUTTON_RUNNING = `$(sync~spin) Output`;
 
 /** @type {{[key: string]: number}} Timestamp of when an action was last used. */
 let actionUsed = {};
@@ -60,7 +60,7 @@ module.exports = class CompileTools {
       };
       context.subscriptions.push(actionsBarItem);
 
-      actionsBarItem.text = ACTION_BUTTON_BASE;
+      actionsBarItem.text = `$(file-binary) Actions`;
     }
 
     actionsBarItem.show();
@@ -80,7 +80,7 @@ module.exports = class CompileTools {
       outputBarItem.text = `$(three-bars) Output`;
     }
 
-    if (Configuration.get(`logCompileOutput`)) {
+    if (GlobalConfiguration.get(`logCompileOutput`)) {
       outputBarItem.show();
     }
   }
@@ -99,16 +99,22 @@ module.exports = class CompileTools {
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
+    /** @type {string[]} */
     const lines = tableData.map(row => row.EVFEVENT);
 
     const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
     let errors;
-    if (Configuration.get(`tryNewErrorParser`)) {
+
+    let useNewHandler = GlobalConfiguration.get(`tryNewErrorParser`);
+    const expandedErrors = lines.some(line => line.includes(`EXPANSION`));
+    if (useNewHandler && !expandedErrors) useNewHandler = false;
+
+    if (useNewHandler) {
       errors = errorHandlers.new(lines);
     } else {
       errors = errorHandlers.old(lines);
@@ -153,7 +159,7 @@ module.exports = class CompileTools {
 
           let possibleFiles = await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`);
           if (possibleFiles.length > 0) {
-            ileDiagnostics.set(possibleFiles[0], diagnostics);
+            ileDiagnostics.set(possibleFiles.find(uri => uri.path.includes(baseInfo.base)), diagnostics);
           } else {
             // Look in active text documents...
             const upperParent = parentInfo.name.toUpperCase();
@@ -168,9 +174,9 @@ module.exports = class CompileTools {
           }
         } else {
           if (file.startsWith(`/`))
-            ileDiagnostics.set(vscode.Uri.parse(`streamfile:${file}`), diagnostics);
+            ileDiagnostics.set(vscode.Uri.from({scheme: `streamfile`, path: file}), diagnostics);
           else
-            ileDiagnostics.set(vscode.Uri.parse(`member:/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`), diagnostics);
+            ileDiagnostics.set(vscode.Uri.from({scheme: `member`, path: `/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`}), diagnostics);
         }
       }
 
@@ -197,7 +203,7 @@ module.exports = class CompileTools {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     
     /** @type {{[name: string]: string}} */
@@ -238,13 +244,15 @@ module.exports = class CompileTools {
    * @param {vscode.Uri} uri 
    */
   static async RunAction(instance, uri) {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+
     /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} */
     let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: undefined};
 
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
@@ -253,13 +261,16 @@ module.exports = class CompileTools {
     const allActions = [];
 
     // First we grab the predefined Actions in the VS Code settings
-    const allDefinedActions = Configuration.get(`actions`);
+    const allDefinedActions = GlobalConfiguration.get(`actions`);
     allActions.push(...allDefinedActions);
 
     // Then, if we're being called from a local file
     // we fetch the Actions defined from the workspace.
-    if (uri.scheme === `file`) {
-      const [localActions, iProjActions] = await Promise.all([this.getLocalActions(), this.getiProjActions()]);
+    if (workspaceFolder && uri.scheme === `file`) {
+      const [localActions, iProjActions] = await Promise.all([
+        this.getLocalActions(workspaceFolder), 
+        this.getiProjActions(workspaceFolder)
+      ]);
       allActions.push(...localActions, ...iProjActions);
     }
 
@@ -273,7 +284,7 @@ module.exports = class CompileTools {
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
-      if (Configuration.get(`clearOutputEveryTime`)) {
+      if (GlobalConfiguration.get(`clearOutputEveryTime`)) {
         outputChannel.clear();
       }
 
@@ -296,9 +307,9 @@ module.exports = class CompileTools {
         command = action.command;
         environment = action.environment || `ile`;
 
-        if (action.type === `file` && action.deployFirst) {
+        if (workspaceFolder && action.type === `file` && action.deployFirst) {
           /** @type {number|false} */
-          const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`);
+          const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, workspaceFolder.index);
 
           if (deployResult !== false) {
             evfeventInfo.workspace = deployResult;
@@ -453,7 +464,7 @@ module.exports = class CompileTools {
           let commandResult;
           let executed = false;
 
-          actionsBarItem.text = ACTION_BUTTON_RUNNING;
+          outputBarItem.text = OUTPUT_BUTTON_RUNNING;
 
           command = this.replaceValues(command, variables);
 
@@ -483,7 +494,7 @@ module.exports = class CompileTools {
                 executed = false;
                 vscode.window.showErrorMessage(
                   `Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was not successful.`,
-                  Configuration.get(`logCompileOutput`) ? `Show Output` : undefined
+                  GlobalConfiguration.get(`logCompileOutput`) ? `Show Output` : undefined
                 ).then(async (item) => {
                   if (item === `Show Output`) {
                     this.showOutput();
@@ -549,7 +560,7 @@ module.exports = class CompileTools {
             vscode.window.showErrorMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} failed. (internal error).`);
           }
 
-          actionsBarItem.text = ACTION_BUTTON_BASE;
+          outputBarItem.text = OUTPUT_BUTTON_BASE;
 
         }
       }
@@ -570,7 +581,7 @@ module.exports = class CompileTools {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     
     const cwd = options.cwd;
@@ -663,7 +674,7 @@ module.exports = class CompileTools {
             `liblist -c ` + config.currentLibrary.replace(/\$/g, `\\$`),
             `liblist -a ` + libl.join(` `).replace(/\$/g, `\\$`),
             ...commands.map(command => 
-              `${`system ${Configuration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
+              `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
             ),
           ],
           directory: cwd,
@@ -797,14 +808,15 @@ module.exports = class CompileTools {
   }
 
   /**
+   * @param {vscode.WorkspaceFolder} workspace
    * @returns {Promise<Action[]>}
    */
-  static async getLocalActions() {
-    const workspaces = vscode.workspace.workspaceFolders;
+  static async getLocalActions(workspace) {
     const actions = [];
 
-    if (workspaces && workspaces.length > 0) {
-      const actionsFiles = await vscode.workspace.findFiles(`**/.vscode/actions.json`);
+    if (workspace) {
+      const relativeSearch = new vscode.RelativePattern(workspace,`**/.vscode/actions.json`);
+      const actionsFiles = await vscode.workspace.findFiles(relativeSearch);
 
       for (const file of actionsFiles) {
         const actionsContent = await vscode.workspace.fs.readFile(file);
@@ -842,16 +854,17 @@ module.exports = class CompileTools {
 
   /**
    * Gets actions from the `iproj.json` file
+   * @param {vscode.WorkspaceFolder} workspace
    * @returns {Promise<Action[]>}
    */
-  static async getiProjActions() {
-    const workspaces = vscode.workspace.workspaceFolders;
+  static async getiProjActions(workspace) {
 
     /** @type {Action[]} */
     const actions = [];
 
-    if (workspaces && workspaces.length > 0) {
-      const iprojectFiles = await vscode.workspace.findFiles(`**/iproj.json`);
+    if (workspace) {
+      const relativeSearch = new vscode.RelativePattern(workspace,`**/.iproj.json`);
+      const iprojectFiles = await vscode.workspace.findFiles(relativeSearch);
 
       for (const file of iprojectFiles) {
         const iProjectContent = await vscode.workspace.fs.readFile(file);

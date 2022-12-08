@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.5.15",
+	"version": "1.6.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -231,15 +231,19 @@
 								"default": false,
 								"description": "When enabled, Code for IBM i will retain/update source dates of members when editing source members. Requires SQL to be enabled for this feature to work. If this config is changed, you must reconnect to the system."
 							},
+							"sourceDateMode": {
+								"type": "string",
+								"default": "edit",
+								"enum": [
+									"edit",
+									"diff"
+								],
+								"description": "Determine which method should be used to track changes to source dates for source member."
+							},
 							"sourceDateGutter": {
 								"type": "boolean",
 								"default": false,
 								"description": "When enabled along with enableSourceDates, Code for IBM i will display the source date in the gutter of source members."
-							},
-							"clContentAssistEnabled": {
-								"type": "boolean",
-								"default": false,
-								"description": "Enables the CL content assist and hover support."
 							},
 							"encodingFor5250": {
 								"type": "string",
@@ -396,7 +400,12 @@
 				"code-for-ibmi.ObjectBrowser.showNamesInLowercase": {
 					"type": "boolean",
 					"default": true,
-					"description": "If enabled, names and types of object and members will be shown in lowercase. If disabled, the names will be shown as is on the server (like in 5250 sessions)"
+					"description": "If enabled, names and types of object and members will be shown in lowercase. If disabled, the names will be shown as is on the server (like in 5250 sessions)."
+				},
+				"code-for-ibmi.ObjectBrowser.sortObjectsByName": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
@@ -822,6 +831,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.member.newDateSearch",
+				"title": "Apply Source Date Filter",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.selectForCompare",
 				"title": "Select for Compare",
 				"category": "IBM i"
@@ -892,10 +906,16 @@
 				"icon": "$(check)"
 			},
 			{
+				"command": "code-for-ibmi.newConnectionProfile",
+				"title": "Save current settings to new profile",
+				"category": "IBM i",
+				"icon": "$(save-as)"
+			},
+			{
 				"command": "code-for-ibmi.saveConnectionProfile",
 				"title": "Save current settings into profile",
 				"category": "IBM i",
-				"icon": "$(save-as)"
+				"icon": "$(save)"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnectionProfile",
@@ -1018,6 +1038,13 @@
 				"title": "Upload",
 				"category": "IBM i",
 				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "code-for-ibmi.launchDeploy",
+				"title": "Deploy Workspace",
+				"category": "IBM i",
+				"icon": "$(cloud-upload)",
+				"enablement": "workspaceFolderCount >= 1"
 			},
 			{
 				"command": "code-for-ibmi.setDeployLocation",
@@ -1182,6 +1209,12 @@
 				"mac": "cmd+e"
 			},
 			{
+				"command": "code-for-ibmi.launchDeploy",
+				"key": "ctrl+shift+e",
+				"mac": "cmd+shift+e",
+				"when": "workspaceFolderCount >= 1 && code-for-ibmi:connected == true"
+			},
+			{
 				"command": "code-for-ibmi.goToFile",
 				"key": "ctrl+alt+p",
 				"mac": "cmd+alt+p"
@@ -1259,7 +1292,7 @@
 				{
 					"id": "searchView",
 					"name": "Results",
-					"when": "code-for-ibmi:searchViewVisable == true"
+					"when": "code-for-ibmi:searchViewVisible == true"
 				}
 			]
 		},
@@ -1286,12 +1319,12 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.saveConnectionProfile",
+					"command": "code-for-ibmi.newConnectionProfile",
 					"group": "navigation",
 					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
-					"command": "code-for-ibmi.saveConnectionProfile",
+					"command": "code-for-ibmi.newConnectionProfile",
 					"group": "navigation",
 					"when": "view == profilesView"
 				},
@@ -1630,7 +1663,7 @@
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == ifsBrowser && viewItem == directory && code-for-ibmi:workspace == true",
+					"when": "view == ifsBrowser && viewItem == directory && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{
@@ -1640,37 +1673,37 @@
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == ifsBrowser && viewItem == shortcut && code-for-ibmi:workspace == true",
+					"when": "view == ifsBrowser && viewItem == shortcut && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == objectBrowser && viewItem == filter && code-for-ibmi:workspace == true",
+					"when": "view == objectBrowser && viewItem == filter && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@1"
 				},
 				{
 					"command": "code-for-ibmi.copyObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@3"
 				},
 				{
 					"command": "code-for-ibmi.renameObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@4"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && viewItem == object",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@5"
 				},
 				{
@@ -1680,7 +1713,7 @@
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "viewItem == object",
+					"when": "viewItem =~ /^object/",
 					"group": "1_workspace@1"
 				}
 			]
@@ -1717,12 +1750,13 @@
 	},
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.6.3",
-		"csv": "^6.0.5",
+		"csv": "^6.2.1",
 		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",
 		"source-map-support": "^0.5.21",
 		"tmp": "^0.2.1",
+		"vscode-diff": "^2.0.2",
 		"xml2js": "^0.4.23"
 	},
 	"extensionDependencies": [
