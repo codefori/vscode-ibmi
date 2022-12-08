@@ -11,12 +11,6 @@ interface CommandData extends StandardIO {
   directory?: string;
 }
 
-interface CommandResult {
-  code: number | null;
-  stdout: string;
-  stderr: string;
-}
-
 interface MemberParts {
   asp: string | undefined;
   library: string | undefined;
@@ -36,28 +30,10 @@ interface Action {
   postDownload?: string[];
 }
 
-interface ConnectionData {
-  name: string;
-  host: string;
-  port: number;
-  username: string;
-  password?: string;
-  privateKey: string | null;
-  keepaliveInterval: number;
-}
-
 interface Server {
   name: string
 }
 
 interface Profile {
   profile: string
-}
-
-interface IBMiObject {
-  library: string,
-  name: string,
-  type: string,
-  text: string,
-  attribute?: string
 }

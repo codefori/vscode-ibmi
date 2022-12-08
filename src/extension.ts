@@ -10,8 +10,9 @@ import { CustomUI, Field } from "./api/CustomUI";
 import {ObjectBrowserProvider} from "./views/ConnectionBrowser";
 import IBMi from "./api/IBMi";
 import { ConnectionConfiguration } from "./api/Configuration";
+import { CodeForIBMi, ConnectionData } from "./export/code-for-ibmi";
 
-export function activate(context: ExtensionContext) {
+export function activate(context: ExtensionContext) : CodeForIBMi {
 
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated

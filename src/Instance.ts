@@ -3,7 +3,6 @@ import * as vscode from "vscode";
 import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
-import { Storage } from "./api/Storage";
 const path = require(`path`);
 
 const CompileTools = require(`./api/CompileTools`);
@@ -21,6 +20,7 @@ import { Search } from "./api/Search";
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
 import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+import { StorageImpl } from "./api/Storage";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -115,7 +115,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   const CLCommands = require(`./languages/clle/clCommands`);
 
   if (instance.connection) {
-    instance.storage = new Storage(context, instance.connection.currentConnectionName);
+    instance.storage = new StorageImpl(context, instance.connection.currentConnectionName);
 
     CompileTools.register(context);
 

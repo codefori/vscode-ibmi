@@ -1,13 +1,14 @@
 import vscode from 'vscode';
+import { PathContent, Storage } from '../export/code-for-ibmi';
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 
-export interface PathContent extends Record<string, string[]>{};
 
-export class Storage {
+
+export class StorageImpl implements Storage {
   constructor(readonly context : vscode.ExtensionContext, readonly connectionName: string) {
   }
 

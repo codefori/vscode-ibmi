@@ -1,6 +1,7 @@
 
 import vscode from 'vscode';
 import { ConnectionConfiguration } from '../api/Configuration';
+import { ConnectionProfile } from '../export/code-for-ibmi';
 
 import { instance } from '../Instance';
 
@@ -123,7 +124,7 @@ export class ProfilesView {
   }
 }
 
-async function getOrPickAvailableProfile(availableProfiles: ConnectionConfiguration.ConnectionProfile[], profileNode?: Profile): Promise<ConnectionConfiguration.ConnectionProfile | undefined> {
+async function getOrPickAvailableProfile(availableProfiles: ConnectionProfile[], profileNode?: Profile): Promise<ConnectionProfile | undefined> {
   if (availableProfiles.length > 0) {
     if (profileNode) {
       return availableProfiles.find(profile => profile.name === profileNode.profile);
@@ -143,7 +144,7 @@ async function getOrPickAvailableProfile(availableProfiles: ConnectionConfigurat
   }
 }
 
-function assignProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, toProfile: ConnectionConfiguration.ConnectionProfile) {
+function assignProfile(fromProfile: ConnectionProfile, toProfile: ConnectionProfile) {
   toProfile.homeDirectory = fromProfile.homeDirectory;
   toProfile.currentLibrary = fromProfile.currentLibrary;
   toProfile.libraryList = fromProfile.libraryList;
@@ -152,7 +153,7 @@ function assignProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, t
   toProfile.customVariables = fromProfile.customVariables;
 }
 
-function cloneProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, newName: string): ConnectionConfiguration.ConnectionProfile {
+function cloneProfile(fromProfile: ConnectionProfile, newName: string): ConnectionProfile {
   return {
     name: newName,
     homeDirectory: fromProfile.homeDirectory,

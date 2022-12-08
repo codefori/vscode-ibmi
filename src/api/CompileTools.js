@@ -99,7 +99,7 @@ module.exports = class CompileTools {
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
 
-    /** @type {ConnectionConfiguration.Parameters} */
+    /** @type {import("../export/code-for-ibmi").Parameters} */
     const config = instance.getConfig();
 
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);

@@ -50,6 +50,11 @@ module.exports = class IBMiContent {
     return readFileAsync(localPath, `utf8`);
   }
 
+  /**
+   * @param {string} remotePath 
+   * @param {string} localPath 
+   * @returns {Promise<void | String | CommandResult>}
+   */
   async writeStreamfile(originalPath, content) {
     const client = this.ibmi.client;
     const features = this.ibmi.remoteFeatures;
@@ -90,6 +95,7 @@ module.exports = class IBMiContent {
    * @param {string} lib 
    * @param {string} spf 
    * @param {string} mbr 
+   * @returns {Promise<string>}
    */
   async downloadMemberContent(asp, lib, spf, mbr) {
     if (!asp) asp = this.ibmi.config.sourceASP;
@@ -170,7 +176,7 @@ module.exports = class IBMiContent {
   /**
    * Run an SQL statement
    * @param {string} statement
-   * @returns {Promise<Tools.DB2Row[]>} Result set
+   * @returns {Promise<DB2Row[]>} Result set
    */
   async runSQL(statement) {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
@@ -253,7 +259,7 @@ module.exports = class IBMiContent {
   /**
    * Get list of libraries with description and attribute
    * @param {string[]} libraries Array of libraries to retrieve
-   * @returns {Promise<{name: string, text: string, attribute: string}[]>} List of libraries
+   * @returns {Promise<import("../export/code-for-ibmi").IBMiObject[]>} List of libraries
    */
   async getLibraryList(libraries) {
     const config = this.ibmi.config;
@@ -282,11 +288,13 @@ module.exports = class IBMiContent {
 
       results = results.filter(object => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
     };
-
+    
     results = results.map(object => ({
       name: config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
       attribute: object.ODOBAT,
-      text: object.ODOBTX
+      text: object.ODOBTX,
+      type: `*LIB`,
+      library: `QSYS`
     }));
 
     return libraries.map(lib => {
@@ -295,8 +303,9 @@ module.exports = class IBMiContent {
         return results[index];
       } else {
         return {
+          library: ``,
+          type: `*LIB`,
           name: lib,
-          attribute: ``,
           text: `*** NOT FOUND ***`
         };
       }

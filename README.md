@@ -30,3 +30,11 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 3. `npm i`
 4. 'Run Extension' from vscode debug.
 
+### API
+The Code For IBM i extension exports an API, reachable by any other extension.
+1. Copy `src/export/code-for-ibmi.d.ts` to you extension's source
+2. Include `code-for-ibmi.d.ts` in your extension's compilation.
+3. Get a hold of the API with the following snippet:
+```ts
+const codeForIBMi =  vscode.extensions.getExtension<CodeForIBMi>('halcyontechltd.code-for-ibmi')?.exports;
+```

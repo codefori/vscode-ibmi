@@ -1,5 +1,6 @@
 
 import * as vscode from 'vscode';
+import { Parameters } from '../export/code-for-ibmi';
 
 const getConfiguration = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
@@ -16,53 +17,7 @@ export namespace GlobalConfiguration {
 }
 
 export namespace ConnectionConfiguration {
-  export interface Parameters extends ConnectionProfile{    
-    host: string;    
-    autoClearTempData: boolean;    
-    connectionProfiles: ConnectionProfile[];    
-    autoSortIFSShortcuts: boolean;    
-    enableSQL: boolean;
-    tempLibrary: string;
-    tempDir: string;    
-    sourceASP: string;
-    sourceFileCCSID: string;
-    autoConvertIFSccsid: boolean;
-    hideCompileErrors: string[];
-    enableSourceDates: boolean;
-    sourceDateMode: "edit"|"diff";
-    sourceDateGutter: boolean;
-    encodingFor5250: string;
-    terminalFor5250: string;
-    setDeviceNameFor5250: boolean;
-    connectringStringFor5250: string;
-    autoSaveBeforeAction: boolean;
-    showDescInLibList: boolean;
-    [name: string]: any;
-  }
-
-  export interface ObjectFilters {
-    name: string
-    library: string
-    object: string
-    types: string[]
-    member: string
-    memberType: string
-  }
   
-  export interface CustomVariable {
-    name: string
-    value: string
-  }
-  
-  export interface ConnectionProfile {
-    name: string
-    homeDirectory: string
-    currentLibrary: string
-    libraryList: string[]
-    objectFilters: ObjectFilters[]
-    ifsShortcuts: string[]
-    customVariables: CustomVariable[]
-  }
 
   function getConnectionSettings(): Parameters[] {
     return getConfiguration().get<Parameters[]>(`connectionSettings`) || [];

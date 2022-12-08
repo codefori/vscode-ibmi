@@ -1,12 +1,10 @@
+import { DB2Row } from "../export/code-for-ibmi";
+
 export namespace Tools {
   export interface DB2Headers {
     name: string
     from: number
     length: number
-  }
-
-  export interface DB2Row extends Record<string, string | number | null> {
-
   }
   
   /**

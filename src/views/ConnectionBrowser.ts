@@ -2,6 +2,7 @@
 import vscode from 'vscode';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
+import { ConnectionData, Parameters } from '../export/code-for-ibmi';
 import LoginPanel from '../webviews/login';
 import settingsUI from '../webviews/settings';
 
@@ -61,7 +62,7 @@ export class ObjectBrowserProvider {
               await GlobalConfiguration.set(`connections`, newConnections);
 
               // Also remove the connection settings
-              const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
+              const connectionSettings = GlobalConfiguration.get<Parameters[]>(`connectionSettings`) || [];
               const newConnectionSettings = connectionSettings.filter(connection => connection.name !== server.name);
               await GlobalConfiguration.set(`connectionSettings`, newConnectionSettings);
 

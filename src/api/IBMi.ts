@@ -5,6 +5,7 @@ import { ConnectionConfiguration } from "./Configuration";
 
 import {Tools} from './Tools';
 import path from 'path';
+import { CommandResult, ConnectionData, IBMi, Parameters } from "../export/code-for-ibmi";
 
 let remoteApps = [
   {
@@ -25,7 +26,7 @@ let remoteApps = [
   }
 ];
 
-export default class IBMi {
+export default class IBMiImpl implements IBMi {
   client: node_ssh.NodeSSH;
   currentHost: string;
   currentPort: number;
@@ -40,7 +41,7 @@ export default class IBMi {
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
   lastErrors: object[];
-  config?: ConnectionConfiguration.Parameters;
+  config?: Parameters;
 
   commandsExecuted: number = 0;
 
@@ -812,4 +813,36 @@ export default class IBMi {
     return result;
   }
 
+  async uploadFiles(files: {local : string | vscode.Uri, remote : string}[]){
+    await this.client.putFiles(files.map(f => {return {local: this.fileToPath(f.local), remote: f.remote}}));
+  }
+
+  async downloadFile(localFile: string | vscode.Uri, remoteFile: string){
+    this.client.getFile(this.fileToPath(localFile), remoteFile);
+  }
+
+  getHost() : string{
+    return this.currentHost;
+  }
+  
+  getPort() : number{
+    return this.currentPort;
+  }
+
+  getUser() : string{
+    return this.currentUser;
+  }
+
+  getConnectionName() : string{
+    return this.currentConnectionName;
+  }
+
+  fileToPath(file : string | vscode.Uri) : string{
+    if(typeof file === "string"){
+      return file;
+    }
+    else{
+      return file.fsPath;
+    }
+  }
 }
