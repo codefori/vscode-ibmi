@@ -562,6 +562,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
 
           const value = context.secrets.get(connectionKey);
+          return value;
         })
       );
 
