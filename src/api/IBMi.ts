@@ -649,7 +649,7 @@ export default class IBMi {
   }
 
   async sendCommand(options: CommandData): Promise<CommandResult> {
-    let commands = [];
+    let commands: string[] = [];
     if (options.env) {
       commands.push(...Object.keys(options.env).map(envVar => `export ${envVar}="${
         options.env ? options.env[envVar].replace(/\$/g, `\\$`).replace(/"/g, `\\"`) : ``
