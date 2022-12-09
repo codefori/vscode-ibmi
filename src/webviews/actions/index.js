@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-const {instance} = require(`../../Instance`);
+const {instance} = require(`../../instantiate`);
 
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
 const Variables = require(`./varinfo`);

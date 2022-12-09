@@ -4,7 +4,7 @@ import { ExtensionContext, window, commands, workspace } from "vscode";
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { setupEmitter, instance, setConnection, loadAllofExtension } from './Instance';
+import { setupEmitter, instance, setConnection, loadAllofExtension } from './instantiate';
 import { CustomUI, Field } from "./api/CustomUI";
 
 import {ObjectBrowserProvider} from "./views/ConnectionBrowser";
@@ -12,7 +12,6 @@ import IBMi from "./api/IBMi";
 import { ConnectionConfiguration } from "./api/Configuration";
 
 export function activate(context: ExtensionContext) {
-
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);

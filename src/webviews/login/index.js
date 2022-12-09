@@ -4,7 +4,7 @@ const {default: IBMi} = require(`../../api/IBMi`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 const {GlobalConfiguration} = require(`../../api/Configuration`);
 
-let {instance, disconnect, setConnection, loadAllofExtension} = require(`../../Instance`);
+let {instance, disconnect, setConnection, loadAllofExtension} = require(`../../instantiate`);
 
 module.exports = class Login {
 

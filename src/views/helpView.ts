@@ -1,6 +1,6 @@
 
 import vscode from 'vscode';
-import {instance} from '../Instance';
+import {instance} from '../instantiate';
 
 export class HelpView {
 

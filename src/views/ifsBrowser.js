@@ -3,7 +3,7 @@ const vscode = require(`vscode`);
 const os = require(`os`);
 const path = require(`path`);
 
-let {instance, setSearchResults} = require(`../Instance`);
+let {instance, setSearchResults} = require(`../instantiate`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
 const {Search} = require(`../api/Search`);
 const {Tools} = require(`../api/Tools`);

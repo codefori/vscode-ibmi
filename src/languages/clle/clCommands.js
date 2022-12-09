@@ -1,7 +1,7 @@
 
 const vscode = require(`vscode`);
 
-const { instance } = require(`../../Instance`);
+const { instance } = require(`../../instantiate`);
 const Configuration = require(`../../api/Configuration`);
 const { default: IBMi } = require(`../../api/IBMi`);
 

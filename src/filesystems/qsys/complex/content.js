@@ -1,5 +1,5 @@
 let {default: IBMi} = require(`../../../api/IBMi`);
-let {instance} = require(`../../../Instance`);
+let {instance} = require(`../../../instantiate`);
 
 const util = require(`util`);
 const fs = require(`fs`);

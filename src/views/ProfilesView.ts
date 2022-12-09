@@ -2,7 +2,7 @@
 import vscode from 'vscode';
 import { ConnectionConfiguration } from '../api/Configuration';
 
-import { instance } from '../Instance';
+import { instance } from '../instantiate';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();

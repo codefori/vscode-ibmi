@@ -1,6 +1,6 @@
 
 const vscode = require(`vscode`);
-const {instance} = require(`../../Instance`);
+const {instance} = require(`../../instantiate`);
 
 module.exports = class basicQsysFs {
   constructor() {
