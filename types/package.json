@@ -1,0 +1,12 @@
+{
+  "name": "vscode-ibmi-types",
+  "version": "1.6.0",
+  "description": "Types for vscode-clle",
+  "typings": "./typings.d.ts",
+  "scripts": {
+    "prepublish": "rm -rf filesystems schemas views webviews languages",
+    "publish": "git add --all && git commit -m \"New stuff\" && git push"
+  },
+  "author": "halcyontech",
+  "license": "ISC"
+}
