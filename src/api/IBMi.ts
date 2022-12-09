@@ -622,15 +622,7 @@ export default class IBMi {
   }
 
   async sendQsh(options: CommandData) {
-    let qshCommand;
-
-    if (Array.isArray(options.command)) {
-      qshCommand = options.command.join(`;`);
-    } else {
-      qshCommand = options.command;
-    }
-
-    options.stdin = qshCommand;
+    options.stdin = options.command;
 
     return this.sendCommand({
       ...options,
@@ -657,7 +649,16 @@ export default class IBMi {
   }
 
   async sendCommand(options: CommandData): Promise<CommandResult> {
-    const command = options.command;
+    let commands = [];
+    if (options.env) {
+      commands.push(...Object.keys(options.env).map(envVar => `export ${envVar}="${
+        options.env ? options.env[envVar].replace(/\$/g, `\\$`).replace(/"/g, `\\"`) : ``
+      }"`))
+    }
+
+    commands.push(options.command);
+
+    const command = commands.join(` && `);
     const directory = options.directory || this.config?.homeDirectory;
 
     this.determineClear()

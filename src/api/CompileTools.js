@@ -6,8 +6,9 @@ const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
 const errorHandlers = require(`./errors/index`);
 const {default: IBMi} = require(`./IBMi`);
-const {GlobalConfiguration} = require(`./Configuration`);
+const {GlobalConfiguration, ConnectionConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
+const { getEnvConfig } = require(`./local/env`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -466,12 +467,20 @@ module.exports = class CompileTools {
 
           outputBarItem.text = OUTPUT_BUTTON_RUNNING;
 
+          if (workspaceFolder) {
+            const envFileVars = await getEnvConfig(workspaceFolder);
+            Object.entries(envFileVars).forEach(item => {
+              variables[`&` + item[0]] = item[1];
+            });
+          }
+
           command = this.replaceValues(command, variables);
 
           try {
             commandResult = await this.runCommand(instance, {
               environment,
-              command
+              command,
+              env: variables
             });
 
             if (commandResult) {
@@ -573,8 +582,8 @@ module.exports = class CompileTools {
   /**
    * Execute command
    * @param {*} instance
-   * @param {{environment?: "ile"|"qsh"|"pase", command: string, cwd?: string}} options 
-   * @returns {Promise<{stdout: string, stderr: string, code?: number, command: string}|null>}
+   * @param {RemoteCommand} options 
+   * @returns {Promise<CommandResult|null>}
    */
   static async runCommand(instance, options) {
     /** @type {IBMi} */
@@ -612,7 +621,6 @@ module.exports = class CompileTools {
     }
 
     if (commandString) {
-
       const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
       outputChannel.append(`\n\n`);
@@ -633,9 +641,20 @@ module.exports = class CompileTools {
 
       switch (options.environment) {
       case `pase`:
+        // We build environment variables for the environment to be ready
+        /** @type {{[name: string]: string}} */
+        const envVars = {};
+        Object
+          .entries({...(options.env ? options.env : {}), ...this.getDefaultVariables(instance)})
+          .filter(item => (new RegExp(`^[A-Za-z\&]`, `i`).test(item[0])))
+          .forEach(item => {
+            envVars[item[0][0] === `&` ? item[0].substring(1) : item[0]] = item[1];
+          });
+
         commandResult = await connection.sendCommand({
           command: commands.join(` && `), 
           directory: cwd,
+          env: envVars,
           ...callbacks
         });
         break;
@@ -647,7 +666,7 @@ module.exports = class CompileTools {
             `liblist -c ` + config.currentLibrary.replace(/\$/g, `\\$`),
             `liblist -a ` + libl.join(` `).replace(/\$/g, `\\$`),
             ...commands,
-          ],
+          ].join(` && `),
           directory: cwd,
           ...callbacks
         });
@@ -656,7 +675,6 @@ module.exports = class CompileTools {
       case `ile`:
       default:
         // escape $ and # in commands
-
         commandResult = await connection.sendQsh({
           command: [
             `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
@@ -665,7 +683,7 @@ module.exports = class CompileTools {
             ...commands.map(command => 
               `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
             ),
-          ],
+          ].join(` && `),
           directory: cwd,
           ...callbacks
         });
@@ -847,7 +865,6 @@ module.exports = class CompileTools {
    * @returns {Promise<Action[]>}
    */
   static async getiProjActions(workspace) {
-
     /** @type {Action[]} */
     const actions = [];
 
