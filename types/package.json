@@ -1,11 +1,13 @@
 {
-  "name": "vscode-ibmi-types",
+  "name": "@halcyontech/vscode-ibmi-types",
   "version": "1.6.0",
-  "description": "Types for vscode-clle",
+  "description": "Types for vscode-ibmi",
   "typings": "./typings.d.ts",
   "scripts": {
-    "prepublish": "rm -rf filesystems schemas views webviews languages",
-    "publish": "git add --all && git commit -m \"New stuff\" && git push"
+    "prepublish": "rm -rf filesystems schemas views webviews languages"
+  },
+  "repository": {
+    "url": "https://github.com/halcyon-tech/vscode-ibmi"
   },
   "author": "halcyontech",
   "license": "ISC"
