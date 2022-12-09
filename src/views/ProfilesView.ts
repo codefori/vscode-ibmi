@@ -1,5 +1,6 @@
 
 import vscode from 'vscode';
+import { Profile } from '../typings';
 import { ConnectionConfiguration } from '../api/Configuration';
 
 import { instance } from '../instantiate';

@@ -1733,7 +1733,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/global.d.ts ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir ../vscode-ibmi-types --esModuleInterop && cd ../vscode-ibmi-types && rm -rf types/filesystems types/schemas types/views types/webviews types/languages"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir ../vscode-ibmi-types --esModuleInterop && cd ../vscode-ibmi-types && npm run prepublish && npm run publish"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",

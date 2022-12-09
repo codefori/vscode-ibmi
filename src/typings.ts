@@ -1,6 +1,14 @@
+import { ExtensionContext } from "vscode";
+import Instance from "./api/Instance";
 
+export interface CodeForIBMi {
+  instance: Instance,
+  baseContext: ExtensionContext,
+  CustomUI: object, //CustomUI: typeof CustomUI
+  Field: object //Field: typeof Field;
+}
 
-interface StandardIO {
+export interface StandardIO {
   onStdout?: (data: Buffer) => void;
   onStderr?: (data: Buffer) => void;
   stdin?: string;
@@ -9,36 +17,27 @@ interface StandardIO {
 /**
  * External interface for extensions to call `code-for-ibmi.runCommand`
  */
-interface RemoteCommand {
+export interface RemoteCommand {
   command: string;
   environment?: "ile"|"qsh"|"pase";
   cwd?: string;
   env?: {[name: string]: string};
 }
 
-interface CommandData extends StandardIO {
+export interface CommandData extends StandardIO {
   command: string;
   directory?: string;
   env?: {[name: string]: string};
 }
 
-interface CommandResult {
+export interface CommandResult {
   code: number | null;
   stdout: string;
   stderr: string;
   command?: string;
 }
 
-interface MemberParts {
-  asp: string | undefined;
-  library: string | undefined;
-  file: string | undefined;
-  member: string | undefined;
-  extension: string | undefined;
-  basename: string | undefined;
-}
-
-interface Action {
+export interface Action {
   name: string;
   command: string;
   type?: "member" | "streamfile" | "object" | "file";
@@ -48,7 +47,7 @@ interface Action {
   postDownload?: string[];
 }
 
-interface ConnectionData {
+export interface ConnectionData {
   name: string;
   host: string;
   port: number;
@@ -58,15 +57,15 @@ interface ConnectionData {
   keepaliveInterval: number;
 }
 
-interface Server {
+export interface Server {
   name: string
 }
 
-interface Profile {
+export interface Profile {
   profile: string
 }
 
-interface IBMiObject {
+export interface IBMiObject {
   library: string,
   name: string,
   type: string,

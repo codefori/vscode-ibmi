@@ -461,7 +461,7 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-          /** @type {any} */
+          /** @type {import("../typings").CommandResult} */
           let commandResult;
           let executed = false;
 
