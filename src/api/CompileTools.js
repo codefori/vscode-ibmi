@@ -281,7 +281,7 @@ module.exports = class CompileTools {
     });
 
     // Then we get all the available Actions for the current context
-    /** @type {Action[]} */
+    /** @type {import("../typings").Action[]} */
     const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragement) || action.extensions.includes(`GLOBAL`)));
 
     if (availableActions.length > 0) {
@@ -461,7 +461,7 @@ module.exports = class CompileTools {
         }
 
         if (command) {
-          /** @type {any} */
+          /** @type {import("../typings").CommandResult} */
           let commandResult;
           let executed = false;
 
@@ -828,7 +828,7 @@ module.exports = class CompileTools {
       for (const file of actionsFiles) {
         const actionsContent = await vscode.workspace.fs.readFile(file);
         try {
-          /** @type {Action[]} */
+          /** @type {import("../typings").Action[]} */
           const actionsJson = JSON.parse(actionsContent.toString());
 
           // Maybe one day replace this with real schema validation
@@ -865,7 +865,7 @@ module.exports = class CompileTools {
    * @returns {Promise<Action[]>}
    */
   static async getiProjActions(workspace) {
-    /** @type {Action[]} */
+    /** @type {import("../typings").Action[]} */
     const actions = [];
 
     if (workspace) {

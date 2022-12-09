@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 const {ConnectionConfiguration} = require(`../../api/Configuration`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-let {instance} = require(`../../Instance`);
+let {instance} = require(`../../instantiate`);
 
 module.exports = class SettingsUI {
 

@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 const { ConnectionConfiguration } = require(`../../../../api/Configuration`);
 const { DiffComputer } = require(`vscode-diff`);
 
-const global = require(`../../../../Instance`);
+const global = require(`../../../../instantiate`);
 let { baseSource, baseDates, recordLengths, getAliasName } = require(`../data`);
 
 const diffOptions = {

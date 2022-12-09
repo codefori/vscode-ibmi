@@ -8,7 +8,7 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const FiltersUI = require(`../webviews/filters`);
 
-let { instance, setSearchResults } = require(`../Instance`);
+let { instance, setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
 

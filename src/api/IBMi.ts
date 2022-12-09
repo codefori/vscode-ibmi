@@ -5,6 +5,16 @@ import { ConnectionConfiguration } from "./Configuration";
 
 import {Tools} from './Tools';
 import path from 'path';
+import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
+
+interface MemberParts {
+  asp: string | undefined;
+  library: string | undefined;
+  file: string | undefined;
+  member: string | undefined;
+  extension: string | undefined;
+  basename: string | undefined;
+}
 
 let remoteApps = [
   {

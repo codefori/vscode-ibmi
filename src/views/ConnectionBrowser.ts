@@ -1,5 +1,6 @@
 
 import vscode from 'vscode';
+import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
 import LoginPanel from '../webviews/login';
