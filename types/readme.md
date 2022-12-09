@@ -2,12 +2,12 @@
 
 Type definitions for working with the Code for IBM i API.
 
-Install from this repository with `npm i halcyon-tech/vscode-ibmi-types`.
+Install the types with `npm i npm i @halcyontech/vscode-ibmi-types`.
 
 Use in your extension:
 
 ```ts
-import {CodeForIBMi} from 'vscode-ibmi-types';
+import {CodeForIBMi} from '@halcyontech/vscode-ibmi-types';
 
 //...
 
