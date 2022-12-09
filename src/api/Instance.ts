@@ -32,4 +32,8 @@ export default class Instance {
     getStorage () {
       return this.storage;
     }
+
+    onEvent(event: "connected", func: Function): void {
+      this.events.push({event, func});
+    }
   };
