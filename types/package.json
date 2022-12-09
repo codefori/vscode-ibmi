@@ -4,7 +4,8 @@
   "description": "Types for vscode-ibmi",
   "typings": "./typings.d.ts",
   "scripts": {
-    "prepublish": "rm -rf filesystems schemas views webviews languages"
+    "prepublish": "rm -rf filesystems schemas views webviews languages",
+    "deploy": "npm publish --access public"
   },
   "repository": {
     "url": "https://github.com/halcyon-tech/vscode-ibmi"
