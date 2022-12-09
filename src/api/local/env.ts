@@ -32,7 +32,7 @@ export async function getEnvConfig(currentWorkspace: WorkspaceFolder) {
       if (!line.startsWith(`#`)) {
         const [key, value] = line.split(`=`);
         if (key.length > 0 && value.length > 0) {
-          env[key] = value;
+          env[key.trim()] = value.trim();
         }
       }
     });
