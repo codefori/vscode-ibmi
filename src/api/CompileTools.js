@@ -648,7 +648,7 @@ module.exports = class CompileTools {
           .entries({...(options.env ? options.env : {}), ...this.getDefaultVariables(instance)})
           .filter(item => (new RegExp(`^[A-Za-z\&]`, `i`).test(item[0])))
           .forEach(item => {
-            envVars[item[0].substring(1)] = item[1];
+            envVars[item[0][0] === `&` ? item[0].substring(1) : item[0]] = item[1];
           });
 
         commandResult = await connection.sendCommand({
