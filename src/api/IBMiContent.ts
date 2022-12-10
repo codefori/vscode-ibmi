@@ -8,7 +8,7 @@ import { Tools } from './Tools';
 import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
 import { ConnectionConfiguration } from './Configuration';
-import { IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -496,18 +496,12 @@ export default class IBMiContent {
   }
 
   /**
-   * @param {string} errorsString 
-   * @returns {{code: string, text: string}[]} errors
+   * @param errorsString 
+   * @returns errors
    */
-  parseIBMiErrors(errorsString: string): { code: string; text: string; }[] {
-    const errors = [];
-
-    let code, text;
-    for (const error of errorsString.split(`\n`)) {
-      [code, text] = error.split(`:`);
-      errors.push({ code, text });
-    }
-
-    return errors;
+  parseIBMiErrors(errorsString: string): IBMiError[] {
+    return errorsString.split(`\n`)
+      .map(error => error.split(':'))
+      .map(codeText => ({ code: codeText[0], text: codeText[1]}) );
   }
 }

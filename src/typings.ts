@@ -92,3 +92,8 @@ export interface IFSFile {
   name: string
   path: string
 }
+
+export interface IBMiError{
+  code: string
+  text: string
+}
