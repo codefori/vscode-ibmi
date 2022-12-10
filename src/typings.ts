@@ -19,15 +19,15 @@ export interface StandardIO {
  */
 export interface RemoteCommand {
   command: string;
-  environment?: "ile"|"qsh"|"pase";
+  environment?: "ile" | "qsh" | "pase";
   cwd?: string;
-  env?: {[name: string]: string};
+  env?: { [name: string]: string };
 }
 
 export interface CommandData extends StandardIO {
   command: string;
   directory?: string;
-  env?: {[name: string]: string};
+  env?: { [name: string]: string };
 }
 
 export interface CommandResult {
@@ -71,4 +71,24 @@ export interface IBMiObject {
   type: string,
   text: string,
   attribute?: string
+}
+
+export interface IBMiFile extends IBMiObject {
+  count?: number
+}
+
+export interface IBMiMember {
+  library: string
+  file: string
+  name: string
+  extension: string
+  recordLength: number
+  text: string
+  asp?: string
+}
+
+export interface IFSFile {
+  type: "directory" | "streamfile"
+  name: string
+  path: string
 }
