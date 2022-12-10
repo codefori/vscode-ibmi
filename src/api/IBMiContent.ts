@@ -3,7 +3,7 @@ import { default as IBMi } from './IBMi';
 import path from 'path';
 import util from 'util';
 import tmp from 'tmp';
-import {parse} from 'csv-parse/sync';
+import { parse } from 'csv-parse/sync';
 import { Tools } from './Tools';
 import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
@@ -17,9 +17,7 @@ const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
 export default class IBMiContent {
 
-  constructor(readonly ibmi: IBMi) {
-
-  }
+  constructor(readonly ibmi: IBMi) { }
 
   private get config(): ConnectionConfiguration.Parameters {
     if (!this.ibmi.config) {
@@ -84,8 +82,7 @@ export default class IBMiContent {
   async writeStreamfile(originalPath: any, content: any) {
     const client = this.ibmi.client;
     const features = this.ibmi.remoteFeatures;
-
-    let tmpobj = await tmpFile();
+    const tmpobj = await tmpFile();
 
     let ccsid;
     if (this.config.autoConvertIFSccsid && features.attr) {
@@ -145,9 +142,7 @@ export default class IBMiContent {
     }
 
     await client.getFile(tmpobj, tempRmt);
-    let body = await readFileAsync(tmpobj, `utf8`);
-
-    return body;
+    return await readFileAsync(tmpobj, `utf8`);
   }
 
   /**
@@ -181,8 +176,8 @@ export default class IBMiContent {
 
   /**
    * Run an SQL statement
-   * @param {string} statement
-   * @returns {Promise<Tools.DB2Row[]>} Result set
+   * @param statement
+   * @returns a Result set
    */
   async runSQL(statement: string): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
@@ -212,10 +207,10 @@ export default class IBMiContent {
 
   /**
    * Download the contents of a table.
-   * @param {string} library 
-   * @param {string} file 
-   * @param {string} [member] Will default to file provided 
-   * @param {boolean} [deleteTable] Will delete the table after download
+   * @param library 
+   * @param file 
+   * @param member Will default to file provided 
+   * @param deleteTable Will delete the table after download
    */
   async getTable(library: string, file: string, member: string, deleteTable: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
@@ -232,16 +227,9 @@ export default class IBMiContent {
     } else {
       const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
       await this.ibmi.remoteCommand(
-        `QSYS/CPYTOIMPF FROMFILE(` +
-        library +
-        `/` +
-        file +
-        ` ` +
-        member +
-        `) ` +
-        `TOSTMF('` +
-        tempRmt +
-        `') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD) `,
+        `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
+        `TOSTMF('${tempRmt}') ` +
+        `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`
       );
 
       let result = await this.downloadStreamfile(tempRmt);
@@ -265,13 +253,13 @@ export default class IBMiContent {
   /**
    * Get list of libraries with description and attribute
    * @param libraries Array of libraries to retrieve
-   * @returns {Promise<IBMiObject[]>} List of libraries
+   * @returns an array of libraries as IBMiObject
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
     const config = this.ibmi.config;
     const tempLib = this.config.tempLibrary;
     const TempName = Tools.makeid();
-    let results: any[];
+    let results: Tools.DB2Row[];
 
     if (this.config.enableSQL) {
       const statement = `
@@ -286,22 +274,20 @@ export default class IBMiContent {
       await this.ibmi.remoteCommand(`DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName, true);
 
-      if (results.length === 1) {
-        if (results[0].ODOBNM.trim() === ``) {
-          return []
-        }
-      };
+      if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
+        return [];
+      }
 
-      results = results.filter((object: { ODOBNM: any; }) => (libraries.includes(this.ibmi.sysNameInLocal(object.ODOBNM))));
+      results = results.filter(object => libraries.includes(this.ibmi.sysNameInLocal(String(object.ODOBNM))));
     };
 
-    const objects = results.map((object: { ODOBNM: any; ODOBAT: any; ODOBTX: any; }) => ({
+    const objects = results.map(object => ({
       library: 'QSYS',
       type: '*LIB',
-      name: this.config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(object.ODOBNM),
+      name: this.config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(String(object.ODOBNM)),
       attribute: object.ODOBAT,
       text: object.ODOBTX
-    }));
+    } as IBMiObject));
 
     return libraries.map(library => {
       return objects.find(info => info.name === library) ||
@@ -312,14 +298,13 @@ export default class IBMiContent {
         attribute: ``,
         text: `*** NOT FOUND ***`
       };
-    }
-    );
+    });
   }
 
   /**
-   * @param {{library: string, object?: string, types?: string[]}} filters 
-   * @param {string?} sortOrder
-   * @returns {Promise<IBMiFile[]>} List of objects 
+   * @param filters 
+   * @param sortOrder
+   * @returns an array of IBMiFile 
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; }, sortOrder?: `name` | `type`): Promise<IBMiFile[]> {
     const library = filters.library.toUpperCase();
@@ -327,16 +312,14 @@ export default class IBMiContent {
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
 
     const tempLib = this.config.tempLibrary;
-    const TempName = Tools.makeid();
+    const tempName = Tools.makeid();
 
     if (sourceFilesOnly) {
-      await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+      await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`);
 
-      const results = await this.getTable(tempLib, TempName, TempName, true);
-      if (results.length === 1) {
-        if (String(results[0].PHFILE).trim() === ``) {
-          return []
-        }
+      const results = await this.getTable(tempLib, tempName, tempName, true);
+      if (results.length === 1 && !results[0].PHFILE?.toString().trim()) {
+        return [];
       }
 
       return results.filter(object => object.PHDTAT === `S`)
@@ -350,24 +333,22 @@ export default class IBMiContent {
         } as IBMiFile))
         .sort((a, b) => a.library.localeCompare(b.library) || a.name.localeCompare(b.name));
     } else {
-      const objectTypes = (filters.types && filters.types.length > 0 ? filters.types.map((type: string) => type.toUpperCase()).join(` `) : `*ALL`);
+      const objectTypes = (filters.types && filters.types.length ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
 
-      await this.ibmi.remoteCommand(`DSPOBJD OBJ(${library}/${object}) OBJTYPE(${objectTypes}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
-      const results = await this.getTable(tempLib, TempName, TempName, true);
+      await this.ibmi.remoteCommand(`DSPOBJD OBJ(${library}/${object}) OBJTYPE(${objectTypes}) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`);
+      const results = await this.getTable(tempLib, tempName, tempName, true);
 
-      if (results.length === 1) {
-        if (results[0].ODOBNM?.toString().trim() === ``) {
-          return []
-        }
+      if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
+        return [];
       }
 
       return results.map(object => ({
-          library,
-          name: this.ibmi.sysNameInLocal(String(object.ODOBNM)),
-          type: String(object.ODOBTP),
-          attribute: String(object.ODOBAT),
-          text: String(object.ODOBTX)
-        } as IBMiFile))
+        library,
+        name: this.ibmi.sysNameInLocal(String(object.ODOBNM)),
+        type: String(object.ODOBTP),
+        attribute: String(object.ODOBAT),
+        text: String(object.ODOBTX)
+      } as IBMiFile))
         .sort((a, b) => {
           if (a.library.localeCompare(b.library) != 0) {
             return a.library.localeCompare(b.library)
@@ -376,17 +357,17 @@ export default class IBMiContent {
             return a.name.localeCompare(b.name)
           }
           else {
-            return ((ObjectTypes.get(a.type) || 0) - (ObjectTypes.get(b.type) || 0 )) || a.name.localeCompare(b.name);            
+            return ((ObjectTypes.get(a.type) || 0) - (ObjectTypes.get(b.type) || 0)) || a.name.localeCompare(b.name);
           }
         });
     }
   }
 
   /**
-   * @param {string} lib 
-   * @param {string} spf
-   * @param {string} [mbr]
-   * @returns {Promise<IBMiMember[]>} List of members 
+   * @param lib 
+   * @param spf
+   * @param mbr
+   * @returns an array of IBMiMember 
    */
   async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`): Promise<IBMiMember[]> {
     const library = lib.toUpperCase();
@@ -394,7 +375,7 @@ export default class IBMiContent {
     let member = (mbr !== `*` ? mbr : null);
     let memberExt = (ext !== `*` ? ext : null);
 
-    let results;
+    let results: Tools.DB2Row[];
 
     if (this.config.enableSQL) {
       if (member) {
@@ -438,8 +419,13 @@ export default class IBMiContent {
 
       if (member || memberExt) {
         let pattern: RegExp | undefined, patternExt: RegExp | undefined;
-        if (member) pattern = new RegExp(`^` + member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
-        if (memberExt) patternExt = new RegExp(`^` + memberExt.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+        if (member) {
+          pattern = new RegExp(`^` + member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+        }
+        if (memberExt) {
+          patternExt = new RegExp(`^` + memberExt.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+        }
+
         results = results.filter(row => (
           (!pattern || pattern.test(String(row.MBNAME))) &&
           (!patternExt || patternExt.test(String(row.MBSEU2)))));
@@ -467,41 +453,38 @@ export default class IBMiContent {
 
   /**
    * Get list of items in a path
-   * @param {string} remotePath 
-   * @return {Promise<IFSFile[]>} Resulting list
+   * @param remotePath 
+   * @return an array of IFSFile
    */
   async getFileList(remotePath: string): Promise<IFSFile[]> {
     const items: IFSFile[] = [];
 
-    const result = await this.ibmi.sendCommand({
+    const fileList = (await this.ibmi.sendCommand({
       command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
-    });
+    })).stdout;
 
-    const fileList = result.stdout;
-    if (fileList) {
-      //Remove current and dir up.
-      fileList.split(`\n`)
-        .filter(item => item !== `../` && item !== `./`)
-        .forEach(item => {
-          const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-          items.push({
-            type,
-            name: (type === `directory` ? item.substring(0, item.length - 1) : item),
-            path: path.posix.join(remotePath, item)
-          });
+    //Remove current and dir up.
+    fileList.split(`\n`)
+      .filter(item => item !== `../` && item !== `./`)
+      .forEach(item => {
+        const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
+        items.push({
+          type,
+          name: (type === `directory` ? item.substring(0, item.length - 1) : item),
+          path: path.posix.join(remotePath, item)
         });
-    }
+      });
 
     return items.sort((a, b) => a.name.localeCompare(b.name));
   }
 
   /**
-   * @param errorsString 
+   * @param errorsString; several lines of `code:text`...
    * @returns errors
    */
   parseIBMiErrors(errorsString: string): IBMiError[] {
     return errorsString.split(`\n`)
       .map(error => error.split(':'))
-      .map(codeText => ({ code: codeText[0], text: codeText[1]}) );
+      .map(codeText => ({ code: codeText[0], text: codeText[1] }));
   }
 }
