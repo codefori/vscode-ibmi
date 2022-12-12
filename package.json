@@ -1751,6 +1751,7 @@
 	},
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.6.3",
+		"@types/tmp": "^0.2.3",
 		"csv": "^6.2.1",
 		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
