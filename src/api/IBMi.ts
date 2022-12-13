@@ -827,7 +827,15 @@ export default class IBMi {
   }
 
   async downloadFile(localFile: string | vscode.Uri, remoteFile: string){
-    this.client.getFile(this.fileToPath(localFile), remoteFile);
+    await this.client.getFile(this.fileToPath(localFile), remoteFile);
+  }
+
+  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory : string){
+    await this.client.putDirectory(this.fileToPath(localDirectory), remoteDirectory);
+  }
+
+  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string){
+    await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory);
   }
 
   fileToPath(file : string | vscode.Uri) : string{
