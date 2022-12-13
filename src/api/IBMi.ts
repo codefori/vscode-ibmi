@@ -822,20 +822,20 @@ export default class IBMi {
 
     return result;
   }
-  async uploadFiles(files: {local : string | vscode.Uri, remote : string}[]){
-    await this.client.putFiles(files.map(f => {return {local: this.fileToPath(f.local), remote: f.remote}}));
+  async uploadFiles(files: {local : string | vscode.Uri, remote : string}[], options?: node_ssh.SSHPutFilesOptions){
+    await this.client.putFiles(files.map(f => {return {local: this.fileToPath(f.local), remote: f.remote}}), options);
   }
 
   async downloadFile(localFile: string | vscode.Uri, remoteFile: string){
     await this.client.getFile(this.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory : string){
-    await this.client.putDirectory(this.fileToPath(localDirectory), remoteDirectory);
+  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory : string, options?: node_ssh.SSHGetPutDirectoryOptions){
+    await this.client.putDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string){
-    await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory);
+  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions){
+    await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
   fileToPath(file : string | vscode.Uri) : string{
