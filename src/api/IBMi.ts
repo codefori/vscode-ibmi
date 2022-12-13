@@ -830,22 +830,6 @@ export default class IBMi {
     this.client.getFile(this.fileToPath(localFile), remoteFile);
   }
 
-  getHost() : string{
-    return this.currentHost;
-  }
-
-  getPort() : number{
-    return this.currentPort;
-  }
-
-  getUser() : string{
-    return this.currentUser;
-  }
-
-  getConnectionName() : string{
-    return this.currentConnectionName;
-  }
-
   fileToPath(file : string | vscode.Uri) : string{
     if(typeof file === "string"){
       return file;
