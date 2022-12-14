@@ -9,7 +9,7 @@ const {default: IBMi} = require(`./IBMi`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
-const { getLocalActions, getiProjActions } = require(`./local/actions`)
+const { getLocalActions, getiProjActions } = require(`./local/actions`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,

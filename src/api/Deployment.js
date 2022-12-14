@@ -3,8 +3,7 @@ const path = require(`path`);
 const vscode = require(`vscode`);
 
 const {default: IBMi} = require(`./IBMi`);
-const CompileTools = require(`./CompileTools`);
-
+const { getLocalActions } = require(`./local/actions`);
 
 const { ConnectionConfiguration } = require(`./Configuration`);
 const {LocalLanguageActions} = require(`../schemas/LocalLanguageActions`);
@@ -457,7 +456,7 @@ module.exports = class Deployment {
         });
       }
 
-      CompileTools.getLocalActions(workspace).then(result => {
+      getLocalActions(workspace).then(result => {
         if (result.length === 0) {
           vscode.window.showInformationMessage(
             `There are no local Actions defined for this project.`,
