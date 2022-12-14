@@ -2,12 +2,12 @@
 const path = require(`path`);
 const vscode = require(`vscode`);
 
-const {default: IBMi} = require(`./IBMi`);
-const { getLocalActions } = require(`./local/actions`);
+const {default: IBMi} = require(`../IBMi`);
+const { getLocalActions } = require(`./actions`);
 
-const { ConnectionConfiguration } = require(`./Configuration`);
-const {LocalLanguageActions} = require(`../schemas/LocalLanguageActions`);
-const { Storage } = require(`./Storage`);
+const { ConnectionConfiguration } = require(`../Configuration`);
+const {LocalLanguageActions} = require(`../../schemas/LocalLanguageActions`);
+const { Storage } = require(`../Storage`);
 
 const ignore = require(`ignore`).default;
 
