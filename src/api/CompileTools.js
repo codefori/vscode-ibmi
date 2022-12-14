@@ -9,6 +9,7 @@ const {default: IBMi} = require(`./IBMi`);
 const {GlobalConfiguration, ConnectionConfiguration} = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
+const { getLocalActions, getiProjActions } = require(`./local/actions`)
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -269,8 +270,8 @@ module.exports = class CompileTools {
     // we fetch the Actions defined from the workspace.
     if (workspaceFolder && uri.scheme === `file`) {
       const [localActions, iProjActions] = await Promise.all([
-        this.getLocalActions(workspaceFolder), 
-        this.getiProjActions(workspaceFolder)
+        getLocalActions(workspaceFolder), 
+        getiProjActions(workspaceFolder)
       ]);
       allActions.push(...localActions, ...iProjActions);
     }
@@ -812,101 +813,5 @@ module.exports = class CompileTools {
         };
       }
     }
-  }
-
-  /**
-   * @param {vscode.WorkspaceFolder} workspace
-   * @returns {Promise<Action[]>}
-   */
-  static async getLocalActions(workspace) {
-    const actions = [];
-
-    if (workspace) {
-      const relativeSearch = new vscode.RelativePattern(workspace,`**/.vscode/actions.json`);
-      const actionsFiles = await vscode.workspace.findFiles(relativeSearch);
-
-      for (const file of actionsFiles) {
-        const actionsContent = await vscode.workspace.fs.readFile(file);
-        try {
-          /** @type {import("../typings").Action[]} */
-          const actionsJson = JSON.parse(actionsContent.toString());
-
-          // Maybe one day replace this with real schema validation
-          if (Array.isArray(actionsJson)) {
-            actionsJson.forEach((action, index) => {
-              if (
-                typeof action.name === `string` &&
-                typeof action.command === `string` &&
-                [`ile`, `pase`, `qsh`].includes(action.environment) &&
-                Array.isArray(action.extensions)
-              ) {
-                actions.push({
-                  ...action,
-                  type: `file`
-                });
-              } else {
-                throw new Error(`Invalid Action defined at index ${index}.`);
-              }
-            })
-          }
-        } catch (e) {
-          // ignore
-          this.appendOutput(`Error parsing ${file.fsPath}: ${e.message}\n`);
-        }
-      };
-    }
-
-    return actions;
-  }
-
-  /**
-   * Gets actions from the `iproj.json` file
-   * @param {vscode.WorkspaceFolder} workspace
-   * @returns {Promise<Action[]>}
-   */
-  static async getiProjActions(workspace) {
-    /** @type {import("../typings").Action[]} */
-    const actions = [];
-
-    if (workspace) {
-      const relativeSearch = new vscode.RelativePattern(workspace,`**/.iproj.json`);
-      const iprojectFiles = await vscode.workspace.findFiles(relativeSearch);
-
-      for (const file of iprojectFiles) {
-        const iProjectContent = await vscode.workspace.fs.readFile(file);
-        try {
-          const iProject = JSON.parse(iProjectContent.toString());
-
-          const description = iProject.description || `iproj.json`
-
-          if (iProject.buildCommand) {
-            actions.push({
-              name: `${description} (build)`,
-              command: iProject.buildCommand,
-              environment: `pase`,
-              extensions: [`GLOBAL`],
-              deployFirst: true,
-              type: `file`,
-            });
-          }
-
-          if (iProject.compileCommand) {
-            actions.push({
-              name: `${description} (compile)`,
-              command: `ERR=*EVENTF ${iProject.compileCommand}`,
-              environment: `pase`,
-              extensions: [`GLOBAL`],
-              deployFirst: true,
-              type: `file`,
-            });
-          }
-        } catch (e) {
-          // ignore
-          this.appendOutput(`Error parsing ${file.fsPath}: ${e.message}\n`);
-        }
-      };
-    }
-
-    return actions;
   }
 }
