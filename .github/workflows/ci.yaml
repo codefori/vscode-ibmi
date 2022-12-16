@@ -20,15 +20,6 @@ jobs:
         run: vsce publish -p $PUBLISHER_TOKEN
         env:
           PUBLISHER_TOKEN: ${{ secrets.PUBLISHER_TOKEN }}
-
-      - name: Generate typings
-        run: npm run typings
-      - name: Cleanup typings
-        run: cd types && npm run prepublish
-      - name: Publish typings to npm
-        run: cd types && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+          
       - name: Publish to Open VSX
         run: npx ovsx publish -p ${{ secrets.OPENVSX_TOKEN }}
