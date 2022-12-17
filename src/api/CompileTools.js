@@ -4,14 +4,14 @@ const path = require(`path`);
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
-const errorHandlers = require(`./errors/index`);
-const {default: IBMi} = require(`./IBMi`);
-const {GlobalConfiguration, ConnectionConfiguration} = require(`./Configuration`);
+const { default: IBMi } = require(`./IBMi`);
+const { GlobalConfiguration, ConnectionConfiguration } = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
 const { getLocalActions, getiProjActions } = require(`./local/actions`);
 const { default: Instance } = require(`./Instance`);
 const { Deployment } = require(`./local/deployment`);
+const { parseErrors } = require(`./errors/handler`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -95,9 +95,9 @@ module.exports = class CompileTools {
   static clearDiagnostics() {
     ileDiagnostics.clear();
   }
-  
+
   /**
-   * @param {*} instance
+   * @param {Instance} instance
    * @param {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} evfeventInfo
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
@@ -112,34 +112,22 @@ module.exports = class CompileTools {
 
     const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
-    let errors;
-
-    let useNewHandler = GlobalConfiguration.get(`tryNewErrorParser`);
-    const expandedErrors = lines.some(line => line.includes(`EXPANSION`));
-    if (useNewHandler && !expandedErrors) useNewHandler = false;
-
-    if (useNewHandler) {
-      errors = errorHandlers.new(lines);
-    } else {
-      errors = errorHandlers.old(lines);
-    }
+    const errorsByFiles = parseErrors(lines);
 
     ileDiagnostics.clear();
 
     /** @type {vscode.Diagnostic[]} */
-    let diagnostics = [];
+    const diagnostics = [];
 
-    /** @type {vscode.Diagnostic} */
-    let diagnostic;
+    if (errorsByFiles.size > 0) {
+      for (const errorsByFile of errorsByFiles.entries()) {
+        const file = errorsByFile[0];
+        const errors = errorsByFile[1];
+        diagnostics.length = 0;
 
-    if (Object.keys(errors).length > 0) {
-      for (const file in errors) {
-        diagnostics = [];
-        
-        for (const error of errors[file]) {
-
-          error.column = Math.max(error.column-1, 0);
-          error.linenum = Math.max(error.linenum-1, 0);
+        for (const error of errors) {
+          error.column = Math.max(error.column - 1, 0);
+          error.linenum = Math.max(error.linenum - 1, 0);
 
           if (error.column === 0 && error.toColumn === 0) {
             error.column = 0;
@@ -147,7 +135,7 @@ module.exports = class CompileTools {
           }
 
           if (!config.hideCompileErrors.includes(error.code)) {
-            diagnostic = new vscode.Diagnostic(
+            const diagnostic = new vscode.Diagnostic(
               new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
               `${error.code}: ${error.text} (${error.sev})`,
               diagnosticSeverity[error.sev]
@@ -178,9 +166,9 @@ module.exports = class CompileTools {
           }
         } else {
           if (file.startsWith(`/`))
-            ileDiagnostics.set(vscode.Uri.from({scheme: `streamfile`, path: file}), diagnostics);
+            ileDiagnostics.set(vscode.Uri.from({ scheme: `streamfile`, path: file }), diagnostics);
           else
-            ileDiagnostics.set(vscode.Uri.from({scheme: `member`, path: `/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}`}), diagnostics);
+            ileDiagnostics.set(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.ext ? `.` + evfeventInfo.ext : ``}` }), diagnostics);
         }
       }
 
@@ -209,7 +197,7 @@ module.exports = class CompileTools {
 
     /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
-    
+
     /** @type {{[name: string]: string}} */
     const variables = {};
 
@@ -227,7 +215,7 @@ module.exports = class CompileTools {
       //We use this for special variables in the libl
       switch (library) {
       case `&BUILDLIB`:
-      case `&CURLIB`: 
+      case `&CURLIB`:
         return config.currentLibrary;
       default: return library;
       }
@@ -244,14 +232,14 @@ module.exports = class CompileTools {
   }
 
   /**
-   * @param {*} instance
+   * @param {Instance} instance
    * @param {vscode.Uri} uri 
    */
   static async RunAction(instance, uri) {
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
 
     /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} */
-    let evfeventInfo = {asp: undefined, lib: ``, object: ``, workspace: undefined};
+    let evfeventInfo = { asp: undefined, lib: ``, object: ``, workspace: undefined };
 
     /** @type {IBMi} */
     const connection = instance.getConnection();
@@ -259,7 +247,7 @@ module.exports = class CompileTools {
     /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
-    const extension = uri.path.substring(uri.path.lastIndexOf(`.`)+1).toUpperCase();
+    const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
     const fragement = uri.fragment.toUpperCase();
 
     const allActions = [];
@@ -296,15 +284,15 @@ module.exports = class CompileTools {
         name: item.name,
         time: actionUsed[item.name] || 0
       })).sort((a, b) => b.time - a.time).map(item => item.name);
-    
+
       let chosenOptionName, command, environment;
-    
+
       if (options.length === 1) {
         chosenOptionName = options[0]
       } else {
         chosenOptionName = await vscode.window.showQuickPick(options);
       }
-    
+
       if (chosenOptionName) {
         actionUsed[chosenOptionName] = Date.now();
         const action = availableActions.find(action => action.name === chosenOptionName);
@@ -393,10 +381,10 @@ module.exports = class CompileTools {
 
             if (currentWorkspace) {
               baseDir = currentWorkspace.uri.path;
-              
+
               relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
               variables[`&RELATIVEPATH`] = relativePath;
-  
+
               // We need to make sure the remote path is posix
               fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
               variables[`&FULLPATH`] = fullPath;
@@ -411,7 +399,7 @@ module.exports = class CompileTools {
                   variables[`&BRANCH`] = branch;
                   variables[`{branch}`] = branch;
                 }
-              } catch (e) {}
+              } catch (e) { }
             }
             break;
 
@@ -498,7 +486,7 @@ module.exports = class CompileTools {
               if (commandResult.code === 0 || commandResult.code === null) {
                 executed = true;
                 vscode.window.showInformationMessage(`Action ${chosenOptionName} for ${evfeventInfo.lib}/${evfeventInfo.object} was successful.`);
-              
+
               } else {
                 executed = false;
                 vscode.window.showErrorMessage(
@@ -589,7 +577,7 @@ module.exports = class CompileTools {
   static async runCommand(instance, options) {
     const connection = instance.getConnection();
     const config = instance.getConfig();
-    
+
     const cwd = options.cwd;
     let commandString = options.command;
     let commandResult;
@@ -601,19 +589,19 @@ module.exports = class CompileTools {
       //We use this for special variables in the libl
       switch (library) {
       case `&BUILDLIB`:
-      case `&CURLIB`: 
+      case `&CURLIB`:
         return config.currentLibrary;
       default: return library;
       }
     });
 
     commandString = this.replaceValues(
-      commandString, 
+      commandString,
       this.getDefaultVariables(instance)
     );
 
     if (commandString.startsWith(`?`)) {
-      commandString = await vscode.window.showInputBox({prompt: `Run Command`, value: commandString.substring(1)})
+      commandString = await vscode.window.showInputBox({ prompt: `Run Command`, value: commandString.substring(1) })
     } else {
       commandString = await CompileTools.showCustomInputs(`Run Command`, commandString);
     }
@@ -643,14 +631,14 @@ module.exports = class CompileTools {
         /** @type {{[name: string]: string}} */
         const envVars = {};
         Object
-          .entries({...(options.env ? options.env : {}), ...this.getDefaultVariables(instance)})
+          .entries({ ...(options.env ? options.env : {}), ...this.getDefaultVariables(instance) })
           .filter(item => (new RegExp(`^[A-Za-z\&]`, `i`).test(item[0])))
           .forEach(item => {
             envVars[item[0][0] === `&` ? item[0].substring(1) : item[0]] = item[1];
           });
 
         commandResult = await connection.sendCommand({
-          command: commands.join(` && `), 
+          command: commands.join(` && `),
           directory: cwd,
           env: envVars,
           ...callbacks
@@ -678,7 +666,7 @@ module.exports = class CompileTools {
             `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
             `liblist -c ` + config.currentLibrary.replace(/\$/g, `\\$`),
             `liblist -a ` + libl.join(` `).replace(/\$/g, `\\$`),
-            ...commands.map(command => 
+            ...commands.map(command =>
               `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
             ),
           ].join(` && `),
@@ -724,14 +712,14 @@ module.exports = class CompileTools {
         end = command.indexOf(`}`, start);
 
         if (end >= 0) {
-          currentInput = command.substring(start+2, end);
+          currentInput = command.substring(start + 2, end);
 
           const [name, label, initalValue] = currentInput.split(`|`);
           components.push({
             name,
             label,
             initalValue: initalValue || ``,
-            positions: [start, end+1]
+            positions: [start, end + 1]
           });
         } else {
           loop = false;
@@ -770,7 +758,7 @@ module.exports = class CompileTools {
 
       commandUI.addField(new Field(`submit`, `execute`, `Execute`));
 
-      const {panel, data} = await commandUI.loadPage(name);
+      const { panel, data } = await commandUI.loadPage(name);
 
       panel.dispose();
       if (data) {
