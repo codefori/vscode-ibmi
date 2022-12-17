@@ -11,8 +11,6 @@ const { getEnvConfig } = require(`./local/env`);
 const { getLocalActions, getiProjActions } = require(`./local/actions`);
 const { default: Instance } = require(`./Instance`);
 const { Deployment } = require(`./local/deployment`);
-
-const { Deployment } = require(`./local/deployment`);
 const { parseErrors } = require(`./errors/handler`);
 
 const diagnosticSeverity = {
