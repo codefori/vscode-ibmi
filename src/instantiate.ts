@@ -9,7 +9,7 @@ const path = require(`path`);
 const CompileTools = require(`./api/CompileTools`);
 
 import { Terminal } from './api/Terminal';
-const Deployment = require(`./api/local/Deployment`);
+import { Deployment } from './api/local/deployment';
 
 import { CustomUI, Field } from './api/CustomUI';
 
@@ -199,8 +199,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       actionsUI.init(context);
       variablesUI.init(context);
-
-      const deployment = new Deployment(context, instance);
+    
 
       //********* Help view */
 
@@ -583,8 +582,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       // Enable the profile view if profiles exist.
       vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
-
-      deployment.initialise(instance);
+      
+      Deployment.initialize(context, instance);
 
       initialisedBefore = true;
     }
