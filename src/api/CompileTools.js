@@ -11,6 +11,7 @@ const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
 const { getLocalActions, getiProjActions } = require(`./local/actions`);
 const { default: Instance } = require(`./Instance`);
+const { Deployment } = require(`./local/deployment`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -311,10 +312,8 @@ module.exports = class CompileTools {
         environment = action.environment || `ile`;
 
         if (workspaceFolder && action.type === `file` && action.deployFirst) {
-          /** @type {number|false} */
-          const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, workspaceFolder.index);
-
-          if (deployResult !== false) {
+          const deployResult = await Deployment.launchDeploy(workspaceFolder.index);
+          if (deployResult !== undefined) {
             evfeventInfo.workspace = deployResult;
           } else {
             vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);
