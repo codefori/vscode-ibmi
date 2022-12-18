@@ -168,6 +168,7 @@ export namespace Deployment {
         // get the content from the file
         const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
         ignoreRules.add(gitignoreContent.split(`\n`));
+        ignoreRules.add('**/.gitignore');
       }
 
       if (remotePath) {
