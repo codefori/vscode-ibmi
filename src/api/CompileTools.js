@@ -12,6 +12,7 @@ const { getLocalActions, getiProjActions } = require(`./local/actions`);
 const { default: Instance } = require(`./Instance`);
 const { Deployment } = require(`./local/deployment`);
 const { parseErrors } = require(`./errors/handler`);
+const { Deployment } = require(`./local/deployment`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
