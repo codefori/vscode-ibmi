@@ -363,6 +363,11 @@ export namespace Deployment {
             recursive: true,
             concurrency: 5,
             tick: (localPath, remotePath, error) => {
+              if(remotePath.startsWith('\\')){
+                //On Windows, remotePath path separators are \
+                remotePath = remotePath.replace(/\\/g, '/');
+              }
+
               if (error) {
                 progress.report({ message: `Failed to deploy ${localPath}` });
                 deploymentLog.appendLine(`FAILED: ${localPath} -> ${remotePath}: ${error.message}`);
