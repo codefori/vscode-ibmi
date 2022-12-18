@@ -202,7 +202,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       actionsUI.init(context);
       variablesUI.init(context);
 
-
       //********* Help view */
 
       context.subscriptions.push(
@@ -582,7 +581,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       // Enable the profile view if profiles exist.
       vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
-
       Deployment.initialize(context, instance);
 
       initialisedBefore = true;
