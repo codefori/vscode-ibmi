@@ -352,8 +352,8 @@ export namespace Deployment {
   }
 
   async function deployAll(parameters: DeploymentParameters) {
-    const name = parameters.localFolder.path.split('/').reverse().pop();
-    const uploadResult = await vscode.window.withProgress({
+    const name = basename(parameters.localFolder.path);
+    await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Deploying ${name}`,
     }, async (progress) => {
