@@ -13,6 +13,9 @@ const { Deployment } = require(`./local/deployment`);
 const { parseErrors } = require(`./errors/handler`);
 const { default: Instance } = require(`./Instance`);
 
+const { Deployment } = require(`./local/deployment`);
+const { parseErrors } = require(`./errors/handler`);
+
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
   10: vscode.DiagnosticSeverity.Information,
@@ -116,13 +119,11 @@ module.exports = class CompileTools {
 
     /** @type {vscode.Diagnostic[]} */
     const diagnostics = [];
-
     if (errorsByFiles.size > 0) {
       for (const errorsByFile of errorsByFiles.entries()) {
         const file = errorsByFile[0];
         const errors = errorsByFile[1];
         diagnostics.length = 0;
-
         for (const error of errors) {
           error.column = Math.max(error.column - 1, 0);
           error.linenum = Math.max(error.linenum - 1, 0);
