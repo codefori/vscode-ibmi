@@ -896,7 +896,7 @@ module.exports = class objectBrowserTwoProvider {
   }
 
   /**
-   * @param {vscode.TreeItem|Filter|ILEObject?} element
+   * @param {vscode.TreeItem|FilterItem|ILEObject?} element
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
@@ -981,7 +981,7 @@ module.exports = class objectBrowserTwoProvider {
         const filters = config.objectFilters;
 
         if (filters.length > 0) {
-          items = filters.map(filter => new Filter(filter));
+          items = filters.map(filter => new FilterItem(filter));
         } else {
           items = [getNewFilter()]
         }
@@ -1005,7 +1005,8 @@ module.exports = class objectBrowserTwoProvider {
   }
 }
 
-class Filter extends vscode.TreeItem {
+/** Implements @type {../typings/Filter} */
+class FilterItem extends vscode.TreeItem {
   /**
    * @param {{name: string, library: string, object: string, types: string[], member: string, memberType: string}} filter
    */

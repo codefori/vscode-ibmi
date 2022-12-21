@@ -99,3 +99,8 @@ export interface IBMiError{
   code: string
   text: string
 }
+
+export interface Filter{
+  library: string,
+  filter: string
+}
