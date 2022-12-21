@@ -295,7 +295,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       //********* General editing */
 
       context.subscriptions.push(
-        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path, line) => {
+        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line: number) => {
           console.log(path);
           let uri;
           if (path.startsWith(`/`)) {
@@ -542,11 +542,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail : RemoteCommand) => {
           if (detail && detail.command) {
             return CompileTools.runCommand(instance, detail);
-          } else {
-            return null;
           }
         }),
-        vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement) => {
+        vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
           const content = instance.getContent();
           if (statement && content) {
             return content.runSQL(statement);
@@ -554,7 +552,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             return null;
           }
         }),
-        vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key, newValue) => {
+        vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
           const connectionKey = `${connection.currentConnectionName}_${key}`;
           if (newValue) {
             await context.secrets.store(connectionKey, newValue);
@@ -567,7 +565,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       );
 
       context.subscriptions.push(
-        vscode.commands.registerCommand(`code-for-ibmi.launchUI`, (title, fields, callback) => {
+        vscode.commands.registerCommand(`code-for-ibmi.launchUI`, (title: string, fields, callback) => {
           if (title && fields && callback) {
             const ui = new CustomUI();
 
