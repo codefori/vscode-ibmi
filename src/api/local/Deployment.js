@@ -84,7 +84,7 @@ module.exports = class Deployment {
       }),
 
       /**
-       * @param {number} document
+       * @param {number} workspaceIndex
        * @returns {Promise<{false|number}>}
        */
       vscode.commands.registerCommand(`code-for-ibmi.launchDeploy`, async (workspaceIndex) => {

@@ -10,6 +10,7 @@ const {GlobalConfiguration, ConnectionConfiguration} = require(`./Configuration`
 const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
 const { getLocalActions, getiProjActions } = require(`./local/actions`);
+const { default: Instance } = require(`./Instance`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -582,15 +583,12 @@ module.exports = class CompileTools {
 
   /**
    * Execute command
-   * @param {*} instance
-   * @param {RemoteCommand} options 
-   * @returns {Promise<CommandResult|null>}
+   * @param {Instance} instance
+   * @param {import("../typings").RemoteCommand} options 
+   * @returns {Promise<import("../typings").CommandResult|null>}
    */
   static async runCommand(instance, options) {
-    /** @type {IBMi} */
     const connection = instance.getConnection();
-
-    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     
     const cwd = options.cwd;

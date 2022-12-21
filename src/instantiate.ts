@@ -4,12 +4,12 @@ import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
 import { Storage } from "./api/Storage";
-const path = require(`path`);
+import path from 'path';
 
-const CompileTools = require(`./api/CompileTools`);
+import CompileTools from './api/CompileTools';
 
 import { Terminal } from './api/Terminal';
-const Deployment = require(`./api/local/Deployment`);
+import Deployment from './api/local/Deployment';
 
 import { CustomUI, Field } from './api/CustomUI';
 
@@ -21,6 +21,7 @@ import { Search } from "./api/Search";
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
 import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+import { RemoteCommand } from "./typings";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -295,7 +296,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       //********* General editing */
 
       context.subscriptions.push(
-        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path, line) => {
+        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line: number) => {
           console.log(path);
           let uri;
           if (path.startsWith(`/`)) {
@@ -539,14 +540,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           Terminal.selectAndOpen(instance);
         }),
 
-        vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
+        vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail?: RemoteCommand) => {
           if (detail && detail.command) {
             return CompileTools.runCommand(instance, detail);
-          } else {
-            return null;
           }
         }),
-        vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement) => {
+        vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
           const content = instance.getContent();
           if (statement && content) {
             return content.runSQL(statement);
@@ -554,7 +553,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             return null;
           }
         }),
-        vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key, newValue) => {
+        vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
           const connectionKey = `${connection.currentConnectionName}_${key}`;
           if (newValue) {
             await context.secrets.store(connectionKey, newValue);
@@ -567,7 +566,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       );
 
       context.subscriptions.push(
-        vscode.commands.registerCommand(`code-for-ibmi.launchUI`, (title, fields, callback) => {
+        vscode.commands.registerCommand(`code-for-ibmi.launchUI`, (title: string, fields, callback) => {
           if (title && fields && callback) {
             const ui = new CustomUI();
 
