@@ -9,6 +9,8 @@ const { GlobalConfiguration, ConnectionConfiguration } = require(`./Configuratio
 const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
 const { getLocalActions, getiProjActions } = require(`./local/actions`);
+
+const { Deployment } = require(`./local/deployment`);
 const { parseErrors } = require(`./errors/handler`);
 
 const diagnosticSeverity = {
@@ -116,13 +118,12 @@ module.exports = class CompileTools {
 
     /** @type {vscode.Diagnostic[]} */
     const diagnostics = [];
-
     if (errorsByFiles.size > 0) {
       for (const errorsByFile of errorsByFiles.entries()) {
         const file = errorsByFile[0];
         const errors = errorsByFile[1];
         diagnostics.length = 0;
-
+        
         for (const error of errors) {
           error.column = Math.max(error.column - 1, 0);
           error.linenum = Math.max(error.linenum - 1, 0);
@@ -298,10 +299,8 @@ module.exports = class CompileTools {
         environment = action.environment || `ile`;
 
         if (workspaceFolder && action.type === `file` && action.deployFirst) {
-          /** @type {number|false} */
-          const deployResult = await vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, workspaceFolder.index);
-
-          if (deployResult !== false) {
+          const deployResult = await Deployment.launchDeploy(workspaceFolder.index);
+          if (deployResult !== undefined) {
             evfeventInfo.workspace = deployResult;
           } else {
             vscode.window.showWarningMessage(`Action ${chosenOptionName} was cancelled.`);

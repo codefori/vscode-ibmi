@@ -1,10 +1,10 @@
 {
 	"compilerOptions": {
 		"module": "commonjs",
-		"target": "es6",
+		"target": "ES2019",
 		"outDir": "out",
 		"lib": [
-			"es6"
+			"ES2019"
 		],
 		"forceConsistentCasingInFileNames": true,
 		"allowJs": true,

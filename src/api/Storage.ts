@@ -5,7 +5,8 @@ const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 
-export interface PathContent extends Record<string, string[]>{};
+export type PathContent = Record<string, string[]>;
+export type DeploymentPath = Record<string, string>;
 
 export class Storage {
   constructor(readonly context : vscode.ExtensionContext, readonly connectionName: string) {
@@ -44,10 +45,10 @@ export class Storage {
   }
 
   getDeployment() {
-    return this.get<PathContent>(DEPLOYMENT_KEY) || {};
+    return this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
   }
 
-  async setDeployment(existingPaths : PathContent) {
+  async setDeployment(existingPaths : DeploymentPath) {
     await this.set(DEPLOYMENT_KEY, existingPaths);
   }
 }
