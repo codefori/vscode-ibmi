@@ -1,4 +1,5 @@
-import { FileError, formatIFS, formatName } from '../handler';
+import { FileError } from '../../../typings';
+import { formatIFS, formatName } from '../handler';
 
 export namespace OldHandler {
   class ExpansionRange {

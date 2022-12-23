@@ -8,6 +8,7 @@ export interface CodeForIBMi {
   CustomUI: object, //CustomUI: typeof CustomUI
   Field: object //Field: typeof Field;
   deploy: (parameters: Deployment.DeploymentParameters) => Promise<boolean>
+  evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 
 export interface StandardIO {
@@ -103,4 +104,13 @@ export interface IBMiError{
 export interface Filter{
   library: string,
   filter: string
+}
+
+export interface FileError {
+  sev: number
+  linenum: number
+  column: number
+  toColumn: number
+  text: string
+  code: string
 }

@@ -1,15 +1,7 @@
+import { FileError } from "../../typings";
 import { GlobalConfiguration } from "../Configuration";
 import { NewHandler } from "./handlers/new";
 import { OldHandler } from "./handlers/old";
-
-export interface FileError {
-    sev: number
-    linenum: number
-    column: number
-    toColumn: number
-    text: string
-    code: string
-}
 
 export function formatName(input: string) {
     let pieces = input.split(`/`);
