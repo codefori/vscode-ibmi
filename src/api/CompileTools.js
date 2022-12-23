@@ -4,7 +4,6 @@ const path = require(`path`);
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
-const { default: IBMi } = require(`./IBMi`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
