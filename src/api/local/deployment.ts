@@ -1,10 +1,7 @@
 
-import path, { basename } from 'path';
+import path, { basename, dirname } from 'path';
 import vscode from 'vscode';
-
-import IBMi from '../IBMi';
 import { getLocalActions } from './actions';
-
 import { ConnectionConfiguration } from '../Configuration';
 import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { GitExtension } from '../import/git';
@@ -13,6 +10,9 @@ import Instance from '../Instance';
 import { Ignore } from 'ignore'
 import ignore from 'ignore'
 import { NodeSSH } from 'node-ssh';
+import { readFileSync } from 'fs';
+import Crypto from 'crypto';
+import IBMi from '../IBMi';
 
 export namespace Deployment {
   interface Upload {
@@ -25,7 +25,12 @@ export namespace Deployment {
     method: Method
     localFolder: vscode.Uri
     remotePath: string
-    ignoreRules?: Ignore    
+    ignoreRules?: Ignore
+  }
+
+  interface MD5Entry {
+    path: string
+    md5: string
   }
 
   const BUTTON_BASE = `$(cloud-upload) Deploy`;
@@ -39,7 +44,8 @@ export namespace Deployment {
     "all",
     "staged",
     "unstaged",
-    "changed"
+    "changed",
+    "md5synch"
   }
 
   export function initialize(context: vscode.ExtensionContext, instance: Instance) {
@@ -81,9 +87,7 @@ export namespace Deployment {
             `Ignore`
           ).then(async result => {
             if (result === `Yes`) {
-              await connection.sendCommand({
-                command: `mkdir -p "${possibleDeployDir}"`
-              });
+              await createRemoteDirectory(possibleDeployDir);
 
               existingPaths[workspace.uri.fsPath] = possibleDeployDir;
               try {
@@ -172,13 +176,18 @@ export namespace Deployment {
       }
 
       if (remotePath) {
-        const method = (await vscode.window.showQuickPick(
-          [
-            { method: Method.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
-            { method: Method.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
-            { method: Method.staged, label: `Staged Changes`, description: `` },
-            { method: Method.all, label: `All`, description: `Every file in the local workspace` },
-          ],
+        const methods = [
+          { method: Method.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
+          { method: Method.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
+          { method: Method.staged, label: `Staged Changes`, description: `` },
+          { method: Method.all, label: `All`, description: `Every file in the local workspace` }
+        ];
+
+        if (getConnection().remoteFeatures.md5sum) {
+          methods.push({ method: Method.md5synch, label: `MD5 compare`, description: `Synchronizes using MD5 hash comparison` });
+        }
+
+        const method = (await vscode.window.showQuickPick(methods.sort((m1, m2) => m1.label.localeCompare(m2.label)),
           { placeHolder: `Select deployment method to ${remotePath}` }
         ))?.method;
 
@@ -197,7 +206,7 @@ export namespace Deployment {
             method
           };
 
-          if(await deploy(parameters)){
+          if (await deploy(parameters)) {
             return folder.index;
           }
         }
@@ -209,10 +218,13 @@ export namespace Deployment {
     }
   }
 
-  export async function deploy(parameters: DeploymentParameters){
+  export async function deploy(parameters: DeploymentParameters) {
     try {
       deploymentLog.clear();
       button.text = BUTTON_WORKING;
+
+      await createRemoteDirectory(parameters.remotePath);
+
       switch (parameters.method) {
         case Method.unstaged:
           await deployGit(parameters, 'working');
@@ -226,6 +238,10 @@ export namespace Deployment {
           await deployChanged(parameters);
           break;
 
+        case Method.md5synch:
+          await deployMD5(parameters);
+          break;
+
         case Method.all:
           await deployAll(parameters);
           break;
@@ -234,7 +250,7 @@ export namespace Deployment {
       deploymentLog.appendLine(`Deployment finished.`);
       vscode.window.showInformationMessage(`Deployment finished.`);
       changes.clear();
-      return true;      
+      return true;
     }
     catch (error) {
       showErrorButton();
@@ -247,11 +263,19 @@ export namespace Deployment {
   }
 
   function getClient(): NodeSSH {
-    const client = instance.getConnection()?.client;
+    const client = getConnection().client;
     if (!client) {
       throw new Error("Please connect to an IBM i");
     }
     return client;
+  }
+
+  function getConnection(): IBMi {
+    const connection = instance.getConnection();
+    if (!connection) {
+      throw new Error("Please connect to an IBM i");
+    }
+    return connection;
   }
 
   function getGitAPI() {
@@ -264,12 +288,18 @@ export namespace Deployment {
     return gitAPI;
   }
 
+  async function createRemoteDirectory(remotePath: string) {
+    return await getConnection().sendCommand({
+      command: `mkdir -p "${remotePath}"`
+    });
+  }
+
   async function deployChanged(parameters: DeploymentParameters) {
     if (changes.size > 0) {
       const changedFiles = Array.from(changes.values())
         .filter(uri => {
           // We don't want stuff in the gitignore
-          const relative = path.relative(parameters.localFolder.path, uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
+          const relative = toRelative(parameters.localFolder, uri);
           if (relative && parameters.ignoreRules) {
             return !parameters.ignoreRules.ignores(relative);
           }
@@ -282,7 +312,7 @@ export namespace Deployment {
 
       const uploads: Upload[] = changedFiles
         .map(uri => {
-          const relative = path.relative(parameters.localFolder.path, uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
+          const relative = toRelative(parameters.localFolder, uri);
           const remote = path.posix.join(parameters.remotePath, relative);
           deploymentLog.appendLine(`UPLOADING: ${uri.fsPath} -> ${remote}`);
           return {
@@ -322,7 +352,7 @@ export namespace Deployment {
 
         if (gitFiles.length > 0) {
           const uploads: Upload[] = gitFiles.map(change => {
-            const relative = path.relative(parameters.localFolder.path, change.uri.path).replace(new RegExp(`\\\\`, `g`), `/`);
+            const relative = toRelative(parameters.localFolder, change.uri);
             const remote = path.posix.join(parameters.remotePath, relative);
             deploymentLog.appendLine(`UPLOADING: ${change.uri.fsPath} -> ${remote}`);
             return {
@@ -351,6 +381,73 @@ export namespace Deployment {
     }
   }
 
+  async function deployMD5(parameters: DeploymentParameters) {
+    if (getConnection().remoteFeatures.md5sum) {
+      const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
+      if (isEmpty) {
+        deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all' method.");
+        await deployAll(parameters);
+      }
+      else {
+        const name = basename(parameters.localFolder.path);
+        await vscode.window.withProgress({
+          location: vscode.ProgressLocation.Notification,
+          title: `Synchronizing ${name}`,
+        }, async (progress) => {
+          deploymentLog.appendLine("Starting MD5 synchronization transfer");
+          progress.report({ message: `creating remote MD5 hash list` });
+          const remoteMD5: MD5Entry[] = [];
+          await getConnection().sendCommand({
+            directory: parameters.remotePath,
+            command: `/QOpenSys/pkgs/bin/md5sum $(find . -type f)`,
+            onStdout: out => remoteMD5.push(toMD5Entry(out.toString('utf-8').trim()))
+          });
+
+          progress.report({ message: `creating transfer list`, increment: 25 });
+          const localRoot = `${parameters.localFolder.fsPath}${parameters.localFolder.fsPath.startsWith('/') ? '/' : '\\'}`;
+          const localFiles = (await findFiles(parameters, "**/*", "**/.git*"))
+            .map(file => ({ uri: file, path: file.fsPath.replace(localRoot, '').replace(/\\/g, '/') }));
+
+          const uploads: { local: string, remote: string }[] = [];
+          for await (const file of localFiles) {
+            const remote = remoteMD5.find(e => e.path === file.path);
+            const md5 = md5Hash(file.uri);
+            if (!remote || remote.md5 !== md5) {
+              uploads.push({ local: file.uri.fsPath, remote: `${parameters.remotePath}/${file.path}` });
+            }
+          }
+
+          const toDelete: string[] = remoteMD5.filter(remote => !localFiles.some(local => remote.path === local.path))
+            .map(remote => remote.path);
+          if (toDelete.length) {
+            progress.report({ message: `deleting ${toDelete.length} remote file(s)`, increment: 25 });
+            deploymentLog.appendLine(`\nDeleted:\n\t${toDelete.join('\n\t')}\n`);
+            await getConnection().sendCommand({ directory: parameters.remotePath, command: `rm -f ${toDelete.join(' ')}` });
+          }
+          else{
+            progress.report({ increment: 25 });
+          }
+
+          if (uploads.length) {
+            //Create all missing folders at once
+            progress.report({ message: `creating remote folders`, increment: 10 });
+            const mkdirs = [...new Set(uploads.map(u => dirname(u.remote)))].map(folder => `[ -d ${folder} ] || mkdir -p ${folder}`).join(';');
+            await getConnection().sendCommand({ command: mkdirs });
+            
+            progress.report({ message: `uploading ${uploads.length} file(s)`, increment: 15 });
+            deploymentLog.appendLine(`\nUploaded:\n\t${uploads.map(file => file.remote).join('\n\t')}\n`);
+            await getClient().putFiles(uploads, { concurrency: 5 });
+          }
+
+          progress.report({ increment: 25 });
+        });
+      }
+    }
+    else {
+      throw new Error("Cannot synchronize using MD5 comparison: 'md5sum' command not availabe on host.");
+    }
+  }
+
   async function deployAll(parameters: DeploymentParameters) {
     const name = basename(parameters.localFolder.path);
     await vscode.window.withProgress({
@@ -364,7 +461,7 @@ export namespace Deployment {
             recursive: true,
             concurrency: 5,
             tick: (localPath, remotePath, error) => {
-              if(remotePath.startsWith('\\')){
+              if (remotePath.startsWith('\\')) {
                 //On Windows, remotePath path separators are \
                 remotePath = remotePath.replace(/\\/g, '/');
               }
@@ -473,5 +570,40 @@ export namespace Deployment {
         }
       }
     }
+  }
+
+  function toMD5Entry(line: string): MD5Entry {
+    const parts = line.split(/\s+/);
+    return {
+      md5: parts[0].trim(),
+      path: parts[1].trim().substring(2) //these path starts with ./
+    };
+  }
+
+  function md5Hash(file: vscode.Uri): string {
+    const bytes = readFileSync(file.fsPath);
+    return Crypto.createHash("md5")
+      .update(bytes)
+      .digest("hex")
+      .toLowerCase();
+  }
+
+  function toRelative(root: vscode.Uri, file: vscode.Uri) {
+    return path.relative(root.path, file.path).replace(/\\/g, `/`);
+  }
+
+  async function findFiles(parameters: DeploymentParameters, includePattern: string, excludePattern?: string) {
+    const root = parameters.localFolder.fsPath;
+    return (await vscode.workspace.findFiles(new vscode.RelativePattern(root, includePattern),
+      excludePattern ? new vscode.RelativePattern(root, excludePattern) : null))
+      .filter(file => {
+        if (parameters.ignoreRules) {
+          const relative = toRelative(parameters.localFolder, file);
+          return !parameters.ignoreRules.ignores(relative);
+        }
+        else {
+          return true;
+        }
+      });
   }
 }
