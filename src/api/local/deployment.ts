@@ -418,7 +418,6 @@ export namespace Deployment {
             progress.report({ message: `creating remote folders`, increment: 10 });
             const mkdirs = [...new Set(uploads.map(u => dirname(u.remote)))].map(folder => `[ -d ${folder} ] || mkdir -p ${folder}`).join(';');
             await getConnection().sendCommand({ command: mkdirs });
-
             progress.report({ message: `uploading ${uploads.length} file(s)`, increment: 15 });
             deploymentLog.appendLine(`\nUploaded:\n\t${uploads.map(file => file.remote).join('\n\t')}\n`);
             await getClient().putFiles(uploads, { concurrency: 5 });
