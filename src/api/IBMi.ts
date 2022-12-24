@@ -19,7 +19,7 @@ interface MemberParts {
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`]
   },
   {
     path: `/usr/bin/`,
@@ -83,6 +83,7 @@ export default class IBMi {
       grep: undefined,
       tn5250: undefined,
       setccsid: undefined,
+      md5sum: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
     };
