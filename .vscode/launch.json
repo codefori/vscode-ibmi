@@ -15,7 +15,6 @@
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"
 			],
-			"preLaunchTask": "npm: webpack",
 			"sourceMaps": true
 		},
 		{
