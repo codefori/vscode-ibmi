@@ -21,7 +21,7 @@ export namespace Deployment {
     uri: vscode.Uri
   }
 
-  interface DeploymentParameters {
+  export interface DeploymentParameters {
     method: Method
     localFolder: vscode.Uri
     remotePath: string

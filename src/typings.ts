@@ -1,11 +1,13 @@
 import { ExtensionContext } from "vscode";
 import Instance from "./api/Instance";
+import { Deployment } from "./api/local/deployment";
 
 export interface CodeForIBMi {
   instance: Instance,
   baseContext: ExtensionContext,
   CustomUI: object, //CustomUI: typeof CustomUI
   Field: object //Field: typeof Field;
+  deploy: (parameters: Deployment.DeploymentParameters) => Promise<boolean>
 }
 
 export interface StandardIO {
