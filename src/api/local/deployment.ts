@@ -424,7 +424,7 @@ export namespace Deployment {
             deploymentLog.appendLine(`\nDeleted:\n\t${toDelete.join('\n\t')}\n`);
             await getConnection().sendCommand({ directory: parameters.remotePath, command: `rm -f ${toDelete.join(' ')}` });
           }
-          else{
+          else {
             progress.report({ increment: 25 });
           }
 
@@ -433,13 +433,20 @@ export namespace Deployment {
             progress.report({ message: `creating remote folders`, increment: 10 });
             const mkdirs = [...new Set(uploads.map(u => dirname(u.remote)))].map(folder => `[ -d ${folder} ] || mkdir -p ${folder}`).join(';');
             await getConnection().sendCommand({ command: mkdirs });
-            
+
             progress.report({ message: `uploading ${uploads.length} file(s)`, increment: 15 });
             deploymentLog.appendLine(`\nUploaded:\n\t${uploads.map(file => file.remote).join('\n\t')}\n`);
             await getClient().putFiles(uploads, { concurrency: 5 });
           }
+          else {
+            progress.report({ increment: 25 });
+          }
 
-          progress.report({ increment: 25 });
+          progress.report({ message:`removing empty folders under ${parameters.remotePath}`, increment: 20 });
+          //PASE's find doesn't support the -empty flag so rmdir is run on every directory; not very clean, but it works
+          await getConnection().sendCommand({command: "find . -depth -type d -exec rmdir {} + 2>/dev/null", directory: parameters.remotePath});
+
+          progress.report({ increment: 5 });
         });
       }
     }
