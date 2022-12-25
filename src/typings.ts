@@ -9,6 +9,7 @@ export interface CodeForIBMi {
   Field: object //Field: typeof Field;
   deploy: (parameters: Deployment.DeploymentParameters) => Promise<boolean>
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
+  deploy: (parameters: Deployment.DeploymentParameters) => Promise<boolean>
 }
 
 export interface StandardIO {
