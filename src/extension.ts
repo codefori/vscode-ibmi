@@ -12,6 +12,7 @@ import IBMi from "./api/IBMi";
 import { ConnectionConfiguration } from "./api/Configuration";
 import { CodeForIBMi, ConnectionData } from "./typings";
 import sandbox from "./sandbox";
+import { Deployment } from "./api/local/deployment";
 
 export function activate(context: ExtensionContext): CodeForIBMi {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -58,7 +59,7 @@ export function activate(context: ExtensionContext): CodeForIBMi {
 
   sandbox();
 
-  return { instance, CustomUI, Field, baseContext: context };
+  return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy };
 }
 
 // this method is called when your extension is deactivated
