@@ -4,9 +4,9 @@ import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
 import { Storage } from "./api/Storage";
-const path = require(`path`);
+import path from 'path';
 
-const CompileTools = require(`./api/CompileTools`);
+import {CompileTools} from './api/CompileTools';
 
 import { Terminal } from './api/Terminal';
 import { Deployment } from './api/local/deployment';
@@ -21,6 +21,7 @@ import { Search } from "./api/Search";
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
 import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+import { RemoteCommand } from "./typings";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -423,7 +424,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           if (node) {
             const uri = node.resourceUri || node;
 
-            CompileTools.RunAction(instance, uri);
+            CompileTools.runAction(instance, uri);
 
           } else {
             const editor = vscode.window.activeTextEditor;
@@ -462,7 +463,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   case `member`:
                   case `streamfile`:
                   case `file`:
-                    CompileTools.RunAction(instance, uri);
+                    CompileTools.runAction(instance, uri);
                     break;
                 }
               }
@@ -522,11 +523,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             value: initialPath
           }).then(async (selection) => {
             if (selection) {
-              const [lib, object] = selection.split(`/`);
-              if (lib && object) {
-                detail.lib = lib;
+              const [library, object] = selection.split(`/`);
+              if (library && object) {
+                detail.lib = library;
                 detail.object = object;
-                CompileTools.refreshDiagnostics(instance, detail);
+                CompileTools.refreshDiagnostics(instance, {library, object});
               } else {
                 vscode.window.showErrorMessage(`Format incorrect. Use LIB/OBJECT`);
               }
@@ -538,7 +539,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           Terminal.selectAndOpen(instance);
         }),
 
-        vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail) => {
+        vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail : RemoteCommand) => {
           if (detail && detail.command) {
             return CompileTools.runCommand(instance, detail);
           } else {

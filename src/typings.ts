@@ -21,13 +21,13 @@ export interface RemoteCommand {
   command: string;
   environment?: "ile" | "qsh" | "pase";
   cwd?: string;
-  env?: { [name: string]: string };
+  env?: Record<string, string>;
 }
 
 export interface CommandData extends StandardIO {
   command: string;
   directory?: string;
-  env?: { [name: string]: string };
+  env?: Record<string, string>;
 }
 
 export interface CommandResult {
