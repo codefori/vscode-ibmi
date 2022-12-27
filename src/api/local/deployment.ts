@@ -123,7 +123,7 @@ export namespace Deployment {
   }
 
   async function launchActionsSetup() {
-    const chosenWorkspace = await module.exports.getWorkspaceFolder();
+    const chosenWorkspace = await getWorkspaceFolder();
 
     if (chosenWorkspace) {
       const types = Object.entries(LocalLanguageActions).map(([type, actions]) => ({ label: type, actions }));
