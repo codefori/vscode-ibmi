@@ -6,7 +6,7 @@ import IBMiContent from "./api/IBMiContent";
 import { Storage } from "./api/Storage";
 import path from 'path';
 
-import CompileTools from './api/CompileTools';
+import {CompileTools} from './api/CompileTools';
 
 import { Terminal } from './api/Terminal';
 import { Deployment } from './api/local/deployment';
@@ -424,7 +424,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           if (node) {
             const uri = node.resourceUri || node;
 
-            CompileTools.RunAction(instance, uri);
+            CompileTools.runAction(instance, uri);
 
           } else {
             const editor = vscode.window.activeTextEditor;
@@ -463,7 +463,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   case `member`:
                   case `streamfile`:
                   case `file`:
-                    CompileTools.RunAction(instance, uri);
+                    CompileTools.runAction(instance, uri);
                     break;
                 }
               }
@@ -523,11 +523,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             value: initialPath
           }).then(async (selection) => {
             if (selection) {
-              const [lib, object] = selection.split(`/`);
-              if (lib && object) {
-                detail.lib = lib;
+              const [library, object] = selection.split(`/`);
+              if (library && object) {
+                detail.lib = library;
                 detail.object = object;
-                CompileTools.refreshDiagnostics(instance, detail);
+                CompileTools.refreshDiagnostics(instance, {library, object});
               } else {
                 vscode.window.showErrorMessage(`Format incorrect. Use LIB/OBJECT`);
               }
