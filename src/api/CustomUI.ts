@@ -9,10 +9,93 @@ export interface Page<T> {
   data?: T
 }
 
+export interface Button {
+  id: string
+  label: string
+}
+
+export interface SelectItem {
+  text: string
+  description: string
+  value: string
+  selected?: boolean
+}
+
+export interface Tab {
+  label: string
+  value: string
+}
+
 export class CustomUI {
   private readonly fields: Field[] = [];
   constructor() {
 
+  }
+
+  addHorizontalRule() {
+    this.addField(new Field('hr', '', ''));
+    return this;
+  }
+
+  addCheckbox(id: string, label: string, description?: string, checked?: boolean) {
+    const checkbox = new Field('checkbox', id, label, description);
+    checkbox.default = checked ? 'checked' : '';
+    this.addField(checkbox);
+    return this;
+  }
+
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, multiline?: boolean }) {
+    const input = Object.assign(new Field('input', id, label, description), options);
+    this.addField(input);
+    return this;
+  }
+
+  addParagraph(label: string) {
+    this.addField(new Field('paragraph', '', label));
+    return this;
+  }
+
+  addFile(id: string, label: string, description?: string) {
+    this.addField(new Field('file', id, label, description));
+    return this;
+  }
+
+  addPassword(id: string, label: string, description?: string, defaultValue?: string) {
+    const password = new Field('password', id, label, description);
+    password.default = defaultValue;
+    this.addField(password);
+    return this;
+  }
+
+  addTabs(tabs: Tab[], selected?: number) {
+    const tabsField = new Field('tabs', '', '');
+    if (selected !== undefined) {
+      tabsField.default = String(selected);
+    }
+    tabsField.items = tabs;
+    this.addField(tabsField);
+    return this;
+  }
+
+  addSelect(id: string, label: string, items: SelectItem[], description?: string) {
+    const select = new Field('select', id, label, description);
+    select.items = items;
+    this.addField(select);
+    return this;
+  }
+
+  addTree(id: string, label: string, treeItems: TreeListItem[], description?: string) {
+    const tree = new Field('tree', id, label, description);
+    tree.treeList = treeItems;
+    this.addField(tree);
+    return this;
+  }
+
+  addButtons(...buttons: Button[]) {
+    const buttonsField = new Field('buttons', '', '');
+    buttonsField.items = buttons.filter(b => b);
+    this.addField(buttonsField);
+    return this;
   }
 
   addField(field: Field) {
@@ -22,8 +105,9 @@ export class CustomUI {
         break;
     }
 
-    this.fields.push(field)
-  };
+    this.fields.push(field);
+    return this;
+  }
 
   /**
    * If no callback is provided, a Promise will be returned
@@ -31,7 +115,7 @@ export class CustomUI {
    * @param callback
    * @returns a Promise<Page<T>> if no callback is provided
    */
-  loadPage<T>(title: string, callback?: (page: Page<T>) => void) : Promise<Page<T>> | undefined{
+  loadPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -49,12 +133,12 @@ export class CustomUI {
       panel.webview.onDidReceiveMessage(
         message => {
           didSubmit = true;
-          callback({panel, data: message});
+          callback({ panel, data: message });
         }
       );
-  
+
       panel.onDidDispose(() => {
-        if (!didSubmit) callback({panel});
+        if (!didSubmit) callback({ panel });
       });
 
     } else {
@@ -62,19 +146,19 @@ export class CustomUI {
         panel.webview.onDidReceiveMessage(
           message => {
             didSubmit = true;
-            resolve({panel, data: message});
+            resolve({ panel, data: message });
           }
         );
-    
+
         panel.onDidDispose(() => {
-          if (!didSubmit) resolve({panel});
+          if (!didSubmit) resolve({ panel });
         });
       });
     }
   }
 
-  getHTML(panel: vscode.WebviewPanel, title: string) {
-    const submitButton = this.fields.find(field => field.type === `submit`) || {id: ``};
+  private getHTML(panel: vscode.WebviewPanel, title: string) {
+    const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
 
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
@@ -211,7 +295,7 @@ export class CustomUI {
 
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
-              ${trees.map(tree => { 
+              ${trees.map(tree => {
                 return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
@@ -232,7 +316,7 @@ export class CustomUI {
   }
 }
 
-export type FieldType = "input"|"password"|"submit"|"buttons"|"checkbox"|"file"|"tabs"|"tree"|"select"|"paragraph"|"hr";
+export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "tabs" | "tree" | "select" | "paragraph" | "hr";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -251,7 +335,7 @@ export interface TreeListItem {
   path?: number[];
 }
 
-export interface FieldItem{
+export interface FieldItem {
   label?: string
   value?: string
   selected?: boolean
@@ -260,121 +344,119 @@ export interface FieldItem{
   id?: string
 }
 
-export class Field  {
+export class Field {
   public items?: FieldItem[];
   public treeList?: TreeListItem[];
-  public description?: string;
   public default?: string;
   public readonly?: boolean;
   public multiline?: boolean;
 
-  constructor(readonly type: FieldType, readonly id: string, readonly label: string) {
-    
+  constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
+
   }
 
   getHTML() {
     this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
 
     switch (this.type) {
-    case `submit`:
-      return /* html */`<vscode-button id="${this.id}">${this.label}</vscode-button>`;
+      case `submit`:
+        return /* html */`<vscode-button id="${this.id}">${this.label}</vscode-button>`;
 
-    case `buttons`:
-      return /* html */`
-        <vscode-form-item>
-          ${this.items?.map(item => `<vscode-button id="${item.id}" style="margin:3px">${item.label}</vscode-button>`).join(``)}
-        </vscode-form-item>`;
+      case `buttons`:
+        return /* html */`
+          <vscode-form-item>
+            ${this.items?.map(item => /* html */`<vscode-button id="${item.id}" style="margin:3px">${item.label}</vscode-button>`).join(``)}
+          </vscode-form-item>`;
 
-    case `hr`:
-      return /* html */ `<hr />`;
+      case `hr`:
+        return /* html */ `<hr />`;
 
-    case `checkbox`:
-      return /* html */`
-        <vscode-form-item>
-          <vscode-form-control>
-          <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
-          ${this.renderDescription()}
-          </vscode-form-control>
-        </vscode-form-item>`;
-
-    case `tabs`:
-      return /* html */`
-        <vscode-tabs selectedIndex="${this.default || 0}">
-          ${this.items?.map(item => 
-            `
-            <header slot="header">${item.label}</header>
-            <section>
-              ${item.value}
-            </section>
-            `
-          ).join(``)}
-        </vscode-tabs>`;
-
-    case `input`:
-      return /* html */`
-      <vscode-form-item>
-          ${this.renderLabel()}
-          ${this.renderDescription()}
-          <vscode-form-control>
-              <vscode-inputbox class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
-          </vscode-form-control>
-      </vscode-form-item>`;
-      
-    case `paragraph`:
-      return /* html */`
-      <vscode-form-item>
-          <vscode-form-description>${this.label}</vscode-form-description>
-      </vscode-form-item>`;
-
-    case `file`:
-      return /* html */`
-        <vscode-form-item>
-            ${this.renderLabel()}
-            ${this.renderDescription()}
+      case `checkbox`:
+        return /* html */`
+          <vscode-form-item>
             <vscode-form-control>
-                <vscode-inputbox type="file" id="${this.id}" name="${this.id}"></vscode-inputbox>
+            <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
+            ${this.renderDescription()}
             </vscode-form-control>
-        </vscode-form-item>`;
+          </vscode-form-item>`;
 
-    case `password`:
-      return /* html */`
-      <vscode-form-item>
-          ${this.renderLabel()}
-          ${this.renderDescription()}
-          <vscode-form-control>
-              <vscode-inputbox type="password" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``}></vscode-inputbox>
-          </vscode-form-control>
-      </vscode-form-item>`;
+      case `tabs`:
+        return /* html */`
+          <vscode-tabs selectedIndex="${this.default || 0}">
+            ${this.items?.map(item =>
+              /* html */`
+              <header slot="header">${item.label}</header>
+              <section>
+                ${item.value}
+              </section>`
+          ).join(``)}
+          </vscode-tabs>`;
 
-    case `tree`:
-      return /* html */`
-      <vscode-form-item>
-          ${this.renderLabel()}
-          ${this.renderDescription()}
-          <vscode-form-control>
-              <vscode-tree id="${this.id}"></vscode-tree>
-          </vscode-form-control>
-      </vscode-form-item>`;
+      case `input`:
+        return /* html */`
+          <vscode-form-item>
+              ${this.renderLabel()}
+              ${this.renderDescription()}
+              <vscode-form-control>
+                  <vscode-inputbox class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
+              </vscode-form-control>
+          </vscode-form-item>`;
 
-    case `select`:
-      return /* html */`
-      <vscode-form-item>
-          ${this.renderLabel()}
-          ${this.renderDescription()}
-          <vscode-form-control>
-              <vscode-single-select id="${this.id}">
-                  ${this.items?.map(item => `<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
-              </vscode-single-select>
-          </vscode-form-control>
-      </vscode-form-item>`;
+      case `paragraph`:
+        return /* html */`
+          <vscode-form-item>
+              <vscode-form-description>${this.label}</vscode-form-description>
+          </vscode-form-item>`;
+
+      case `file`:
+        return /* html */`
+          <vscode-form-item>
+              ${this.renderLabel()}
+              ${this.renderDescription()}
+              <vscode-form-control>
+                  <vscode-inputbox type="file" id="${this.id}" name="${this.id}"></vscode-inputbox>
+              </vscode-form-control>
+          </vscode-form-item>`;
+
+      case `password`:
+        return /* html */`
+          <vscode-form-item>
+              ${this.renderLabel()}
+              ${this.renderDescription()}
+              <vscode-form-control>
+                  <vscode-inputbox type="password" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``}></vscode-inputbox>
+              </vscode-form-control>
+          </vscode-form-item>`;
+
+      case `tree`:
+        return /* html */`
+          <vscode-form-item>
+              ${this.renderLabel()}
+              ${this.renderDescription()}
+              <vscode-form-control>
+                  <vscode-tree id="${this.id}"></vscode-tree>
+              </vscode-form-control>
+          </vscode-form-item>`;
+
+      case `select`:
+        return /* html */`
+          <vscode-form-item>
+              ${this.renderLabel()}
+              ${this.renderDescription()}
+              <vscode-form-control>
+                  <vscode-single-select id="${this.id}">
+                      ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
+                  </vscode-single-select>
+              </vscode-form-control>
+          </vscode-form-item>`;
     }
   }
 
-  private renderLabel(){
-    return /* html */ `<vscode-form-label>${this.label }</vscode-form-label>`;
+  private renderLabel() {
+    return /* html */ `<vscode-form-label>${this.label}</vscode-form-label>`;
   }
 
-  private renderDescription(){
+  private renderDescription() {
     return this.description ? /* html */ `<vscode-form-description>${this.description}</vscode-form-description>` : ``;
   }
 }

@@ -52,41 +52,14 @@ module.exports = class FiltersUI {
       }
     }
     
-    let ui = new CustomUI();
-    let field;
-
-    field = new Field(`input`, `name`, `Filter name`);
-    field.default = filter.name;
-    field.description = `The filter name should be unique.`
-    ui.addField(field);
-
-    field = new Field(`input`, `library`, `Library`);
-    field.default = filter.library;
-    field.description = `Library name. Cannot be generic name with an asterisk.`
-    ui.addField(field);
-
-    field = new Field(`input`, `object`, `Object`);
-    field.default = filter.object;
-    field.description = `Object name. Can be generic name with an asterisk. For example: <code>*</code>, or <code>Q*</code>.`;
-    ui.addField(field);
-
-    field = new Field(`input`, `types`, `Object type filter`);
-    field.default = filter.types.join(`, `);
-    field.description = `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`;
-    ui.addField(field);
-
-    field = new Field(`input`, `member`, `Member`);
-    field.default = filter.member;
-    field.description = `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`;
-    ui.addField(field);
-
-    field = new Field(`input`, `memberType`, `Member type`);
-    field.default = filter.memberType || `*`;
-    field.description = `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`;
-    ui.addField(field);
-
-    field = new Field(`submit`, `save`, `Save settings`);
-    ui.addField(field);
+    const ui = new CustomUI();
+    ui.addInput(`name`, `Filter name`, `The filter name should be unique.`, {default: filter.name});
+    ui.addInput(`library`, `Library`, `Library name. Cannot be generic name with an asterisk.`, {default: filter.library});
+    ui.addInput(`object`, `Object`, `Object name. Can be generic name with an asterisk. For example: <code>*</code>, or <code>Q*</code>.`, {default: filter.object});
+    ui.addInput(`types`, `Object type filter`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, {default: filter.types.join(`, `)});
+    ui.addInput(`member`, `Member`, `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`, {default: filter.member});
+    ui.addInput(`memberType`, `Member type`, `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`, {default: filter.memberType || `*`});
+    ui.addField(new Field(`submit`, `save`, `Save settings`));
 
     let {panel, data} = await ui.loadPage(`Filter: ${name || `New`}`);
 

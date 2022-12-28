@@ -1,8 +1,8 @@
 const vscode = require(`vscode`);
-const {ConnectionConfiguration} = require(`../../api/Configuration`);
-const {CustomUI, Field} = require(`../../api/CustomUI`);
+const { ConnectionConfiguration } = require(`../../api/Configuration`);
+const { CustomUI, Field } = require(`../../api/CustomUI`);
 
-let {instance} = require(`../../instantiate`);
+let { instance } = require(`../../instantiate`);
 
 module.exports = class SettingsUI {
 
@@ -23,31 +23,16 @@ module.exports = class SettingsUI {
     const config = instance.getConfig();
     let variables = config.customVariables;
 
-    let ui = new CustomUI();
-    let field;
-    
-    field = new Field(`tree`, `variable`, `Work with Variables`);
-    field.description = `Create or maintain custom variables. Custom variables can be used in any Action in this connection.`;
-    field.treeList = [
-      ...variables.map((variable, index) => ({
-        label: `&${variable.name}: \`${variable.value}\``,
-        value: String(index)
-      })).sort((a, b) => a.label.localeCompare(b.label))
-    ];
-    
-    ui.addField(field);
+    const ui = new CustomUI()
+      .addTree(`variable`, `Work with Variables`, [
+        ...variables.map((variable, index) => ({
+          label: `&${variable.name}: \`${variable.value}\``,
+          value: String(index)
+        })).sort((a, b) => a.label.localeCompare(b.label))
+      ], `Create or maintain custom variables. Custom variables can be used in any Action in this connection.`)
+      .addButtons({ id: `newVariable`, label: `New Variable` });
 
-    field = new Field(`buttons`);
-    field.items = [
-      {
-        id: `newVariable`,
-        label: `New Variable`,
-      },
-    ];
-    ui.addField(field);
-
-    let {panel, data} = await ui.loadPage(`Work with Variables`);
-
+    const { panel, data } = await ui.loadPage(`Work with Variables`);
     if (data) {
       panel.dispose();
 
@@ -71,7 +56,7 @@ module.exports = class SettingsUI {
     const config = instance.getConfig();
     let allVariables = config.customVariables;
     let currentVariable;
-    
+
     if (id >= 0) {
       //Fetch existing variable
       currentVariable = allVariables[id];
@@ -84,36 +69,15 @@ module.exports = class SettingsUI {
       }
     }
 
-    let ui = new CustomUI();
-    let field;
+    const ui = new CustomUI()
+      .addInput(`name`, `Variable name`, `<code>&</code> not required. Will be forced uppercase.`, { default: currentVariable.name })
+      .addInput(`value`, `Variable value`, `<code>&</code> not required. Will be forced uppercase.`, { default: currentVariable.value })
+      .addButtons({ id: `save`, label: `Save` }, { id: `delete`, label: `Delete` });
 
-    field = new Field(`input`, `name`, `Variable name`);
-    field.description = `<code>&</code> not required. Will be forced uppercase.`;
-    field.default = currentVariable.name;
-    ui.addField(field);
-
-    field = new Field(`input`, `value`, `Variable value`);
-    field.default = currentVariable.value;
-    ui.addField(field);
-
-    field = new Field(`buttons`);
-    field.items = [
-      {
-        id: `save`,
-        label: `Save`
-      },
-      {
-        id: `delete`,
-        label: `Delete`
-      }
-    ];
-    ui.addField(field);
-
-    let {panel, data} = await ui.loadPage(`Work with Variable`);
-
+    const { panel, data } = await ui.loadPage(`Work with Variable`);
     if (data) {
       panel.dispose();
-      
+
       switch (data.buttons) {
       case `delete`:
         if (id >= 0) {
@@ -141,7 +105,7 @@ module.exports = class SettingsUI {
         await ConnectionConfiguration.update(config);
         break;
       }
-    
+
     }
 
     this.MainMenu();
