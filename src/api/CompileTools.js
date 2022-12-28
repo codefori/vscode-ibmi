@@ -732,30 +732,22 @@ module.exports = class CompileTools {
     }
 
     if (components.length > 0) {
-      let commandUI = new CustomUI();
-      let field;
-
+      const commandUI = new CustomUI();
       for (const component of components) {
         if (component.initalValue.includes(`,`)) {
           //Select box
-          field = new Field(`select`, component.name, component.label);
-          field.items = component.initalValue.split(`,`).map((value, index) => (
-            {
+          commandUI.addSelect(component.name, component.label, 
+            component.initalValue.split(`,`).map((value, index) => ({
               selected: index === 0,
               value,
               description: value,
               text: `Select ${value}`,
-            }
-          ));
-
+            }))
+          );
         } else {
           //Input box
-          field = new Field(`input`, component.name, component.label);
-          field.default = component.initalValue;
+          commandUI.addInput(component.name, component.label, undefined, {default:component.initalValue});
         }
-
-        commandUI.addField(field);
-
       }
 
       commandUI.addField(new Field(`submit`, `execute`, `Execute`));
