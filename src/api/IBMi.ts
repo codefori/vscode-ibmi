@@ -6,6 +6,7 @@ import { ConnectionConfiguration } from "./Configuration";
 import {Tools} from './Tools';
 import path from 'path';
 import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
+import * as configVars from './configVars';
 
 interface MemberParts {
   asp: string | undefined;
@@ -109,6 +110,8 @@ export default class IBMi {
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
       if (!connectionObject.privateKey) (connectionObject.privateKey = null);
 
+      configVars.replaceAll(connectionObject);
+  
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Connecting`,
