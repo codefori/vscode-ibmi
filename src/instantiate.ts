@@ -202,7 +202,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       actionsUI.init(context);
       variablesUI.init(context);
 
-
       //********* Help view */
 
       context.subscriptions.push(
