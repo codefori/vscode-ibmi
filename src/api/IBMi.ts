@@ -434,7 +434,8 @@ export default class IBMi {
         remoteApps.push(
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-            names: [`GENCMDXML.PGM`]
+            names: [`GENCMDXML.PGM`],
+            specific: `GENCMDXML.PGM`
           }
         );
 
