@@ -396,12 +396,12 @@ export namespace Deployment {
         }, async (progress) => {
           deploymentLog.appendLine("Starting MD5 synchronization transfer");
           progress.report({ message: `creating remote MD5 hash list` });
-          const remoteMD5: MD5Entry[] = [];
-          await getConnection().sendCommand({
+          const md5sumOut = await getConnection().sendCommand({
             directory: parameters.remotePath,
-            command: `/QOpenSys/pkgs/bin/md5sum $(find . -type f)`,
-            onStdout: out => remoteMD5.push(toMD5Entry(out.toString('utf-8').trim()))
+            command: `/QOpenSys/pkgs/bin/md5sum $(find . -type f)`
           });
+
+          const remoteMD5: MD5Entry[] = md5sumOut.stdout.split(`\n`).map(line => toMD5Entry(line.trim()));
 
           progress.report({ message: `creating transfer list`, increment: 25 });
           const localRoot = `${parameters.localFolder.fsPath}${parameters.localFolder.fsPath.startsWith('/') ? '/' : '\\'}`;
