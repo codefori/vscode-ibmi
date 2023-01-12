@@ -4,14 +4,13 @@ const path = require(`path`);
 
 const gitExtension = vscode.extensions.getExtension(`vscode.git`).exports;
 
-const { default: IBMi } = require(`./IBMi`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`./Configuration`);
 const { CustomUI, Field } = require(`./CustomUI`);
 const { getEnvConfig } = require(`./local/env`);
 const { getLocalActions, getiProjActions } = require(`./local/actions`);
-
 const { Deployment } = require(`./local/deployment`);
 const { parseErrors } = require(`./errors/handler`);
+const { default: Instance } = require(`./Instance`);
 
 const diagnosticSeverity = {
   0: vscode.DiagnosticSeverity.Information,
@@ -102,8 +101,6 @@ module.exports = class CompileTools {
    */
   static async refreshDiagnostics(instance, evfeventInfo) {
     const content = instance.getContent();
-
-    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const tableData = await content.getTable(evfeventInfo.lib, `EVFEVENT`, evfeventInfo.object);
@@ -123,7 +120,6 @@ module.exports = class CompileTools {
         const file = errorsByFile[0];
         const errors = errorsByFile[1];
         diagnostics.length = 0;
-        
         for (const error of errors) {
           error.column = Math.max(error.column - 1, 0);
           error.linenum = Math.max(error.linenum - 1, 0);
@@ -190,11 +186,13 @@ module.exports = class CompileTools {
     return string;
   }
 
+  /**
+   * 
+   * @param {Instance} instance 
+   * @returns 
+   */
   static getDefaultVariables(instance) {
-    /** @type {IBMi} */
     const connection = instance.getConnection();
-
-    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     /** @type {{[name: string]: string}} */
@@ -240,10 +238,7 @@ module.exports = class CompileTools {
     /** @type {{asp?: string, lib: string, object: string, ext?: string, workspace?: number}} */
     let evfeventInfo = { asp: undefined, lib: ``, object: ``, workspace: undefined };
 
-    /** @type {IBMi} */
     const connection = instance.getConnection();
-
-    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
@@ -569,15 +564,12 @@ module.exports = class CompileTools {
 
   /**
    * Execute command
-   * @param {*} instance
-   * @param {RemoteCommand} options 
-   * @returns {Promise<CommandResult|null>}
+   * @param {Instance} instance
+   * @param {import("../typings").RemoteCommand} options 
+   * @returns {Promise<import("../typings").CommandResult|null>}
    */
   static async runCommand(instance, options) {
-    /** @type {IBMi} */
     const connection = instance.getConnection();
-
-    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
 
     const cwd = options.cwd;
