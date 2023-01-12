@@ -45,7 +45,7 @@ export namespace Deployment {
     "staged",
     "unstaged",
     "changed",
-    "md5synch"
+    "compare"
   }
 
   export function initialize(context: vscode.ExtensionContext, instance: Instance) {
@@ -176,18 +176,18 @@ export namespace Deployment {
       }
 
       if (remotePath) {
-        const methods = [
+        const methods = [];
+        if (getConnection().remoteFeatures.md5sum) {
+          methods.push({ method: Method.compare, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
+        }
+        methods.push(
           { method: Method.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
           { method: Method.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
           { method: Method.staged, label: `Staged Changes`, description: `` },
           { method: Method.all, label: `All`, description: `Every file in the local workspace` }
-        ];
+        );       
 
-        if (getConnection().remoteFeatures.md5sum) {
-          methods.push({ method: Method.md5synch, label: `MD5 compare`, description: `Synchronizes using MD5 hash comparison` });
-        }
-
-        const method = (await vscode.window.showQuickPick(methods.sort((m1, m2) => m1.label.localeCompare(m2.label)),
+        const method = (await vscode.window.showQuickPick(methods,
           { placeHolder: `Select deployment method to ${remotePath}` }
         ))?.method;
 
@@ -238,8 +238,8 @@ export namespace Deployment {
           await deployChanged(parameters);
           break;
 
-        case Method.md5synch:
-          await deployMD5(parameters);
+        case Method.compare:
+          await deployCompare(parameters);
           break;
 
         case Method.all:
@@ -381,7 +381,7 @@ export namespace Deployment {
     }
   }
 
-  async function deployMD5(parameters: DeploymentParameters) {
+  async function deployCompare(parameters: DeploymentParameters) {
     if (getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
