@@ -1,11 +1,14 @@
 import { ExtensionContext } from "vscode";
 import Instance from "./api/Instance";
+import { Deployment } from "./api/local/deployment";
 
 export interface CodeForIBMi {
   instance: Instance,
   baseContext: ExtensionContext,
   CustomUI: object, //CustomUI: typeof CustomUI
   Field: object //Field: typeof Field;
+  deploy: (parameters: Deployment.DeploymentParameters) => Promise<boolean>
+  evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 
 export interface StandardIO {
@@ -96,4 +99,18 @@ export interface IFSFile {
 export interface IBMiError{
   code: string
   text: string
+}
+
+export interface Filter{
+  library: string,
+  filter: string
+}
+
+export interface FileError {
+  sev: number
+  linenum: number
+  column: number
+  toColumn: number
+  text: string
+  code: string
 }
