@@ -8,10 +8,10 @@ import { getEnvConfig } from './local/env';
 import { getLocalActions, getiProjActions } from './local/actions';
 
 import { Deployment } from './local/deployment';
-import { FileError, parseErrors } from './errors/handler';
+import { parseErrors } from './errors/handler';
 import { GitExtension } from './import/git';
 import Instance from './Instance';
-import { Action, CommandResult, RemoteCommand, StandardIO } from '../typings';
+import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
 import IBMi, { MemberParts } from './IBMi';
 
 export namespace CompileTools {
