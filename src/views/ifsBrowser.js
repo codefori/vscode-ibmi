@@ -58,13 +58,10 @@ module.exports = class ifsBrowserProvider {
         let shortcuts = config.ifsShortcuts;
         let autoSortIFSShortcuts = config.autoSortIFSShortcuts;
 
-        if (node) {
-          newDirectory = node.path;
-        } else {
-          newDirectory = await vscode.window.showInputBox({
-            prompt: `Path to IFS directory`,
-          });
-        }
+        newDirectory = await vscode.window.showInputBox({
+          prompt: `Path to IFS directory`,
+          value: node ? node.path : undefined
+        });
 
         try {
           if (newDirectory) {
