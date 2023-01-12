@@ -120,7 +120,6 @@ module.exports = class CompileTools {
         const file = errorsByFile[0];
         const errors = errorsByFile[1];
         diagnostics.length = 0;
-        
         for (const error of errors) {
           error.column = Math.max(error.column - 1, 0);
           error.linenum = Math.max(error.linenum - 1, 0);
