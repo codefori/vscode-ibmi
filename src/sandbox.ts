@@ -6,7 +6,7 @@ import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
 
 export default async function () {
-  if (env.VSCODE_IBMI_SANDBOX && env.SANDBOX_SERVER) {
+  if (env.VSCODE_IBMI_SANDBOX) {
     console.log(`Sandbox mode enabled. Look at branch name as username`);
     const gitAPI = extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
     if (gitAPI && gitAPI.repositories && gitAPI.repositories.length > 0) {
@@ -14,67 +14,77 @@ export default async function () {
       const branchName = repo.state.HEAD?.name;
 
       if (branchName) {
-        console.log(`${env.SANDBOX_SERVER}@${branchName}:${branchName}`);
+        console.log(branchName);
 
-        const username = branchName.toUpperCase();
+        const parts = branchName.split(`/`);
+        if (parts.length === 2) {
 
-        const connectionData: ConnectionData = {
-          host: env.SANDBOX_SERVER,
-          name: `Sandbox-${username}`,
-          username: username,
-          password: username,
-          port: 22,
-          privateKey: null,
-          keepaliveInterval: 35000
-        };
+          const server = parts[0];
+          const username = parts[1].toUpperCase();
 
-        window.showInformationMessage(`Thanks for trying the Code for IBM i Sandbox!`, {
-          modal: true,
-          detail: `You are using this system at your own risk. Do not share any sensitive or private information.`
-        });
-        
-        const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
+          const connectionData: ConnectionData = {
+            host: server,
+            name: `Sandbox-${username}`,
+            username: username,
+            password: username,
+            port: 22,
+            privateKey: null,
+            keepaliveInterval: 35000
+          };
 
-        if (connectionResult) {
-          const config = instance.getConfig();
-          if (config) {
-            const libraryList = config.libraryList;
-            if (!libraryList.includes(username)) {
-              config.libraryList = [...config.libraryList, username];
-
-              config.objectFilters.push(
-                {
-                  name: "Sandbox Sources",
-                  library: username,
-                  object: "*",
-                  types: [
-                    "*SRCPF"
-                  ],
-                  member: "*",
-                  memberType: ""
-                },
-                {
-                  name: "Sandbox Object Filters",
-                  library: username,
-                  object: "*",
-                  types: [
-                    "*ALL"
-                  ],
-                  member: "*",
-                  memberType: ""
-                },
-              );
-
-              await ConnectionConfiguration.update(config);
-              commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-              commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
-            }
-          }
-
-        } else {
-          window.showInformationMessage(`Ohno! The sandbox is down.`, {
+          window.showInformationMessage(`Thanks for trying the Code for IBM i Sandbox!`, {
             modal: true,
-            detail: `Sorry, but the sandbox is offline right now. Try again another time.`
+            detail: `You are using this system at your own risk. Do not share any sensitive or private information.`
+          });
+
+          const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
+
+          if (connectionResult) {
+            const config = instance.getConfig();
+            if (config) {
+              const libraryList = config.libraryList;
+              if (!libraryList.includes(username)) {
+                config.libraryList = [...config.libraryList, username];
+
+                config.objectFilters.push(
+                  {
+                    name: "Sandbox Sources",
+                    library: username,
+                    object: "*",
+                    types: [
+                      "*SRCPF"
+                    ],
+                    member: "*",
+                    memberType: ""
+                  },
+                  {
+                    name: "Sandbox Object Filters",
+                    library: username,
+                    object: "*",
+                    types: [
+                      "*ALL"
+                    ],
+                    member: "*",
+                    memberType: ""
+                  },
+                );
+
+                await ConnectionConfiguration.update(config);
+                commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+                commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+              }
+            }
+
+          } else {
+            window.showInformationMessage(`Oh no! The sandbox is down.`, {
+              modal: true,
+              detail: `Sorry, but the sandbox is offline right now. Try again another time.`
+            });
+          }
+        } else {
+          window.showInformationMessage(`How'd that happen?`, {
+            modal: true,
+            detail: `Looks like the branch format is incorrect!`
           });
         }
       }
