@@ -37,3 +37,4 @@ Thanks so much to everyone [who has contributed](https://github.com/halcyon-tech
 * [@Teqed](https://github.com/Teqed)
 * [@jwoehr](https://github.com/jwoehr)
 * [@Wright4i](https://github.com/Wright4i)
+* [@sebjulliand](https://github.com/sebjulliand)

@@ -20,6 +20,6 @@ jobs:
         run: vsce publish -p $PUBLISHER_TOKEN
         env:
           PUBLISHER_TOKEN: ${{ secrets.PUBLISHER_TOKEN }}
-
+          
       - name: Publish to Open VSX
         run: npx ovsx publish -p ${{ secrets.OPENVSX_TOKEN }}

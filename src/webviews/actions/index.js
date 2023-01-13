@@ -2,9 +2,9 @@ const vscode = require(`vscode`);
 
 const {CustomUI, Field} = require(`../../api/CustomUI`);
 
-const instance = require(`../../Instance`);
+const {instance} = require(`../../instantiate`);
 
-const Configuration = require(`../../api/Configuration`);
+const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
 const Variables = require(`./varinfo`);
 
 module.exports = class SettingsUI {
@@ -22,7 +22,7 @@ module.exports = class SettingsUI {
   }
 
   static async MainMenu() {
-    const allBaseActions = Configuration.get(`actions`);
+    const allBaseActions = GlobalConfiguration.get(`actions`);
     const allActions = allBaseActions.map((action, index) => ({
       ...action,
       index,
@@ -99,7 +99,7 @@ module.exports = class SettingsUI {
    * Show item picker to duplicate an existing action
    */
   static async DuplicateAction() {
-    let actions = Configuration.get(`actions`);
+    let actions = GlobalConfiguration.get(`actions`);
   
     vscode.window.showQuickPick(
       actions.map((action, index) => ({
@@ -129,8 +129,9 @@ module.exports = class SettingsUI {
    * @param {object} ActionDefault Default action properties
    */
   static async WorkAction(id, ActionDefault) {
+    /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
-    let allActions = Configuration.get(`actions`);
+    let allActions = GlobalConfiguration.get(`actions`);
     let currentAction;
     let uiTitle;
     let stayOnPanel = true;
@@ -295,7 +296,7 @@ module.exports = class SettingsUI {
           const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, { modal:true }, `Yes`, `No`)
           if (result === `Yes`) {
             allActions.splice(id, 1);
-            await Configuration.setGlobal(`actions`, allActions);
+            await GlobalConfiguration.set(`actions`, allActions);
             stayOnPanel=false;
           }
           break;
@@ -322,7 +323,7 @@ module.exports = class SettingsUI {
             allActions.push(newAction);
           }
 
-          await Configuration.setGlobal(`actions`, allActions);
+          await GlobalConfiguration.set(`actions`, allActions);
           stayOnPanel=false;
           break;
         }

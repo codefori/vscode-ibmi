@@ -1,9 +1,10 @@
 
-const util = require(`util`);
 const vscode = require(`vscode`);
-let {instance} = require(`../instantiate`);
+const contentApi = require(`./content`);
 
-module.exports = class qsysFs {
+const {instance} = require(`../../../instantiate`);
+
+module.exports = class ComplexQsysFs {
   constructor() {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeFile = this.emitter.event;
@@ -15,11 +16,12 @@ module.exports = class qsysFs {
    * @returns {Promise<Uint8Array>}
    */
   async readFile(uri) {
-    const contentApi = instance.getContent();
+    const connection = instance.getConnection();
+    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
 
-    const fileContent = await contentApi.downloadStreamfile(uri.path);
+    const memberContent = await contentApi.downloadMemberContentWithDates(asp, library, file, member);
 
-    return new Uint8Array(Buffer.from(fileContent, `utf8`));
+    return new Uint8Array(Buffer.from(memberContent, `utf8`));
   }
 
   /**
@@ -36,9 +38,10 @@ module.exports = class qsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
-    const contentApi = instance.getContent();
+    const connection = instance.getConnection();
+    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
 
-    return contentApi.writeStreamfile(uri.path, content.toString(`utf8`));
+    return contentApi.uploadMemberContentWithDates(asp, library, file, member, content.toString(`utf8`));
   }
 
   /**
