@@ -25,12 +25,12 @@ export default async function () {
 
         switch (parts.length) {
           case 2:
-            if (!server) server = parts[0];
-            if (!server) username = parts[1].toUpperCase();
+            server = parts[0];
+            username = parts[1].toUpperCase(); 
             break;
           case 1:
             // We don't want to overwrite the username if one is set
-            if (!username) username = parts[0].toUpperCase();
+            username = parts[0].toUpperCase();
             break;
         }
       }
