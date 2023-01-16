@@ -1,5 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, window, commands, workspace } from "vscode";
+import { ExtensionContext, window, commands, workspace, extensions } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -11,6 +11,7 @@ import {ObjectBrowserProvider} from "./views/ConnectionBrowser";
 import IBMi from "./api/IBMi";
 import { ConnectionConfiguration } from "./api/Configuration";
 import { CodeForIBMi, ConnectionData } from "./typings";
+import sandbox from "./sandbox";
 import { Deployment } from "./api/local/deployment";
 import { parseErrors } from "./api/errors/handler";
 
@@ -55,7 +56,9 @@ export function activate(context: ExtensionContext): CodeForIBMi {
         }
       }
     })
-  )
+  );
+
+  sandbox();
 
   return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
 }
