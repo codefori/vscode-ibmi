@@ -10,6 +10,7 @@ import CompileTools from './api/CompileTools';
 
 import { Terminal } from './api/Terminal';
 import { Deployment } from './api/local/deployment';
+import Debug from './api/Debug';
 
 import { CustomUI, Field } from './api/CustomUI';
 
@@ -120,6 +121,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     instance.storage = new Storage(context, instance.connection.currentConnectionName);
 
     CompileTools.register(context);
+    Debug.initialise(instance, context);
 
     if (!reconnectBarItem) {
       reconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 11);
