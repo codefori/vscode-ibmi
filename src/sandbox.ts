@@ -2,6 +2,7 @@ import { env } from "process";
 import { commands, extensions, window } from "vscode";
 import { ConnectionConfiguration } from "./api/Configuration";
 import { GitExtension } from "./api/import/git";
+import { Terminal } from "./api/Terminal";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
 
@@ -96,6 +97,8 @@ export default async function () {
           commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
         }
       }
+
+      await commands.executeCommand(`helpView.focus`);
 
     } else {
       window.showInformationMessage(`Oh no! The sandbox is down.`, {
