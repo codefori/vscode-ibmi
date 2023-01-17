@@ -11,7 +11,7 @@ import {ObjectBrowserProvider} from "./views/ConnectionBrowser";
 import IBMi from "./api/IBMi";
 import { ConnectionConfiguration } from "./api/Configuration";
 import { CodeForIBMi, ConnectionData } from "./typings";
-import sandbox from "./sandbox";
+import * as Sandbox from "./sandbox";
 import { Deployment } from "./api/local/deployment";
 import { parseErrors } from "./api/errors/handler";
 
@@ -58,7 +58,8 @@ export function activate(context: ExtensionContext): CodeForIBMi {
     })
   );
 
-  sandbox();
+  Sandbox.handleStartup();
+  Sandbox.registerUriHandler(context);
 
   return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
 }
