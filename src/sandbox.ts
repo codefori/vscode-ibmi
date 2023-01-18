@@ -16,11 +16,18 @@ export async function registerUriHandler(context: ExtensionContext) {
           case `/connect`:
             const queryData = querystring.parse(uri.query);
 
+            const save = queryData
             const server = queryData.server;
-            const user = queryData.user;
+            let user: string | string[] | undefined = queryData.user;
             let pass: string | string[] | undefined = queryData.pass;
 
-            if (server && user) {
+            if (server) {
+              if (!user) {
+                user = await window.showInputBox({
+                  title: `User for server`,
+                  prompt: `Enter username for ${server}`
+                });
+              }
 
               if (pass) {
                 pass = Buffer.from(String(pass), `base64`).toString();
@@ -32,7 +39,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                 });
               }
 
-              if (pass) {
+              if (user && pass) {
                 const host = String(server);
                 const connectionData: ConnectionData = {
                   host,
