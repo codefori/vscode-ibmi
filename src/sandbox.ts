@@ -1,7 +1,7 @@
 import { env } from "process";
 import querystring from "querystring";
 import { commands, ExtensionContext, extensions, Uri, window } from "vscode";
-import { ConnectionConfiguration } from "./api/Configuration";
+import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { GitExtension } from "./api/import/git";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
@@ -16,7 +16,7 @@ export async function registerUriHandler(context: ExtensionContext) {
           case `/connect`:
             const queryData = querystring.parse(uri.query);
 
-            const save = queryData
+            const save = queryData.save === `true`;
             const server = queryData.server;
             let user: string | string[] | undefined = queryData.user;
             let pass: string | string[] | undefined = queryData.pass;
@@ -47,14 +47,34 @@ export async function registerUriHandler(context: ExtensionContext) {
                   username: String(user),
                   password: String(pass),
                   port: 22,
-                  privateKey: null,
-                  keepaliveInterval: 35000
+                  privateKey: null
                 };
 
                 const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
 
                 if (connectionResult) {
                   await commands.executeCommand(`helpView.focus`);
+
+                  if (save) {
+                    let existingConnections: ConnectionData[]|undefined = GlobalConfiguration.get(`connections`);
+
+                    if (existingConnections) {
+                      const existingConnection = existingConnections.find(item => item.name === host);
+
+                      if (!existingConnection) {
+                        // New connection!
+                        existingConnections.push({
+                          ...connectionData,
+                          password: undefined,
+                        });
+
+                        context.secrets.store(`${host}_password`, pass);
+
+                        await GlobalConfiguration.set(`connections`, existingConnections);
+                      }
+                    }
+                  }
+
                 } else {
                   window.showInformationMessage(`Failed to connect`, {
                     modal: true,
@@ -117,8 +137,7 @@ export async function handleStartup() {
       username,
       password,
       port: 22,
-      privateKey: null,
-      keepaliveInterval: 35000
+      privateKey: null
     };
 
     if (env.VSCODE_IBMI_SANDBOX) {
