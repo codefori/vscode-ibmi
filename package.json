@@ -32,8 +32,7 @@
 		"theme": "dark"
 	},
 	"activationEvents": [
-		"onView:connectionBrowser",
-		"onCommand:code-for-ibmi.connect"
+		"onStartupFinished"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
