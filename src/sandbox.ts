@@ -45,8 +45,8 @@ export async function registerUriHandler(context: ExtensionContext) {
                 const port = serverParts.length === 2 ? Number(serverParts[1]) : 22;
 
                 const connectionData: ConnectionData = {
-                  host: `${user}-${host}`,
-                  name: host,
+                  host,
+                  name: `${user}-${host}`,
                   username: String(user),
                   password: String(pass),
                   port,
