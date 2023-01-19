@@ -56,7 +56,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                 const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
 
                 if (connectionResult) {
-                  await commands.executeCommand(`helpView.focus`);
+                  await initialSetup(connectionData.username);
 
                   if (save) {
                     let existingConnections: ConnectionData[]|undefined = GlobalConfiguration.get(`connections`);
@@ -154,42 +154,7 @@ export async function handleStartup() {
     const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
 
     if (connectionResult) {
-      const config = instance.getConfig();
-      if (config) {
-        const libraryList = config.libraryList;
-        if (!libraryList.includes(username)) {
-          config.libraryList = [...config.libraryList, username];
-
-          config.objectFilters.push(
-            {
-              name: "Sandbox Sources",
-              library: username,
-              object: "*",
-              types: [
-                "*SRCPF"
-              ],
-              member: "*",
-              memberType: ""
-            },
-            {
-              name: "Sandbox Object Filters",
-              library: username,
-              object: "*",
-              types: [
-                "*ALL"
-              ],
-              member: "*",
-              memberType: ""
-            },
-          );
-
-          await ConnectionConfiguration.update(config);
-          commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-          commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
-        }
-      }
-
-      await commands.executeCommand(`helpView.focus`);
+      await initialSetup(connectionData.username);
 
     } else {
       window.showInformationMessage(`Oh no! The sandbox is down.`, {
@@ -199,3 +164,42 @@ export async function handleStartup() {
     }
   }
 } 
+
+async function initialSetup(username: string) {
+  const config = instance.getConfig();
+  if (config) {
+    const libraryList = config.libraryList;
+    if (!libraryList.includes(username)) {
+      config.libraryList = [...config.libraryList, username];
+
+      config.objectFilters.push(
+        {
+          name: "Sandbox Sources",
+          library: username,
+          object: "*",
+          types: [
+            "*SRCPF"
+          ],
+          member: "*",
+          memberType: ""
+        },
+        {
+          name: "Sandbox Object Filters",
+          library: username,
+          object: "*",
+          types: [
+            "*ALL"
+          ],
+          member: "*",
+          memberType: ""
+        },
+      );
+
+      await ConnectionConfiguration.update(config);
+      commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+      commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+    }
+  }
+
+  await commands.executeCommand(`helpView.focus`);
+}
