@@ -1,7 +1,7 @@
 import { env } from "process";
 import querystring from "querystring";
 import { commands, ExtensionContext, extensions, Uri, window } from "vscode";
-import { ConnectionConfiguration } from "./api/Configuration";
+import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { GitExtension } from "./api/import/git";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
@@ -16,11 +16,18 @@ export async function registerUriHandler(context: ExtensionContext) {
           case `/connect`:
             const queryData = querystring.parse(uri.query);
 
+            const save = queryData.save === `true`;
             const server = queryData.server;
-            const user = queryData.user;
+            let user: string | string[] | undefined = queryData.user;
             let pass: string | string[] | undefined = queryData.pass;
 
-            if (server && user) {
+            if (server) {
+              if (!user) {
+                user = await window.showInputBox({
+                  title: `User for server`,
+                  prompt: `Enter username for ${server}`
+                });
+              }
 
               if (pass) {
                 pass = Buffer.from(String(pass), `base64`).toString();
@@ -32,22 +39,45 @@ export async function registerUriHandler(context: ExtensionContext) {
                 });
               }
 
-              if (pass) {
-                const host = String(server);
+              if (user && pass) {
+                const serverParts = String(server).split(`:`);
+                const host = serverParts[0];
+                const port = serverParts.length === 2 ? Number(serverParts[1]) : 22;
+
                 const connectionData: ConnectionData = {
                   host,
-                  name: host,
+                  name: `${user}-${host}`,
                   username: String(user),
                   password: String(pass),
-                  port: 22,
-                  privateKey: null,
-                  keepaliveInterval: 35000
+                  port,
+                  privateKey: null
                 };
 
                 const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
 
                 if (connectionResult) {
-                  await commands.executeCommand(`helpView.focus`);
+                  await initialSetup(connectionData.username);
+
+                  if (save) {
+                    let existingConnections: ConnectionData[]|undefined = GlobalConfiguration.get(`connections`);
+
+                    if (existingConnections) {
+                      const existingConnection = existingConnections.find(item => item.name === host);
+
+                      if (!existingConnection) {
+                        // New connection!
+                        existingConnections.push({
+                          ...connectionData,
+                          password: undefined, // Removes the password from the object
+                        });
+
+                        context.secrets.store(`${host}_password`, pass);
+
+                        await GlobalConfiguration.set(`connections`, existingConnections);
+                      }
+                    }
+                  }
+
                 } else {
                   window.showInformationMessage(`Failed to connect`, {
                     modal: true,
@@ -110,8 +140,7 @@ export async function handleStartup() {
       username,
       password,
       port: 22,
-      privateKey: null,
-      keepaliveInterval: 35000
+      privateKey: null
     };
 
     if (env.VSCODE_IBMI_SANDBOX) {
@@ -125,42 +154,7 @@ export async function handleStartup() {
     const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
 
     if (connectionResult) {
-      const config = instance.getConfig();
-      if (config) {
-        const libraryList = config.libraryList;
-        if (!libraryList.includes(username)) {
-          config.libraryList = [...config.libraryList, username];
-
-          config.objectFilters.push(
-            {
-              name: "Sandbox Sources",
-              library: username,
-              object: "*",
-              types: [
-                "*SRCPF"
-              ],
-              member: "*",
-              memberType: ""
-            },
-            {
-              name: "Sandbox Object Filters",
-              library: username,
-              object: "*",
-              types: [
-                "*ALL"
-              ],
-              member: "*",
-              memberType: ""
-            },
-          );
-
-          await ConnectionConfiguration.update(config);
-          commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-          commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
-        }
-      }
-
-      await commands.executeCommand(`helpView.focus`);
+      await initialSetup(connectionData.username);
 
     } else {
       window.showInformationMessage(`Oh no! The sandbox is down.`, {
@@ -170,3 +164,42 @@ export async function handleStartup() {
     }
   }
 } 
+
+async function initialSetup(username: string) {
+  const config = instance.getConfig();
+  if (config) {
+    const libraryList = config.libraryList;
+    if (!libraryList.includes(username)) {
+      config.libraryList = [...config.libraryList, username];
+
+      config.objectFilters.push(
+        {
+          name: "Sandbox Sources",
+          library: username,
+          object: "*",
+          types: [
+            "*SRCPF"
+          ],
+          member: "*",
+          memberType: ""
+        },
+        {
+          name: "Sandbox Object Filters",
+          library: username,
+          object: "*",
+          types: [
+            "*ALL"
+          ],
+          member: "*",
+          memberType: ""
+        },
+      );
+
+      await ConnectionConfiguration.update(config);
+      commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+      commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+    }
+  }
+
+  await commands.executeCommand(`helpView.focus`);
+}
