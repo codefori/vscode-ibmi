@@ -16,7 +16,10 @@
 				"${workspaceFolder}/dist/**/*.js"
 			],
 			"preLaunchTask": "npm: webpack",
-			"sourceMaps": true
+			"sourceMaps": true,
+			"env": {
+				"VSCODE_IBMI_SANDBOX": "true"
+			}
 		},
 		{
 			"name": "Extension Tests",
