@@ -131,7 +131,7 @@ export default class IBMi {
         let tempLibrarySet = false;
 
         const disconnected = async () => {
-          const choice = await vscode.window.showWarningMessage(`Connection list`, {
+          const choice = await vscode.window.showWarningMessage(`Connection lost`, {
             modal: true,
             detail: `Connection to ${this.currentConnectionName} has timed out. Would you like to reconnect?`
           }, `Yes`);
