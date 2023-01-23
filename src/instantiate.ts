@@ -10,7 +10,7 @@ import CompileTools from './api/CompileTools';
 
 import { Terminal } from './api/Terminal';
 import { Deployment } from './api/local/deployment';
-import Debug from './api/Debug';
+import * as Debug from './api/Debug';
 
 import { CustomUI, Field } from './api/CustomUI';
 
