@@ -33,6 +33,11 @@ let remoteApps = [
     // specific: `*.PGM`,
     specific: `QZDFMDB2.PGM`,
     names: [`QZDFMDB2.PGM`]
+  },
+  {
+    path: `/QIBM/ProdData/IBMiDebugService/bin/`,
+    specific: `startDebugService.sh`,
+    names: `startDebugService.sh`
   }
 ];
 
@@ -87,6 +92,7 @@ export default class IBMi {
       md5sum: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
+      'startDebugService.sh': undefined
     };
 
     this.variantChars = {
