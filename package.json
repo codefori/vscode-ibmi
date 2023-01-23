@@ -760,6 +760,21 @@
 		},
 		"commands": [
 			{
+				"command": "code-for-ibmi.debug.setup.remote",
+				"title": "Setup remote certificates",
+				"category": "IBM i Debug"
+			},
+			{
+				"command": "code-for-ibmi.debug.setup.local",
+				"title": "Setup local certificate",
+				"category": "IBM i Debug"
+			},
+			{
+				"command": "code-for-ibmi.debug.start",
+				"title": "Start debug server",
+				"category": "IBM i Debug"
+			},
+			{
 				"command": "code-for-ibmi.debug.activeEditor",
 				"title": "Start Debugging Active Source",
 				"category": "IBM i",

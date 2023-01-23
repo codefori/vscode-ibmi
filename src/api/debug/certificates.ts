@@ -7,8 +7,16 @@ const directory = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
 const pfxName = `debug_service.pfx`;
 const crtName = `debug_service.crt`;
 
+export function getKeystorePath() {
+  return path.posix.join(directory, pfxName);
+}
+
+export function getLocalCert() {
+  return path.join(os.homedir(), crtName);
+}
+
 export async function checkRemoteExists(connection: IBMi) {
-  const pfxPath = path.posix.join(directory, pfxName);
+  const pfxPath = getKeystorePath();
 
   const dirList = await connection.sendCommand({
     command: `ls -p ${pfxPath}`
@@ -16,7 +24,7 @@ export async function checkRemoteExists(connection: IBMi) {
 
   const list = dirList.stdout.split(`\n`);
 
-  return list.includes(pfxName);
+  return list.includes(pfxPath);
 }
 
 export async function setup(connection: IBMi) {
@@ -50,7 +58,7 @@ export async function setup(connection: IBMi) {
 
 export async function checkLocalExists() {
   try {
-    await fs.stat(path.join(os.homedir(), crtName));
+    await fs.stat(getLocalCert());
     // TODO: if local exists, but it's out of date with the server? e.g. md5 is different for example
     return true;
   } catch (e) {
