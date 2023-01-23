@@ -1,11 +1,10 @@
 import { ExtensionContext, Uri } from "vscode";
-import Instance from "./Instance";
+import Instance from "../Instance";
 
-const vscode = require(`vscode`);
-const path = require(`path`);
+import * as vscode from 'vscode';
+import path from "path";
 
-const Configuration = require(`./Configuration`);
-const IBMi = require(`./IBMi`);
+import * as certificates from "./certificates";
 
 /**
  * @param {*} instance 
@@ -88,6 +87,58 @@ export function initialise(instance: Instance, context: ExtensionContext) {
 
           startDebugging(debugOpts);
         }
+      }
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.debug.runSetup`, async () => {
+      const connection = instance.connection;
+      if (connection) {
+        const remoteExists = await certificates.checkRemoteExists(connection);
+        let remoteCertsAreNew = false;
+        let remoteCertsOk = false;
+
+        if (remoteExists) {
+          remoteCertsOk = true;
+        } else {
+          const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
+            modal: true,
+            detail: `Debug certificates are not setup on the system. Continue with setup?`
+          }, `Continue`);
+
+          if (doSetup) {
+            try {
+              await certificates.setup(connection);
+              remoteCertsOk = true;
+              remoteCertsAreNew = true;
+            } catch (e: any) {
+              vscode.window.showErrorMessage(e.message || e);
+            }
+          }
+        }
+
+        if (remoteCertsOk) {
+          vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.remote`, true);
+            
+          const localExists = await certificates.checkLocalExists();
+          let localCertsOk = true;
+
+          if (localExists === true && remoteCertsAreNew === false) {
+            localCertsOk = true;
+          } else {
+            try {
+              await certificates.downloadToLocal(connection);
+              localCertsOk = true;
+            } catch (e: any) {
+              vscode.window.showErrorMessage(`Failed to download debug certificate`);
+            }
+          }
+
+          if (localCertsOk) {
+            vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.local`, true);
+          }
+        }
+
+      } else {
+        vscode.window.showErrorMessage(`No connection to IBM i available.`);
       }
     })
   )
