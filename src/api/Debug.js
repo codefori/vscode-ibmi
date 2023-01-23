@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 <<<<<<<< HEAD:src/api/Debug.js
 const vscode = require(`vscode`);
 const path = require(`path`);
@@ -12,12 +13,26 @@ import path from "path";
 
 import * as certificates from "./certificates";
 =======
+=======
+<<<<<<<< HEAD:src/api/Debug.js
+>>>>>>> ef17100 (Initial setup)
 const vscode = require(`vscode`);
 const path = require(`path`);
+========
+import { ExtensionContext, Uri } from "vscode";
+import Instance from "../Instance";
 
+<<<<<<< HEAD
 const Configuration = require(`./Configuration`);
 const IBMi = require(`./IBMi`);
 >>>>>>> 497ac05 (Initial debug command)
+=======
+import * as vscode from 'vscode';
+import path from "path";
+>>>>>>>> cb25d66 (Initial setup):src/api/debug/index.ts
+
+import * as certificates from "./certificates";
+>>>>>>> ef17100 (Initial setup)
 
 /**
  * @param {*} instance 
@@ -89,6 +104,9 @@ exports.initialise = (instance, context) => {
         }
       }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> ef17100 (Initial setup)
     }),
     vscode.commands.registerCommand(`code-for-ibmi.debug.runSetup`, async () => {
       const connection = instance.connection;
@@ -141,8 +159,11 @@ exports.initialise = (instance, context) => {
       } else {
         vscode.window.showErrorMessage(`No connection to IBM i available.`);
       }
+<<<<<<< HEAD
 =======
 >>>>>>> 497ac05 (Initial debug command)
+=======
+>>>>>>> ef17100 (Initial setup)
     })
   )
 }
