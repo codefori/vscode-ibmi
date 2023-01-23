@@ -201,6 +201,8 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
     })
   );
 
+  // Run during startup:
+
   if (instance.connection) {
     if (instance.connection.remoteFeatures[`startDebugService.sh`]) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
@@ -218,7 +220,10 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
           vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
         }
       } else {
-        vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+        const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+        if (openTut === `Take me there`) {
+          vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`)
+        }
       }
     }
   }
