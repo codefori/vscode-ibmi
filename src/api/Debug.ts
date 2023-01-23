@@ -1,3 +1,6 @@
+import { ExtensionContext, Uri } from "vscode";
+import Instance from "./Instance";
+
 const vscode = require(`vscode`);
 const path = require(`path`);
 
@@ -8,23 +11,25 @@ const IBMi = require(`./IBMi`);
  * @param {*} instance 
  * @param {vscode.ExtensionContext} context 
  */
-exports.initialise = (instance, context) => {
-  const startDebugging = (options) => {
+export function initialise(instance: Instance, context: ExtensionContext) {
+  const startDebugging = (options: DebugOptions) => {
     exports.startDebug(instance, options);
   }
 
   /** @param {vscode.Uri} uri */
-  const getObjectFromUri = (uri) => {
+  const getObjectFromUri = (uri: Uri) => {
     /** @type {IBMi} */
     const connection = instance.getConnection();
   
     /** @type {Configuration} */
     const configuration = instance.getConfig();
     
-    const qualifiedPath = {
-      library: undefined,
-      object: undefined
-    };
+    const qualifiedPath: {
+      library: string|undefined,
+      object: string|undefined
+    } = {library: undefined, object: undefined};
+
+    if (connection && configuration) {
 
     switch (uri.scheme) {
     case `member`:
@@ -40,10 +45,13 @@ exports.initialise = (instance, context) => {
       break;
     }
 
-    // Remove .pgm ending potentially
-    qualifiedPath.object = qualifiedPath.object.toUpperCase();
-    if (qualifiedPath.object.endsWith(`.PGM`))
-      qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
+    if (qualifiedPath.object) {
+      // Remove .pgm ending potentially
+      qualifiedPath.object = qualifiedPath.object.toUpperCase();
+      if (qualifiedPath.object.endsWith(`.PGM`))
+        qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
+    }
+  }
 
     return qualifiedPath;
   }
@@ -52,11 +60,11 @@ exports.initialise = (instance, context) => {
     /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    let password = await context.secrets.get(`${connection.currentConnectionName}_password`);
+    let password = await context.secrets.get(`${connection!.currentConnectionName}_password`);
     if (!password) {
       password = await vscode.window.showInputBox({
         password: true,
-        prompt: `Password for user profile ${connection.currentUser} is required to debug.`
+        prompt: `Password for user profile ${connection!.currentUser} is required to debug.`
       });
     }
 
@@ -71,22 +79,27 @@ exports.initialise = (instance, context) => {
         const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
         const password = await getPassword();
 
-        if (password) {
-          startDebugging({
-            ...qualifiedObject,
-            password
-          });
+        if (password && qualifiedObject.library && qualifiedObject.object) {
+          const debugOpts: DebugOptions = {
+            password,
+            library: qualifiedObject.library,
+            object: qualifiedObject.object
+          };
+
+          startDebugging(debugOpts);
         }
       }
     })
   )
 }
 
-/**
- * @param {*} instance 
- * @param {{password: string, library: string, object: string}} options
- */
-exports.startDebug = async (instance, options) => {
+interface DebugOptions {
+  password: string;
+  library: string;
+  object: string;
+};
+
+export async function startDebug(instance: Instance, options: DebugOptions) {
   /** @type {IBMi} */
   const connection = instance.getConnection();
   const port = `8005`; //TODO: make configurable
@@ -104,9 +117,9 @@ exports.startDebug = async (instance, options) => {
     "type": `IBMiDebug`,
     "request": `launch`,
     "name": `Remote debug: Launch a batch debug session`,
-    "user": connection.currentUser.toUpperCase(),
+    "user": connection!.currentUser.toUpperCase(),
     "password": options.password,
-    "host": connection.currentHost,
+    "host": connection!.currentHost,
     "port": port,
     "secure": secure,  // Enforce secure mode
     "ignoreCertificateErrors": !secure,
