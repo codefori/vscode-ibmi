@@ -607,10 +607,6 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
-        if (this.remoteFeatures[`startDebugService.sh`]) {
-          vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.ptf`, true);
-        }
-
         vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
 
         return {

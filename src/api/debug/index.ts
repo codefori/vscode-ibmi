@@ -7,11 +7,15 @@ import path from "path";
 import * as certificates from "./certificates";
 import * as server from "./server";
 
+const ptfContext = `code-for-ibmi:debug.ptf`;
+const remoteCertContext = `code-for-ibmi:debug.remote`;
+const localCertContext = `code-for-ibmi:debug.local`;
+
 /**
  * @param {*} instance 
  * @param {vscode.ExtensionContext} context 
  */
-export function initialise(instance: Instance, context: ExtensionContext) {
+export async function initialise(instance: Instance, context: ExtensionContext) {
   const startDebugging = (options: DebugOptions) => {
     exports.startDebug(instance, options);
   }
@@ -126,7 +130,7 @@ export function initialise(instance: Instance, context: ExtensionContext) {
           }
 
           if (remoteCertsOk) {
-            vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.remote`, true);
+            vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
             vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`, remoteCertsAreNew);
           }
         } else {
@@ -160,7 +164,7 @@ export function initialise(instance: Instance, context: ExtensionContext) {
           }
 
           if (localCertsOk) {
-            vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.local`, true);
+            vscode.commands.executeCommand(`setContext`, localCertContext, true);
           }
         } else {
           vscode.window.showErrorMessage(`Debug PTF not installed.`);
@@ -195,7 +199,30 @@ export function initialise(instance: Instance, context: ExtensionContext) {
         }
       }
     })
-  )
+  );
+
+  if (instance.connection) {
+    if (instance.connection.remoteFeatures[`startDebugService.sh`]) {
+      vscode.commands.executeCommand(`setContext`, ptfContext, true);
+
+      const remoteCerts = await certificates.checkRemoteExists(instance.connection);
+
+      if (remoteCerts) {
+        vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
+
+        const localExists = await certificates.checkLocalExists();
+
+        if (localExists) {
+          vscode.commands.executeCommand(`setContext`, localCertContext, true);
+        } else {
+          vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+        }
+      } else {
+        vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+      }
+    }
+  }
+
 }
 
 interface DebugOptions {
