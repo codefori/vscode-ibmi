@@ -5,6 +5,7 @@ import * as vscode from 'vscode';
 import path from "path";
 
 import * as certificates from "./certificates";
+import * as server from "./server";
 
 /**
  * @param {*} instance 
@@ -19,38 +20,38 @@ export function initialise(instance: Instance, context: ExtensionContext) {
   const getObjectFromUri = (uri: Uri) => {
     /** @type {IBMi} */
     const connection = instance.getConnection();
-  
+
     /** @type {Configuration} */
     const configuration = instance.getConfig();
-    
+
     const qualifiedPath: {
-      library: string|undefined,
-      object: string|undefined
-    } = {library: undefined, object: undefined};
+      library: string | undefined,
+      object: string | undefined
+    } = { library: undefined, object: undefined };
 
     if (connection && configuration) {
 
-    switch (uri.scheme) {
-    case `member`:
-      const memberPath = connection.parserMemberPath(uri.path);
-      qualifiedPath.library = memberPath.library;
-      qualifiedPath.object = memberPath.member;
-      break;
-    case `streamfile`:
-    case `file`:
-      const parsedPath = path.parse(uri.path);
-      qualifiedPath.library = configuration.currentLibrary;
-      qualifiedPath.object = parsedPath.name;
-      break;
-    }
+      switch (uri.scheme) {
+        case `member`:
+          const memberPath = connection.parserMemberPath(uri.path);
+          qualifiedPath.library = memberPath.library;
+          qualifiedPath.object = memberPath.member;
+          break;
+        case `streamfile`:
+        case `file`:
+          const parsedPath = path.parse(uri.path);
+          qualifiedPath.library = configuration.currentLibrary;
+          qualifiedPath.object = parsedPath.name;
+          break;
+      }
 
-    if (qualifiedPath.object) {
-      // Remove .pgm ending potentially
-      qualifiedPath.object = qualifiedPath.object.toUpperCase();
-      if (qualifiedPath.object.endsWith(`.PGM`))
-        qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
+      if (qualifiedPath.object) {
+        // Remove .pgm ending potentially
+        qualifiedPath.object = qualifiedPath.object.toUpperCase();
+        if (qualifiedPath.object.endsWith(`.PGM`))
+          qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
+      }
     }
-  }
 
     return qualifiedPath;
   }
@@ -69,7 +70,12 @@ export function initialise(instance: Instance, context: ExtensionContext) {
 
     return password;
   }
-  
+
+  const debugPTFInstalled = async () => {
+    const connection = instance.getConnection();
+    return connection?.remoteFeatures[`startDebugService.sh`] !== undefined;
+  }
+
   context.subscriptions.push(
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
       const activeEditor = vscode.window.activeTextEditor;
@@ -89,56 +95,104 @@ export function initialise(instance: Instance, context: ExtensionContext) {
         }
       }
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.debug.runSetup`, async () => {
+
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, async () => {
       const connection = instance.connection;
       if (connection) {
-        const remoteExists = await certificates.checkRemoteExists(connection);
-        let remoteCertsAreNew = false;
-        let remoteCertsOk = false;
+        const ptfInstalled = await debugPTFInstalled();
 
-        if (remoteExists) {
-          remoteCertsOk = true;
-        } else {
-          const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
-            modal: true,
-            detail: `Debug certificates are not setup on the system. Continue with setup?`
-          }, `Continue`);
+        if (ptfInstalled) {
+          const remoteExists = await certificates.checkRemoteExists(connection);
+          let remoteCertsAreNew = false;
+          let remoteCertsOk = false;
 
-          if (doSetup) {
-            try {
-              await certificates.setup(connection);
-              remoteCertsOk = true;
-              remoteCertsAreNew = true;
-            } catch (e: any) {
-              vscode.window.showErrorMessage(e.message || e);
+          if (remoteExists) {
+            remoteCertsOk = true;
+          } else {
+            const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
+              modal: true,
+              detail: `Debug certificates are not setup on the system. Continue with setup?`
+            }, `Continue`);
+
+            if (doSetup) {
+              try {
+                await certificates.setup(connection);
+                remoteCertsOk = true;
+                remoteCertsAreNew = true;
+              } catch (e: any) {
+                vscode.window.showErrorMessage(e.message || e);
+              }
             }
           }
+
+          if (remoteCertsOk) {
+            vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.remote`, true);
+            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`, remoteCertsAreNew);
+          }
+        } else {
+          vscode.window.showErrorMessage(`Debug PTF not installed.`);
         }
 
-        if (remoteCertsOk) {
-          vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.remote`, true);
-            
-          const localExists = await certificates.checkLocalExists();
-          let localCertsOk = true;
+      } else {
+        vscode.window.showErrorMessage(`No connection to IBM i available.`);
+      }
+    }),
 
-          if (localExists === true && remoteCertsAreNew === false) {
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, async (force: boolean = false) => {
+      const connection = instance.connection;
+
+      if (connection) {
+        const ptfInstalled = await debugPTFInstalled();
+
+        if (ptfInstalled) {
+          const localExists = await certificates.checkLocalExists();
+          let localCertsOk = false;
+
+          if (localExists && !force) {
             localCertsOk = true;
           } else {
             try {
               await certificates.downloadToLocal(connection);
               localCertsOk = true;
             } catch (e: any) {
-              vscode.window.showErrorMessage(`Failed to download debug certificate`);
+              vscode.window.showErrorMessage(`Failed to download new local debug certificate`);
             }
           }
 
           if (localCertsOk) {
             vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debug.local`, true);
           }
+        } else {
+          vscode.window.showErrorMessage(`Debug PTF not installed.`);
         }
+      }
+    }),
 
-      } else {
-        vscode.window.showErrorMessage(`No connection to IBM i available.`);
+    vscode.commands.registerCommand(`code-for-ibmi.debug.start`, async () => {
+      const connection = instance.connection;
+      if (connection) {
+        const ptfInstalled = await debugPTFInstalled();
+        if (ptfInstalled) {
+          const remoteExists = await certificates.checkRemoteExists(connection);
+          if (remoteExists) {
+
+            const localExists = await certificates.checkLocalExists();
+            if (localExists) {
+              server.startup(connection);
+              
+            } else {
+              const localResult = await vscode.window.showErrorMessage(`Local debug certificate does not exist.`, `Setup`);
+              if (localResult === `Setup`) {
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+              }
+            }
+
+          } else {
+            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
+          }
+        } else {
+          vscode.window.showErrorMessage(`Debug PTF not installed.`);
+        }
       }
     })
   )
@@ -161,7 +215,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
   if (secure) {
     // TODO: automatically download .p12, decode and place into local filesystem
-    process.env[`DEBUG_CA_PATH`] = `/Users/barry/Downloads/merlin-https-cert.ca.crt`
+    process.env[`DEBUG_CA_PATH`] = certificates.getKeystorePath();
   }
 
   const config = {
