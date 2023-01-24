@@ -82,20 +82,30 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
   context.subscriptions.push(
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
-      const activeEditor = vscode.window.activeTextEditor;
+      const connection = instance.connection;
+      if (connection) {
+        if (connection.remoteFeatures[`startDebugService.sh`]) {
+          const activeEditor = vscode.window.activeTextEditor;
 
-      if (activeEditor) {
-        const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
-        const password = await getPassword();
+          if (activeEditor) {
+            const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
+            const password = await getPassword();
 
-        if (password && qualifiedObject.library && qualifiedObject.object) {
-          const debugOpts: DebugOptions = {
-            password,
-            library: qualifiedObject.library,
-            object: qualifiedObject.object
-          };
+            if (password && qualifiedObject.library && qualifiedObject.object) {
+              const debugOpts: DebugOptions = {
+                password,
+                library: qualifiedObject.library,
+                object: qualifiedObject.object
+              };
 
-          startDebugging(debugOpts);
+              startDebugging(debugOpts);
+            }
+          }
+        } else {
+          const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+          if (openTut === `Take me there`) {
+            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+          }
         }
       }
     }),
@@ -182,11 +192,11 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
             const localExists = await certificates.checkLocalExists(connection);
             if (localExists) {
-              vscode.window.withProgress({location: 15}, async (progress) => {
-                progress.report({increment: 25, message: `Ending server if it is already running.`});
+              vscode.window.withProgress({ location: 15 }, async (progress) => {
+                progress.report({ increment: 25, message: `Ending server if it is already running.` });
                 const endResult = await server.end(connection);
 
-                progress.report({increment: 25, message: `${endResult ? `Ended existing server.` : `Server was not running.`} Starting server up.`});
+                progress.report({ increment: 25, message: `${endResult ? `Ended existing server.` : `Server was not running.`} Starting server up.` });
                 await server.startup(connection);
               })
 
@@ -231,6 +241,8 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
           vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`)
         }
       }
+    } else {
+      vscode.window.showErrorMessage(`Debug PTF not installed.`);
     }
   }
 
@@ -261,7 +273,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
   const previousCommands = storage!.getDebugCommands();
 
-  let currentCommand: string|undefined = previousCommands[pathKey] || `CALL PGM(` + pathKey + `)`;
+  let currentCommand: string | undefined = previousCommands[pathKey] || `CALL PGM(` + pathKey + `)`;
 
   currentCommand = await vscode.window.showInputBox({
     ignoreFocusOut: true,
