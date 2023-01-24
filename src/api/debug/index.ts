@@ -243,11 +243,11 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const updateProductionFiles = false; // TODO: configurable
   const enableDebugTracing = false; // TODO: configurable
 
-  const secure = false; // TODO: make configurable
+  const secure = true; // TODO: make configurable
 
   if (secure) {
     // TODO: automatically download .p12, decode and place into local filesystem
-    process.env[`DEBUG_CA_PATH`] = certificates.getKeystorePath();
+    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCert();
   }
 
   const config = {
