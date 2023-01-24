@@ -601,7 +601,7 @@
 							"extensions": [
 								"lf"
 							],
-							"name": "Create :Logical File (CRTLF)",
+							"name": "Create Logical File (CRTLF)",
 							"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF)"
 						},
 						{
