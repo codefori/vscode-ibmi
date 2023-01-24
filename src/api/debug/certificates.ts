@@ -11,8 +11,9 @@ export function getKeystorePath() {
   return path.posix.join(directory, pfxName);
 }
 
-export function getLocalCert() {
-  return path.join(os.homedir(), crtName);
+export function getLocalCert(connection: IBMi) {
+  const host = connection.currentHost;
+  return path.join(os.homedir(), `${host}_${crtName}`);
 }
 
 export async function checkRemoteExists(connection: IBMi) {
@@ -56,9 +57,9 @@ export async function setup(connection: IBMi) {
   }
 }
 
-export async function checkLocalExists() {
+export async function checkLocalExists(connection: IBMi) {
   try {
-    await fs.stat(getLocalCert());
+    await fs.stat(getLocalCert(connection));
     // TODO: if local exists, but it's out of date with the server? e.g. md5 is different for example
     return true;
   } catch (e) {
@@ -68,7 +69,7 @@ export async function checkLocalExists() {
 
 export function downloadToLocal(connection: IBMi) {
   return connection.downloadFile(
-    path.join(os.homedir(), crtName), 
+    getLocalCert(connection), 
     path.posix.join(directory, crtName)
   );
 }
