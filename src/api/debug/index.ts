@@ -183,7 +183,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
             const localExists = await certificates.checkLocalExists(connection);
             if (localExists) {
               server.startup(connection);
-              
+
             } else {
               const localResult = await vscode.window.showErrorMessage(`Local debug certificate does not exist.`, `Setup`);
               if (localResult === `Setup`) {
@@ -239,6 +239,7 @@ interface DebugOptions {
 export async function startDebug(instance: Instance, options: DebugOptions) {
   const connection = instance.getConnection();
   const config = instance.getConfig();
+  const storage = instance.getStorage();
 
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;
@@ -250,22 +251,40 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     process.env[`DEBUG_CA_PATH`] = certificates.getLocalCert(connection!);
   }
 
-  const debugConfig = {
-    "type": `IBMiDebug`,
-    "request": `launch`,
-    "name": `Remote debug: Launch a batch debug session`,
-    "user": connection!.currentUser.toUpperCase(),
-    "password": options.password,
-    "host": connection!.currentHost,
-    "port": port,
-    "secure": secure,  // Enforce secure mode
-    "ignoreCertificateErrors": !secure,
-    "library": options.library.toUpperCase(),
-    "program": options.object.toUpperCase(),
-    "startBatchJobCommand": `SBMJOB CMD(CALL PGM(` + options.library + `/` + options.object + `))`,
-    "updateProductionFiles": updateProductionFiles,
-    "trace": enableDebugTracing,
-  };
+  const pathKey = options.library.trim() + `/` + options.object.trim();
 
-  vscode.debug.startDebugging(undefined, debugConfig, undefined);
+  const previousCommands = storage!.getDebugCommands();
+
+  let currentCommand: string|undefined = previousCommands[pathKey] || `SBMJOB CMD(CALL PGM(` + pathKey + `))`;
+
+  currentCommand = await vscode.window.showInputBox({
+    ignoreFocusOut: true,
+    title: `Debug command`,
+    prompt: `Command used to start debugging`,
+    value: currentCommand
+  });
+
+  if (currentCommand) {
+    previousCommands[pathKey] = currentCommand;
+    storage?.setDebugCommands(previousCommands);
+
+    const debugConfig = {
+      "type": `IBMiDebug`,
+      "request": `launch`,
+      "name": `Remote debug: Launch a batch debug session`,
+      "user": connection!.currentUser.toUpperCase(),
+      "password": options.password,
+      "host": connection!.currentHost,
+      "port": port,
+      "secure": secure,  // Enforce secure mode
+      "ignoreCertificateErrors": !secure,
+      "library": options.library.toUpperCase(),
+      "program": options.object.toUpperCase(),
+      "startBatchJobCommand": currentCommand,
+      "updateProductionFiles": updateProductionFiles,
+      "trace": enableDebugTracing,
+    };
+
+    vscode.debug.startDebugging(undefined, debugConfig, undefined);
+  }
 }
