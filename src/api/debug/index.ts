@@ -237,20 +237,20 @@ interface DebugOptions {
 };
 
 export async function startDebug(instance: Instance, options: DebugOptions) {
-  /** @type {IBMi} */
   const connection = instance.getConnection();
-  const port = `8005`; //TODO: make configurable
-  const updateProductionFiles = false; // TODO: configurable
-  const enableDebugTracing = false; // TODO: configurable
+  const config = instance.getConfig();
 
-  const secure = true; // TODO: make configurable
+  const port = config?.debugPort;
+  const updateProductionFiles = config?.debugUpdateProductionFiles;
+  const enableDebugTracing = config?.debugEnableDebugTracing; // TODO: configurable
+
+  const secure = config?.debugSecure; // TODO: make configurable
 
   if (secure) {
-    // TODO: automatically download .p12, decode and place into local filesystem
     process.env[`DEBUG_CA_PATH`] = certificates.getLocalCert();
   }
 
-  const config = {
+  const debugConfig = {
     "type": `IBMiDebug`,
     "request": `launch`,
     "name": `Remote debug: Launch a batch debug session`,
@@ -267,5 +267,5 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     "trace": enableDebugTracing,
   };
 
-  vscode.debug.startDebugging(undefined, config, undefined);
+  vscode.debug.startDebugging(undefined, debugConfig, undefined);
 }

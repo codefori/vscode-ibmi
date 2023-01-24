@@ -343,6 +343,26 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Show description of libraries in User Library List (recommended to also enable SQL)."
+							},
+							"debugPort": {
+								"type": "string",
+								"default": "8005",
+								"description": "Port to connect to IBM i Debug Service."
+							},
+							"debugSecure": {
+								"type": "boolean",
+								"default": true,
+								"description": "Used to determine if the client should connect securely or not."
+							},
+							"debugUpdateProductionFiles": {
+								"type": "boolean",
+								"default": false,
+								"description": "Whether the job being debugged can update objects in production (*PROD) libraries"
+							},
+							"debugEnableDebugTracing": {
+								"type": "boolean",
+								"default": false,
+								"description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
 							}
 						}
 					}
