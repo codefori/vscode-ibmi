@@ -182,7 +182,13 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
             const localExists = await certificates.checkLocalExists(connection);
             if (localExists) {
-              server.startup(connection);
+              vscode.window.withProgress({location: 15}, async (progress) => {
+                progress.report({increment: 25, message: `Ending server if it is already running.`});
+                const endResult = await server.end(connection);
+
+                progress.report({increment: 25, message: `${endResult ? `Ended existing server.` : `Server was not running.`} Starting server up.`});
+                await server.startup(connection);
+              })
 
             } else {
               const localResult = await vscode.window.showErrorMessage(`Local debug certificate does not exist.`, `Setup`);
