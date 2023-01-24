@@ -149,7 +149,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
         const ptfInstalled = await debugPTFInstalled();
 
         if (ptfInstalled) {
-          const localExists = await certificates.checkLocalExists();
+          const localExists = await certificates.checkLocalExists(connection);
           let localCertsOk = false;
 
           if (localExists && !force) {
@@ -180,7 +180,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
           const remoteExists = await certificates.checkRemoteExists(connection);
           if (remoteExists) {
 
-            const localExists = await certificates.checkLocalExists();
+            const localExists = await certificates.checkLocalExists(connection);
             if (localExists) {
               server.startup(connection);
               
@@ -212,7 +212,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
       if (remoteCerts) {
         vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
-        const localExists = await certificates.checkLocalExists();
+        const localExists = await certificates.checkLocalExists(instance.connection);
 
         if (localExists) {
           vscode.commands.executeCommand(`setContext`, localCertContext, true);
@@ -247,7 +247,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const secure = config?.debugSecure; // TODO: make configurable
 
   if (secure) {
-    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCert();
+    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCert(connection!);
   }
 
   const debugConfig = {
