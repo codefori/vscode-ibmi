@@ -255,12 +255,12 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
   const previousCommands = storage!.getDebugCommands();
 
-  let currentCommand: string|undefined = previousCommands[pathKey] || `SBMJOB CMD(CALL PGM(` + pathKey + `))`;
+  let currentCommand: string|undefined = previousCommands[pathKey] || `CALL PGM(` + pathKey + `)`;
 
   currentCommand = await vscode.window.showInputBox({
     ignoreFocusOut: true,
     title: `Debug command`,
-    prompt: `Command used to start debugging`,
+    prompt: `Command used to start debugging. The command is wrapped around SBMJOB.`,
     value: currentCommand
   });
 
@@ -280,7 +280,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       "ignoreCertificateErrors": !secure,
       "library": options.library.toUpperCase(),
       "program": options.object.toUpperCase(),
-      "startBatchJobCommand": currentCommand,
+      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${config?.libraryList.join(` `)}) CURLIB(${config?.currentLibrary})`,
       "updateProductionFiles": updateProductionFiles,
       "trace": enableDebugTracing,
     };
