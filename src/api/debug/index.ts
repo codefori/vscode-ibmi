@@ -121,6 +121,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
           let remoteCertsOk = false;
 
           if (remoteExists) {
+            vscode.window.showInformationMessage(`Certificates already exist on the server.`);
             remoteCertsOk = true;
           } else {
             const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
@@ -131,6 +132,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
             if (doSetup) {
               try {
                 await certificates.setup(connection);
+                vscode.window.showInformationMessage(`Certificates successfully generated on server.`);
                 remoteCertsOk = true;
                 remoteCertsAreNew = true;
               } catch (e: any) {
@@ -164,9 +166,11 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
           if (localExists && !force) {
             localCertsOk = true;
+            vscode.window.showInformationMessage(`Certificates already exist locally. Skipping this step.`);
           } else {
             try {
               await certificates.downloadToLocal(connection);
+              vscode.window.showInformationMessage(`Certificates successfully download to local device.`);
               localCertsOk = true;
             } catch (e: any) {
               vscode.window.showErrorMessage(`Failed to download new local debug certificate`);
@@ -196,7 +200,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
                 let startupService = false;
 
-                progress.report({ increment: 25, message: `Checking if service is already running.` });
+                progress.report({ increment: 20, message: `Checking if service is already running.` });
                 const isRunning = await server.isRunning(connection.config?.debugPort || "8005", instance.content!);
 
                 if (isRunning) {
@@ -206,7 +210,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
                   }, `End service`);
                   
                   if (confirmEndServer === `End service`) {
-                    progress.report({ increment: 25, message: `Ending service if it is already running.` });
+                    progress.report({ increment: 25, message: `Ending currently running service.` });
                     const endResult = await server.end(connection);
                     startupService = true;
                   }
