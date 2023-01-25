@@ -263,8 +263,6 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
           vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`)
         }
       }
-    } else {
-      vscode.window.showErrorMessage(`Debug PTF not installed.`);
     }
   }
 
