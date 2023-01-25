@@ -192,12 +192,34 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
             const localExists = await certificates.checkLocalExists(connection);
             if (localExists) {
-              vscode.window.withProgress({ location: 15 }, async (progress) => {
-                progress.report({ increment: 25, message: `Ending server if it is already running.` });
-                const endResult = await server.end(connection);
+              vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
 
-                progress.report({ increment: 25, message: `${endResult ? `Ended existing server.` : `Server was not running.`} Starting server up.` });
-                await server.startup(connection);
+                let startupService = false;
+
+                progress.report({ increment: 25, message: `Checking if service is already running.` });
+                const isRunning = await server.isRunning(connection.config?.debugPort || "8005", instance.content!);
+
+                if (isRunning) {
+                  const confirmEndServer = await vscode.window.showInformationMessage(`Starting debug server`, {
+                    detail: `Looks like the debug service is currently running. Do you want to end it to start a new instance?`,
+                    modal: true
+                  }, `End service`);
+                  
+                  if (confirmEndServer === `End service`) {
+                    progress.report({ increment: 25, message: `Ending service if it is already running.` });
+                    const endResult = await server.end(connection);
+                    startupService = true;
+                  }
+                } else {
+                  startupService = true;
+                }
+
+                if (startupService) {
+                  progress.report({ increment: 25, message: `Starting service up.` });
+                  await server.startup(connection);
+                } else {
+                  vscode.window.showInformationMessage(`Cancelled startup of debug service.`);
+                }
               })
 
             } else {

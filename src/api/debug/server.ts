@@ -1,6 +1,7 @@
 import path from "path";
 
 import IBMi from "../IBMi";
+import IBMiContent from "../IBMiContent";
 import * as certificates from "./certificates";
 
 const directory = `/QIBM/ProdData/IBMiDebugService/bin/`;
@@ -21,6 +22,12 @@ export async function startup(connection: IBMi) {
   });
 
   return;
+}
+
+export async function isRunning(localPort: string, content: IBMiContent) {
+  const rows = await content.runSQL(`select job_name, authorization_name from qsys2.netstat_job_info j where local_port = ${localPort} group by job_name, authorization_name`);
+
+  return rows.length > 0;
 }
 
 export async function end(connection: IBMi) {
