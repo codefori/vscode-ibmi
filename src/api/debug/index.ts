@@ -69,10 +69,17 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
     let password = await context.secrets.get(`${connection!.currentConnectionName}_password`);
 
     if (!password) {
+      password = temporaryPassword;
+    }
+
+    if (!password) {
       password = await vscode.window.showInputBox({
         password: true,
-        prompt: `Password for user profile ${connection!.currentUser} is required to debug. Password is stored on device, but is stored temporarily for this connection.`
+        prompt: `Password for user profile ${connection!.currentUser} is required to debug. Password is not stored on device, but is stored temporarily for this connection.`
       });
+
+      // Store for later
+      temporaryPassword = password;
     }
 
     return password;
