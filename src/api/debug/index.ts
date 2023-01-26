@@ -11,6 +11,7 @@ const ptfContext = `code-for-ibmi:debug.ptf`;
 const remoteCertContext = `code-for-ibmi:debug.remote`;
 const localCertContext = `code-for-ibmi:debug.local`;
 
+let connectionConfirmed = false;
 let temporaryPassword: string|undefined;
 
 /**
@@ -339,9 +340,12 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
     const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
 
-    if (debugResult === false) {
-      // Debug didn't start correctly. Reset the temp password.
-      temporaryPassword = undefined;
+    if (debugResult) {
+      connectionConfirmed = true;
+    } else {
+      if (!connectionConfirmed) {
+        temporaryPassword = undefined;
+      }
     }
   }
 }
