@@ -326,7 +326,8 @@ module.exports = class SettingsUI {
 
             if(data.password && !data.privateKey) {
               context.secrets.delete(`${name}_password`);
-              context.secrets.store(`${name}_password`, `${data.password}`)
+              context.secrets.store(`${name}_password`, `${data.password}`);
+              data.privateKey = ``;
             };
 
             delete data.password;

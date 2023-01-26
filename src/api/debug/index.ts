@@ -11,6 +11,8 @@ const ptfContext = `code-for-ibmi:debug.ptf`;
 const remoteCertContext = `code-for-ibmi:debug.remote`;
 const localCertContext = `code-for-ibmi:debug.local`;
 
+let temporaryPassword: string|undefined;
+
 /**
  * @param {*} instance 
  * @param {vscode.ExtensionContext} context 
@@ -65,10 +67,11 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
     const connection = instance.getConnection();
 
     let password = await context.secrets.get(`${connection!.currentConnectionName}_password`);
+
     if (!password) {
       password = await vscode.window.showInputBox({
         password: true,
-        prompt: `Password for user profile ${connection!.currentUser} is required to debug.`
+        prompt: `Password for user profile ${connection!.currentUser} is required to debug. Password is stored on device, but is stored temporarily for this connection.`
       });
     }
 
@@ -327,6 +330,11 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       "trace": enableDebugTracing,
     };
 
-    vscode.debug.startDebugging(undefined, debugConfig, undefined);
+    const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
+
+    if (debugResult === false) {
+      // Debug didn't start correctly. Reset the temp password.
+      temporaryPassword = undefined;
+    }
   }
 }
