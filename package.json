@@ -1162,7 +1162,7 @@
 				"enablement": "code-for-ibmi:connected == true",
 				"title": "Copy filter",
 				"category": "IBM i",
-				"icon": "$(filter)"
+				"icon": "$(copy)"
 			},
 			{
 				"command": "code-for-ibmi.maintainFilter",
@@ -1405,11 +1405,6 @@
 				},
 				{
 					"command": "code-for-ibmi.createFilter",
-					"group": "navigation",
-					"when": "view == objectBrowser"
-				},
-				{
-					"command": "code-for-ibmi.copyFilter",
 					"group": "navigation",
 					"when": "view == objectBrowser"
 				},
