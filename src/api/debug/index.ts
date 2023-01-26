@@ -7,18 +7,25 @@ import path from "path";
 import * as certificates from "./certificates";
 import * as server from "./server";
 
+const debugExtensionId = `IBM.ibmidebug`;
+
 const ptfContext = `code-for-ibmi:debug.ptf`;
 const remoteCertContext = `code-for-ibmi:debug.remote`;
 const localCertContext = `code-for-ibmi:debug.local`;
 
 let connectionConfirmed = false;
-let temporaryPassword: string|undefined;
+let temporaryPassword: string | undefined;
 
 /**
  * @param {*} instance 
  * @param {vscode.ExtensionContext} context 
  */
 export async function initialise(instance: Instance, context: ExtensionContext) {
+  const debugExtensionAvailable = () => {
+    const debugclient = vscode.extensions.getExtension(debugExtensionId);
+    return debugclient !== undefined;
+  }
+
   const startDebugging = (options: DebugOptions) => {
     exports.startDebug(instance, options);
   }
@@ -92,32 +99,48 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
   }
 
   context.subscriptions.push(
+    vscode.commands.registerCommand(`code-for-ibmi.debug.extension`, () => {
+      vscode.commands.executeCommand('extension.open', debugExtensionId);
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
-      const connection = instance.connection;
-      if (connection) {
-        if (connection.remoteFeatures[`startDebugService.sh`]) {
-          const activeEditor = vscode.window.activeTextEditor;
+      if (debugExtensionAvailable()) {
+        const connection = instance.connection;
+        if (connection) {
+          if (connection.remoteFeatures[`startDebugService.sh`]) {
+            const activeEditor = vscode.window.activeTextEditor;
 
-          if (activeEditor) {
-            const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
-            const password = await getPassword();
+            if (activeEditor) {
+              const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
+              const password = await getPassword();
 
-            if (password && qualifiedObject.library && qualifiedObject.object) {
-              const debugOpts: DebugOptions = {
-                password,
-                library: qualifiedObject.library,
-                object: qualifiedObject.object
-              };
+              if (password && qualifiedObject.library && qualifiedObject.object) {
+                const debugOpts: DebugOptions = {
+                  password,
+                  library: qualifiedObject.library,
+                  object: qualifiedObject.object
+                };
 
-              startDebugging(debugOpts);
+                startDebugging(debugOpts);
+              }
+            }
+          } else {
+            const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+            if (openTut === `Take me there`) {
+              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
             }
           }
-        } else {
-          const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-          if (openTut === `Take me there`) {
-            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
-          }
         }
+
+      } else {
+        vscode.window.showInformationMessage(`Debug extension missing`, {
+          detail: `The IBM i Debug extension is not installed. It can be installed from the Marketplace.`,
+          modal: true
+        }, `Go to Marketplace`).then(result => {
+          if (result === `Go to Marketplace`) {
+            vscode.commands.executeCommand('code-for-ibmi.debug.extension');
+          }
+        });
       }
     }),
 
@@ -219,7 +242,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
                     detail: `Looks like the debug service is currently running. Do you want to end it to start a new instance?`,
                     modal: true
                   }, `End service`);
-                  
+
                   if (confirmEndServer === `End service`) {
                     progress.report({ increment: 25, message: `Ending currently running service.` });
                     const endResult = await server.end(connection);
@@ -275,7 +298,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
       } else {
         const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
         if (openTut === `Take me there`) {
-          vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`)
+          vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
         }
       }
     }
