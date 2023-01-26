@@ -177,14 +177,14 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
           if (localExists && !force) {
             localCertsOk = true;
-            vscode.window.showInformationMessage(`Certificates already exist locally. Skipping this step.`);
+            vscode.window.showInformationMessage(`Debug certificates already exist locally. Skipping this step.`);
           } else {
             try {
               await certificates.downloadToLocal(connection);
-              vscode.window.showInformationMessage(`Certificates successfully download to local device.`);
+              vscode.window.showInformationMessage(`Debug certificates successfully downloaded to local device.`);
               localCertsOk = true;
             } catch (e: any) {
-              vscode.window.showErrorMessage(`Failed to download new local debug certificate`);
+              vscode.window.showErrorMessage(`Failed to download new local debug certificate.`);
             }
           }
 
@@ -215,7 +215,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
                 const isRunning = await server.isRunning(connection.config?.debugPort || "8005", instance.content!);
 
                 if (isRunning) {
-                  const confirmEndServer = await vscode.window.showInformationMessage(`Starting debug server`, {
+                  const confirmEndServer = await vscode.window.showInformationMessage(`Starting debug service`, {
                     detail: `Looks like the debug service is currently running. Do you want to end it to start a new instance?`,
                     modal: true
                   }, `End service`);
