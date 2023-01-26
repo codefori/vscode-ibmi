@@ -30,15 +30,15 @@ module.exports = class FiltersUI {
       }
 
       if (copy) {
-        name = ``;
         filter = {
-          name: `Filter ${objectFilters.length + 1}`,
+          name: `${name} - copy`,
           library: filter.library,
           object: filter.object,
           types: [...filter.types],
           member: filter.member,
         }
         existingConfigIndex = -1;
+        name = ``;
       }
 
     } else {
