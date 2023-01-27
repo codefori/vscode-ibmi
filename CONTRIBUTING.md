@@ -40,3 +40,4 @@ Thanks so much to everyone [who has contributed](https://github.com/halcyon-tech
 * [@sebjulliand](https://github.com/sebjulliand)
 * [@ScottKlement](https://github.com/ScottKlement)
 * [@jhannafin](https://github.com/jhannafin)
+* [@sebCIL](https://github.com/sebCIL)
