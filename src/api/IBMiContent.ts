@@ -456,26 +456,38 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string): Promise<IFSFile[]> {
+  async getFileList(remotePath: string): Promise<IFSFile[] | IBMiError > {
     const items: IFSFile[] = [];
 
-    const fileList = (await this.ibmi.sendCommand({
+    const fileListResult = (await this.ibmi.sendCommand({
       command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
-    })).stdout;
+    }));
 
-    //Remove current and dir up.
-    fileList.split(`\n`)
-      .filter(item => item !== `../` && item !== `./`)
-      .forEach(item => {
-        const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-        items.push({
-          type,
-          name: (type === `directory` ? item.substring(0, item.length - 1) : item),
-          path: path.posix.join(remotePath, item)
+    if (fileListResult.code === 0) {
+      const fileList = fileListResult.stdout;
+
+      //Remove current and dir up.
+      fileList.split(`\n`)
+        .filter(item => item !== `../` && item !== `./`)
+        .forEach(item => {
+          const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
+          items.push({
+            type,
+            name: (type === `directory` ? item.substring(0, item.length - 1) : item),
+            path: path.posix.join(remotePath, item)
+          });
         });
-      });
 
-    return items.sort((a, b) => a.name.localeCompare(b.name));
+        return items.sort((a, b) => a.name.localeCompare(b.name));
+
+    } else {
+      const error: IBMiError = {
+        code: fileListResult.code!.toString(),
+        text: fileListResult.stderr
+      }
+      return error;
+    }
+
   }
 
   /**

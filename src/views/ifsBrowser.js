@@ -554,11 +554,16 @@ module.exports = class ifsBrowserProvider {
         try {
           const objects = await content.getFileList(element.path);
 
-          items = objects.filter(o => o.type === `directory`)
-            .concat(objects.filter(o => o.type === `streamfile`))
-            .map(object => new Object(object.type, object.name, object.path));
+          if (objects.code && objects.code > 0){
+            vscode.window.showErrorMessage(objects.text);
+          } else {
 
-          await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
+            items = objects.filter(o => o.type === `directory`)
+              .concat(objects.filter(o => o.type === `streamfile`))
+              .map(object => new Object(object.type, object.name, object.path));
+
+            await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
+          }
 
         } catch (e) {
           console.log(e);
@@ -569,11 +574,6 @@ module.exports = class ifsBrowserProvider {
 
       } else {
         items = config.ifsShortcuts.map(directory => new Object(`shortcut`, directory, directory));
-        // const objects = await content.getFileList(config.homeDirectory);
-
-        // for (let object of objects) {
-        //   items.push(new Object(object.type, object.name, object.path));
-        // }
       }
     }
 
