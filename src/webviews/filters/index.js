@@ -9,12 +9,13 @@ module.exports = class FiltersUI {
   /**
    * @param {string} name
    */
-  static async init(name) {
+  static async init(name, copy = false) {
     /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     const objectFilters = config.objectFilters;
 
     let existingConfigIndex;
+
     let filter;
 
     if (name) {
@@ -26,6 +27,18 @@ module.exports = class FiltersUI {
       } else {
         vscode.window.showErrorMessage(`Filter ${name} not found`);
         return;
+      }
+
+      if (copy) {
+        filter = {
+          name: `${name} - copy`,
+          library: filter.library,
+          object: filter.object,
+          types: [...filter.types],
+          member: filter.member,
+        }
+        existingConfigIndex = -1;
+        name = ``;
       }
 
     } else {

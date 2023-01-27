@@ -1158,6 +1158,13 @@
 				"icon": "$(filter)"
 			},
 			{
+				"command": "code-for-ibmi.copyFilter",
+				"enablement": "code-for-ibmi:connected == true",
+				"title": "Copy filter",
+				"category": "IBM i",
+				"icon": "$(copy)"
+			},
+			{
 				"command": "code-for-ibmi.maintainFilter",
 				"enablement": "code-for-ibmi:connected == true",
 				"title": "Maintain filter",
@@ -1551,9 +1558,14 @@
 					"group": "4_filters@1"
 				},
 				{
-					"command": "code-for-ibmi.deleteFilter",
+					"command": "code-for-ibmi.copyFilter",
 					"when": "viewItem == filter",
 					"group": "4_filters@2"
+				},
+				{
+					"command": "code-for-ibmi.deleteFilter",
+					"when": "viewItem == filter",
+					"group": "4_filters@3"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",

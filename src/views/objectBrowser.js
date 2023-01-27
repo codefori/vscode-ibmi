@@ -27,6 +27,13 @@ module.exports = class objectBrowserTwoProvider {
         this.refresh();
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.copyFilter`, async (node) => {
+        if (node) {
+          await FiltersUI.init(node.filter, true);
+          this.refresh();
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.maintainFilter`, async (node) => {
         await FiltersUI.init(node ? node.filter : undefined);
         this.refresh();
