@@ -166,7 +166,7 @@ export namespace Deployment {
       const remotePath = existingPaths ? existingPaths[folder.uri.fsPath] : '';
 
       // get the .gitignore file from workspace
-      const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, `**/.gitignore`), ``, 1);
+      const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, `.gitignore`), ``, 1);
       const ignoreRules = ignore({ ignorecase: true }).add(`.git`);
       if (gitignores.length > 0) {
         // get the content from the file
