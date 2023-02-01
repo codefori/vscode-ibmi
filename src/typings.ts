@@ -1,14 +1,29 @@
-import { ExtensionContext } from "vscode";
+import { ExtensionContext, Uri } from "vscode";
 import Instance from "./api/Instance";
-import { Deployment } from "./api/local/deployment";
+import { Ignore } from 'ignore'
 
 export interface CodeForIBMi {
   instance: Instance,
   baseContext: ExtensionContext,
   CustomUI: object, //CustomUI: typeof CustomUI
   Field: object //Field: typeof Field;
-  deploy: (parameters: Deployment.DeploymentParameters) => Promise<boolean>
+  deploy: (parameters: DeploymentParameters) => Promise<boolean>
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
+}
+
+export enum DeploymentMethod {
+  "all",
+  "staged",
+  "unstaged",
+  "changed",
+  "compare"
+}
+
+export interface DeploymentParameters {
+  method: DeploymentMethod
+  localFolder: Uri
+  remotePath: string
+  ignoreRules?: Ignore
 }
 
 export interface StandardIO {
