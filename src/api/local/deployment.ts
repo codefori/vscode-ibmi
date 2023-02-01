@@ -7,26 +7,19 @@ import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { GitExtension } from '../import/git';
 import { instance } from '../../instantiate';
 import Instance from '../Instance';
-import { Ignore } from 'ignore'
 import ignore from 'ignore'
 import { NodeSSH } from 'node-ssh';
 import { readFileSync } from 'fs';
 import Crypto from 'crypto';
 import IBMi from '../IBMi';
+import { DeploymentMethod, DeploymentParameters } from '../../typings';
 
 export namespace Deployment {
   interface Upload {
     local: string
     remote: string
     uri: vscode.Uri
-  }
-
-  export interface DeploymentParameters {
-    method: Method
-    localFolder: vscode.Uri
-    remotePath: string
-    ignoreRules?: Ignore
-  }
+  }  
 
   interface MD5Entry {
     path: string
@@ -39,14 +32,6 @@ export namespace Deployment {
   const deploymentLog = vscode.window.createOutputChannel(`IBM i Deployment`);
   const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
   const changes: Map<string, vscode.Uri> = new Map;
-
-  export enum Method {
-    "all",
-    "staged",
-    "unstaged",
-    "changed",
-    "compare"
-  }
 
   export function initialize(context: vscode.ExtensionContext, instance: Instance) {
     button.command = {
@@ -166,7 +151,7 @@ export namespace Deployment {
       const remotePath = existingPaths ? existingPaths[folder.uri.fsPath] : '';
 
       // get the .gitignore file from workspace
-      const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, `.gitignore`), ``, 1);
+      const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, `**/.gitignore`), ``, 1);
       const ignoreRules = ignore({ ignorecase: true }).add(`.git`);
       if (gitignores.length > 0) {
         // get the content from the file
@@ -178,13 +163,13 @@ export namespace Deployment {
       if (remotePath) {
         const methods = [];
         if (getConnection().remoteFeatures.md5sum) {
-          methods.push({ method: Method.compare, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
+          methods.push({ method: DeploymentMethod.compare, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
         }
         methods.push(
-          { method: Method.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
-          { method: Method.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
-          { method: Method.staged, label: `Staged Changes`, description: `` },
-          { method: Method.all, label: `All`, description: `Every file in the local workspace` }
+          { method: DeploymentMethod.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
+          { method: DeploymentMethod.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
+          { method: DeploymentMethod.staged, label: `Staged Changes`, description: `` },
+          { method: DeploymentMethod.all, label: `All`, description: `Every file in the local workspace` }
         );       
 
         const method = (await vscode.window.showQuickPick(methods,
@@ -226,23 +211,23 @@ export namespace Deployment {
       await createRemoteDirectory(parameters.remotePath);
 
       switch (parameters.method) {
-        case Method.unstaged:
+        case DeploymentMethod.unstaged:
           await deployGit(parameters, 'working');
           break;
 
-        case Method.staged:
+        case DeploymentMethod.staged:
           await deployGit(parameters, 'staged');
           break;
 
-        case Method.changed:
+        case DeploymentMethod.changed:
           await deployChanged(parameters);
           break;
 
-        case Method.compare:
+        case DeploymentMethod.compare:
           await deployCompare(parameters);
           break;
 
-        case Method.all:
+        case DeploymentMethod.all:
           await deployAll(parameters);
           break;
       }
@@ -385,7 +370,7 @@ export namespace Deployment {
     if (getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
-        deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all' method.");
+        deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all' DeploymentMethod.");
         await deployAll(parameters);
       }
       else {
