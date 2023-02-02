@@ -646,7 +646,7 @@ export namespace CompileTools {
 
       commandUI.addField(new Field(`submit`, `execute`, `Execute`));
 
-      const { panel, data } = await commandUI.loadPage(name);
+      const { panel, data } = await commandUI.loadPage<Object>(name)!;
       panel.dispose();
       if (data) {
         const dataEntries = Object.entries(data);
