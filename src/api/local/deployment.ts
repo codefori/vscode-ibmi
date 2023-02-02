@@ -167,16 +167,16 @@ export namespace Deployment {
           methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
         }
 
-        methods.push({ method: DeploymentMethod.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` });
+        methods.push({ method: "changed" as DeploymentMethod, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` });
 
         if (Tools.getGitAPI()) {
           methods.push(
-            { method: DeploymentMethod.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
-            { method: DeploymentMethod.staged, label: `Staged Changes`, description: `` }
+            { method: "unstaged" as DeploymentMethod, label: `Working Changes`, description: `Unstaged changes in git` },
+            { method: "staged" as DeploymentMethod, label: `Staged Changes`, description: `` }
           );
         }
 
-        methods.push({ method: DeploymentMethod.all, label: `All`, description: `Every file in the local workspace` });
+        methods.push({ method: "all" as DeploymentMethod, label: `All`, description: `Every file in the local workspace` });
 
         const method = (await vscode.window.showQuickPick(methods,
           { placeHolder: `Select deployment method to ${remotePath}` }
