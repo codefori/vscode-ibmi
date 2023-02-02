@@ -163,13 +163,13 @@ export namespace Deployment {
       if (remotePath) {
         const methods = [];
         if (getConnection().remoteFeatures.md5sum) {
-          methods.push({ method: DeploymentMethod.compare, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
+          methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
         }
         methods.push(
-          { method: DeploymentMethod.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
-          { method: DeploymentMethod.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
-          { method: DeploymentMethod.staged, label: `Staged Changes`, description: `` },
-          { method: DeploymentMethod.all, label: `All`, description: `Every file in the local workspace` }
+          { method: 'changed' as DeploymentMethod, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
+          { method: 'unstaged' as DeploymentMethod, label: `Working Changes`, description: `Unstaged changes in git` },
+          { method: 'staged' as DeploymentMethod, label: `Staged Changes`, description: `` },
+          { method: 'all' as DeploymentMethod, label: `All`, description: `Every file in the local workspace` }
         );       
 
         const method = (await vscode.window.showQuickPick(methods,
@@ -211,23 +211,23 @@ export namespace Deployment {
       await createRemoteDirectory(parameters.remotePath);
 
       switch (parameters.method) {
-        case DeploymentMethod.unstaged:
+        case "unstaged":
           await deployGit(parameters, 'working');
           break;
 
-        case DeploymentMethod.staged:
+        case "staged":
           await deployGit(parameters, 'staged');
           break;
 
-        case DeploymentMethod.changed:
+        case "changed":
           await deployChanged(parameters);
           break;
 
-        case DeploymentMethod.compare:
+        case "compare":
           await deployCompare(parameters);
           break;
 
-        case DeploymentMethod.all:
+        case "all":
           await deployAll(parameters);
           break;
       }
@@ -370,7 +370,7 @@ export namespace Deployment {
     if (getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
-        deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all' DeploymentMethod.");
+        deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all'");
         await deployAll(parameters);
       }
       else {

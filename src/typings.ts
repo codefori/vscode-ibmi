@@ -11,13 +11,7 @@ export interface CodeForIBMi {
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 
-export enum DeploymentMethod {
-  "all",
-  "staged",
-  "unstaged",
-  "changed",
-  "compare"
-}
+export type DeploymentMethod = "all" |  "staged" |  "unstaged" |  "changed" |  "compare";
 
 export interface DeploymentParameters {
   method: DeploymentMethod
