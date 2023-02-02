@@ -3,6 +3,7 @@ import querystring from "querystring";
 import { commands, ExtensionContext, extensions, Uri, window } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { GitExtension } from "./api/import/git";
+import { Tools } from "./api/Tools";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
 
@@ -116,7 +117,7 @@ export async function handleStartup() {
   // If Sandbox mode is enabled, then the server and username can be inherited from the branch name
   if (env.VSCODE_IBMI_SANDBOX) {
     try {
-      const gitAPI = extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
+      const gitAPI = Tools.getGitAPI();
       if (gitAPI && gitAPI.repositories && gitAPI.repositories.length > 0) {
         const repo = gitAPI.repositories[0];
         const branchName = repo.state.HEAD?.name;
