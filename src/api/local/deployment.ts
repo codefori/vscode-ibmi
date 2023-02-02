@@ -167,9 +167,10 @@ export namespace Deployment {
           methods.push({ method: DeploymentMethod.compare, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
         }
 
+        methods.push({ method: DeploymentMethod.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` });
+
         if (Tools.getGitAPI()) {
           methods.push(
-            { method: DeploymentMethod.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
             { method: DeploymentMethod.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
             { method: DeploymentMethod.staged, label: `Staged Changes`, description: `` }
           );
