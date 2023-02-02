@@ -115,27 +115,32 @@ export async function handleStartup() {
 
   // If Sandbox mode is enabled, then the server and username can be inherited from the branch name
   if (env.VSCODE_IBMI_SANDBOX) {
-    const gitAPI = extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
-    if (gitAPI && gitAPI.repositories && gitAPI.repositories.length > 0) {
-      const repo = gitAPI.repositories[0];
-      const branchName = repo.state.HEAD?.name;
+    try {
+      const gitAPI = extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
+      if (gitAPI && gitAPI.repositories && gitAPI.repositories.length > 0) {
+        const repo = gitAPI.repositories[0];
+        const branchName = repo.state.HEAD?.name;
 
-      if (branchName) {
-        console.log(branchName);
+        if (branchName) {
+          console.log(branchName);
 
-        const parts = branchName.split(`/`);
+          const parts = branchName.split(`/`);
 
-        switch (parts.length) {
-          case 2:
-            server = parts[0];
-            username = parts[1].toUpperCase();
-            break;
-          case 1:
-            // We don't want to overwrite the username if one is set
-            username = parts[0].toUpperCase();
-            break;
+          switch (parts.length) {
+            case 2:
+              server = parts[0];
+              username = parts[1].toUpperCase();
+              break;
+            case 1:
+              // We don't want to overwrite the username if one is set
+              username = parts[0].toUpperCase();
+              break;
+          }
         }
       }
+    } catch (e) {
+      console.log(`Git extension issue.`);
+      console.log(e);
     }
 
     // In sandbox mode, the username and password are frequently the same
