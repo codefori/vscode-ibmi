@@ -1,3 +1,6 @@
+import { API, GitExtension } from "./import/git";
+import vscode from "vscode";
+
 export namespace Tools {
   export interface DB2Headers {
     name: string
@@ -8,24 +11,24 @@ export namespace Tools {
   export interface DB2Row extends Record<string, string | number | null> {
 
   }
-  
+
   /**
    * Parse standard out for `/usr/bin/db2`
    * @param output /usr/bin/db2's output
    * @returns rows
    */
-  export function db2Parse(output : string) : DB2Row[]{
+  export function db2Parse(output: string): DB2Row[] {
     let gotHeaders = false;
     let figuredLengths = false;
     let iiErrorMessage = false;
 
     let data = output.split(`\n`);
 
-    let headers : DB2Headers[];
+    let headers: DB2Headers[];
 
     let SQLSTATE;
 
-    const rows : DB2Row[] = [];
+    const rows: DB2Row[] = [];
 
     data.forEach((line, index) => {
       const trimmed = line.trim();
@@ -62,7 +65,7 @@ export namespace Tools {
               from: 0,
               length: 0,
             };
-        });
+          });
 
         gotHeaders = true;
       } else if (figuredLengths === false) {
@@ -76,7 +79,7 @@ export namespace Tools {
 
         figuredLengths = true;
       } else {
-        let row : DB2Row = {};
+        let row: DB2Row = {};
 
         headers.forEach(header => {
           const strValue = line.substring(header.from, header.from + header.length).trimEnd();
@@ -121,7 +124,7 @@ export namespace Tools {
    * @param member
    * @param iasp Optional: an iASP name
    */
-   export function qualifyPath(library: string, object: string, member: string, iasp?: string) {
+  export function qualifyPath(library: string, object: string, member: string, iasp?: string) {
     const path =
       (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/QSYS.lib/${library}.lib/${object}.file/${member}.mbr`;
     return path;
@@ -131,8 +134,25 @@ export namespace Tools {
    * @param Path
    * @returns the escaped path
    */
-   export function escapePath(Path: string): string {
+  export function escapePath(Path: string): string {
     const path = Path.replace(/'|"|\$|\\| /g, matched => `\\`.concat(matched));
     return path;
+  }
+
+  let gitLookedUp: boolean;
+  let gitAPI: API | undefined;
+  export function getGitAPI(): API | undefined {
+    if (!gitLookedUp) {
+      try {
+        gitAPI = vscode.extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
+      }
+      catch (error) {
+        console.log(`Git extension issue.`, error);
+      }
+      finally {
+        gitLookedUp = true;
+      }
+    }
+    return gitAPI;
   }
 }
