@@ -13,6 +13,7 @@ import { GitExtension } from './import/git';
 import Instance from './Instance';
 import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
 import IBMi, { MemberParts } from './IBMi';
+import { Tools } from './Tools';
 
 export namespace CompileTools {
   type Variables = Map<string, string>
@@ -34,9 +35,9 @@ export namespace CompileTools {
     switch (error.sev) {
       case 20:
         return vscode.DiagnosticSeverity.Warning;
-      case 30: 
-      case 40: 
-      case 50: 
+      case 30:
+      case 40:
+      case 50:
         return vscode.DiagnosticSeverity.Error;
       default: return vscode.DiagnosticSeverity.Information;
     }
@@ -45,8 +46,6 @@ export namespace CompileTools {
   const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
   const OUTPUT_BUTTON_BASE = `$(three-bars) Output`;
   const OUTPUT_BUTTON_RUNNING = `$(sync~spin) Output`;
-
-  const gitApi = vscode.extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
 
   const outputChannel = vscode.window.createOutputChannel(`IBM i Output`);
   const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
@@ -332,6 +331,7 @@ export namespace CompileTools {
                     variables.set(`{path}`, fullPath);
 
                     try {
+                      const gitApi = Tools.getGitAPI();
                       if (gitApi && gitApi.repositories?.length) {
                         const repo = gitApi.repositories[0];
                         const branch = repo.state.HEAD?.name;
