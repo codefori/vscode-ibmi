@@ -456,7 +456,7 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string): Promise<IFSFile[] > {
+  async getFileList(remotePath: string): Promise<IFSFile[]> {
     const items: IFSFile[] = [];
 
     const fileListResult = (await this.ibmi.sendCommand({
@@ -478,7 +478,7 @@ export default class IBMiContent {
           });
         });
 
-        return items.sort((a, b) => a.name.localeCompare(b.name));
+      return items.sort((a, b) => a.name.localeCompare(b.name));
 
     } else {
       throw new Error(fileListResult.stderr);
