@@ -13,13 +13,14 @@ import { readFileSync } from 'fs';
 import Crypto from 'crypto';
 import IBMi from '../IBMi';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
+import { Tools } from '../Tools';
 
 export namespace Deployment {
   interface Upload {
     local: string
     remote: string
     uri: vscode.Uri
-  }  
+  }
 
   interface MD5Entry {
     path: string
@@ -263,16 +264,6 @@ export namespace Deployment {
     return connection;
   }
 
-  function getGitAPI() {
-    const gitAPI = vscode.extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
-    if (!gitAPI) {
-      const error = `Unable to get Git API.`;
-      vscode.window.showErrorMessage(error);
-      throw new Error(error);
-    }
-    return gitAPI;
-  }
-
   async function createRemoteDirectory(remotePath: string) {
     return await getConnection().sendCommand({
       command: `mkdir -p "${remotePath}"`
@@ -317,9 +308,9 @@ export namespace Deployment {
 
   async function deployGit(parameters: DeploymentParameters, changeType: 'staged' | 'working') {
     const useStagedChanges = (changeType == 'staged');
-    const gitApi = getGitAPI();
+    const gitApi = Tools.getGitAPI();
 
-    if (gitApi.repositories.length > 0) {
+    if (gitApi && gitApi.repositories.length > 0) {
       const repository = gitApi.repositories.find(r => r.rootUri.fsPath === parameters.localFolder.fsPath);
 
       if (repository) {
@@ -426,9 +417,9 @@ export namespace Deployment {
             progress.report({ increment: 25 });
           }
 
-          progress.report({ message:`removing empty folders under ${parameters.remotePath}`, increment: 20 });
+          progress.report({ message: `removing empty folders under ${parameters.remotePath}`, increment: 20 });
           //PASE's find doesn't support the -empty flag so rmdir is run on every directory; not very clean, but it works
-          await getConnection().sendCommand({command: "find . -depth -type d -exec rmdir {} + 2>/dev/null", directory: parameters.remotePath});
+          await getConnection().sendCommand({ command: "find . -depth -type d -exec rmdir {} + 2>/dev/null", directory: parameters.remotePath });
 
           progress.report({ increment: 5 });
         });
