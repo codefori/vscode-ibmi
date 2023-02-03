@@ -406,6 +406,11 @@
 					"default": true,
 					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
 				},
+				"code-for-ibmi.safeDeleteMode": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
+				},
 				"code-for-ibmi.connections": {
 					"type": "array",
 					"items": {

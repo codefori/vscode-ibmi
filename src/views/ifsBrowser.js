@@ -359,20 +359,45 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           //Running from right click
+          let deletionConfirmed = false;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
-
-          if (result === `Yes`) {
-            const connection = instance.getConnection();
-
-            try {
-              await connection.paseCommand(`rm -rf ${Tools.escapePath(node.path)}`)
-
-              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
-
-              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-            } catch (e) {
-              vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
+          if (result === `Yes`) {    
+            if((GlobalConfiguration.get(`safeDeleteMode`)) && node.path.endsWith(`/`)) { //Check if path is directory
+              const dirSplit = node.path.split(`/`);
+              const dirName = dirSplit[dirSplit.length - 2];  //Get name of directory
+              
+              const deletionPrompt = `Once you delete the directory, it cannot be restored.\nPlease type \"` + dirName + `\" to confirm deletion.`;
+              const input = await vscode.window.showInputBox({
+                placeHolder: dirName,
+                prompt: deletionPrompt,
+                validateInput: text => {
+                  return (text === dirName) ? null : deletionPrompt + ` (Press \'Escape\' to cancel)`;
+                }
+              });
+              deletionConfirmed = (input === dirName);
             }
+            else // If deleting a file rather than a directory, skip the name entry
+              deletionConfirmed = true;
+            
+            if(deletionConfirmed) {
+              const connection = instance.getConnection();
+
+              try {
+                await connection.paseCommand(`rm -rf ${Tools.escapePath(node.path)}`)
+  
+                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+  
+                if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
+              }
+              
+            }
+            else {
+              vscode.window.showInformationMessage(`Deletion canceled.`);
+            }
+
+            
           }
         } else {
           //Running from command.
