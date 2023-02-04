@@ -647,6 +647,22 @@
 							"command": "?RUNSQLSTM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) COMMIT(*NONE) NAMING(*SQL)"
 						},
 						{
+							"type": "member",
+							"extensions": [
+								"PFSQL"
+							],
+							"name": "Run SQL Statements (RUNSQLSTM)",
+							"command": "?RUNSQLSTM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) COMMIT(*NONE) NAMING(*SQL)"
+						},
+						{
+							"type": "member",
+							"extensions": [
+								"pfsql"
+							],
+							"name": "Run SQL Statements (RUNSQLSTM)",
+							"command": "?RUNSQLSTM SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR) COMMIT(*NONE) NAMING(*SQL)"
+						},						
+						{
 							"type": "streamfile",
 							"extensions": [
 								"rpgle"
@@ -713,6 +729,22 @@
 							"name": "Run SQL Statements (RUNSQLSTM)",
 							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
 						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"PFSQL"
+							],
+							"name": "Create Bound RPG Program (CRTBNDRPG) with inputs",
+							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
+						},
+						{
+							"type": "streamfile",
+							"extensions": [
+								"pfsql"
+							],
+							"name": "Create Bound RPG Program (CRTBNDRPG) with inputs",
+							"command": "?RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)"
+						},						
 						{
 							"type": "streamfile",
 							"extensions": [
