@@ -9,7 +9,6 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 * [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) 💻
 * [Watch some tutorials](https://www.youtube.com/playlist?list=PLNl31cqBafCp-ml8WqPeriHWLD1bkg7KL) 📺
 * [View our documentation](https://halcyon-tech.github.io/vscode-ibmi/#/) 📘
-* [See who's contributed](https://github.com/halcyon-tech/vscode-ibmi/blob/master/CONTRIBUTING.md) 🕶️
 * [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases) 🔎
 * Build from source (see below!) 🔨
 * [Use our IBM i API in your own extension](https://halcyon-tech.github.io/vscode-ibmi/#/pages/api/extending) 🛠
@@ -30,3 +29,14 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 3. `npm i`
 4. 'Run Extension' from vscode debug.
 
+---
+
+### Contributors
+
+<a href="https://github.com/halcyon-tech/vscode-ibmi/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=halcyon-tech/vscode-ibmi" />
+</a>
+
+(Made with [contrib.rocks](https://contrib.rocks)).
+
+View [our "contributing" page](CONTRIBUTING.md) for our contribution guideliens and a full list of contributors.  🕶️
