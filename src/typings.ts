@@ -1,14 +1,23 @@
-import { ExtensionContext } from "vscode";
+import { ExtensionContext, Uri } from "vscode";
 import Instance from "./api/Instance";
-import { Deployment } from "./api/local/deployment";
+import { Ignore } from 'ignore'
 
 export interface CodeForIBMi {
   instance: Instance,
   baseContext: ExtensionContext,
   CustomUI: object, //CustomUI: typeof CustomUI
   Field: object //Field: typeof Field;
-  deploy: (parameters: Deployment.DeploymentParameters) => Promise<boolean>
+  deploy: (parameters: DeploymentParameters) => Promise<boolean>
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
+}
+
+export type DeploymentMethod = "all" |  "staged" |  "unstaged" |  "changed" |  "compare";
+
+export interface DeploymentParameters {
+  method: DeploymentMethod
+  localFolder: Uri
+  remotePath: string
+  ignoreRules?: Ignore
 }
 
 export interface StandardIO {
@@ -24,13 +33,13 @@ export interface RemoteCommand {
   command: string;
   environment?: "ile" | "qsh" | "pase";
   cwd?: string;
-  env?: { [name: string]: string };
+  env?: Record<string, string>;
 }
 
 export interface CommandData extends StandardIO {
   command: string;
   directory?: string;
-  env?: { [name: string]: string };
+  env?: Record<string, string>;
 }
 
 export interface CommandResult {

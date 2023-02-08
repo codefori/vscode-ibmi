@@ -7,25 +7,19 @@ import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { GitExtension } from '../import/git';
 import { instance } from '../../instantiate';
 import Instance from '../Instance';
-import { Ignore } from 'ignore'
 import ignore from 'ignore'
 import { NodeSSH } from 'node-ssh';
 import { readFileSync } from 'fs';
 import Crypto from 'crypto';
 import IBMi from '../IBMi';
+import { DeploymentMethod, DeploymentParameters } from '../../typings';
+import { Tools } from '../Tools';
 
 export namespace Deployment {
   interface Upload {
     local: string
     remote: string
     uri: vscode.Uri
-  }
-
-  export interface DeploymentParameters {
-    method: Method
-    localFolder: vscode.Uri
-    remotePath: string
-    ignoreRules?: Ignore
   }
 
   interface MD5Entry {
@@ -39,14 +33,6 @@ export namespace Deployment {
   const deploymentLog = vscode.window.createOutputChannel(`IBM i Deployment`);
   const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
   const changes: Map<string, vscode.Uri> = new Map;
-
-  export enum Method {
-    "all",
-    "staged",
-    "unstaged",
-    "changed",
-    "compare"
-  }
 
   export function initialize(context: vscode.ExtensionContext, instance: Instance) {
     button.command = {
@@ -178,14 +164,19 @@ export namespace Deployment {
       if (remotePath) {
         const methods = [];
         if (getConnection().remoteFeatures.md5sum) {
-          methods.push({ method: Method.compare, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
+          methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
         }
-        methods.push(
-          { method: Method.changed, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` },
-          { method: Method.unstaged, label: `Working Changes`, description: `Unstaged changes in git` },
-          { method: Method.staged, label: `Staged Changes`, description: `` },
-          { method: Method.all, label: `All`, description: `Every file in the local workspace` }
-        );       
+
+        methods.push({ method: "changed" as DeploymentMethod, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` });
+
+        if (Tools.getGitAPI()) {
+          methods.push(
+            { method: "unstaged" as DeploymentMethod, label: `Working Changes`, description: `Unstaged changes in git` },
+            { method: "staged" as DeploymentMethod, label: `Staged Changes`, description: `` }
+          );
+        }
+
+        methods.push({ method: "all" as DeploymentMethod, label: `All`, description: `Every file in the local workspace` });
 
         const method = (await vscode.window.showQuickPick(methods,
           { placeHolder: `Select deployment method to ${remotePath}` }
@@ -226,23 +217,23 @@ export namespace Deployment {
       await createRemoteDirectory(parameters.remotePath);
 
       switch (parameters.method) {
-        case Method.unstaged:
+        case "unstaged":
           await deployGit(parameters, 'working');
           break;
 
-        case Method.staged:
+        case "staged":
           await deployGit(parameters, 'staged');
           break;
 
-        case Method.changed:
+        case "changed":
           await deployChanged(parameters);
           break;
 
-        case Method.compare:
+        case "compare":
           await deployCompare(parameters);
           break;
 
-        case Method.all:
+        case "all":
           await deployAll(parameters);
           break;
       }
@@ -276,16 +267,6 @@ export namespace Deployment {
       throw new Error("Please connect to an IBM i");
     }
     return connection;
-  }
-
-  function getGitAPI() {
-    const gitAPI = vscode.extensions.getExtension<GitExtension>(`vscode.git`)?.exports.getAPI(1);
-    if (!gitAPI) {
-      const error = `Unable to get Git API.`;
-      vscode.window.showErrorMessage(error);
-      throw new Error(error);
-    }
-    return gitAPI;
   }
 
   async function createRemoteDirectory(remotePath: string) {
@@ -332,9 +313,9 @@ export namespace Deployment {
 
   async function deployGit(parameters: DeploymentParameters, changeType: 'staged' | 'working') {
     const useStagedChanges = (changeType == 'staged');
-    const gitApi = getGitAPI();
+    const gitApi = Tools.getGitAPI();
 
-    if (gitApi.repositories.length > 0) {
+    if (gitApi && gitApi.repositories.length > 0) {
       const repository = gitApi.repositories.find(r => r.rootUri.fsPath === parameters.localFolder.fsPath);
 
       if (repository) {
@@ -385,7 +366,7 @@ export namespace Deployment {
     if (getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
-        deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all' method.");
+        deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all'");
         await deployAll(parameters);
       }
       else {
@@ -442,9 +423,9 @@ export namespace Deployment {
             progress.report({ increment: 25 });
           }
 
-          progress.report({ message:`removing empty folders under ${parameters.remotePath}`, increment: 20 });
+          progress.report({ message: `removing empty folders under ${parameters.remotePath}`, increment: 20 });
           //PASE's find doesn't support the -empty flag so rmdir is run on every directory; not very clean, but it works
-          await getConnection().sendCommand({command: "find . -depth -type d -exec rmdir {} + 2>/dev/null", directory: parameters.remotePath});
+          await getConnection().sendCommand({ command: "find . -depth -type d -exec rmdir {} + 2>/dev/null", directory: parameters.remotePath });
 
           progress.report({ increment: 5 });
         });

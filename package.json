@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.6.12",
+	"version": "1.6.15",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -621,7 +621,7 @@
 							"extensions": [
 								"lf"
 							],
-							"name": "Create :Logical File (CRTLF)",
+							"name": "Create Logical File (CRTLF)",
 							"command": "?CRTLF FILE(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF)"
 						},
 						{
@@ -1199,6 +1199,13 @@
 				"icon": "$(filter)"
 			},
 			{
+				"command": "code-for-ibmi.copyFilter",
+				"enablement": "code-for-ibmi:connected == true",
+				"title": "Copy filter",
+				"category": "IBM i",
+				"icon": "$(copy)"
+			},
+			{
 				"command": "code-for-ibmi.maintainFilter",
 				"enablement": "code-for-ibmi:connected == true",
 				"title": "Maintain filter",
@@ -1597,9 +1604,14 @@
 					"group": "4_filters@1"
 				},
 				{
-					"command": "code-for-ibmi.deleteFilter",
+					"command": "code-for-ibmi.copyFilter",
 					"when": "viewItem == filter",
 					"group": "4_filters@2"
+				},
+				{
+					"command": "code-for-ibmi.deleteFilter",
+					"when": "viewItem == filter",
+					"group": "4_filters@3"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",

@@ -212,7 +212,7 @@ export default class IBMiContent {
    * @param member Will default to file provided 
    * @param deleteTable Will delete the table after download
    */
-  async getTable(library: string, file: string, member: string, deleteTable: boolean): Promise<Tools.DB2Row[]> {
+  async getTable(library: string, file: string, member: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
     if (file === member && this.config.enableSQL) {
@@ -459,23 +459,31 @@ export default class IBMiContent {
   async getFileList(remotePath: string): Promise<IFSFile[]> {
     const items: IFSFile[] = [];
 
-    const fileList = (await this.ibmi.sendCommand({
+    const fileListResult = (await this.ibmi.sendCommand({
       command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
-    })).stdout;
+    }));
 
-    //Remove current and dir up.
-    fileList.split(`\n`)
-      .filter(item => item !== `../` && item !== `./`)
-      .forEach(item => {
-        const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-        items.push({
-          type,
-          name: (type === `directory` ? item.substring(0, item.length - 1) : item),
-          path: path.posix.join(remotePath, item)
+    if (fileListResult.code === 0) {
+      const fileList = fileListResult.stdout;
+
+      //Remove current and dir up.
+      fileList.split(`\n`)
+        .filter(item => item !== `../` && item !== `./`)
+        .forEach(item => {
+          const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
+          items.push({
+            type,
+            name: (type === `directory` ? item.substring(0, item.length - 1) : item),
+            path: path.posix.join(remotePath, item)
+          });
         });
-      });
 
-    return items.sort((a, b) => a.name.localeCompare(b.name));
+      return items.sort((a, b) => a.name.localeCompare(b.name));
+
+    } else {
+      throw new Error(fileListResult.stderr);
+    }
+
   }
 
   /**

@@ -8,13 +8,13 @@ import path from 'path';
 import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
 import * as configVars from './configVars';
 
-interface MemberParts {
-  asp: string | undefined;
-  library: string | undefined;
-  file: string | undefined;
-  member: string | undefined;
-  extension: string | undefined;
-  basename: string | undefined;
+export interface MemberParts {
+  asp?: string
+  library: string
+  file: string
+  member: string
+  extension: string
+  basename: string
 }
 
 let remoteApps = [
@@ -672,8 +672,8 @@ export default class IBMi {
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
-      commands.push(...Object.keys(options.env).map(envVar => `export ${envVar}="${
-        options.env ? options.env[envVar].replace(/\$/g, `\\$`).replace(/"/g, `\\"`) : ``
+      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${
+        value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
       }"`))
     }
 
@@ -745,59 +745,56 @@ export default class IBMi {
   }
 
   parserMemberPath(string: string): MemberParts {
-    const result: MemberParts = {
-      asp: undefined,
-      library: undefined,
-      file: undefined,
-      member: undefined,
-      extension: undefined,
-      basename: undefined,
-    };
-
     const variant_chars_local = this.variantChars.local;
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
     // Remove leading slash
     const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
 
-    if (path.length > 0) result.basename = path[path.length - 1];
-    if (path.length > 1) result.file = path[path.length - 2];
-    if (path.length > 2) result.library = path[path.length - 3];
-    if (path.length > 3) result.asp = path[path.length - 4];
+    const basename = path[path.length - 1];
+    const file = path[path.length - 2];
+    const library = path[path.length - 3];
+    const asp = path[path.length - 4];
 
-    if (!result.library || !result.file || !result.basename) {
+    if (!library || !file || !basename) {
       throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
     }
-    if (result.asp && !validQsysName.test(result.asp)) {
-      throw new Error(`Invalid ASP name: ${result.asp}`);
+    if (asp && !validQsysName.test(asp)) {
+      throw new Error(`Invalid ASP name: ${asp}`);
     }
-    if (!validQsysName.test(result.library)) {
-      throw new Error(`Invalid Library name: ${result.library}`);
+    if (!validQsysName.test(library)) {
+      throw new Error(`Invalid Library name: ${library}`);
     }
-    if (!validQsysName.test(result.file)) {
-      throw new Error(`Invalid Source File name: ${result.file}`);
+    if (!validQsysName.test(file)) {
+      throw new Error(`Invalid Source File name: ${file}`);
     }
 
-    if (!result.basename.includes(`.`)) {
+    if (!basename.includes(`.`)) {
       throw new Error(`Source Type extension is required.`);
-    } else {
-      result.member = result.basename.substring(0, result.basename.lastIndexOf(`.`));
-      result.extension = result.basename.substring(result.basename.lastIndexOf(`.`) + 1).trim();
     }
+    const member = basename.substring(0, basename.lastIndexOf(`.`));
+    const extension = basename.substring(basename.lastIndexOf(`.`) + 1).trim();
 
-    if (!validQsysName.test(result.member)) {
-      throw new Error(`Invalid Source Member name: ${result.member}`);
+    if (!validQsysName.test(member)) {
+      throw new Error(`Invalid Source Member name: ${member}`);
     }
     // The extension/source type has nearly the same naming rules as
     // the objects, except that a period is not allowed.  We can reuse
     // the existing RegExp because result.extension is everything after
     // the final period (so we know it won't contain a period).
     // But, a blank extension is valid.
-    if (result.extension && !validQsysName.test(result.extension)) {
-      throw new Error(`Invalid Source Member Extension: ${result.extension}`);
+    if (extension && !validQsysName.test(extension)) {
+      throw new Error(`Invalid Source Member Extension: ${extension}`);
     }
 
-    return result;
+    return {
+      library,
+      file,
+      extension,
+      basename,
+      member,
+      asp
+    };
   }
 
   /**

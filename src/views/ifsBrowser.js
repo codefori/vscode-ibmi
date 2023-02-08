@@ -563,17 +563,12 @@ module.exports = class ifsBrowserProvider {
         } catch (e) {
           console.log(e);
           item = new vscode.TreeItem(`Error loading objects.`);
-          vscode.window.showErrorMessage(e);
+          vscode.window.showErrorMessage(e.message);
           items = [item];
         }
 
       } else {
         items = config.ifsShortcuts.map(directory => new Object(`shortcut`, directory, directory));
-        // const objects = await content.getFileList(config.homeDirectory);
-
-        // for (let object of objects) {
-        //   items.push(new Object(object.type, object.name, object.path));
-        // }
       }
     }
 
