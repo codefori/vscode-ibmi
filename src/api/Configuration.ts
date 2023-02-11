@@ -38,7 +38,7 @@ export namespace ConnectionConfiguration {
     autoSaveBeforeAction: boolean;
     showDescInLibList: boolean;
     debugPort: string;
-    debugSecure: boolean;
+    debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
     debugEnableDebugTracing: boolean;
     [name: string]: any;
@@ -106,7 +106,7 @@ export namespace ConnectionConfiguration {
       autoSaveBeforeAction : (parameters.autoSaveBeforeAction === true),
       showDescInLibList : (parameters.showDescInLibList === true),
       debugPort: (parameters.debugPort || "8005"),
-      debugSecure: (parameters.debugSecure === true || parameters.debugSecure === undefined),
+      debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
     }
