@@ -47,6 +47,7 @@ export namespace ConnectionConfiguration {
     types: string[]
     member: string
     memberType: string
+    protected: boolean
   }
   
   export interface CustomVariable {

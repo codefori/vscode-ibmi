@@ -9,6 +9,7 @@ export namespace Search {
   export interface Result {
     path: string
     lines: Line[]
+    readOnly: boolean
   }
 
   export interface Line {
@@ -16,7 +17,7 @@ export namespace Search {
     content: string
   }
 
-  export async function searchMembers(instance: Instance, library: string, sourceFile: string, memberFilter: string, searchTerm: string): Promise<Result[]> {
+  export async function searchMembers(instance: Instance, library: string, sourceFile: string, memberFilter: string, searchTerm: string, readOnly: boolean): Promise<Result[]> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -40,7 +41,7 @@ export namespace Search {
       });
 
       if (!result.stderr) {
-        return parseGrepOutput(result.stdout || '',
+        return parseGrepOutput(result.stdout || '', readOnly,
           path => connection.sysNameInLocal(path.replace(QSYS_PATTERN, ''))); //Transform QSYS path to URI 'member:' compatible path
       }
       else {
@@ -71,7 +72,7 @@ export namespace Search {
         });
 
         if (grepRes.code == 0) {
-          return parseGrepOutput(grepRes.stdout);
+          return parseGrepOutput(grepRes.stdout, false);
         }
         else {
           return [];
@@ -85,7 +86,7 @@ export namespace Search {
     }
   }
 
-  function parseGrepOutput(output: string, pathTransformer?: (path: string) => string): Result[] {
+  function parseGrepOutput(output: string, readOnly: boolean, pathTransformer?: (path: string) => string): Result[] {
     const results: Result[] = []
     for (const line of output.split('\n')) {
       if (!line.startsWith(`Binary`)) {
@@ -95,7 +96,8 @@ export namespace Search {
         if (!result) {
           result = {
             path,
-            lines: []
+            lines: [],
+            readOnly
           };
           results.push(result);
         }

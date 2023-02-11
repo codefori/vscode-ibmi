@@ -16,6 +16,7 @@ module.exports = class FiltersUI {
 
     let existingConfigIndex;
 
+    /** @type {ConnectionConfiguration.ObjectFilters} */
     let filter;
 
     if (name) {
@@ -36,6 +37,7 @@ module.exports = class FiltersUI {
           object: filter.object,
           types: [...filter.types],
           member: filter.member,
+          protected: filter.protected
         }
         existingConfigIndex = -1;
         name = ``;
@@ -49,6 +51,7 @@ module.exports = class FiltersUI {
         object: `*`,
         types: [`*SRCPF`],
         member: `*`,
+        protected: false
       }
     }
     
@@ -84,6 +87,11 @@ module.exports = class FiltersUI {
     field.default = filter.memberType || `*`;
     field.description = `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`;
     ui.addField(field);
+    
+    field = new Field(`checkbox`, `protected`, `Protected`);
+    field.default = filter.protected ? "checked" : "";
+    field.description = `Make this filter protected, preventing modifications and source members from being saved.`;
+    ui.addField(field);
 
     field = new Field(`submit`, `save`, `Save settings`);
     ui.addField(field);
@@ -102,6 +110,8 @@ module.exports = class FiltersUI {
           break;
         case `types`:
           data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
+          break;
+        case `protected`:
           break;
         default:
           data[key] = data[key].toUpperCase();

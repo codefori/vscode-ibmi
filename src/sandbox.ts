@@ -196,7 +196,8 @@ async function initialSetup(username: string) {
             "*SRCPF"
           ],
           member: "*",
-          memberType: ""
+          memberType: "",
+          protected: false
         },
         {
           name: "Sandbox Object Filters",
@@ -206,7 +207,8 @@ async function initialSetup(username: string) {
             "*ALL"
           ],
           member: "*",
-          memberType: ""
+          memberType: "",
+          protected: false
         },
       );
 

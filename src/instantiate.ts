@@ -22,6 +22,7 @@ import getComplexHandler from "./filesystems/qsys/complex/handlers";
 import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { RemoteCommand } from "./typings";
+import { getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -295,16 +296,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       //********* General editing */
 
       context.subscriptions.push(
-        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line: number) => {
+        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, readOnly?: boolean) => {
           console.log(path);
-          let uri;
-          if (path.startsWith(`/`)) {
-            //IFS
-            uri = vscode.Uri.parse(path).with({ scheme: `streamfile`, path });
-          } else {
-            uri = vscode.Uri.parse(path).with({ scheme: `member`, path: `/${path}` });
-          }
-
+          const uri = getUriFromPath(path, {readOnly});
           try {
             if (line) {
               // If a line is provided, we have to do a specific open
@@ -319,7 +313,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
             } else {
               // Otherwise, do a generic open
-              const res = await vscode.commands.executeCommand(`vscode.open`, uri);
+              await vscode.commands.executeCommand(`vscode.open`, uri);
             }
 
             return true;
@@ -365,7 +359,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         })
       );
 
-      vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async () => {
+      vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async (readOnly?: boolean) => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true));
+      vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readOnly?: boolean) => {
         const storage = instance.getStorage();
         if (!storage) return;
 
@@ -397,7 +392,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               storage.setSourceList({});
               vscode.window.showInformationMessage(`Cleared list.`);
             } else {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, readOnly);
             }
           }
           quickPick.hide()
