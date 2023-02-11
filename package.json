@@ -786,12 +786,12 @@
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
-				"title": "Setup local certificate",
+				"title": "Import local certificate",
 				"category": "IBM i Debug"
 			},
 			{
 				"command": "code-for-ibmi.debug.start",
-				"title": "Start debug server",
+				"title": "Start debug service",
 				"category": "IBM i Debug"
 			},
 			{
