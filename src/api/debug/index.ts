@@ -223,6 +223,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
                 try {
                   copyFileSync(selectedFile[0].fsPath, certificates.getLocalCertPath(connection));
                   localCertsOk = true;
+                  vscode.window.showInformationMessage(`Certificate imported.`);
                 } catch (e) {
                   vscode.window.showErrorMessage(`Failed to import local certificate.`);
                 }
