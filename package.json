@@ -349,9 +349,9 @@
 								"default": "8005",
 								"description": "Port to connect to IBM i Debug Service."
 							},
-							"debugSecure": {
+							"debugIsSecure": {
 								"type": "boolean",
-								"default": true,
+								"default": false,
 								"description": "Used to determine if the client should connect securely or not."
 							},
 							"debugUpdateProductionFiles": {

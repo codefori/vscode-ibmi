@@ -159,26 +159,30 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
             vscode.window.showInformationMessage(`Certificates already exist on the server.`);
             remoteCertsOk = true;
           } else {
-            const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
-              modal: true,
-              detail: `Debug certificates are not setup on the system. Continue with setup?`
-            }, `Continue`);
 
-            if (doSetup) {
-              try {
-                await certificates.setup(connection);
-                vscode.window.showInformationMessage(`Certificates successfully generated on server.`);
-                remoteCertsOk = true;
-                remoteCertsAreNew = true;
-              } catch (e: any) {
-                vscode.window.showErrorMessage(e.message || e);
-              }
+          }
+
+          const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
+            modal: true,
+            detail: `${remoteExists 
+              ? `Debug certificates already exist on this system! Running this setup will overwrite them, which will require the debug service to be restarted.` 
+              : `Debug certificates are not setup on the system.`
+            } Continue with setup?`
+          }, `Continue`);
+
+          if (doSetup) {
+            try {
+              await certificates.setup(connection);
+              vscode.window.showInformationMessage(`Certificates successfully generated on server.`);
+              remoteCertsOk = true;
+              remoteCertsAreNew = true;
+            } catch (e: any) {
+              vscode.window.showErrorMessage(e.message || e);
             }
           }
 
           if (remoteCertsOk) {
             vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
-            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`, remoteCertsAreNew);
           }
         } else {
           vscode.window.showErrorMessage(`Debug PTF not installed.`);
@@ -197,7 +201,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
         if (ptfInstalled) {
           let localCertsOk = false;
-          if (connection.config!.debugSecure) {
+          if (connection.config!.debugIsSecure) {
             const selection = await vscode.window.showInformationMessage(
               `Client certificate`,
               {
@@ -224,6 +228,12 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
                 }
               }
             }
+          } else {
+            vscode.window.showWarningMessage(`Certificates can only be imported when secure mode is enabled.`, `Open configuration`).then(result => {
+              if (result === `Open configuration`) {
+                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+              }
+            });
           }
           if (localCertsOk) {
             vscode.commands.executeCommand(`setContext`, localCertContext, true);
@@ -293,7 +303,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
       if (remoteCerts) {
         vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
-        if (instance.connection.config!.debugSecure) {
+        if (instance.connection.config!.debugIsSecure) {
           const localExists = await certificates.checkLocalExists(instance.connection);
 
           if (localExists) {
@@ -326,9 +336,9 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
 
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;
-  const enableDebugTracing = config?.debugEnableDebugTracing; // TODO: configurable
+  const enableDebugTracing = config?.debugEnableDebugTracing;
 
-  const secure = config?.debugSecure; // TODO: make configurable
+  const secure = config?.debugIsSecure;
 
   if (secure) {
     process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);

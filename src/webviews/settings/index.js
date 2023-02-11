@@ -208,9 +208,9 @@ module.exports = class SettingsUI {
           field.description = `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`;
           ui.addField(field);
 
-          field = new Field(`checkbox`, `debugSecure`, `Debug securely`);
-          field.default = (config.debugSecure ? `checked` : ``);
-          field.description = `Ensures that the client and debug service are connected securely.`;
+          field = new Field(`checkbox`, `debugIsSecure`, `Debug securely`);
+          field.default = (config.debugIsSecure ? `checked` : ``);
+          field.description = `Tells the debug service to authenticate by server and client certificate. Ensure that the client certificate is imported when enabled.`;
           ui.addField(field);
 
           field = new Field(`checkbox`, `debugUpdateProductionFiles`, `Update production files`);
