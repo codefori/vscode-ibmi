@@ -1,6 +1,7 @@
 
 const vscode = require(`vscode`);
 const {instance} = require(`../../instantiate`);
+const { parseFSOptions } = require("./QSysFs");
 
 module.exports = class basicQsysFs {
   constructor() {
@@ -38,6 +39,10 @@ module.exports = class basicQsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
+    if(parseFSOptions(uri).readOnly){
+      throw new Error("Member opened in read only mode: saving is disabled");
+    }
+
     const contentApi = instance.getContent();
     const connection = instance.getConnection();
     const {asp, library, file, member} = connection.parserMemberPath(uri.path);

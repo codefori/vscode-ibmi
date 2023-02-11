@@ -876,6 +876,13 @@
 				"icon": "$(go-to-file)"
 			},
 			{
+				"command": "code-for-ibmi.goToFileReadOnly",
+				"enablement": "code-for-ibmi:connected == true",
+				"title": "Go to file (read only)...",
+				"category": "IBM i",
+				"icon": "$(go-to-file)"
+			},
+			{
 				"command": "code-for-ibmi.showVariableMaintenance",
 				"enablement": "code-for-ibmi:connected == true",
 				"title": "Maintain custom variables",
@@ -1347,7 +1354,7 @@
 				"mac": "cmd+alt+p"
 			},
 			{
-				"command": "code-for-ibmi.goToFile",
+				"command": "code-for-ibmi.goToFileReadOnly",
 				"key": "ctrl+alt+o",
 				"mac": "cmd+alt+o"
 			},
@@ -1616,47 +1623,47 @@
 				},
 				{
 					"command": "code-for-ibmi.maintainFilter",
-					"when": "viewItem == filter",
+					"when": "viewItem =~ /^filter.*$/",
 					"group": "4_filters@1"
 				},
 				{
 					"command": "code-for-ibmi.copyFilter",
-					"when": "viewItem == filter",
+					"when": "viewItem =~ /^filter.*$/",
 					"group": "4_filters@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteFilter",
-					"when": "viewItem == filter",
+					"when": "viewItem =~ /^filter.*$/",
 					"group": "4_filters@3"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",
-					"when": "viewItem == filter",
+					"when": "viewItem =~ /^filter.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterDown",
-					"when": "viewItem == filter",
+					"when": "viewItem =~ /^filter.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterToTop",
-					"when": "viewItem == filter",
+					"when": "viewItem =~ /^filter.*$/",
 					"group": "5_filters@1"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterToBottom",
-					"when": "viewItem == filter",
+					"when": "viewItem =~ /^filter.*$/",
 					"group": "5_filters@2"
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
-					"when": "viewItem == member || viewItem == streamfile",
+					"when": "viewItem =~ /^member.*$/ || viewItem == streamfile",
 					"group": "2_compare@1"
 				},
 				{
 					"command": "code-for-ibmi.compareWithSelected",
-					"when": "viewItem == member || viewItem == streamfile",
+					"when": "viewItem =~ /^member.*$/ || viewItem == streamfile",
 					"group": "2_compare@2"
 				},
 				{
@@ -1666,11 +1673,11 @@
 				},
 				{
 					"command": "code-for-ibmi.searchSourceFile",
-					"when": "viewItem == SPF"
+					"when": "viewItem =~ /^SPF.*$/"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "viewItem == member",
+					"when": "viewItem =~ /^member.*$/",
 					"group": "1_workspace@1"
 				},
 				{
@@ -1695,7 +1702,7 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
-					"when": "viewItem == member",
+					"when": "viewItem =~ /^member.*$/",
 					"group": "3_memberTransfer@1"
 				},
 				{
