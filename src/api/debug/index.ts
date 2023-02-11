@@ -104,6 +104,10 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
       vscode.commands.executeCommand('extension.open', debugExtensionId);
     }),
 
+    vscode.commands.registerCommand(`code-for-ibmi.debug.endDebug`, () => {
+      return vscode.debug.stopDebugging();
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
       if (debugExtensionAvailable()) {
         const connection = instance.connection;

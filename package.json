@@ -782,23 +782,34 @@
 			{
 				"command": "code-for-ibmi.debug.setup.remote",
 				"title": "Setup remote certificates",
-				"category": "IBM i Debug"
+				"category": "IBM i Debug",
+				"enablement": "code-for-ibmi:connected == true"
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
 				"title": "Import local certificate",
-				"category": "IBM i Debug"
+				"category": "IBM i Debug",
+				"enablement": "code-for-ibmi:connected == true"
 			},
 			{
 				"command": "code-for-ibmi.debug.start",
 				"title": "Start debug service",
-				"category": "IBM i Debug"
+				"category": "IBM i Debug",
+				"enablement": "code-for-ibmi:connected == true"
 			},
 			{
 				"command": "code-for-ibmi.debug.activeEditor",
 				"title": "Start Debugging Active Source",
 				"category": "IBM i",
-				"icon": "$(debug-alt)"
+				"icon": "$(debug-alt)",
+				"enablement": "code-for-ibmi:connected == true"
+			},
+			{
+				"command": "code-for-ibmi.debug.endDebug",
+				"title": "Stop debugging",
+				"category": "IBM i",
+				"icon": "$(debug-disconnect)",
+				"enablement": "code-for-ibmi:connected == true"
 			},
 			{
 				"command": "code-for-ibmi.connect",
@@ -1526,6 +1537,11 @@
 				{
 					"command": "code-for-ibmi.debug.activeEditor",
 					"when": "code-for-ibmi:connected == true && !inDebugMode",
+					"group": "navigation@1"
+				},
+				{
+					"command": "code-for-ibmi.debug.endDebug",
+					"when": "code-for-ibmi:connected == true && debugState == initializing",
 					"group": "navigation@1"
 				},
 				{
