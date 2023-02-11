@@ -208,11 +208,6 @@ module.exports = class SettingsUI {
           field.description = `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`;
           ui.addField(field);
 
-          field = new Field(`checkbox`, `debugSecure`, `Debug securely`);
-          field.default = (config.debugSecure ? `checked` : ``);
-          field.description = `Ensures that the client and debug service are connected securely.`;
-          ui.addField(field);
-
           field = new Field(`checkbox`, `debugUpdateProductionFiles`, `Update production files`);
           field.default = (config.debugUpdateProductionFiles ? `checked` : ``);
           field.description = `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`;
@@ -221,6 +216,11 @@ module.exports = class SettingsUI {
           field = new Field(`checkbox`, `debugEnableDebugTracing`, `Debug trace`);
           field.default = (config.debugEnableDebugTracing ? `checked` : ``);
           field.description = `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`;
+          ui.addField(field);
+
+          field = new Field(`checkbox`, `debugIsSecure`, `Debug securely`);
+          field.default = (config.debugIsSecure ? `checked` : ``);
+          field.description = `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`;
           ui.addField(field);
         }
 

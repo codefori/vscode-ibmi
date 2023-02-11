@@ -349,9 +349,9 @@
 								"default": "8005",
 								"description": "Port to connect to IBM i Debug Service."
 							},
-							"debugSecure": {
+							"debugIsSecure": {
 								"type": "boolean",
-								"default": true,
+								"default": false,
 								"description": "Used to determine if the client should connect securely or not."
 							},
 							"debugUpdateProductionFiles": {
@@ -786,12 +786,12 @@
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
-				"title": "Setup local certificate",
+				"title": "Import local certificate",
 				"category": "IBM i Debug"
 			},
 			{
 				"command": "code-for-ibmi.debug.start",
-				"title": "Start debug server",
+				"title": "Start debug service",
 				"category": "IBM i Debug"
 			},
 			{
