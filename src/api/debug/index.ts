@@ -108,6 +108,23 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
       return vscode.debug.stopDebugging();
     }),
 
+    vscode.debug.onDidTerminateDebugSession(async session => {
+      if (session.configuration.type === `IBMiDebug`) {
+        const connection = instance.connection;
+
+        server.getStuckJobs(connection?.currentUser!, instance.content!).then(jobIds => {
+          if (jobIds.length > 0) {
+            vscode.window.showInformationMessage(`You have ${jobIds.length} debug job${jobIds.length !== 1 ? `s` : ``} stuck at MSGW under your user profile.`, `End jobs`, `Ignore`)
+              .then(selection => {
+                if (selection === `End jobs`) {
+                  server.endJobs(jobIds, connection!);
+                }
+              })
+          }
+        });
+      }
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
       if (debugExtensionAvailable()) {
         const connection = instance.connection;
@@ -378,7 +395,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       "ignoreCertificateErrors": !secure,
       "library": options.library.toUpperCase(),
       "program": options.object.toUpperCase(),
-      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${config?.libraryList.join(` `)}) CURLIB(${config?.currentLibrary})`,
+      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${config?.libraryList.join(` `)}) CURLIB(${config?.currentLibrary}) JOBQ(QSYSNOMAX)`,
       "updateProductionFiles": updateProductionFiles,
       "trace": enableDebugTracing,
     };
