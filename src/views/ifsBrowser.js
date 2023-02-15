@@ -448,8 +448,16 @@ module.exports = class ifsBrowserProvider {
           let path;
           if (node)
             path = node.path;
-          else
+          else {
             path = config.homeDirectory;
+            path = await vscode.window.showInputBox({
+              value: path,
+              prompt: `Enter IFS directory to search`,
+              title: `Search directory`
+            })
+          }
+
+          if (!path) return;
 
           let searchTerm = await vscode.window.showInputBox({
             prompt: `Search ${path}.`
