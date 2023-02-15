@@ -375,7 +375,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   currentCommand = await vscode.window.showInputBox({
     ignoreFocusOut: true,
     title: `Debug command`,
-    prompt: `Command used to start debugging. The command is wrapped around SBMJOB.`,
+    prompt: `Command used to start debugging the ${pathKey} program object. The command is wrapped around SBMJOB.`,
     value: currentCommand
   });
 
