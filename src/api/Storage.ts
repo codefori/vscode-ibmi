@@ -4,9 +4,11 @@ const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
+const DEBUG_KEY = `debug`
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
+export type DebugCommands = Record<string, string>;
 
 export class Storage {
   constructor(readonly context : vscode.ExtensionContext, readonly connectionName: string) {
@@ -50,5 +52,13 @@ export class Storage {
 
   async setDeployment(existingPaths : DeploymentPath) {
     await this.set(DEPLOYMENT_KEY, existingPaths);
+  }
+
+  getDebugCommands() {
+    return this.get<DebugCommands>(DEBUG_KEY) || {};
+  }
+
+  setDebugCommands(existingCommands: DebugCommands) {
+    return this.set(DEBUG_KEY, existingCommands);
   }
 }

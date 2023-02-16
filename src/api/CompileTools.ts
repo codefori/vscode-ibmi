@@ -528,15 +528,26 @@ export namespace CompileTools {
         switch (options.environment) {
           case `pase`:
             // We build environment variables for the environment to be ready
-            const envVars = getDefaultVariables(instance);
-            Object.entries(options.env || {})
-              .filter(([key]) => (/^[A-Za-z\&]/i).test(key))
-              .forEach(([key, value]) => envVars.set(key.startsWith('&') ? key.substring(1) : key, value));
+            const paseVars: Variables = new Map;
+
+            // Get default variable
+            getDefaultVariables(instance).forEach((value: string, key: string) => {
+              if ((/^[A-Za-z\&]/i).test(key)) {
+                paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
+              }
+            });
+
+            // Append any variables passed into the API
+            Object.entries(options.env || {}).forEach(([key, value]) => {
+              if ((/^[A-Za-z\&]/i).test(key)) {
+                paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
+              }
+            });
 
             commandResult = await connection.sendCommand({
               command: commands.join(` && `),
               directory: cwd,
-              env: Object.fromEntries(envVars),
+              env: Object.fromEntries(paseVars),
               ...callbacks
             });
             break;

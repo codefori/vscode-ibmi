@@ -200,6 +200,30 @@ module.exports = class SettingsUI {
           ui.addField(field);
         }
 
+        if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
+          ui.addField(new Field(`hr`));
+
+          field = new Field(`input`, `debugPort`, `Debug port`);
+          field.default = config.debugPort;
+          field.description = `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`;
+          ui.addField(field);
+
+          field = new Field(`checkbox`, `debugUpdateProductionFiles`, `Update production files`);
+          field.default = (config.debugUpdateProductionFiles ? `checked` : ``);
+          field.description = `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`;
+          ui.addField(field);
+
+          field = new Field(`checkbox`, `debugEnableDebugTracing`, `Debug trace`);
+          field.default = (config.debugEnableDebugTracing ? `checked` : ``);
+          field.description = `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`;
+          ui.addField(field);
+
+          field = new Field(`checkbox`, `debugIsSecure`, `Debug securely`);
+          field.default = (config.debugIsSecure ? `checked` : ``);
+          field.description = `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`;
+          ui.addField(field);
+        }
+
         ui.addField(new Field(`hr`));
     
         field = new Field(`submit`, `save`, `Save settings`);
@@ -302,7 +326,8 @@ module.exports = class SettingsUI {
 
             if(data.password && !data.privateKey) {
               context.secrets.delete(`${name}_password`);
-              context.secrets.store(`${name}_password`, `${data.password}`)
+              context.secrets.store(`${name}_password`, `${data.password}`);
+              data.privateKey = ``;
             };
 
             delete data.password;
