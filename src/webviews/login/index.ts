@@ -1,4 +1,4 @@
-const vscode = require(`vscode`);
+import vscode from 'vscode';
 
 const {default: IBMi} = require(`../../api/IBMi`);
 const {CustomUI, Field} = require(`../../api/CustomUI`);
@@ -6,13 +6,13 @@ const {GlobalConfiguration} = require(`../../api/Configuration`);
 
 let {instance, disconnect, setConnection, loadAllofExtension} = require(`../../instantiate`);
 
-module.exports = class Login {
+export default class Login {
 
   /**
    * Called when logging into a brand new system
    * @param {vscode.ExtensionContext} context
    */
-  static async show(context) {
+  static async show(context: vscode.ExtensionContext) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
       if (!disconnect()) return;
@@ -27,7 +27,7 @@ module.exports = class Login {
     ui.addField(new Field(`input`, `port`, `Port (SSH)`));
     ui.fields[2].default = `22`;
     ui.addField(new Field(`input`, `username`, `Username`));
-    ui.addField(new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`));
+    ui.addField(new Field(`paragraph`, `authText`, `Only provide either the password or a private key - fuck, not both.`));
     ui.addField(new Field(`password`, `password`, `Password`));
     ui.addField(new Field(`checkbox`, `savePassword`, `Save Password`));
     ui.addField(new Field(`file`, `privateKey`, `Private Key`));    
@@ -53,13 +53,13 @@ module.exports = class Login {
       data.port = Number(data.port);
 
       if (data.name) {
-        const existingConnection = existingConnections.find(item => item.name === data.name);
+        const existingConnection = existingConnections.find((item: {name: string}) => item.name === data.name);
 
         if (existingConnection) {
           vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
         } else {
           
-          let newConnection = (!existingConnections.some(item => item.name === data.name));
+          let newConnection = (!existingConnections.some((item: {name: string}) => item.name === data.name));
           if (newConnection) {
             // New connection!
             existingConnections.push({
@@ -112,8 +112,13 @@ module.exports = class Login {
                 vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
               }
       
-            } catch (e) { 
-              vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
+            } catch (e: unknown) { 
+              let errorMessage = `Error connecting to ${data.host}!`;
+              if(e instanceof Error) {
+                errorMessage += ` ${e.message}`;
+
+              }
+              vscode.window.showErrorMessage(errorMessage);
             }
             break;
           }
@@ -133,7 +138,7 @@ module.exports = class Login {
    * @param {string} name Connection name
    * @param {vscode.ExtensionContext} context
    */
-  static async LoginToPrevious(name, context) {
+  static async LoginToPrevious(name: string, context: vscode.ExtensionContext) {
     if (instance.getConnection()) {
 
       // If the user is already connected and trying to connect to a different system, disconnect them first
@@ -144,7 +149,7 @@ module.exports = class Login {
     }
 
     const existingConnections = GlobalConfiguration.get(`connections`);
-    let connectionConfig = existingConnections.find(item => item.name === name);
+    let connectionConfig = existingConnections.find((item: {name: string}) => item.name === name);
  
     if (connectionConfig) {
       if (!connectionConfig.privateKey) {
@@ -176,8 +181,12 @@ module.exports = class Login {
         }
 
         return true;
-      } catch (e) {
-        vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e.message}`);
+      } catch (e: unknown) {
+        let errorMessage = `Error connecting to ${connectionConfig.host}!`;
+        if(e instanceof Error) {
+          errorMessage += ` ${e.message}`;
+        }
+        vscode.window.showErrorMessage(errorMessage);
       }
     }
 
