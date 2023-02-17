@@ -1,4 +1,4 @@
-import vscode from 'vscode';
+const vscode = require(`vscode`);
 
 import { default as IBMi } from "../../api/IBMi";
 import { CustomUI } from "../../api/CustomUI";
@@ -7,24 +7,24 @@ import { ConnectionData } from '../../typings';
 
 let { instance, disconnect, setConnection, loadAllofExtension } = require(`../../instantiate`);
 
-export default class Login {
+module.exports = class Login {
 
   /**
    * Called when logging into a brand new system
    * @param {vscode.ExtensionContext} context
    */
-  static async show(context: vscode.ExtensionContext) {
+  static async show(context) {
     if (instance.getConnection()) {
       vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
       if (!disconnect()) return;
     }
 
-    const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+    const existingConnections = GlobalConfiguration.get<ConnectionData>(`connections`) || [];
 
     const ui = new CustomUI()
       .addInput(`name`, `Connection Name`)
       .addInput(`host`, `Host or IP Address`)
-      .addInput(`port`, `Port (SSH)`, '', { default: `22` })
+      .addInput(`port`, `Port (SSH)`, ``, { default: `22` })
       .addInput(`username`, `Username`)
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
@@ -35,7 +35,7 @@ export default class Login {
         { id: `saveExit`, label: `Save & Exit` }
       );
 
-    const page = await ui.loadPage<any>(`IBM i Login`);
+    const page = await ui.loadPage(`IBM i Login`);
     if (page && page.data) {
       const data = page.data;
       page.panel.dispose();
@@ -43,12 +43,11 @@ export default class Login {
       data.port = Number(data.port);
 
       if (data.name) {
-        const existingConnection = existingConnections.find((item: { name: string }) => item.name === data.name);
+        const existingConnection = existingConnections.find(item => item.name === data.name);
 
         if (existingConnection) {
           vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
         } else {
-
           let newConnection = (!existingConnections.some(item => item.name === data.name));
           if (newConnection) {
             // New connection!
@@ -67,50 +66,44 @@ export default class Login {
           }
 
           switch (data.buttons) {
-            case `saveExit`:
-              vscode.window.showInformationMessage(`Connection to ${data.host} saved!`);
-              break;
-            case `connect`:
-              vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
-              const connection = new IBMi();
+          case `saveExit`:
+            vscode.window.showInformationMessage(`Connection to ${data.host} saved!`);
+            break;
+          case `connect`:
+            vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
+            const connection = new IBMi();
 
-              try {
-                const connected = await connection.connect(data);
-                if (connected.success) {
-                  setConnection(connection);
-                  loadAllofExtension(context);
+            try {
+              const connected = await connection.connect(data);
+              if (connected.success) {
+                setConnection(connection);
+                loadAllofExtension(context);
 
-                  if (newConnection) {
+                if (newConnection) {
 
-                    vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
-                      if (selectionA === `Open configuration`) {
-                        vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                  vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
+                    if (selectionA === `Open configuration`) {
+                      vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
 
-                      } else {
-                        vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
-                          if (selectionB === `Open configuration`) {
-                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
-                          }
-                        });
-                      }
-                    });
-                  } else {
-                    vscode.window.showInformationMessage(`Connected to ${data.host}!`);
-                  }
-
+                    } else {
+                      vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
+                        if (selectionB === `Open configuration`) {
+                          vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                        }
+                      });
+                    }
+                  });
                 } else {
-                  vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
+                  vscode.window.showInformationMessage(`Connected to ${data.host}!`);
                 }
 
-              } catch (e: unknown) {
-                let errorMessage = `Error connecting to ${data.host}!`;
-                if (e instanceof Error) {
-                  errorMessage += ` ${e.message}`;
-
-                }
-                vscode.window.showErrorMessage(errorMessage);
+              } else {
+                vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
               }
-              break;
+            } catch (e) { 
+              vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e.message}`);
+            }
+            break;
           }
 
         }
@@ -128,7 +121,7 @@ export default class Login {
    * @param {string} name Connection name
    * @param {vscode.ExtensionContext} context
    */
-  static async LoginToPrevious(name: string, context: vscode.ExtensionContext) {
+  static async LoginToPrevious(name, context) {
     if (instance.getConnection()) {
 
       // If the user is already connected and trying to connect to a different system, disconnect them first
@@ -138,9 +131,8 @@ export default class Login {
       }
     }
 
-    const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-    const connectionConfig = existingConnections.find(item => item.name === name);
-
+    const existingConnections = GlobalConfiguration.get(`connections`);
+    let connectionConfig = existingConnections.find(item => item.name === name); 
     if (connectionConfig) {
       if (!connectionConfig.privateKey) {
         connectionConfig.password = await context.secrets.get(`${connectionConfig.name}_password`);
@@ -171,12 +163,8 @@ export default class Login {
         }
 
         return true;
-      } catch (e: unknown) {
-        let errorMessage = `Error connecting to ${connectionConfig.host}!`;
-        if (e instanceof Error) {
-          errorMessage += ` ${e.message}`;
-        }
-        vscode.window.showErrorMessage(errorMessage);
+      } catch (e) {
+        vscode.window.showErrorMessage(`Error connecting to ${connectionConfig.host}! ${e.message}`);
       }
     }
 
