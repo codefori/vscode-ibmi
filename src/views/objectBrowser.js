@@ -453,6 +453,50 @@ module.exports = class objectBrowserTwoProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node) => {
+        if (!node) {
+          const connection = instance.getConnection();
+          await vscode.window.showInputBox({
+            prompt: `Enter LIB/SPF/member.ext to search (member.ext is optional and can contain wildcards)`,
+            title: `Search source file`,
+            validateInput: (input) => {
+              input = input.trim();
+              const path = input.split(`/`);
+              let checkPath;
+              if (path.length > 3) {
+                return `Please enter value in form LIB/SPF/member.ext`
+              } else if (path.length > 2) {                 // Check member
+                let checkMember = path[2].replace(/[*]/g, ``).split(`.`);
+                checkMember[0] = checkMember[0] !== `` ? checkMember[0] : `a`;
+                checkPath = path[0] + `/` + path[1] + `/` + checkMember[0] + `.` + (checkMember.length > 1 ? checkMember[1] : ``);
+              } else if (path.length > 1) {                 // Check filename
+                checkPath = input + (path[path.length-1] === `` ? `a` : ``) + `/a.b`;
+              } else {                                      // Check library
+                checkPath = input + (path[path.length-1] === `` ? `a` : ``) + `/a/a.a`;
+              }
+              if (checkPath) {
+                try {
+                  connection.parserMemberPath(checkPath);
+                } catch (e) {
+                  return e;
+                }
+              }
+            }
+          }).then(async input => {
+            if (input) {
+              const path = input.trim().toUpperCase().split(`/`);
+              let member;
+              if (path.length < 3 || path[2] === ``) {
+                member = [`*`, `*`];
+              } else if (!path[2].includes(`.`)) {
+                member = [path[2], `*`];
+              } else {
+                member = path[2].split(`.`);
+              }
+              node = new SPF(``, { library: path[0], name: path[1], text: undefined, attribute: undefined }, member[0], member[1]);
+            }  
+          })
+        };
+
         if (node) {
           /** @type {ConnectionConfiguration.Parameters} */
           const config = instance.getConfig();
