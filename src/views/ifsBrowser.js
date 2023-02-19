@@ -361,10 +361,13 @@ module.exports = class ifsBrowserProvider {
           //Running from right click
           let deletionConfirmed = false;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+          console.log(`bbbbb`);
+          console.log(node.path.substring(0, node.path.length - 1));
+          console.log(path.basename(node.path.substring(0, node.path.length - 1)));
+
           if (result === `Yes`) {    
             if((GlobalConfiguration.get(`safeDeleteMode`)) && node.path.endsWith(`/`)) { //Check if path is directory
-              const dirSplit = node.path.split(`/`);
-              const dirName = dirSplit[dirSplit.length - 2];  //Get name of directory
+              const dirName = path.basename(node.path.substring(0, node.path.length - 1))  //Get the name of the directory to be deleted
               
               const deletionPrompt = `Once you delete the directory, it cannot be restored.\nPlease type \"` + dirName + `\" to confirm deletion.`;
               const input = await vscode.window.showInputBox({
