@@ -3,7 +3,7 @@ const vscode = require(`vscode`);
 const contentApi = require(`./content`);
 
 const {instance} = require(`../../../instantiate`);
-import { parseFSOptions } from "../QSysFs";
+const { parseFSOptions } = require(`../QSysFs`);
 
 module.exports = class ComplexQsysFs {
   constructor() {
@@ -40,7 +40,7 @@ module.exports = class ComplexQsysFs {
    */
   writeFile(uri, content, options) {
     if(parseFSOptions(uri).readOnly){
-      throw new Error("Member opened in read only mode: saving is disabled");
+      throw new Error(`Member opened in read only mode: saving is disabled`);
     }
 
     const connection = instance.getConnection();
