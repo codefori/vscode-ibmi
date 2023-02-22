@@ -3,7 +3,7 @@ const vscode = require(`vscode`);
 const contentApi = require(`./content`);
 
 const {instance} = require(`../../../instantiate`);
-const { parseFSOptions } = require(`../QSysFs`);
+const { checkIfEditable } = require(`../QSysFs`);
 
 module.exports = class ComplexQsysFs {
   constructor() {
@@ -39,14 +39,11 @@ module.exports = class ComplexQsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
-    if(parseFSOptions(uri).readOnly){
-      throw new Error(`Member opened in read only mode: saving is disabled`);
+    if(checkIfEditable(uri)){
+      const connection = instance.getConnection();
+      const {asp, library, file, member} = connection.parserMemberPath(uri.path);
+      return contentApi.uploadMemberContentWithDates(asp, library, file, member, content.toString(`utf8`));
     }
-
-    const connection = instance.getConnection();
-    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
-
-    return contentApi.uploadMemberContentWithDates(asp, library, file, member, content.toString(`utf8`));
   }
 
   /**

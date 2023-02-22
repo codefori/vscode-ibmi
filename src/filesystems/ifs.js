@@ -2,7 +2,7 @@
 const util = require(`util`);
 const vscode = require(`vscode`);
 let {instance} = require(`../instantiate`);
-const { parseFSOptions } = require("./qsys/QSysFs");
+const { checkIfEditable } = require(`./qsys/QSysFs`);
 
 module.exports = class qsysFs {
   constructor() {
@@ -37,12 +37,10 @@ module.exports = class qsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
-    if(parseFSOptions(uri).readOnly){
-      throw new Error("Member opened in read only mode: saving is disabled");
-    }
-    
-    const contentApi = instance.getContent();
-    return contentApi.writeStreamfile(uri.path, content.toString(`utf8`));
+    if(checkIfEditable(uri)){
+      const contentApi = instance.getContent();
+      return contentApi.writeStreamfile(uri.path, content.toString(`utf8`));  
+    }    
   }
 
   /**

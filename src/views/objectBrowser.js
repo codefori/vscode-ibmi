@@ -11,7 +11,7 @@ const FiltersUI = require(`../webviews/filters`);
 let { instance, setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
-const { getMemberUri } = require("../filesystems/qsys/QSysFs");
+const { getMemberUri } = require(`../filesystems/qsys/QSysFs`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -553,7 +553,7 @@ module.exports = class objectBrowserTwoProvider {
                       }
                     }, timeoutInternal);
 
-                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter}.MBR`, searchTerm, node.protected);
+                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter}.MBR`, searchTerm, node.filter);
 
                     // Filter search result by member type filter.
                     if (results.length > 0 && node.memberTypeFilter) {
@@ -963,7 +963,7 @@ module.exports = class objectBrowserTwoProvider {
       /** @type {ConnectionConfiguration.ObjectFilters} */
       let filter;
 
-      switch (element.contextValue.split('_')[0]) {
+      switch (element.contextValue.split(`_`)[0]) {
       case `filter`:
         /** @type {ILEObject} */ //@ts-ignore We know what is it based on contextValue.
         const obj = element;
@@ -1067,12 +1067,12 @@ class FilterItem extends vscode.TreeItem {
     super(filter.name, vscode.TreeItemCollapsibleState.Collapsed);
 
     this.protected = filter.protected;
-    this.contextValue = `filter${this.protected ? "_readonly" : ""}`;
+    this.contextValue = `filter${this.protected ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
     this.library = filter.library;
     this.filter = filter.name;
     if(this.protected){
-      this.iconPath = new vscode.ThemeIcon("lock-small");
+      this.iconPath = new vscode.ThemeIcon(`lock-small`);
     }
   }
 }
@@ -1090,7 +1090,7 @@ class SPF extends vscode.TreeItem {
     this.memberFilter = filter.member;
     this.memberTypeFilter = filter.memberType;
 
-    this.contextValue = `SPF${filter.protected ? "_readonly" : ""}`;
+    this.contextValue = `SPF${filter.protected ? `_readonly` : ``}`;
     this.path = [detail.library, detail.name].join(`/`);
     this.description = detail.text;
 
@@ -1122,7 +1122,7 @@ class ILEObject extends vscode.TreeItem {
     this.description = this.text + (this.attribute ? ` (${this.attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
 
-    this.contextValue = `object.${type.toLowerCase()}${this.attribute ? `.${this.attribute}` : ``}${filter.protected ? "_readonly" : ""}`;
+    this.contextValue = `object.${type.toLowerCase()}${this.attribute ? `.${this.attribute}` : ``}${filter.protected ? `_readonly` : ``}`;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -1141,15 +1141,15 @@ class ILEObject extends vscode.TreeItem {
 class Member extends vscode.TreeItem {
   /**
    * 
-   * @param {import("../typings").IBMiMember} member 
+   * @param {import(`../typings`).IBMiMember} member 
    * @param {ConnectionConfiguration.ObjectFilters} filter 
    */
   constructor(member, filter) {
     super(`${member.name}.${member.extension}`);
 
-    this.contextValue = `member${filter.protected ? "_readonly" : ""}`;
+    this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
     this.description = member.text;    
-    this.resourceUri = getMemberUri(member, {readOnly: filter.protected});
+    this.resourceUri = getMemberUri(member, {filter: filter.name});
     this.path = this.resourceUri.path;
     this.command = {
       command: `vscode.open`,

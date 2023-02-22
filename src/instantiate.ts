@@ -22,7 +22,7 @@ import { Search } from "./api/Search";
 import getComplexHandler from "./filesystems/qsys/complex/handlers";
 import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { RemoteCommand } from "./typings";
+import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
 
 let reconnectBarItem: vscode.StatusBarItem;
@@ -298,9 +298,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       //********* General editing */
 
       context.subscriptions.push(
-        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, readOnly?: boolean) => {
+        vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
           console.log(path);
-          const uri = getUriFromPath(path, {readOnly});
+          const uri = getUriFromPath(path, options);
           try {
             if (line) {
               // If a line is provided, we have to do a specific open
@@ -361,8 +361,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         })
       );
 
-      vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async (readOnly?: boolean) => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true));
-      vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readOnly?: boolean) => {
+      vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true));
+      vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
         const storage = instance.getStorage();
         if (!storage) return;
 
@@ -394,7 +394,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               storage.setSourceList({});
               vscode.window.showInformationMessage(`Cleared list.`);
             } else {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, readOnly);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, {readonly});
             }
           }
           quickPick.hide()
