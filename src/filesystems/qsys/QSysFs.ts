@@ -21,14 +21,24 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 export function checkIfEditable(uri: vscode.Uri) {
     const fsOptions = parseFSOptions(uri);
     if(instance.getConfig()?.readOnlyMode){
-        vscode.window.showWarningMessage(`Saving is disabled: read only mode is enabled in ${instance.getConfig()?.name} connection settings.`);
+        vscode.window.showWarningMessage(`Saving is disabled: read only mode is enabled in ${instance.getConfig()?.name} connection settings.`,"Edit connection")
+        .then(edit => {
+            if (edit){
+                vscode.commands.executeCommand("code-for-ibmi.showAdditionalSettings")
+            }
+        });
         return false;
     }
     else if (fsOptions.readonly) {
         vscode.window.showWarningMessage(`Saving is disabled: member has been opened in read only mode.`);
         return false;
     } else if (isProtectedFilter(fsOptions.filter)) {
-        vscode.window.showWarningMessage(`Saving is disabled: member has been opened from the protected filter ${fsOptions.filter}.`);
+        vscode.window.showWarningMessage(`Saving is disabled: member has been opened from the protected filter ${fsOptions.filter}.`, "Edit filter")
+        .then(edit => {
+            if (edit){
+                vscode.commands.executeCommand("code-for-ibmi.maintainFilter", {filter: fsOptions.filter})
+            }
+        });
         return false;
     }    
     else {
