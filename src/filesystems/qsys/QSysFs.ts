@@ -20,13 +20,17 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function checkIfEditable(uri: vscode.Uri) {
     const fsOptions = parseFSOptions(uri);
-    if (fsOptions.readonly) {
+    if(instance.getConfig()?.readOnlyMode){
+        vscode.window.showWarningMessage(`Saving is disabled: read only mode is enabled in ${instance.getConfig()?.name} connection settings.`);
+        return false;
+    }
+    else if (fsOptions.readonly) {
         vscode.window.showWarningMessage(`Saving is disabled: member has been opened in read only mode.`);
         return false;
     } else if (isProtectedFilter(fsOptions.filter)) {
         vscode.window.showWarningMessage(`Saving is disabled: member has been opened from the protected filter ${fsOptions.filter}.`);
         return false;
-    }
+    }    
     else {
         return true;
     }

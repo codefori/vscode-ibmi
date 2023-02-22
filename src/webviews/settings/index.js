@@ -105,6 +105,11 @@ module.exports = class SettingsUI {
         field.description = `When current editor has unsaved changes, automatically save it before running an action.`;
         ui.addField(field);
 
+        field = new Field(`checkbox`, `readOnlyMode`, `Read only mode`);
+        field.default = (config.readOnlyMode ? `checked` : ``);
+        field.description = `When enabled, saving will be disabled for source members and IFS files.`;
+        ui.addField(field);
+
         ui.addField(new Field(`hr`));
     
         field = new Field(`checkbox`, `enableSourceDates`, `Enable Source Dates`);

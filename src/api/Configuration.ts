@@ -41,6 +41,7 @@ export namespace ConnectionConfiguration {
     debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
     debugEnableDebugTracing: boolean;
+    readOnlyMode: boolean;
     [name: string]: any;
   }
 
@@ -109,6 +110,7 @@ export namespace ConnectionConfiguration {
       debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
+      readOnlyMode: (parameters.readOnlyMode === true)
     }
   }
 
