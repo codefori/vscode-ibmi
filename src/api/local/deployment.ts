@@ -499,6 +499,8 @@ export namespace Deployment {
         existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
         await storage.setDeployment(existingPaths);
 
+        instance.emitter?.fire(`deployLocation`);
+
         if (await vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`)) {
           vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index);
         }
