@@ -6,7 +6,7 @@ import IBMiContent from "./api/IBMiContent";
 import { Storage } from "./api/Storage";
 import path from 'path';
 
-import {CompileTools} from './api/CompileTools';
+import { CompileTools } from './api/CompileTools';
 
 import { Terminal } from './api/Terminal';
 import { Deployment } from './api/local/deployment';
@@ -146,10 +146,16 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         command: `code-for-ibmi.showAdditionalSettings`,
         title: `Show Additional Connection Settings`,
       };
-      context.subscriptions.push(connectedBarItem);
+      context.subscriptions.push(
+        connectedBarItem,
+        vscode.workspace.onDidChangeConfiguration(async event => {
+          if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
+            connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) Settings: ${config.name}`;
+          }
+        }));
     }
 
-    connectedBarItem.text = `$(settings-gear) Settings: ${config.name}`;
+    connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) Settings: ${config.name}`;
     connectedBarItem.show();
 
     if (!disconnectBarItem) {
@@ -394,7 +400,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               storage.setSourceList({});
               vscode.window.showInformationMessage(`Cleared list.`);
             } else {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, {readonly});
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
             }
           }
           quickPick.hide()
@@ -524,7 +530,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               if (library && object) {
                 detail.lib = library;
                 detail.object = object;
-                CompileTools.refreshDiagnostics(instance, {library, object});
+                CompileTools.refreshDiagnostics(instance, { library, object });
               } else {
                 vscode.window.showErrorMessage(`Format incorrect. Use LIB/OBJECT`);
               }
@@ -536,7 +542,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           Terminal.selectAndOpen(instance);
         }),
 
-        vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail : RemoteCommand) => {
+        vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail: RemoteCommand) => {
           if (detail && detail.command) {
             return CompileTools.runCommand(instance, detail);
           }
