@@ -502,7 +502,7 @@ module.exports = class ifsBrowserProvider {
 
                 if (results.length > 0) {
 
-                  setSearchResults(searchTerm, results);
+                  setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
 
                 } else {
                   vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${path}.`);
