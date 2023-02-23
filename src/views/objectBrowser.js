@@ -572,7 +572,7 @@ module.exports = class objectBrowserTwoProvider {
                         const resultPath = result.path.split(`/`);
                         const resultName = resultPath[resultPath.length - 1];
                         result.path += `.${members.find(member => member.name === resultName).extension}`;
-                        result.path = result.path.toLowerCase();
+                        result.path = result.path.toUpperCase();
                       });
 
                       results = results.sort((a, b) => {
