@@ -19,6 +19,10 @@ export class SearchView implements TreeDataProvider<any> {
       vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => {
         vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false);
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => {
+        this.collapse();
+      }),
     )
   }
 
@@ -41,6 +45,10 @@ export class SearchView implements TreeDataProvider<any> {
 
   getTreeItem(element: vscode.TreeItem) {
     return element;
+  }
+
+  collapse() {
+    vscode.commands.executeCommand(`workbench.actions.treeView.searchView.collapseAll`);
   }
 
   async getChildren(hitSource: HitSource): Promise<vscode.TreeItem[]> {
