@@ -657,16 +657,18 @@ export namespace CompileTools {
 
       commandUI.addField(new Field(`submit`, `execute`, `Execute`));
 
-      const { panel, data } = await commandUI.loadPage(name);
-      panel.dispose();
-      if (data) {
-        const dataEntries = Object.entries(data);
-        for (const component of components.reverse()) {
-          const value = dataEntries.find(([key]) => key === component.name)?.[1];
-          command = command.substring(0, component.start) + value + command.substring(component.end);
+      const page = await commandUI.loadPage(name);
+      if (page) {
+        page.panel.dispose();
+        if (page.data) {
+          const dataEntries = Object.entries(page.data);
+          for (const component of components.reverse()) {
+            const value = dataEntries.find(([key]) => key === component.name)?.[1];
+            command = command.substring(0, component.start) + value + command.substring(component.end);
+          }
+        } else {
+          command = '';
         }
-      } else {
-        command = '';
       }
     }
 
