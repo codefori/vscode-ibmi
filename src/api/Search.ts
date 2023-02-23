@@ -9,6 +9,7 @@ export namespace Search {
   export interface Result {
     path: string
     lines: Line[]
+    label?: string
   }
 
   export interface Line {

@@ -498,10 +498,10 @@ module.exports = class ifsBrowserProvider {
                   message: `'${searchTerm}' in ${path}.`
                 });
 
-                const results = await Search.searchIFS(instance, path, searchTerm);
+                let results = await Search.searchIFS(instance, path, searchTerm);
 
                 if (results.length > 0) {
-
+                  results = results.map(a => ({...a, label: a.path.replace(`${path}${path.endsWith(`/`) ? `` : `/`}`, ``)}));
                   setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
 
                 } else {
