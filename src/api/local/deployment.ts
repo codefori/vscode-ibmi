@@ -1,6 +1,6 @@
 
 import path, { basename, dirname } from 'path';
-import vscode from 'vscode';
+import vscode, { WorkspaceFolder } from 'vscode';
 import { getLocalActions } from './actions';
 import { ConnectionConfiguration } from '../Configuration';
 import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
@@ -73,14 +73,7 @@ export namespace Deployment {
             `Ignore`
           ).then(async result => {
             if (result === `Yes`) {
-              await createRemoteDirectory(possibleDeployDir);
-
-              existingPaths[workspace.uri.fsPath] = possibleDeployDir;
-              try {
-                await storage.setDeployment(existingPaths);
-              } catch (e) {
-                console.log(e);
-              }
+              setDeployLocation({path: possibleDeployDir}, workspace);
             }
           });
         }
@@ -485,16 +478,18 @@ export namespace Deployment {
     });
   }
 
-  async function setDeployLocation(node: any) {
+  async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder) {
     const path = node?.path || await vscode.window.showInputBox({
       prompt: `Enter IFS directory to deploy to`,
     });
 
     if (path) {
       const storage = instance.getStorage();
-      const chosenWorkspaceFolder = await getWorkspaceFolder();
+      const chosenWorkspaceFolder = workspaceFolder || await getWorkspaceFolder();
 
       if (storage && chosenWorkspaceFolder) {
+        await createRemoteDirectory(path);
+        
         const existingPaths = storage.getDeployment();
         existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
         await storage.setDeployment(existingPaths);
