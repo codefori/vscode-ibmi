@@ -62,6 +62,7 @@ class HitSource extends vscode.TreeItem {
     this.contextValue = `hitSource`;
     this.iconPath = vscode.ThemeIcon.File;
     this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
+    this.tooltip = result.path;   
     this._path = result.path;   
   }
 
