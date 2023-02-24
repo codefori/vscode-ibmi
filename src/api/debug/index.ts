@@ -270,6 +270,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
               let startupService = false;
 
+
               progress.report({ increment: 33, message: `Checking if service is already running.` });
               const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.content!);
 
