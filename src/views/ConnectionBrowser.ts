@@ -49,7 +49,7 @@ export class ObjectBrowserProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (server : Server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (server: Server) => {
         if (!this._attemptingConnection && server) {
           vscode.window.showWarningMessage(
             `Are you sure you want to delete the connection ${server.name}?`,
@@ -87,22 +87,29 @@ export class ObjectBrowserProvider {
 
   async getChildren(): Promise<ServerItem[]> {
     return (GlobalConfiguration.get<ConnectionData[]>(`connections`) || [])
-      .map(connection => new ServerItem(connection.name, connection.username, connection.host));
+      .map(connection => new ServerItem(connection));
   }
 }
 
 class ServerItem extends vscode.TreeItem implements Server {
-  constructor(readonly name: string, user: string, host: string) {
-    super(name, vscode.TreeItemCollapsibleState.None);
+  constructor(readonly connection: ConnectionData) {
+    super(connection.name, vscode.TreeItemCollapsibleState.None);
+    const readOnly = (GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [])
+      .find(settings => connection.name === settings.name)
+      ?.readOnlyMode
 
     this.contextValue = `server`;
-    this.description = `${user}@${host}`;
-    this.iconPath = new vscode.ThemeIcon(`remote`);
+    this.description = `${connection.username}@${connection.host}`;
+    this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `remote`);
 
     this.command = {
       command: `code-for-ibmi.connectPrevious`,
       title: `Connect`,
       arguments: [this]
     };
+  }
+
+  get name() {
+    return this.connection.name;
   }
 }

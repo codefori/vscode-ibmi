@@ -250,6 +250,11 @@ module.exports = class SettingsUI {
               data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
               break;
             }
+
+            //Refresh connection browser if not connected
+            if(!instance.getConnection()){
+              vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+            }
           }
 
           if (server) {
@@ -343,7 +348,7 @@ module.exports = class SettingsUI {
             };
 
             connections[connectionIdx] = connection;
-            await GlobalConfiguration.set(`connections`, connections);
+            await GlobalConfiguration.set(`connections`, connections);            
           }
         }
       })
