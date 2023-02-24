@@ -52,20 +52,19 @@ module.exports = class FiltersUI {
       }
     }
     
-    const ui = new CustomUI();
-    ui.addInput(`name`, `Filter name`, `The filter name should be unique.`, {default: filter.name});
-    ui.addInput(`library`, `Library`, `Library name. Cannot be generic name with an asterisk.`, {default: filter.library});
-    ui.addInput(`object`, `Object`, `Object name. Can be generic name with an asterisk. For example: <code>*</code>, or <code>Q*</code>.`, {default: filter.object});
-    ui.addInput(`types`, `Object type filter`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, {default: filter.types.join(`, `)});
-    ui.addInput(`member`, `Member`, `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`, {default: filter.member});
-    ui.addInput(`memberType`, `Member type`, `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`, {default: filter.memberType || `*`});
-    ui.addField(new Field(`submit`, `save`, `Save settings`));
+    const page = await new CustomUI()
+      .addInput(`name`, `Filter name`, `The filter name should be unique.`, {default: filter.name})
+      .addInput(`library`, `Library`, `Library name. Cannot be generic name with an asterisk.`, {default: filter.library})
+      .addInput(`object`, `Object`, `Object name. Can be generic name with an asterisk. For example: <code>*</code>, or <code>Q*</code>.`, {default: filter.object})
+      .addInput(`types`, `Object type filter`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, {default: filter.types.join(`, `)})
+      .addInput(`member`, `Member`, `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`, {default: filter.member})
+      .addInput(`memberType`, `Member type`, `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`, {default: filter.memberType || `*`})
+      .addButtons({ id: `save`, label: `Save settings` })
+      .loadPage(`Filter: ${name || `New`}`);
 
-    let {panel, data} = await ui.loadPage(`Filter: ${name || `New`}`);
-
-    if (data) {
-      panel.dispose();
-
+    if (page && page.data) {
+      page.panel.dispose();
+      const data = page.data;
       for (const key in data) {
 
         //In case we need to play with the data

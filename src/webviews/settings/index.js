@@ -129,13 +129,13 @@ module.exports = class SettingsUI {
         }
     
         ui.addHorizontalRule()
-          .addField(new Field(`submit`, `save`, `Save settings`));
+          .addButtons({ id: `save`, label:`Save settings` });
 
-        let { panel, data } = await ui.loadPage(`Settings: ${name}`);
+        const page = await ui.loadPage(`Settings: ${name}`);
+        if (page && page.data) {
+          page.panel.dispose();
 
-        if (data) {
-          panel.dispose();
-
+          const data = page.data;
           for (const key in data) {
 
             //In case we need to play with the data
@@ -189,19 +189,20 @@ module.exports = class SettingsUI {
           const connectionIdx = connections.findIndex(item => item.name === name);
           let connection = connections[connectionIdx];
 
-          const ui = new CustomUI()
+          const page = await new CustomUI()
             .addInput(`host`, `Host or IP Address`, null, { default: connection.host })
             .addInput(`port`, `Port (SSH)`, null, { default: String(connection.port) })
             .addInput(`username`, `Username`, null, { default: connection.username })
             .addParagraph(`Only provide either the password or a private key - not both.`)
             .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
             .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
-            .addField(new Field(`submit`, `submitButton`, `Save`));
+            .addButtons({id: `submitButton`, label:`Save`})
+            .loadPage(`Login Settings: ${name}`);
+            
+          if (page && page.data) {
+            page.panel.dispose();
 
-          const { panel, data } = await ui.loadPage(`Login Settings: ${name}`);
-          if (data) {
-            panel.dispose();
-
+            const data = page.data;
             data.port = Number(data.port);
             if (data.privateKey === ``) data.privateKey = connection.privateKey;
 
