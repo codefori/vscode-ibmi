@@ -17,10 +17,6 @@ const localCertContext = `code-for-ibmi:debug.local`;
 let connectionConfirmed = false;
 let temporaryPassword: string | undefined;
 
-/**
- * @param {*} instance 
- * @param {vscode.ExtensionContext} context 
- */
 export async function initialise(instance: Instance, context: ExtensionContext) {
   const debugExtensionAvailable = () => {
     const debugclient = vscode.extensions.getExtension(debugExtensionId);
@@ -31,12 +27,9 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
     exports.startDebug(instance, options);
   }
 
-  /** @param {vscode.Uri} uri */
   const getObjectFromUri = (uri: Uri) => {
-    /** @type {IBMi} */
     const connection = instance.getConnection();
 
-    /** @type {Configuration} */
     const configuration = instance.getConfig();
 
     const qualifiedPath: {
@@ -72,7 +65,6 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
   }
 
   const getPassword = async () => {
-    /** @type {IBMi} */
     const connection = instance.getConnection();
 
     let password = await context.secrets.get(`${connection!.currentConnectionName}_password`);
@@ -185,10 +177,10 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
           const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
             modal: true,
-            detail: `${remoteExists 
-              ? `Debug certificates already exist on this system! Running this setup will overwrite them, which will require the debug service to be restarted.` 
+            detail: `${remoteExists
+              ? `Debug certificates already exist on this system! Running this setup will overwrite them, which will require the debug service to be restarted.`
               : `Debug certificates are not setup on the system.`
-            } Continue with setup?`
+              } Continue with setup?`
           }, `Continue`);
 
           if (doSetup) {
@@ -278,7 +270,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
 
               let startupService = false;
 
-              progress.report({ increment: 20, message: `Checking if service is already running.` });
+              progress.report({ increment: 33, message: `Checking if service is already running.` });
               const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.content!);
 
               if (existingDebugService) {
@@ -288,8 +280,8 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
                 }, `End service`);
 
                 if (confirmEndServer === `End service`) {
-                  progress.report({ increment: 25, message: `Ending currently running service.` });
-                  try { 
+                  progress.report({ increment: 33, message: `Ending currently running service.` });
+                  try {
                     await server.end(connection);
                     startupService = true;
                   } catch (e: any) {
@@ -301,7 +293,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
               }
 
               if (startupService) {
-                progress.report({ increment: 25, message: `Starting service up.` });
+                progress.report({ increment: 34, message: `Starting service up.` });
                 try {
                   await server.startup(connection);
                 } catch (e: any) {
