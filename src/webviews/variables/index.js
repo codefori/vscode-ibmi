@@ -71,7 +71,7 @@ module.exports = class SettingsUI {
 
     const ui = new CustomUI()
       .addInput(`name`, `Variable name`, `<code>&</code> not required. Will be forced uppercase.`, { default: currentVariable.name })
-      .addInput(`value`, `Variable value`, `<code>&</code> not required. Will be forced uppercase.`, { default: currentVariable.value })
+      .addInput(`value`, `Variable value`, ``, { default: currentVariable.value })
       .addButtons({ id: `save`, label: `Save` }, { id: `delete`, label: `Delete` });
 
     const { panel, data } = await ui.loadPage(`Work with Variable`);
