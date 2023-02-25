@@ -1391,33 +1391,33 @@
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
-					"when": "code-for-ibmi:connected == false"
+					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
 				},
 				{
 					"id": "helpView",
 					"name": "Help and Support",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:helpViewDisabled !== true"
 				},
 				{
 					"id": "profilesView",
 					"name": "Profiles",
-					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true",
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true && code-for-ibmi:profilesViewDisabled !== true",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "libraryListView",
 					"name": "User Library List",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:libraryListDisabled !== true"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserDisabled !== true"
 				},
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:ifsBrowserDisabled !== true"
 				}
 			],
 			"ibmi-search": [
