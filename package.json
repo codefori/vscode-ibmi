@@ -1443,6 +1443,12 @@
 			]
 		},
 		"menus": {
+			"commandPalette": [
+				{
+					"command": "code-for-ibmi.connectPrevious",
+					"when": "code-for-ibmi:hasPreviousConnection"
+				}
+			],
 			"view/title": [
 				{
 					"command": "code-for-ibmi.connect",
