@@ -1446,13 +1446,18 @@
 			"view/title": [
 				{
 					"command": "code-for-ibmi.connect",
-					"group": "navigation",
+					"group": "navigation@1",
 					"when": "view == connectionBrowser"
 				},
 				{
 					"command": "code-for-ibmi.refreshConnections",
-					"group": "navigation",
+					"group": "navigation@2",
 					"when": "view == connectionBrowser"
+				},
+				{
+					"command": "code-for-ibmi.connectPrevious",
+					"group": "navigation@3",
+					"when": "view == connectionBrowser && code-for-ibmi:hasPreviousConnection"
 				},
 				{
 					"command": "code-for-ibmi.changeUserLibraryList",

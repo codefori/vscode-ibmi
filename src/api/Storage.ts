@@ -10,16 +10,61 @@ export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
 export type DebugCommands = Record<string, string>;
 
-export class Storage {
-  constructor(readonly context : vscode.ExtensionContext, readonly connectionName: string) {
+abstract class Storage {
+  protected readonly globalState;
+  
+  constructor(context : vscode.ExtensionContext) {    
+    this.globalState = context.globalState;
   }
 
-  private get<T>(key: string) : T | undefined {
-    return this.context.globalState.get<T>(`${this.connectionName}.${key}`);
+  protected get<T>(key: string) : T | undefined {
+    return this.globalState.get<T>(this.getStorageKey(key));
   }
 
-  private async set(key : string, value: any) {
-    await this.context.globalState.update(`${this.connectionName}.${key}`, value);
+  protected async set(key : string, value: any) {
+    await this.globalState.update(this.getStorageKey(key), value);
+  }
+
+  protected abstract getStorageKey(key: string) : string;
+}
+
+export class GlobalStorage extends Storage {
+  private static instance : GlobalStorage;
+  
+  static initialize(context : vscode.ExtensionContext){
+    if(!this.instance){
+      this.instance = new GlobalStorage(context);      
+    }
+  }
+
+  static get(){
+    return this.instance;
+  }
+
+  private constructor(context : vscode.ExtensionContext) {
+    super(context);
+  } 
+
+  protected getStorageKey(key: string): string {
+    return key;
+  }
+
+  getLastConnection() {
+    return this.get<string>("lastConnection");
+  }
+
+  async setLastConnection(connectionName?:string) {
+    await this.set("lastConnection", connectionName);
+  }
+}
+
+export class ConnectionStorage extends Storage {
+  constructor(context : vscode.ExtensionContext, readonly connectionName: string) {
+    super(context);
+  }
+
+  protected getStorageKey(key: string): string {
+    return `${this.connectionName}.${key}`;
   }
 
   getSourceList() {

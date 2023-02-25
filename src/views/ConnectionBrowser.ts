@@ -5,6 +5,8 @@ import { ConnectionData, Server } from '../typings';
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
 import settingsUI from '../webviews/settings';
 import { Login } from '../webviews/login';
+import { ConnectionStorage, GlobalStorage } from '../api/Storage';
+import { instance } from '../instantiate';
 
 export class ObjectBrowserProvider {
   private _attemptingConnection: boolean;
@@ -25,9 +27,13 @@ export class ObjectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectPrevious`, async (name: string | Server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectPrevious`, async (name?: string | Server) => {
         if (!this._attemptingConnection) {
           this._attemptingConnection = true;
+          
+          if(!name){
+            name = GlobalStorage.get().getLastConnection();
+          }
 
           switch (typeof name) {
             case `string`: // Name of connection object
