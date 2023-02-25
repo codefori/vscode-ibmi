@@ -4,7 +4,7 @@ import Instance from './Instance';
 import { Tools } from './Tools';
 
 export namespace Search {
-  const QSYS_PATTERN = /(?:\/QSYS\.LIB\/)|(?:\.LIB)|(?:\.FILE)|(?:\.MBR)/g;
+  const QSYS_PATTERN = /(?:\/\w{1,10}\/QSYS\.LIB\/)|(?:\/QSYS\.LIB\/)|(?:\.LIB)|(?:\.FILE)|(?:\.MBR)/g;
 
   export interface Result {
     path: string
