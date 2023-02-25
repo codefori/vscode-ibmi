@@ -633,40 +633,36 @@ export namespace CompileTools {
     if (components.length) {
       const commandUI = new CustomUI();
       for (const component of components) {
-        let field;
         if (component.initialValue.includes(`,`)) {
           //Select box
-          field = new Field(`select`, component.name, component.label);
-          field.items = component.initialValue.split(`,`).map((value, index) => (
+          commandUI.addSelect(component.name, component.label, component.initialValue.split(`,`).map((value, index) => (
             {
               selected: index === 0,
               value,
               description: value,
               text: `Select ${value}`,
             }
-          ));
-
+          )));
         } else {
           //Input box
-          field = new Field(`input`, component.name, component.label);
-          field.default = component.initialValue;
+          commandUI.addInput(component.name, component.label, '', { default: component.initialValue });
         }
-
-        commandUI.addField(field);
       }
 
-      commandUI.addField(new Field(`submit`, `execute`, `Execute`));
+      commandUI.addButtons({ id: `execute`, label: `Execute` });
 
-      const { panel, data } = await commandUI.loadPage(name);
-      panel.dispose();
-      if (data) {
-        const dataEntries = Object.entries(data);
-        for (const component of components.reverse()) {
-          const value = dataEntries.find(([key]) => key === component.name)?.[1];
-          command = command.substring(0, component.start) + value + command.substring(component.end);
+      const page = await commandUI.loadPage(name);
+      if (page) {
+        page.panel.dispose();
+        if (page.data) {
+          const dataEntries = Object.entries(page.data);
+          for (const component of components.reverse()) {
+            const value = dataEntries.find(([key]) => key === component.name)?.[1];
+            command = command.substring(0, component.start) + value + command.substring(component.end);
+          }
+        } else {
+          command = '';
         }
-      } else {
-        command = '';
       }
     }
 
