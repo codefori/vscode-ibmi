@@ -22,62 +22,38 @@ module.exports = class SettingsUI {
   }
 
   static async MainMenu() {
-    const allBaseActions = GlobalConfiguration.get(`actions`);
-    const allActions = allBaseActions.map((action, index) => ({
+    const allActions = GlobalConfiguration.get(`actions`).map((action, index) => ({
       ...action,
       index,
     }));
-
-    let ui = new CustomUI();
-    let field;
-
-    field = new Field(`tree`, `actions`, `Work with Actions`);
-    field.description = `Create or maintain Actions. Actions are grouped by the type of file/object they target.`;
 
     const icons = {
       branch: `folder`,
       leaf: `file`,
       open: `folder-opened`,
     };
-
-    let types = [];
-    allActions.forEach(action => { if (!types.includes(action.type)) types.push(action.type); });
-    const treeRoot = [...types].map(type => ({ 
-      icons,
-      open: true,
-      label: `📦 ${type}`,
-      type,
-      subItems: []
-    }));
-
-    treeRoot.forEach(env => {
-      const envActions = allActions.filter(action => action.type === env.type);
-      env.subItems = envActions.map(action => ({
-        icons,
-        label: `🔨 ${action.name} (${action.extensions.map(ext => ext.toLowerCase()).join(`, `)})`,
-        value: String(action.index),
-      }));
-    });
-
-    field.treeList = treeRoot;
+    const ui = new CustomUI()
+      .addTree(`actions`, `Work with Actions`,
+        Array.from(new Set(allActions.map(action => action.type)))
+          .map(type => ({ 
+            icons,
+            open: true,
+            label: `📦 ${type}`,
+            type,
+            subItems: allActions.filter(action => action.type === type)
+              .map(action => ({
+                icons,
+                label: `🔨 ${action.name} (${action.extensions.map(ext => ext.toLowerCase()).join(`, `)})`,
+                value: String(action.index),
+              }))
+          })),
+        `Create or maintain Actions. Actions are grouped by the type of file/object they target.`)
+      .addButtons(
+        {id: `newAction`, label: `New Action` },
+        { id: `duplicateAction`, label: `Duplicate`}
+      );
     
-    ui.addField(field);
-
-    field = new Field(`buttons`);
-    field.items = [
-      {
-        id: `newAction`,
-        label: `New Action`,
-      },
-      {
-        id: `duplicateAction`,
-        label: `Duplicate`,
-      }
-    ];
-    ui.addField(field);
-
-    let {panel, data} = await ui.loadPage(`Work with Actions`);
-
+    const {panel, data} = await ui.loadPage(`Work with Actions`);
     if (data) {
       panel.dispose();
 
@@ -165,131 +141,86 @@ module.exports = class SettingsUI {
     // Our custom variables as HTML
     const custom = config.customVariables.map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
 
-    let ui = new CustomUI();
-    let field;
-
-    ui.addField(new Field(`input`, `name`, `Action name`));
-    ui.fields[0].default = currentAction.name;
-
-    ui.addField(new Field(`hr`));
-
-    ui.addField(new Field(`input`, `command`, `Command to run`));
-    ui.fields[2].multiline = true;
-    ui.fields[2].description = `Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`;
-    ui.fields[2].default = currentAction.command;
-
-    ui.addField(new Field(`tabs`));
-    switch (currentAction.type) {
-    case `member`:
-      ui.fields[3].default = `0`;
-      break;
-    case `file`:
-    case `streamfile`:
-      ui.fields[3].default = `1`;
-      break;
-    case `object`:
-      ui.fields[3].default = `2`;
-      break;
-    }
-    ui.fields[3].items = [
-      {
-        label: `Member`,
-        value: `<ul>${Variables.Member.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
-      },
-      {
-        label: `Streamfile / File`,
-        value: `<ul>${Variables.Streamfile.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
-      },
-      {
-        label: `Object`,
-        value: `<ul>${Variables.Object.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
-      }
-    ];
-
-    ui.addField(new Field(`hr`));
-
-    ui.addField(new Field(`input`, `extensions`, `Extensions`));
-    ui.fields[5].default = currentAction.extensions.join(`, `);
-    ui.fields[5].description = `A comma delimited list of extensions for this action. This can be a member extension, a streamfile extension, an object type or an object attribute`;
-
-    ui.addField(new Field(`select`, `type`, `Types`));
-    ui.fields[6].description = `The types of files this action can support.`;
-    ui.fields[6].items = [
-      {
-        selected: currentAction.type === `member`,
-        value: `member`,
-        description: `Member`,
-        text: `Source members in the QSYS file system`,
-      },
-      {
-        selected: currentAction.type === `streamfile`,
-        value: `streamfile`,
-        description: `Streamfile`,
-        text: `Streamfiles in the IFS`,
-      },
-      {
-        selected: currentAction.type === `object`,
-        value: `object`,
-        description: `Object`,
-        text: `Objects in the QSYS file system`,
-      },
-      {
-        selected: currentAction.type === `file`,
-        value: `file`,
-        description: `Local File (Workspace)`,
-        text: `Actions for local files in the VS Code Workspace.`,
-      }
-    ];
-
-    ui.addField(new Field(`select`, `environment`, `Environment`));
-    ui.fields[7].description = `Environment for command to be executed in.`;
-    ui.fields[7].items = [
-      {
-        selected: currentAction.environment === `ile`,
-        value: `ile`,
-        description: `ILE`,
-        text: `Runs as an ILE command`,
-      },
-      {
-        selected: currentAction.environment === `qsh`,
-        value: `qsh`,
-        description: `QShell`,
-        text: `Runs the command through QShell`,
-      },
-      {
-        selected: currentAction.environment === `pase`,
-        value: `pase`,
-        description: `PASE`,
-        text: `Runs the command in the PASE environment`,
-      }
-    ];
-
-    ui.addField(new Field(`hr`));
-
-    field = new Field(`buttons`);
-    field.items = [
-      {
-        id: `saveAction`,
-        label: `Save`,
-      }
-    ];
-    if (id >= 0) {
-      field.items.push(
+    const ui = new CustomUI()
+      .addInput(`name`, `Action name`, undefined, {default:currentAction.name})
+      .addHorizontalRule()
+      .addInput(
+        `command`,
+        `Command to run`, 
+        `Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`,
+        { multiline: true, default: currentAction.command}
+      )
+      .addTabs([
         {
-          id: `deleteAction`,
-          label: `Delete`,
-        });
-    };
-    field.items.push(
-      {
-        id: `cancelAction`,
-        label: `Cancel`,
-      });
-    ui.addField(field);
+          label: `Member`,
+          value: `<ul>${Variables.Member.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+        },
+        {
+          label: `Streamfile / File`,
+          value: `<ul>${Variables.Streamfile.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+        },
+        {
+          label: `Object`,
+          value: `<ul>${Variables.Object.map(variable => `<li><b><code>${variable.name}</code></b>: ${variable.text}</li>`).join(``)}${custom}</ul>`,
+        }], getDefaultTabIndex(currentAction.type)
+      )
+      .addHorizontalRule()
+      .addInput(`extensions`, `Extensions`, `A comma delimited list of extensions for this action. This can be a member extension, a streamfile extension, an object type or an object attribute`, {default: currentAction.extensions.join(`, `)})
+      .addSelect(`type`, `Types`, [
+        {
+          selected: currentAction.type === `member`,
+          value: `member`,
+          description: `Member`,
+          text: `Source members in the QSYS file system`,
+        },
+        {
+          selected: currentAction.type === `streamfile`,
+          value: `streamfile`,
+          description: `Streamfile`,
+          text: `Streamfiles in the IFS`,
+        },
+        {
+          selected: currentAction.type === `object`,
+          value: `object`,
+          description: `Object`,
+          text: `Objects in the QSYS file system`,
+        },
+        {
+          selected: currentAction.type === `file`,
+          value: `file`,
+          description: `Local File (Workspace)`,
+          text: `Actions for local files in the VS Code Workspace.`,
+        }], `The types of files this action can support.`
+      )
+      .addSelect(`environment`, `Environment`, [
+        {
+          selected: currentAction.environment === `ile`,
+          value: `ile`,
+          description: `ILE`,
+          text: `Runs as an ILE command`,
+        },
+        {
+          selected: currentAction.environment === `qsh`,
+          value: `qsh`,
+          description: `QShell`,
+          text: `Runs the command through QShell`,
+        },
+        {
+          selected: currentAction.environment === `pase`,
+          value: `pase`,
+          description: `PASE`,
+          text: `Runs the command in the PASE environment`,
+        }], `Environment for command to be executed in.`
+      )
+      .addHorizontalRule()
+      .addButtons(
+        { id: `saveAction`, label: `Save` },
+        id >= 0 ? {id: `deleteAction`, label: `Delete`} : undefined,
+        { id: `cancelAction`, label: `Cancel` }  
+      );
 
     while (stayOnPanel === true) {
-      let {panel, data} = await ui.loadPage(uiTitle);
-
+      const {panel, data} = await ui.loadPage(uiTitle);
       if (data) {
         switch (data.buttons) {
         case `deleteAction`:
@@ -337,6 +268,17 @@ module.exports = class SettingsUI {
     }
 
     this.MainMenu();
-  }
-  
+  }  
+}
+
+function getDefaultTabIndex(type){
+  switch (type) {
+  case `member`:
+    return 0;
+  case `file`:
+  case `streamfile`:
+    return 1;
+  case `object`:
+    return 2;
+  } 
 }
