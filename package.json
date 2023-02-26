@@ -823,10 +823,16 @@
 				"icon": "$(add)"
 			},
 			{
-				"command": "code-for-ibmi.connectPrevious",
-				"title": "Connect to previous",
+				"command": "code-for-ibmi.connectTo",
+				"title": "Connect to IBM i",
 				"category": "IBM i",
 				"icon": "$(debug-start)"
+			},
+			{
+				"command": "code-for-ibmi.connectToPrevious",
+				"title": "Connect to previous IBM i",
+				"category": "IBM i",
+				"icon": "$(remote)"
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
@@ -1384,6 +1390,11 @@
 				"command": "code-for-ibmi.showOutputPanel",
 				"key": "ctrl+shift+f6",
 				"mac": "cmd+shift+f6"
+			},
+			{
+				"command": "code-for-ibmi.connectTo",
+				"key": "ctrl+alt+c",
+				"mac": "cmd+alt+c"
 			}
 		],
 		"viewsContainers": {
@@ -1445,8 +1456,12 @@
 		"menus": {
 			"commandPalette": [
 				{
-					"command": "code-for-ibmi.connectPrevious",
+					"command": "code-for-ibmi.connectTo",
 					"when": "code-for-ibmi:hasPreviousConnection"
+				},
+				{
+					"command": "code-for-ibmi.connectToPrevious",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -1461,7 +1476,7 @@
 					"when": "view == connectionBrowser"
 				},
 				{
-					"command": "code-for-ibmi.connectPrevious",
+					"command": "code-for-ibmi.connectToPrevious",
 					"group": "navigation@3",
 					"when": "view == connectionBrowser && code-for-ibmi:hasPreviousConnection"
 				},
@@ -1600,7 +1615,7 @@
 					"group": "1_manage@2"
 				},
 				{
-					"command": "code-for-ibmi.connectPrevious",
+					"command": "code-for-ibmi.connectTo",
 					"when": "view == connectionBrowser && viewItem == server",
 					"group": "inline"
 				},

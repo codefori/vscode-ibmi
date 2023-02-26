@@ -12,54 +12,71 @@ export type DebugCommands = Record<string, string>;
 
 abstract class Storage {
   protected readonly globalState;
-  
-  constructor(context : vscode.ExtensionContext) {    
+
+  constructor(context: vscode.ExtensionContext) {
     this.globalState = context.globalState;
   }
 
-  protected get<T>(key: string) : T | undefined {
+  protected get<T>(key: string): T | undefined {
     return this.globalState.get<T>(this.getStorageKey(key));
   }
 
-  protected async set(key : string, value: any) {
+  protected async set(key: string, value: any) {
     await this.globalState.update(this.getStorageKey(key), value);
   }
 
-  protected abstract getStorageKey(key: string) : string;
+  protected abstract getStorageKey(key: string): string;
 }
 
+export type LastConnection = {
+  name: string
+  timestamp: number
+};
+
 export class GlobalStorage extends Storage {
-  private static instance : GlobalStorage;
-  
-  static initialize(context : vscode.ExtensionContext){
-    if(!this.instance){
-      this.instance = new GlobalStorage(context);      
+  private static instance: GlobalStorage;
+
+  static initialize(context: vscode.ExtensionContext) {
+    if (!this.instance) {
+      this.instance = new GlobalStorage(context);
     }
   }
 
-  static get(){
+  static get() {
     return this.instance;
   }
 
-  private constructor(context : vscode.ExtensionContext) {
+  private constructor(context: vscode.ExtensionContext) {
     super(context);
-  } 
+  }
 
   protected getStorageKey(key: string): string {
     return key;
   }
 
-  getLastConnection() {
-    return this.get<string>("lastConnection");
+  getLastConnections() {
+    return this.get<LastConnection[]>("lastConnections");
   }
 
-  async setLastConnection(connectionName?:string) {
-    await this.set("lastConnection", connectionName);
+  async setLastConnection(name: string) {
+    const lastConnections = this.getLastConnections() || [];
+    const connection = lastConnections?.find(c => c.name === name);
+    if (connection) {
+      connection.timestamp = Date.now();
+    }
+    else {
+      lastConnections?.push({ name, timestamp: Date.now() });
+    }
+    await this.setLastConnections(lastConnections);
+  }
+
+  async setLastConnections(lastConnections: LastConnection[]) {
+    await this.set("lastConnections", lastConnections.sort((c1, c2) => c2.timestamp - c1.timestamp));
   }
 }
 
 export class ConnectionStorage extends Storage {
-  constructor(context : vscode.ExtensionContext, readonly connectionName: string) {
+  constructor(context: vscode.ExtensionContext, readonly connectionName: string) {
     super(context);
   }
 
@@ -71,7 +88,7 @@ export class ConnectionStorage extends Storage {
     return this.get<PathContent>(SOURCE_LIST_KEY) || {};
   }
 
-  async setSourceList(sourceList : PathContent) {
+  async setSourceList(sourceList: PathContent) {
     await this.set(SOURCE_LIST_KEY, sourceList);
   }
 
@@ -79,7 +96,7 @@ export class ConnectionStorage extends Storage {
     return this.get<string>(LAST_PROFILE_KEY);
   }
 
-  async setLastProfile(lastProfile : string) {
+  async setLastProfile(lastProfile: string) {
     await this.set(LAST_PROFILE_KEY, lastProfile);
   }
 
@@ -87,7 +104,7 @@ export class ConnectionStorage extends Storage {
     return this.get<string[]>(PREVIOUS_CUR_LIBS_KEY) || [];
   }
 
-  async setPreviousCurLibs(previousCurLibs : string[]) {
+  async setPreviousCurLibs(previousCurLibs: string[]) {
     await this.set(PREVIOUS_CUR_LIBS_KEY, previousCurLibs);
   }
 
@@ -95,7 +112,7 @@ export class ConnectionStorage extends Storage {
     return this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
   }
 
-  async setDeployment(existingPaths : DeploymentPath) {
+  async setDeployment(existingPaths: DeploymentPath) {
     await this.set(DEPLOYMENT_KEY, existingPaths);
   }
 

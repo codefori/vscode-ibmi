@@ -23,16 +23,12 @@ export function activate(context: ExtensionContext): CodeForIBMi {
 
   //We setup the event emitter.
   setupEmitter();
-  
-  const checkLastConnection = () => {
-    const lastConnection = GlobalStorage.get().getLastConnection();
-    if (lastConnection) {
-      const hasPreviousConnection = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []).find(c => c.name === lastConnection);
-      if (!hasPreviousConnection) {
-        GlobalStorage.get().setLastConnection();        
-      }
-      commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, hasPreviousConnection);
-    }
+
+  const checkLastConnections = () => {
+    const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
+    const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
+    GlobalStorage.get().setLastConnections(lastConnections);
+    commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
   };
 
   context.subscriptions.push(
@@ -59,7 +55,7 @@ export function activate(context: ExtensionContext): CodeForIBMi {
     ),
     workspace.onDidChangeConfiguration(async event => {
       if (event.affectsConfiguration(`code-for-ibmi.connections`)) {
-        checkLastConnection();
+        checkLastConnections();
       }
 
       const connection = instance.getConnection();
@@ -73,7 +69,7 @@ export function activate(context: ExtensionContext): CodeForIBMi {
   );
 
   GlobalStorage.initialize(context);
-  checkLastConnection();
+  checkLastConnections();
 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);

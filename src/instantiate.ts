@@ -127,7 +127,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     if (!reconnectBarItem) {
       reconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 11);
       reconnectBarItem.command = {
-        command: `code-for-ibmi.connectPrevious`,
+        command: `code-for-ibmi.connectTo`,
         title: `Force Reconnect`,
         arguments: [instance.connection.currentConnectionName]
       };
