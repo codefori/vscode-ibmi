@@ -75,6 +75,7 @@ export namespace SEUColors {
       decoration: vscode.window.createTextEditorDecorationType({
         backgroundColor: `#cf259c`,
         color: `white`,
+        textDecoration: `; border-bottom: 1px solid white;`
       })
     },
     red: {
@@ -146,6 +147,7 @@ export namespace SEUColors {
       decoration: vscode.window.createTextEditorDecorationType({
         backgroundColor: `#22c4d6`,
         color: `black`,
+        textDecoration: `; border-bottom: 1px solid black;`
       })
     },
     white: {
