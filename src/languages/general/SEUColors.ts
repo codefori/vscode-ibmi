@@ -49,7 +49,14 @@ export namespace SEUColors {
         textDecoration: `; border-bottom: 1px solid #28d15d;`
       })
     },
-    // green_ul_ri not supported
+    green_ul_ri: {
+      bytes: Buffer.from([7]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        backgroundColor: `#28d15d`,
+        color: `black`,
+        textDecoration: `; border-bottom: 1px solid black;`
+      })
+    },
     pink: {
       bytes: Buffer.from([194, 152]),
       decoration: vscode.window.createTextEditorDecorationType({

@@ -13,6 +13,10 @@ const {calcNewSourceDates} = require(`./handlers/diffHandler`);
 const DEFAULT_RECORD_LENGTH = 80;
 let { baseDates, recordLengths, getAliasName, baseSource } = require(`./data`);
 
+// Translate x'25' to x'2F' and back, or x'25' will become x'0A' (linefeed)!
+const SEU_GREEN_UL_RI = `x'25'`;
+const SEU_GREEN_UL_RI_temp = `x'2F'`;
+
 module.exports = class IBMiContent {
   /**
    * Download the contents of a source member using SQL.
@@ -54,7 +58,7 @@ module.exports = class IBMiContent {
     }
   
     let rows = await content.runSQL(
-      `select srcdat, rtrim(srcdta) as srcdta from ${aliasPath}`
+      `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`
     );
 
     if (rows.length === 0) {
@@ -116,7 +120,7 @@ module.exports = class IBMiContent {
       }
         
       rows.push(
-        `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${this.escapeString(sourceData[i])}')`,
+        `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, translate('${this.escapeString(sourceData[i])}', ${SEU_GREEN_UL_RI}, ${SEU_GREEN_UL_RI_temp}))`,
       );
     }
 
