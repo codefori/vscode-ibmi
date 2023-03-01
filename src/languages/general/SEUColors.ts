@@ -50,7 +50,12 @@ export namespace SEUColors {
       })
     },
     // green_ul_ri not supported
-    // pnk not supported
+    pink: {
+      bytes: Buffer.from([194, 152]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        color: `#cf259c`,
+      })
+    },
     pink_ri: {
       bytes: Buffer.from([194, 153]),
       decoration: vscode.window.createTextEditorDecorationType({
@@ -106,6 +111,14 @@ export namespace SEUColors {
         color: `#cf2331`,
         textDecoration: `; border-bottom: 1px solid #cf2331;`
       })
+    },
+    red_ri_ul: {
+      bytes: Buffer.from([5]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        backgroundColor: `#cf2331`,
+        color: `white`,
+        textDecoration: `; border-bottom: 1px solid white;`
+      }),
     },
     turquoise: {
       bytes: Buffer.from([194, 144]),
@@ -176,6 +189,13 @@ export namespace SEUColors {
       bytes: Buffer.from([22]),
       decoration: vscode.window.createTextEditorDecorationType({
         color: `#f4c842`,
+      })
+    },
+    yellow_ri: {
+      bytes: Buffer.from([194, 147]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        color: `#000000`,
+        backgroundColor: `#f4c842`
       })
     },
     yellow_ul: {
