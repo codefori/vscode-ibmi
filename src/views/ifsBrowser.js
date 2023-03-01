@@ -470,22 +470,22 @@ module.exports = class ifsBrowserProvider {
 
         if (connection.remoteFeatures.grep) {
 
-          let path;
+          let searchPath;
           if (node)
-            path = node.path;
+            searchPath = node.path;
           else {
-            path = config.homeDirectory;
-            path = await vscode.window.showInputBox({
-              value: path,
+            searchPath = config.homeDirectory;
+            searchPath = await vscode.window.showInputBox({
+              value: searchPath,
               prompt: `Enter IFS directory to search`,
               title: `Search directory`
             })
           }
 
-          if (!path) return;
+          if (!searchPath) return;
 
           let searchTerm = await vscode.window.showInputBox({
-            prompt: `Search ${path}.`
+            prompt: `Search ${searchPath}.`
           });
 
           if (searchTerm) {
@@ -495,17 +495,17 @@ module.exports = class ifsBrowserProvider {
                 title: `Searching`,
               }, async progress => {
                 progress.report({
-                  message: `'${searchTerm}' in ${path}.`
+                  message: `'${searchTerm}' in ${searchPath}.`
                 });
 
-                const results = await Search.searchIFS(instance, path, searchTerm);
+                let results = await Search.searchIFS(instance, searchPath, searchTerm);
 
                 if (results.length > 0) {
-
-                  setSearchResults(searchTerm, results);
+                  results = results.map(a => ({...a, label: path.posix.relative(searchPath, a.path)}));
+                  setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
 
                 } else {
-                  vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${path}.`);
+                  vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchPath}.`);
                 }
               });
 

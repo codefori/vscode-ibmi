@@ -19,6 +19,10 @@ export class SearchView implements TreeDataProvider<any> {
       vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => {
         vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false);
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => {
+        this.collapse();
+      }),
     )
   }
 
@@ -43,6 +47,10 @@ export class SearchView implements TreeDataProvider<any> {
     return element;
   }
 
+  collapse() {
+    vscode.commands.executeCommand(`workbench.actions.treeView.searchView.collapseAll`);
+  }
+
   async getChildren(hitSource: HitSource): Promise<vscode.TreeItem[]> {
     if (!hitSource) {
       return this._results.map(result => new HitSource(result, this._term));
@@ -56,12 +64,13 @@ class HitSource extends vscode.TreeItem {
   private readonly _path: string;
 
   constructor(readonly result: Search.Result, readonly term: string) {
-    super(path.posix.basename(result.path), vscode.TreeItemCollapsibleState.Expanded);
+    super(result.label ? result.label : path.posix.basename(result.path), vscode.TreeItemCollapsibleState.Expanded);
 
     const hits = result.lines.length;
     this.contextValue = `hitSource`;
     this.iconPath = vscode.ThemeIcon.File;
     this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
+    this.tooltip = result.path;   
     this._path = result.path;   
   }
 

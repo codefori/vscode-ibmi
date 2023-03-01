@@ -1332,6 +1332,13 @@
 				"title": "Close search view",
 				"category": "IBM i",
 				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.collapseSearchView",
+				"enablement": "code-for-ibmi:connected == true",
+				"title": "Collapse all",
+				"category": "IBM i",
+				"icon": "$(collapse-all)"
 			}
 		],
 		"keybindings": [
@@ -1527,7 +1534,12 @@
 				},
 				{
 					"command": "code-for-ibmi.closeSearchView",
-					"group": "navigation",
+					"group": "navigation@2",
+					"when": "view == searchView"
+				},
+				{
+					"command": "code-for-ibmi.collapseSearchView",
+					"group": "navigation@1",
 					"when": "view == searchView"
 				}
 			],
