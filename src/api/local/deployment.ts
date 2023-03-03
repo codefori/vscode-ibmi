@@ -479,24 +479,28 @@ export namespace Deployment {
   }
 
   async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder) {
-    const path = node?.path || await vscode.window.showInputBox({
+    const connection = instance.getConnection();
+    const possibleDeployDir = path.posix.join(`/`, `home`, connection!.currentUser, `builds`, workspaceFolder ? workspaceFolder.name : `codebase`);
+
+    const deployDir = node?.path || await vscode.window.showInputBox({
       prompt: `Enter IFS directory to deploy to`,
+      value: possibleDeployDir
     });
 
-    if (path) {
+    if (deployDir) {
       const storage = instance.getStorage();
       const chosenWorkspaceFolder = workspaceFolder || await getWorkspaceFolder();
 
       if (storage && chosenWorkspaceFolder) {
-        await createRemoteDirectory(path);
+        await createRemoteDirectory(deployDir);
         
         const existingPaths = storage.getDeployment();
-        existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
+        existingPaths[chosenWorkspaceFolder.uri.fsPath] = deployDir;
         await storage.setDeployment(existingPaths);
 
         instance.emitter?.fire(`deployLocation`);
 
-        if (await vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`)) {
+        if (await vscode.window.showInformationMessage(`Deployment location set to ${deployDir}`, `Deploy now`)) {
           vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index);
         }
       }
