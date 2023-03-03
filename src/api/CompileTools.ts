@@ -15,6 +15,11 @@ import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../
 import IBMi, { MemberParts } from './IBMi';
 import { Tools } from './Tools';
 
+export interface ILELibrarySettings {
+  currentLibrary: string;
+  libraryList: string[];
+}
+
 export namespace CompileTools {
   type Variables = Map<string, string>
 
@@ -171,21 +176,20 @@ export namespace CompileTools {
     return string;
   }
 
-  function getDefaultVariables(instance: Instance): Variables {
+  function getDefaultVariables(instance: Instance, librarySettings: ILELibrarySettings): Variables {
     const variables: Variables = new Map;
 
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (connection && config) {
-      variables.set(`&BUILDLIB`, config.currentLibrary);
-      variables.set(`&CURLIB`, config.currentLibrary);
-      variables.set(`\\*CURLIB`, config.currentLibrary);
+      variables.set(`&BUILDLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
+      variables.set(`&CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
+      variables.set(`\\*CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
       variables.set(`&USERNAME`, connection.currentUser);
       variables.set(`{usrprf}`, connection.currentUser);
       variables.set(`&HOME`, config.homeDirectory);
 
-      const libraryList = buildLibraryList(config);
-      variables.set(`&LIBLC`, libraryList.join(`,`));
+      const libraryList = buildLibraryList(librarySettings);
       variables.set(`&LIBLS`, libraryList.join(` `));
 
       for (const variable of config.customVariables) {
@@ -496,9 +500,19 @@ export namespace CompileTools {
     if (config && connection) {
       const cwd = options.cwd;
 
+      let ileSetup: ILELibrarySettings = {
+        currentLibrary: config.currentLibrary,
+        libraryList: config.libraryList,
+      };
+
+      if (options.env) {
+        if (options.env.LIBL) ileSetup.libraryList = options.env.LIBL.split(` `);
+        if (options.env.CURLIB) ileSetup.currentLibrary = options.env.CURLIB;
+      }
+
       let commandString = replaceValues(
         options.command,
-        getDefaultVariables(instance)
+        getDefaultVariables(instance, ileSetup)
       );
 
       if (commandString.startsWith(`?`)) {
@@ -511,8 +525,8 @@ export namespace CompileTools {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
         outputChannel.append(`\n\n`);
-        outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-        outputChannel.append(`Library list: ` + config.libraryList.join(` `) + `\n`);
+        outputChannel.append(`Current library: ` + ileSetup.currentLibrary + `\n`);
+        outputChannel.append(`Library list: ` + ileSetup.libraryList.join(` `) + `\n`);
         outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
 
         const callbacks: StandardIO = {
@@ -531,7 +545,7 @@ export namespace CompileTools {
             const paseVars: Variables = new Map;
 
             // Get default variable
-            getDefaultVariables(instance).forEach((value: string, key: string) => {
+            getDefaultVariables(instance, ileSetup).forEach((value: string, key: string) => {
               if ((/^[A-Za-z\&]/i).test(key)) {
                 paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
               }
@@ -555,7 +569,7 @@ export namespace CompileTools {
           case `qsh`:
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, config),
+                ...buildLiblistCommands(connection, ileSetup),
                 ...commands,
               ].join(` && `),
               directory: cwd,
@@ -568,7 +582,7 @@ export namespace CompileTools {
             // escape $ and # in commands
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, config),
+                ...buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
                   `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
                 ),
@@ -690,7 +704,7 @@ export namespace CompileTools {
     }
   }
 
-  function buildLibraryList(config: ConnectionConfiguration.Parameters): string[] {
+  function buildLibraryList(config: ILELibrarySettings): string[] {
     //We have to reverse it because `liblist -a` adds the next item to the top always 
     return config.libraryList
       .map(library => {
@@ -704,7 +718,7 @@ export namespace CompileTools {
       }).reverse();
   }
 
-  function buildLiblistCommands(connection: IBMi, config: ConnectionConfiguration.Parameters): string[] {
+  function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
       `liblist -d ${connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`)}`,
       `liblist -c ${config.currentLibrary.replace(/\$/g, `\\$`)}`,
