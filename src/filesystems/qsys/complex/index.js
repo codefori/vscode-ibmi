@@ -3,7 +3,7 @@ const vscode = require(`vscode`);
 const contentApi = require(`./content`);
 
 const {instance} = require(`../../../instantiate`);
-const { checkIfEditable } = require(`../QSysFs`);
+const { getFilePermission } = require(`../QSysFs`);
 
 module.exports = class ComplexQsysFs {
   constructor() {
@@ -28,9 +28,10 @@ module.exports = class ComplexQsysFs {
   /**
    * 
    * @param {vscode.Uri} uri 
+   * @returns {vscode.FileStat}
    */
   stat(uri) {
-    return {file: vscode.FileType.File}
+    return {file: vscode.FileType.File, permissions: getFilePermission(uri)}
   }
 
   /**
@@ -39,11 +40,9 @@ module.exports = class ComplexQsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
-    if(checkIfEditable(uri)){
-      const connection = instance.getConnection();
-      const {asp, library, file, member} = connection.parserMemberPath(uri.path);
-      return contentApi.uploadMemberContentWithDates(asp, library, file, member, content.toString(`utf8`));
-    }
+    const connection = instance.getConnection();
+    const {asp, library, file, member} = connection.parserMemberPath(uri.path);
+    return contentApi.uploadMemberContentWithDates(asp, library, file, member, content.toString(`utf8`));
   }
 
   /**

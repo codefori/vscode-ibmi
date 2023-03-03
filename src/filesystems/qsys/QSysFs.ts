@@ -1,5 +1,5 @@
 import { stringify, parse, ParsedUrlQueryInput } from "querystring";
-import vscode from "vscode";
+import vscode, { FilePermission } from "vscode";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions } from "../../typings";
 
@@ -18,31 +18,10 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
     }
 }
 
-export function checkIfEditable(uri: vscode.Uri) {
+export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if(instance.getConfig()?.readOnlyMode){
-        vscode.window.showWarningMessage(`Saving is disabled: read only mode is enabled in ${instance.getConfig()?.name} connection settings.`,"Edit connection")
-        .then(edit => {
-            if (edit){
-                vscode.commands.executeCommand("code-for-ibmi.showAdditionalSettings")
-            }
-        });
-        return false;
-    }
-    else if (fsOptions.readonly) {
-        vscode.window.showWarningMessage(`Saving is disabled: member has been opened in read only mode.`);
-        return false;
-    } else if (isProtectedFilter(fsOptions.filter)) {
-        vscode.window.showWarningMessage(`Saving is disabled: member has been opened from the protected filter ${fsOptions.filter}.`, "Edit filter")
-        .then(edit => {
-            if (edit){
-                vscode.commands.executeCommand("code-for-ibmi.maintainFilter", {filter: fsOptions.filter})
-            }
-        });
-        return false;
-    }    
-    else {
-        return true;
+    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly || isProtectedFilter(fsOptions.filter)) {
+        return FilePermission.Readonly;
     }
 }
 

@@ -2,7 +2,7 @@
 const util = require(`util`);
 const vscode = require(`vscode`);
 let {instance} = require(`../instantiate`);
-const { checkIfEditable } = require(`./qsys/QSysFs`);
+const { getFilePermission } = require(`./qsys/QSysFs`);
 
 module.exports = class qsysFs {
   constructor() {
@@ -26,9 +26,10 @@ module.exports = class qsysFs {
   /**
    * 
    * @param {vscode.Uri} uri 
+   * @returns {vscode.FileStat}
    */
   stat(uri) {
-    return {file: vscode.FileType.File}
+    return {file: vscode.FileType.File, permissions: getFilePermission(uri)}
   }
 
   /**
@@ -37,10 +38,8 @@ module.exports = class qsysFs {
    * @param {*} options 
    */
   writeFile(uri, content, options) {
-    if(checkIfEditable(uri)){
-      const contentApi = instance.getContent();
-      return contentApi.writeStreamfile(uri.path, content.toString(`utf8`));  
-    }    
+    const contentApi = instance.getContent();
+    return contentApi.writeStreamfile(uri.path, content.toString(`utf8`));  
   }
 
   /**
