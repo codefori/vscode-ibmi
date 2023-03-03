@@ -33,7 +33,7 @@ export default class Instance {
       return this.storage;
     }
 
-    onEvent(event: "connected" | "disconnected", func: Function): void {
+    onEvent(event: "connected" | "disconnected" | "deployLocation", func: Function): void {
       this.events.push({event, func});
     }
   };

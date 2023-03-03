@@ -567,13 +567,16 @@ module.exports = class objectBrowserTwoProvider {
                     }
 
                     if (results.length > 0) {
+                      const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
                       // Format result to include member type.
                       results.forEach(result => {
                         const resultPath = result.path.split(`/`);
                         const resultName = resultPath[resultPath.length - 1];
                         result.path += `.${members.find(member => member.name === resultName).extension}`;
-                        result.path = result.path.toLowerCase();
+                        if (objectNamesLower === true) {
+                          result.path = result.path.toLowerCase();
+                        }
                       });
 
                       results = results.sort((a, b) => {

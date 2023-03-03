@@ -1,9 +1,22 @@
 const vscode = require(`vscode`);
 
-const {CustomUI, Field} = require(`../../api/CustomUI`);
+const { CustomUI, Field } = require(`../../api/CustomUI`);
 
-const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
-let {instance} = require(`../../instantiate`);
+const { GlobalConfiguration, ConnectionConfiguration } = require(`../../api/Configuration`);
+let { instance } = require(`../../instantiate`);
+
+const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
+
+const TERMINAL_TYPES = [
+  { key: `IBM-3179-2`, text: `IBM-3179-2 (24x80 monochrome)` },
+  { key: `IBM-3180-2`, text: `IBM-3180-2 (27x132 monochrome)` },
+  { key: `IBM-3196-A1`, text: `IBM-3196-A1 (24x80 monochrome)` },
+  { key: `IBM-3477-FC`, text: `IBM-3477-FC (27x132 color)` },
+  { key: `IBM-3477-FG`, text: `IBM-3477-FG (27x132 monochrome)` },
+  { key: `IBM-5251-11`, text: `IBM-5251-11 (24x80 monochrome)` },
+  { key: `IBM-5291-1`, text: `IBM-5291-1 (24x80 monochrome)` },
+  { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
+];
 
 module.exports = class SettingsUI {
 
@@ -47,200 +60,85 @@ module.exports = class SettingsUI {
         const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `sourceDateMode`, `tempDir`];
         let restart = false;
 
-        let ui = new CustomUI();
-        let field;
-    
-        field = new Field(`input`, `tempLibrary`, `Temporary library`);
-        field.default = config.tempLibrary;
-        field.description = `Temporary library. Cannot be QTEMP.`;
-        ui.addField(field);
-    
-        field = new Field(`input`, `tempDir`, `Temporary IFS directory`);
-        field.default = config.tempDir;
-        field.description = `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`;
-        ui.addField(field);
+        const ui = new CustomUI()
+          .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary })
+          .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir })
+          .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData)
+          .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts)
+          .addCheckbox(`enableSQL`, `Enable SQL`, `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID is 65535, it is recommend SQL is disabled. When disabled, will use import files where possible.`, config.enableSQL)
+          .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
+          .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP })
+          .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID })
+          .addCheckbox(`autoConvertIFSccsid`, `Support EBCDIC streamfiles`, `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`, config.autoConvertIFSccsid)
+          .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
+          .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
+          .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
+          .addSelect(`sourceDateMode`, `Source date tracking mode`, [
+            {
+              selected: config.sourceDateMode === `edit`,
+              value: `edit`,
+              description: `Edit mode`,
+              text: `Tracks changes in a simple manner. When a line is changed, the date is updated. (Default)`,
+            },
+            {
+              selected: config.sourceDateMode === `diff`,
+              value: `diff`,
+              description: `Diff mode`,
+              text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
+            },
+          ], `Determine which method should be used to track changes while editing source members.`)
+          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
 
-        field = new Field(`checkbox`, `autoClearTempData`, `Clear temporary data automatically`);
-        field.default = (config.autoClearTempData ? `checked` : ``)
-        field.description = `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`;
-        ui.addField(field);
-
-        field = new Field(`checkbox`, `autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`);
-        field.default = (config.autoSortIFSShortcuts ? `checked` : ``)
-        field.description = `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`;
-        ui.addField(field);
-
-        field = new Field(`checkbox`, `enableSQL`, `Enable SQL`);
-        field.default = (config.enableSQL ? `checked` : ``);
-        field.description = `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID is 65535, it is recommend SQL is disabled. When disabled, will use import files where possible.`;
-        ui.addField(field);
-
-        field = new Field(`checkbox`, `showDescInLibList`, `Show description of libraries in User Library List view`);
-        field.default = (config.showDescInLibList ? `checked` : ``);
-        field.description = `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`;
-        ui.addField(field);
-    
-        field = new Field(`input`, `sourceASP`, `Source ASP`);
-        field.default = config.sourceASP;
-        field.description = `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`;
-        ui.addField(field);
-    
-        field = new Field(`input`, `sourceFileCCSID`, `Source file CCSID`);
-        field.default = config.sourceFileCCSID;
-        field.description = `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`;
-        ui.addField(field);
-    
-        field = new Field(`checkbox`, `autoConvertIFSccsid`, `Support EBCDIC streamfiles`);
-        field.default = (config.autoConvertIFSccsid ? `checked` : ``)
-        field.description = `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`;
-        ui.addField(field);
-    
-        field = new Field(`input`, `hideCompileErrors`, `Errors to ignore`);
-        field.default = config.hideCompileErrors.join(`, `);
-        field.description = `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`;
-        ui.addField(field);
-    
-        field = new Field(`checkbox`, `autoSaveBeforeAction`, `Auto Save for Actions`);
-        field.default = (config.autoSaveBeforeAction ? `checked` : ``);
-        field.description = `When current editor has unsaved changes, automatically save it before running an action.`;
-        ui.addField(field);
-
-        field = new Field(`checkbox`, `readOnlyMode`, `Read only mode`);
-        field.default = (config.readOnlyMode ? `checked` : ``);
-        field.description = `When enabled, saving will be disabled for source members and IFS files.`;
-        ui.addField(field);
-
-        ui.addField(new Field(`hr`));
-    
-        field = new Field(`checkbox`, `enableSourceDates`, `Enable Source Dates`);
-        field.default = (config.enableSourceDates ? `checked` : ``);
-        field.description = `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`;
-        ui.addField(field);
-
-        field = new Field(`select`, `sourceDateMode`, `Source date tracking mode`);
-        field.description = `Determine which method should be used to track changes while editing source members.`;
-        field.items = [
-          {
-            selected: config.sourceDateMode === `edit`,
-            value: `edit`,
-            description: `Edit mode`,
-            text: `Tracks changes in a simple manner. When a line is changed, the date is updated. (Default)`,
-          },
-          {
-            selected: config.sourceDateMode === `diff`,
-            value: `diff`,
-            description: `Diff mode`,
-            text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
-          },
-        ]
-        ui.addField(field);
-            
-        field = new Field(`checkbox`, `sourceDateGutter`, `Source Dates in Gutter`);
-        field.default = (config.sourceDateGutter ? `checked` : ``);
-        field.description = `When enabled, source dates will be displayed in the gutter.`;
-        ui.addField(field);
-
-        if (connection && connection.remoteFeatures.tn5250) { 
-          ui.addField(new Field(`hr`));
-
-          const encodings = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
-        
-          field = new Field(`select`, `encodingFor5250`, `5250 encoding`);
-          field.description = `The encoding for the 5250 emulator.`;
-          field.items = encodings.map(encoding => {
-            return {
+        if (connection && connection.remoteFeatures.tn5250) {
+          ui.addHorizontalRule()
+            .addSelect(`encodingFor5250`, `5250 encoding`, [{
+              selected: config.encodingFor5250 === `default`,
+              value: `default`,
+              description: `Default`,
+              text: `Default`,
+            }, ...ENCODINGS.map(encoding => ({
               selected: config.encodingFor5250 === encoding,
               value: encoding,
               description: encoding,
               text: encoding,
-            };
-          });
-          field.items.push({
-            selected: config.encodingFor5250 === `default`,
-            value: `default`,
-            description: `Default`,
-            text: `Default`,
-          });
-          ui.addField(field);
-
-          const terminalTypes = [
-            { key: `IBM-3179-2`, text: `IBM-3179-2 (24x80 monochrome)` },
-            { key: `IBM-3180-2`, text: `IBM-3180-2 (27x132 monochrome)` },
-            { key: `IBM-3196-A1`, text: `IBM-3196-A1 (24x80 monochrome)` },
-            { key: `IBM-3477-FC`, text: `IBM-3477-FC (27x132 color)` },
-            { key: `IBM-3477-FG`, text: `IBM-3477-FG (27x132 monochrome)` },
-            { key: `IBM-5251-11`, text: `IBM-5251-11 (24x80 monochrome)` },
-            { key: `IBM-5291-1`, text: `IBM-5291-1 (24x80 monochrome)` },
-            { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
-          ];
-
-          field = new Field(`select`, `terminalFor5250`, `5250 Terminal Type`);
-          field.description = `The terminal type for the 5250 emulator.`;
-          field.items = [
-            {
-              selected: config.terminalFor5250 === `default`,
-              value: `default`,
-              description: `Default`,
-              text: `Default`,
-            },
-            ...terminalTypes.map(terminal => {
-              return {
+            }))], `The encoding for the 5250 emulator.`)
+            .addSelect(`terminalFor5250`, `5250 Terminal Type`, [
+              {
+                selected: config.terminalFor5250 === `default`,
+                value: `default`,
+                description: `Default`,
+                text: `Default`,
+              },
+              ...TERMINAL_TYPES.map(terminal => ({
                 selected: config.terminalFor5250 === terminal.key,
                 value: terminal.key,
                 description: terminal.key,
                 text: terminal.text,
-              };
-            })
-          ]
-          ui.addField(field);
-    
-          field = new Field(`checkbox`, `setDeviceNameFor5250`, `Set Device Name for 5250`);
-          field.default = (config.setDeviceNameFor5250 ? `checked` : ``);
-          field.description = `When enabled, the user will be able to enter a device name before the terminal starts.`;
-          ui.addField(field);
-    
-          field = new Field(`input`, `connectringStringFor5250`, `Connection string for 5250`);
-          field.default = config.connectringStringFor5250;
-          field.description = `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`;
-          ui.addField(field);
+              }))
+            ], `The terminal type for the 5250 emulator.`)
+            .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
+            .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
         }
 
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
-          ui.addField(new Field(`hr`));
-
-          field = new Field(`input`, `debugPort`, `Debug port`);
-          field.default = config.debugPort;
-          field.description = `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`;
-          ui.addField(field);
-
-          field = new Field(`checkbox`, `debugUpdateProductionFiles`, `Update production files`);
-          field.default = (config.debugUpdateProductionFiles ? `checked` : ``);
-          field.description = `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`;
-          ui.addField(field);
-
-          field = new Field(`checkbox`, `debugEnableDebugTracing`, `Debug trace`);
-          field.default = (config.debugEnableDebugTracing ? `checked` : ``);
-          field.description = `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`;
-          ui.addField(field);
-
-          field = new Field(`checkbox`, `debugIsSecure`, `Debug securely`);
-          field.default = (config.debugIsSecure ? `checked` : ``);
-          field.description = `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`;
-          ui.addField(field);
+          ui.addHorizontalRule()
+            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, {default : config.debugPort})
+            .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
+            .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing)
+            .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
         }
+    
+        ui.addHorizontalRule()
+          .addButtons({ id: `save`, label:`Save settings` });
 
-        ui.addField(new Field(`hr`));
-    
-        field = new Field(`submit`, `save`, `Save settings`);
-        ui.addField(field);
-    
-        let {panel, data} = await ui.loadPage(`Settings: ${name}`);
-    
-        if (data) {
-          panel.dispose();
+        const page = await ui.loadPage(`Settings: ${name}`);
+        if (page && page.data) {
+          page.panel.dispose();
 
+          const data = page.data;
           for (const key in data) {
-    
+
             //In case we need to play with the data
             switch (key) {
             case `sourceASP`:
@@ -272,7 +170,7 @@ module.exports = class SettingsUI {
               if (restartFields.some(item => data[item] !== config[item])) {
                 restart = true;
               }
-              
+
               Object.assign(config, data);
               await ConnectionConfiguration.update(config);
             }
@@ -297,44 +195,24 @@ module.exports = class SettingsUI {
           const connectionIdx = connections.findIndex(item => item.name === name);
           let connection = connections[connectionIdx];
 
-          let ui = new CustomUI();
-          let field;
+          const page = await new CustomUI()
+            .addInput(`host`, `Host or IP Address`, null, { default: connection.host })
+            .addInput(`port`, `Port (SSH)`, null, { default: String(connection.port) })
+            .addInput(`username`, `Username`, null, { default: connection.username })
+            .addParagraph(`Only provide either the password or a private key - not both.`)
+            .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
+            .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
+            .addButtons({id: `submitButton`, label:`Save`})
+            .loadPage(`Login Settings: ${name}`);
+            
+          if (page && page.data) {
+            page.panel.dispose();
 
-          field = new Field(`input`, `host`, `Host or IP Address`);
-          field.default = connection.host;
-          ui.addField(field);
-
-          field = new Field(`input`, `port`, `Port`);
-          field.default = String(connection.port);
-          ui.addField(field);
-
-          field = new Field(`input`, `username`, `Username`);
-          field.default = connection.username;
-          ui.addField(field);
-
-          field = new Field(`paragraph`, `authText`, `Only provide either the password or a private key - not both.`);
-          ui.addField(field);
-
-          field = new Field(`password`, `password`, `Password`);
-          field.description = `Only provide a password if you want to update an existing one or set a new one.`
-          ui.addField(field);
-
-          field = new Field(`file`, `privateKey`, `Private Key`);
-          field.description = `Only provide a private key if you want to update from the existing one or set one.`
-          field.default = connection.privateKey;
-          ui.addField(field);
-
-          ui.addField(new Field(`submit`, `submitButton`, `Save`));
-
-          const {panel, data} = await ui.loadPage(`Login Settings: ${name}`);
-
-          if (data) {
-            panel.dispose();
-      
+            const data = page.data;
             data.port = Number(data.port);
             if (data.privateKey === ``) data.privateKey = connection.privateKey;
 
-            if(data.password && !data.privateKey) {
+            if (data.password && !data.privateKey) {
               context.secrets.delete(`${name}_password`);
               context.secrets.store(`${name}_password`, `${data.password}`);
               data.privateKey = ``;

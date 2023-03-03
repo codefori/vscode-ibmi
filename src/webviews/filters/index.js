@@ -54,52 +54,21 @@ module.exports = class FiltersUI {
         protected: false
       }
     }
-    
-    let ui = new CustomUI();
-    let field;
 
-    field = new Field(`input`, `name`, `Filter name`);
-    field.default = filter.name;
-    field.description = `The filter name should be unique.`
-    ui.addField(field);
+    const page = await new CustomUI()
+      .addInput(`name`, `Filter name`, `The filter name should be unique.`, {default: filter.name})
+      .addInput(`library`, `Library`, `Library name. Cannot be generic name with an asterisk.`, {default: filter.library})
+      .addInput(`object`, `Object`, `Object name. Can be generic name with an asterisk. For example: <code>*</code>, or <code>Q*</code>.`, {default: filter.object})
+      .addInput(`types`, `Object type filter`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, {default: filter.types.join(`, `)})
+      .addInput(`member`, `Member`, `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`, {default: filter.member})
+      .addInput(`memberType`, `Member type`, `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`, {default: filter.memberType || `*`})
+      .addCheckbox(`protected`, `Protected`, `Make this filter protected, preventing modifications and source members from being saved.`, filter.protected)
+      .addButtons({ id: `save`, label: `Save settings` })
+      .loadPage(`Filter: ${name || `New`}`);
 
-    field = new Field(`input`, `library`, `Library`);
-    field.default = filter.library;
-    field.description = `Library name. Cannot be generic name with an asterisk.`
-    ui.addField(field);
-
-    field = new Field(`input`, `object`, `Object`);
-    field.default = filter.object;
-    field.description = `Object name. Can be generic name with an asterisk. For example: <code>*</code>, or <code>Q*</code>.`;
-    ui.addField(field);
-
-    field = new Field(`input`, `types`, `Object type filter`);
-    field.default = filter.types.join(`, `);
-    field.description = `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`;
-    ui.addField(field);
-
-    field = new Field(`input`, `member`, `Member`);
-    field.default = filter.member;
-    field.description = `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`;
-    ui.addField(field);
-
-    field = new Field(`input`, `memberType`, `Member type`);
-    field.default = filter.memberType || `*`;
-    field.description = `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`;
-    ui.addField(field);
-    
-    field = new Field(`checkbox`, `protected`, `Protected`);
-    field.default = filter.protected ? `checked` : ``;
-    field.description = `Make this filter protected, preventing modifications and source members from being saved.`;
-    ui.addField(field);
-
-    field = new Field(`submit`, `save`, `Save settings`);
-    ui.addField(field);
-
-    let {panel, data} = await ui.loadPage(`Filter: ${name || `New`}`);
-
-    if (data) {
-      panel.dispose();
+    if (page && page.data) {
+      page.panel.dispose();
+      const data = page.data;
 
       for (const key in data) {
 

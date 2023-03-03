@@ -12,7 +12,7 @@ import { Terminal } from './api/Terminal';
 import { Deployment } from './api/local/deployment';
 import * as Debug from './api/debug';
 
-import { CustomUI, Field } from './api/CustomUI';
+import { CustomUI, Field, FieldType, Page } from './api/CustomUI';
 
 import { SearchView } from "./views/searchView";
 import { HelpView } from "./views/helpView";
@@ -564,19 +564,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
           const value = context.secrets.get(connectionKey);
           return value;
-        })
-      );
-
-      context.subscriptions.push(
-        vscode.commands.registerCommand(`code-for-ibmi.launchUI`, (title: string, fields, callback) => {
+        }),      
+        vscode.commands.registerCommand(`code-for-ibmi.launchUI`, <T>(title: string, fields: any[], callback: (page: Page<T>) => void) => {
           if (title && fields && callback) {
             const ui = new CustomUI();
-
-            fields.forEach((field: any) => {
+            fields.forEach(field => {
               const uiField = new Field(field.type, field.id, field.label);
               ui.addField(Object.assign(uiField, field));
             });
-
             ui.loadPage(title, callback);
           }
         })

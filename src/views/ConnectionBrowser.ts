@@ -3,8 +3,8 @@ import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
-import LoginPanel from '../webviews/login';
 import settingsUI from '../webviews/settings';
+import { Login } from '../webviews/login';
 
 export class ObjectBrowserProvider {
   private _attemptingConnection: boolean;
@@ -21,7 +21,7 @@ export class ObjectBrowserProvider {
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.connect`, () => {
         if (!this._attemptingConnection) {
-          LoginPanel.show(context);
+          Login.show(context);
         }
       }),
 
@@ -31,10 +31,10 @@ export class ObjectBrowserProvider {
 
           switch (typeof name) {
             case `string`: // Name of connection object
-              await LoginPanel.LoginToPrevious(name, context);
+              await Login.LoginToPrevious(name, context);
               break;
             case `object`: // A Server object
-              await LoginPanel.LoginToPrevious(name.name, context);
+              await Login.LoginToPrevious(name.name, context);
               break;
             default:
               vscode.window.showErrorMessage(`Use the Server Browser to select which system to connect to.`);

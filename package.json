@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.7.3",
+	"version": "1.7.4",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -425,6 +425,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
+				},
+				"code-for-ibmi.safeDeleteMode": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
@@ -1334,6 +1339,13 @@
 				"title": "Close search view",
 				"category": "IBM i",
 				"icon": "$(close)"
+			},
+			{
+				"command": "code-for-ibmi.collapseSearchView",
+				"enablement": "code-for-ibmi:connected == true",
+				"title": "Collapse all",
+				"category": "IBM i",
+				"icon": "$(collapse-all)"
 			}
 		],
 		"keybindings": [
@@ -1393,33 +1405,33 @@
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
-					"when": "code-for-ibmi:connected == false"
+					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
 				},
 				{
 					"id": "helpView",
 					"name": "Help and Support",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:helpViewDisabled !== true"
 				},
 				{
 					"id": "profilesView",
 					"name": "Profiles",
-					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true",
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true && code-for-ibmi:profilesViewDisabled !== true",
 					"visibility": "collapsed"
 				},
 				{
 					"id": "libraryListView",
 					"name": "User Library List",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:libraryListDisabled !== true"
 				},
 				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:objectBrowserDisabled !== true"
 				},
 				{
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
-					"when": "code-for-ibmi:connected == true"
+					"when": "code-for-ibmi:connected == true && code-for-ibmi:ifsBrowserDisabled !== true"
 				}
 			],
 			"ibmi-search": [
@@ -1529,7 +1541,12 @@
 				},
 				{
 					"command": "code-for-ibmi.closeSearchView",
-					"group": "navigation",
+					"group": "navigation@2",
+					"when": "view == searchView"
+				},
+				{
+					"command": "code-for-ibmi.collapseSearchView",
+					"group": "navigation@1",
 					"when": "view == searchView"
 				}
 			],
