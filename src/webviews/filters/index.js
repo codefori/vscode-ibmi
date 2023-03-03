@@ -89,7 +89,7 @@ module.exports = class FiltersUI {
     ui.addField(field);
     
     field = new Field(`checkbox`, `protected`, `Protected`);
-    field.default = filter.protected ? "checked" : "";
+    field.default = filter.protected ? `checked` : ``;
     field.description = `Make this filter protected, preventing modifications and source members from being saved.`;
     ui.addField(field);
 
