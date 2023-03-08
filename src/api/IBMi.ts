@@ -727,6 +727,13 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
+  end() {
+    this.client.connection.removeAllListeners();
+    this.client.dispose();
+    this.outputChannel.hide();
+    this.outputChannel.dispose();
+  }
+
   /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used

@@ -86,11 +86,11 @@ export async function disconnect(): Promise<boolean> {
   if (doDisconnect) {
     // Do the disconnect
     if (instance.connection) {
-      instance.connection.client.connection.removeAllListeners();
-      instance.connection.client.dispose();
+      instance.connection.end();
       instance.connection = undefined;
-      instance.emitter?.fire(`disconnected`);
     }
+    
+    instance.emitter?.fire(`disconnected`);
 
     // Close the tabs
     vscode.window.tabGroups.all.forEach(group => {
