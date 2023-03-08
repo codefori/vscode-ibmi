@@ -552,7 +552,7 @@ module.exports = class objectBrowserTwoProvider {
                       }
                     }, timeoutInternal);
 
-                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter}.MBR`, searchTerm);
+                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter || `*`}.MBR`, searchTerm);
 
                     // Filter search result by member type filter.
                     if (results.length > 0 && node.memberTypeFilter) {
