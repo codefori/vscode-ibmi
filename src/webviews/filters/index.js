@@ -75,6 +75,11 @@ module.exports = class FiltersUI {
         case `types`:
           data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
           break;
+        case `object`:
+        case `member`:
+        case `memberType`:
+          data[key] = data[key].trim() || `*`;
+          break;
         default:
           data[key] = data[key].toUpperCase();
           break;
