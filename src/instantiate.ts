@@ -24,6 +24,7 @@ import { ProfilesView } from "./views/ProfilesView";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import getnewlibl from "./api/import/getnewlibl";
 
 let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
@@ -185,6 +186,26 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }
 
     terminalBarItem.show();
+
+    // Check if the remote library list tool is installed
+
+    if (!connection.remoteFeatures[`GETNEWLIBL.PGM`]) {
+      // Time to install our new library list fetcher program
+
+      const content = instance.getContent();
+      
+      const tempSourcePath = connection.getTempRemote(`getnewlibl.sql`) || `/tmp/getnewlibl.sql`;
+      
+      content!.writeStreamfile(tempSourcePath, getnewlibl(config.tempLibrary)).then(() => {
+        connection.remoteCommand(`RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`, `/`)
+        .then(() => {
+          connection.remoteFeatures[`GETNEWLIBL.PGM`] = `${config.tempLibrary}.GETNEWLIBL`;
+        })
+        .catch(() => {
+          vscode.window.showWarningMessage(`Unable to install GETNEWLIBL. See Code for IBM i output for details.`);
+        })
+      })
+    }
 
     //Update the status bar and that's that.
     if (initialisedBefore) {

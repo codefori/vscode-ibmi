@@ -91,6 +91,7 @@ export default class IBMi {
       setccsid: undefined,
       md5sum: undefined,
       'GENCMDXML.PGM': undefined,
+      'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined
     };
@@ -443,8 +444,8 @@ export default class IBMi {
         remoteApps.push(
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-            names: [`GENCMDXML.PGM`],
-            specific: `GENCMDXML.PGM`
+            names: [`GENCMDXML.PGM`, `GETNEWLIBL.PGM`],
+            specific: `GE*.PGM`
           }
         );
 
@@ -830,6 +831,7 @@ export default class IBMi {
 
     return result;
   }
+
   async uploadFiles(files: {local : string | vscode.Uri, remote : string}[], options?: node_ssh.SSHPutFilesOptions){
     await this.client.putFiles(files.map(f => {return {local: this.fileToPath(f.local), remote: f.remote}}), options);
   }
