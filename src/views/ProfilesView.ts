@@ -1,5 +1,5 @@
 
-import vscode from 'vscode';
+import vscode, { window } from 'vscode';
 import { Profile } from '../typings';
 import { ConnectionConfiguration } from '../api/Configuration';
 
@@ -88,6 +88,45 @@ export class ProfilesView {
 
             vscode.window.showInformationMessage(`Switched to ${chosenProfile.name}.`);
             this.refresh();
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async () => {
+
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const storage = instance.getStorage();
+        if (config && storage) {
+          const command = await window.showInputBox({
+            title: `Command`,
+            prompt: `Command that will set the library list`,
+            placeHolder: `CHGLIBL ...`,
+          });
+
+          if (command) {
+            try {
+              const newSettings = await content?.getLibraryListFromCommand(command);
+
+              if (newSettings) {
+                config.libraryList = newSettings.libraryList;
+                config.currentLibrary = newSettings.currentLibrary;
+                await ConnectionConfiguration.update(config);
+
+                await Promise.all([
+                  vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
+                  storage.setLastProfile(``)
+                ]);
+
+                vscode.window.showInformationMessage(`Switched to command profile.`);
+                this.refresh();
+              } else {
+                window.showWarningMessage(`Failed to get library list from command. Feature not installed.`);
+              }
+
+            } catch (e) {
+              window.showErrorMessage(`Failed to get library list from command.`);
+            }
           }
         }
       })

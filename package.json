@@ -785,6 +785,12 @@
 		},
 		"commands": [
 			{
+				"command": "code-for-ibmi.loadCommandProfile",
+				"title": "Load command profile",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:connected == true"
+			},
+			{
 				"command": "code-for-ibmi.debug.setup.remote",
 				"title": "Setup remote certificates",
 				"category": "IBM i Debug",
@@ -1470,7 +1476,17 @@
 					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
+					"command": "code-for-ibmi.loadCommandProfile",
+					"group": "navigation",
+					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
+				},
+				{
 					"command": "code-for-ibmi.newConnectionProfile",
+					"group": "navigation",
+					"when": "view == profilesView"
+				},
+				{
+					"command": "code-for-ibmi.loadCommandProfile",
 					"group": "navigation",
 					"when": "view == profilesView"
 				},
