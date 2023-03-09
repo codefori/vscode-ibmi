@@ -26,6 +26,11 @@ export interface Tab {
   value: string
 }
 
+export interface ComplexTab {
+  label: string
+  fields: Field[];
+}
+
 export class CustomUI {
   private readonly fields: Field[] = [];
   constructor() {
@@ -77,6 +82,16 @@ export class CustomUI {
     return this;
   }
 
+  addComplexTabs(tabs: ComplexTab[], selected?: number) {
+    const tabsField = new Field('complexTabs', '', '');
+    if (selected !== undefined) {
+      tabsField.default = String(selected);
+    }
+    tabsField.complexTabItems = tabs;
+    this.addField(tabsField);
+    return this;
+  }
+
   addSelect(id: string, label: string, items: SelectItem[], description?: string) {
     const select = new Field('select', id, label, description);
     select.items = items;
@@ -107,6 +122,10 @@ export class CustomUI {
 
     this.fields.push(field);
     return this;
+  }
+
+  getFields() {
+    return this.fields;
   }
 
   /**
@@ -160,8 +179,11 @@ export class CustomUI {
   private getHTML(panel: vscode.WebviewPanel, title: string) {
     const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
 
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
+
+    const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
+    const allFields = [...this.fields, ...complexTabFields.flat().flat()].filter(cField => cField) as Field[];
 
     return /*html*/`
     <!DOCTYPE html>
@@ -202,16 +224,16 @@ export class CustomUI {
             const submitButton = document.getElementById('${submitButton.id}');
 
             // New: many button that can be pressed to submit
-            const groupButtons = [${[...(this.fields.filter(field => field.type == `buttons`).map(field => field.items?.map(item => `'${item.id}'`)))].join(`, `)}];
+            const groupButtons = [${[...(allFields.filter(field => field.type == `buttons`).map(field => field.items?.map(item => `'${item.id}'`)))].join(`, `)}];
 
             // Available trees in the fields, though only one is supported.
             const trees = [${trees.map(field => `'${field.id}'`).join(`,`)}];
 
             // Fields which required a file path
-            const filefields = [${this.fields.filter(field => field.type == `file`).map(field => `'${field.id}'`).join(`,`)}];
+            const filefields = [${allFields.filter(field => field.type == `file`).map(field => `'${field.id}'`).join(`,`)}];
 
             // Fields that have value which can be returned
-            const submitfields = [${this.fields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
+            const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
     
             const doDone = (event, buttonValue) => {
                 console.log('submit now!!', buttonValue)
@@ -316,7 +338,7 @@ export class CustomUI {
   }
 }
 
-export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "tabs" | "tree" | "select" | "paragraph" | "hr";
+export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -347,6 +369,7 @@ export interface FieldItem {
 export class Field {
   public items?: FieldItem[];
   public treeList?: TreeListItem[];
+  public complexTabItems?: ComplexTab[];
   public default?: string;
   public readonly?: boolean;
   public multiline?: boolean;
@@ -355,7 +378,7 @@ export class Field {
 
   }
 
-  getHTML() {
+  getHTML(): string {
     this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
 
     switch (this.type) {
@@ -388,6 +411,18 @@ export class Field {
               <header slot="header">${item.label}</header>
               <section>
                 ${item.value}
+              </section>`
+          ).join(``)}
+          </vscode-tabs>`;
+
+      case `complexTabs`:
+        return /* html */`
+          <vscode-tabs selectedIndex="${this.default || 0}">
+            ${this.complexTabItems?.map(item =>
+              /* html */`
+              <header slot="header">${item.label}</header>
+              <section>
+              ${item.fields.map(field => field.getHTML()).join(` `)}
               </section>`
           ).join(``)}
           </vscode-tabs>`;
