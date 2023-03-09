@@ -85,6 +85,9 @@ module.exports = class FiltersUI {
         case `memberType`:
           data[key] = data[key].trim() || `*`;
           break;
+        case `protected`:
+          // Do nothing. It's a boolean
+          break;
         default:
           data[key] = data[key].toUpperCase();
           break;
