@@ -11,6 +11,7 @@ const FiltersUI = require(`../webviews/filters`);
 let { instance, setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
+const { getMemberUri } = require(`../filesystems/qsys/QSysFs`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
@@ -552,7 +553,7 @@ module.exports = class objectBrowserTwoProvider {
                       }
                     }, timeoutInternal);
 
-                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter || `*`}.MBR`, searchTerm);
+                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter || `*`}.MBR`, searchTerm, node.filter);
 
                     // Filter search result by member type filter.
                     if (results.length > 0 && node.memberTypeFilter) {
@@ -962,9 +963,10 @@ module.exports = class objectBrowserTwoProvider {
     let items = [], item;
 
     if (element) {
+      /** @type {ConnectionConfiguration.ObjectFilters} */
       let filter;
 
-      switch (element.contextValue) {
+      switch (element.contextValue.split(`_`)[0]) {
       case `filter`:
         /** @type {ILEObject} */ //@ts-ignore We know what is it based on contextValue.
         const obj = element;
@@ -980,7 +982,7 @@ module.exports = class objectBrowserTwoProvider {
           })
         };
         items = objects.map(object =>
-          object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(filter.name, object, filter.member, filter.memberType) : new ILEObject(filter.name, object)
+          object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(filter, object) : new ILEObject(filter, object)
         );
         break;
 
@@ -1001,7 +1003,7 @@ module.exports = class objectBrowserTwoProvider {
               return member;
             })
           };
-          items = members.map(member => new Member(member));
+          items = members.map(member => new Member(member, filter));
 
           await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
         } catch (e) {
@@ -1062,33 +1064,36 @@ module.exports = class objectBrowserTwoProvider {
 /** Implements @type {../typings/Filter} */
 class FilterItem extends vscode.TreeItem {
   /**
-   * @param {{name: string, library: string, object: string, types: string[], member: string, memberType: string}} filter
+   * @param {ConnectionConfiguration.ObjectFilters} filter
    */
   constructor(filter) {
     super(filter.name, vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.contextValue = `filter`;
+    this.protected = filter.protected;
+    this.contextValue = `filter${this.protected ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
     this.library = filter.library;
     this.filter = filter.name;
+    if(this.protected){
+      this.iconPath = new vscode.ThemeIcon(`lock-small`);
+    }
   }
 }
 
 class SPF extends vscode.TreeItem {
   /**
-   * @param {string} filter Filter name
+   * @param {ConnectionConfiguration.ObjectFilters} filter
    * @param {{library: string, name: string, text: string, attribute?: string}} detail
-   * @param {string} memberFilter Member filter string
-   * @param {string} memberTypeFilter Member type filter string
    */
-  constructor(filter, detail, memberFilter, memberTypeFilter) {
+  constructor(filter, detail) {
     super(detail.name, vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.filter = filter;
-    this.memberFilter = memberFilter;
-    this.memberTypeFilter = memberTypeFilter;
+    this.filter = filter.name;
+    this.protected = filter.protected;
+    this.memberFilter = filter.member;
+    this.memberTypeFilter = filter.memberType;
 
-    this.contextValue = `SPF`;
+    this.contextValue = `SPF${filter.protected ? `_readonly` : ``}`;
     this.path = [detail.library, detail.name].join(`/`);
     this.description = detail.text;
 
@@ -1099,7 +1104,7 @@ class SPF extends vscode.TreeItem {
 //TODO Seb J.: once converted to TypeScript, this should implement IBMiObject
 class ILEObject extends vscode.TreeItem {
   /**
-   * @param {string} filter Filter name
+   * @param {ConnectionConfiguration.ObjectFilters} filter
    * @param {IBMiObject} object
    */
   constructor(filter, object) {
@@ -1109,7 +1114,7 @@ class ILEObject extends vscode.TreeItem {
 
     super(`${object.name}.${type}`);
 
-    this.filter = filter;
+    this.filter = filter.name;
 
     this.library = object.library;
     this.name = object.name;
@@ -1120,7 +1125,7 @@ class ILEObject extends vscode.TreeItem {
     this.description = this.text + (this.attribute ? ` (${this.attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
 
-    this.contextValue = `object.${type.toLowerCase()}${this.attribute ? `.${this.attribute}` : ``}`;
+    this.contextValue = `object.${type.toLowerCase()}${this.attribute ? `.${this.attribute}` : ``}${filter.protected ? `_readonly` : ``}`;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -1137,22 +1142,22 @@ class ILEObject extends vscode.TreeItem {
 }
 
 class Member extends vscode.TreeItem {
-  constructor(member) {
-    const path = `${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`;
-
+  /**
+   * 
+   * @param {import(`../typings`).IBMiMember} member 
+   * @param {ConnectionConfiguration.ObjectFilters} filter 
+   */
+  constructor(member, filter) {
     super(`${member.name}.${member.extension}`);
 
-    this.contextValue = `member`;
-    this.description = member.text;
-    this.path = path;
-    this.resourceUri = vscode.Uri.from({
-      scheme: `member`,
-      path: `/${path}`
-    })
+    this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
+    this.description = member.text;    
+    this.resourceUri = getMemberUri(member, {filter: filter.name});
+    this.path = this.resourceUri.path;
     this.command = {
-      command: `code-for-ibmi.openEditable`,
+      command: `vscode.open`,
       title: `Open Member`,
-      arguments: [path]
+      arguments: [this.resourceUri]
     };
   }
 }

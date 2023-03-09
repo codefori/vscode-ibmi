@@ -123,3 +123,8 @@ export interface FileError {
   text: string
   code: string
 }
+
+export interface QsysFsOptions {
+  filter?: string
+  readonly?: boolean
+}

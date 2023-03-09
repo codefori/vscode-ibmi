@@ -87,7 +87,8 @@ module.exports = class SettingsUI {
               text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
             },
           ], `Determine which method should be used to track changes while editing source members.`)
-          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter);
+          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
 
         if (connection && connection.remoteFeatures.tn5250) {
           ui.addHorizontalRule()
@@ -146,6 +147,11 @@ module.exports = class SettingsUI {
             case `hideCompileErrors`:
               data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
               break;
+            }
+
+            //Refresh connection browser if not connected
+            if(!instance.getConnection()){
+              vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
             }
           }
 
@@ -220,7 +226,7 @@ module.exports = class SettingsUI {
             };
 
             connections[connectionIdx] = connection;
-            await GlobalConfiguration.set(`connections`, connections);
+            await GlobalConfiguration.set(`connections`, connections);            
           }
         }
       })
