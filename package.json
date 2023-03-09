@@ -154,6 +154,26 @@
 								"default": [],
 								"description": "A collection of connection settings to easily switch between them on this system."
 							},
+							"commandProfiles": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"title": "Command Profile",
+									"properties": {
+										"name": {
+											"type": "string",
+											"description": "Profile name"
+										},
+										"command": {
+											"type": "string",
+											"description": "Command"
+										}
+									},
+									"additionalProperties": true
+								},
+								"default": [],
+								"description": "A collection of commands to easily switch between library list configurations on this system."
+							},
 							"ifsShortcuts": {
 								"type": "array",
 								"items": {
@@ -785,10 +805,25 @@
 		},
 		"commands": [
 			{
+				"command": "code-for-ibmi.manageCommandProfile",
+				"title": "Create/edit command profile",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:connected == true",
+				"icon": "$(library)"
+			},
+			{
+				"command": "code-for-ibmi.deleteCommandProfile",
+				"title": "Delete command profile",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:connected == true",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.loadCommandProfile",
 				"title": "Load command profile",
 				"category": "IBM i",
-				"enablement": "code-for-ibmi:connected == true"
+				"enablement": "code-for-ibmi:connected == true",
+				"icon": "$(arrow-circle-right)"
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.remote",
@@ -1476,18 +1511,18 @@
 					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
-					"command": "code-for-ibmi.loadCommandProfile",
+					"command": "code-for-ibmi.manageCommandProfile",
 					"group": "navigation",
 					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
 					"command": "code-for-ibmi.newConnectionProfile",
-					"group": "navigation",
+					"group": "navigation@profile",
 					"when": "view == profilesView"
 				},
 				{
-					"command": "code-for-ibmi.loadCommandProfile",
-					"group": "navigation",
+					"command": "code-for-ibmi.manageCommandProfile",
+					"group": "navigation@profile",
 					"when": "view == profilesView"
 				},
 				{
@@ -1625,6 +1660,11 @@
 					"group": "inline"
 				},
 				{
+					"command": "code-for-ibmi.loadCommandProfile",
+					"when": "view == profilesView && viewItem == commandProfile",
+					"group": "inline"
+				},
+				{
 					"command": "code-for-ibmi.createMember",
 					"when": "viewItem == SPF",
 					"group": "inline"
@@ -1650,8 +1690,18 @@
 					"group": "profiles@1"
 				},
 				{
+					"command": "code-for-ibmi.manageCommandProfile",
+					"when": "view == profilesView && viewItem == commandProfile",
+					"group": "profiles@1"
+				},
+				{
 					"command": "code-for-ibmi.deleteConnectionProfile",
 					"when": "view == profilesView && viewItem == profile",
+					"group": "profiles@2"
+				},
+				{
+					"command": "code-for-ibmi.deleteCommandProfile",
+					"when": "view == profilesView && viewItem == commandProfile",
 					"group": "profiles@2"
 				},
 				{

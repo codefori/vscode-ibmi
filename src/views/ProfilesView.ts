@@ -4,6 +4,7 @@ import { Profile } from '../typings';
 import { ConnectionConfiguration } from '../api/Configuration';
 
 import { instance } from '../instantiate';
+import { CommandProfile } from '../webviews/commandProfile';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -92,21 +93,32 @@ export class ProfilesView {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async () => {
+      vscode.commands.registerCommand(`code-for-ibmi.manageCommandProfile`, async (commandProfile?: CommandProfileItem) => {
+        CommandProfile.show(commandProfile ? commandProfile.profile : undefined);
+      }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.deleteCommandProfile`, async (commandProfile?: CommandProfileItem) => {
+        const config = instance.getConfig();
+        if (config && commandProfile) {
+          const storedProfile = config.commandProfiles.findIndex(profile => profile.name === commandProfile.profile);
+          if (storedProfile !== undefined) {
+            config.commandProfiles.splice(storedProfile, 1);
+            await ConnectionConfiguration.update(config);
+            this.refresh();
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async (commandProfile?: CommandProfileItem) => {
         const content = instance.getContent();
         const config = instance.getConfig();
         const storage = instance.getStorage();
-        if (config && storage) {
-          const command = await window.showInputBox({
-            title: `Command`,
-            prompt: `Command that will set the library list`,
-            placeHolder: `CHGLIBL ...`,
-          });
-
-          if (command) {
+        if (commandProfile && config && storage) {
+          const storedProfile = config.commandProfiles.find(profile => profile.name === commandProfile.profile);
+          
+          if (storedProfile) {
             try {
-              const newSettings = await content?.getLibraryListFromCommand(command);
+              const newSettings = await content?.getLibraryListFromCommand(storedProfile.command);
 
               if (newSettings) {
                 config.libraryList = newSettings.libraryList;
@@ -114,18 +126,18 @@ export class ProfilesView {
                 await ConnectionConfiguration.update(config);
 
                 await Promise.all([
+                  storage.setLastProfile(storedProfile.name),
                   vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-                  storage.setLastProfile(``)
                 ]);
 
-                vscode.window.showInformationMessage(`Switched to command profile.`);
+                vscode.window.showInformationMessage(`Switched to ${storedProfile.name}.`);
                 this.refresh();
               } else {
                 window.showWarningMessage(`Failed to get library list from command. Feature not installed.`);
               }
 
-            } catch (e) {
-              window.showErrorMessage(`Failed to get library list from command.`);
+            } catch (e: any) {
+              window.showErrorMessage(`Failed to get library list from command: ${e.message}`);
             }
           }
         }
@@ -136,7 +148,7 @@ export class ProfilesView {
   refresh() {
     const config = instance.getConfig();
     if (config) {
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0 || config.commandProfiles.length > 0);
       this._onDidChangeTreeData.fire(null);
     }
   }
@@ -153,9 +165,14 @@ export class ProfilesView {
       const storage = instance.getStorage();
       if (config && storage) {
         const currentProfile = storage.getLastProfile();
-        return config.connectionProfiles
-          .map(profile => profile.name)
-          .map(name => new ProfileItem(name, name === currentProfile))
+        return [
+          ...config.connectionProfiles
+            .map(profile => profile.name)
+            .map(name => new ProfileItem(name, name === currentProfile)),
+          ...config.commandProfiles
+            .map(profile => profile.name)
+            .map(name => new CommandProfileItem(name, name === currentProfile)),
+        ]
       }
     }
 
@@ -211,6 +228,20 @@ class ProfileItem extends vscode.TreeItem implements Profile {
 
     this.contextValue = `profile`;
     this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `layers`);
+    this.description = active ? `Active` : ``;
+
+    this.profile = name;
+  }
+}
+
+
+class CommandProfileItem extends vscode.TreeItem implements Profile {
+  readonly profile;
+  constructor(name: string, active: boolean) {
+    super(name, vscode.TreeItemCollapsibleState.None);
+
+    this.contextValue = `commandProfile`;
+    this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `console`);
     this.description = active ? `Active` : ``;
 
     this.profile = name;
