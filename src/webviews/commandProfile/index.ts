@@ -21,6 +21,7 @@ export class CommandProfile {
     }
 
     const page = await new CustomUI()
+    .addParagraph(`Command Profiles can be used to set your library list based on the result of a command like <code>CHGLIBL</code>, or your own command that sets the library list.`)
     .addInput(`name`, `Name`, `Name of the Command Profile`, {default: currentSettings.name})
     .addInput(`command`, `Command`, `Command to be executed that will set the library list`, {default: currentSettings.command})
     .addButtons(
