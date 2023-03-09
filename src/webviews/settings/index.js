@@ -148,7 +148,7 @@ module.exports = class SettingsUI {
           {label: `Source Code`, fields: sourceTab.getFields()},
           terminalsTab ? {label: `Termimals`, fields: terminalsTab.getFields()} : undefined,
           debuggerTab ? {label: `Debugger`, fields: debuggerTab.getFields()} : undefined,
-          tempDataTab
+          {label: `Temporary Data`, fields: tempDataTab.getFields()},
         ];
 
         const ui = new CustomUI();
