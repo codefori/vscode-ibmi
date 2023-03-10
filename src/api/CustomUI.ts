@@ -31,11 +31,8 @@ export interface ComplexTab {
   fields: Field[];
 }
 
-export class CustomUI {
-  private readonly fields: Field[] = [];
-  constructor() {
-
-  }
+export class Section {
+  readonly fields: Field[] = [];
 
   addHorizontalRule() {
     this.addField(new Field('hr', '', ''));
@@ -127,7 +124,9 @@ export class CustomUI {
   getFields() {
     return this.fields;
   }
+}
 
+export class CustomUI extends Section {
   /**
    * If no callback is provided, a Promise will be returned
    * @param title 
