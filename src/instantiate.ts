@@ -187,26 +187,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     terminalBarItem.show();
 
-    // Check if the remote library list tool is installed
-
-    if (!connection.remoteFeatures[`GETNEWLIBL.PGM`]) {
-      // Time to install our new library list fetcher program
-
-      const content = instance.getContent();
-      
-      const tempSourcePath = connection.getTempRemote(`getnewlibl.sql`) || `/tmp/getnewlibl.sql`;
-      
-      content!.writeStreamfile(tempSourcePath, getnewlibl(config.tempLibrary)).then(() => {
-        connection.remoteCommand(`RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`, `/`)
-        .then(() => {
-          connection.remoteFeatures[`GETNEWLIBL.PGM`] = `${config.tempLibrary}.GETNEWLIBL`;
-        })
-        .catch(() => {
-          vscode.window.showWarningMessage(`Unable to install GETNEWLIBL. See Code for IBM i output for details.`);
-        })
-      })
-    }
-
     //Update the status bar and that's that.
     if (initialisedBefore) {
       await Promise.all([
@@ -603,6 +583,26 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       Deployment.initialize(context, instance);
 
       initialisedBefore = true;
+    }
+
+
+    // Check if the remote library list tool is installed
+    if (!connection.remoteFeatures[`GETNEWLIBL.PGM`]) {
+      // Time to install our new library list fetcher program
+
+      const content = instance.getContent();
+      
+      const tempSourcePath = connection.getTempRemote(`getnewlibl.sql`) || `/tmp/getnewlibl.sql`;
+      
+      content!.writeStreamfile(tempSourcePath, getnewlibl(config.tempLibrary)).then(() => {
+        connection.remoteCommand(`RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`, `/`)
+        .then(() => {
+          connection.remoteFeatures[`GETNEWLIBL.PGM`] = `${config.tempLibrary}.GETNEWLIBL`;
+        })
+        .catch(() => {
+          vscode.window.showWarningMessage(`Unable to install GETNEWLIBL. See Code for IBM i output for details.`);
+        })
+      })
     }
   }
 
