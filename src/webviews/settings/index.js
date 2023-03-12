@@ -146,7 +146,7 @@ module.exports = class SettingsUI {
         let tabs = [
           {label: `Features`, fields: featuresTab.getFields()},
           {label: `Source Code`, fields: sourceTab.getFields()},
-          terminalsTab ? {label: `Termimals`, fields: terminalsTab.getFields()} : undefined,
+          terminalsTab ? {label: `Terminals`, fields: terminalsTab.getFields()} : undefined,
           debuggerTab ? {label: `Debugger`, fields: debuggerTab.getFields()} : undefined,
           {label: `Temporary Data`, fields: tempDataTab.getFields()},
         ].filter(tab => tab !== undefined);
