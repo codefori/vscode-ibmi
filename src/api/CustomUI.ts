@@ -178,7 +178,7 @@ export class CustomUI extends Section {
     const trees = this.fields.filter(field => field.type == `tree`);
 
     const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
-    const allFields = [...this.fields, ...complexTabFields.flat().flat()].filter(cField => cField) as Field[];
+    const allFields = [...this.fields, ...complexTabFields.flat(2)].filter(cField => cField) as Field[];
 
     return /*html*/`
     <!DOCTYPE html>
