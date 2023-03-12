@@ -823,10 +823,16 @@
 				"icon": "$(add)"
 			},
 			{
-				"command": "code-for-ibmi.connectPrevious",
-				"title": "Connect To Previous",
+				"command": "code-for-ibmi.connectTo",
+				"title": "Connect to IBM i",
 				"category": "IBM i",
 				"icon": "$(debug-start)"
+			},
+			{
+				"command": "code-for-ibmi.connectToPrevious",
+				"title": "Connect to Previous IBM i",
+				"category": "IBM i",
+				"icon": "$(remote)"
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
@@ -883,7 +889,7 @@
 			{
 				"command": "code-for-ibmi.goToFileReadOnly",
 				"enablement": "code-for-ibmi:connected == true",
-				"title": "Go to File (read only)...",
+				"title": "Go to File (Read Only)...",
 				"category": "IBM i",
 				"icon": "$(go-to-file)"
 			},
@@ -1384,6 +1390,11 @@
 				"command": "code-for-ibmi.showOutputPanel",
 				"key": "ctrl+shift+f6",
 				"mac": "cmd+shift+f6"
+			},
+			{
+				"command": "code-for-ibmi.connectTo",
+				"key": "ctrl+alt+c",
+				"mac": "cmd+alt+c"
 			}
 		],
 		"viewsContainers": {
@@ -1443,16 +1454,31 @@
 			]
 		},
 		"menus": {
+			"commandPalette": [
+				{
+					"command": "code-for-ibmi.connectTo",
+					"when": "code-for-ibmi:hasPreviousConnection"
+				},
+				{
+					"command": "code-for-ibmi.connectToPrevious",
+					"when": "never"
+				}
+			],
 			"view/title": [
 				{
 					"command": "code-for-ibmi.connect",
-					"group": "navigation",
+					"group": "navigation@1",
 					"when": "view == connectionBrowser"
 				},
 				{
 					"command": "code-for-ibmi.refreshConnections",
-					"group": "navigation",
+					"group": "navigation@2",
 					"when": "view == connectionBrowser"
+				},
+				{
+					"command": "code-for-ibmi.connectToPrevious",
+					"group": "navigation@3",
+					"when": "view == connectionBrowser && code-for-ibmi:hasPreviousConnection"
 				},
 				{
 					"command": "code-for-ibmi.changeUserLibraryList",
@@ -1589,7 +1615,7 @@
 					"group": "1_manage@2"
 				},
 				{
-					"command": "code-for-ibmi.connectPrevious",
+					"command": "code-for-ibmi.connectTo",
 					"when": "view == connectionBrowser && viewItem == server",
 					"group": "inline"
 				},

@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
-import { Storage } from "./api/Storage";
+import { ConnectionStorage, GlobalStorage } from "./api/Storage";
 import path from 'path';
 
 import { CompileTools } from './api/CompileTools';
@@ -119,7 +119,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   const CLCommands = require(`./languages/clle/clCommands`);
 
   if (instance.connection) {
-    instance.storage = new Storage(context, instance.connection.currentConnectionName);
+    instance.storage = new ConnectionStorage(context, instance.connection.currentConnectionName);
 
     CompileTools.register(context);
     Debug.initialise(instance, context);
@@ -127,7 +127,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     if (!reconnectBarItem) {
       reconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 11);
       reconnectBarItem.command = {
-        command: `code-for-ibmi.connectPrevious`,
+        command: `code-for-ibmi.connectTo`,
         title: `Force Reconnect`,
         arguments: [instance.connection.currentConnectionName]
       };
@@ -583,6 +583,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       initialisedBefore = true;
     }
+
+    await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
   }
 
   instance.emitter?.fire(`connected`);

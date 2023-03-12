@@ -1,13 +1,13 @@
 import * as vscode from "vscode";
 import IBMi from "./IBMi";
 import IBMiContent from "./IBMiContent";
-import {Storage} from "./Storage";
+import {ConnectionStorage} from "./Storage";
 import { ConnectionConfiguration } from "./Configuration";
 
 export default class Instance {
     connection: IBMi|undefined;
     content: IBMiContent|undefined;
-    storage: Storage|undefined;
+    storage: ConnectionStorage|undefined;
     emitter: vscode.EventEmitter<any>|undefined;
     events: {event: string, func: Function}[];
 
