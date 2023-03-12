@@ -120,10 +120,6 @@ export class Section {
     this.fields.push(field);
     return this;
   }
-
-  getFields() {
-    return this.fields;
-  }
 }
 
 export class CustomUI extends Section {

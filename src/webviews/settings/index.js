@@ -144,11 +144,11 @@ module.exports = class SettingsUI {
         }
 
         let tabs = [
-          {label: `Features`, fields: featuresTab.getFields()},
-          {label: `Source Code`, fields: sourceTab.getFields()},
-          terminalsTab ? {label: `Terminals`, fields: terminalsTab.getFields()} : undefined,
-          debuggerTab ? {label: `Debugger`, fields: debuggerTab.getFields()} : undefined,
-          {label: `Temporary Data`, fields: tempDataTab.getFields()},
+          {label: `Features`, fields: featuresTab.fields},
+          {label: `Source Code`, fields: sourceTab.fields},
+          terminalsTab ? {label: `Terminals`, fields: terminalsTab.fields} : undefined,
+          debuggerTab ? {label: `Debugger`, fields: debuggerTab.fields} : undefined,
+          {label: `Temporary Data`, fields: tempDataTab.fields},
         ].filter(tab => tab !== undefined);
 
         const ui = new CustomUI();
