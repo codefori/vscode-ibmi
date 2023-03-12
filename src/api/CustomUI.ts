@@ -182,6 +182,10 @@ export class CustomUI {
               width: 100%;
             }
 
+            vscode-form-helper {
+              padding-bottom: 1em;
+            }
+
             .long-input {
               width: 100%;
             }
@@ -374,7 +378,7 @@ export class Field {
       case `checkbox`:
         return /* html */`
           <vscode-form-group variant="settings-group">
-            <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
+            <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}><vscode-label>${this.label}</vscode-label></vscode-checkbox>
             ${this.renderDescription()}
           </vscode-form-group>`;
 
