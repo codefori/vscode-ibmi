@@ -191,6 +191,13 @@ export class CustomUI extends Section {
     
         <script type="module">${vscodeweb}</script>
         <style>
+            @media only screen and (min-width: 750px) {
+              #laforma {
+                padding-left: 15%;
+                padding-right: 15%;
+              }
+            }
+
             #laforma {
                 margin: 2em 2em 2em 2em;
             }
