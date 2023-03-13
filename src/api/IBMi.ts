@@ -49,8 +49,7 @@ export default class IBMi {
   currentConnectionName: string;
   tempRemoteFiles: { [name: string]: string };
   defaultUserLibraries: string[];
-  outputChannel: vscode.OutputChannel;
-  subscriptions: vscode.Disposable[];
+  outputChannel?: vscode.OutputChannel;
   aspInfo: { [id: number]: string };
   qccsid: number | null;
   remoteFeatures: { [name: string]: string | undefined };
@@ -69,11 +68,6 @@ export default class IBMi {
 
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
-
-    this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i`);
-
-    /** List of vscode disposables */
-    this.subscriptions = [this.outputChannel];
 
     /**
      * Used to store ASP numbers and their names
@@ -133,6 +127,8 @@ export default class IBMi {
         this.currentHost = connectionObject.host;
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
+
+        this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
 
         let tempLibrarySet = false;
 
@@ -347,7 +343,7 @@ export default class IBMi {
                 // @ts-ignore We know the config exists.
                 vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
                   if (choice === `View log`) {
-                    this.outputChannel.show();
+                    this.outputChannel!.show();
                   }
                 });
               }
@@ -364,7 +360,7 @@ export default class IBMi {
               // @ts-ignore We know the config exists.
               vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
                 if (choice === `View log`) {
-                  this.outputChannel.show();
+                  this.outputChannel!.show();
                 }
               });
             });
@@ -684,9 +680,11 @@ export default class IBMi {
 
     this.determineClear()
 
-    this.outputChannel.append(`${directory}: ${command}\n`);
-    if (options && options.stdin) {
-      this.outputChannel.append(`${options.stdin}\n`);
+    if (this.outputChannel) {
+      this.appendOutput(`${directory}: ${command}\n`);
+      if (options && options.stdin) {
+        this.appendOutput(`${options.stdin}\n`);
+      }
     }
 
     const result = await this.client.execCommand(command, {
@@ -713,18 +711,34 @@ export default class IBMi {
         this.lastErrors.shift();
     }
 
-    this.outputChannel.append(JSON.stringify(result, null, 4) + `\n\n`);
+    this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
     return result;
   }
 
+  private appendOutput(content: string) {
+    if (this.outputChannel) {
+      this.outputChannel.append(content);
+    }
+  }
+
   private determineClear() {
     if (this.commandsExecuted > 150) {
-      this.outputChannel.clear();
+      if (this.outputChannel) this.outputChannel.clear();
       this.commandsExecuted = 0;
     }
 
     this.commandsExecuted += 1;
+  }
+
+  end() {
+    this.client.connection.removeAllListeners();
+    this.client.dispose();
+
+    if (this.outputChannel) {
+      this.outputChannel.hide();
+      this.outputChannel.dispose();
+    }
   }
 
   /**
