@@ -42,3 +42,4 @@ Thanks so much to everyone [who has contributed](https://github.com/halcyon-tech
 * [@jhannafin](https://github.com/jhannafin)
 * [@sebCIL](https://github.com/sebCIL)
 * [@steph-beneschan-256](https://github.com/steph-beneschan-256)
+* [@novy400](https://github.com/novy400)

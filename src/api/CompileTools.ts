@@ -49,33 +49,14 @@ export namespace CompileTools {
 
   const outputChannel = vscode.window.createOutputChannel(`IBM i Output`);
   const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
-  const actionsBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
   const outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
   const actionUsed: Map<string, number> = new Map;
 
   export function register(context: vscode.ExtensionContext) {
-    actionsBarItem.command = {
-      command: `code-for-ibmi.showActionsMaintenance`,
-      title: `Show IBM i Actions`,
-    };
-    actionsBarItem.text = `$(file-binary) Actions`;
-    actionsBarItem.show();
-
-    outputBarItem.command = {
-      command: `code-for-ibmi.showOutputPanel`,
-      title: `Show IBM i Output`,
-    };
-    outputBarItem.text = `$(three-bars) Output`;
-
-    if (GlobalConfiguration.get<boolean>(`logCompileOutput`)) {
-      outputBarItem.show();
-    }
-
     context.subscriptions.push(
       outputChannel,
       ileDiagnostics,
-      actionsBarItem,
       outputBarItem,
       vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, showOutput)
     );
