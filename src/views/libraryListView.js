@@ -274,7 +274,7 @@ module.exports = class libraryListProvider {
       command: [
         `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
         ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
-      ].join(` && `)
+      ].join(`; `)
     });
 
     if (result.stderr) {
