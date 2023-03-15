@@ -573,37 +573,40 @@ export default class IBMi {
           }
 
           // Check users default shell.
-          // If not bash and bash is installed, give user option to set bash as default shell.
+          // give user option to set bash as default shell.
           try {
-            const bashShellPath = '/QOpenSys/pkgs/bin/bash';
-            const commandShellResult = await this.sendCommand({
-              command: `echo $SHELL`
-            });
-            if (!commandShellResult.stderr) {
-              let userDefaultShell = commandShellResult.stdout.trim();
-              if (userDefaultShell === bashShellPath &&
-                  this.remoteFeatures['bash']) {
-                vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash?`, `Read More`,).then(async choice => {
-                  switch (choice) { 
-                    case `Set shell to bash?`:
-                      statement = `CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`;
-                      output = await this.sendCommand({
-                        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                        stdin: statement
-                      });
+            // make sure sql is enabled and bash is installed on system
+            if (this.config.enableSQL && 
+                this.remoteFeatures[`bash`]) {
+              const bashShellPath = '/QOpenSys/pkgs/bin/bash';
+              const commandShellResult = await this.sendCommand({
+                command: `echo $SHELL`
+              });
+              if (!commandShellResult.stderr) {
+                let userDefaultShell = commandShellResult.stdout.trim();
+                if (userDefaultShell !== bashShellPath) {
+                  vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash?`, `Read More`,).then(async choice => {
+                    switch (choice) { 
+                      case `Set shell to bash?`:
+                        statement = `CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`;
+                        output = await this.sendCommand({
+                          command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                          stdin: statement
+                        });
 
-                      if (output.stdout) {
-                        vscode.window.showInformationMessage(`Default shell in now bash!`);
-                      } else {
-                        vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
-                      }
-                      break;
+                        if (output.stdout) {
+                          vscode.window.showInformationMessage(`Default shell is now bash!`);
+                        } else {
+                          vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                        }
+                        break;
 
-                    case `Read More`:
-                      vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
-                      break;
-                  }
-                });
+                      case `Read More`:
+                        vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                        break;
+                    }
+                  });
+                }
               }
             }
           } catch (e) {
