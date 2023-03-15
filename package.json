@@ -1476,6 +1476,58 @@
 				{
 					"command": "code-for-ibmi.connectToPrevious",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.disconnect",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.openEditable",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.selectForCompare",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareWithSelected",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.goToFileReadOnly",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.goToFile",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.clearDiagnostics",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.runAction",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.openErrors",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.launchTerminalPicker",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.runCommand",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.runQuery",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.secret",
+					"when": "code-for-ibmi:connected"
 				}
 			],
 			"view/title": [
