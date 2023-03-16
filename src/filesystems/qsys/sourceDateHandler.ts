@@ -144,11 +144,11 @@ export class SourceDateHandler {
       if (document.uri.scheme === `member`) {
         clearTimeout(this.timeout);
         if (this.sourceDateMode === "edit") {
-          setTimeout(() => this._editChangeTimeout(document), this.timeoutDelay);
+          this.timeout = setTimeout(() => this._editChangeTimeout(document), this.timeoutDelay);
           this._editOnDidChange(event);
         }
         else {
-          setTimeout(() => this._diffChangeTimeout(document), this.timeoutDelay);
+          this.timeout = setTimeout(() => this._diffChangeTimeout(document), this.timeoutDelay);
           this._diffOnDidChange(event);
         }
       }
