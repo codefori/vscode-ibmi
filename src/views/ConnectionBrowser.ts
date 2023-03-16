@@ -5,6 +5,7 @@ import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configurati
 import settingsUI from '../webviews/settings';
 import { Login } from '../webviews/login';
 import { GlobalStorage } from '../api/Storage';
+import { instance } from '../instantiate';
 
 export class ObjectBrowserProvider {
   private _attemptingConnection: boolean;
@@ -92,6 +93,8 @@ export class ObjectBrowserProvider {
         }
       })
     );
+
+    instance.onEvent("disconnected", () => this.refresh())
   }
 
   refresh() {

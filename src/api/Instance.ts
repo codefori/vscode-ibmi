@@ -3,13 +3,14 @@ import IBMi from "./IBMi";
 import IBMiContent from "./IBMiContent";
 import {ConnectionStorage} from "./Storage";
 import { ConnectionConfiguration } from "./Configuration";
+import { IBMiEvent } from "../typings";
 
 export default class Instance {
     connection: IBMi|undefined;
     content: IBMiContent|undefined;
     storage: ConnectionStorage|undefined;
-    emitter: vscode.EventEmitter<any>|undefined;
-    events: {event: string, func: Function}[];
+    emitter: vscode.EventEmitter<IBMiEvent>|undefined;
+    events: {event: IBMiEvent, func: Function}[];
 
     constructor() {
         this.events = [];
@@ -33,7 +34,7 @@ export default class Instance {
       return this.storage;
     }
 
-    onEvent(event: "connected" | "disconnected" | "deployLocation", func: Function): void {
+    onEvent(event: IBMiEvent, func: Function): void {
       this.events.push({event, func});
     }
-  };
+  }

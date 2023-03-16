@@ -7,6 +7,7 @@ import path from "path";
 import * as certificates from "./certificates";
 import * as server from "./server";
 import { copyFileSync } from "fs";
+import { instance } from "../../instantiate";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -17,7 +18,7 @@ const localCertContext = `code-for-ibmi:debug.local`;
 let connectionConfirmed = false;
 let temporaryPassword: string | undefined;
 
-export async function initialise(instance: Instance, context: ExtensionContext) {
+export async function initialize(context: ExtensionContext) {
   const debugExtensionAvailable = () => {
     const debugclient = vscode.extensions.getExtension(debugExtensionId);
     return debugclient !== undefined;
@@ -316,9 +317,8 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
   );
 
   // Run during startup:
-
-  if (instance.connection) {
-    if (instance.connection.remoteFeatures[`startDebugService.sh`]) {
+  instance.onEvent("connected", async () => {
+    if (instance.connection?.remoteFeatures[`startDebugService.sh`]) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
       const remoteCerts = await certificates.checkRemoteExists(instance.connection);
@@ -342,8 +342,7 @@ export async function initialise(instance: Instance, context: ExtensionContext) 
         }
       }
     }
-  }
-
+  });
 }
 
 interface DebugOptions {

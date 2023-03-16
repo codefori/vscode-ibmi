@@ -34,7 +34,7 @@ export namespace Deployment {
   const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
   const changes: Map<string, vscode.Uri> = new Map;
 
-  export function initialize(context: vscode.ExtensionContext, instance: Instance) {
+  export function initialize(context: vscode.ExtensionContext) {
     button.command = {
       command: `code-for-ibmi.launchDeploy`,
       title: `Launch Deploy`
@@ -50,55 +50,62 @@ export namespace Deployment {
     );
 
     const workspaces = vscode.workspace.workspaceFolders;
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
-    const storage = instance.getStorage();
+    if (workspaces && workspaces.length > 0) {
+      buildWatcher().then(bw => context.subscriptions.push(bw));
+    }
 
-    if (workspaces && connection && storage && config) {
-      if (workspaces.length > 0) {
-        buildWatcher().then(bw => context.subscriptions.push(bw));
-        button.show();
-      }
+    instance.onEvent("connected", () => {
+      const workspaces = vscode.workspace.workspaceFolders;
+      const connection = instance.getConnection();
+      const config = instance.getConfig();
+      const storage = instance.getStorage();
 
-      const existingPaths = storage.getDeployment();
-
-      if (workspaces.length === 1) {
-        const workspace = workspaces[0];
-
-        if (existingPaths && !existingPaths[workspace.uri.fsPath]) {
-          const possibleDeployDir = path.posix.join(`/`, `home`, connection.currentUser, `builds`, workspace.name);
-          vscode.window.showInformationMessage(
-            `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`,
-            `Yes`,
-            `Ignore`
-          ).then(async result => {
-            if (result === `Yes`) {
-              setDeployLocation({path: possibleDeployDir}, workspace);
-            }
-          });
+      if (workspaces && connection && storage && config) {
+        if (workspaces.length > 0) {
+          buildWatcher().then(bw => context.subscriptions.push(bw));
+          button.show();
         }
 
-        getLocalActions(workspace).then(result => {
-          if (result.length === 0) {
+        const existingPaths = storage.getDeployment();
+
+        if (workspaces.length === 1) {
+          const workspace = workspaces[0];
+
+          if (existingPaths && !existingPaths[workspace.uri.fsPath]) {
+            const possibleDeployDir = path.posix.join(`/`, `home`, connection.currentUser, `builds`, workspace.name);
             vscode.window.showInformationMessage(
-              `There are no local Actions defined for this project.`,
-              `Run Setup`
-            ).then(result => {
-              if (result === `Run Setup`)
-                vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
+              `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`,
+              `Yes`,
+              `Ignore`
+            ).then(async result => {
+              if (result === `Yes`) {
+                setDeployLocation({ path: possibleDeployDir }, workspace);
+              }
             });
           }
-        })
 
-        vscode.window.showInformationMessage(
-          `Current library is set to ${config.currentLibrary}.`,
-          `Change`
-        ).then(result => {
-          if (result === `Change`)
-            vscode.commands.executeCommand(`code-for-ibmi.changeCurrentLibrary`);
-        });
+          getLocalActions(workspace).then(result => {
+            if (result.length === 0) {
+              vscode.window.showInformationMessage(
+                `There are no local Actions defined for this project.`,
+                `Run Setup`
+              ).then(result => {
+                if (result === `Run Setup`)
+                  vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
+              });
+            }
+          })
+
+          vscode.window.showInformationMessage(
+            `Current library is set to ${config.currentLibrary}.`,
+            `Change`
+          ).then(result => {
+            if (result === `Change`)
+              vscode.commands.executeCommand(`code-for-ibmi.changeCurrentLibrary`);
+          });
+        }
       }
-    }
+    });
   }
 
   async function launchActionsSetup() {
@@ -489,7 +496,7 @@ export namespace Deployment {
 
       if (storage && chosenWorkspaceFolder) {
         await createRemoteDirectory(path);
-        
+
         const existingPaths = storage.getDeployment();
         existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
         await storage.setDeployment(existingPaths);

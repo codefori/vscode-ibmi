@@ -57,7 +57,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `sourceDateMode`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `tempDir`];
         let restart = false;
 
         const featuresTab = new Section();

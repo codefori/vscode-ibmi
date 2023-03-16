@@ -4,7 +4,7 @@ import { CustomUI } from "../../api/CustomUI";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { ConnectionData } from '../../typings';
 
-let { instance, disconnect, setConnection, loadAllofExtension } = require(`../../instantiate`);
+let { instance, disconnect } = require(`../../instantiate`);
 
 export class Login {
 
@@ -75,11 +75,7 @@ export class Login {
               try {
                 const connected = await connection.connect(data);
                 if (connected.success) {
-                  setConnection(connection);
-                  loadAllofExtension(context);
-
                   if (newConnection) {
-
                     vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
                       if (selectionA === `Open configuration`) {
                         vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
@@ -147,16 +143,10 @@ export class Login {
         }
       }
 
-      const connection = new IBMi();
-
       try {
-        const connected = await connection.connect(connectionConfig);
+        const connected = await new IBMi().connect(connectionConfig);
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
-
-          setConnection(connection);
-          loadAllofExtension(context);
-
         } else {
           vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
         }

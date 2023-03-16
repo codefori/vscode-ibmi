@@ -2,6 +2,8 @@ import { stringify, parse, ParsedUrlQueryInput } from "querystring";
 import vscode, { FilePermission } from "vscode";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions } from "../../typings";
+import { ExtendedIBMiContent } from "./extendedContent";
+import { SourceDateHandler } from "./sourceDateHandler";
 
 export function getMemberUri(member: IBMiMember, options?: QsysFsOptions) {
     return getUriFromPath(`${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`, options);
@@ -31,4 +33,111 @@ function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
 
 function isProtectedFilter(filter?: string): boolean {
     return filter && instance.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
+}
+
+export class QSysFS implements vscode.FileSystemProvider {
+    private readonly sourceDateHandler: SourceDateHandler;
+    private readonly extendedContent: ExtendedIBMiContent;
+    private extendedMemberSupport = false;
+    private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
+    onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
+
+    constructor(context: vscode.ExtensionContext) {
+        this.sourceDateHandler = new SourceDateHandler(context);
+        this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
+
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(async event => {
+                if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
+                    this.updateMemberSupport();
+                }
+            }));
+
+        instance.onEvent("connected", () => this.updateMemberSupport());
+        instance.onEvent("disconnected", () => this.updateMemberSupport());
+    }
+
+    private updateMemberSupport() {
+        this.extendedMemberSupport = false
+        this.sourceDateHandler.setEnabled(false);
+        const connection = instance.getConnection();
+        const config = connection?.config;
+        
+        if (connection && config?.enableSourceDates) {
+            if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
+                this.extendedMemberSupport = true;
+                this.sourceDateHandler.setEnabled(true);
+                this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
+                if (connection.qccsid === 65535) {
+                    vscode.window.showWarningMessage(`Source date support is enabled, but QCCSID is 65535. If you encounter problems with source date support, please disable it in the settings.`);
+                }
+            } else {
+                vscode.window.showErrorMessage(`Source date support is enabled, but the remote system does not support SQL. Source date support will be disabled.`);
+            }
+        }
+    }
+
+    stat(uri: vscode.Uri): vscode.FileStat {
+        return {
+            ctime: 0,
+            mtime: 0,
+            size: 0,
+            type: vscode.FileType.File,
+            permissions: getFilePermission(uri)
+        }
+    }
+
+    async readFile(uri: vscode.Uri): Promise<Uint8Array> {
+        const contentApi = instance.getContent();
+        const connection = instance.getConnection();
+        if (connection && contentApi) {
+            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            const memberContent = this.extendedMemberSupport ?
+                await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
+                await contentApi.downloadMemberContent(asp, library, file, member);
+            if (memberContent) {
+                return new Uint8Array(Buffer.from(memberContent, `utf8`));
+            }
+            else {
+                throw new Error(`Couldn't read ${uri}; check IBM i connection.`);
+            }
+        }
+        else {
+            throw new Error("Not connected to IBM i");
+        }
+    }
+
+    async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
+        const contentApi = instance.getContent();
+        const connection = instance.getConnection();
+        if (connection && contentApi) {
+            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            this.extendedMemberSupport ?
+                await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
+                contentApi.uploadMemberContent(asp, library, file, member, content);
+        }
+        else {
+            throw new Error("Not connected to IBM i");
+        }
+    }
+
+    rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
+        console.log({ oldUri, newUri, options });
+    }
+
+    watch(uri: vscode.Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[]; }): vscode.Disposable {
+        return { dispose: () => { } };
+    }
+
+    readDirectory(uri: vscode.Uri): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
+        throw new Error("Method not implemented.");
+    }
+
+    createDirectory(uri: vscode.Uri): void | Thenable<void> {
+        throw new Error("Method not implemented.");
+    }
+
+    delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
+        throw new Error("Method not implemented.");
+    }
 }

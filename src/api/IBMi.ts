@@ -7,6 +7,8 @@ import {Tools} from './Tools';
 import path from 'path';
 import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
 import * as configVars from './configVars';
+import { instance } from "../instantiate";
+import IBMiContent from "./IBMiContent";
 
 export interface MemberParts {
   asp?: string
@@ -647,6 +649,11 @@ export default class IBMi {
         }
 
         vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+        
+        instance.connection = this;
+        instance.content = new IBMiContent(instance.connection);
+
+        instance.emitter?.fire("connected");
 
         return {
           success: true
@@ -782,6 +789,8 @@ export default class IBMi {
       this.outputChannel.hide();
       this.outputChannel.dispose();
     }
+
+    instance.emitter?.fire(`disconnected`);
   }
 
   /**

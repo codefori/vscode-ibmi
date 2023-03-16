@@ -1,10 +1,10 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, window, commands, workspace, extensions } from "vscode";
+import { ExtensionContext, window, commands, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { setupEmitter, instance, setConnection, loadAllofExtension } from './instantiate';
+import { setupEmitter, instance, loadAllofExtension } from './instantiate';
 import { CustomUI, Field } from "./api/CustomUI";
 
 import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
@@ -15,8 +15,12 @@ import * as Sandbox from "./sandbox";
 import { Deployment } from "./api/local/deployment";
 import { parseErrors } from "./api/errors/handler";
 import { GlobalStorage } from "./api/Storage";
+import { CompileTools } from "./api/CompileTools";
+import { HelpView } from "./views/helpView";
+import { ProfilesView } from "./views/ProfilesView";
+import * as Debug from './api/debug';
 
-export function activate(context: ExtensionContext): CodeForIBMi {
+export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
@@ -36,21 +40,35 @@ export function activate(context: ExtensionContext): CodeForIBMi {
       `connectionBrowser`,
       new ObjectBrowserProvider(context)
     ),
-
+    window.registerTreeDataProvider(
+      `helpView`,
+      new HelpView()
+    ),
+    window.registerTreeDataProvider(
+      `libraryListView`,
+      new (require(`./views/libraryListView`))(context)
+    ),
+    window.registerTreeDataProvider(
+      `profilesView`,
+      new ProfilesView(context)
+    ),
+    window.registerTreeDataProvider(
+      `ifsBrowser`,
+      new (require(`./views/ifsBrowser`))(context)
+    ),
+    window.registerTreeDataProvider(
+      `objectBrowser`,
+      new (require(`./views/objectBrowser`))(context)
+    ),
     commands.registerCommand(`code-for-ibmi.connectDirect`,
       async (connectionData: ConnectionData): Promise<boolean> => {
         const existingConnection = instance.getConnection();
 
-        if (existingConnection) return false;
-
-        const connection = new IBMi();
-        const connected = await connection.connect(connectionData);
-        if (connected.success) {
-          setConnection(connection);
-          loadAllofExtension(context);
+        if (existingConnection) {
+          return false;
         }
 
-        return connected.success;
+        return (await new IBMi().connect(connectionData)).success;
       }
     ),
     workspace.onDidChangeConfiguration(async event => {
@@ -65,10 +83,17 @@ export function activate(context: ExtensionContext): CodeForIBMi {
           Object.assign(config, (await ConnectionConfiguration.load(config.name)));
         }
       }
+    }),
+    workspace.registerFileSystemProvider(`streamfile`, new (require(`./filesystems/ifs`)), {
+      isCaseSensitive: false
     })
   );
 
+  await loadAllofExtension(context);
+  CompileTools.register(context);
   GlobalStorage.initialize(context);
+  Debug.initialize(context);  
+  Deployment.initialize(context);
   checkLastConnections();
 
   Sandbox.handleStartup();
