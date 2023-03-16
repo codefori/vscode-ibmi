@@ -37,6 +37,7 @@ module.exports = class FiltersUI {
           object: filter.object,
           types: [...filter.types],
           member: filter.member,
+          memberType: filter.memberType,
           protected: filter.protected
         }
         existingConfigIndex = -1;
@@ -51,6 +52,7 @@ module.exports = class FiltersUI {
         object: `*`,
         types: [`*SRCPF`],
         member: `*`,
+        memberType: `*`,
         protected: false
       }
     }
