@@ -1162,8 +1162,7 @@ class Member extends vscode.TreeItem {
     this.description = member.text;    
     this.resourceUri = getMemberUri(member, {filter: filter.name});
     this.path = this.resourceUri.path;
-    this.tooltip = `${this.resourceUri.path}\n(${member.text})`
-    this.command = {
+    this.tooltip = `${this.resourceUri.path}${member.text ? `\n(${member.text})` : ``}`;    this.command = {
       command: `vscode.open`,
       title: `Open Member`,
       arguments: [this.resourceUri]
