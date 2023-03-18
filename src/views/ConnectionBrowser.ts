@@ -109,7 +109,6 @@ export class ObjectBrowserProvider {
     const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
     return (GlobalConfiguration.get<ConnectionData[]>(`connections`) || [])
       .map(connection => new ServerItem(connection, connection.name === lastConnection?.name));
-
   }
 }
 

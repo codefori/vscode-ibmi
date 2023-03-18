@@ -25,18 +25,13 @@ disconnectBarItem.command = {
   title: `Disconnect from system`
 }
 
-const reconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 11);
-reconnectBarItem.command = {
-  command: `code-for-ibmi.connectTo`,
-  title: `Force Reconnect`,
-  arguments: [instance.connection?.currentConnectionName]
-};
-
 const connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
 connectedBarItem.command = {
   command: `code-for-ibmi.showAdditionalSettings`,
   title: `Show Additional Connection Settings`,
 };
+disconnectBarItem.tooltip = `Disconnect from system.`;
+disconnectBarItem.text = `$(debug-disconnect)`;
 
 const terminalBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
 terminalBarItem.command = {
@@ -116,7 +111,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   searchViewContext = new SearchView(context);
 
   context.subscriptions.push(
-    reconnectBarItem,
     connectedBarItem,
     disconnectBarItem,
     terminalBarItem,
@@ -433,19 +427,10 @@ async function onConnected(context: vscode.ExtensionContext) {
 
   [
     connectedBarItem,
+    disconnectBarItem,
     terminalBarItem,
     actionsBarItem
   ].forEach(barItem => barItem.show());
-
-  if (GlobalConfiguration.get<boolean>(`showConnectionButtons`)) {
-    reconnectBarItem.tooltip = `Force reconnect to system.`;
-    reconnectBarItem.text = `$(extensions-remote)`;
-    reconnectBarItem.show();
-
-    disconnectBarItem.tooltip = `Disconnect from system.`;
-    disconnectBarItem.text = `$(debug-disconnect)`;
-    disconnectBarItem.show();
-  }
 
   if (GlobalConfiguration.get<boolean>(`logCompileOutput`)) {
     outputBarItem.show();
@@ -471,7 +456,6 @@ async function onDisconnected() {
 
   // Hide the bar items
   [
-    reconnectBarItem,
     disconnectBarItem,
     connectedBarItem,
     terminalBarItem,
