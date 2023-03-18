@@ -65,10 +65,10 @@ export class SourceDateHandler {
     this.sourceDateSearchBarItem.text = SD_BASE;
 
     context.subscriptions.push(
-      vscode.workspace.onDidChangeTextDocument(this.onDidChangeTextDocument),
-      vscode.window.onDidChangeActiveTextEditor(this.onDidChangeEditor),
-      vscode.window.onDidChangeTextEditorSelection(this.onDidChangeTextSelection),
-      vscode.workspace.onDidCloseTextDocument(this.onDidCloseDocument),
+      vscode.workspace.onDidChangeTextDocument(event => this.onDidChangeTextDocument(event)),
+      vscode.window.onDidChangeActiveTextEditor(() => this.onDidChangeEditor()),
+      vscode.window.onDidChangeTextEditorSelection(event => this.onDidChangeTextSelection(event)),
+      vscode.workspace.onDidCloseTextDocument(event => this.onDidCloseDocument(event)),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => this.toggleSourceDateGutter()),
       vscode.commands.registerCommand(`code-for-ibmi.member.clearDateSearch`, () => this.clearDateSearch()),
       vscode.commands.registerCommand(`code-for-ibmi.member.newDateSearch`, () => this.newDateSearch()),
