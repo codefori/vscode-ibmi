@@ -652,7 +652,8 @@ export default class IBMi {
         
         instance.connection = this;
         instance.content = new IBMiContent(instance.connection);
-
+        
+        await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
         instance.emitter?.fire("connected");
 
         return {
@@ -781,7 +782,7 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  end() {
+  async end() {
     this.client.connection.removeAllListeners();
     this.client.dispose();
 
@@ -791,6 +792,7 @@ export default class IBMi {
     }
 
     instance.emitter?.fire(`disconnected`);
+    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
   }
 
   /**

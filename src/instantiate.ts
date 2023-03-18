@@ -105,7 +105,7 @@ export async function disconnect(): Promise<boolean> {
     if (instance.connection) {
       const connection = instance.connection;
       instance.connection = undefined;
-      connection.end();      
+      connection.end();
     }
   }
 
@@ -428,10 +428,7 @@ function updateConnectedBar() {
 async function onConnected(context: vscode.ExtensionContext) {
   const connection = instance.connection!;
   const config = instance.connection!.config!;
-
-  await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
-  await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-
+  await GlobalStorage.get().setLastConnection(connection.currentConnectionName);  
   instance.storage = new ConnectionStorage(context, connection.currentConnectionName);
 
   [
@@ -464,7 +461,7 @@ async function onConnected(context: vscode.ExtensionContext) {
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
-  
+
   await Promise.all([
     vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
     vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
@@ -472,9 +469,7 @@ async function onConnected(context: vscode.ExtensionContext) {
   ]);
 }
 
-async function onDisconnected() {
-  await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
-
+async function onDisconnected() {  
   // Close the tabs
   vscode.window.tabGroups.all.forEach(group => {
     vscode.window.tabGroups.close(group);
