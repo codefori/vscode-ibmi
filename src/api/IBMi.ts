@@ -791,6 +791,12 @@ export default class IBMi {
       this.outputChannel.dispose();
     }
 
+    await Promise.all([
+      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+    ]);
+
     instance.emitter?.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
   }
