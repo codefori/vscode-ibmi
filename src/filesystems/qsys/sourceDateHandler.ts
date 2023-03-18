@@ -1,4 +1,4 @@
-import vscode from "vscode";
+import vscode, { window } from "vscode";
 import { ExtensionContext } from "vscode";
 import { DiffComputer } from "vscode-diff";
 
@@ -77,18 +77,24 @@ export class SourceDateHandler {
   }
 
   setEnabled(enabled: boolean) {
-    this.enabled = enabled;
-    if (!enabled) {
-      clearTimeout(this.timeout);
-      this.sourceDateSearchBarItem.hide();
-      this.highlightSince = undefined;
-      this.highlightBefore = undefined;
-      this.lineEditedBefore = undefined;
-      this.baseDates.clear();
-      this.baseSource.clear();
-      this.recordLengths.clear();
-      this.updateContext();
-    }
+    if (this.enabled !== enabled) {
+      this.enabled = enabled
+      if (!this.enabled) {
+        clearTimeout(this.timeout);
+        this.sourceDateSearchBarItem.hide();
+        this.highlightSince = undefined;
+        this.highlightBefore = undefined;
+        this.lineEditedBefore = undefined;
+        this.baseDates.clear();
+        this.baseSource.clear();
+        this.recordLengths.clear();
+        this.updateContext();
+      }
+      
+      if(vscode.window.visibleTextEditors.some(e => e.document.uri.scheme === 'member')){
+        window.showWarningMessage("Source date support has changed; reopen opened editor(s) for the change to take effect.");
+      }
+    }    
   }
 
   changeSourceDateMode(sourceDateMode: SourceDateMode) {

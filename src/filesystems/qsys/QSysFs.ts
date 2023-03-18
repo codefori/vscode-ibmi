@@ -58,15 +58,13 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     private updateMemberSupport() {
-        this.extendedMemberSupport = false
-        this.sourceDateHandler.setEnabled(false);
+        this.extendedMemberSupport = false        
         const connection = instance.getConnection();
         const config = connection?.config;
         
         if (connection && config?.enableSourceDates) {
             if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
-                this.extendedMemberSupport = true;
-                this.sourceDateHandler.setEnabled(true);
+                this.extendedMemberSupport = true;                
                 this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
                 if (connection.qccsid === 65535) {
                     vscode.window.showWarningMessage(`Source date support is enabled, but QCCSID is 65535. If you encounter problems with source date support, please disable it in the settings.`);
@@ -75,6 +73,8 @@ export class QSysFS implements vscode.FileSystemProvider {
                 vscode.window.showErrorMessage(`Source date support is enabled, but the remote system does not support SQL. Source date support will be disabled.`);
             }
         }
+
+        this.sourceDateHandler.setEnabled(this.extendedMemberSupport);
     }
 
     stat(uri: vscode.Uri): vscode.FileStat {
