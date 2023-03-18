@@ -461,12 +461,6 @@ async function onConnected(context: vscode.ExtensionContext) {
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
-
-  await Promise.all([
-    vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
-    vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
-    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`)
-  ]);
 }
 
 async function onDisconnected() {  

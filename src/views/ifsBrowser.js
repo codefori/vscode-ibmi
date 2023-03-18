@@ -3,10 +3,10 @@ const vscode = require(`vscode`);
 const os = require(`os`);
 const path = require(`path`);
 
-let {instance, setSearchResults} = require(`../instantiate`);
-const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
-const {Search} = require(`../api/Search`);
-const {Tools} = require(`../api/Tools`);
+let { instance, setSearchResults } = require(`../instantiate`);
+const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
+const { Search } = require(`../api/Search`);
+const { Tools } = require(`../api/Tools`);
 
 module.exports = class ifsBrowserProvider {
   /**
@@ -122,11 +122,11 @@ module.exports = class ifsBrowserProvider {
 
         try {
 
-          shortcuts.sort(function(a, b){
+          shortcuts.sort(function (a, b) {
             let x = a.toLowerCase();
             let y = b.toLowerCase();
-            if (x < y) {return -1;}
-            if (x > y) {return 1;}
+            if (x < y) { return -1; }
+            if (x > y) { return 1; }
             return 0;
           });
           config.ifsShortcuts = shortcuts;
@@ -145,11 +145,11 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           const moveDir = node.path ? node.path.trim() : null;
-          
+
           if (moveDir) {
             try {
               const inx = shortcuts.indexOf(moveDir);
-              
+
               if (inx >= 0 && inx < shortcuts.length) {
                 shortcuts.splice(inx, 1);
                 shortcuts.splice(inx + 1, 0, moveDir);
@@ -172,7 +172,7 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           const moveDir = node.path ? node.path.trim() : null;
-          
+
           if (moveDir) {
             try {
               const inx = shortcuts.indexOf(moveDir);
@@ -199,11 +199,11 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           const moveDir = node.path ? node.path.trim() : null;
-          
+
           if (moveDir) {
             try {
               const inx = shortcuts.indexOf(moveDir);
-              
+
               if (inx >= 1 && inx < shortcuts.length) {
                 shortcuts.splice(inx, 1);
                 shortcuts.splice(0, 0, moveDir);
@@ -226,14 +226,14 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           const moveDir = node.path ? node.path.trim() : null;
-          
+
           if (moveDir) {
             try {
               const inx = shortcuts.indexOf(moveDir);
-              
+
               if (inx >= 0 && inx < shortcuts.length) {
                 shortcuts.splice(inx, 1);
-                shortcuts.splice( shortcuts.length, 0, moveDir);
+                shortcuts.splice(shortcuts.length, 0, moveDir);
                 config.ifsShortcuts = shortcuts;
                 await ConnectionConfiguration.update(config);
                 if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
@@ -361,11 +361,11 @@ module.exports = class ifsBrowserProvider {
           //Running from right click
           let deletionConfirmed = false;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
-          
-          if (result === `Yes`) {    
-            if((GlobalConfiguration.get(`safeDeleteMode`)) && node.path.endsWith(`/`)) { //Check if path is directory
+
+          if (result === `Yes`) {
+            if ((GlobalConfiguration.get(`safeDeleteMode`)) && node.path.endsWith(`/`)) { //Check if path is directory
               const dirName = path.basename(node.path.substring(0, node.path.length - 1))  //Get the name of the directory to be deleted
-              
+
               const deletionPrompt = `Once you delete the directory, it cannot be restored.\nPlease type \"` + dirName + `\" to confirm deletion.`;
               const input = await vscode.window.showInputBox({
                 placeHolder: dirName,
@@ -378,26 +378,26 @@ module.exports = class ifsBrowserProvider {
             }
             else // If deleting a file rather than a directory, skip the name entry
               deletionConfirmed = true;
-            
-            if(deletionConfirmed) {
+
+            if (deletionConfirmed) {
               const connection = instance.getConnection();
 
               try {
                 await connection.paseCommand(`rm -rf ${Tools.escapePath(node.path)}`)
-  
+
                 vscode.window.showInformationMessage(`Deleted ${node.path}.`);
-  
+
                 if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
               } catch (e) {
                 vscode.window.showErrorMessage(`Error deleting streamfile! ${e}`);
               }
-              
+
             }
             else {
               vscode.window.showInformationMessage(`Deletion canceled.`);
             }
 
-            
+
           }
         } else {
           //Running from command.
@@ -437,7 +437,7 @@ module.exports = class ifsBrowserProvider {
 
         if (node) {
           //Running from right click
-          
+
           let fullName = await vscode.window.showInputBox({
             prompt: `Name of new path`,
             value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path
@@ -501,7 +501,7 @@ module.exports = class ifsBrowserProvider {
                 let results = await Search.searchIFS(instance, searchPath, searchTerm);
 
                 if (results.length > 0) {
-                  results = results.map(a => ({...a, label: path.posix.relative(searchPath, a.path)}));
+                  results = results.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }));
                   setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
 
                 } else {
@@ -530,7 +530,7 @@ module.exports = class ifsBrowserProvider {
 
           const remoteFilepath = path.join(os.homedir(), filename);
 
-          let localFilepath = await vscode.window.showSaveDialog({defaultUri: vscode.Uri.file(remoteFilepath)});
+          let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(remoteFilepath) });
 
           if (localFilepath) {
             let localPath = localFilepath.path;
@@ -557,6 +557,8 @@ module.exports = class ifsBrowserProvider {
         this.collapse();
       })
     )
+
+    instance.onEvent(`connected`, () => this.refresh());
   }
 
   refresh() {
@@ -580,12 +582,10 @@ module.exports = class ifsBrowserProvider {
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
+    const items = [];
     const connection = instance.getConnection();
-    const content = instance.getContent();
-    let items = [], item;
-
     if (connection) {
-      /** @type {ConnectionConfiguration.Parameters} */
+      const content = instance.getContent();
       const config = instance.getConfig();
 
       if (element) { //Chosen directory
@@ -594,22 +594,20 @@ module.exports = class ifsBrowserProvider {
 
         try {
           const objects = await content.getFileList(element.path);
-
-          items = objects.filter(o => o.type === `directory`)
+          items.push(...objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
-            .map(object => new Object(object.type, object.name, object.path));
+            .map(object => new Object(object.type, object.name, object.path)));
 
           await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 
         } catch (e) {
-          console.log(e);
-          item = new vscode.TreeItem(`Error loading objects.`);
+          console.log(e);          
           vscode.window.showErrorMessage(e.message);
-          items = [item];
+          items.push(new vscode.TreeItem(`Error loading objects.`));
         }
 
       } else {
-        items = config.ifsShortcuts.map(directory => new Object(`shortcut`, directory, directory));
+        items.push(...config.ifsShortcuts.map(directory => new Object(`shortcut`, directory, directory)));
       }
     }
 
@@ -646,7 +644,7 @@ class Object extends vscode.TreeItem {
     if (type === `shortcut` || type === `directory`) {
       this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     } else {
-      this.resourceUri = vscode.Uri.parse(path).with({scheme: `streamfile`});
+      this.resourceUri = vscode.Uri.parse(path).with({ scheme: `streamfile` });
       this.command = {
         command: `code-for-ibmi.openEditable`,
         title: `Open Streamfile`,
