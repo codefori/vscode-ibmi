@@ -141,7 +141,44 @@ export class ProfilesView {
             }
           }
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.setToDefault`, () => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
+        const storage = instance.getStorage();
+
+        if (config && storage) {
+          window.showInformationMessage(`Reset to default`, {
+            detail: `This will reset the User Library List, Object Browser, IFS Browser and Custom Variables back to the defaults.`,
+            modal: true
+          }, `Continue`).then(async result => {
+            if (result === `Continue`) {
+              const defaultName = `Default`;
+
+              assignProfile({
+                name: defaultName,
+                libraryList: connection?.defaultUserLibraries || [],
+                currentLibrary: config.currentLibrary,
+                customVariables: [],
+                homeDirectory: config.homeDirectory,
+                ifsShortcuts: [config.homeDirectory],
+                objectFilters: [],
+              }, config);
+
+              await ConnectionConfiguration.update(config);
+
+              await Promise.all([
+                vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
+                storage.setLastProfile(defaultName)
+              ]);
+            }
+          })
+        }
       })
+      
     )
   }
 
@@ -166,6 +203,7 @@ export class ProfilesView {
       if (config && storage) {
         const currentProfile = storage.getLastProfile();
         return [
+          new ResetProfileItem(),
           ...config.connectionProfiles
             .map(profile => profile.name)
             .map(name => new ProfileItem(name, name === currentProfile)),
@@ -234,7 +272,6 @@ class ProfileItem extends vscode.TreeItem implements Profile {
   }
 }
 
-
 class CommandProfileItem extends vscode.TreeItem implements Profile {
   readonly profile;
   constructor(name: string, active: boolean) {
@@ -245,5 +282,17 @@ class CommandProfileItem extends vscode.TreeItem implements Profile {
     this.description = active ? `Active` : ``;
 
     this.profile = name;
+  }
+}
+
+class ResetProfileItem extends vscode.TreeItem implements Profile {
+  readonly profile;
+  constructor() {
+    super(`Default`, vscode.TreeItemCollapsibleState.None);
+
+    this.contextValue = `resetProfile`;
+    this.iconPath = new vscode.ThemeIcon(`debug-restart`);
+
+    this.profile = `Default`;
   }
 }

@@ -805,6 +805,12 @@
 		},
 		"commands": [
 			{
+				"command": "code-for-ibmi.setToDefault",
+				"title": "Reset to Default Profile",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:connected == true"
+			},
+			{
 				"command": "code-for-ibmi.manageCommandProfile",
 				"title": "Create/edit command profile",
 				"category": "IBM i",
@@ -815,7 +821,7 @@
 				"command": "code-for-ibmi.deleteCommandProfile",
 				"title": "Delete command profile",
 				"category": "IBM i",
-				"enablement": "code-for-ibmi:connected == true",
+				"enablement": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true",
 				"icon": "$(remove)"
 			},
 			{
@@ -1045,7 +1051,7 @@
 			},
 			{
 				"command": "code-for-ibmi.deleteConnectionProfile",
-				"enablement": "code-for-ibmi:connected == true",
+				"enablement": "code-for-ibmi:connected == true && code-for-ibmi:hasProfiles == true",
 				"title": "Delete profile",
 				"category": "IBM i",
 				"icon": "$(remove)"
@@ -1662,6 +1668,11 @@
 				{
 					"command": "code-for-ibmi.loadCommandProfile",
 					"when": "view == profilesView && viewItem == commandProfile",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.setToDefault",
+					"when": "view == profilesView && viewItem == resetProfile",
 					"group": "inline"
 				},
 				{
