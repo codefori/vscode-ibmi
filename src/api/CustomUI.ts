@@ -182,10 +182,6 @@ export class CustomUI {
               width: 100%;
             }
 
-            vscode-form-helper {
-              padding-bottom: 1em;
-            }
-
             .long-input {
               width: 100%;
             }
@@ -300,7 +296,7 @@ export class CustomUI {
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
               ${trees.map(tree => {
-                return /*js*/`
+      return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
                   currentTree.addEventListener('vsc-select', (event) => {
@@ -310,7 +306,7 @@ export class CustomUI {
                     }
                   });
                   `
-              })}
+    })}
             });
 
         }())
@@ -391,7 +387,7 @@ export class Field {
               <vscode-tab-panel>
                 ${item.value}
               </vscode-tab-panel>`
-          ).join(``)}
+        ).join(``)}
           </vscode-tabs>`;
 
       case `input`:
