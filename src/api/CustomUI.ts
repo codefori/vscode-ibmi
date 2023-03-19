@@ -234,6 +234,9 @@ export class CustomUI extends Section {
             // Fields which required a file path
             const filefields = [${allFields.filter(field => field.type == `file`).map(field => `'${field.id}'`).join(`,`)}];
 
+            // Fields which are checkboxes
+            const checkboxes = [${allFields.filter(field => field.type == `checkbox`).map(field => `'${field.id}'`).join(`,`)}];
+
             // Fields that have value which can be returned
             const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
     
@@ -241,22 +244,16 @@ export class CustomUI extends Section {
                 console.log('submit now!!', buttonValue)
                 if (event)
                     event.preventDefault();
-    
-                var data = {};
+                    
+                var data = document.querySelector('#laforma').data;
 
                 if (buttonValue) {
                   data['buttons'] = buttonValue;
                 }
-    
-                for (const field of submitfields) {
-                  var fieldType = document.getElementById(field).nodeName.toLowerCase();
-                   switch (fieldType) {
-                    case "vscode-checkbox"
-                    :data[field] = document.getElementById(field).checked;
-                    break;
-                    default
-                    :data[field] = document.getElementById(field).value;
-                  }
+
+                // Convert the weird array value of checkboxes to boolean
+                for (const checkbox of checkboxes) {
+                  data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
                 }
 
                 vscode.postMessage(data);
@@ -302,6 +299,7 @@ export class CustomUI extends Section {
                 }
             }
 
+            // This is used to read the file in order to get the real path.
             for (const field of filefields) {
               document.getElementById(field)
                   .addEventListener('vsc-change', (e) => {
@@ -320,7 +318,7 @@ export class CustomUI extends Section {
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
               ${trees.map(tree => {
-      return /*js*/`
+                return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
                   currentTree.addEventListener('vsc-select', (event) => {
@@ -330,7 +328,7 @@ export class CustomUI extends Section {
                     }
                   });
                   `
-    })}
+                })}
             });
 
         }())
@@ -399,7 +397,7 @@ export class Field {
       case `checkbox`:
         return /* html */`
           <vscode-form-group variant="settings-group">
-            <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}><vscode-label>${this.label}</vscode-label></vscode-checkbox>
+            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``}><vscode-label>${this.label}</vscode-label></vscode-checkbox>
             ${this.renderDescription()}
           </vscode-form-group>`;
 
