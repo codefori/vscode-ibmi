@@ -446,7 +446,7 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-inputbox type="file" id="${this.id}" name="${this.id}"></vscode-inputbox>
+              <vscode-textfield type="file" id="${this.id}" name="${this.id}"></vscode-textfield>
           </vscode-form-group>`;
 
       case `password`:
