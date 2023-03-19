@@ -20,7 +20,7 @@ export interface MemberParts {
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`]
   },
   {
     path: `/usr/bin/`,
@@ -49,8 +49,7 @@ export default class IBMi {
   currentConnectionName: string;
   tempRemoteFiles: { [name: string]: string };
   defaultUserLibraries: string[];
-  outputChannel: vscode.OutputChannel;
-  subscriptions: vscode.Disposable[];
+  outputChannel?: vscode.OutputChannel;
   aspInfo: { [id: number]: string };
   qccsid: number | null;
   remoteFeatures: { [name: string]: string | undefined };
@@ -70,11 +69,6 @@ export default class IBMi {
     this.tempRemoteFiles = {};
     this.defaultUserLibraries = [];
 
-    this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i`);
-
-    /** List of vscode disposables */
-    this.subscriptions = [this.outputChannel];
-
     /**
      * Used to store ASP numbers and their names
      * THeir names usually maps up to a directory in
@@ -90,6 +84,7 @@ export default class IBMi {
       tn5250: undefined,
       setccsid: undefined,
       md5sum: undefined,
+      bash: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined
@@ -133,6 +128,8 @@ export default class IBMi {
         this.currentHost = connectionObject.host;
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
+
+        this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
 
         let tempLibrarySet = false;
 
@@ -347,7 +344,7 @@ export default class IBMi {
                 // @ts-ignore We know the config exists.
                 vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
                   if (choice === `View log`) {
-                    this.outputChannel.show();
+                    this.outputChannel!.show();
                   }
                 });
               }
@@ -364,7 +361,7 @@ export default class IBMi {
               // @ts-ignore We know the config exists.
               vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
                 if (choice === `View log`) {
-                  this.outputChannel.show();
+                  this.outputChannel!.show();
                 }
               });
             });
@@ -574,6 +571,48 @@ export default class IBMi {
             // Oh well!
             console.log(e);
           }
+
+          // Check users default shell.
+          // give user option to set bash as default shell.
+          try {
+            // make sure sql is enabled and bash is installed on system
+            if (this.config.enableSQL && 
+                this.remoteFeatures[`bash`]) {
+              const bashShellPath = '/QOpenSys/pkgs/bin/bash';
+              const commandShellResult = await this.sendCommand({
+                command: `echo $SHELL`
+              });
+              if (!commandShellResult.stderr) {
+                let userDefaultShell = commandShellResult.stdout.trim();
+                if (userDefaultShell !== bashShellPath) {
+                  vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash?`, `Read More`,).then(async choice => {
+                    switch (choice) { 
+                      case `Set shell to bash?`:
+                        statement = `CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`;
+                        output = await this.sendCommand({
+                          command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                          stdin: statement
+                        });
+
+                        if (output.stdout) {
+                          vscode.window.showInformationMessage(`Default shell is now bash!`);
+                        } else {
+                          vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                        }
+                        break;
+
+                      case `Read More`:
+                        vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                        break;
+                    }
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            // Oh well...trying to set default shell is not worth stopping for.
+            console.log(e);
+          }
         } else {
           // Disable it if it's not found
 
@@ -684,9 +723,11 @@ export default class IBMi {
 
     this.determineClear()
 
-    this.outputChannel.append(`${directory}: ${command}\n`);
-    if (options && options.stdin) {
-      this.outputChannel.append(`${options.stdin}\n`);
+    if (this.outputChannel) {
+      this.appendOutput(`${directory}: ${command}\n`);
+      if (options && options.stdin) {
+        this.appendOutput(`${options.stdin}\n`);
+      }
     }
 
     const result = await this.client.execCommand(command, {
@@ -713,18 +754,34 @@ export default class IBMi {
         this.lastErrors.shift();
     }
 
-    this.outputChannel.append(JSON.stringify(result, null, 4) + `\n\n`);
+    this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
     return result;
   }
 
+  private appendOutput(content: string) {
+    if (this.outputChannel) {
+      this.outputChannel.append(content);
+    }
+  }
+
   private determineClear() {
     if (this.commandsExecuted > 150) {
-      this.outputChannel.clear();
+      if (this.outputChannel) this.outputChannel.clear();
       this.commandsExecuted = 0;
     }
 
     this.commandsExecuted += 1;
+  }
+
+  end() {
+    this.client.connection.removeAllListeners();
+    this.client.dispose();
+
+    if (this.outputChannel) {
+      this.outputChannel.hide();
+      this.outputChannel.dispose();
+    }
   }
 
   /**

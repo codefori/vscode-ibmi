@@ -897,7 +897,11 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
-      })
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.collapseObjectBrowser`, async () => {
+        this.collapse();
+      })     
     )
   }
 
@@ -948,6 +952,10 @@ module.exports = class objectBrowserTwoProvider {
    */
   getTreeItem(element) {
     return element;
+  }
+
+  collapse() {
+    vscode.commands.executeCommand(`workbench.actions.treeView.objectBrowser.collapseAll`);
   }
 
   /**
