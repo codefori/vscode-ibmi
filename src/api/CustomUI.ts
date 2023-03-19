@@ -405,7 +405,7 @@ export class Field {
 
       case `tabs`:
         return /* html */`
-          <vscode-tabs selectedIndex="${this.default || 0}">
+          <vscode-tabs selected-index="${this.default || 0}">
             ${this.items?.map(item =>
               /* html */`
               <vscode-tab-header slot="header">${item.label}</vscode-tab-header>
@@ -417,14 +417,14 @@ export class Field {
 
       case `complexTabs`:
         return /* html */`
-          <vscode-tabs selectedIndex="${this.default || 0}">
+          <vscode-tabs selected-index="${this.default || 0}">
             ${this.complexTabItems?.map(item =>
               /* html */`
-              <header slot="header">${item.label}</header>
-              <section>
+              <vscode-tab-header slot="header">${item.label}</vscode-tab-header>
+              <vscode-tab-panel>
               ${item.fields.map(field => field.getHTML()).join(` `)}
-              </section>`
-          ).join(``)}
+              </vscode-tab-panel>`
+        ).join(``)}
           </vscode-tabs>`;
 
       case `input`:
