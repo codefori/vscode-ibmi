@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import Instance from "./api/Instance";
 import IBMi from "./api/IBMi";
 import IBMiContent from "./api/IBMiContent";
-import { Storage } from "./api/Storage";
+import { ConnectionStorage, GlobalStorage } from "./api/Storage";
 import path from 'path';
 
 import { CompileTools } from './api/CompileTools';
@@ -30,6 +30,8 @@ let reconnectBarItem: vscode.StatusBarItem;
 let connectedBarItem: vscode.StatusBarItem;
 let terminalBarItem: vscode.StatusBarItem;
 let disconnectBarItem: vscode.StatusBarItem;
+let actionsBarItem: vscode.StatusBarItem;
+let outputBarItem: vscode.StatusBarItem;
 
 let initialisedBefore = false;
 
@@ -83,19 +85,33 @@ export async function disconnect(): Promise<boolean> {
     }
   }
 
-  if (doDisconnect && instance.connection) {
-    //Dispose of any vscode related internals.
-    instance.connection.subscriptions.forEach(subscription => subscription.dispose());
-
+  if (doDisconnect) {
+    // Do the disconnect
     if (instance.connection) {
-      instance.connection.client.connection.removeAllListeners();
-      instance.connection.client.dispose();
+      instance.connection.end();
       instance.connection = undefined;
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
-      instance.emitter?.fire(`disconnected`);
     }
+    
+    instance.emitter?.fire(`disconnected`);
 
-    vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+    // Close the tabs
+    vscode.window.tabGroups.all.forEach(group => {
+      vscode.window.tabGroups.close(group);
+    });
+
+    // Hide the bar items
+    [
+      reconnectBarItem, 
+      disconnectBarItem, 
+      connectedBarItem, 
+      terminalBarItem,
+      actionsBarItem,
+      outputBarItem
+    ].forEach(barItem => {
+      if (barItem) barItem.hide();
+    })
+
+    vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
   }
 
   return doDisconnect;
@@ -120,15 +136,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   const CLCommands = require(`./languages/clle/clCommands`);
 
   if (instance.connection) {
-    instance.storage = new Storage(context, instance.connection.currentConnectionName);
-
-    CompileTools.register(context);
-    Debug.initialise(instance, context);
+    instance.storage = new ConnectionStorage(context, instance.connection.currentConnectionName);
 
     if (!reconnectBarItem) {
       reconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 11);
       reconnectBarItem.command = {
-        command: `code-for-ibmi.connectPrevious`,
+        command: `code-for-ibmi.connectTo`,
         title: `Force Reconnect`,
         arguments: [instance.connection.currentConnectionName]
       };
@@ -187,6 +200,29 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     terminalBarItem.show();
 
+    if (!actionsBarItem) {
+      actionsBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+      actionsBarItem.command = {
+        command: `code-for-ibmi.showActionsMaintenance`,
+        title: `Show IBM i Actions`,
+      };
+      actionsBarItem.text = `$(file-binary) Actions`;
+    }
+
+    actionsBarItem.show();
+
+    outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    
+    outputBarItem.command = {
+      command: `code-for-ibmi.showOutputPanel`,
+      title: `Show IBM i Output`,
+    };
+    outputBarItem.text = `$(three-bars) Output`;
+
+    if (GlobalConfiguration.get<boolean>(`logCompileOutput`)) {
+      outputBarItem.show();
+    }
+
     //Update the status bar and that's that.
     if (initialisedBefore) {
       await Promise.all([
@@ -197,6 +233,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return;
 
     } else {
+      CompileTools.register(context);
+      Debug.initialise(instance, context);
+      
       context.subscriptions.push(
         vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async () => {
           if (instance.connection) {
@@ -604,6 +643,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         })
       })
     }
+    
+    await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
   }
 
   instance.emitter?.fire(`connected`);

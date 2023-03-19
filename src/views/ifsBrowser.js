@@ -551,6 +551,10 @@ module.exports = class ifsBrowserProvider {
         } else {
           //Running from command.
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.collapseIFSBrowser`, async () => {
+        this.collapse();
       })
     )
   }
@@ -565,6 +569,10 @@ module.exports = class ifsBrowserProvider {
    */
   getTreeItem(element) {
     return element;
+  }
+
+  collapse() {
+    vscode.commands.executeCommand(`workbench.actions.treeView.ifsBrowser.collapseAll`);
   }
 
   /**
