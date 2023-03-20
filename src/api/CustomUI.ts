@@ -133,7 +133,7 @@ export class CustomUI extends Section {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
-      vscode.ViewColumn.Beside,
+      vscode.ViewColumn.One,
       {
         enableScripts: true,
         retainContextWhenHidden: true
