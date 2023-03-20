@@ -599,9 +599,9 @@ export default class IBMi {
               let userDefaultShell = commandShellResult.stdout.trim();
               if (userDefaultShell !== bashShellPath) {
 
-                vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash?`, `Read More`,).then(async choice => {
+                vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
                   switch (choice) { 
-                    case `Set shell to bash?`:
+                    case `Set shell to bash`:
                       const commandSetBashResult = await this.sendCommand({
                         command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
                       });
