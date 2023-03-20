@@ -97,12 +97,18 @@ export interface IBMiMember {
   recordLength: number
   text: string
   asp?: string
+  lines?: number
+  created?: Date | string
+  changed?: Date | string
 }
 
 export interface IFSFile {
   type: "directory" | "streamfile"
   name: string
   path: string
+  size?: number
+  modified?: Date | string
+  owner?: string
 }
 
 export interface IBMiError{

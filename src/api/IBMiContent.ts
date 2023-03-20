@@ -393,7 +393,10 @@ export default class IBMiContent {
           cast(a.system_table_name as char(10) for bit data) AS MBFILE,
           cast(b.system_table_member as char(10) for bit data) as MBNAME,
           coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
-          coalesce(b.partition_text, '') as MBMTXT
+          coalesce(b.partition_text, '') as MBMTXT,
+          b.NUMBER_ROWS as MBNRCD,
+          extract(epoch from (b.CREATE_TIMESTAMP - current_timezone))*1000 as CREATED,
+          extract(epoch from (b.LAST_CHANGE_TIMESTAMP - current_timezone))*1000 as CHANGED
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
@@ -425,11 +428,17 @@ export default class IBMiContent {
         if (memberExt) {
           patternExt = new RegExp(`^` + memberExt.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
         }
-
+        
         results = results.filter(row => (
           (!pattern || pattern.test(String(row.MBNAME))) &&
           (!patternExt || patternExt.test(String(row.MBSEU2)))));
+          
       }
+          
+      results.forEach(element => {
+        element.CREATED = String(this.getDspfdDate(String(element.MBCCEN),String(element.MBCDAT),String(element.MBCTIM)).valueOf());
+        element.CHANGED = String(this.getDspfdDate(String(element.MBMRCN),String(element.MBMRDT),String(element.MBMRTM)).valueOf());
+      });
     }
 
     if (results.length === 0) {
@@ -439,7 +448,7 @@ export default class IBMiContent {
     results = results.sort((a, b) => String(a.MBNAME).localeCompare(String(b.MBNAME)));
 
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
-
+    
     return results.map(result => ({
       asp: asp,
       library: library,
@@ -447,7 +456,10 @@ export default class IBMiContent {
       name: String(result.MBNAME),
       extension: String(result.MBSEU2),
       recordLength: Number(result.MBMXRL),
-      text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
+      text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
+      lines: Number(result.MBNRCD),
+      created: new Date(result.CREATED ? Number(result.CREATED) : 0),
+      changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
     }));
   }
 
@@ -457,33 +469,68 @@ export default class IBMiContent {
    * @return an array of IFSFile
    */
   async getFileList(remotePath: string): Promise<IFSFile[]> {
-    const items: IFSFile[] = [];
+    const { 'stat': STAT } = this.ibmi.remoteFeatures;
 
-    const fileListResult = (await this.ibmi.sendCommand({
-      command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
-    }));
+    const items: IFSFile[] = [];
+    let fileListResult;
+
+    if (STAT) {
+      fileListResult = (await this.ibmi.sendCommand({
+        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .*`,
+        directory: `${Tools.escapePath(remotePath)}`
+      }));
+    
+      if (fileListResult.code === 0) {
+        const fileStatList = fileListResult.stdout;
+        const fileList = fileStatList.split(`\n`);
+    
+        //Remove current and dir up.
+        fileList.forEach(item => {
+          let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
+          [auth, hardLinks, owner, group, size, modified, name] = item.split(`\t`);
+    
+          if (name !== `..` && name !== `.`) {
+            const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: name,
+              path: path.posix.join(remotePath, name),
+              size: Number(size),
+              modified: new Date(Number(modified)*1000),
+              owner: owner
+            });
+          };
+        });
+      }
+
+    } else {
+
+      fileListResult = (await this.ibmi.sendCommand({
+        command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
+      }));
+
+      if (fileListResult.code === 0) {
+        const fileList = fileListResult.stdout;
+
+        //Remove current and dir up.
+        fileList.split(`\n`)
+          .filter(item => item !== `../` && item !== `./`)
+          .forEach(item => {
+            const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: (type === `directory` ? item.substring(0, item.length - 1) : item),
+              path: path.posix.join(remotePath, item)
+            });
+          });
+        }
+    }
 
     if (fileListResult.code === 0) {
-      const fileList = fileListResult.stdout;
-
-      //Remove current and dir up.
-      fileList.split(`\n`)
-        .filter(item => item !== `../` && item !== `./`)
-        .forEach(item => {
-          const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-          items.push({
-            type,
-            name: (type === `directory` ? item.substring(0, item.length - 1) : item),
-            path: path.posix.join(remotePath, item)
-          });
-        });
-
       return items.sort((a, b) => a.name.localeCompare(b.name));
-
     } else {
       throw new Error(fileListResult.stderr);
     }
-
   }
 
   /**
@@ -494,5 +541,18 @@ export default class IBMiContent {
     return errorsString.split(`\n`)
       .map(error => error.split(':'))
       .map(codeText => ({ code: codeText[0], text: codeText[1] }));
+  }
+  
+  /**
+   * @param century; century code (1=20xx, 0=19xx)
+   * @param dateString: string in YYMMDD
+   * @param timeString: string in HHMMSS
+   * @returns string in ISO format YYYY-MM-DD HH:MM:SS
+   */
+  getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
+    let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
+    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
+    [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
+    return new Date(Number(year), Number(month)-1, Number(day), Number(hours), Number(minutes), Number(seconds));
   }
 }

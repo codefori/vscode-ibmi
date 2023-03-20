@@ -597,7 +597,7 @@ module.exports = class ifsBrowserProvider {
 
           items = objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
-            .map(object => new Object(object.type, object.name, object.path));
+            .map(object => new Object(object.type, object.name, object.path, object.size, object.modified, object.owner));
 
           await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 
@@ -636,12 +636,19 @@ class Object extends vscode.TreeItem {
    * @param {"shortcut"|"directory"|"streamfile"} type
    * @param {string} label
    * @param {string} path
+   * @param {number} size
+   * @param {date} modified
+   * @param {string} owner
    */
-  constructor(type, label, path) {
+  constructor(type, label, path, size, modified, owner) {
     super(label);
 
     this.contextValue = type;
     this.path = path;
+    this.tooltip = `${path}`
+      .concat(`${size ? `\nSize: ${size}` : ``}`)
+      .concat(`${modified ? `\nModifed: ${modified.toLocaleString()}` : ``}`)
+      .concat(`${owner ? `\nOwner: ${owner.toUpperCase()}` : ``}`);
 
     if (type === `shortcut` || type === `directory`) {
       this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
