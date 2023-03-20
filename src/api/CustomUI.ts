@@ -135,7 +135,8 @@ export class CustomUI extends Section {
       title,
       vscode.ViewColumn.Beside,
       {
-        enableScripts: true
+        enableScripts: true,
+        retainContextWhenHidden: true
       }
     );
 
@@ -320,7 +321,7 @@ export class CustomUI extends Section {
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
               ${trees.map(tree => {
-                return /*js*/`
+      return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
                   currentTree.addEventListener('vsc-select', (event) => {
@@ -330,7 +331,7 @@ export class CustomUI extends Section {
                     }
                   });
                   `
-              })}
+    })}
             });
 
         }())
@@ -414,7 +415,7 @@ export class Field {
               <section>
                 ${item.value}
               </section>`
-          ).join(``)}
+        ).join(``)}
           </vscode-tabs>`;
 
       case `complexTabs`:
@@ -426,7 +427,7 @@ export class Field {
               <section>
               ${item.fields.map(field => field.getHTML()).join(` `)}
               </section>`
-          ).join(``)}
+        ).join(``)}
           </vscode-tabs>`;
 
       case `input`:
