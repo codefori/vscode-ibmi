@@ -3,10 +3,15 @@ const vscode = require(`vscode`);
 const os = require(`os`);
 const path = require(`path`);
 
-let { instance, setSearchResults } = require(`../instantiate`);
+const { setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
 const { Tools } = require(`../api/Tools`);
+
+function getInstance() {
+  const {instance} = (require(`../instantiate`));
+  return instance;
+}
 
 module.exports = class ifsBrowserProvider {
   /**
@@ -23,8 +28,7 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeWorkingDirectory`, async (node) => {
-        /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         const homeDirectory = config.homeDirectory;
 
         let newDirectory;
@@ -50,8 +54,7 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addIFSShortcut`, async (node) => {
-        /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let newDirectory;
 
@@ -81,8 +84,8 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node) => {
-        /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const {instance} = (require(`../instantiate`));
+        const config = getInstance().getConfig();
 
         let removeDir;
 
@@ -116,7 +119,7 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.sortIFSShortcuts`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let shortcuts = config.ifsShortcuts;
 
@@ -139,7 +142,7 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutDown`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let shortcuts = config.ifsShortcuts;
 
@@ -166,7 +169,7 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutUp`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let shortcuts = config.ifsShortcuts;
 
@@ -193,7 +196,7 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToTop`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let shortcuts = config.ifsShortcuts;
 
@@ -220,7 +223,7 @@ module.exports = class ifsBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.moveIFSShortcutToBottom`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let shortcuts = config.ifsShortcuts;
 
@@ -246,9 +249,9 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node) => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         let root;
 
         if (node) {
@@ -278,9 +281,8 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.createStreamfile`, async (node) => {
-        const connection = instance.getConnection();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         let root;
 
         if (node) {
@@ -297,7 +299,7 @@ module.exports = class ifsBrowserProvider {
         });
 
         if (fullName) {
-          const connection = instance.getConnection();
+          const connection = getInstance().getConnection();
 
           try {
             vscode.window.showInformationMessage(`Creating streamfile ${fullName}.`);
@@ -315,10 +317,10 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node) => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
         const client = connection.client;
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let root;
 
@@ -380,7 +382,7 @@ module.exports = class ifsBrowserProvider {
               deletionConfirmed = true;
 
             if (deletionConfirmed) {
-              const connection = instance.getConnection();
+              const connection = getInstance().getConnection();
 
               try {
                 await connection.paseCommand(`rm -rf ${Tools.escapePath(node.path)}`)
@@ -414,7 +416,7 @@ module.exports = class ifsBrowserProvider {
           });
 
           if (fullName) {
-            const connection = instance.getConnection();
+            const connection = getInstance().getConnection();
 
             try {
               await connection.paseCommand(`mv ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
@@ -432,7 +434,7 @@ module.exports = class ifsBrowserProvider {
       }),
       vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         const homeDirectory = config.homeDirectory;
 
         if (node) {
@@ -445,7 +447,7 @@ module.exports = class ifsBrowserProvider {
 
           if (fullName) {
             fullName = fullName.startsWith(`/`) ? fullName : homeDirectory + `/` + fullName;
-            const connection = instance.getConnection();
+            const connection = getInstance().getConnection();
 
             try {
               await connection.paseCommand(`cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
@@ -464,9 +466,9 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node) => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         if (connection.remoteFeatures.grep) {
 
@@ -498,7 +500,7 @@ module.exports = class ifsBrowserProvider {
                   message: `'${searchTerm}' in ${searchPath}.`
                 });
 
-                let results = await Search.searchIFS(instance, searchPath, searchTerm);
+                let results = await Search.searchIFS(getInstance(), searchPath, searchTerm);
 
                 if (results.length > 0) {
                   results = results.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }));
@@ -520,9 +522,8 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node) => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
         const client = connection.client;
-        const content = instance.getContent();
 
         if (node) {
           //Get filename from path on server
@@ -558,7 +559,7 @@ module.exports = class ifsBrowserProvider {
       })
     )
 
-    instance.onEvent(`connected`, () => this.refresh());
+    getInstance().onEvent(`connected`, () => this.refresh());
   }
 
   refresh() {
@@ -583,10 +584,10 @@ module.exports = class ifsBrowserProvider {
    */
   async getChildren(element) {
     const items = [];
-    const connection = instance.getConnection();
+    const connection = getInstance().getConnection();
     if (connection) {
-      const content = instance.getContent();
-      const config = instance.getConfig();
+      const content = getInstance().getContent();
+      const config = getInstance().getConfig();
 
       if (element) { //Chosen directory
         //Fetch members
@@ -620,7 +621,7 @@ module.exports = class ifsBrowserProvider {
    * @param {string[]} list
    */
   storeIFSList(path, list) {
-    const storage = instance.getStorage();
+    const storage = getInstance().getStorage();
     const existingDirs = storage.getSourceList();
 
     existingDirs[path] = list;

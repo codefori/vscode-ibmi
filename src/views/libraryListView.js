@@ -1,8 +1,12 @@
 
 const vscode = require(`vscode`);
 
-let { instance } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
+
+function getInstance(){
+  let { instance } = require(`../instantiate`);
+  return instance;
+}
 
 module.exports = class libraryListProvider {
   /**
@@ -19,10 +23,10 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
-        const storage = instance.getStorage();
+        const config = getInstance().getConfig();
+        const storage = getInstance().getStorage();
         const currentLibrary = config.currentLibrary.toUpperCase();
         let prevCurLibs = storage.getPreviousCurLibs();
         let list = [...prevCurLibs];
@@ -88,9 +92,9 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         const libraryList = config.libraryList;
 
         const newLibraryListStr = await vscode.window.showInputBox({
@@ -126,7 +130,7 @@ module.exports = class libraryListProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = ``) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         let addingLib;
 
         let libraryList = [...config.libraryList];
@@ -162,7 +166,7 @@ module.exports = class libraryListProvider {
         if (node) {
           //Running from right click
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
 
           let libraryList = config.libraryList;
 
@@ -181,7 +185,7 @@ module.exports = class libraryListProvider {
         if (node) {
           //Running from right click
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
 
           let libraryList = config.libraryList;
 
@@ -203,7 +207,7 @@ module.exports = class libraryListProvider {
         if (node) {
           //Running from right click
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
 
           let libraryList = config.libraryList;
 
@@ -223,7 +227,7 @@ module.exports = class libraryListProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.cleanupLibraryList`, async () => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         let libraryList = [...config.libraryList];
         const badLibs = await this.validateLibraryList(libraryList);
 
@@ -238,7 +242,7 @@ module.exports = class libraryListProvider {
         }
       }),
     )
-    instance.onEvent(`connected`, () => this.refresh());
+    getInstance().onEvent(`connected`, () => this.refresh());
   }
 
   /**
@@ -247,7 +251,7 @@ module.exports = class libraryListProvider {
    * @returns {Promise<string[]>} Bad libraries
    */
   async validateLibraryList(newLibl) {
-    const connection = instance.getConnection();
+    const connection = getInstance().getConnection();
 
     let badLibs = [];
 
@@ -304,10 +308,10 @@ module.exports = class libraryListProvider {
    */
   async getChildren() {
     const items = [];
-    const connection = instance.getConnection();
+    const connection = getInstance().getConnection();
     if (connection) {
-      const content = instance.getContent();
-      const config = instance.getConfig();
+      const content = getInstance().getContent();
+      const config = getInstance().getConfig();
       const currentLibrary = config.currentLibrary.toUpperCase();
 
       const libraries = [];

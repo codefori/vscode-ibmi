@@ -1,7 +1,6 @@
 
 import * as vscode from "vscode";
 import Instance from "./api/Instance";
-import { ConnectionStorage, GlobalStorage } from "./api/Storage";
 import path from 'path';
 
 import { CompileTools } from './api/CompileTools';
@@ -17,7 +16,7 @@ import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
 
-export const instance = new Instance();
+export let instance: Instance;
 
 const disconnectBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 12);
 disconnectBarItem.command = {
@@ -58,16 +57,6 @@ outputBarItem.text = `$(three-bars) Output`;
 let selectedForCompare: vscode.Uri;
 let searchViewContext: SearchView;
 
-export function setupEmitter() {
-  instance.emitter = new vscode.EventEmitter();
-  instance.events = [];
-
-  instance.emitter.event(e => {
-    const runEvents = instance.events.filter(event => event.event === e);
-    runEvents.forEach(event => event.func());
-  })
-}
-
 export function setSearchResults(term: string, results: Search.Result[]) {
   searchViewContext.setResults(term, results);
 }
@@ -96,10 +85,8 @@ export async function disconnect(): Promise<boolean> {
   }
 
   if (doDisconnect) {
-    // Do the disconnect
-    if (instance.connection) {
-      const connection = instance.connection;
-      instance.connection = undefined;
+    const connection = instance.getConnection();
+    if (connection) {
       connection.end();
     }
   }
@@ -108,6 +95,7 @@ export async function disconnect(): Promise<boolean> {
 }
 
 export async function loadAllofExtension(context: vscode.ExtensionContext) {
+  instance = new Instance(context);
   searchViewContext = new SearchView(context);
 
   context.subscriptions.push(
@@ -117,8 +105,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     actionsBarItem,
     outputBarItem,
     vscode.commands.registerCommand(`code-for-ibmi.disconnect`, () => {
-      if (instance.connection) {
-        vscode.window.showInformationMessage(`Disconnecting from ${instance.connection.currentHost}.`);
+      if (instance.getConnection()) {
+        vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection()!.currentHost}.`);
         disconnect();
       } else {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
@@ -420,10 +408,7 @@ function updateConnectedBar() {
 }
 
 async function onConnected(context: vscode.ExtensionContext) {
-  const connection = instance.connection!;
-  const config = instance.connection!.config!;
-  await GlobalStorage.get().setLastConnection(connection.currentConnectionName);  
-  instance.storage = new ConnectionStorage(context, connection.currentConnectionName);
+  const config = instance.getConfig();
 
   [
     connectedBarItem,
@@ -445,10 +430,10 @@ async function onConnected(context: vscode.ExtensionContext) {
   }
 
   // Enable the profile view if profiles exist.
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
 }
 
-async function onDisconnected() {  
+async function onDisconnected() {
   // Close the tabs
   vscode.window.tabGroups.all.forEach(group => {
     vscode.window.tabGroups.close(group);

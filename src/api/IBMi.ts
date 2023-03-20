@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import * as node_ssh from "node-ssh";
 import { ConnectionConfiguration } from "./Configuration";
 
-import {Tools} from './Tools';
+import { Tools } from './Tools';
 import path from 'path';
 import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
 import * as configVars from './configVars';
@@ -115,7 +115,7 @@ export default class IBMi {
       if (!connectionObject.privateKey) (connectionObject.privateKey = null);
 
       configVars.replaceAll(connectionObject);
-  
+
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Connecting`,
@@ -578,8 +578,8 @@ export default class IBMi {
           // give user option to set bash as default shell.
           try {
             // make sure sql is enabled and bash is installed on system
-            if (this.config.enableSQL && 
-                this.remoteFeatures[`bash`]) {
+            if (this.config.enableSQL &&
+              this.remoteFeatures[`bash`]) {
               const bashShellPath = '/QOpenSys/pkgs/bin/bash';
               const commandShellResult = await this.sendCommand({
                 command: `echo $SHELL`
@@ -588,7 +588,7 @@ export default class IBMi {
                 let userDefaultShell = commandShellResult.stdout.trim();
                 if (userDefaultShell !== bashShellPath) {
                   vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash?`, `Read More`,).then(async choice => {
-                    switch (choice) { 
+                    switch (choice) {
                       case `Set shell to bash?`:
                         statement = `CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`;
                         output = await this.sendCommand({
@@ -648,13 +648,10 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
+        instance.setConnection(this);
         vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
-        
-        instance.connection = this;
-        instance.content = new IBMiContent(instance.connection);
-        
         await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-        instance.emitter?.fire("connected");
+        instance.fire("connected");
 
         return {
           success: true
@@ -672,7 +669,7 @@ export default class IBMi {
         error: e
       };
     }
-    finally{
+    finally {
       ConnectionConfiguration.update(this.config!);
     }
   }
@@ -719,9 +716,8 @@ export default class IBMi {
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
-      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${
-        value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
-      }"`))
+      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
+        }"`))
     }
 
     commands.push(options.command);
@@ -797,7 +793,8 @@ export default class IBMi {
       vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
     ]);
 
-    instance.emitter?.fire(`disconnected`);
+    instance.setConnection(undefined);
+    instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
   }
 
@@ -904,27 +901,27 @@ export default class IBMi {
 
     return result;
   }
-  async uploadFiles(files: {local : string | vscode.Uri, remote : string}[], options?: node_ssh.SSHPutFilesOptions){
-    await this.client.putFiles(files.map(f => {return {local: this.fileToPath(f.local), remote: f.remote}}), options);
+  async uploadFiles(files: { local: string | vscode.Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    await this.client.putFiles(files.map(f => { return { local: this.fileToPath(f.local), remote: f.remote } }), options);
   }
 
-  async downloadFile(localFile: string | vscode.Uri, remoteFile: string){
+  async downloadFile(localFile: string | vscode.Uri, remoteFile: string) {
     await this.client.getFile(this.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory : string, options?: node_ssh.SSHGetPutDirectoryOptions){
+  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.client.putDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions){
+  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  fileToPath(file : string | vscode.Uri) : string{
-    if(typeof file === "string"){
+  fileToPath(file: string | vscode.Uri): string {
+    if (typeof file === "string") {
       return file;
     }
-    else{
+    else {
       return file.fsPath;
     }
   }

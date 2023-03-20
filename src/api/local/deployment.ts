@@ -4,9 +4,7 @@ import vscode, { WorkspaceFolder } from 'vscode';
 import { getLocalActions } from './actions';
 import { ConnectionConfiguration } from '../Configuration';
 import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
-import { GitExtension } from '../import/git';
 import { instance } from '../../instantiate';
-import Instance from '../Instance';
 import ignore from 'ignore'
 import { NodeSSH } from 'node-ssh';
 import { readFileSync } from 'fs';
@@ -501,7 +499,7 @@ export namespace Deployment {
         existingPaths[chosenWorkspaceFolder.uri.fsPath] = path;
         await storage.setDeployment(existingPaths);
 
-        instance.emitter?.fire(`deployLocation`);
+        instance.fire(`deployLocation`);
 
         if (await vscode.window.showInformationMessage(`Deployment location set to ${path}`, `Deploy now`)) {
           vscode.commands.executeCommand(`code-for-ibmi.launchDeploy`, chosenWorkspaceFolder.index);

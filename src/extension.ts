@@ -4,7 +4,7 @@ import { ExtensionContext, window, commands, workspace } from "vscode";
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { setupEmitter, instance, loadAllofExtension } from './instantiate';
+import { instance, loadAllofExtension } from './instantiate';
 import { CustomUI, Field } from "./api/CustomUI";
 
 import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
@@ -25,8 +25,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
-  //We setup the event emitter.
-  setupEmitter();
+  await loadAllofExtension(context);
 
   const checkLastConnections = () => {
     const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
@@ -89,10 +88,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     })
   );
 
-  await loadAllofExtension(context);
   CompileTools.register(context);
   GlobalStorage.initialize(context);
-  Debug.initialize(context);  
+  Debug.initialize(context);
   Deployment.initialize(context);
   checkLastConnections();
 

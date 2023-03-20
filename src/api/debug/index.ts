@@ -103,9 +103,9 @@ export async function initialize(context: ExtensionContext) {
 
     vscode.debug.onDidTerminateDebugSession(async session => {
       if (session.configuration.type === `IBMiDebug`) {
-        const connection = instance.connection;
+        const connection = instance.getConnection();
 
-        server.getStuckJobs(connection?.currentUser!, instance.content!).then(jobIds => {
+        server.getStuckJobs(connection?.currentUser!, instance.getContent()!).then(jobIds => {
           if (jobIds.length > 0) {
             vscode.window.showInformationMessage(`You have ${jobIds.length} debug job${jobIds.length !== 1 ? `s` : ``} stuck at MSGW under your user profile.`, `End jobs`, `Ignore`)
               .then(selection => {
@@ -120,7 +120,7 @@ export async function initialize(context: ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
       if (debugExtensionAvailable()) {
-        const connection = instance.connection;
+        const connection = instance.getConnection();
         if (connection) {
           if (connection.remoteFeatures[`startDebugService.sh`]) {
             const activeEditor = vscode.window.activeTextEditor;
@@ -160,7 +160,7 @@ export async function initialize(context: ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, async () => {
-      const connection = instance.connection;
+      const connection = instance.getConnection();
       if (connection) {
         const ptfInstalled = await debugPTFInstalled();
 
@@ -208,7 +208,7 @@ export async function initialize(context: ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, async () => {
-      const connection = instance.connection;
+      const connection = instance.getConnection();
 
       if (connection) {
         const ptfInstalled = await debugPTFInstalled();
@@ -260,7 +260,7 @@ export async function initialize(context: ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.start`, async () => {
-      const connection = instance.connection;
+      const connection = instance.getConnection();
       if (connection) {
         const ptfInstalled = await debugPTFInstalled();
         if (ptfInstalled) {
@@ -273,7 +273,7 @@ export async function initialize(context: ExtensionContext) {
 
 
               progress.report({ increment: 33, message: `Checking if service is already running.` });
-              const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.content!);
+              const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
 
               if (existingDebugService) {
                 const confirmEndServer = await vscode.window.showInformationMessage(`Starting debug service`, {
@@ -318,16 +318,17 @@ export async function initialize(context: ExtensionContext) {
 
   // Run during startup:
   instance.onEvent("connected", async () => {
-    if (instance.connection?.remoteFeatures[`startDebugService.sh`]) {
+    const connection = instance.getConnection();
+    if (connection && connection?.remoteFeatures[`startDebugService.sh`]) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-      const remoteCerts = await certificates.checkRemoteExists(instance.connection);
+      const remoteCerts = await certificates.checkRemoteExists(connection);
 
       if (remoteCerts) {
         vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
-        if (instance.connection.config!.debugIsSecure) {
-          const localExists = await certificates.checkLocalExists(instance.connection);
+        if (connection.config!.debugIsSecure) {
+          const localExists = await certificates.checkLocalExists(connection);
 
           if (localExists) {
             vscode.commands.executeCommand(`setContext`, localCertContext, true);

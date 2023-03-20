@@ -3,8 +3,7 @@ import IBMi from "../../api/IBMi";
 import { CustomUI } from "../../api/CustomUI";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { ConnectionData } from '../../typings';
-
-let { instance, disconnect } = require(`../../instantiate`);
+import { disconnect, instance } from "../../instantiate";
 
 export class Login {
 
@@ -13,8 +12,9 @@ export class Login {
    * @param {} context
    */
   static async show(context: vscode.ExtensionContext) {
-    if (instance.getConnection()) {
-      vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
+    const connection = instance.getConnection();
+    if (connection) {
+      vscode.window.showInformationMessage(`Disconnecting from ${connection.currentHost}.`);
       if (!disconnect()) return;
     }
 
@@ -117,11 +117,11 @@ export class Login {
    * @param context
    */
   static async LoginToPrevious(name: string, context: vscode.ExtensionContext) {
-    if (instance.getConnection()) {
-
+    const connection = instance.getConnection();
+    if (connection) {
       // If the user is already connected and trying to connect to a different system, disconnect them first
-      if (name !== instance.getConnection().currentConnectionName) {
-        vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
+      if (name !== connection.currentConnectionName) {
+        vscode.window.showInformationMessage(`Disconnecting from ${connection.currentHost}.`);
         if (!disconnect()) return false;
       }
     }
