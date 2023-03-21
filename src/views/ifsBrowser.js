@@ -17,7 +17,14 @@ module.exports = class ifsBrowserProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
-
+      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByName`, async (directory) => {
+        directory.sortOrder = `name`;
+        this.refresh(directory);
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByDate`, async (directory) => {
+        directory.sortOrder = `date`;
+        this.refresh(directory);
+      }),
       vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, async () => {
         this.refresh();
       }),
@@ -559,8 +566,8 @@ module.exports = class ifsBrowserProvider {
     )
   }
 
-  refresh() {
-    this.emitter.fire();
+  refresh(target) {
+    this.emitter.fire(target);
   }
 
   /**
@@ -593,11 +600,10 @@ module.exports = class ifsBrowserProvider {
         console.log(element.path);
 
         try {
-          const objects = await content.getFileList(element.path);
-
-          items = objects.filter(o => o.type === `directory`)
+          const objects = await content.getFileList(element.path, element.sortOrder);
+          items.push(...objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
-            .map(object => new Object(object.type, object.name, object.path));
+            .map(object => new Object(object.type, object.name, object.path)));
 
           await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 

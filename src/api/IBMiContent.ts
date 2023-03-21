@@ -369,7 +369,7 @@ export default class IBMiContent {
    * @param mbr
    * @returns an array of IBMiMember 
    */
-  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`): Promise<IBMiMember[]> {
+  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sortOrder: "name" | "date" = "name"): Promise<IBMiMember[]> {
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
@@ -393,7 +393,8 @@ export default class IBMiContent {
           cast(a.system_table_name as char(10) for bit data) AS MBFILE,
           cast(b.system_table_member as char(10) for bit data) as MBNAME,
           coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
-          coalesce(b.partition_text, '') as MBMTXT
+          coalesce(b.partition_text, '') as MBMTXT,
+          b.last_change_timestamp as CHANGED
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
@@ -402,17 +403,15 @@ export default class IBMiContent {
           cast(a.system_table_schema as char(10) for bit data) = '${library}' 
           ${sourceFile !== `*ALL` ? `AND cast(a.system_table_name as char(10) for bit data) = '${sourceFile}'` : ``}
           ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
-          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}
+          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
       `;
       results = await this.runSQL(statement);
-
     } else {
       const tempLib = this.config.tempLibrary;
       const TempName = Tools.makeid();
 
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName, true);
-
       if (results.length === 1 && String(results[0].MBNAME).trim() === ``) {
         return [];
       }
@@ -428,7 +427,7 @@ export default class IBMiContent {
 
         results = results.filter(row => (
           (!pattern || pattern.test(String(row.MBNAME))) &&
-          (!patternExt || patternExt.test(String(row.MBSEU2)))));
+          (!patternExt || patternExt.test(String(row.MBSEU2)))))
       }
     }
 
@@ -440,6 +439,14 @@ export default class IBMiContent {
 
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
 
+    let sorter: (r1: IBMiMember, r2: IBMiMember) => number;
+    if (sortOrder === 'name') {
+      sorter = (r1, r2) => r1.name.localeCompare(r2.name);
+    }
+    else {
+      sorter = (r1, r2) => r2.changed.localeCompare(r1.changed);
+    }
+
     return results.map(result => ({
       asp: asp,
       library: library,
@@ -447,8 +454,9 @@ export default class IBMiContent {
       name: String(result.MBNAME),
       extension: String(result.MBSEU2),
       recordLength: Number(result.MBMXRL),
-      text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
-    }));
+      text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
+      changed: `${result.CHANGED ? result.CHANGED : `${result.MBCHGD}${result.MBCHGT}`}`
+    } as IBMiMember)).sort(sorter);
   }
 
   /**
@@ -456,11 +464,11 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, order?: "name" | "date"): Promise<IFSFile[]> {
     const items: IFSFile[] = [];
 
     const fileListResult = (await this.ibmi.sendCommand({
-      command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
+      command: `ls -a -p -L ${order === "date" ? "-t" : ""} ${Tools.escapePath(remotePath)}`
     }));
 
     if (fileListResult.code === 0) {
@@ -478,7 +486,7 @@ export default class IBMiContent {
           });
         });
 
-      return items.sort((a, b) => a.name.localeCompare(b.name));
+      return items;//.sort((a, b) => a.name.localeCompare(b.name));
 
     } else {
       throw new Error(fileListResult.stderr);

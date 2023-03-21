@@ -23,6 +23,15 @@ module.exports = class objectBrowserTwoProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, async (spf) => {
+        spf.sortOrder = `name`;
+        this.refresh(spf);
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, async (spf) => {
+        spf.sortOrder = `date`;
+        this.refresh(spf);
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async (node) => {
         await FiltersUI.init(undefined);
         this.refresh();
@@ -942,8 +951,8 @@ module.exports = class objectBrowserTwoProvider {
     await ConnectionConfiguration.update(config);
   }
 
-  refresh() {
-    this.emitter.fire();
+  refresh(target) {
+    this.emitter.fire(target);
   }
 
   /**
@@ -1002,7 +1011,7 @@ module.exports = class objectBrowserTwoProvider {
         const path = spf.path.split(`/`);
 
         try {
-          let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
+          let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType, spf.sortOrder);
           if (objectNamesLower === true) {
             members = members.map(member => {
               member.file = member.file.toLocaleLowerCase();
@@ -1106,6 +1115,7 @@ class SPF extends vscode.TreeItem {
     this.description = detail.text;
 
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
+    this.sortOrder = `name`;
   }
 }
 
