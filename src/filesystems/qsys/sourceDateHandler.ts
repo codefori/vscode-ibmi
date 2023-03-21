@@ -1,5 +1,4 @@
-import vscode, { window } from "vscode";
-import { ExtensionContext } from "vscode";
+import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 
 import { SourceDateMode } from "../../api/Configuration";
@@ -66,7 +65,7 @@ export class SourceDateHandler {
 
     context.subscriptions.push(
       vscode.workspace.onDidChangeTextDocument(event => this.onDidChangeTextDocument(event)),
-      vscode.window.onDidChangeActiveTextEditor(() => this.onDidChangeEditor()),
+      vscode.window.onDidChangeActiveTextEditor((editor) => this.onDidChangeEditor(editor)),
       vscode.window.onDidChangeTextEditorSelection(event => this.onDidChangeTextSelection(event)),
       vscode.workspace.onDidCloseTextDocument(event => this.onDidCloseDocument(event)),
       vscode.commands.registerCommand(`code-for-ibmi.toggleSourceDateGutter`, () => this.toggleSourceDateGutter()),
@@ -90,11 +89,11 @@ export class SourceDateHandler {
         this.recordLengths.clear();
         this.updateContext();
       }
-      
-      if(vscode.window.visibleTextEditors.some(e => e.document.uri.scheme === 'member')){
-        window.showWarningMessage("Source date support has changed; reopen opened editor(s) for the change to take effect.");
+
+      if (vscode.window.visibleTextEditors.some(e => e.document.uri.scheme === 'member')) {
+        vscode.window.showWarningMessage("Source date support has changed; reopen opened editor(s) for the change to take effect.");
       }
-    }    
+    }
   }
 
   changeSourceDateMode(sourceDateMode: SourceDateMode) {
