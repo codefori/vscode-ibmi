@@ -84,6 +84,9 @@ export class ObjectBrowserProvider {
               const newConnectionSettings = connectionSettings.filter(connection => connection.name !== server.name);
               await GlobalConfiguration.set(`connectionSettings`, newConnectionSettings);
 
+              // Also remove the cached connection settings
+              GlobalStorage.get().deleteServerSettingsCache(server.name);
+
               // Then remove the password
               context.secrets.delete(`${server.name}_password`);
 
