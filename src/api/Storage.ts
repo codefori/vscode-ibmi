@@ -76,8 +76,22 @@ export class GlobalStorage extends Storage {
 }
 
 export class ConnectionStorage extends Storage {
-  constructor(context: vscode.ExtensionContext, readonly connectionName: string) {
+  private connectionName: string = "";
+  constructor(context: vscode.ExtensionContext) {
     super(context);
+  }
+
+  get ready(): boolean {
+    if (this.connectionName) {
+      return true;
+    }
+    else {
+      return false;
+    }
+  }
+
+  setConnectionName(connectionName: string) {
+    this.connectionName = connectionName;
   }
 
   protected getStorageKey(key: string): string {
