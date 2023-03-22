@@ -14,8 +14,8 @@ import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuratio
 import { Search } from "./api/Search";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
-import getnewlibl from "./api/import/getnewlibl";
 import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
+import { initGetNewLibl } from "./languages/clle/getnewlibl";
 
 export let instance: Instance;
 
@@ -428,6 +428,8 @@ async function onConnected(context: vscode.ExtensionContext) {
   if (clExtension) {
     (require(`./languages/clle/clCommands`)).init();
   }
+
+  initGetNewLibl(instance);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
