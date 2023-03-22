@@ -415,7 +415,7 @@ export namespace CompileTools {
 
             if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
               if (currentWorkspace) {
-                const clinet = connection.client;
+                const client = connection.client;
                 const remoteDir = config.homeDirectory;
                 const localDir = currentWorkspace.uri.fsPath;
 
@@ -435,7 +435,15 @@ export namespace CompileTools {
 
                 // Then we download the files that is specified.
                 const downloads = chosenAction.postDownload.map(
-                  downloadPath => clinet.getFile(path.join(localDir, downloadPath), path.posix.join(remoteDir, downloadPath))
+                  downloadPath => {
+                    const localPath = path.join(localDir, downloadPath);
+                    const remotePath = path.posix.join(remoteDir, downloadPath);
+                    if (downloadPath.endsWith(`/`)) {
+                      client.getDirectory(localPath, remotePath)
+                    } else {
+                      client.getFile(localPath, remotePath)
+                    }
+                  }
                 );
 
                 Promise.all(downloads)
