@@ -1,6 +1,8 @@
 
 import * as vscode from 'vscode';
 
+export type SourceDateMode = "edit"|"diff";
+
 const getConfiguration = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
 }
@@ -30,7 +32,7 @@ export namespace ConnectionConfiguration {
     autoConvertIFSccsid: boolean;
     hideCompileErrors: string[];
     enableSourceDates: boolean;
-    sourceDateMode: "edit"|"diff";
+    sourceDateMode: SourceDateMode;
     sourceDateGutter: boolean;
     encodingFor5250: string;
     terminalFor5250: string;
