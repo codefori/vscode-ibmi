@@ -29,6 +29,7 @@ export default class Instance {
       await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
     }
     else {
+      this.connection = undefined;
       this.content = undefined;
       this.storage.setConnectionName("");
     }
