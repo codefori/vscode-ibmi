@@ -3,7 +3,6 @@ const vscode = require(`vscode`);
 const { CustomUI, Section } = require(`../../api/CustomUI`);
 
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../../api/Configuration`);
-let { instance } = require(`../../instantiate`);
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -28,6 +27,7 @@ module.exports = class SettingsUI {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (/** @type {Server} */ server) => {
+        const { instance } = require(`../../instantiate`);
         const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
         const connection = instance.getConnection();
 
@@ -57,7 +57,7 @@ module.exports = class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `showDescInLibList`, `enableSourceDates`, `sourceDateMode`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `tempDir`];
         let restart = false;
 
         const featuresTab = new Section();

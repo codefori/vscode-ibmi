@@ -128,3 +128,5 @@ export interface QsysFsOptions {
   filter?: string
   readonly?: boolean
 }
+
+export type IBMiEvent = "connected" | "disconnected" | "deployLocation"
