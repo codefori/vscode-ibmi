@@ -1603,7 +1603,7 @@
 			"editor/title": [
 				{
 					"command": "code-for-ibmi.debug.activeEditor",
-					"when": "code-for-ibmi:connected == true && !inDebugMode && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/",
+					"when": "code-for-ibmi:connected == true && !inDebugMode && editorLangId =~ /^rpgle$|^rpg$|^cobol|^COBOL$|^cl$/",
 					"group": "navigation@1"
 				},
 				{
