@@ -106,7 +106,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     outputBarItem,
     vscode.commands.registerCommand(`code-for-ibmi.disconnect`, () => {
       if (instance.getConnection()) {
-        vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection()!.currentHost}.`);
         disconnect();
       } else {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);

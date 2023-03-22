@@ -14,7 +14,6 @@ export class Login {
   static async show(context: vscode.ExtensionContext) {
     const connection = instance.getConnection();
     if (connection) {
-      vscode.window.showInformationMessage(`Disconnecting from ${connection.currentHost}.`);
       if (!disconnect()) return;
     }
 

@@ -796,6 +796,7 @@ export default class IBMi {
     instance.setConnection(undefined);
     instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
+    vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }
 
   /**
