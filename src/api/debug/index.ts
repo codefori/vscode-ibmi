@@ -25,7 +25,7 @@ export async function initialize(context: ExtensionContext) {
   }
 
   const startDebugging = (options: DebugOptions) => {
-    exports.startDebug(instance, options);
+    startDebug(instance, options);
   }
 
   const getObjectFromUri = (uri: Uri) => {
