@@ -636,9 +636,9 @@ class Object extends vscode.TreeItem {
    * @param {"shortcut"|"directory"|"streamfile"} type
    * @param {string} label
    * @param {string} path
-   * @param {number} size
-   * @param {date} modified
-   * @param {string} owner
+   * @param {number} [size]
+   * @param {Date} [modified]
+   * @param {string} [owner]
    */
   constructor(type, label, path, size, modified, owner) {
     super(label);
