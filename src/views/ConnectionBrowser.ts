@@ -1,10 +1,11 @@
-
 import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
 import settingsUI from '../webviews/settings';
 import { Login } from '../webviews/login';
+import { GlobalStorage } from '../api/Storage';
+import { instance } from '../instantiate';
 
 export class ObjectBrowserProvider {
   private _attemptingConnection: boolean;
@@ -25,9 +26,26 @@ export class ObjectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectPrevious`, async (name: string | Server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, () => {
+        const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
+        if (lastConnection) {
+          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server) => {
         if (!this._attemptingConnection) {
           this._attemptingConnection = true;
+
+          if (!name) {
+            const lastConnections = GlobalStorage.get().getLastConnections() || [];
+            if (lastConnections && lastConnections.length) {
+              name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: "Last connection" },
+              ...lastConnections.map(lc => ({ label: lc.name, description: `Last used: ${new Date(lc.timestamp).toLocaleString()}` }))],
+                { title: "Last IBM i connections" }
+              ))?.label;
+            }
+          }
 
           switch (typeof name) {
             case `string`: // Name of connection object
@@ -75,6 +93,8 @@ export class ObjectBrowserProvider {
         }
       })
     );
+
+    instance.onEvent("disconnected", () => this.refresh())
   }
 
   refresh() {
@@ -86,23 +106,32 @@ export class ObjectBrowserProvider {
   }
 
   async getChildren(): Promise<ServerItem[]> {
+    const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
     return (GlobalConfiguration.get<ConnectionData[]>(`connections`) || [])
-      .map(connection => new ServerItem(connection.name, connection.username, connection.host));
+      .map(connection => new ServerItem(connection, connection.name === lastConnection?.name));
   }
 }
 
 class ServerItem extends vscode.TreeItem implements Server {
-  constructor(readonly name: string, user: string, host: string) {
-    super(name, vscode.TreeItemCollapsibleState.None);
+  constructor(readonly connection: ConnectionData, lastConnected?: boolean) {
+    super(connection.name, vscode.TreeItemCollapsibleState.None);
+    const readOnly = (GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [])
+      .find(settings => connection.name === settings.name)
+      ?.readOnlyMode
 
     this.contextValue = `server`;
-    this.description = `${user}@${host}`;
-    this.iconPath = new vscode.ThemeIcon(`remote`);
+    this.description = `${connection.username}@${connection.host}`;
+    this.tooltip = lastConnected ? " (previous connection)" : "";
+    this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `remote`, lastConnected ? new vscode.ThemeColor("notificationsWarningIcon.foreground") : undefined);
 
     this.command = {
-      command: `code-for-ibmi.connectPrevious`,
+      command: `code-for-ibmi.connectTo`,
       title: `Connect`,
       arguments: [this]
     };
+  }
+
+  get name() {
+    return this.connection.name;
   }
 }

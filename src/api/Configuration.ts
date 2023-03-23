@@ -1,6 +1,8 @@
 
 import * as vscode from 'vscode';
 
+export type SourceDateMode = "edit"|"diff";
+
 const getConfiguration = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
 }
@@ -29,7 +31,7 @@ export namespace ConnectionConfiguration {
     autoConvertIFSccsid: boolean;
     hideCompileErrors: string[];
     enableSourceDates: boolean;
-    sourceDateMode: "edit"|"diff";
+    sourceDateMode: SourceDateMode;
     sourceDateGutter: boolean;
     encodingFor5250: string;
     terminalFor5250: string;
@@ -41,6 +43,7 @@ export namespace ConnectionConfiguration {
     debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
     debugEnableDebugTracing: boolean;
+    readOnlyMode: boolean;
     [name: string]: any;
   }
 
@@ -51,6 +54,7 @@ export namespace ConnectionConfiguration {
     types: string[]
     member: string
     memberType: string
+    protected: boolean
   }
   
   export interface CustomVariable {
@@ -108,6 +112,7 @@ export namespace ConnectionConfiguration {
       debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
+      readOnlyMode: (parameters.readOnlyMode === true)
     }
   }
 

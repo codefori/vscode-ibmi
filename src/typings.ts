@@ -123,3 +123,10 @@ export interface FileError {
   text: string
   code: string
 }
+
+export interface QsysFsOptions {
+  filter?: string
+  readonly?: boolean
+}
+
+export type IBMiEvent = "connected" | "disconnected" | "deployLocation"

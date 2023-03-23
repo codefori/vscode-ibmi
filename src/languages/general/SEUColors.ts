@@ -49,8 +49,20 @@ export namespace SEUColors {
         textDecoration: `; border-bottom: 1px solid #28d15d;`
       })
     },
-    // green_ul_ri not supported
-    // pnk not supported
+    green_ul_ri: {
+      bytes: Buffer.from([7]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        backgroundColor: `#28d15d`,
+        color: `black`,
+        textDecoration: `; border-bottom: 1px solid black;`
+      })
+    },
+    pink: {
+      bytes: Buffer.from([194, 152]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        color: `#cf259c`,
+      })
+    },
     pink_ri: {
       bytes: Buffer.from([194, 153]),
       decoration: vscode.window.createTextEditorDecorationType({
@@ -70,6 +82,7 @@ export namespace SEUColors {
       decoration: vscode.window.createTextEditorDecorationType({
         backgroundColor: `#cf259c`,
         color: `white`,
+        textDecoration: `; border-bottom: 1px solid white;`
       })
     },
     red: {
@@ -107,6 +120,14 @@ export namespace SEUColors {
         textDecoration: `; border-bottom: 1px solid #cf2331;`
       })
     },
+    red_ri_ul: {
+      bytes: Buffer.from([5]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        backgroundColor: `#cf2331`,
+        color: `white`,
+        textDecoration: `; border-bottom: 1px solid white;`
+      }),
+    },
     turquoise: {
       bytes: Buffer.from([194, 144]),
       decoration: vscode.window.createTextEditorDecorationType({
@@ -133,6 +154,7 @@ export namespace SEUColors {
       decoration: vscode.window.createTextEditorDecorationType({
         backgroundColor: `#22c4d6`,
         color: `black`,
+        textDecoration: `; border-bottom: 1px solid black;`
       })
     },
     white: {
@@ -176,6 +198,13 @@ export namespace SEUColors {
       bytes: Buffer.from([22]),
       decoration: vscode.window.createTextEditorDecorationType({
         color: `#f4c842`,
+      })
+    },
+    yellow_ri: {
+      bytes: Buffer.from([194, 147]),
+      decoration: vscode.window.createTextEditorDecorationType({
+        color: `#000000`,
+        backgroundColor: `#f4c842`
       })
     },
     yellow_ul: {

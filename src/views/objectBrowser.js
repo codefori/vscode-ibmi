@@ -11,13 +11,13 @@ const FiltersUI = require(`../webviews/filters`);
 let { instance, setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
+const { getMemberUri } = require(`../filesystems/qsys/QSysFs`);
 
 module.exports = class objectBrowserTwoProvider {
   /**
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
-    this.selections = undefined;
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
 
@@ -469,9 +469,9 @@ module.exports = class objectBrowserTwoProvider {
                 checkMember[0] = checkMember[0] !== `` ? checkMember[0] : `a`;
                 checkPath = path[0] + `/` + path[1] + `/` + checkMember[0] + `.` + (checkMember.length > 1 ? checkMember[1] : ``);
               } else if (path.length > 1) {                 // Check filename
-                checkPath = input + (path[path.length-1] === `` ? `a` : ``) + `/a.b`;
+                checkPath = input + (path[path.length - 1] === `` ? `a` : ``) + `/a.b`;
               } else {                                      // Check library
-                checkPath = input + (path[path.length-1] === `` ? `a` : ``) + `/a/a.a`;
+                checkPath = input + (path[path.length - 1] === `` ? `a` : ``) + `/a/a.a`;
               }
               if (checkPath) {
                 try {
@@ -493,7 +493,7 @@ module.exports = class objectBrowserTwoProvider {
                 member = path[2].split(`.`);
               }
               node = new SPF(``, { library: path[0], name: path[1], text: undefined, attribute: undefined }, member[0], member[1]);
-            }  
+            }
           })
         };
 
@@ -552,7 +552,7 @@ module.exports = class objectBrowserTwoProvider {
                       }
                     }, timeoutInternal);
 
-                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter}.MBR`, searchTerm);
+                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter || `*`}.MBR`, searchTerm, node.filter);
 
                     // Filter search result by member type filter.
                     if (results.length > 0 && node.memberTypeFilter) {
@@ -896,8 +896,14 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.collapseObjectBrowser`, async () => {
+        this.collapse();
       })
     )
+
+    instance.onEvent(`connected`, () => this.refresh());
   }
 
   async moveFilterInList(filterName, filterMovement) {
@@ -949,95 +955,96 @@ module.exports = class objectBrowserTwoProvider {
     return element;
   }
 
+  collapse() {
+    vscode.commands.executeCommand(`workbench.actions.treeView.objectBrowser.collapseAll`);
+  }
+
   /**
    * @param {vscode.TreeItem|FilterItem|ILEObject?} element
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
-    const content = instance.getContent();
-    /** @type {ConnectionConfiguration.Parameters} */
-    const config = instance.getConfig();
-    const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
-    const objectSortOrder = GlobalConfiguration.get(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
-    let items = [], item;
+    const items = [];
+    const connection = instance.getConnection();
+    if (connection) {
+      const content = instance.getContent();
+      const config = instance.getConfig();
+      const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
+      const objectSortOrder = GlobalConfiguration.get(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+      if (element) {
+        /** @type {ConnectionConfiguration.ObjectFilters} */
+        let filter;
 
-    if (element) {
-      let filter;
+        switch (element.contextValue.split(`_`)[0]) {
+        case `filter`:
+          /** @type {ILEObject} */ //@ts-ignore We know what is it based on contextValue.
+          const obj = element;
 
-      switch (element.contextValue) {
-      case `filter`:
-        /** @type {ILEObject} */ //@ts-ignore We know what is it based on contextValue.
-        const obj = element;
-
-        filter = config.objectFilters.find(filter => filter.name === obj.filter);
-        let objects = await content.getObjectList(filter, objectSortOrder);
-        if (objectNamesLower === true) {
-          objects = objects.map(object => {
-            object.name = object.name.toLocaleLowerCase();
-            object.type = object.type.toLocaleLowerCase();
-            object.attribute = object.attribute.toLocaleLowerCase();
-            return object;
-          })
-        };
-        items = objects.map(object =>
-          object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(filter.name, object, filter.member, filter.memberType) : new ILEObject(filter.name, object)
-        );
-        break;
-
-      case `SPF`:
-        /** @type {SPF} */ //@ts-ignore We know what is it based on contextValue.
-        const spf = element;
-
-        filter = config.objectFilters.find(filter => filter.name === spf.filter);
-        const path = spf.path.split(`/`);
-
-        try {
-          let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
+          filter = config.objectFilters.find(filter => filter.name === obj.filter);
+          let objects = await content.getObjectList(filter, objectSortOrder);
           if (objectNamesLower === true) {
-            members = members.map(member => {
-              member.file = member.file.toLocaleLowerCase();
-              member.name = member.name.toLocaleLowerCase();
-              member.extension = member.extension.toLocaleLowerCase();
-              return member;
+            objects = objects.map(object => {
+              object.name = object.name.toLocaleLowerCase();
+              object.type = object.type.toLocaleLowerCase();
+              object.attribute = object.attribute.toLocaleLowerCase();
+              return object;
             })
           };
-          items = members.map(member => new Member(member));
+          items.push(...objects.map(object =>
+            object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(filter, object) : new ILEObject(filter, object)
+          ));
+          break;
 
-          await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
-        } catch (e) {
-          console.log(e);
+        case `SPF`:
+          /** @type {SPF} */ //@ts-ignore We know what is it based on contextValue.
+          const spf = element;
 
-          // Work around since we can't get the member list if the users QCCSID is not setup.
-          if (config.enableSQL) {
-            if (e && e.message && e.message.includes(`CCSID`)) {
-              vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. It is recommended you reload. ${e.message}`, `Reload`).then(async (value) => {
-                if (value === `Reload`) {
-                  await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                }
-              });
+          filter = config.objectFilters.find(filter => filter.name === spf.filter);
+          const path = spf.path.split(`/`);
 
-              config.enableSQL = false;
-              await ConnectionConfiguration.update(config);
-              this.refresh();
+          try {
+            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
+            if (objectNamesLower === true) {
+              members = members.map(member => {
+                member.file = member.file.toLocaleLowerCase();
+                member.name = member.name.toLocaleLowerCase();
+                member.extension = member.extension.toLocaleLowerCase();
+                return member;
+              })
+            };
+            items.push(...members.map(member => new Member(member, filter)));
+
+            await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
+          } catch (e) {
+            console.log(e);
+
+            // Work around since we can't get the member list if the users QCCSID is not setup.
+            if (config.enableSQL) {
+              if (e && e.message && e.message.includes(`CCSID`)) {
+                vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. It is recommended you reload. ${e.message}`, `Reload`).then(async (value) => {
+                  if (value === `Reload`) {
+                    await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                  }
+                });
+
+                config.enableSQL = false;
+                await ConnectionConfiguration.update(config);
+                this.refresh();
+              }
+            } else {
+              throw e;
             }
-          } else {
-            throw e;
           }
+
+          break;
         }
 
-        break;
-      }
-
-    } else {
-      const connection = instance.getConnection();
-
-      if (connection) {
+      } else {
         const filters = config.objectFilters;
-
-        if (filters.length > 0) {
-          items = filters.map(filter => new FilterItem(filter));
+        if (filters.length) {
+          items.push(...filters.map(filter => new FilterItem(filter)));
         } else {
-          items = [getNewFilter()]
+          items.push(getNewFilter());
         }
       }
     }
@@ -1062,33 +1069,36 @@ module.exports = class objectBrowserTwoProvider {
 /** Implements @type {../typings/Filter} */
 class FilterItem extends vscode.TreeItem {
   /**
-   * @param {{name: string, library: string, object: string, types: string[], member: string, memberType: string}} filter
+   * @param {ConnectionConfiguration.ObjectFilters} filter
    */
   constructor(filter) {
     super(filter.name, vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.contextValue = `filter`;
+    this.protected = filter.protected;
+    this.contextValue = `filter${this.protected ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
     this.library = filter.library;
     this.filter = filter.name;
+    if (this.protected) {
+      this.iconPath = new vscode.ThemeIcon(`lock-small`);
+    }
   }
 }
 
 class SPF extends vscode.TreeItem {
   /**
-   * @param {string} filter Filter name
+   * @param {ConnectionConfiguration.ObjectFilters} filter
    * @param {{library: string, name: string, text: string, attribute?: string}} detail
-   * @param {string} memberFilter Member filter string
-   * @param {string} memberTypeFilter Member type filter string
    */
-  constructor(filter, detail, memberFilter, memberTypeFilter) {
+  constructor(filter, detail) {
     super(detail.name, vscode.TreeItemCollapsibleState.Collapsed);
 
-    this.filter = filter;
-    this.memberFilter = memberFilter;
-    this.memberTypeFilter = memberTypeFilter;
+    this.filter = filter.name;
+    this.protected = filter.protected;
+    this.memberFilter = filter.member;
+    this.memberTypeFilter = filter.memberType;
 
-    this.contextValue = `SPF`;
+    this.contextValue = `SPF${filter.protected ? `_readonly` : ``}`;
     this.path = [detail.library, detail.name].join(`/`);
     this.description = detail.text;
 
@@ -1099,7 +1109,7 @@ class SPF extends vscode.TreeItem {
 //TODO Seb J.: once converted to TypeScript, this should implement IBMiObject
 class ILEObject extends vscode.TreeItem {
   /**
-   * @param {string} filter Filter name
+   * @param {ConnectionConfiguration.ObjectFilters} filter
    * @param {IBMiObject} object
    */
   constructor(filter, object) {
@@ -1109,7 +1119,7 @@ class ILEObject extends vscode.TreeItem {
 
     super(`${object.name}.${type}`);
 
-    this.filter = filter;
+    this.filter = filter.name;
 
     this.library = object.library;
     this.name = object.name;
@@ -1120,7 +1130,7 @@ class ILEObject extends vscode.TreeItem {
     this.description = this.text + (this.attribute ? ` (${this.attribute})` : ``);
     this.iconPath = new vscode.ThemeIcon(icon);
 
-    this.contextValue = `object.${type.toLowerCase()}${this.attribute ? `.${this.attribute}` : ``}`;
+    this.contextValue = `object.${type.toLowerCase()}${this.attribute ? `.${this.attribute}` : ``}${filter.protected ? `_readonly` : ``}`;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -1137,22 +1147,23 @@ class ILEObject extends vscode.TreeItem {
 }
 
 class Member extends vscode.TreeItem {
-  constructor(member) {
-    const path = `${member.asp ? `${member.asp}/` : ``}${member.library}/${member.file}/${member.name}.${member.extension}`;
-
+  /**
+   * 
+   * @param {import(`../typings`).IBMiMember} member 
+   * @param {ConnectionConfiguration.ObjectFilters} filter 
+   */
+  constructor(member, filter) {
     super(`${member.name}.${member.extension}`);
 
-    this.contextValue = `member`;
+    this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
     this.description = member.text;
-    this.path = path;
-    this.resourceUri = vscode.Uri.from({
-      scheme: `member`,
-      path: `/${path}`
-    })
+    this.resourceUri = getMemberUri(member, { filter: filter.name });
+    this.path = this.resourceUri.path;
+    this.tooltip = `${this.resourceUri.path}${member.text ? `\n(${member.text})` : ``}`;
     this.command = {
-      command: `code-for-ibmi.openEditable`,
+      command: `vscode.open`,
       title: `Open Member`,
-      arguments: [path]
+      arguments: [this.resourceUri]
     };
   }
 }
