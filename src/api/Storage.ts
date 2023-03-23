@@ -18,7 +18,7 @@ abstract class Storage {
   }
 
   protected get<T>(key: string): T | undefined {
-    return this.globalState.get<T>(this.getStorageKey(key));
+    return this.globalState.get(this.getStorageKey(key)) as T | undefined;
   }
 
   protected async set(key: string, value: any) {
