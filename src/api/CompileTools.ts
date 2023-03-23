@@ -487,8 +487,11 @@ export namespace CompileTools {
       };
 
       if (options.env) {
-        if (options.env.LIBL) ileSetup.libraryList = options.env.LIBL.split(` `);
-        if (options.env.CURLIB) ileSetup.currentLibrary = options.env.CURLIB;
+        const libl: string|undefined = options.env[`&LIBL`];
+        const curlib: string|undefined = options.env[`&CURLIB`];
+        
+        if (libl) ileSetup.libraryList = libl.split(` `);
+        if (curlib) ileSetup.currentLibrary = curlib;
       }
 
       let commandString = replaceValues(
