@@ -58,13 +58,13 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     private updateMemberSupport() {
-        this.extendedMemberSupport = false        
+        this.extendedMemberSupport = false
         const connection = instance.getConnection();
         const config = connection?.config;
-        
+
         if (connection && config?.enableSourceDates) {
             if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
-                this.extendedMemberSupport = true;                
+                this.extendedMemberSupport = true;
                 this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
                 if (connection.qccsid === 65535) {
                     vscode.window.showWarningMessage(`Source date support is enabled, but QCCSID is 65535. If you encounter problems with source date support, please disable it in the settings.`);
@@ -114,7 +114,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             const { asp, library, file, member } = connection.parserMemberPath(uri.path);
             this.extendedMemberSupport ?
                 await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
-                contentApi.uploadMemberContent(asp, library, file, member, content);
+                await contentApi.uploadMemberContent(asp, library, file, member, content);
         }
         else {
             throw new Error("Not connected to IBM i");
