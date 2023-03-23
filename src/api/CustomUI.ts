@@ -329,7 +329,7 @@ export class CustomUI extends Section {
                     }
                   });
                   `
-                })}
+    })}
             });
 
         }())
@@ -469,7 +469,7 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-single-select id="${this.id}">
+              <vscode-single-select id="${this.id}" name="${this.id}">
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
               </vscode-single-select>
           </vscode-form-group>`;
