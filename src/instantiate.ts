@@ -345,20 +345,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
       Terminal.selectAndOpen(instance);
     }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail: RemoteCommand) => {
-      if (detail && detail.command) {
-        return CompileTools.runCommand(instance, detail);
-      }
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
-      const content = instance.getContent();
-      if (statement && content) {
-        return content.runSQL(statement);
-      } else {
-        return null;
-      }
-    }),
     vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
       const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
       if (newValue) {
@@ -369,16 +355,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const value = context.secrets.get(connectionKey);
       return value;
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.launchUI`, <T>(title: string, fields: any[], callback: (page: Page<T>) => void) => {
-      if (title && fields && callback) {
-        const ui = new CustomUI();
-        fields.forEach(field => {
-          const uiField = new Field(field.type, field.id, field.label);
-          ui.addField(Object.assign(uiField, field));
-        });
-        ui.loadPage(title, callback);
-      }
-    })
   );
 
   (require(`./webviews/actions`)).init(context);
