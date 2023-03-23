@@ -1,7 +1,6 @@
 
 const vscode = require(`vscode`);
 
-const { instance } = require(`../../instantiate`);
 const Configuration = require(`../../api/Configuration`);
 const { default: IBMi } = require(`../../api/IBMi`);
 
@@ -28,7 +27,8 @@ exports.init = async () => {
   }
 }
 
-function checkRequirements() {
+function checkRequirements() {  
+  const {instance} = require(`../../instantiate`);
   /** @type {IBMi} */
   const connection = instance.getConnection();
 
@@ -36,6 +36,7 @@ function checkRequirements() {
 }
 
 async function install() {
+  const {instance} = require(`../../instantiate`);
   /** @type {IBMi} */
   const connection = instance.getConnection();
 
