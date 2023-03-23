@@ -215,6 +215,10 @@ export class CustomUI extends Section {
             .long-input {
               width: 100%;
             }
+
+            :root{
+              --dropdown-z-index: 666;
+            }
         </style>
     </head>
     
