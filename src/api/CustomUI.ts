@@ -34,6 +34,11 @@ export interface ComplexTab {
 export class Section {
   readonly fields: Field[] = [];
 
+  addHeading(label: string, level: 1 | 2 | 3 | 4 | 5 | 6 = 1) {
+    this.addField(new Field(`heading`, level.toString(), label));
+    return this;
+  }
+
   addHorizontalRule() {
     this.addField(new Field('hr', '', ''));
     return this;
@@ -339,7 +344,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr";
+export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -391,6 +396,9 @@ export class Field {
           <vscode-form-group variant="settings-group">
             ${this.items?.map(item => /* html */`<vscode-button id="${item.id}" style="margin:3px">${item.label}</vscode-button>`).join(``)}
           </vscode-form-group>`;
+
+      case 'heading':
+        return /* html */ `<h${this.id}>${this.label}</h${this.id}>`;
 
       case `hr`:
         return /* html */ `<hr />`;
