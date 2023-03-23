@@ -46,7 +46,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, multiline?: boolean }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     this.addField(input);
     return this;
@@ -281,11 +281,11 @@ export class CustomUI extends Section {
 
             for (const field of submitfields) {
                 const currentElement = document.getElementById(field);
-                if (currentElement.hasAttribute('multiline')) {
+                if (currentElement.hasAttribute('rows')) {
                   currentElement
                     .addEventListener('keyup', function(event) {
                         event.preventDefault();
-                        if (event.keyCode === 13 && event.shiftKey) {
+                        if (event.keyCode === 13 && event.altKey) {
                           doDone();
                         }
                     });
@@ -373,7 +373,7 @@ export class Field {
   public complexTabItems?: ComplexTab[];
   public default?: string;
   public readonly?: boolean;
-  public multiline?: boolean;
+  public rows?: number;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
@@ -427,11 +427,13 @@ export class Field {
           </vscode-tabs>`;
 
       case `input`:
+        const multiline = (this.rows || 1) > 1;
+        const tag = multiline ? "vscode-textarea" : "vscode-textfield";
         return /* html */`
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
-              ${this.renderDescription()}
-              <vscode-textfield class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
+              ${this.renderDescription()}              
+              <${tag} class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}></${tag}>
           </vscode-form-group>`;
 
       case `paragraph`:
