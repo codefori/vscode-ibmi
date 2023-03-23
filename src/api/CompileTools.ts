@@ -380,7 +380,7 @@ export namespace CompileTools {
           const command = replaceValues(chosenAction.command, variables);
           try {
             const commandResult = await runCommand(instance, {
-              environment: chosenAction.environment,
+              environment,
               command,
               env: Object.fromEntries(variables)
             });
