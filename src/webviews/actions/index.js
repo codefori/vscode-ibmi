@@ -1,8 +1,6 @@
 const vscode = require(`vscode`);
 
-const {CustomUI, Field} = require(`../../api/CustomUI`);
-
-const {instance} = require(`../../instantiate`);
+const {CustomUI} = require(`../../api/CustomUI`);
 
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
 const Variables = require(`./varinfo`);
@@ -105,7 +103,7 @@ module.exports = class SettingsUI {
    * @param {object} ActionDefault Default action properties
    */
   static async WorkAction(id, ActionDefault) {
-    /** @type {ConnectionConfiguration.Parameters} */
+    const {instance} = require(`../../instantiate`);
     const config = instance.getConfig();
     let allActions = GlobalConfiguration.get(`actions`);
     let currentAction;
