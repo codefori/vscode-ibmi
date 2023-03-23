@@ -133,9 +133,10 @@ export class CustomUI extends Section {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
-      vscode.ViewColumn.Beside,
+      vscode.ViewColumn.One,
       {
-        enableScripts: true
+        enableScripts: true,
+        retainContextWhenHidden: true
       }
     );
 
@@ -318,7 +319,7 @@ export class CustomUI extends Section {
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
               ${trees.map(tree => {
-                return /*js*/`
+      return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
                   currentTree.addEventListener('vsc-select', (event) => {
