@@ -3,10 +3,12 @@ import * as vscode from "vscode";
 import * as node_ssh from "node-ssh";
 import { ConnectionConfiguration } from "./Configuration";
 
-import {Tools} from './Tools';
+import { Tools } from './Tools';
 import path from 'path';
 import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
 import * as configVars from './configVars';
+import { instance } from "../instantiate";
+import IBMiContent from "./IBMiContent";
 
 export interface MemberParts {
   asp?: string
@@ -114,7 +116,7 @@ export default class IBMi {
       if (!connectionObject.privateKey) (connectionObject.privateKey = null);
 
       configVars.replaceAll(connectionObject);
-  
+
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Connecting`,
@@ -626,6 +628,49 @@ export default class IBMi {
           console.log(e);
         }
 
+        // Check users default shell.
+        // give user option to set bash as default shell.
+        try {
+          // make sure chsh and bash is installed
+          if (this.remoteFeatures[`chsh`] &&
+              this.remoteFeatures[`bash`]) {
+
+            const bashShellPath = '/QOpenSys/pkgs/bin/bash';
+            const commandShellResult = await this.sendCommand({
+              command: `echo $SHELL`
+            });
+
+            if (!commandShellResult.stderr) {
+              let userDefaultShell = commandShellResult.stdout.trim();
+              if (userDefaultShell !== bashShellPath) {
+
+                vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
+                  switch (choice) { 
+                    case `Set shell to bash`:
+                      const commandSetBashResult = await this.sendCommand({
+                        command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+                      });
+
+                      if (!commandSetBashResult.stderr) {
+                        vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+                      } else {
+                        vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                      }
+                      break;
+
+                    case `Read More`:
+                      vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                      break;
+                  }
+                });
+              }
+            }
+          }
+        } catch (e) {
+          // Oh well...trying to set default shell is not worth stopping for.
+          console.log(e);
+        }
+
         if (this.config.autoConvertIFSccsid) {
           if (this.remoteFeatures.attr === undefined || this.remoteFeatures.iconv === undefined) {
             this.config.autoConvertIFSccsid = false;
@@ -648,7 +693,10 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
+        instance.setConnection(this);
         vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+        await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+        instance.fire("connected");
 
         return {
           success: true
@@ -666,7 +714,7 @@ export default class IBMi {
         error: e
       };
     }
-    finally{
+    finally {
       ConnectionConfiguration.update(this.config!);
     }
   }
@@ -713,9 +761,8 @@ export default class IBMi {
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
-      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${
-        value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
-      }"`))
+      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
+        }"`))
     }
 
     commands.push(options.command);
@@ -776,7 +823,7 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  end() {
+  async end() {
     this.client.connection.removeAllListeners();
     this.client.dispose();
 
@@ -784,6 +831,17 @@ export default class IBMi {
       this.outputChannel.hide();
       this.outputChannel.dispose();
     }
+
+    await Promise.all([
+      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+    ]);
+
+    instance.setConnection(undefined);
+    instance.fire(`disconnected`);
+    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
+    vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }
 
   /**
@@ -889,27 +947,27 @@ export default class IBMi {
 
     return result;
   }
-  async uploadFiles(files: {local : string | vscode.Uri, remote : string}[], options?: node_ssh.SSHPutFilesOptions){
-    await this.client.putFiles(files.map(f => {return {local: this.fileToPath(f.local), remote: f.remote}}), options);
+  async uploadFiles(files: { local: string | vscode.Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    await this.client.putFiles(files.map(f => { return { local: this.fileToPath(f.local), remote: f.remote } }), options);
   }
 
-  async downloadFile(localFile: string | vscode.Uri, remoteFile: string){
+  async downloadFile(localFile: string | vscode.Uri, remoteFile: string) {
     await this.client.getFile(this.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory : string, options?: node_ssh.SSHGetPutDirectoryOptions){
+  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.client.putDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions){
+  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  fileToPath(file : string | vscode.Uri) : string{
-    if(typeof file === "string"){
+  fileToPath(file: string | vscode.Uri): string {
+    if (typeof file === "string") {
       return file;
     }
-    else{
+    else {
       return file.fsPath;
     }
   }

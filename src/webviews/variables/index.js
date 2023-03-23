@@ -2,8 +2,6 @@ const vscode = require(`vscode`);
 const { ConnectionConfiguration } = require(`../../api/Configuration`);
 const { CustomUI, Field } = require(`../../api/CustomUI`);
 
-let { instance } = require(`../../instantiate`);
-
 module.exports = class SettingsUI {
 
   /**
@@ -19,6 +17,7 @@ module.exports = class SettingsUI {
   }
 
   static async MainMenu() {
+    const { instance } = require(`../../instantiate`);
     /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     let variables = config.customVariables;
@@ -52,6 +51,7 @@ module.exports = class SettingsUI {
    * @param {number} id Existing action index, or -1 for a brand new index
    */
   static async WorkVariable(id) {
+    const { instance } = require(`../../instantiate`);
     /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     let allVariables = config.customVariables;
