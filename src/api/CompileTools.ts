@@ -425,7 +425,7 @@ export namespace CompileTools {
                 try {
                   const directories = chosenAction.postDownload.map(downloadPath => {
                     const pathInfo = path.parse(downloadPath);
-                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir)));
+                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir || pathInfo.base)));
                   });
 
                   await Promise.all(directories);
@@ -439,9 +439,9 @@ export namespace CompileTools {
                     const localPath = path.join(localDir, downloadPath);
                     const remotePath = path.posix.join(remoteDir, downloadPath);
                     if (downloadPath.endsWith(`/`)) {
-                      client.getDirectory(localPath, remotePath)
+                      return client.getDirectory(localPath, remotePath)
                     } else {
-                      client.getFile(localPath, remotePath)
+                      return client.getFile(localPath, remotePath)
                     }
                   }
                 );
