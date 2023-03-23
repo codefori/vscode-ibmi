@@ -383,7 +383,8 @@ export namespace CompileTools {
               environment,
               command,
               env: Object.fromEntries(variables)
-            });
+            },
+              chosenAction.name);
 
             if (commandResult) {
               const possibleObject = getObjectFromCommand(commandResult.command);
@@ -471,7 +472,7 @@ export namespace CompileTools {
   /**
    * Execute a command
    */
-  export async function runCommand(instance: Instance, options: RemoteCommand): Promise<CommandResult | null> {
+  export async function runCommand(instance: Instance, options: RemoteCommand, title?: string): Promise<CommandResult | null> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (config && connection) {
@@ -485,7 +486,7 @@ export namespace CompileTools {
       if (commandString.startsWith(`?`)) {
         commandString = await vscode.window.showInputBox({ prompt: `Run Command`, value: commandString.substring(1) }) || '';
       } else {
-        commandString = await showCustomInputs(`Run Command`, commandString);
+        commandString = await showCustomInputs(`Run Command`, commandString, title);
       }
 
       if (commandString) {
@@ -580,7 +581,7 @@ export namespace CompileTools {
    * @param command action's command string
    * @return the new command
    */
-  async function showCustomInputs(name: string, command: string): Promise<string> {
+  async function showCustomInputs(name: string, command: string, title?: string): Promise<string> {
     const components = [];
     let loop = true;
 
@@ -613,6 +614,11 @@ export namespace CompileTools {
 
     if (components.length) {
       const commandUI = new CustomUI();
+
+      if (title) {
+        commandUI.addHeading(title, 2);
+      }
+
       for (const component of components) {
         if (component.initialValue.includes(`,`)) {
           //Select box
