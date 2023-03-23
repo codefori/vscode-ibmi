@@ -22,11 +22,13 @@ module.exports = class objectBrowserTwoProvider {
     this.onDidChangeTreeData = this.emitter.event;
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, async (spf) => {
+      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, async (spfOrMember) => {
+        const spf = `parent` in spfOrMember ? spfOrMember.parent : spfOrMember;
         spf.sortOrder = `name`;
         this.refresh(spf);
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, async (spf) => {
+      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, async (spfOrMember) => {
+        const spf = `parent` in spfOrMember ? spfOrMember.parent : spfOrMember;
         spf.sortOrder = `date`;
         this.refresh(spf);
       }),
@@ -1012,7 +1014,7 @@ module.exports = class objectBrowserTwoProvider {
           const path = spf.path.split(`/`);
 
           try {
-            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType);
+            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType, spf.sortOrder);
             if (objectNamesLower === true) {
               members = members.map(member => {
                 member.file = member.file.toLocaleLowerCase();
@@ -1021,7 +1023,7 @@ module.exports = class objectBrowserTwoProvider {
                 return member;
               })
             };
-            items.push(...members.map(member => new Member(member, filter)));
+            items.push(...members.map(member => new Member(spf, member, filter)));
 
             await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
           } catch (e) {
@@ -1159,12 +1161,13 @@ class ILEObject extends vscode.TreeItem {
 class Member extends vscode.TreeItem {
   /**
    * 
+   * @param {SPF} parent 
    * @param {import(`../typings`).IBMiMember} member 
    * @param {ConnectionConfiguration.ObjectFilters} filter 
    */
-  constructor(member, filter) {
+  constructor(parent, member, filter) {
     super(`${member.name}.${member.extension}`);
-
+    this.parent = parent;
     this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
     this.description = member.text;
     this.resourceUri = getMemberUri(member, { filter: filter.name });

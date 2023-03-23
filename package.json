@@ -1838,7 +1838,7 @@
 				},
 				{
 					"submenu": "code-for-ibmi.sortMembers",
-					"when": "view == objectBrowser && viewItem =~ /^SPF/",
+					"when": "view == objectBrowser && viewItem =~ /^SPF/ || viewItem =~ /^member/",
 					"group": "5_sourceFileStuff@1"
 				},
 				{
@@ -1913,8 +1913,8 @@
 				},
 				{
 					"submenu": "code-for-ibmi.sortIFSFiles",
-					"when": "view == ifsBrowser && viewItem == directory",
-					"group": "4_ifsStuff@1"
+					"when": "view == ifsBrowser",
+					"group": "5_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
