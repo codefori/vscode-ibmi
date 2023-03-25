@@ -150,7 +150,7 @@ export class ProfilesView {
 
         if (config && storage) {
           window.showInformationMessage(`Reset to default`, {
-            detail: `This will reset the User Library List, Object Browser, IFS Browser and Custom Variables back to the defaults.`,
+            detail: `This will reset the User Library List, working directory and Custom Variables back to the defaults.`,
             modal: true
           }, `Continue`).then(async result => {
             if (result === `Continue`) {
@@ -162,8 +162,8 @@ export class ProfilesView {
                 currentLibrary: config.currentLibrary,
                 customVariables: [],
                 homeDirectory: config.homeDirectory,
-                ifsShortcuts: [config.homeDirectory],
-                objectFilters: [],
+                ifsShortcuts: config.ifsShortcuts,
+                objectFilters: config.objectFilters,
               }, config);
 
               await ConnectionConfiguration.update(config);
