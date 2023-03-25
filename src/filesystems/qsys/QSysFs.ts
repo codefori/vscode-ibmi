@@ -22,16 +22,16 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly || isProtectedFilter(fsOptions.filter)) {
+    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly) {
         return FilePermission.Readonly;
     }
 }
 
-function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
+export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
     return parse(uri.query);
 }
 
-function isProtectedFilter(filter?: string): boolean {
+export function isProtectedFilter(filter?: string): boolean {
     return filter && instance.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
 }
 
