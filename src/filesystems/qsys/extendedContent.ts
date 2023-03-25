@@ -3,6 +3,7 @@ import fs from "fs";
 import tmp from "tmp";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import { GlobalConfiguration } from "../../api/Configuration";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -106,6 +107,7 @@ export class ExtendedIBMiContent {
       const client = connection.client;
       const tempRmt = connection.getTempRemote(lib + spf + mbr);
       if (tempRmt) {
+        const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
         const tmpobj = await tmpFile();
 
         const sourceData = body.split(`\n`);
@@ -121,9 +123,17 @@ export class ExtendedIBMiContent {
             sourceData[i] = sourceData[i].substring(0, recordLength);
           }
 
-          rows.push(
-            `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, translate('${escapeString(sourceData[i])}', ${SEU_GREEN_UL_RI}, ${SEU_GREEN_UL_RI_temp}))`,
-          );
+          // We only want to do the translate when source colours at enabled.
+          // For large sources, translate adds a bunch of time to the saving process.
+          if (sourceColourSupport)
+            rows.push(
+              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, translate('${escapeString(sourceData[i])}', ${SEU_GREEN_UL_RI}, ${SEU_GREEN_UL_RI_temp}))`,
+            );
+          else
+            rows.push(
+              `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i])}')`,
+            );
+          
         }
 
         //We assume the alias still exists....
