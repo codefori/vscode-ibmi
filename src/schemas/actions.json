@@ -65,7 +65,7 @@
             "$id": "#/actions/items/anyOf/0/properties/postDownload",
             "type": "array",
             "title": "Post Download",
-            "description": "Remote files/folders to download when the Action is complete. If items ends with `/`, a directory is assumed.",
+            "description": "Remote files/folders to download when the Action is complete.",
             "default": [""],
             "items": {
               "type": "string",
