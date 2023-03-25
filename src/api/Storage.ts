@@ -5,7 +5,7 @@ const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
-const SERVER_SETTINGS_CACHE_KEY = `serverSettingsCache`;
+const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -84,15 +84,15 @@ export class GlobalStorage extends Storage {
   }
 
   getServerSettingsCache(name: string) {
-    return this.get<CachedServerSettings>(SERVER_SETTINGS_CACHE_KEY.concat(`_${name}`));
+    return this.get<CachedServerSettings>(SERVER_SETTINGS_CACHE_KEY(name));
   }
 
   async setServerSettingsCache(name: string, serverSettings: CachedServerSettings) {
-    await this.set(SERVER_SETTINGS_CACHE_KEY.concat(`_${name}`), serverSettings);
+    await this.set(SERVER_SETTINGS_CACHE_KEY(name), serverSettings);
   }
 
   async deleteServerSettingsCache(name: string) {
-    await this.set(SERVER_SETTINGS_CACHE_KEY.concat(`_${name}`), undefined);
+    await this.set(SERVER_SETTINGS_CACHE_KEY(name)), undefined);
   }}
 
 export class ConnectionStorage extends Storage {
