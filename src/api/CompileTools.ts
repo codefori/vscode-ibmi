@@ -1,5 +1,5 @@
 
-import vscode, { InlineValueVariableLookup } from 'vscode';
+import vscode, { InlineValueVariableLookup, window } from 'vscode';
 import path from 'path';
 
 import { ConnectionConfiguration, GlobalConfiguration } from './Configuration';
@@ -14,6 +14,7 @@ import Instance from './Instance';
 import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
 import IBMi, { MemberParts } from './IBMi';
 import { Tools } from './Tools';
+import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 
 export namespace CompileTools {
   type Variables = Map<string, string>
@@ -128,8 +129,10 @@ export namespace CompileTools {
           } else {
             if (file.startsWith(`/`))
               ileDiagnostics.set(vscode.Uri.from({ scheme: `streamfile`, path: file }), diagnostics);
-            else
-              ileDiagnostics.set(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }), diagnostics);
+            else {
+              const memberUri = vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` });
+              ileDiagnostics.set(memberUri, diagnostics);
+            }
           }
         }
 
@@ -178,10 +181,23 @@ export namespace CompileTools {
   }
 
   export async function runAction(instance: Instance, uri: vscode.Uri) {
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-
     const connection = instance.getConnection();
     const config = instance.getConfig();
+
+    const uriOptions = parseFSOptions(uri);
+
+    if (uriOptions.readonly) {
+      window.showWarningMessage(`Cannot run Actions against readonly objects.`);
+      return;
+    }
+
+    if (config?.readOnlyMode) {
+      window.showWarningMessage(`Cannot run Actions while readonly mode is enabled in the connection settings.`);
+      return;
+    }
+
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+
     if (connection && config) {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
       const fragment = uri.fragment.toUpperCase();
