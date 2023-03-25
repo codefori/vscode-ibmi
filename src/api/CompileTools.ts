@@ -435,13 +435,16 @@ export namespace CompileTools {
 
                 // Then we download the files that is specified.
                 const downloads = chosenAction.postDownload.map(
-                  downloadPath => {
+                  async (downloadPath) => {
                     const localPath = path.join(localDir, downloadPath);
                     const remotePath = path.posix.join(remoteDir, downloadPath);
-                    if (downloadPath.endsWith(`/`)) {
-                      return client.getDirectory(localPath, remotePath)
+                    const isDirectoryCall = (await connection.sendCommand({
+                      command: `cd ${remotePath}`
+                    }));
+                    if (isDirectoryCall.code === 1) {
+                      return client.getFile(localPath, remotePath);
                     } else {
-                      return client.getFile(localPath, remotePath)
+                      return client.getDirectory(localPath, remotePath);
                     }
                   }
                 );
