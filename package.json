@@ -803,7 +803,8 @@
 				"command": "code-for-ibmi.setToDefault",
 				"title": "Reset to Default Profile",
 				"category": "IBM i",
-				"enablement": "code-for-ibmi:connected == true"
+				"enablement": "code-for-ibmi:connected == true",
+				"icon": "$(arrow-circle-right)"
 			},
 			{
 				"command": "code-for-ibmi.manageCommandProfile",

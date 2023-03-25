@@ -288,7 +288,7 @@ class CommandProfileItem extends vscode.TreeItem implements Profile {
 class ResetProfileItem extends vscode.TreeItem implements Profile {
   readonly profile;
   constructor() {
-    super(`Default`, vscode.TreeItemCollapsibleState.None);
+    super(`Reset to Default`, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = `resetProfile`;
     this.iconPath = new vscode.ThemeIcon(`debug-restart`);
