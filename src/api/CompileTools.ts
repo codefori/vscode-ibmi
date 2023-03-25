@@ -107,23 +107,18 @@ export namespace CompileTools {
           }
 
           if (evfeventInfo.workspace !== undefined) {
-            const baseInfo = path.parse(file);
-            const parentInfo = path.parse(baseInfo.dir);
+            const workspaceRootFolder = vscode.workspace.workspaceFolders?.[evfeventInfo.workspace];
+            const storage = instance.getStorage();
 
-            const targetFile = (await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`))
-              .find(uri => uri.path.includes(baseInfo.base));
-            if (targetFile) {
-              ileDiagnostics.set(targetFile, diagnostics);
-            } else {
-              // Look in active text documents...
-              const upperParent = parentInfo.name.toUpperCase();
-              const upperName = baseInfo.name.toUpperCase();
-              const possibleFiles = vscode.workspace.textDocuments
-                .filter(doc => doc.uri.scheme !== `git` && doc.uri.fsPath.toUpperCase().includes(`${upperParent}/${upperName}`))
-                .map(doc => doc.uri);
-
-              if (possibleFiles.length) {
-                ileDiagnostics.set(possibleFiles[0], diagnostics);
+            if(workspaceRootFolder && storage){
+              const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceRootFolder);
+              const relativeCompilePath = file.toLowerCase().replace(workspaceDeployPath , '');
+              const diagnosticTargetFile = vscode.Uri.joinPath(workspaceRootFolder.uri,relativeCompilePath); 
+              
+              if(diagnosticTargetFile !== undefined){
+                ileDiagnostics.set(diagnosticTargetFile, diagnostics);
+              }else{
+                vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
               }
             }
           } else {
