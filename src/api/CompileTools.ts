@@ -449,7 +449,7 @@ export namespace CompileTools {
 
             if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
               if (currentWorkspace) {
-                const clinet = connection.client;
+                const client = connection.client;
                 const remoteDir = config.homeDirectory;
                 const localDir = currentWorkspace.uri.fsPath;
 
@@ -459,7 +459,7 @@ export namespace CompileTools {
                 try {
                   const directories = chosenAction.postDownload.map(downloadPath => {
                     const pathInfo = path.parse(downloadPath);
-                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir)));
+                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir || pathInfo.base)));
                   });
 
                   await Promise.all(directories);
@@ -469,7 +469,18 @@ export namespace CompileTools {
 
                 // Then we download the files that is specified.
                 const downloads = chosenAction.postDownload.map(
-                  downloadPath => clinet.getFile(path.join(localDir, downloadPath), path.posix.join(remoteDir, downloadPath))
+                  async (downloadPath) => {
+                    const localPath = path.join(localDir, downloadPath);
+                    const remotePath = path.posix.join(remoteDir, downloadPath);
+                    const isDirectoryCall = (await connection.sendCommand({
+                      command: `cd ${remotePath}`
+                    }));
+                    if (isDirectoryCall.code === 1) {
+                      return client.getFile(localPath, remotePath);
+                    } else {
+                      return client.getDirectory(localPath, remotePath);
+                    }
+                  }
                 );
 
                 Promise.all(downloads)
