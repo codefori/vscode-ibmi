@@ -46,14 +46,6 @@ actionsBarItem.command = {
 };
 actionsBarItem.text = `$(file-binary) Actions`;
 
-const outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-outputBarItem.command = {
-  command: `code-for-ibmi.showOutputPanel`,
-  title: `Show IBM i Output`,
-};
-outputBarItem.text = `$(three-bars) Output`;
-
-
 let selectedForCompare: vscode.Uri;
 let searchViewContext: SearchView;
 
@@ -103,7 +95,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     disconnectBarItem,
     terminalBarItem,
     actionsBarItem,
-    outputBarItem,
     vscode.commands.registerCommand(`code-for-ibmi.disconnect`, () => {
       if (instance.getConnection()) {
         disconnect();
@@ -416,10 +407,6 @@ async function onConnected(context: vscode.ExtensionContext) {
     actionsBarItem
   ].forEach(barItem => barItem.show());
 
-  if (GlobalConfiguration.get<boolean>(`logCompileOutput`)) {
-    outputBarItem.show();
-  }
-
   updateConnectedBar();
 
   // CL content assist
@@ -444,6 +431,5 @@ async function onDisconnected() {
     connectedBarItem,
     terminalBarItem,
     actionsBarItem,
-    outputBarItem
   ].forEach(barItem => barItem.hide())
 }
