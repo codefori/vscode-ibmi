@@ -878,6 +878,11 @@
 				"icon": "$(remote)"
 			},
 			{
+				"command": "code-for-ibmi.connectToAndReload",
+				"title": "Connect and Reload Server Settings",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.refreshConnections",
 				"title": "Refresh Connections",
 				"category": "IBM i",
@@ -1521,6 +1526,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.connectToAndReload",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
@@ -1726,6 +1735,11 @@
 					"command": "code-for-ibmi.connectTo",
 					"when": "view == connectionBrowser && viewItem == server",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.connectToAndReload",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "3_connect@1"
 				},
 				{
 					"command": "code-for-ibmi.moveLibraryUp",

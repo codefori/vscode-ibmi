@@ -107,7 +107,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
@@ -165,6 +165,8 @@ export default class IBMi {
 
         // Load cached server settings.
         const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
+        // Reload server settings?
+        const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
 
         progress.report({
           message: `Checking home directory.`
@@ -377,7 +379,7 @@ export default class IBMi {
         }
 
         // Check for bad data areas?
-        if (this.config.quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
+        if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
         } else {
           progress.report({
             message: `Checking for bad data areas.`
@@ -446,7 +448,7 @@ export default class IBMi {
         }
 
         // Check for installed components?
-        if (this.config.quickConnect === true && cachedServerSettings?.remoteFeatures) {
+        if (quickConnect === true && cachedServerSettings?.remoteFeatures) {
           this.remoteFeatures = cachedServerSettings.remoteFeatures;
         } else {
           progress.report({
@@ -494,7 +496,7 @@ export default class IBMi {
           let output;
 
           // Check for ASP information?
-          if (this.config.quickConnect === true && cachedServerSettings?.aspInfo) {
+          if (quickConnect === true && cachedServerSettings?.aspInfo) {
             this.aspInfo = cachedServerSettings.aspInfo;
           } else {
             progress.report({
@@ -526,7 +528,7 @@ export default class IBMi {
           }
 
           // Fetch conversion values?
-          if (this.config.quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars) {
+          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars) {
             this.qccsid = cachedServerSettings.qccsid;
             this.variantChars = cachedServerSettings.variantChars;
           } else {

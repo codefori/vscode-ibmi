@@ -33,7 +33,7 @@ export class ObjectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server, reloadServerSettings?: boolean) => {
         if (!this._attemptingConnection) {
           this._attemptingConnection = true;
 
@@ -49,10 +49,10 @@ export class ObjectBrowserProvider {
 
           switch (typeof name) {
             case `string`: // Name of connection object
-              await Login.LoginToPrevious(name, context);
+              await Login.LoginToPrevious(name, context, reloadServerSettings);
               break;
             case `object`: // A Server object
-              await Login.LoginToPrevious(name.name, context);
+              await Login.LoginToPrevious(name.name, context, reloadServerSettings);
               break;
             default:
               vscode.window.showErrorMessage(`Use the Server Browser to select which system to connect to.`);
@@ -60,6 +60,13 @@ export class ObjectBrowserProvider {
           }
 
           this._attemptingConnection = false;
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.connectToAndReload`, async (server: Server) => {
+        if (!this._attemptingConnection && server) {
+          const reloadServerSettings = true;
+          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, server.name, reloadServerSettings);
         }
       }),
 

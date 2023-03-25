@@ -115,7 +115,7 @@ export class Login {
    * @param name Connection name
    * @param context
    */
-  static async LoginToPrevious(name: string, context: vscode.ExtensionContext) {
+  static async LoginToPrevious(name: string, context: vscode.ExtensionContext, reloadServerSettings?: boolean) {
     const connection = instance.getConnection();
     if (connection) {
       // If the user is already connected and trying to connect to a different system, disconnect them first
@@ -143,7 +143,7 @@ export class Login {
       }
 
       try {
-        const connected = await new IBMi().connect(connectionConfig);
+        const connected = await new IBMi().connect(connectionConfig, reloadServerSettings);
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
