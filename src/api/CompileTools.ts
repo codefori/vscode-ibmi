@@ -15,6 +15,7 @@ import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../
 import IBMi, { MemberParts } from './IBMi';
 import { Tools } from './Tools';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
+import { instance } from '../instantiate';
 
 export namespace CompileTools {
   type Variables = Map<string, string>
@@ -55,12 +56,28 @@ export namespace CompileTools {
   const actionUsed: Map<string, number> = new Map;
 
   export function register(context: vscode.ExtensionContext) {
+    outputBarItem.text = OUTPUT_BUTTON_BASE;
+    outputBarItem.command = outputBarItem.command = {
+      command: `code-for-ibmi.showOutputPanel`,
+      title: `Show IBM i Output`,
+    };
+
     context.subscriptions.push(
       outputChannel,
       ileDiagnostics,
       outputBarItem,
       vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, showOutput)
     );
+
+    instance.onEvent("connected", () => {
+      if (GlobalConfiguration.get<boolean>(`logCompileOutput`)) {
+        outputBarItem.show();
+      }
+    });
+
+    instance.onEvent("disconnected", () => {
+      outputBarItem.hide();
+    });
   }
 
   /**
@@ -246,7 +263,7 @@ export namespace CompileTools {
             if (deployResult !== undefined) {
               workspace = deployResult;
             } else {
-              vscode.window.showWarningMessage(`Action ${chosenAction} was cancelled.`);
+              vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
               return;
             }
           }
