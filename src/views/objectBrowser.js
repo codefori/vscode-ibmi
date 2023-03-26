@@ -8,22 +8,33 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const FiltersUI = require(`../webviews/filters`);
 
-let { instance, setSearchResults } = require(`../instantiate`);
+let { setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
 const { getMemberUri } = require(`../filesystems/qsys/QSysFs`);
 
-module.exports = class objectBrowserTwoProvider {
+function getInstance() {
+  const { instance } = (require(`../instantiate`));
+  return instance;
+}
+
+module.exports = class ObjectBrowser {
   /**
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
+    this.treeViewer = vscode.window.createTreeView(
+      `objectBrowser`, {
+        treeDataProvider: this,
+        showCollapseAll: true
+      }
+    );
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, async (spfOrMember) => {
-        const spf = spfOrMember.parent ? spfOrMember.parent : spfOrMember;
+        const spf = spfOrMember.contextValue === `SPF` ? spfOrMember : spfOrMember.parent;
         if (spf.sortOrder && spf.sortOrder !== `name`) {
           spf.sortOrder = `name`;
           spf.sortAscending = true;
@@ -31,10 +42,12 @@ module.exports = class objectBrowserTwoProvider {
         else {
           spf.sortAscending = spf.sortAscending !== undefined ? !spf.sortAscending : false;
         }
+
+        this.treeViewer.reveal(spf, {expand: true});
         this.refresh(spf);
       }),
       vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, async (spfOrMember) => {
-        const spf = spfOrMember.parent ? spfOrMember.parent : spfOrMember;
+        const spf = spfOrMember.contextValue === `SPF` ? spfOrMember : spfOrMember.parent;
         if (spf.sortOrder !== `date`) {
           spf.sortOrder = `date`;
           spf.sortAscending = false;
@@ -42,6 +55,8 @@ module.exports = class objectBrowserTwoProvider {
         else {
           spf.sortAscending = !spf.sortAscending;
         }
+
+        this.treeViewer.reveal(spf, {expand: true});
         this.refresh(spf);
       }),
 
@@ -65,7 +80,7 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteFilter`, async (node) => {
         if (node) {
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
           const filterName = node.filter;
 
           vscode.window.showInformationMessage(`Delete filter ${filterName}?`, `Yes`, `No`).then(async (value) => {
@@ -128,7 +143,7 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.sortFilters`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
 
         let objectFilters = config.objectFilters;
 
@@ -155,7 +170,7 @@ module.exports = class objectBrowserTwoProvider {
 
           //Running from right click
 
-          const connection = instance.getConnection();
+          const connection = getInstance().getConnection();
           let fullPath;
           let fullName = ``;
           let newData;
@@ -212,7 +227,7 @@ module.exports = class objectBrowserTwoProvider {
         if (node) {
           //Running from right click
 
-          const connection = instance.getConnection();
+          const connection = getInstance().getConnection();
           const oldData = connection.parserMemberPath(node.path);
           let fullPath = node.path;
           let fullName = ``;
@@ -312,7 +327,7 @@ module.exports = class objectBrowserTwoProvider {
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
-            const connection = instance.getConnection();
+            const connection = getInstance().getConnection();
             const { library, file, member } = connection.parserMemberPath(node.path);
 
             try {
@@ -337,7 +352,7 @@ module.exports = class objectBrowserTwoProvider {
       }),
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
         if (node) {
-          const connection = instance.getConnection();
+          const connection = getInstance().getConnection();
           const { library, file, member, basename } = connection.parserMemberPath(node.path);
 
           const newText = await vscode.window.showInputBox({
@@ -347,7 +362,7 @@ module.exports = class objectBrowserTwoProvider {
 
           if (newText && newText !== node.description) {
             const escapedText = newText.replace(/'/g, `''`);
-            const connection = instance.getConnection();
+            const connection = getInstance().getConnection();
 
             try {
               await connection.remoteCommand(
@@ -367,7 +382,7 @@ module.exports = class objectBrowserTwoProvider {
       }),
       vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node) => {
         if (node) {
-          const connection = instance.getConnection();
+          const connection = getInstance().getConnection();
           const oldMember = connection.parserMemberPath(node.path);
           const lib = oldMember.library;
           const spf = oldMember.file;
@@ -424,12 +439,12 @@ module.exports = class objectBrowserTwoProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node) => {
-        const contentApi = instance.getContent();
+        const contentApi = getInstance().getContent();
 
         let originPath = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()) });
 
         if (originPath) {
-          const connection = instance.getConnection();
+          const connection = getInstance().getConnection();
           const { asp, library, file, member } = connection.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
@@ -444,8 +459,8 @@ module.exports = class objectBrowserTwoProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node) => {
-        const contentApi = instance.getContent();
-        const connection = instance.getConnection();
+        const contentApi = getInstance().getContent();
+        const connection = getInstance().getConnection();
 
         const { asp, library, file, member, basename } = connection.parserMemberPath(node.path);
 
@@ -477,7 +492,7 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node) => {
         if (!node) {
-          const connection = instance.getConnection();
+          const connection = getInstance().getConnection();
           await vscode.window.showInputBox({
             prompt: `Enter LIB/SPF/member.ext to search (member.ext is optional and can contain wildcards)`,
             title: `Search source file`,
@@ -515,15 +530,15 @@ module.exports = class objectBrowserTwoProvider {
               } else {
                 member = path[2].split(`.`);
               }
-              node = new SPF(``, { library: path[0], name: path[1], text: undefined, attribute: undefined }, member[0], member[1]);
+              node = new SPF(undefined, ``, { library: path[0], name: path[1], text: undefined, attribute: undefined }, member[0], member[1]);
             }
           })
         };
 
         if (node) {
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
-          const content = instance.getContent();
+          const config = getInstance().getConfig();
+          const content = getInstance().getContent();
 
           const path = node.path.split(`/`);
 
@@ -575,7 +590,7 @@ module.exports = class objectBrowserTwoProvider {
                       }
                     }, timeoutInternal);
 
-                    let results = await Search.searchMembers(instance, path[0], path[1], `${node.memberFilter || `*`}.MBR`, searchTerm, node.filter);
+                    let results = await Search.searchMembers(getInstance(), path[0], path[1], `${node.memberFilter || `*`}.MBR`, searchTerm, node.filter);
 
                     // Filter search result by member type filter.
                     if (results.length > 0 && node.memberTypeFilter) {
@@ -632,8 +647,8 @@ module.exports = class objectBrowserTwoProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.createLibrary`, async () => {
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
-        const connection = instance.getConnection();
+        const config = getInstance().getConfig();
+        const connection = getInstance().getConnection();
 
         const newLibrary = await vscode.window.showInputBox({
           prompt: `Name of new library`
@@ -685,7 +700,7 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node) => {
         if (node) {
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
           const filter = config.objectFilters.find(filter => filter.name === node.filter);
 
           //Running from right click
@@ -694,7 +709,7 @@ module.exports = class objectBrowserTwoProvider {
           });
 
           if (fileName) {
-            const connection = instance.getConnection();
+            const connection = getInstance().getConnection();
 
             if (fileName !== undefined && fileName.length > 0 && fileName.length <= 10) {
               try {
@@ -739,7 +754,7 @@ module.exports = class objectBrowserTwoProvider {
 
             if (newText) {
               const escapedText = newText.replace(/'/g, `''`).replace(/`/g, `\\\``);
-              const connection = instance.getConnection();
+              const connection = getInstance().getConnection();
 
               try {
                 newTextOK = true;
@@ -784,7 +799,7 @@ module.exports = class objectBrowserTwoProvider {
               const [oldLibrary, oldObject] = node.path.split(`/`);
               const escapedPath = newPath.replace(/'/g, `''`).replace(/`/g, `\\\``);
               const [newLibrary, newObject] = escapedPath.split(`/`);
-              const connection = instance.getConnection();
+              const connection = getInstance().getConnection();
 
               try {
                 newPathOK = true;
@@ -816,7 +831,7 @@ module.exports = class objectBrowserTwoProvider {
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path} *${node.type}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
-            const connection = instance.getConnection();
+            const connection = getInstance().getConnection();
             const [library, object] = node.path.split(`/`);
 
             try {
@@ -855,7 +870,7 @@ module.exports = class objectBrowserTwoProvider {
 
             if (newObject) {
               const escapedObject = newObject.replace(/'/g, `''`).replace(/`/g, `\\\``).split(`/`);
-              const connection = instance.getConnection();
+              const connection = getInstance().getConnection();
 
               try {
                 newObjectOK = true;
@@ -896,7 +911,7 @@ module.exports = class objectBrowserTwoProvider {
 
             if (newLibrary) {
               const escapedLibrary = newLibrary.replace(/'/g, `''`).replace(/`/g, `\\\``);
-              const connection = instance.getConnection();
+              const connection = getInstance().getConnection();
 
               try {
                 newLibraryOK = true;
@@ -919,14 +934,10 @@ module.exports = class objectBrowserTwoProvider {
           //Running from command
           console.log(this);
         }
-      }),
-
-      vscode.commands.registerCommand(`code-for-ibmi.collapseObjectBrowser`, async () => {
-        this.collapse();
       })
     )
 
-    instance.onEvent(`connected`, () => this.refresh());
+    getInstance().onEvent(`connected`, () => this.refresh());
   }
 
   async moveFilterInList(filterName, filterMovement) {
@@ -934,7 +945,7 @@ module.exports = class objectBrowserTwoProvider {
     if (![`TOP`, `UP`, `DOWN`, `BOTTOM`].includes(filterMovement)) throw `Illegal filter movement value specified`;
 
     /** @type {ConnectionConfiguration.Parameters} */
-    const config = instance.getConfig();
+    const config = getInstance().getConfig();
 
     let objectFilters = config.objectFilters;
     const from = objectFilters.findIndex(filter => filter.name === filterName);
@@ -978,20 +989,16 @@ module.exports = class objectBrowserTwoProvider {
     return element;
   }
 
-  collapse() {
-    vscode.commands.executeCommand(`workbench.actions.treeView.objectBrowser.collapseAll`);
-  }
-
   /**
    * @param {vscode.TreeItem|FilterItem|ILEObject?} element
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren(element) {
     const items = [];
-    const connection = instance.getConnection();
+    const connection = getInstance().getConnection();
     if (connection) {
-      const content = instance.getContent();
-      const config = instance.getConfig();
+      const content = getInstance().getContent();
+      const config = getInstance().getConfig();
       const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
       const objectSortOrder = GlobalConfiguration.get(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
       if (element) {
@@ -1014,7 +1021,7 @@ module.exports = class objectBrowserTwoProvider {
             })
           };
           items.push(...objects.map(object =>
-            object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(filter, object) : new ILEObject(filter, object)
+            object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(element, filter, object) : new ILEObject(element, filter, object)
           ));
           break;
 
@@ -1065,7 +1072,7 @@ module.exports = class objectBrowserTwoProvider {
       } else {
         const filters = config.objectFilters;
         if (filters.length) {
-          items.push(...filters.map(filter => new FilterItem(filter)));
+          items.push(...filters.map(filter => new FilterItem(element, filter)));
         } else {
           items.push(getNewFilter());
         }
@@ -1080,23 +1087,29 @@ module.exports = class objectBrowserTwoProvider {
    * @param {string[]} list
    */
   storeMemberList(path, list) {
-    const storage = instance.getStorage();
+    const storage = getInstance().getStorage();
     const existingDirs = storage.getSourceList();
 
     existingDirs[path] = list;
 
     return storage.setSourceList(existingDirs);
   }
+
+  getParent(element){
+    return element.parent;
+  }
 }
 
 /** Implements @type {../typings/Filter} */
 class FilterItem extends vscode.TreeItem {
   /**
+   * @param {vscode.TreeItem} parent
    * @param {ConnectionConfiguration.ObjectFilters} filter
    */
-  constructor(filter) {
+  constructor(parent, filter) {
     super(filter.name, vscode.TreeItemCollapsibleState.Collapsed);
-
+    
+    this.parent = parent;
     this.protected = filter.protected;
     this.contextValue = `filter${this.protected ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
@@ -1110,12 +1123,14 @@ class FilterItem extends vscode.TreeItem {
 
 class SPF extends vscode.TreeItem {
   /**
+   * @param {vscode.TreeItem} parent
    * @param {ConnectionConfiguration.ObjectFilters} filter
    * @param {{library: string, name: string, text: string, attribute?: string}} detail
    */
-  constructor(filter, detail) {
+  constructor(parent, filter, detail) {
     super(detail.name, vscode.TreeItemCollapsibleState.Collapsed);
 
+    this.parent = parent;
     this.filter = filter.name;
     this.protected = filter.protected;
     this.memberFilter = filter.member;
@@ -1133,16 +1148,18 @@ class SPF extends vscode.TreeItem {
 //TODO Seb J.: once converted to TypeScript, this should implement IBMiObject
 class ILEObject extends vscode.TreeItem {
   /**
+   * @param {vscode.TreeItem} parent 
    * @param {ConnectionConfiguration.ObjectFilters} filter
    * @param {IBMiObject} object
    */
-  constructor(filter, object) {
+  constructor(parent, filter, object) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
 
     const icon = objectIcons[type.toUpperCase()] || objectIcons[``];
 
     super(`${object.name}.${type}`);
 
+    this.parent = parent;
     this.filter = filter.name;
 
     this.library = object.library;

@@ -13,14 +13,20 @@ function getInstance() {
   return instance;
 }
 
-module.exports = class ifsBrowserProvider {
+module.exports = class IFSBrowser {
   /**
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
-
+    this.treeViewer = vscode.window.createTreeView(
+      `ifsBrowser`, {
+        treeDataProvider: this,
+        showCollapseAll: true
+      }
+    );
+    
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByName`, async (directoryOrFile) => {
         const directory = directoryOrFile.parent ? directoryOrFile.parent : directoryOrFile;
@@ -31,6 +37,8 @@ module.exports = class ifsBrowserProvider {
         else {
           directory.sortAscending = directory.sortAscending !== undefined ? !directory.sortAscending : false;
         }
+
+        this.treeViewer.reveal(directory, {expand: true});
         this.refresh(directory);
       }),
       vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByDate`, async (directoryOrFile) => {
@@ -42,6 +50,8 @@ module.exports = class ifsBrowserProvider {
         else {
           directory.sortAscending = !directory.sortAscending;
         }
+
+        this.treeViewer.reveal(directory, {expand: true});
         this.refresh(directory);
       }),
       vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, async () => {
@@ -574,10 +584,6 @@ module.exports = class ifsBrowserProvider {
           //Running from command.
         }
       }),
-
-      vscode.commands.registerCommand(`code-for-ibmi.collapseIFSBrowser`, async () => {
-        this.collapse();
-      })
     )
 
     getInstance().onEvent(`connected`, () => this.refresh());
@@ -593,10 +599,6 @@ module.exports = class ifsBrowserProvider {
    */
   getTreeItem(element) {
     return element;
-  }
-
-  collapse() {
-    vscode.commands.executeCommand(`workbench.actions.treeView.ifsBrowser.collapseAll`);
   }
 
   /**
@@ -634,6 +636,10 @@ module.exports = class ifsBrowserProvider {
     }
 
     return items;
+  }
+
+  getParent(item){
+    return item.parent;
   }
 
   /**
