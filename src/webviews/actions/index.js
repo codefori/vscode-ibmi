@@ -146,7 +146,7 @@ module.exports = class SettingsUI {
         `command`,
         `Command to run`, 
         `Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`,
-        { multiline: true, default: currentAction.command}
+        { rows: 5, default: currentAction.command}
       )
       .addTabs([
         {

@@ -137,4 +137,9 @@ export class ConnectionStorage extends Storage {
   setDebugCommands(existingCommands: DebugCommands) {
     return this.set(DEBUG_KEY, existingCommands);
   }
+
+  getWorkspaceDeployPath(workspaceFolder : vscode.WorkspaceFolder){
+    const deployDirs = this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
+    return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
+  }
 }

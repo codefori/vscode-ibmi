@@ -104,6 +104,10 @@ export namespace Deployment {
         }
       }
     });
+
+    instance.onEvent("disconnected", () => {
+      button.hide();
+    })
   }
 
   async function launchActionsSetup() {
