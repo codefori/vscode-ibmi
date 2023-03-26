@@ -19,6 +19,7 @@ import { CompileTools } from "./api/CompileTools";
 import { HelpView } from "./views/helpView";
 import { ProfilesView } from "./views/ProfilesView";
 import * as Debug from './api/debug';
+import { initialise } from "./testing";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -96,6 +97,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
+
+  initialise();
 
   return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
 }
