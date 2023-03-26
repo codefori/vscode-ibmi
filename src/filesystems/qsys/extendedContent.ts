@@ -129,7 +129,12 @@ export class ExtendedIBMiContent {
         //We assume the alias still exists....
         const query: string[] = [];
 
-        const rowGroups = sliceUp(rows, 5000);
+        // Row length is the length of the SLQ string used to insert each row
+        const rowLength = recordLength + 55;
+        // 450000 is just below the maxiumu length for each insert.
+        const perInsert = Math.floor(450000 / rowLength);
+
+        const rowGroups = sliceUp(rows, perInsert);
         rowGroups.forEach(rowGroup => {
           query.push(`insert into ${aliasPath} values ${rowGroup.join(`,`)};`);
         });

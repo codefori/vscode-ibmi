@@ -1170,7 +1170,7 @@ class Member extends vscode.TreeItem {
     this.parent = parent;
     this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
     this.description = member.text;
-    this.resourceUri = getMemberUri(member, { filter: filter.name });
+    this.resourceUri = getMemberUri(member, filter.protected ? {readonly: true} : undefined);
     this.path = this.resourceUri.path;
     this.tooltip = `${this.resourceUri.path}${member.text ? `\n(${member.text})` : ``}`;
     this.command = {

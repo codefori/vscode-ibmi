@@ -126,7 +126,6 @@ export interface FileError {
 }
 
 export interface QsysFsOptions {
-  filter?: string
   readonly?: boolean
 }
 
