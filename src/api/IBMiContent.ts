@@ -369,7 +369,7 @@ export default class IBMiContent {
    * @param mbr
    * @returns an array of IBMiMember 
    */
-  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sortOrder: "name" | "date" = "name"): Promise<IBMiMember[]> {
+  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sortOrder: "name" | "date" = "name", ascending?: boolean): Promise<IBMiMember[]> {
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
@@ -444,10 +444,10 @@ export default class IBMiContent {
       sorter = (r1, r2) => r1.name.localeCompare(r2.name);
     }
     else {
-      sorter = (r1, r2) => r2.changed.localeCompare(r1.changed);
+      sorter = (r1, r2) => r1.changed.localeCompare(r2.changed);
     }
 
-    return results.map(result => ({
+    const members = results.map(result => ({
       asp: asp,
       library: library,
       file: String(result.MBFILE),
@@ -457,6 +457,12 @@ export default class IBMiContent {
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
       changed: `${result.CHANGED ? result.CHANGED : `${result.MBCHGD}${result.MBCHGT}`}`
     } as IBMiMember)).sort(sorter);
+
+    if (ascending === false) {
+      members.reverse();
+    }
+
+    return members;
   }
 
   /**
@@ -464,11 +470,11 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, order?: "name" | "date"): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, order: "name" | "date" = "name", ascending?: boolean): Promise<IFSFile[]> {
     const items: IFSFile[] = [];
 
     const fileListResult = (await this.ibmi.sendCommand({
-      command: `ls -a -p -L ${order === "date" ? "-t" : ""} ${Tools.escapePath(remotePath)}`
+      command: `ls -a -p -L ${order === "date" ? "-t" : ""} ${(order === 'date' && ascending) || (order === "name" && ascending === false) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
     }));
 
     if (fileListResult.code === 0) {

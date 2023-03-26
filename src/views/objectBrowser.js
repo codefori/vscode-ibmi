@@ -23,13 +23,25 @@ module.exports = class objectBrowserTwoProvider {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, async (spfOrMember) => {
-        const spf = `parent` in spfOrMember ? spfOrMember.parent : spfOrMember;
-        spf.sortOrder = `name`;
+        const spf = spfOrMember.parent ? spfOrMember.parent : spfOrMember;
+        if (spf.sortOrder && spf.sortOrder !== `name`) {
+          spf.sortOrder = `name`;
+          spf.sortAscending = true;
+        }
+        else {
+          spf.sortAscending = spf.sortAscending !== undefined ? !spf.sortAscending : false;
+        }
         this.refresh(spf);
       }),
       vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, async (spfOrMember) => {
-        const spf = `parent` in spfOrMember ? spfOrMember.parent : spfOrMember;
-        spf.sortOrder = `date`;
+        const spf = spfOrMember.parent ? spfOrMember.parent : spfOrMember;
+        if (spf.sortOrder !== `date`) {
+          spf.sortOrder = `date`;
+          spf.sortAscending = false;
+        }
+        else {
+          spf.sortAscending = !spf.sortAscending;
+        }
         this.refresh(spf);
       }),
 
@@ -1014,7 +1026,7 @@ module.exports = class objectBrowserTwoProvider {
           const path = spf.path.split(`/`);
 
           try {
-            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType, spf.sortOrder);
+            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType, spf.sortOrder, spf.sortAscending);
             if (objectNamesLower === true) {
               members = members.map(member => {
                 member.file = member.file.toLocaleLowerCase();
@@ -1170,7 +1182,7 @@ class Member extends vscode.TreeItem {
     this.parent = parent;
     this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
     this.description = member.text;
-    this.resourceUri = getMemberUri(member, filter.protected ? {readonly: true} : undefined);
+    this.resourceUri = getMemberUri(member, filter.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
     this.tooltip = `${this.resourceUri.path}${member.text ? `\n(${member.text})` : ``}`;
     this.command = {
