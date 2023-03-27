@@ -28,7 +28,10 @@ export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
 }
 
 export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
-    return parse(uri.query);
+    const parameters = parse(uri.query);
+    return {
+        readonly: parameters.readonly === `true`
+    };
 }
 
 export function isProtectedFilter(filter?: string): boolean {
