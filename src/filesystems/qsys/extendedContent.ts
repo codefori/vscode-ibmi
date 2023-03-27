@@ -36,6 +36,7 @@ export class ExtendedIBMiContent {
     mbr = mbr.toUpperCase();
 
     if (config && content) {
+      const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;
       const alias = getAliasName(lib, spf, mbr);
       const aliasPath = `${tempLib}.${alias}`;
@@ -58,9 +59,15 @@ export class ExtendedIBMiContent {
         }
       }
 
-      let rows = await content.runSQL(
-        `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`
-      );
+      let rows;
+      if (sourceColourSupport)
+        rows = await content.runSQL(
+          `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`
+        );
+      else
+        rows = await content.runSQL(
+          `select srcdat, srcdta from ${aliasPath}`
+        );  
 
       if (rows.length === 0) {
         rows.push({
