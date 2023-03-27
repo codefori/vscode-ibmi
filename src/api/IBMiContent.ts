@@ -9,12 +9,17 @@ import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
 import { ConnectionConfiguration } from './Configuration';
 import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
-import { sort } from '../languages/clle/gencmdxml';
+
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
+
+export type SortOptions = {
+  order: "name" | "date"
+  ascending?: boolean
+}
 
 export default class IBMiContent {
 
@@ -370,7 +375,7 @@ export default class IBMiContent {
    * @param mbr
    * @returns an array of IBMiMember 
    */
-  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sortOrder: "name" | "date" = "name", ascending?: boolean): Promise<IBMiMember[]> {
+  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sort: SortOptions = { order: "name" }): Promise<IBMiMember[]> {
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
@@ -441,7 +446,7 @@ export default class IBMiContent {
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
 
     let sorter: (r1: IBMiMember, r2: IBMiMember) => number;
-    if (sortOrder === 'name') {
+    if (sort.order === 'name') {
       sorter = (r1, r2) => r1.name.localeCompare(r2.name);
     }
     else {
@@ -459,7 +464,7 @@ export default class IBMiContent {
       changed: `${result.CHANGED ? result.CHANGED : `${result.MBCHGD}${result.MBCHGT}`}`
     } as IBMiMember)).sort(sorter);
 
-    if (ascending === false) {
+    if (sort.ascending === false) {
       members.reverse();
     }
 
@@ -471,9 +476,9 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, order: "name" | "date" = "name", ascending?: boolean): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
     const fileListResult = (await this.ibmi.sendCommand({
-      command: `ls -a -p -L ${order === "date" ? "-t" : ""} ${(order === 'date' && ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
+      command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
     }));
 
     if (fileListResult.code === 0) {
@@ -491,9 +496,9 @@ export default class IBMiContent {
           };
         });
 
-      if (order === "name") {
+      if (sort.order === "name") {
         items.sort((f1, f2) => f1.name.localeCompare(f2.name));
-        if (ascending === false) {
+        if (sort.ascending === false) {
           items.reverse();
         }
       }

@@ -21,37 +21,38 @@ module.exports = class IFSBrowser {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
     this.treeViewer = vscode.window.createTreeView(
-      `ifsBrowser`, {
+      `ifsBrowser`,
+      {
         treeDataProvider: this,
         showCollapseAll: true
       }
     );
-    
+
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByName`, async (directoryOrFile) => {
+      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByName`, (/** @type {Object} */ directoryOrFile) => {
         const directory = directoryOrFile.parent ? directoryOrFile.parent : directoryOrFile;
-        if (directory.sortOrder && directory.sortOrder !== `name`) {
-          directory.sortOrder = `name`;
-          directory.sortAscending = true;
+        if (directory.sort.order !== `name`) {
+          directory.sortBy({order: `name`, ascending:true})
         }
         else {
-          directory.sortAscending = directory.sortAscending !== undefined ? !directory.sortAscending : false;
+          directory.sort.ascending = !directory.sort.ascending
+          directory.sortBy(directory.sort);
         }
 
-        this.treeViewer.reveal(directory, {expand: true});
+        this.treeViewer.reveal(directory, { expand: true });
         this.refresh(directory);
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByDate`, async (directoryOrFile) => {
+      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByDate`, (/** @type {Object} */ directoryOrFile) => {
         const directory = directoryOrFile.parent ? directoryOrFile.parent : directoryOrFile;
-        if (directory.sortOrder !== `date`) {
-          directory.sortOrder = `date`;
-          directory.sortAscending = false;
+        if (directory.sort.order !== `date`) {
+          directory.sortBy({order: `date`, ascending:true})
         }
         else {
-          directory.sortAscending = !directory.sortAscending;
+          directory.sort.ascending = !directory.sort.ascending
+          directory.sortBy(directory.sort);
         }
 
-        this.treeViewer.reveal(directory, {expand: true});
+        this.treeViewer.reveal(directory, { expand: true });
         this.refresh(directory);
       }),
       vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, async () => {
@@ -617,7 +618,7 @@ module.exports = class IFSBrowser {
         console.log(element.path);
 
         try {
-          const objects = await content.getFileList(element.path, element.sortOrder, element.sortAscending);
+          const objects = await content.getFileList(element.path, element.sort);
           items.push(...objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
             .map(object => new Object(object.type, object.name, object.path, object.type === `streamfile` ? element : undefined)));
@@ -638,7 +639,7 @@ module.exports = class IFSBrowser {
     return items;
   }
 
-  getParent(item){
+  getParent(item) {
     return item.parent;
   }
 
@@ -681,5 +682,12 @@ class Object extends vscode.TreeItem {
         arguments: [path]
       };
     }
+
+    this.sort = { order: `name`, ascending: true };
+  }
+
+  sortBy(/** @type {import("../api/IBMiContent").SortOptions}*/ sort) {
+    this.sort = sort;
+    this.description = `(sort: ${sort.order} ${sort.ascending ? `🔼` : `🔽`})`;
   }
 }

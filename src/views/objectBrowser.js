@@ -33,27 +33,29 @@ module.exports = class ObjectBrowser {
     );
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, async (spfOrMember) => {
+      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, (/** @type {SPF|Member} */ spfOrMember) => {
+        /** @type {SPF} */
         const spf = spfOrMember.contextValue === `SPF` ? spfOrMember : spfOrMember.parent;
-        if (spf.sortOrder && spf.sortOrder !== `name`) {
-          spf.sortOrder = `name`;
-          spf.sortAscending = true;
+        if (spf.sort.order !== `name`) {
+          spf.sortBy({order: `name`, ascending:true});
         }
         else {
-          spf.sortAscending = spf.sortAscending !== undefined ? !spf.sortAscending : false;
+          spf.sort.ascending = !spf.sort.ascending
+          spf.sortBy(spf.sort);
         }
 
         this.treeViewer.reveal(spf, {expand: true});
         this.refresh(spf);
       }),
-      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, async (spfOrMember) => {
+      vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, (/** @type {SPF|Member} */spfOrMember) => {
+        /** @type {SPF} */
         const spf = spfOrMember.contextValue === `SPF` ? spfOrMember : spfOrMember.parent;
-        if (spf.sortOrder !== `date`) {
-          spf.sortOrder = `date`;
-          spf.sortAscending = false;
+        if (spf.sort.order !== `date`) {
+          spf.sortBy({order: `date`, ascending:true})
         }
         else {
-          spf.sortAscending = !spf.sortAscending;
+          spf.sort.ascending = !spf.sort.ascending
+          spf.sortBy(spf.sort);
         }
 
         this.treeViewer.reveal(spf, {expand: true});
@@ -1033,7 +1035,7 @@ module.exports = class ObjectBrowser {
           const path = spf.path.split(`/`);
 
           try {
-            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType, spf.sortOrder, spf.sortAscending);
+            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType, spf.sort);
             if (objectNamesLower === true) {
               members = members.map(member => {
                 member.file = member.file.toLocaleLowerCase();
@@ -1138,10 +1140,16 @@ class SPF extends vscode.TreeItem {
 
     this.contextValue = `SPF${filter.protected ? `_readonly` : ``}`;
     this.path = [detail.library, detail.name].join(`/`);
-    this.description = detail.text;
-
+    this._description = detail.text;    
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
-    this.sortOrder = `name`;
+    
+    this.description = this._description;
+    this.sort = { order: `name`, ascending: true };
+  }
+
+  sortBy(/** @type {import("../api/IBMiContent").SortOptions}*/ sort) {
+    this.sort = sort;
+    this.description = `${this._description ? `${this._description} ` : ``}(sort: ${sort.order} ${sort.ascending ? `🔼` : `🔽`})`;
   }
 }
 
