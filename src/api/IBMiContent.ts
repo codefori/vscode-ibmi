@@ -9,6 +9,7 @@ import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
 import { ConnectionConfiguration } from './Configuration';
 import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+import { sort } from '../languages/clle/gencmdxml';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -471,28 +472,33 @@ export default class IBMiContent {
    * @return an array of IFSFile
    */
   async getFileList(remotePath: string, order: "name" | "date" = "name", ascending?: boolean): Promise<IFSFile[]> {
-    const items: IFSFile[] = [];
-
     const fileListResult = (await this.ibmi.sendCommand({
-      command: `ls -a -p -L ${order === "date" ? "-t" : ""} ${(order === 'date' && ascending) || (order === "name" && ascending === false) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
+      command: `ls -a -p -L ${order === "date" ? "-t" : ""} ${(order === 'date' && ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
     }));
 
     if (fileListResult.code === 0) {
       const fileList = fileListResult.stdout;
 
       //Remove current and dir up.
-      fileList.split(`\n`)
+      const items: IFSFile[] = fileList.split(`\n`)
         .filter(item => item !== `../` && item !== `./`)
-        .forEach(item => {
+        .map(item => {
           const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-          items.push({
+          return {
             type,
             name: (type === `directory` ? item.substring(0, item.length - 1) : item),
             path: path.posix.join(remotePath, item)
-          });
+          };
         });
 
-      return items;//.sort((a, b) => a.name.localeCompare(b.name));
+      if (order === "name") {
+        items.sort((f1, f2) => f1.name.localeCompare(f2.name));
+        if (ascending === false) {
+          items.reverse();
+        }
+      }
+
+      return items;
 
     } else {
       throw new Error(fileListResult.stderr);
