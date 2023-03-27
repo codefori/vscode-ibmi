@@ -146,7 +146,7 @@ export class ExtendedIBMiContent {
         //We assume the alias still exists....
         const query: string[] = [];
 
-        // Row length is the length of the SLQ string used to insert each row
+        // Row length is the length of the SQL string used to insert each row
         const rowLength = recordLength + 55;
         // 450000 is just below the maxiumu length for each insert.
         const perInsert = Math.floor(400000 / rowLength);
