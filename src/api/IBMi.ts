@@ -126,20 +126,25 @@ export default class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
-        this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        if (!reconnecting) {
+          this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        }
 
         let tempLibrarySet = false;
 
         const disconnected = async () => {
           const choice = await vscode.window.showWarningMessage(`Connection lost`, {
             modal: true,
-            detail: `Connection to ${this.currentConnectionName} has timed out. Would you like to reconnect?`
+            detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
           }, `Yes`);
 
+          let disconnect = true;
           if (choice === `Yes`) {
-            this.connect(connectionObject, true);
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
+            disconnect = !(await this.connect(connectionObject, true)).success;
+          }
+
+          if (disconnect) {
+            this.end();
           };
         };
 
@@ -660,6 +665,13 @@ export default class IBMi {
 
       if (this.client.isConnected()) {
         this.client.dispose();
+      }
+
+      if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+        modal: true,
+        detail: `Reconnection to ${this.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
+      }, `Yes`)) {
+        return this.connect(connectionObject, true);
       }
 
       return {
