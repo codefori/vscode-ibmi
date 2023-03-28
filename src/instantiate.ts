@@ -61,14 +61,13 @@ export async function disconnect(): Promise<boolean> {
     if (!document.isClosed && [`member`, `streamfile`].includes(document.uri.scheme)) {
       if (document.isDirty) {
         if (doDisconnect) {
-          await Promise.all([
-            vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`),
-            vscode.window.showTextDocument(document)
-          ]);
-
-          doDisconnect = false;
+          if(await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))){
+            break;
+          }
+          else{
+            doDisconnect = false;
+          }
         }
-
       } else {
         await vscode.window.showTextDocument(document);
         await vscode.commands.executeCommand(`workbench.action.closeActiveEditor`);
@@ -79,7 +78,7 @@ export async function disconnect(): Promise<boolean> {
   if (doDisconnect) {
     const connection = instance.getConnection();
     if (connection) {
-      connection.end();
+      await connection.end();
     }
   }
 
