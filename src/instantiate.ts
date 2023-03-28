@@ -419,8 +419,10 @@ async function onConnected(context: vscode.ExtensionContext) {
 }
 
 async function onDisconnected() {
-  // Close the tabs
-  vscode.window.tabGroups.all.forEach(group => {
+  // Close the tabs with no dirty editors
+  vscode.window.tabGroups.all
+  .filter(group => !group.tabs.some(tab => tab.isDirty))
+  .forEach(group => {
     vscode.window.tabGroups.close(group);
   });
 
