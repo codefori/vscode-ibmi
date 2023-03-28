@@ -97,7 +97,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
 
-  return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
+  return { instance, customUI: () => new CustomUI(), baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
 }
 
 // this method is called when your extension is deactivated
