@@ -109,7 +109,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
@@ -143,7 +143,7 @@ export default class IBMi {
           }, `Yes`);
 
           if (choice === `Yes`) {
-            this.connect(connectionObject);
+            this.connect(connectionObject, true);
           } else {
             vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
           };
@@ -590,7 +590,7 @@ export default class IBMi {
         try {
           // make sure chsh and bash is installed
           if (this.remoteFeatures[`chsh`] &&
-              this.remoteFeatures[`bash`]) {
+            this.remoteFeatures[`bash`]) {
 
             const bashShellPath = '/QOpenSys/pkgs/bin/bash';
             const commandShellResult = await this.sendCommand({
@@ -602,7 +602,7 @@ export default class IBMi {
               if (userDefaultShell !== bashShellPath) {
 
                 vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
-                  switch (choice) { 
+                  switch (choice) {
                     case `Set shell to bash`:
                       const commandSetBashResult = await this.sendCommand({
                         command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
@@ -650,10 +650,12 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
-        instance.setConnection(this);
-        vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
-        await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-        instance.fire("connected");
+        if (!reconnecting) {
+          instance.setConnection(this);
+          vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+          await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+          instance.fire("connected");
+        }
 
         return {
           success: true
@@ -781,7 +783,7 @@ export default class IBMi {
   }
 
   async end() {
-    this.client.connection.removeAllListeners();
+    this.client.connection?.removeAllListeners();
     this.client.dispose();
 
     if (this.outputChannel) {
