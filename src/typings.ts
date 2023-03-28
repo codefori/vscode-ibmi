@@ -5,7 +5,6 @@ import { CustomUI, Field } from "./api/CustomUI";
 
 export interface CodeForIBMi {
   instance: Instance,
-  baseContext: ExtensionContext,
   customUI: () => CustomUI,
   deploy: (parameters: DeploymentParameters) => Promise<boolean>
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
