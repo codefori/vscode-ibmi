@@ -51,11 +51,11 @@ module.exports = class SettingsUI {
         { id: `duplicateAction`, label: `Duplicate`}
       );
     
-    const {panel, data} = await ui.loadPage(`Work with Actions`);
-    if (data) {
-      panel.dispose();
+    const page = await ui.loadPage(`Work with Actions`);
+    if (page && page.data) {
+      page.panel.dispose();
 
-      switch (data.buttons) {
+      switch (page.data.buttons) {
       case `newAction`:
         this.WorkAction(-1);
         break;
@@ -63,7 +63,7 @@ module.exports = class SettingsUI {
         this.DuplicateAction();
         break;
       default:
-        this.WorkAction(Number(data.actions));
+        this.WorkAction(Number(page.data.actions));
         break;
       }
     }
@@ -218,8 +218,9 @@ module.exports = class SettingsUI {
       );
 
     while (stayOnPanel === true) {
-      const {panel, data} = await ui.loadPage(uiTitle);
-      if (data) {
+      const page = await ui.loadPage(uiTitle);
+      if (page && page.data) {        
+        const data = page.data;
         switch (data.buttons) {
         case `deleteAction`:
           const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, { modal:true }, `Yes`, `No`)
@@ -262,7 +263,7 @@ module.exports = class SettingsUI {
         stayOnPanel=false;
       }
 
-      panel.dispose();
+      page.panel.dispose();
     }
 
     this.MainMenu();
