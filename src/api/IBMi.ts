@@ -109,7 +109,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
@@ -132,20 +132,25 @@ export default class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
-        this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        if (!reconnecting) {
+          this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        }
 
         let tempLibrarySet = false;
 
         const disconnected = async () => {
           const choice = await vscode.window.showWarningMessage(`Connection lost`, {
             modal: true,
-            detail: `Connection to ${this.currentConnectionName} has timed out. Would you like to reconnect?`
+            detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
           }, `Yes`);
 
+          let disconnect = true;
           if (choice === `Yes`) {
-            this.connect(connectionObject);
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
+            disconnect = !(await this.connect(connectionObject, true)).success;
+          }
+
+          if (disconnect) {
+            this.end();
           };
         };
 
@@ -590,7 +595,7 @@ export default class IBMi {
         try {
           // make sure chsh and bash is installed
           if (this.remoteFeatures[`chsh`] &&
-              this.remoteFeatures[`bash`]) {
+            this.remoteFeatures[`bash`]) {
 
             const bashShellPath = '/QOpenSys/pkgs/bin/bash';
             const commandShellResult = await this.sendCommand({
@@ -602,7 +607,7 @@ export default class IBMi {
               if (userDefaultShell !== bashShellPath) {
 
                 vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
-                  switch (choice) { 
+                  switch (choice) {
                     case `Set shell to bash`:
                       const commandSetBashResult = await this.sendCommand({
                         command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
@@ -650,10 +655,12 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
-        instance.setConnection(this);
-        vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
-        await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-        instance.fire("connected");
+        if (!reconnecting) {
+          instance.setConnection(this);
+          vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+          await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+          instance.fire("connected");
+        }
 
         return {
           success: true
@@ -664,6 +671,13 @@ export default class IBMi {
 
       if (this.client.isConnected()) {
         this.client.dispose();
+      }
+
+      if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+        modal: true,
+        detail: `Reconnection to ${this.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
+      }, `Yes`)) {
+        return this.connect(connectionObject, true);
       }
 
       return {
@@ -781,7 +795,7 @@ export default class IBMi {
   }
 
   async end() {
-    this.client.connection.removeAllListeners();
+    this.client.connection?.removeAllListeners();
     this.client.dispose();
 
     if (this.outputChannel) {
