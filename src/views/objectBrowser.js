@@ -178,43 +178,30 @@ module.exports = class objectBrowserTwoProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node, fullPath) => {
         if (node) {
           //Running from right click
-
           const connection = instance.getConnection();
           const oldData = connection.parserMemberPath(node.path);
-          let fullPath = node.path;
           let newData;
-          let newNameOK;
 
-          do {
-            fullPath = await vscode.window.showInputBox({
-              prompt: `New path for copy of source member`,
-              value: fullPath
-            });
-
-            if (fullPath) {
-              fullPath = fullPath.toUpperCase();
+          fullPath = await vscode.window.showInputBox({
+            prompt: `New path for copy of source member`,
+            value: node.path || fullPath,
+            validateInput: (value) =>{
               try {
-                newNameOK = true;
-                newData = connection.parserMemberPath(fullPath);
+                newData = connection.parserMemberPath(value);
+                if (newData.library === oldData.library && newData.file === oldData.file && newData.name === oldData.name) {
+                  return `Cannot copy member to itself!`;
+                }
               } catch (e) {
-                newNameOK = false;
-                vscode.window.showErrorMessage(`${e}`);
+                return e.toString();
               }
             }
+          });
 
-            if (fullPath && newNameOK) {
-              if (newData.library === oldData.library && newData.file === oldData.file && newData.name === oldData.name) {
-                newNameOK = false;
-                vscode.window.showErrorMessage(`Cannot copy member to itself!`);
-              }
-            }
-
-            if (fullPath && newNameOK) {
-              vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
-
+          if (fullPath) {
+            const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Creating member ${fullPath.toUpperCase()}...` }, async (progress) =>{            
               try {
                 let newMemberExists = true;
                 try {
@@ -263,13 +250,16 @@ module.exports = class objectBrowserTwoProvider {
                   this.refresh();
                 }
               } catch (e) {
-                newNameOK = false;
-                vscode.window.showErrorMessage(`Error creating new member! ${e}`);
+                return e;
               }
+            });
 
+            if(error){
+              if(await vscode.window.showErrorMessage(`Error creating member ${fullPath}: ${error}`, `Retry`)){
+                vscode.commands.executeCommand(`code-for-ibmi.copyMember`, node, fullPath);
+              }
             }
-          } while (fullPath && !newNameOK)
-
+          }
         } else {
           //Running from command. Perhaps get active editor?
         }
