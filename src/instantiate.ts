@@ -416,8 +416,6 @@ async function onConnected(context: vscode.ExtensionContext) {
 }
 
 async function onDisconnected() {
-  vscode.workspace.openTextDocument()
-
   // Close the tabs with no dirty editors
   vscode.window.tabGroups.all
   .filter(group => !group.tabs.some(tab => tab.isDirty))
