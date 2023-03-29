@@ -310,7 +310,9 @@ export class SourceDateHandler {
         this._diffRefreshGutter(document);
       }
 
-      this.lineEditedBefore = currentEditingLine || 0;
+      if (event.contentChanges.length > 0) {
+        this.lineEditedBefore = currentEditingLine || 0;
+      }
     }
   }
 
