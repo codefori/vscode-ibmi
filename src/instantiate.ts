@@ -57,20 +57,17 @@ export async function disconnect(): Promise<boolean> {
   let doDisconnect = true;
 
   for (const document of vscode.workspace.textDocuments) {
-    console.log(document);
-    if (!document.isClosed && [`member`, `streamfile`].includes(document.uri.scheme)) {
+    // This code will check that sources are saved before closing
+    if (!document.isClosed && [`member`, `streamfile`, `object`].includes(document.uri.scheme)) {
       if (document.isDirty) {
         if (doDisconnect) {
-          if(await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))){
+          if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))){
             break;
           }
           else{
             doDisconnect = false;
           }
         }
-      } else {
-        await vscode.window.showTextDocument(document);
-        await vscode.commands.executeCommand(`workbench.action.closeActiveEditor`);
       }
     }
   }
@@ -419,11 +416,20 @@ async function onConnected(context: vscode.ExtensionContext) {
 }
 
 async function onDisconnected() {
+  vscode.workspace.openTextDocument()
+
   // Close the tabs with no dirty editors
   vscode.window.tabGroups.all
   .filter(group => !group.tabs.some(tab => tab.isDirty))
   .forEach(group => {
-    vscode.window.tabGroups.close(group);
+    group.tabs.forEach(tab => {
+      if (tab.input instanceof vscode.TabInputText) {
+        const uri = tab.input.uri;
+        if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
+          vscode.window.tabGroups.close(tab);
+        }
+      }
+    })
   });
 
   // Hide the bar items
