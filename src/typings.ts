@@ -94,8 +94,8 @@ export interface IBMiMember {
   file: string
   name: string
   extension: string
-  recordLength: number
-  text: string
+  recordLength?: number
+  text?: string
   asp?: string
 }
 

@@ -162,11 +162,11 @@ module.exports = class objectBrowserTwoProvider {
                 vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
 
                 await connection.remoteCommand(
-                  `ADDPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`
+                  `ADDPFM FILE(${newData.library}/${newData.file}) MBR(${newData.name}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`
                 )
 
                 if (GlobalConfiguration.get(`autoOpenFile`)) {
-                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                  vscode.commands.executeCommand(`vscode.open`, getMemberUri(newData));
                 }
 
                 if (GlobalConfiguration.get(`autoRefresh`)) {
@@ -192,7 +192,6 @@ module.exports = class objectBrowserTwoProvider {
           const connection = instance.getConnection();
           const oldData = connection.parserMemberPath(node.path);
           let fullPath = node.path;
-          let fullName = ``;
           let newData;
           let newNameOK;
 
@@ -214,7 +213,7 @@ module.exports = class objectBrowserTwoProvider {
             }
 
             if (fullPath && newNameOK) {
-              if (newData.library === oldData.library && newData.file === oldData.file && newData.member === oldData.member) {
+              if (newData.library === oldData.library && newData.file === oldData.file && newData.name === oldData.name) {
                 newNameOK = false;
                 vscode.window.showErrorMessage(`Cannot copy member to itself!`);
               }
@@ -227,7 +226,7 @@ module.exports = class objectBrowserTwoProvider {
                 let newMemberExists = true;
                 try {
                   await connection.remoteCommand(
-                    `CHKOBJ OBJ(${newData.library}/${newData.file}) OBJTYPE(*FILE) MBR(${newData.member})`,
+                    `CHKOBJ OBJ(${newData.library}/${newData.file}) OBJTYPE(*FILE) MBR(${newData.name})`,
                   )
                 } catch (e) {
                   if (String(e).includes(`CPF9815`)) {
@@ -236,19 +235,19 @@ module.exports = class objectBrowserTwoProvider {
                 }
 
                 if (newMemberExists) {
-                  const result = await vscode.window.showInformationMessage(`Are you sure you want overwrite member ${newData.member}?`, { modal: true }, `Yes`, `No`)
+                  const result = await vscode.window.showInformationMessage(`Are you sure you want overwrite member ${newData.name}?`, { modal: true }, `Yes`, `No`)
                   if (result === `Yes`) {
                     await connection.remoteCommand(
-                      `RMVM FILE(${newData.library}/${newData.file}) MBR(${newData.member})`,
+                      `RMVM FILE(${newData.library}/${newData.file}) MBR(${newData.name})`,
                     )
                   } else {
-                    throw `Member ${newData.member} already exists!`
+                    throw `Member ${newData.name} already exists!`
                   }
                 }
 
                 try {
                   await connection.remoteCommand(
-                    `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.member}) TOMBR(${newData.member}) MBROPT(*REPLACE)`,
+                    `CPYSRCF FROMFILE(${oldData.library}/${oldData.file}) TOFILE(${newData.library}/${newData.file}) FROMMBR(${oldData.name}) TOMBR(${newData.name}) MBROPT(*REPLACE)`,
                   )
                 } catch (e) {
                   // Ignore CPF2869 Empty member is not copied.
@@ -259,12 +258,12 @@ module.exports = class objectBrowserTwoProvider {
 
                 if (oldData.extension !== newData.extension) {
                   await connection.remoteCommand(
-                    `CHGPFM FILE(${newData.library}/${newData.file}) MBR(${newData.member}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`,
+                    `CHGPFM FILE(${newData.library}/${newData.file}) MBR(${newData.name}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`,
                   );
                 }
 
                 if (GlobalConfiguration.get(`autoOpenFile`)) {
-                  vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
+                  vscode.commands.executeCommand(`vscode.open`, getMemberUri(newData));
                 }
 
                 if (GlobalConfiguration.get(`autoRefresh`)) {
@@ -290,7 +289,7 @@ module.exports = class objectBrowserTwoProvider {
 
           if (result === `Yes`) {
             const connection = instance.getConnection();
-            const { library, file, member } = connection.parserMemberPath(node.path);
+            const { library, file, name: member } = connection.parserMemberPath(node.path);
 
             try {
               await connection.remoteCommand(
@@ -315,7 +314,7 @@ module.exports = class objectBrowserTwoProvider {
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
         if (node) {
           const connection = instance.getConnection();
-          const { library, file, member, basename } = connection.parserMemberPath(node.path);
+          const { library, file, name: member, basename } = connection.parserMemberPath(node.path);
 
           const newText = await vscode.window.showInputBox({
             value: node.description,
@@ -348,7 +347,6 @@ module.exports = class objectBrowserTwoProvider {
           const oldMember = connection.parserMemberPath(node.path);
           const lib = oldMember.library;
           const spf = oldMember.file;
-          let fullPath = node.path;
           let newBasename = oldMember.basename;
           let newMember;
           let newNameOK;
@@ -374,14 +372,14 @@ module.exports = class objectBrowserTwoProvider {
                 newNameOK = false;
               } else {
                 try {
-                  if (oldMember.member !== newMember.member) {
+                  if (oldMember.name !== newMember.name) {
                     await connection.remoteCommand(
-                      `RNMM FILE(${lib}/${spf}) MBR(${oldMember.member}) NEWMBR(${newMember.member})`,
+                      `RNMM FILE(${lib}/${spf}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
                     );
                   }
                   if (oldMember.extension !== newMember.extension) {
                     await connection.remoteCommand(
-                      `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.member}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
+                      `CHGPFM FILE(${lib}/${spf}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
                     );
                   }
                   if (GlobalConfiguration.get(`autoRefresh`)) {
@@ -407,7 +405,7 @@ module.exports = class objectBrowserTwoProvider {
 
         if (originPath) {
           const connection = instance.getConnection();
-          const { asp, library, file, member } = connection.parserMemberPath(node.path);
+          const { asp, library, file, name: member } = connection.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
           try {
@@ -424,7 +422,7 @@ module.exports = class objectBrowserTwoProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
 
-        const { asp, library, file, member, basename } = connection.parserMemberPath(node.path);
+        const { asp, library, file, name: member, basename } = connection.parserMemberPath(node.path);
 
         const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
