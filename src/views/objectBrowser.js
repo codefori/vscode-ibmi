@@ -126,41 +126,29 @@ module.exports = class objectBrowserTwoProvider {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node, fullName) => {
         if (node) {
-          let path = node.path.split(`/`);
-
           //Running from right click
-
           const connection = instance.getConnection();
           let fullPath;
-          let fullName = ``;
           let newData;
-          let newNameOK;
 
-          do {
-            fullName = await vscode.window.showInputBox({
-              prompt: `Name of new source member (member.ext)`,
-              value: fullName
-            });
-
-            if (fullName) {
-              fullName = fullName.toUpperCase();
+          fullName = await vscode.window.showInputBox({
+            prompt: `Name of new source member (member.ext)`,
+            value: fullName,
+            validateInput: (value) =>{
               try {
-                newNameOK = true;
-                fullPath = `${node.path}/${fullName}`;
+                fullPath = `${node.path}/${value}`.toUpperCase();
                 newData = connection.parserMemberPath(fullPath);
-              } catch (e) {
-                newNameOK = false;
-                vscode.window.showErrorMessage(`${e}`);
+              } catch (e) {                
+                return e.toString();
               }
             }
+          });
 
-            if (fullName && newNameOK) {
+          if(fullName){
+            const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Creating member ${fullPath}...` }, async (progress) =>{
               try {
-                fullPath = fullPath.toUpperCase();
-                vscode.window.showInformationMessage(`Creating and opening member ${fullPath}.`);
-
                 await connection.remoteCommand(
                   `ADDPFM FILE(${newData.library}/${newData.file}) MBR(${newData.name}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`
                 )
@@ -172,13 +160,18 @@ module.exports = class objectBrowserTwoProvider {
                 if (GlobalConfiguration.get(`autoRefresh`)) {
                   this.refresh();
                 }
-              } catch (e) {
-                newNameOK = false;
-                vscode.window.showErrorMessage(`Error creating member ${fullPath}! ${e}`);
+              }
+              catch (e) {
+                return e;
+              }
+            });
+
+            if(error){
+              if(await vscode.window.showErrorMessage(`Error creating member ${fullPath}: ${error}`, `Retry`)){
+                vscode.commands.executeCommand(`code-for-ibmi.createMember`, node, fullName);
               }
             }
-          } while (fullName && !newNameOK)
-
+          }          
         } else {
           //Running from command
           console.log(this);
@@ -1155,7 +1148,7 @@ class Member extends vscode.TreeItem {
 
     this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
     this.description = member.text;
-    this.resourceUri = getMemberUri(member, filter.protected ? {readonly: true} : undefined);
+    this.resourceUri = getMemberUri(member, filter.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
     this.tooltip = `${this.resourceUri.path}${member.text ? `\n(${member.text})` : ``}`;
     this.command = {
