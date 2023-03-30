@@ -187,7 +187,7 @@ export default class IBMiContent {
       // It does not write to standard error at all.
 
       // if comments present in sql statement, sql string needs to be checked
-      if (statement.search(`-- `) > -1) {
+      if (statement.search(`--`) > -1) {
         statement = this.fixCommentsInSQLString(statement);
       }
 
@@ -502,7 +502,7 @@ export default class IBMiContent {
       .forEach(item => {
         let goodLine = item + newLine;
 
-        const pos = item.search(`-- `);
+        const pos = item.search(`--`);
         if (pos > 0) {
           goodLine = item.slice(0, pos) + 
                      newLine +
