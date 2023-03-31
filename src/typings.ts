@@ -1,12 +1,11 @@
 import { ExtensionContext, Uri } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
+import { CustomUI, Field } from "./api/CustomUI";
 
 export interface CodeForIBMi {
   instance: Instance,
-  baseContext: ExtensionContext,
-  CustomUI: object, //CustomUI: typeof CustomUI
-  Field: object //Field: typeof Field;
+  customUI: () => CustomUI,
   deploy: (parameters: DeploymentParameters) => Promise<boolean>
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
