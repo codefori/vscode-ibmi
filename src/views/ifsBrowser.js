@@ -615,8 +615,6 @@ module.exports = class IFSBrowser {
 
       if (element) { //Chosen directory
         //Fetch members
-        console.log(element.path);
-
         try {
           const objects = await content.getFileList(element.path, element.sort);
           items.push(...objects.filter(o => o.type === `directory`)
