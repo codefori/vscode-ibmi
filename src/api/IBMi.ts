@@ -851,7 +851,8 @@ export default class IBMi {
       throw new Error(`Invalid Source File name: ${file}`);
     }
 
-    if (!basename.includes(`.`) || !basename.substring(basename.lastIndexOf('.') + 1)) {
+    //Having a blank extension is allowed but the . in the path is required
+    if (!basename.includes(`.`)) {
       throw new Error(`Source Type extension is required.`);
     }
     const name = basename.substring(0, basename.lastIndexOf(`.`));
