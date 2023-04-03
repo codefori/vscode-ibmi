@@ -88,7 +88,9 @@ export default class IBMi {
       'GENCMDXML.PGM': undefined,
       'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
-      'startDebugService.sh': undefined
+      'startDebugService.sh': undefined,
+      attr: undefined,
+      iconv: undefined
     };
 
     this.variantChars = {
@@ -448,7 +450,8 @@ export default class IBMi {
         }
 
         // Check for installed components?
-        if (quickConnect === true && cachedServerSettings?.remoteFeatures) {
+        // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
+        if (quickConnect === true && cachedServerSettings?.remoteFeatures && Object.keys(cachedServerSettings.remoteFeatures).sort().toString() === Object.keys(this.remoteFeatures).sort().toString()) {
           this.remoteFeatures = cachedServerSettings.remoteFeatures;
         } else {
           progress.report({
