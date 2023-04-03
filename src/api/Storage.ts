@@ -92,7 +92,7 @@ export class GlobalStorage extends Storage {
   }
 
   async deleteServerSettingsCache(name: string) {
-    await this.set(SERVER_SETTINGS_CACHE_KEY(name)), undefined);
+    await this.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
   }}
 
 export class ConnectionStorage extends Storage {
