@@ -31,7 +31,7 @@ export class CommandProfile {
     .loadPage<any>(`Command Profile`);
 
     if (page && page.data) {
-      if (page.data.buttons === `save`) {
+      if (page.data.buttons !== `cancel`) {
         if (page.data.name) {
           if (currentName) {
             const oldIndex = config?.commandProfiles.findIndex(profile => profile.name === currentName);
