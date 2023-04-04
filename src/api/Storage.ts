@@ -18,7 +18,7 @@ abstract class Storage {
   }
 
   protected get<T>(key: string): T | undefined {
-    return this.globalState.get<T>(this.getStorageKey(key));
+    return this.globalState.get(this.getStorageKey(key)) as T | undefined;
   }
 
   protected async set(key: string, value: any) {
@@ -136,5 +136,10 @@ export class ConnectionStorage extends Storage {
 
   setDebugCommands(existingCommands: DebugCommands) {
     return this.set(DEBUG_KEY, existingCommands);
+  }
+
+  getWorkspaceDeployPath(workspaceFolder : vscode.WorkspaceFolder){
+    const deployDirs = this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
+    return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
   }
 }

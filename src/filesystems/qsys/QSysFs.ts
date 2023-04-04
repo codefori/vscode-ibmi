@@ -22,16 +22,19 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly || isProtectedFilter(fsOptions.filter)) {
+    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly) {
         return FilePermission.Readonly;
     }
 }
 
-function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
-    return parse(uri.query);
+export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
+    const parameters = parse(uri.query);
+    return {
+        readonly: parameters.readonly === `true`
+    };
 }
 
-function isProtectedFilter(filter?: string): boolean {
+export function isProtectedFilter(filter?: string): boolean {
     return filter && instance.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
 }
 
@@ -58,13 +61,13 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     private updateMemberSupport() {
-        this.extendedMemberSupport = false        
+        this.extendedMemberSupport = false
         const connection = instance.getConnection();
         const config = connection?.config;
-        
+
         if (connection && config?.enableSourceDates) {
             if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
-                this.extendedMemberSupport = true;                
+                this.extendedMemberSupport = true;
                 this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
                 if (connection.qccsid === 65535) {
                     vscode.window.showWarningMessage(`Source date support is enabled, but QCCSID is 65535. If you encounter problems with source date support, please disable it in the settings.`);
@@ -91,11 +94,11 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             const memberContent = this.extendedMemberSupport ?
                 await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
                 await contentApi.downloadMemberContent(asp, library, file, member);
-            if (memberContent) {
+            if (memberContent !== undefined) {
                 return new Uint8Array(Buffer.from(memberContent, `utf8`));
             }
             else {
@@ -111,10 +114,10 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             this.extendedMemberSupport ?
                 await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
-                contentApi.uploadMemberContent(asp, library, file, member, content);
+                await contentApi.uploadMemberContent(asp, library, file, member, content);
         }
         else {
             throw new Error("Not connected to IBM i");

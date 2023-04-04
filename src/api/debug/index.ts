@@ -44,7 +44,7 @@ export async function initialize(context: ExtensionContext) {
         case `member`:
           const memberPath = connection.parserMemberPath(uri.path);
           qualifiedPath.library = memberPath.library;
-          qualifiedPath.object = memberPath.member;
+          qualifiedPath.object = memberPath.name;
           break;
         case `streamfile`:
         case `file`:

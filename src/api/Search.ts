@@ -1,4 +1,5 @@
 
+import { isProtectedFilter } from '../filesystems/qsys/QSysFs';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
 import { Tools } from './Tools';
@@ -9,7 +10,7 @@ export namespace Search {
   export interface Result {
     path: string
     lines: Line[]
-    filter?: string
+    readonly?: boolean
     label?: string
   }
 
@@ -88,7 +89,8 @@ export namespace Search {
   }
 
   function parseGrepOutput(output: string, filter?: string, pathTransformer?: (path: string) => string): Result[] {
-    const results: Result[] = []
+    const results: Result[] = [];
+    const readonly = isProtectedFilter(filter);
     for (const line of output.split('\n')) {
       if (!line.startsWith(`Binary`)) {
         const parts = line.split(`:`); //path:line
@@ -98,7 +100,7 @@ export namespace Search {
           result = {
             path,
             lines: [],
-            filter
+            readonly,
           };
           results.push(result);
         }
