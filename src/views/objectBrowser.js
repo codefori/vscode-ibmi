@@ -1127,7 +1127,8 @@ class SPF extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon(`file-directory`);
     
     this.description = this._description;
-    this.sort = { order: `name`, ascending: true };
+    /** @type {import("../api/IBMiContent").SortOptions}*/
+    this.sort = { order: `?` };
   }
 
   sortBy(/** @type {import("../api/IBMiContent").SortOptions}*/ sort) {

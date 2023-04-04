@@ -17,7 +17,7 @@ const writeFileAsync = util.promisify(fs.writeFile);
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
 export type SortOptions = {
-  order: "name" | "date"
+  order: "name" | "date" | "?"
   ascending?: boolean
 }
 
@@ -378,6 +378,8 @@ export default class IBMiContent {
    * @returns an array of IBMiMember 
    */
   async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sort: SortOptions = { order: "name" }): Promise<IBMiMember[]> {
+    sort.order = sort.order === '?' ? 'name' : sort.order;
+    
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
@@ -479,6 +481,8 @@ export default class IBMiContent {
    * @return an array of IFSFile
    */
   async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
+    sort.order = sort.order === '?' ? 'name' : sort.order;
+    
     const fileListResult = (await this.ibmi.sendCommand({
       command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
     }));

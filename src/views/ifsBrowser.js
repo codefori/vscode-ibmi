@@ -681,7 +681,8 @@ class Object extends vscode.TreeItem {
       };
     }
 
-    this.sort = { order: `name`, ascending: true };
+    /** @type {import("../api/IBMiContent").SortOptions}*/
+    this.sort = { order: `?` };
   }
 
   sortBy(/** @type {import("../api/IBMiContent").SortOptions}*/ sort) {
