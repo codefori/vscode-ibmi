@@ -1589,11 +1589,6 @@
 					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
 				},
 				{
-					"command": "code-for-ibmi.manageCommandProfile",
-					"group": "navigation",
-					"when": "view == libraryListView && code-for-ibmi:hasProfiles != true"
-				},
-				{
 					"command": "code-for-ibmi.newConnectionProfile",
 					"group": "navigation@profile",
 					"when": "view == profilesView"
