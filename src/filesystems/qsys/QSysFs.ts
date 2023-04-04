@@ -28,7 +28,10 @@ export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
 }
 
 export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
-    return parse(uri.query);
+    const parameters = parse(uri.query);
+    return {
+        readonly: parameters.readonly === `true`
+    };
 }
 
 export function isProtectedFilter(filter?: string): boolean {
@@ -91,7 +94,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             const memberContent = this.extendedMemberSupport ?
                 await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
                 await contentApi.downloadMemberContent(asp, library, file, member);
@@ -111,7 +114,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             this.extendedMemberSupport ?
                 await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
                 await contentApi.uploadMemberContent(asp, library, file, member, content);

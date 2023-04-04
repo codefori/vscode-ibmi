@@ -31,10 +31,11 @@ module.exports = class SettingsUI {
       ], `Create or maintain custom variables. Custom variables can be used in any Action in this connection.`)
       .addButtons({ id: `newVariable`, label: `New Variable` });
 
-    const { panel, data } = await ui.loadPage(`Work with Variables`);
-    if (data) {
-      panel.dispose();
-
+    const page = await ui.loadPage(`Work with Variables`);
+    if (page && page.data) {
+      page.panel.dispose();
+      
+      const data = page.data;
       switch (data.buttons) {
       case `newVariable`:
         this.WorkVariable(-1);
@@ -74,10 +75,11 @@ module.exports = class SettingsUI {
       .addInput(`value`, `Variable value`, ``, { default: currentVariable.value })
       .addButtons({ id: `save`, label: `Save` }, { id: `delete`, label: `Delete` });
 
-    const { panel, data } = await ui.loadPage(`Work with Variable`);
-    if (data) {
-      panel.dispose();
-
+    const page = await ui.loadPage(`Work with Variable`);
+    if (page && page.data) {
+      page.panel.dispose();
+      
+      const data = page.data;
       switch (data.buttons) {
       case `delete`:
         if (id >= 0) {

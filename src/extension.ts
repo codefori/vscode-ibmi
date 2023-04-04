@@ -5,7 +5,7 @@ import { ExtensionContext, window, commands, workspace } from "vscode";
 // your extension is activated the very first time the command is executed
 
 import { instance, loadAllofExtension } from './instantiate';
-import { CustomUI, Field } from "./api/CustomUI";
+import { CustomUI } from "./api/CustomUI";
 
 import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
 import IBMi from "./api/IBMi";
@@ -94,7 +94,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
 
-  return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
+  return { instance, customUI: () => new CustomUI(), deploy: Deployment.deploy, evfeventParser: parseErrors };
 }
 
 // this method is called when your extension is deactivated

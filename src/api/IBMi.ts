@@ -5,24 +5,18 @@ import { ConnectionConfiguration } from "./Configuration";
 
 import { Tools } from './Tools';
 import path from 'path';
-import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
+import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember } from "../typings";
 import * as configVars from './configVars';
 import { instance } from "../instantiate";
-import IBMiContent from "./IBMiContent";
 
-export interface MemberParts {
-  asp?: string
-  library: string
-  file: string
-  member: string
-  extension: string
+export interface MemberParts extends IBMiMember {
   basename: string
 }
 
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`]
   },
   {
     path: `/usr/bin/`,
@@ -87,6 +81,7 @@ export default class IBMi {
       setccsid: undefined,
       md5sum: undefined,
       bash: undefined,
+      chsh: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined
@@ -108,7 +103,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
@@ -131,20 +126,25 @@ export default class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
-        this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        if (!reconnecting) {
+          this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        }
 
         let tempLibrarySet = false;
 
         const disconnected = async () => {
           const choice = await vscode.window.showWarningMessage(`Connection lost`, {
             modal: true,
-            detail: `Connection to ${this.currentConnectionName} has timed out. Would you like to reconnect?`
+            detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
           }, `Yes`);
 
+          let disconnect = true;
           if (choice === `Yes`) {
-            this.connect(connectionObject);
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
+            disconnect = !(await this.connect(connectionObject, true)).success;
+          }
+
+          if (disconnect) {
+            this.end();
           };
         };
 
@@ -573,48 +573,6 @@ export default class IBMi {
             // Oh well!
             console.log(e);
           }
-
-          // Check users default shell.
-          // give user option to set bash as default shell.
-          try {
-            // make sure sql is enabled and bash is installed on system
-            if (this.config.enableSQL &&
-              this.remoteFeatures[`bash`]) {
-              const bashShellPath = '/QOpenSys/pkgs/bin/bash';
-              const commandShellResult = await this.sendCommand({
-                command: `echo $SHELL`
-              });
-              if (!commandShellResult.stderr) {
-                let userDefaultShell = commandShellResult.stdout.trim();
-                if (userDefaultShell !== bashShellPath) {
-                  vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash?`, `Read More`,).then(async choice => {
-                    switch (choice) {
-                      case `Set shell to bash?`:
-                        statement = `CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`;
-                        output = await this.sendCommand({
-                          command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                          stdin: statement
-                        });
-
-                        if (output.stdout) {
-                          vscode.window.showInformationMessage(`Default shell is now bash!`);
-                        } else {
-                          vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
-                        }
-                        break;
-
-                      case `Read More`:
-                        vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
-                        break;
-                    }
-                  });
-                }
-              }
-            }
-          } catch (e) {
-            // Oh well...trying to set default shell is not worth stopping for.
-            console.log(e);
-          }
         } else {
           // Disable it if it's not found
 
@@ -624,6 +582,49 @@ export default class IBMi {
             });
             this.config.enableSQL = false;
           }
+        }
+
+        // Check users default shell.
+        // give user option to set bash as default shell.
+        try {
+          // make sure chsh and bash is installed
+          if (this.remoteFeatures[`chsh`] &&
+            this.remoteFeatures[`bash`]) {
+
+            const bashShellPath = '/QOpenSys/pkgs/bin/bash';
+            const commandShellResult = await this.sendCommand({
+              command: `echo $SHELL`
+            });
+
+            if (!commandShellResult.stderr) {
+              let userDefaultShell = commandShellResult.stdout.trim();
+              if (userDefaultShell !== bashShellPath) {
+
+                vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
+                  switch (choice) {
+                    case `Set shell to bash`:
+                      const commandSetBashResult = await this.sendCommand({
+                        command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+                      });
+
+                      if (!commandSetBashResult.stderr) {
+                        vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+                      } else {
+                        vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                      }
+                      break;
+
+                    case `Read More`:
+                      vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                      break;
+                  }
+                });
+              }
+            }
+          }
+        } catch (e) {
+          // Oh well...trying to set default shell is not worth stopping for.
+          console.log(e);
         }
 
         if (this.config.autoConvertIFSccsid) {
@@ -648,10 +649,12 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
-        instance.setConnection(this);
-        vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
-        await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-        instance.fire("connected");
+        if (!reconnecting) {
+          instance.setConnection(this);
+          vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+          await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+          instance.fire("connected");
+        }
 
         return {
           success: true
@@ -662,6 +665,13 @@ export default class IBMi {
 
       if (this.client.isConnected()) {
         this.client.dispose();
+      }
+
+      if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+        modal: true,
+        detail: `Reconnection to ${this.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
+      }, `Yes`)) {
+        return this.connect(connectionObject, true);
       }
 
       return {
@@ -779,7 +789,7 @@ export default class IBMi {
   }
 
   async end() {
-    this.client.connection.removeAllListeners();
+    this.client.connection?.removeAllListeners();
     this.client.dispose();
 
     if (this.outputChannel) {
@@ -841,14 +851,15 @@ export default class IBMi {
       throw new Error(`Invalid Source File name: ${file}`);
     }
 
+    //Having a blank extension is allowed but the . in the path is required
     if (!basename.includes(`.`)) {
       throw new Error(`Source Type extension is required.`);
     }
-    const member = basename.substring(0, basename.lastIndexOf(`.`));
+    const name = basename.substring(0, basename.lastIndexOf(`.`));
     const extension = basename.substring(basename.lastIndexOf(`.`) + 1).trim();
 
-    if (!validQsysName.test(member)) {
-      throw new Error(`Invalid Source Member name: ${member}`);
+    if (!validQsysName.test(name)) {
+      throw new Error(`Invalid Source Member name: ${name}`);
     }
     // The extension/source type has nearly the same naming rules as
     // the objects, except that a period is not allowed.  We can reuse
@@ -864,7 +875,7 @@ export default class IBMi {
       file,
       extension,
       basename,
-      member,
+      name,
       asp
     };
   }
