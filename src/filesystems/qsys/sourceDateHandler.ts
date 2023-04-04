@@ -116,7 +116,7 @@ export class SourceDateHandler {
     if (this.enabled && document.uri.scheme === `member` && document.isClosed) {
       const connection = instance.getConnection();
       if (connection) {
-        const { library, file, member } = connection.parserMemberPath(document.uri.path);
+        const { library, file, name: member } = connection.parserMemberPath(document.uri.path);
 
         const alias = getAliasName(library, file, member);
         this.baseDates.delete(alias);
@@ -164,7 +164,7 @@ export class SourceDateHandler {
     const connection = instance.getConnection();
     if (connection) {
       const path = event.document.uri.path;
-      const { library, file, member } = connection.parserMemberPath(path);
+      const { library, file, name: member } = connection.parserMemberPath(path);
 
       const alias = getAliasName(library, file, member);
       const sourceDates = this.baseDates.get(alias);
@@ -262,7 +262,7 @@ export class SourceDateHandler {
       const connection = instance.getConnection();
       if (connection) {
         const path = editor.document.uri.path;
-        const { library, file, member } = connection.parserMemberPath(path);
+        const { library, file, name: member } = connection.parserMemberPath(path);
 
         const alias = getAliasName(library, file, member);;
 
@@ -321,7 +321,7 @@ export class SourceDateHandler {
     if (connection) {
       const lengthDiags: vscode.Diagnostic[] = [];
       const path = connection.parserMemberPath(document.uri.path);
-      const lib = path.library, file = path.file, fullName = path.member;
+      const lib = path.library, file = path.file, fullName = path.name;
       const alias = getAliasName(lib, file, fullName);
       const recordLength = this.recordLengths.get(alias);
 
@@ -348,7 +348,7 @@ export class SourceDateHandler {
 
       if (connection && config && config.sourceDateGutter) {
         const path = document.uri.path;
-        const { library, file, member } = connection.parserMemberPath(path);
+        const { library, file, name: member } = connection.parserMemberPath(path);
         const alias = getAliasName(library, file, member);;
 
         const sourceDates = this.baseDates.get(alias);

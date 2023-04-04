@@ -5,17 +5,11 @@ import { ConnectionConfiguration } from "./Configuration";
 
 import { Tools } from './Tools';
 import path from 'path';
-import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
+import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember } from "../typings";
 import * as configVars from './configVars';
 import { instance } from "../instantiate";
-import IBMiContent from "./IBMiContent";
 
-export interface MemberParts {
-  asp?: string
-  library: string
-  file: string
-  member: string
-  extension: string
+export interface MemberParts extends IBMiMember {
   basename: string
 }
 
@@ -857,14 +851,15 @@ export default class IBMi {
       throw new Error(`Invalid Source File name: ${file}`);
     }
 
+    //Having a blank extension is allowed but the . in the path is required
     if (!basename.includes(`.`)) {
       throw new Error(`Source Type extension is required.`);
     }
-    const member = basename.substring(0, basename.lastIndexOf(`.`));
+    const name = basename.substring(0, basename.lastIndexOf(`.`));
     const extension = basename.substring(basename.lastIndexOf(`.`) + 1).trim();
 
-    if (!validQsysName.test(member)) {
-      throw new Error(`Invalid Source Member name: ${member}`);
+    if (!validQsysName.test(name)) {
+      throw new Error(`Invalid Source Member name: ${name}`);
     }
     // The extension/source type has nearly the same naming rules as
     // the objects, except that a period is not allowed.  We can reuse
@@ -880,7 +875,7 @@ export default class IBMi {
       file,
       extension,
       basename,
-      member,
+      name,
       asp
     };
   }

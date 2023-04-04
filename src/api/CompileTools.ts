@@ -282,7 +282,7 @@ export namespace CompileTools {
             case `member`:
               const memberDetail = connection.parserMemberPath(uri.path);
               evfeventInfo.library = memberDetail.library;
-              evfeventInfo.object = memberDetail.member;
+              evfeventInfo.object = memberDetail.name;
               evfeventInfo.extension = memberDetail.extension;
               evfeventInfo.asp = memberDetail.asp;
 
@@ -292,8 +292,8 @@ export namespace CompileTools {
               variables.set(`&OPENSPFL`, memberDetail.file.toLowerCase());
               variables.set(`&OPENSPF`, memberDetail.file);
 
-              variables.set(`&OPENMBRL`, memberDetail.member.toLowerCase());
-              variables.set(`&OPENMBR`, memberDetail.member);
+              variables.set(`&OPENMBRL`, memberDetail.name.toLowerCase());
+              variables.set(`&OPENMBR`, memberDetail.name);
 
               variables.set(`&EXTL`, memberDetail.extension.toLowerCase());
               variables.set(`&EXT`, memberDetail.extension);
