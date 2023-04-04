@@ -34,6 +34,11 @@ export interface ComplexTab {
 export class Section {
   readonly fields: Field[] = [];
 
+  addHeading(label: string, level: 1 | 2 | 3 | 4 | 5 | 6 = 1) {
+    this.addField(new Field(`heading`, level.toString(), label));
+    return this;
+  }
+
   addHorizontalRule() {
     this.addField(new Field('hr', '', ''));
     return this;
@@ -46,7 +51,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, multiline?: boolean }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     this.addField(input);
     return this;
@@ -122,14 +127,28 @@ export class Section {
   }
 }
 
+const openedWebviews: Map<string, vscode.WebviewPanel> = new Map;
+
 export class CustomUI extends Section {
   /**
-   * If no callback is provided, a Promise will be returned
+   * If no callback is provided, a Promise will be returned.
+   * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
+   * 
    * @param title 
    * @param callback
    * @returns a Promise<Page<T>> if no callback is provided
    */
   loadPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
+    const webview = openedWebviews.get(title);
+    if(webview){
+      webview.reveal();      
+    }
+    else{
+      return this.createPage(title, callback);
+    }
+  }
+
+  private createPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -140,7 +159,7 @@ export class CustomUI extends Section {
       }
     );
 
-    panel.webview.html = this.getHTML(panel, title);
+    panel.webview.html = this.getHTML(panel, title);    
 
     let didSubmit = false;
 
@@ -153,11 +172,15 @@ export class CustomUI extends Section {
       );
 
       panel.onDidDispose(() => {
-        if (!didSubmit) callback({ panel });
-      });
+        openedWebviews.delete(title);
+        if (!didSubmit) {
+          callback({ panel });
+        }
 
+        openedWebviews.set(title, panel);
+      });
     } else {
-      return new Promise((resolve) => {
+      const page = new Promise<Page<T>>((resolve) => {
         panel.webview.onDidReceiveMessage(
           message => {
             didSubmit = true;
@@ -166,9 +189,15 @@ export class CustomUI extends Section {
         );
 
         panel.onDidDispose(() => {
-          if (!didSubmit) resolve({ panel });
+          openedWebviews.delete(title);
+          if (!didSubmit) {
+            resolve({ panel });
+          }
         });
       });
+      
+      openedWebviews.set(title, panel);
+      return page;
     }
   }
 
@@ -209,6 +238,10 @@ export class CustomUI extends Section {
 
             .long-input {
               width: 100%;
+            }
+
+            :root{
+              --dropdown-z-index: 666;
             }
         </style>
     </head>
@@ -281,11 +314,11 @@ export class CustomUI extends Section {
 
             for (const field of submitfields) {
                 const currentElement = document.getElementById(field);
-                if (currentElement.hasAttribute('multiline')) {
+                if (currentElement.hasAttribute('rows')) {
                   currentElement
                     .addEventListener('keyup', function(event) {
                         event.preventDefault();
-                        if (event.keyCode === 13 && event.shiftKey) {
+                        if (event.keyCode === 13 && event.altKey) {
                           doDone();
                         }
                     });
@@ -329,7 +362,7 @@ export class CustomUI extends Section {
                     }
                   });
                   `
-                })}
+    })}
             });
 
         }())
@@ -339,7 +372,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr";
+export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -373,7 +406,7 @@ export class Field {
   public complexTabItems?: ComplexTab[];
   public default?: string;
   public readonly?: boolean;
-  public multiline?: boolean;
+  public rows?: number;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
@@ -391,6 +424,9 @@ export class Field {
           <vscode-form-group variant="settings-group">
             ${this.items?.map(item => /* html */`<vscode-button id="${item.id}" style="margin:3px">${item.label}</vscode-button>`).join(``)}
           </vscode-form-group>`;
+
+      case 'heading':
+        return /* html */ `<h${this.id}>${this.label}</h${this.id}>`;
 
       case `hr`:
         return /* html */ `<hr />`;
@@ -427,11 +463,13 @@ export class Field {
           </vscode-tabs>`;
 
       case `input`:
+        const multiline = (this.rows || 1) > 1;
+        const tag = multiline ? "vscode-textarea" : "vscode-textfield";
         return /* html */`
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
-              ${this.renderDescription()}
-              <vscode-textfield class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
+              ${this.renderDescription()}              
+              <${tag} class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}></${tag}>
           </vscode-form-group>`;
 
       case `paragraph`:
@@ -469,7 +507,7 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-single-select id="${this.id}">
+              <vscode-single-select id="${this.id}" name="${this.id}">
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
               </vscode-single-select>
           </vscode-form-group>`;

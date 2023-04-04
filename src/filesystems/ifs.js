@@ -7,6 +7,10 @@ module.exports = class qsysFs {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeFile = this.emitter.event;
   }
+
+  watch(uri, options) {
+    return { dispose: () => { } };
+  }
   
   /**
    * 
@@ -49,5 +53,17 @@ module.exports = class qsysFs {
    */
   rename(oldUri, newUri, options) {
     console.log({oldUri, newUri, options});
+  }
+
+  readDirectory(uri) {
+    throw new Error(`Method not implemented.`);
+  }
+
+  createDirectory(uri) {
+    throw new Error(`Method not implemented.`);
+  }
+
+  delete(uri, options,) {
+    throw new Error(`Method not implemented.`);
   }
 }
