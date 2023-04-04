@@ -5,7 +5,8 @@ import { ConnectionConfiguration } from "./Configuration";
 
 import { Tools } from './Tools';
 import path from 'path';
-import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember } from "../typings";
+import { CompileTools } from "./CompileTools";
+import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember, RemoteCommand } from "../typings";
 import * as configVars from './configVars';
 import { instance } from "../instantiate";
 
@@ -685,6 +686,7 @@ export default class IBMi {
   }
 
   /**
+   * @deprecated Use runCommand instead
    * @param {string} command 
    * @param {string} [directory] If not passed, will use current home directory
    */
@@ -694,6 +696,18 @@ export default class IBMi {
     command = command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
 
     return this.paseCommand(`system "` + command + `"`, directory);
+  }
+
+  /**
+   * - Send PASE/QSH/ILE commands simply
+   * - Commands sent here end in the 'IBM i Output' channel
+   * - When sending `ile` commands:
+   *   By default, it will use the library list of the connection,
+   *   but `&LIBL` and `&CURLIB` can be passed in the property
+   *   `env` to customise them.
+   */
+  runCommand(data: RemoteCommand) {
+    return CompileTools.runCommand(instance, data);
   }
 
   async sendQsh(options: CommandData) {
@@ -723,6 +737,10 @@ export default class IBMi {
     }
   }
 
+  /**
+   * Send commands to pase through the SSH connection.
+   * Commands sent here end up in the 'Code for IBM i' output channel.
+   */
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
