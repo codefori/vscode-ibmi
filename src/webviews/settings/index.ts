@@ -1,8 +1,8 @@
-const vscode = require(`vscode`);
-
-const { CustomUI, Section } = require(`../../api/CustomUI`);
-
-const { GlobalConfiguration, ConnectionConfiguration } = require(`../../api/Configuration`);
+import vscode from "vscode";
+import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
+import { GlobalConfiguration, ConnectionConfiguration } from "../../api/Configuration";
+import { ConnectionData } from '../../typings';
+import { instance } from "../../instantiate";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -17,26 +17,19 @@ const TERMINAL_TYPES = [
   { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
 ];
 
-module.exports = class SettingsUI {
-
-  /**
-   * Called to log in to an IBM i
-   * @param {vscode.ExtensionContext} context
-   */
-  static init(context) {
+export class SettingsUI {
+  static init(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (/** @type {Server} */ server) => {
-        const { instance } = require(`../../instantiate`);
-        const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
+        const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
 
-        let name;
-        let existingConfigIndex;
-        /** @type {ConnectionConfiguration.Parameters} */
-        let config;
+        let name: string;
+        let existingConfigIndex: number = -1;
+        let config: ConnectionConfiguration.Parameters;
 
-        if (server) {
+        if (connectionSettings && server) {
           name = server.name;
           existingConfigIndex = connectionSettings.findIndex(connection => connection.name === name);
 
@@ -48,8 +41,8 @@ module.exports = class SettingsUI {
           }
 
         } else {
-          if (connection) {
-            config = instance.getConfig();
+          config = instance.getConfig()!;
+          if (connection && config) {
             name = config.name;
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
@@ -74,7 +67,7 @@ module.exports = class SettingsUI {
           .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir })
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData)
           .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts);
-        
+
         const sourceTab = new Section();
         sourceTab
           .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP })
@@ -101,7 +94,7 @@ module.exports = class SettingsUI {
         let terminalsTab;
 
         if (connection && connection.remoteFeatures.tn5250) {
-          terminalsTab = new Section();  
+          terminalsTab = new Section();
           terminalsTab
             .addSelect(`encodingFor5250`, `5250 encoding`, [{
               selected: config.encodingFor5250 === `default`,
@@ -109,7 +102,7 @@ module.exports = class SettingsUI {
               description: `Default`,
               text: `Default`,
             }, ...ENCODINGS.map(encoding => ({
-              selected: config.encodingFor5250 === encoding,
+              selected: config!.encodingFor5250 === encoding,
               value: encoding,
               description: encoding,
               text: encoding,
@@ -122,7 +115,7 @@ module.exports = class SettingsUI {
                 text: `Default`,
               },
               ...TERMINAL_TYPES.map(terminal => ({
-                selected: config.terminalFor5250 === terminal.key,
+                selected: config!.terminalFor5250 === terminal.key,
                 value: terminal.key,
                 description: terminal.key,
                 text: terminal.text,
@@ -137,27 +130,27 @@ module.exports = class SettingsUI {
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab = new Section();
           debuggerTab
-            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, {default : config.debugPort})
+            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort })
             .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing)
             .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
         }
 
-        let tabs = [
-          {label: `Features`, fields: featuresTab.fields},
-          {label: `Source Code`, fields: sourceTab.fields},
-          terminalsTab ? {label: `Terminals`, fields: terminalsTab.fields} : undefined,
-          debuggerTab ? {label: `Debugger`, fields: debuggerTab.fields} : undefined,
-          {label: `Temporary Data`, fields: tempDataTab.fields},
-        ].filter(tab => tab !== undefined);
+        let tabs: ComplexTab[] = [
+          { label: `Features`, fields: featuresTab.fields },
+          { label: `Source Code`, fields: sourceTab.fields },
+          terminalsTab ? { label: `Terminals`, fields: terminalsTab.fields } : undefined,
+          debuggerTab ? { label: `Debugger`, fields: debuggerTab.fields } : undefined,
+          { label: `Temporary Data`, fields: tempDataTab.fields },
+        ].filter(tab => tab !== undefined) as ComplexTab[];
 
         const ui = new CustomUI();
 
         ui.addComplexTabs(tabs)
           .addHorizontalRule()
-          .addButtons({ id: `save`, label:`Save settings` });
+          .addButtons({ id: `save`, label: `Save settings` });
 
-        const page = await ui.loadPage(`Settings: ${name}`);
+        const page = await ui.loadPage<any>(`Settings: ${name}`);
         if (page && page.data) {
           page.panel.dispose();
 
@@ -166,22 +159,22 @@ module.exports = class SettingsUI {
 
             //In case we need to play with the data
             switch (key) {
-            case `sourceASP`:
-              if (data[key].trim() === ``) data[key] = null;
-              break;
-            case `hideCompileErrors`:
-              data[key] = data[key].split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
-              break;
+              case `sourceASP`:
+                if (data[key].trim() === ``) data[key] = null;
+                break;
+              case `hideCompileErrors`:
+                data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
+                break;
             }
 
             //Refresh connection browser if not connected
-            if(!instance.getConnection()){
+            if (!instance.getConnection()) {
               vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
             }
           }
 
           if (server) {
-            if (existingConfigIndex >= 0) {
+            if (connectionSettings && existingConfigIndex >= 0) {
               config = {
                 ...config,
                 ...data,
@@ -214,44 +207,46 @@ module.exports = class SettingsUI {
 
       vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (/** @type {Server} */ server) => {
         if (server) {
-          const connections = GlobalConfiguration.get(`connections`);
+          const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`);
           const name = server.name;
 
-          const connectionIdx = connections.findIndex(item => item.name === name);
-          let connection = connections[connectionIdx];
+          if (connections) {
+            const connectionIdx = connections.findIndex(item => item.name === name);
+            let connection = connections[connectionIdx];
 
-          const page = await new CustomUI()
-            .addInput(`host`, `Host or IP Address`, null, { default: connection.host })
-            .addInput(`port`, `Port (SSH)`, null, { default: String(connection.port) })
-            .addInput(`username`, `Username`, null, { default: connection.username })
-            .addParagraph(`Only provide either the password or a private key - not both.`)
-            .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
-            .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
-            .addButtons({id: `submitButton`, label:`Save`})
-            .loadPage(`Login Settings: ${name}`);
-            
-          if (page && page.data) {
-            page.panel.dispose();
+            const page = await new CustomUI()
+              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host })
+              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port) })
+              .addInput(`username`, `Username`, undefined, { default: connection.username })
+              .addParagraph(`Only provide either the password or a private key - not both.`)
+              .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
+              .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
+              .addButtons({ id: `submitButton`, label: `Save` })
+              .loadPage<any>(`Login Settings: ${name}`);
 
-            const data = page.data;
-            data.port = Number(data.port);
-            if (data.privateKey === ``) data.privateKey = connection.privateKey;
+            if (page && page.data) {
+              page.panel.dispose();
 
-            if (data.password && !data.privateKey) {
-              context.secrets.delete(`${name}_password`);
-              context.secrets.store(`${name}_password`, `${data.password}`);
-              data.privateKey = ``;
-            };
+              const data = page.data;
+              data.port = Number(data.port);
+              if (data.privateKey === ``) data.privateKey = connection.privateKey;
 
-            delete data.password;
+              if (data.password && !data.privateKey) {
+                context.secrets.delete(`${name}_password`);
+                context.secrets.store(`${name}_password`, `${data.password}`);
+                data.privateKey = ``;
+              };
 
-            connection = {
-              ...connection,
-              ...data
-            };
+              delete data.password;
 
-            connections[connectionIdx] = connection;
-            await GlobalConfiguration.set(`connections`, connections);            
+              connection = {
+                ...connection,
+                ...data
+              };
+
+              connections[connectionIdx] = connection;
+              await GlobalConfiguration.set(`connections`, connections);
+            }
           }
         }
       })

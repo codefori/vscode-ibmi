@@ -2,7 +2,7 @@ import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
-import settingsUI from '../webviews/settings';
+import { SettingsUI } from '../webviews/settings';
 import { Login } from '../webviews/login';
 import { GlobalStorage } from '../api/Storage';
 import { instance } from '../instantiate';
@@ -17,7 +17,7 @@ export class ObjectBrowserProvider {
     this._emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._emitter.event;
 
-    settingsUI.init(context);
+    SettingsUI.init(context);
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.connect`, () => {
