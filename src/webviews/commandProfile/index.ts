@@ -32,7 +32,7 @@ export class CommandProfile {
 
     if (page && page.data) {
       if (page.data.buttons !== `cancel`) {
-        if (page.data.name) {
+        if (page.data.name && page.data.command) {
           if (currentName) {
             const oldIndex = config?.commandProfiles.findIndex(profile => profile.name === currentName);
 
@@ -50,7 +50,7 @@ export class CommandProfile {
 
         } else {
           // Bad name. Do nothing?
-          window.showWarningMessage(`A valid name is required for Command Profiles.`);
+          window.showWarningMessage(`A valid name and command is required for Command Profiles.`);
         }
       }
 
