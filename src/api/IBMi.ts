@@ -21,7 +21,7 @@ let remoteApps = [
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`]
+    names: [`setccsid`, `iconv`, `attr`, `find`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -85,7 +85,8 @@ export default class IBMi {
       chsh: undefined,
       'GENCMDXML.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
-      'startDebugService.sh': undefined
+      'startDebugService.sh': undefined,
+      find: undefined
     };
 
     this.variantChars = {

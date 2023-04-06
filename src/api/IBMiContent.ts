@@ -8,7 +8,7 @@ import { Tools } from './Tools';
 import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
 import { ConnectionConfiguration } from './Configuration';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -529,6 +529,36 @@ export default class IBMiContent {
       throw new Error(fileListResult.stderr);
     }
 
+  }
+
+  async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember|undefined> {
+    const find = this.ibmi.remoteFeatures.find;
+    if (find) {
+      const command = [
+        find,
+        // TODO: think about how to get the ASP for each library?
+        ...files.map(file => `/QSYS.LIB/${file.library.toUpperCase()}.LIB/${file.name.toUpperCase()}.FILE`),
+        `-name '${member.toUpperCase()}.*'`
+      ].join(` `);
+
+      const result = await this.ibmi.sendCommand({
+        command,
+      });
+
+      if (result.code === 0) {
+        const [firstMost] = result.stdout.split(`\n`);
+
+        try {
+          // This can error if the path format is wrong for some reason.
+          // Not that this would ever happen, but better to be safe than sorry
+          return this.ibmi.parserMemberPath(firstMost);
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    }
+
+    return undefined;
   }
 
   /**
