@@ -10,6 +10,8 @@ import { Terminal } from './api/Terminal';
 import { CustomUI, Field, Page } from './api/CustomUI';
 
 import { SearchView } from "./views/searchView";
+import { VariablesUI } from "./webviews/variables";
+
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
@@ -352,7 +354,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   );
 
   (require(`./webviews/actions`)).init(context);
-  (require(`./webviews/variables`)).init(context);
+  VariablesUI.init(context);
 
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);
