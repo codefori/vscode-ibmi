@@ -93,6 +93,7 @@ module.exports = class libraryListProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
         const connection = getInstance().getConnection();
+        const content = getInstance().getContent();
         /** @type {ConnectionConfiguration.Parameters} */
         const config = getInstance().getConfig();
         const libraryList = config.libraryList;
@@ -114,7 +115,7 @@ module.exports = class libraryListProvider {
               .split(` `)
               .map(lib => lib.toUpperCase())
               .filter((lib, idx, libl) => lib && libl.indexOf(lib) === idx);
-            const badLibs = await this.validateLibraryList(newLibraryList);
+            const badLibs = await content.validateLibraryList(newLibraryList);
 
             if (badLibs.length > 0) {
               newLibraryList = newLibraryList.filter(lib => !badLibs.includes(lib));
@@ -129,6 +130,7 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = ``) => {
+        const content = getInstance().getContent();
         /** @type {ConnectionConfiguration.Parameters} */
         const config = getInstance().getConfig();
         let addingLib;
@@ -146,7 +148,7 @@ module.exports = class libraryListProvider {
         if (addingLib) {
           if (addingLib.length <= 10) {
             libraryList.push(addingLib.toUpperCase());
-            const badLibs = await this.validateLibraryList(libraryList);
+            const badLibs = await content.validateLibraryList(libraryList);
 
             if (badLibs.length > 0) {
               libraryList = libraryList.filter(lib => !badLibs.includes(lib));
@@ -226,10 +228,11 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.cleanupLibraryList`, async () => {
+        const content = getInstance().getContent();
         /** @type {ConnectionConfiguration.Parameters} */
         const config = getInstance().getConfig();
         let libraryList = [...config.libraryList];
-        const badLibs = await this.validateLibraryList(libraryList);
+        const badLibs = await content.validateLibraryList(libraryList);
 
         if (badLibs.length > 0) {
           libraryList = libraryList.filter(lib => !badLibs.includes(lib));
@@ -243,52 +246,6 @@ module.exports = class libraryListProvider {
       }),
     )
     getInstance().onEvent(`connected`, () => this.refresh());
-  }
-
-  /**
-   * Validates a list of libraries
-   * @param {string[]} newLibl
-   * @returns {Promise<string[]>} Bad libraries
-   */
-  async validateLibraryList(newLibl) {
-    const connection = getInstance().getConnection();
-
-    let badLibs = [];
-
-    newLibl = newLibl.filter(lib => {
-      if (lib.match(/^\d/)) {
-        badLibs.push(lib);
-        return false;
-      }
-
-      if (lib.length > 10) {
-        badLibs.push(lib);
-        return false;
-      }
-
-      return true;
-    });
-
-    /** @type {object} */
-    const result = await connection.sendQsh({
-      command: [
-        `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
-      ].join(`; `)
-    });
-
-    if (result.stderr) {
-      const lines = result.stderr.split(`\n`);
-
-      lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
-
-        // If there is an error about the library, remove it
-        if (badLib) badLibs.push(badLib);
-      });
-    }
-
-    return badLibs;
   }
 
   refresh() {
