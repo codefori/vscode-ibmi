@@ -19,8 +19,9 @@ import { CompileTools } from "./api/CompileTools";
 import { HelpView } from "./views/helpView";
 import { ProfilesView } from "./views/ProfilesView";
 import * as Debug from './api/debug';
-import IFSBrowser from "./views/ifsBrowser";
+
 import ObjectBrowser from "./views/objectBrowser";
+import { IFSFS } from "./filesystems/ifsFs";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -80,7 +81,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         }
       }
     }),
-    workspace.registerFileSystemProvider(`streamfile`, new (require(`./filesystems/ifs`)), {
+    workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
     })
   );
