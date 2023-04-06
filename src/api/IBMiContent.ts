@@ -561,6 +561,29 @@ export default class IBMiContent {
     return undefined;
   }
 
+  async streamfileResolve(name: string, directories: QsysPath[]): Promise<string|undefined> {
+    const find = this.ibmi.remoteFeatures.find;
+    if (find) {
+      const command = [
+        find,
+        ...directories,
+        `-name '${name}'`
+      ].join(` `);
+
+      const result = await this.ibmi.sendCommand({
+        command,
+      });
+
+      if (result.code === 0 && result.stdout) {
+        const [firstMost] = result.stdout.split(`\n`);
+
+        return firstMost;
+      }
+    }
+
+    return undefined;
+  }
+
   /**
    * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
    * Required to work with QZDFMDB2.
