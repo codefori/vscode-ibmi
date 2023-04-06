@@ -304,6 +304,49 @@ export default class IBMiContent {
   }
 
   /**
+   * Validates a list of libraries
+   * @param newLibl Array of libraries to validate
+   * @returns Bad libraries
+   */
+  async validateLibraryList(newLibl: string[]): Promise<string[]> {
+    let badLibs: string[] = [];
+
+    newLibl = newLibl.filter(lib => {
+      if (lib.match(/^\d/)) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      if (lib.length > 10) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      return true;
+    });
+
+    const result = await this.ibmi.sendQsh({
+      command: [
+        `liblist -d ` + this.ibmi.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+      ].join(`; `)
+    });
+
+    if (result.stderr) {
+      const lines = result.stderr.split(`\n`);
+
+      lines.forEach(line => {
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
+
+        // If there is an error about the library, remove it
+        if (badLib) badLibs.push(badLib);
+      });
+    }
+
+    return badLibs;
+  }
+
+  /**
    * @param filters 
    * @param sortOrder
    * @returns an array of IBMiFile 
