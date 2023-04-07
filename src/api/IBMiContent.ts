@@ -561,13 +561,13 @@ export default class IBMiContent {
     return undefined;
   }
 
-  async streamfileResolve(name: string, directories: QsysPath[]): Promise<string|undefined> {
+  async streamfileResolve(names: string[], directories: QsysPath[]): Promise<string|undefined> {
     const find = this.ibmi.remoteFeatures.find;
     if (find) {
       const command = [
         find,
         ...directories,
-        `-name '${name}'`
+        names.map(name => `-name '${name}'`).join(` -o `)
       ].join(` `);
 
       const result = await this.ibmi.sendCommand({
