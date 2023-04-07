@@ -382,6 +382,7 @@ export default class IBMi {
 
         // Check for bad data areas?
         if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
+          // Do nothing, bad data areas are already checked.
         } else {
           progress.report({
             message: `Checking for bad data areas.`
