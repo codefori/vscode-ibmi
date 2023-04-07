@@ -4,6 +4,11 @@
 
 const path = require(`path`);
 
+const npm_runner = process.env[`npm_lifecycle_script`];
+const isProduction = (npm_runner && npm_runner.includes(`production`));
+
+console.log(`Is production build: ${isProduction}`);
+
 /**@type {import('webpack').Configuration}*/
 const config = {
   target: `node`, // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
