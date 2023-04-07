@@ -39,7 +39,7 @@ const config = {
   },
   plugins: [
     new webpack.DefinePlugin({
-      'process.env.PRODUCTION': JSON.stringify(isProduction),
+      'process.env.DEV': JSON.stringify(!isProduction),
     })
   ],
   module: {
