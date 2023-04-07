@@ -1,7 +1,7 @@
 import vscode from "vscode";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { GlobalConfiguration, ConnectionConfiguration } from "../../api/Configuration";
-import { ConnectionData } from '../../typings';
+import { ConnectionData, Server } from '../../typings';
 import { instance } from "../../instantiate";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
@@ -21,7 +21,7 @@ export class SettingsUI {
   static init(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (/** @type {Server} */ server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
 
@@ -90,8 +90,7 @@ export class SettingsUI {
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
           .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
 
-        /** @type {Section} */
-        let terminalsTab;
+        let terminalsTab: Section|undefined;
 
         if (connection && connection.remoteFeatures.tn5250) {
           terminalsTab = new Section();
@@ -125,8 +124,7 @@ export class SettingsUI {
             .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
         }
 
-        /** @type {Section} */
-        let debuggerTab;
+        let debuggerTab: Section|undefined;
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab = new Section();
           debuggerTab
@@ -205,7 +203,7 @@ export class SettingsUI {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (/** @type {Server} */ server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server?: Server) => {
         if (server) {
           const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`);
           const name = server.name;
