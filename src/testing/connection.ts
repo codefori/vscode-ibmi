@@ -76,7 +76,7 @@ export const ConnectionSuite: TestSuite = [
     assert.strictEqual(memberA?.asp, undefined);
     assert.strictEqual(memberA?.library, `THELIB`);
     assert.strictEqual(memberA?.file, `THESPF`);
-    assert.strictEqual(memberA?.member, `THEMBR`);
+    assert.strictEqual(memberA?.name, `THEMBR`);
     assert.strictEqual(memberA?.extension, `MBR`);
     assert.strictEqual(memberA?.basename, `THEMBR.MBR`);
   }},
@@ -89,7 +89,7 @@ export const ConnectionSuite: TestSuite = [
     assert.strictEqual(memberA?.asp, `THEASP`);
     assert.strictEqual(memberA?.library, `THELIB`);
     assert.strictEqual(memberA?.file, `THESPF`);
-    assert.strictEqual(memberA?.member, `THEMBR`);
+    assert.strictEqual(memberA?.name, `THEMBR`);
     assert.strictEqual(memberA?.extension, `MBR`);
     assert.strictEqual(memberA?.basename, `THEMBR.MBR`);
   }},
@@ -102,7 +102,7 @@ export const ConnectionSuite: TestSuite = [
     assert.strictEqual(memberA?.asp, undefined);
     assert.strictEqual(memberA?.library, `THELIB`);
     assert.strictEqual(memberA?.file, `THESPF`);
-    assert.strictEqual(memberA?.member, `THEMBR`);
+    assert.strictEqual(memberA?.name, `THEMBR`);
     assert.strictEqual(memberA?.extension, `MBR`);
     assert.strictEqual(memberA?.basename, `THEMBR.MBR`);
   }},
