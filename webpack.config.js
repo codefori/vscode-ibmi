@@ -2,6 +2,8 @@
 
 'use strict';
 
+const webpack = require(`webpack`);
+
 const path = require(`path`);
 
 const npm_runner = process.env[`npm_lifecycle_script`];
@@ -9,7 +11,13 @@ const isProduction = (npm_runner && npm_runner.includes(`production`));
 
 console.log(`Is production build: ${isProduction}`);
 
-/**@type {import('webpack').Configuration}*/
+let exclude = [];
+
+if (isProduction) {
+  exclude.push(`./src/testing`);
+}
+
+/**@type {webpack.Configuration}*/
 const config = {
   target: `node`, // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
 
@@ -29,9 +37,17 @@ const config = {
     // support reading TypeScript and JavaScript files, 📖 -> https://github.com/TypeStrong/ts-loader
     extensions: [`.ts`, `.js`, `.svg`],
   },
+  plugins: [
+    new webpack.DefinePlugin({
+      'process.env.PRODUCTION': JSON.stringify(isProduction),
+    })
+  ],
   module: {
-    
     rules: [
+      {
+        test: /\.ts$/,
+        exclude: path.resolve(__dirname, `src`, `testing`)
+      },
       {
         test: /\.js$/,
         include: path.resolve(__dirname, `node_modules/@bendera/vscode-webview-elements/dist`),

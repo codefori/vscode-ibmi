@@ -98,7 +98,11 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
 
-  initialise();
+  console.log(`Production: ${process.env.PRODUCTION}`);
+  if (!process.env.PRODUCTION) {
+    // Run tests if not in production build
+    initialise();
+  }
 
   return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
 }
