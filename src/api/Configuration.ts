@@ -121,7 +121,7 @@ export namespace ConnectionConfiguration {
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),
-      quickConnect: (parameters.quickConnect === true)
+      quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined)
     }
   }
 
