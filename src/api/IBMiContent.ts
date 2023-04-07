@@ -186,8 +186,10 @@ export default class IBMiContent {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
 
-      // We join all new lines together
-      //statement = statement.replace(/\n/g, ` `);
+      // if comments present in sql statement, sql string needs to be checked
+      if (statement.search(`--`) > -1) {
+        statement = this.fixCommentsInSQLString(statement);
+      }
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
@@ -299,6 +301,49 @@ export default class IBMiContent {
         text: `*** NOT FOUND ***`
       };
     });
+  }
+
+  /**
+   * Validates a list of libraries
+   * @param newLibl Array of libraries to validate
+   * @returns Bad libraries
+   */
+  async validateLibraryList(newLibl: string[]): Promise<string[]> {
+    let badLibs: string[] = [];
+
+    newLibl = newLibl.filter(lib => {
+      if (lib.match(/^\d/)) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      if (lib.length > 10) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      return true;
+    });
+
+    const result = await this.ibmi.sendQsh({
+      command: [
+        `liblist -d ` + this.ibmi.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+      ].join(`; `)
+    });
+
+    if (result.stderr) {
+      const lines = result.stderr.split(`\n`);
+
+      lines.forEach(line => {
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
+
+        // If there is an error about the library, remove it
+        if (badLib) badLibs.push(badLib);
+      });
+    }
+
+    return badLibs;
   }
 
   /**
@@ -484,6 +529,34 @@ export default class IBMiContent {
       throw new Error(fileListResult.stderr);
     }
 
+  }
+
+  /**
+   * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
+   * Required to work with QZDFMDB2.
+   * @param inSql; sql statement
+   * @returns correctly formattted sql string containing comments
+   */
+  private fixCommentsInSQLString(inSql: string): string {
+    const newLine: string = `\n`;
+    let parsedSql: string = ``;
+
+    inSql.split(newLine)
+      .forEach(item => {
+        let goodLine = item + newLine;
+
+        const pos = item.search(`--`);
+        if (pos > 0) {
+          goodLine = item.slice(0, pos) + 
+                     newLine +
+                     item.slice(pos) +
+                     newLine;
+        }
+        parsedSql += goodLine;
+        
+      });
+
+    return parsedSql;
   }
 
   /**

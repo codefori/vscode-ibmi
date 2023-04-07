@@ -127,14 +127,28 @@ export class Section {
   }
 }
 
+const openedWebviews: Map<string, vscode.WebviewPanel> = new Map;
+
 export class CustomUI extends Section {
   /**
-   * If no callback is provided, a Promise will be returned
+   * If no callback is provided, a Promise will be returned.
+   * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
+   * 
    * @param title 
    * @param callback
    * @returns a Promise<Page<T>> if no callback is provided
    */
   loadPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
+    const webview = openedWebviews.get(title);
+    if(webview){
+      webview.reveal();      
+    }
+    else{
+      return this.createPage(title, callback);
+    }
+  }
+
+  private createPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -145,7 +159,7 @@ export class CustomUI extends Section {
       }
     );
 
-    panel.webview.html = this.getHTML(panel, title);
+    panel.webview.html = this.getHTML(panel, title);    
 
     let didSubmit = false;
 
@@ -158,11 +172,15 @@ export class CustomUI extends Section {
       );
 
       panel.onDidDispose(() => {
-        if (!didSubmit) callback({ panel });
-      });
+        openedWebviews.delete(title);
+        if (!didSubmit) {
+          callback({ panel });
+        }
 
+        openedWebviews.set(title, panel);
+      });
     } else {
-      return new Promise((resolve) => {
+      const page = new Promise<Page<T>>((resolve) => {
         panel.webview.onDidReceiveMessage(
           message => {
             didSubmit = true;
@@ -171,9 +189,15 @@ export class CustomUI extends Section {
         );
 
         panel.onDidDispose(() => {
-          if (!didSubmit) resolve({ panel });
+          openedWebviews.delete(title);
+          if (!didSubmit) {
+            resolve({ panel });
+          }
         });
       });
+      
+      openedWebviews.set(title, panel);
+      return page;
     }
   }
 

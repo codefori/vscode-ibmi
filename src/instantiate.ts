@@ -10,6 +10,8 @@ import { Terminal } from './api/Terminal';
 import { CustomUI, Field, Page } from './api/CustomUI';
 
 import { SearchView } from "./views/searchView";
+import { VariablesUI } from "./webviews/variables";
+
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
@@ -57,21 +59,17 @@ export async function disconnect(): Promise<boolean> {
   let doDisconnect = true;
 
   for (const document of vscode.workspace.textDocuments) {
-    console.log(document);
-    if (!document.isClosed && [`member`, `streamfile`].includes(document.uri.scheme)) {
+    // This code will check that sources are saved before closing
+    if (!document.isClosed && [`member`, `streamfile`, `object`].includes(document.uri.scheme)) {
       if (document.isDirty) {
         if (doDisconnect) {
-          await Promise.all([
-            vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`),
-            vscode.window.showTextDocument(document)
-          ]);
-
-          doDisconnect = false;
+          if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))){
+            break;
+          }
+          else{
+            doDisconnect = false;
+          }
         }
-
-      } else {
-        await vscode.window.showTextDocument(document);
-        await vscode.commands.executeCommand(`workbench.action.closeActiveEditor`);
       }
     }
   }
@@ -79,7 +77,7 @@ export async function disconnect(): Promise<boolean> {
   if (doDisconnect) {
     const connection = instance.getConnection();
     if (connection) {
-      connection.end();
+      await connection.end();
     }
   }
 
@@ -268,7 +266,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.openErrors`, async () => {
+    vscode.commands.registerCommand(`code-for-ibmi.openErrors`, async (qualifiedObject?: string) => {
       interface ObjectDetail {
         asp?: string;
         lib: string;
@@ -283,72 +281,65 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         ext: undefined
       };
 
-      let initialPath = ``, pathDetail;
-      const editor = vscode.window.activeTextEditor;
+      let inputPath: string|undefined
 
-      if (editor) {
-        const config = instance.getConfig()!;
-        const uri = editor.document.uri;
+      if (qualifiedObject) {
+        // Value passed in via parameter
+        inputPath = qualifiedObject;
 
-        if ([`member`, `streamfile`].includes(uri.scheme)) {
+      } else {
+        // Value collected from user input
 
-          switch (uri.scheme) {
-            case `member`:
-              const memberPath = uri.path.split(`/`);
-              if (memberPath.length === 4) {
-                detail.lib = memberPath[1];
-              } else if (memberPath.length === 5) {
-                detail.asp = memberPath[1];
-                detail.lib = memberPath[2];
-              }
-              break;
-            case `streamfile`:
-              detail.asp = (config.sourceASP && config.sourceASP.length > 0) ? config.sourceASP : undefined;
-              detail.lib = config.currentLibrary;
-              break;
+        let initialPath = ``;
+        const editor = vscode.window.activeTextEditor;
+
+        if (editor) {
+          const config = instance.getConfig()!;
+          const uri = editor.document.uri;
+
+          if ([`member`, `streamfile`].includes(uri.scheme)) {
+
+            switch (uri.scheme) {
+              case `member`:
+                const memberPath = uri.path.split(`/`);
+                if (memberPath.length === 4) {
+                  detail.lib = memberPath[1];
+                } else if (memberPath.length === 5) {
+                  detail.asp = memberPath[1];
+                  detail.lib = memberPath[2];
+                }
+                break;
+              case `streamfile`:
+                detail.asp = (config.sourceASP && config.sourceASP.length > 0) ? config.sourceASP : undefined;
+                detail.lib = config.currentLibrary;
+                break;
+            }
+
+            const pathDetail = path.parse(editor.document.uri.path);
+            detail.object = pathDetail.name;
+            detail.ext = pathDetail.ext.substring(1);
+
+            initialPath = `${detail.lib}/${pathDetail.base}`;
           }
-
-          pathDetail = path.parse(editor.document.uri.path);
-          detail.object = pathDetail.name;
-          detail.ext = pathDetail.ext.substring(1);
-
-          initialPath = `${detail.lib}/${detail.object}`;
         }
+
+        inputPath = await vscode.window.showInputBox({
+          prompt: `Enter object path (LIB/OBJECT)`,
+          value: initialPath
+        });
       }
 
-      vscode.window.showInputBox({
-        prompt: `Enter object path (LIB/OBJECT)`,
-        value: initialPath
-      }).then(async (selection) => {
-        if (selection) {
-          const [library, object] = selection.split(`/`);
-          if (library && object) {
-            detail.lib = library;
-            detail.object = object;
-            CompileTools.refreshDiagnostics(instance, { library, object });
-          } else {
-            vscode.window.showErrorMessage(`Format incorrect. Use LIB/OBJECT`);
-          }
+      if (inputPath) {
+        const [library, object] = inputPath.split(`/`);
+        if (library && object) {
+          const nameDetail = path.parse(object);
+          CompileTools.refreshDiagnostics(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined) });
         }
-      })
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
       Terminal.selectAndOpen(instance);
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail: RemoteCommand) => {
-      if (detail && detail.command) {
-        return CompileTools.runCommand(instance, detail);
-      }
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
-      const content = instance.getContent();
-      if (statement && content) {
-        return content.runSQL(statement);
-      } else {
-        return null;
-      }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
       const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
@@ -360,20 +351,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const value = context.secrets.get(connectionKey);
       return value;
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.launchUI`, <T>(title: string, fields: any[], callback: (page: Page<T>) => void) => {
-      if (title && fields && callback) {
-        const ui = new CustomUI();
-        fields.forEach(field => {
-          const uiField = new Field(field.type, field.id, field.label);
-          ui.addField(Object.assign(uiField, field));
-        });
-        ui.loadPage(title, callback);
-      }
-    })
   );
 
   (require(`./webviews/actions`)).init(context);
-  (require(`./webviews/variables`)).init(context);
+  VariablesUI.init(context);
 
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);
@@ -420,9 +401,18 @@ async function onConnected(context: vscode.ExtensionContext) {
 }
 
 async function onDisconnected() {
-  // Close the tabs
-  vscode.window.tabGroups.all.forEach(group => {
-    vscode.window.tabGroups.close(group);
+  // Close the tabs with no dirty editors
+  vscode.window.tabGroups.all
+  .filter(group => !group.tabs.some(tab => tab.isDirty))
+  .forEach(group => {
+    group.tabs.forEach(tab => {
+      if (tab.input instanceof vscode.TabInputText) {
+        const uri = tab.input.uri;
+        if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
+          vscode.window.tabGroups.close(tab);
+        }
+      }
+    })
   });
 
   // Hide the bar items
