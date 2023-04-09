@@ -19,7 +19,7 @@ import { CompileTools } from "./api/CompileTools";
 import { HelpView } from "./views/helpView";
 import { ProfilesView } from "./views/ProfilesView";
 import * as Debug from './api/debug';
-import IFSBrowser from "./views/ifsBrowser.js";
+import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
 import { IFSFS } from "./filesystems/ifsFs";
 
