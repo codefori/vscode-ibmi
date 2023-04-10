@@ -69,5 +69,81 @@ export const ContentSuite: TestSuite = {
 
       assert.notStrictEqual(rows?.length, 0);
     }},
+
+    {name: `Test validateLibraryList`, test: async () => {
+      const content = instance.getContent();
+  
+      const badLibs = await content?.validateLibraryList([`QSYSINC`, `BEEPBOOP`]);
+
+      assert.strictEqual(badLibs?.includes(`BEEPBOOP`), true);
+      assert.strictEqual(badLibs?.includes(`QSYSINC`), false);
+    }},
+
+    {name: `Test getFileList`, test: async () => {
+      const content = instance.getContent();
+  
+      const objects = await content?.getFileList(`/`);
+
+      const qsysLib = objects?.find(obj => obj.name === `QSYS.LIB`);
+
+      assert.strictEqual(qsysLib?.name, `QSYS.LIB`);
+      assert.strictEqual(qsysLib?.path, `/QSYS.LIB/`);
+      assert.strictEqual(qsysLib?.type, `directory`);
+    }},
+
+    {name: `Test getFileList`, test: async () => {
+      const content = instance.getContent();
+  
+      const objects = await content?.getFileList(`/`);
+
+      const qsysLib = objects?.find(obj => obj.name === `QSYS.LIB`);
+
+      assert.strictEqual(qsysLib?.name, `QSYS.LIB`);
+      assert.strictEqual(qsysLib?.path, `/QSYS.LIB/`);
+      assert.strictEqual(qsysLib?.type, `directory`);
+    }},
+
+    {name: `Test getObjectList (all objects)`, test: async () => {
+      const content = instance.getContent();
+  
+      const objects = await content?.getObjectList({library: `QSYSINC`});
+
+      assert.notStrictEqual(objects?.length, 0);
+    }},
+
+    {name: `Test getObjectList (pgm filter)`, test: async () => {
+      const content = instance.getContent();
+  
+      const objects = await content?.getObjectList({library: `QSYSINC`, types: [`*PGM`]});
+
+      assert.notStrictEqual(objects?.length, 0);
+
+      const containsNonPgms = objects?.some(obj => obj.type !== `*PGM`);
+
+      assert.strictEqual(containsNonPgms, false);
+    }},
+
+    {name: `Test getObjectList (source files only)`, test: async () => {
+      const content = instance.getContent();
+  
+      const objects = await content?.getObjectList({library: `QSYSINC`, types: [`*SRCPF`]});
+
+      assert.notStrictEqual(objects?.length, 0);
+
+      const containsNonFiles = objects?.some(obj => obj.type !== `*FILE`);
+
+      assert.strictEqual(containsNonFiles, false);
+    }},
+
+    {name: `Test getObjectList (source files only, named filter)`, test: async () => {
+      const content = instance.getContent();
+  
+      const objects = await content?.getObjectList({library: `QSYSINC`, types: [`*SRCPF`], object: `MIH`});
+
+      assert.strictEqual(objects?.length, 1);
+
+      assert.strictEqual(objects[0].type, `*FILE`);
+      assert.strictEqual(objects[0].text, `DATA BASE FILE FOR C INCLUDES FOR MI`);
+    }},
   ]
 };
