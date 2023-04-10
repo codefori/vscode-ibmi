@@ -102,7 +102,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Developer environment: ${process.env.DEV}`);
   if (process.env.DEV) {
     // Run tests if not in production build
-    initialise();
+    initialise(context);
   }
 
   return { instance, customUI: () => new CustomUI(), deploy: Deployment.deploy, evfeventParser: parseErrors };

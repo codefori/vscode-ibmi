@@ -1500,6 +1500,11 @@
 					"id": "ifsBrowser",
 					"name": "IFS Browser",
 					"when": "code-for-ibmi:connected && code-for-ibmi:ifsBrowserDisabled !== true"
+				},
+				{
+					"id": "testingView",
+					"name": "Test cases",
+					"when": "code-for-ibmi:connected && code-for-ibmi:testing"
 				}
 			],
 			"ibmi-search": [
