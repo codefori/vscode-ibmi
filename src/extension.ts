@@ -19,6 +19,7 @@ import { CompileTools } from "./api/CompileTools";
 import { HelpView } from "./views/helpView";
 import { ProfilesView } from "./views/ProfilesView";
 import * as Debug from './api/debug';
+import { initialise } from "./testing";
 import { IFSFS } from "./filesystems/ifsFs";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
@@ -97,6 +98,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
+
+  console.log(`Developer environment: ${process.env.DEV}`);
+  if (process.env.DEV) {
+    // Run tests if not in production build
+    initialise();
+  }
 
   return { instance, customUI: () => new CustomUI(), deploy: Deployment.deploy, evfeventParser: parseErrors };
 }

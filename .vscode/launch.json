@@ -23,9 +23,16 @@
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
-				"--extensionDevelopmentPath=${workspaceFolder}",
-				"--extensionTestsPath=${workspaceFolder}/test/suite/index"
-			]
-		}
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],			
+			"sourceMaps": true,
+			"preLaunchTask": "${defaultBuildTask}",
+			"env": {
+				"testing": "true"
+			}
+		},
 	]
 }
