@@ -11,10 +11,10 @@ const isProduction = (npm_runner && npm_runner.includes(`production`));
 
 console.log(`Is production build: ${isProduction}`);
 
-let exclude = [];
+let exclude = undefined;
 
 if (isProduction) {
-  exclude.push(`./src/testing`);
+  exclude = path.resolve(__dirname, `src`, `testing`)
 }
 
 /**@type {webpack.Configuration}*/
@@ -46,7 +46,7 @@ const config = {
     rules: [
       {
         test: /\.ts$/,
-        exclude: path.resolve(__dirname, `src`, `testing`)
+        exclude
       },
       {
         test: /\.js$/,
