@@ -3,11 +3,13 @@ import { env } from "process";
 import { instance } from "../instantiate";
 import { ConnectionSuite } from "./connection";
 import { ContentSuite } from "./content";
+import { ToolsSuite } from "./tools";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 
 const suites : TestSuite[] = [
   ConnectionSuite,
-  ContentSuite
+  ContentSuite,
+  ToolsSuite
 ]
 
 export type TestSuite = {
