@@ -145,5 +145,61 @@ export const ContentSuite: TestSuite = {
       assert.strictEqual(objects[0].type, `*FILE`);
       assert.strictEqual(objects[0].text, `DATA BASE FILE FOR C INCLUDES FOR MI`);
     }},
+
+    {name: `getMemberList (SQL, no filter)`, test: async () => {
+      const content = instance.getContent();
+  
+      const members = await content?.getMemberList(`qsysinc`, `mih`);
+
+      assert.strictEqual(members?.length, 148);
+
+      const actbpgm = members.find(mbr => mbr.name === `ACTBPGM`);
+
+      assert.strictEqual(actbpgm?.name, `ACTBPGM`);
+      assert.strictEqual(actbpgm?.extension, `C`);
+      assert.strictEqual(actbpgm?.text, `ACTIVATE BOUND PROGRAM`);
+      assert.strictEqual(actbpgm?.library, `QSYSINC`);
+      assert.strictEqual(actbpgm?.file, `MIH`);
+    }},
+
+    {name: `getMemberList (SQL compared to nosql)`, test: async () => {
+      const config = instance.getConfig();
+      const content = instance.getContent();
+
+      assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+  
+      // First we fetch the members in SQL mode
+      const membersA = await content?.getMemberList(`qsysinc`, `mih`);
+
+      config!.enableSQL = false;
+
+      // Then we fetch the members without SQL
+      const membersB = await content?.getMemberList(`qsysinc`, `mih`);
+
+      // Reset the config
+      config!.enableSQL = true;
+
+      assert.deepStrictEqual(membersA, membersB);
+    }},
+
+    {name: `getMemberList (name filter, SQL compared to nosql)`, test: async () => {
+      const config = instance.getConfig();
+      const content = instance.getContent();
+
+      assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+  
+      // First we fetch the members in SQL mode
+      const membersA = await content?.getMemberList(`qsysinc`, `mih`, `C*`);
+
+      config!.enableSQL = false;
+
+      // Then we fetch the members without SQL
+      const membersB = await content?.getMemberList(`qsysinc`, `mih`, `C*`);
+
+      // Reset the config
+      config!.enableSQL = true;
+
+      assert.deepStrictEqual(membersA, membersB);
+    }},
   ]
 };
