@@ -1,9 +1,11 @@
 import { env } from "process";
 import { instance } from "../instantiate";
 import { ConnectionSuite } from "./connection";
+import { ContentSuite } from "./content";
 
 const suites = [
-  {name: `Connection tests`, tests: ConnectionSuite}
+  {name: `Connection tests`, tests: ConnectionSuite},
+  {name: `Content tests`, tests: ContentSuite}
 ]
 
 export type TestSuite = TestCase[];
