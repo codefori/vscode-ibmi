@@ -1,0 +1,73 @@
+import assert from "assert";
+import { TestSuite } from ".";
+import { instance } from "../instantiate";
+
+export const ContentSuite: TestSuite = {
+  name: `Content API tests`,
+  tests: [
+    {name: `Test runSQL (basic select)`, test: async () => {
+      const content = instance.getContent();
+  
+      const rows = await content?.runSQL(`select * from qiws.qcustcdt`);
+      assert.notStrictEqual(rows?.length, 0);
+
+      const firstRow = rows![0];
+      assert.strictEqual(typeof firstRow[`BALDUE`], `number`);
+      assert.strictEqual(typeof firstRow[`CITY`], `string`);
+    }},
+
+    {name: `Test runSQL (bad basic select)`, test: async () => {
+      const content = instance.getContent();
+  
+      try {
+        await content?.runSQL(`select from qiws.qcustcdt`);
+      } catch (e: any) {
+        assert.strictEqual(e.message, `Token . was not valid. Valid tokens: , FROM INTO. (42601)`);
+        assert.strictEqual(e.sqlstate, `42601`);
+      }
+    }},
+
+    {name: `Test runSQL (with comments)`, test: async () => {
+      const content = instance.getContent();
+  
+      const rows = await content?.runSQL([
+        `-- myselect`,
+        `select *`,
+        `from qiws.qcustcdt --my table`,
+        `limit 1`,
+      ].join(`\n`));
+
+      assert.strictEqual(rows?.length, 1);
+    }},
+
+    {name: `Test getTable (SQL disabled)`, test: async () => {
+      const config = instance.getConfig();
+      const content = instance.getContent();
+  
+      const resetValue = config!.enableSQL;
+
+      // SQL needs to be disabled for this test.
+      config!.enableSQL = false;
+      const rows = await content?.getTable(`qiws`, `qcustcdt`, `*all`);
+
+      config!.enableSQL = resetValue;
+
+      assert.notStrictEqual(rows?.length, 0);
+      const firstRow = rows![0];
+
+      assert.strictEqual(typeof firstRow[`BALDUE`], `number`);
+      assert.strictEqual(typeof firstRow[`CITY`], `string`);
+    }},
+
+    {name: `Test getTable (SQL enabled)`, test: async () => {
+      const config = instance.getConfig();
+      const content = instance.getContent();
+  
+      assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+
+      const rows = await content?.getTable(`qiws`, `qcustcdt`, `qcustcdt`);
+
+      assert.notStrictEqual(rows?.length, 0);
+    }},
+  ]
+};
