@@ -579,12 +579,16 @@ export default class IBMiContent {
       if (result.code === 0) {
         const [firstMost] = result.stdout.split(`\n`);
 
-        try {
-          // This can error if the path format is wrong for some reason.
-          // Not that this would ever happen, but better to be safe than sorry
-          return this.ibmi.parserMemberPath(firstMost);
-        } catch (e) {
-          console.log(e);
+        if (firstMost) {
+          try {
+            const simplePath = Tools.unqualifyPath(firstMost);
+            
+            // This can error if the path format is wrong for some reason.
+            // Not that this would ever happen, but better to be safe than sorry
+            return this.ibmi.parserMemberPath(simplePath);
+          } catch (e) {
+            console.log(e);
+          }
         }
       }
     }
@@ -592,7 +596,7 @@ export default class IBMiContent {
     return undefined;
   }
 
-  async streamfileResolve(names: string[], directories: QsysPath[]): Promise<string|undefined> {
+  async streamfileResolve(names: string[], directories: string[]): Promise<string|undefined> {
     const find = this.ibmi.remoteFeatures.find;
     if (find) {
       const command = [

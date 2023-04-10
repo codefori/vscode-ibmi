@@ -1,5 +1,6 @@
 import { API, GitExtension } from "./import/git";
 import vscode from "vscode";
+import path from "path"
 
 export namespace Tools {
   export interface DB2Headers {
@@ -128,6 +129,32 @@ export namespace Tools {
     const path =
       (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/QSYS.lib/${library}.lib/${object}.file/${member}.mbr`;
     return path;
+  }
+
+  /**
+   * Unqualify member path from root
+   */
+  export function unqualifyPath(memberPath: string) {
+    const pathInfo = path.posix.parse(memberPath);
+    let splitPath = pathInfo.dir.split(path.posix.sep);
+
+    // Remove use of `QSYS.LIB` two libraries in the path aren't value
+    const isInQsys = splitPath.filter(part => part.endsWith(`.LIB`)).length === 2;
+    if (isInQsys) {
+      splitPath = splitPath.filter(part => part !== `QSYS.LIB`);
+    }
+
+    const correctedDir = splitPath.map(part => {
+      const partInfo = path.posix.parse(part);
+      if ([`.FILE`, `.LIB`].includes(partInfo.ext)) {
+        return partInfo.name
+      } else {
+        return part
+      }
+    })
+    .join(path.posix.sep);
+
+    return path.posix.join(correctedDir, pathInfo.base);
   }
 
   /**
