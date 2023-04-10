@@ -2083,8 +2083,7 @@
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",
 		"tmp": "^0.2.1",
-		"vscode-diff": "^2.0.2",
-		"xml2js": "^0.4.23"
+		"vscode-diff": "^2.0.2"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
