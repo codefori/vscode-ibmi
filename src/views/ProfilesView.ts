@@ -1,9 +1,10 @@
 
-import vscode from 'vscode';
+import vscode, { window } from 'vscode';
 import { Profile } from '../typings';
 import { ConnectionConfiguration } from '../api/Configuration';
 
 import { instance } from '../instantiate';
+import { CommandProfile } from '../webviews/commandProfile';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -90,14 +91,101 @@ export class ProfilesView {
             this.refresh();
           }
         }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.manageCommandProfile`, async (commandProfile?: CommandProfileItem) => {
+        CommandProfile.show(commandProfile ? commandProfile.profile : undefined);
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.deleteCommandProfile`, async (commandProfile?: CommandProfileItem) => {
+        const config = instance.getConfig();
+        if (config && commandProfile) {
+          const storedProfile = config.commandProfiles.findIndex(profile => profile.name === commandProfile.profile);
+          if (storedProfile !== undefined) {
+            config.commandProfiles.splice(storedProfile, 1);
+            await ConnectionConfiguration.update(config);
+            this.refresh();
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async (commandProfile?: CommandProfileItem) => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const storage = instance.getStorage();
+        if (commandProfile && config && storage) {
+          const storedProfile = config.commandProfiles.find(profile => profile.name === commandProfile.profile);
+          
+          if (storedProfile) {
+            try {
+              const newSettings = await content?.getLibraryListFromCommand(storedProfile.command);
+
+              if (newSettings) {
+                config.libraryList = newSettings.libraryList;
+                config.currentLibrary = newSettings.currentLibrary;
+                await ConnectionConfiguration.update(config);
+
+                await Promise.all([
+                  storage.setLastProfile(storedProfile.name),
+                  vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
+                ]);
+
+                vscode.window.showInformationMessage(`Switched to ${storedProfile.name}.`);
+                this.refresh();
+              } else {
+                window.showWarningMessage(`Failed to get library list from command. Feature not installed.`);
+              }
+
+            } catch (e: any) {
+              window.showErrorMessage(`Failed to get library list from command: ${e.message}`);
+            }
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.setToDefault`, () => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
+        const storage = instance.getStorage();
+
+        if (config && storage) {
+          window.showInformationMessage(`Reset to default`, {
+            detail: `This will reset the User Library List, working directory and Custom Variables back to the defaults.`,
+            modal: true
+          }, `Continue`).then(async result => {
+            if (result === `Continue`) {
+              const defaultName = `Default`;
+
+              assignProfile({
+                name: defaultName,
+                libraryList: connection?.defaultUserLibraries || [],
+                currentLibrary: config.currentLibrary,
+                customVariables: [],
+                homeDirectory: config.homeDirectory,
+                ifsShortcuts: config.ifsShortcuts,
+                objectFilters: config.objectFilters,
+              }, config);
+
+              await ConnectionConfiguration.update(config);
+
+              await Promise.all([
+                vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`),
+                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`),
+                storage.setLastProfile(defaultName)
+              ]);
+            }
+          })
+        }
       })
+      
     )
   }
 
   refresh() {
     const config = instance.getConfig();
     if (config) {
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0);
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0 || config.commandProfiles.length > 0);
       this._onDidChangeTreeData.fire(null);
     }
   }
@@ -114,9 +202,15 @@ export class ProfilesView {
       const storage = instance.getStorage();
       if (config && storage) {
         const currentProfile = storage.getLastProfile();
-        return config.connectionProfiles
-          .map(profile => profile.name)
-          .map(name => new ProfileItem(name, name === currentProfile))
+        return [
+          new ResetProfileItem(),
+          ...config.connectionProfiles
+            .map(profile => profile.name)
+            .map(name => new ProfileItem(name, name === currentProfile)),
+          ...config.commandProfiles
+            .map(profile => profile.name)
+            .map(name => new CommandProfileItem(name, name === currentProfile)),
+        ]
       }
     }
 
@@ -175,5 +269,30 @@ class ProfileItem extends vscode.TreeItem implements Profile {
     this.description = active ? `Active` : ``;
 
     this.profile = name;
+  }
+}
+
+class CommandProfileItem extends vscode.TreeItem implements Profile {
+  readonly profile;
+  constructor(name: string, active: boolean) {
+    super(name, vscode.TreeItemCollapsibleState.None);
+
+    this.contextValue = `commandProfile`;
+    this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `console`);
+    this.description = active ? `Active` : ``;
+
+    this.profile = name;
+  }
+}
+
+class ResetProfileItem extends vscode.TreeItem implements Profile {
+  readonly profile;
+  constructor() {
+    super(`Reset to Default`, vscode.TreeItemCollapsibleState.None);
+
+    this.contextValue = `resetProfile`;
+    this.iconPath = new vscode.ThemeIcon(`debug-restart`);
+
+    this.profile = `Default`;
   }
 }

@@ -84,6 +84,7 @@ export default class IBMi {
       bash: undefined,
       chsh: undefined,
       'GENCMDXML.PGM': undefined,
+      'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
       find: undefined
@@ -444,8 +445,8 @@ export default class IBMi {
         remoteApps.push(
           {
             path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-            names: [`GENCMDXML.PGM`],
-            specific: `GENCMDXML.PGM`
+            names: [`GENCMDXML.PGM`, `GETNEWLIBL.PGM`],
+            specific: `GE*.PGM`
           }
         );
 
