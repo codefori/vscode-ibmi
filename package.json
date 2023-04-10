@@ -846,6 +846,12 @@
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
+				"command": "code-for-ibmi.debug.stop",
+				"title": "Stop Debug Service",
+				"category": "IBM i Debug",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
 				"command": "code-for-ibmi.debug.activeEditor",
 				"title": "Start Debugging Active Source",
 				"category": "IBM i",
