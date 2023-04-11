@@ -127,6 +127,44 @@ export const ConnectionSuite: TestSuite = {
       } catch (e: any) {
         assert.strictEqual(e.message, `Invalid path: /thespf/thembr.mbr. Use format LIB/SPF/NAME.ext`);
       }
-    }}
+    }},
+
+    {name: `Test runCommand (ILE)`, test: async () => {
+      const connection = instance.getConnection();
+  
+      const result = await connection?.runCommand({
+        command: `DSPLIBL`,
+        environment: `ile`
+      });
+  
+      assert.strictEqual(result?.code, 0);
+      assert.strictEqual(result.stdout.includes(`Library List`), true);
+    }},
+
+    {name: `Test runCommand (ILE, custom libl)`, test: async () => {
+      const connection = instance.getConnection();
+  
+      const resultA = await connection?.runCommand({
+        command: `DSPLIBL`,
+        environment: `ile`
+      });
+  
+      assert.strictEqual(resultA?.code, 0);
+      assert.strictEqual(resultA.stdout.includes(`QSYSINC     CUR`), false);
+      assert.strictEqual(resultA.stdout.includes(`QSYSINC     USR`), false);
+  
+      const resultB = await connection?.runCommand({
+        command: `DSPLIBL`,
+        environment: `ile`,
+        env: {
+          '&LIBL': `QSYSINC`,
+          '&CURLIB': `QSYSINC`
+        }
+      });
+  
+      assert.strictEqual(resultB?.code, 0);
+      assert.strictEqual(resultB.stdout.includes(`QSYSINC     CUR`), true);
+      assert.strictEqual(resultB.stdout.includes(`QSYSINC     USR`), true);
+    }},
   ]
 };

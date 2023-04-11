@@ -3,6 +3,13 @@ import vscode from "vscode";
 import path from "path"
 
 export namespace Tools {
+  export class SqlError extends Error {
+    public sqlstate: string = "0";
+    constructor(message: string) {
+      super(message);
+    }
+  }
+
   export interface DB2Headers {
     name: string
     from: number
@@ -27,7 +34,7 @@ export namespace Tools {
 
     let headers: DB2Headers[];
 
-    let SQLSTATE;
+    let SQLSTATE: string;
 
     const rows: DB2Row[] = [];
 
@@ -49,7 +56,9 @@ export namespace Tools {
           }
 
           if (!SQLSTATE.startsWith(`01`)) {
-            throw new Error(`${data[index + 3]} (${SQLSTATE})`);
+            let sqlError = new SqlError(`${data[index + 3]} (${SQLSTATE})`);
+            sqlError.sqlstate = SQLSTATE;
+            throw sqlError;
           }
         }
         return;
