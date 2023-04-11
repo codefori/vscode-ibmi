@@ -25,25 +25,16 @@ export class SettingsUI {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
 
-        let name: string;
-        let existingConfigIndex: number = -1;
         let config: ConnectionConfiguration.Parameters;
 
         if (connectionSettings && server) {
-          name = server.name;
-          existingConfigIndex = connectionSettings.findIndex(connection => connection.name === name);
-
-          if (existingConfigIndex >= 0) {
-            config = connectionSettings[existingConfigIndex];
-          } else {
-            vscode.window.showErrorMessage(`Connection ${name} not found`);
-            return;
-          }
+          config = await ConnectionConfiguration.load(server.name);
 
         } else {
           config = instance.getConfig()!;
           if (connection && config) {
-            name = config.name;
+            // Reload config to initialize any new config parameters.
+            config = await ConnectionConfiguration.load(config.name);
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
@@ -55,6 +46,7 @@ export class SettingsUI {
 
         const featuresTab = new Section();
         featuresTab
+          .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
           .addCheckbox(`enableSQL`, `Enable SQL`, `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID is 65535, it is recommend SQL is disabled. When disabled, will use import files where possible.`, config.enableSQL)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
           .addCheckbox(`autoConvertIFSccsid`, `Support EBCDIC streamfiles`, `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`, config.autoConvertIFSccsid)
@@ -148,7 +140,7 @@ export class SettingsUI {
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings` });
 
-        const page = await ui.loadPage<any>(`Settings: ${name}`);
+        const page = await ui.loadPage<any>(`Settings: ${config.name}`);
         if (page && page.data) {
           page.panel.dispose();
 
@@ -171,34 +163,20 @@ export class SettingsUI {
             }
           }
 
-          if (server) {
-            if (connectionSettings && existingConfigIndex >= 0) {
-              config = {
-                ...config,
-                ...data,
-              };
-
-              connectionSettings[existingConfigIndex] = config;
-              await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
-            }
-          } else {
-            if (connection) {
-              if (restartFields.some(item => data[item] !== config[item])) {
-                restart = true;
-              }
-
-              Object.assign(config, data);
-              await ConnectionConfiguration.update(config);
-            }
+          if (restartFields.some(item => data[item] !== config[item])) {
+            restart = true;
           }
 
-          if (restart) {
-            vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-              .then(async (value) => {
-                if (value === `Reload`) {
-                  await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                }
-              });
+          Object.assign(config, data);
+          await instance.setConfig(config);
+
+          if (connection && restart) {
+              vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                .then(async (value) => {
+                  if (value === `Reload`) {
+                    await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                  }
+                });
           }
         }
       }),
