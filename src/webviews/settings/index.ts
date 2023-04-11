@@ -168,7 +168,7 @@ export class SettingsUI {
           }
 
           Object.assign(config, data);
-          await ConnectionConfiguration.update(config);
+          await instance.setConfig(config);
 
           if (connection && restart) {
               vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
