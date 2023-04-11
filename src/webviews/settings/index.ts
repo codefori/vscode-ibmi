@@ -25,25 +25,16 @@ export class SettingsUI {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
 
-        let name: string;
-        let existingConfigIndex: number = -1;
         let config: ConnectionConfiguration.Parameters;
 
         if (connectionSettings && server) {
-          name = server.name;
-          existingConfigIndex = connectionSettings.findIndex(connection => connection.name === name);
-
-          if (existingConfigIndex >= 0) {
-            config = connectionSettings[existingConfigIndex];
-          } else {
-            vscode.window.showErrorMessage(`Connection ${name} not found`);
-            return;
-          }
+          config = await ConnectionConfiguration.load(server.name);
 
         } else {
           config = instance.getConfig()!;
           if (connection && config) {
-            name = config.name;
+            // Reload config to initialize any new config parameters.
+            config = await ConnectionConfiguration.load(config.name);
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
@@ -149,7 +140,7 @@ export class SettingsUI {
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings` });
 
-        const page = await ui.loadPage<any>(`Settings: ${name}`);
+        const page = await ui.loadPage<any>(`Settings: ${config.name}`);
         if (page && page.data) {
           page.panel.dispose();
 
@@ -172,34 +163,20 @@ export class SettingsUI {
             }
           }
 
-          if (server) {
-            if (connectionSettings && existingConfigIndex >= 0) {
-              config = {
-                ...config,
-                ...data,
-              };
-
-              connectionSettings[existingConfigIndex] = config;
-              await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
-            }
-          } else {
-            if (connection) {
-              if (restartFields.some(item => data[item] !== config[item])) {
-                restart = true;
-              }
-
-              Object.assign(config, data);
-              await ConnectionConfiguration.update(config);
-            }
+          if (restartFields.some(item => data[item] !== config[item])) {
+            restart = true;
           }
 
-          if (restart) {
-            vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-              .then(async (value) => {
-                if (value === `Reload`) {
-                  await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                }
-              });
+          Object.assign(config, data);
+          await ConnectionConfiguration.update(config);
+
+          if (connection && restart) {
+              vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                .then(async (value) => {
+                  if (value === `Reload`) {
+                    await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                  }
+                });
           }
         }
       }),
