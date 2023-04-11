@@ -464,7 +464,7 @@ export default class IBMiContent {
 
       const statement = `
         SELECT
-          (b.avgrowsize - 12) as MBMXRL,
+          b.avgrowsize as MBMXRL,
           a.iasp_number as MBASP,
           cast(a.system_table_name as char(10) for bit data) AS MBFILE,
           cast(b.system_table_member as char(10) for bit data) as MBNAME,
@@ -522,7 +522,7 @@ export default class IBMiContent {
       file: String(result.MBFILE),
       name: String(result.MBNAME),
       extension: String(result.MBSEU2),
-      recordLength: Number(result.MBMXRL),
+      recordLength: Number(result.MBMXRL) - 12,
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
     }));
   }
