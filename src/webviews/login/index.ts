@@ -143,7 +143,7 @@ export class Login {
       }
 
       try {
-        const connected = await new IBMi().connect(connectionConfig, reloadServerSettings);
+        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings);
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
