@@ -31,6 +31,7 @@ class TestSuiteItem extends vscode.TreeItem {
     constructor(readonly testSuite: TestSuite) {
         super(testSuite.name, vscode.TreeItemCollapsibleState.Expanded);
         this.description = `${this.testSuite.tests.filter(tc => tc.status === "pass").length}/${this.testSuite.tests.length}`;
+
         let color;
         if (this.testSuite.tests.some(tc => tc.status === "failed")) {
             color = "testing.iconFailed";
@@ -45,12 +46,12 @@ class TestSuiteItem extends vscode.TreeItem {
     }
 
     getChilren() {
-        return this.testSuite.tests.map(tc => new TestCaseItem(tc));
+        return this.testSuite.tests.map(tc => new TestCaseItem(this.label as string, tc));
     }
 }
 
 class TestCaseItem extends vscode.TreeItem {
-    constructor(readonly testCase: TestCase) {
+    constructor(suiteName: string, readonly testCase: TestCase) {
         super(testCase.name, vscode.TreeItemCollapsibleState.None);
         let icon;
         let color;
@@ -71,7 +72,18 @@ class TestCaseItem extends vscode.TreeItem {
                 color = "testing.iconQueued";
                 icon = "watch";
         }
+
         this.iconPath = new vscode.ThemeIcon(icon, new vscode.ThemeColor(color));
-        this.tooltip = testCase.failure;
+
+        if (testCase.failure)
+            this.tooltip = new vscode.MarkdownString(['```', testCase.failure, '```'].join(`\n`));
+
+        if (testCase.status !== `running`) {
+            this.command = {
+                command: `code-for-ibmi.testing.specific`,
+                arguments: [suiteName, testCase.name],
+                title: `Re-run test`
+            };
+        }
     }
 }

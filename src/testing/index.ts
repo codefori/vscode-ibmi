@@ -29,7 +29,23 @@ export function initialise(context: vscode.ExtensionContext) {
     instance.onEvent(`connected`, runTests);
     instance.onEvent(`disconnected`, resetTests);
     testSuitesTreeProvider = new TestSuitesTreeProvider(suites);
-    context.subscriptions.push(vscode.window.registerTreeDataProvider("testingView", testSuitesTreeProvider));
+
+    context.subscriptions.push(
+      vscode.window.registerTreeDataProvider("testingView", testSuitesTreeProvider),
+      vscode.commands.registerCommand(`code-for-ibmi.testing.specific`, (suiteName: string, testName: string) => {
+        if (suiteName && testName) {
+          const suite = suites.find(suite => suite.name === suiteName);
+
+          if (suite) {
+            const testCase = suite.tests.find(testCase => testCase.name === testName);
+
+            if (testCase) {
+              runTest(testCase);
+            }
+          }
+        }
+      })
+    );
   }
 }
 
@@ -38,23 +54,30 @@ async function runTests() {
     console.log(`Running suite ${suite.name} (${suite.tests.length})`);
     console.log();
     for (const test of suite.tests) {      
-      console.log(`\tRunning ${test.name}`);
-      test.status = "running";
-      testSuitesTreeProvider.refresh();
-      try{
-        await test.test();
-        test.status = "pass";
-      }
-      catch(error: any){
-        console.log(error);
-        test.status = "failed";
-        test.failure = error.message;
-      }
-      finally{
-        testSuitesTreeProvider.refresh();
-      }
+      await runTest(test);
     }
   }  
+}
+
+async function runTest(test: TestCase) {
+  console.log(`\tRunning ${test.name}`);
+  test.status = "running";
+  testSuitesTreeProvider.refresh();
+
+  try {
+    await test.test();
+    test.status = "pass";
+  }
+
+  catch (error: any){
+    console.log(error);
+    test.status = "failed";
+    test.failure = error.message;
+  }
+
+  finally {
+    testSuitesTreeProvider.refresh();
+  }
 }
 
 function resetTests(){
