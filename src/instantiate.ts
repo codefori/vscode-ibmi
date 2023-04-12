@@ -372,7 +372,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.launchUI`, <T>(title: string, fields: any[], callback: (page: Page<T>) => void) => {
-      console.log(`Command 'code-for-ibmi.runCommand' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'exports.customUI' in the export API.`);
+      console.log(`Command 'code-for-ibmi.launchUI' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'exports.customUI' in the export API.`);
       if (title && fields && callback) {
         const ui = new CustomUI();
         fields.forEach(field => {
