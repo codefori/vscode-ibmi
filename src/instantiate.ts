@@ -10,11 +10,14 @@ import { Terminal } from './api/Terminal';
 import { CustomUI, Field, Page } from './api/CustomUI';
 
 import { SearchView } from "./views/searchView";
+import { VariablesUI } from "./webviews/variables";
+
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
+import { initGetNewLibl } from "./languages/clle/getnewlibl";
 
 export let instance: Instance;
 
@@ -352,7 +355,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   );
 
   (require(`./webviews/actions`)).init(context);
-  (require(`./webviews/variables`)).init(context);
+  VariablesUI.init(context);
 
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);
@@ -393,6 +396,8 @@ async function onConnected(context: vscode.ExtensionContext) {
   if (clExtension) {
     (require(`./languages/clle/clCommands`)).init();
   }
+
+  initGetNewLibl(instance);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);

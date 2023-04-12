@@ -21,7 +21,8 @@ export namespace ConnectionConfiguration {
   export interface Parameters extends ConnectionProfile{    
     host: string;    
     autoClearTempData: boolean;    
-    connectionProfiles: ConnectionProfile[];    
+    connectionProfiles: ConnectionProfile[];
+    commandProfiles: CommandProfile[];
     autoSortIFSShortcuts: boolean;    
     enableSQL: boolean;
     tempLibrary: string;
@@ -44,6 +45,7 @@ export namespace ConnectionConfiguration {
     debugUpdateProductionFiles: boolean;
     debugEnableDebugTracing: boolean;
     readOnlyMode: boolean;
+    quickConnect: boolean;
     [name: string]: any;
   }
 
@@ -72,6 +74,11 @@ export namespace ConnectionConfiguration {
     customVariables: CustomVariable[]
   }
 
+  export interface CommandProfile {
+    name: string;
+    command: string;
+  }
+
   function getConnectionSettings(): Parameters[] {
     return getConfiguration().get<Parameters[]>(`connectionSettings`) || [];
   }
@@ -86,6 +93,7 @@ export namespace ConnectionConfiguration {
       autoClearTempData : parameters.autoClearTempData || false,
       customVariables : parameters.customVariables || [],
       connectionProfiles : parameters.connectionProfiles || [],
+      commandProfiles : parameters.commandProfiles || [],
       ifsShortcuts : parameters.ifsShortcuts || [],
       /** Default auto sorting of shortcuts to off  */
       autoSortIFSShortcuts : parameters.autoSortIFSShortcuts || false,
@@ -112,7 +120,8 @@ export namespace ConnectionConfiguration {
       debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
-      readOnlyMode: (parameters.readOnlyMode === true)
+      readOnlyMode: (parameters.readOnlyMode === true),
+      quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined)
     }
   }
 

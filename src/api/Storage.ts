@@ -4,7 +4,8 @@ const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
-const DEBUG_KEY = `debug`
+const DEBUG_KEY = `debug`;
+const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -32,6 +33,14 @@ export type LastConnection = {
   name: string
   timestamp: number
 };
+
+export type CachedServerSettings = {
+  aspInfo: { [id: number]: string };
+  qccsid: number | null;
+  remoteFeatures: { [name: string]: string | undefined };
+  variantChars: { american: string, local: string };
+  badDataAreasChecked: boolean | null
+} | undefined;
 
 export class GlobalStorage extends Storage {
   private static instance: GlobalStorage;
@@ -73,7 +82,18 @@ export class GlobalStorage extends Storage {
   async setLastConnections(lastConnections: LastConnection[]) {
     await this.set("lastConnections", lastConnections.sort((c1, c2) => c2.timestamp - c1.timestamp));
   }
-}
+
+  getServerSettingsCache(name: string) {
+    return this.get<CachedServerSettings>(SERVER_SETTINGS_CACHE_KEY(name));
+  }
+
+  async setServerSettingsCache(name: string, serverSettings: CachedServerSettings) {
+    await this.set(SERVER_SETTINGS_CACHE_KEY(name), serverSettings);
+  }
+
+  async deleteServerSettingsCache(name: string) {
+    await this.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
+  }}
 
 export class ConnectionStorage extends Storage {
   private connectionName: string = "";

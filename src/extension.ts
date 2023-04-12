@@ -21,6 +21,7 @@ import { ProfilesView } from "./views/ProfilesView";
 import * as Debug from './api/debug';
 import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
+import { initialise } from "./testing";
 import { IFSFS } from "./filesystems/ifsFs";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
@@ -94,6 +95,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
+
+  console.log(`Developer environment: ${process.env.DEV}`);
+  if (process.env.DEV) {
+    // Run tests if not in production build
+    initialise(context);
+  }
 
   return { instance, customUI: () => new CustomUI(), deploy: Deployment.deploy, evfeventParser: parseErrors };
 }

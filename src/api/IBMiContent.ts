@@ -214,6 +214,37 @@ export default class IBMiContent {
   }
 
   /**
+   * @param ileCommand Command that would change the library list, like CHGLIBL
+   */
+  async getLibraryListFromCommand(ileCommand: string): Promise<{ currentLibrary: string; libraryList: string[]; } | undefined> {
+    if (this.ibmi.remoteFeatures[`GETNEWLIBL.PGM`]) {
+      const tempLib = this.config.tempLibrary;
+      const resultSet = await this.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
+      
+      let result = {
+        currentLibrary: `QGPL`,
+        libraryList: [] as string[]
+      };
+
+      resultSet.forEach(row => {
+        const libraryName = String(row.SYSTEM_SCHEMA_NAME);
+        switch (row.PORTION) {
+          case `CURRENT`:
+            result.currentLibrary = libraryName;
+            break;
+          case `USER`:
+            result.libraryList.push(libraryName);
+            break;
+        }
+      })
+
+      return result;
+    }
+
+    return undefined;
+  }
+
+  /**
    * Download the contents of a table.
    * @param library 
    * @param file 
@@ -441,7 +472,7 @@ export default class IBMiContent {
 
       const statement = `
         SELECT
-          (b.avgrowsize - 12) as MBMXRL,
+          b.avgrowsize as MBMXRL,
           a.iasp_number as MBASP,
           cast(a.system_table_name as char(10) for bit data) AS MBFILE,
           cast(b.system_table_member as char(10) for bit data) as MBNAME,
@@ -506,7 +537,7 @@ export default class IBMiContent {
       file: String(result.MBFILE),
       name: String(result.MBNAME),
       extension: String(result.MBSEU2),
-      recordLength: Number(result.MBMXRL),
+      recordLength: Number(result.MBMXRL) - 12,
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
       changed: `${result.CHANGED ? result.CHANGED : `${result.MBCHGD}${result.MBCHGT}`}`
     } as IBMiMember)).sort(sorter);
