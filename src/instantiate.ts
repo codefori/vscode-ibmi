@@ -362,7 +362,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
-      console.log(`Command 'code-for-ibmi.runCommand' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getContent().runSQL' in the export API.`);
+      console.log(`Command 'code-for-ibmi.runQuery' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getContent().runSQL' in the export API.`);
       const content = instance.getContent();
       if (statement && content) {
         return content.runSQL(statement);
