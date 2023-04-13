@@ -314,11 +314,11 @@ module.exports = class ObjectBrowser {
 
           if (result === `Yes`) {
             const connection = getInstance().getConnection();
-            const { library, file, member } = connection.parserMemberPath(node.path);
+            const { library, file, name } = connection.parserMemberPath(node.path);
 
             try {
               await connection.remoteCommand(
-                `RMVM FILE(${library}/${file}) MBR(${member})`,
+                `RMVM FILE(${library}/${file}) MBR(${name})`,
               );
 
               vscode.window.showInformationMessage(`Deleted ${node.path}.`);
@@ -430,11 +430,11 @@ module.exports = class ObjectBrowser {
 
         if (originPath) {
           const connection = getInstance().getConnection();
-          const { asp, library, file, member } = connection.parserMemberPath(node.path);
+          const { asp, library, file, name } = connection.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
           try {
-            contentApi.uploadMemberContent(asp, library, file, member, data);
+            contentApi.uploadMemberContent(asp, library, file, name, data);
             vscode.window.showInformationMessage(`Member was uploaded.`);
           } catch (e) {
             vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
