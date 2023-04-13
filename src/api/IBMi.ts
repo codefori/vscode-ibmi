@@ -937,7 +937,8 @@ export default class IBMi {
       extension,
       basename,
       name,
-      asp
+      asp,
+      changed: ``
     };
   }
 
