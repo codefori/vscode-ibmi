@@ -10,7 +10,7 @@ export interface CodeForIBMi {
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 
-export type DeploymentMethod = "all" |  "staged" |  "unstaged" |  "changed" |  "compare";
+export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
 export interface DeploymentParameters {
   method: DeploymentMethod
@@ -93,6 +93,7 @@ export interface IBMiMember {
   file: string
   name: string
   extension: string
+  changed: string
   recordLength?: number
   text?: string
   asp?: string
@@ -104,12 +105,12 @@ export interface IFSFile {
   path: string
 }
 
-export interface IBMiError{
+export interface IBMiError {
   code: string
   text: string
 }
 
-export interface Filter{
+export interface Filter {
   library: string,
   filter: string
 }

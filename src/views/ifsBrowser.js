@@ -9,20 +9,52 @@ const { Search } = require(`../api/Search`);
 const { Tools } = require(`../api/Tools`);
 
 function getInstance() {
-  const {instance} = (require(`../instantiate`));
+  const { instance } = (require(`../instantiate`));
   return instance;
 }
 
-module.exports = class ifsBrowserProvider {
+module.exports = class IFSBrowser {
   /**
    * @param {vscode.ExtensionContext} context
    */
   constructor(context) {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
+    this.treeViewer = vscode.window.createTreeView(
+      `ifsBrowser`,
+      {
+        treeDataProvider: this,
+        showCollapseAll: true
+      }
+    );
 
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByName`, (/** @type {Object} */ directoryOrFile) => {
+        const directory = directoryOrFile.parent ? directoryOrFile.parent : directoryOrFile;
+        if (directory.sort.order !== `name`) {
+          directory.sortBy({order: `name`, ascending:true})
+        }
+        else {
+          directory.sort.ascending = !directory.sort.ascending
+          directory.sortBy(directory.sort);
+        }
 
+        this.treeViewer.reveal(directory, { expand: true });
+        this.refresh(directory);
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByDate`, (/** @type {Object} */ directoryOrFile) => {
+        const directory = directoryOrFile.parent ? directoryOrFile.parent : directoryOrFile;
+        if (directory.sort.order !== `date`) {
+          directory.sortBy({order: `date`, ascending:true})
+        }
+        else {
+          directory.sort.ascending = !directory.sort.ascending
+          directory.sortBy(directory.sort);
+        }
+
+        this.treeViewer.reveal(directory, { expand: true });
+        this.refresh(directory);
+      }),
       vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, async () => {
         this.refresh();
       }),
@@ -84,7 +116,7 @@ module.exports = class ifsBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node) => {
-        const {instance} = (require(`../instantiate`));
+        const { instance } = (require(`../instantiate`));
         const config = getInstance().getConfig();
 
         let removeDir;
@@ -553,17 +585,13 @@ module.exports = class ifsBrowserProvider {
           //Running from command.
         }
       }),
-
-      vscode.commands.registerCommand(`code-for-ibmi.collapseIFSBrowser`, async () => {
-        this.collapse();
-      })
     )
 
     getInstance().onEvent(`connected`, () => this.refresh());
   }
 
-  refresh() {
-    this.emitter.fire();
+  refresh(target) {
+    this.emitter.fire(target);
   }
 
   /**
@@ -572,10 +600,6 @@ module.exports = class ifsBrowserProvider {
    */
   getTreeItem(element) {
     return element;
-  }
-
-  collapse() {
-    vscode.commands.executeCommand(`workbench.actions.treeView.ifsBrowser.collapseAll`);
   }
 
   /**
@@ -591,18 +615,16 @@ module.exports = class ifsBrowserProvider {
 
       if (element) { //Chosen directory
         //Fetch members
-        console.log(element.path);
-
         try {
-          const objects = await content.getFileList(element.path);
+          const objects = await content.getFileList(element.path, element.sort);
           items.push(...objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
-            .map(object => new Object(object.type, object.name, object.path)));
+            .map(object => new Object(object.type, object.name, object.path, object.type === `streamfile` ? element : undefined)));
 
           await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 
         } catch (e) {
-          console.log(e);          
+          console.log(e);
           vscode.window.showErrorMessage(e.message);
           items.push(new vscode.TreeItem(`Error loading objects.`));
         }
@@ -613,6 +635,10 @@ module.exports = class ifsBrowserProvider {
     }
 
     return items;
+  }
+
+  getParent(item) {
+    return item.parent;
   }
 
   /**
@@ -635,12 +661,14 @@ class Object extends vscode.TreeItem {
    * @param {"shortcut"|"directory"|"streamfile"} type
    * @param {string} label
    * @param {string} path
+   * @param {Object?} parent
    */
-  constructor(type, label, path) {
+  constructor(type, label, path, parent) {
     super(label);
 
     this.contextValue = type;
     this.path = path;
+    this.parent = parent;
 
     if (type === `shortcut` || type === `directory`) {
       this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
@@ -652,5 +680,13 @@ class Object extends vscode.TreeItem {
         arguments: [path]
       };
     }
+
+    /** @type {import("../api/IBMiContent").SortOptions}*/
+    this.sort = { order: `?` };
+  }
+
+  sortBy(/** @type {import("../api/IBMiContent").SortOptions}*/ sort) {
+    this.sort = sort;
+    this.description = `(sort: ${sort.order} ${sort.ascending ? `🔼` : `🔽`})`;
   }
 }

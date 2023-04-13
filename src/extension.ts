@@ -19,6 +19,8 @@ import { CompileTools } from "./api/CompileTools";
 import { HelpView } from "./views/helpView";
 import { ProfilesView } from "./views/ProfilesView";
 import * as Debug from './api/debug';
+import IFSBrowser from "./views/ifsBrowser";
+import ObjectBrowser from "./views/objectBrowser";
 import { initialise } from "./testing";
 import { IFSFS } from "./filesystems/ifsFs";
 
@@ -36,6 +38,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
   };
 
+  new IFSBrowser(context);
+  new ObjectBrowser(context);
+
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `connectionBrowser`,
@@ -52,14 +57,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     window.registerTreeDataProvider(
       `profilesView`,
       new ProfilesView(context)
-    ),
-    window.registerTreeDataProvider(
-      `ifsBrowser`,
-      new (require(`./views/ifsBrowser`))(context)
-    ),
-    window.registerTreeDataProvider(
-      `objectBrowser`,
-      new (require(`./views/objectBrowser`))(context)
     ),
     commands.registerCommand(`code-for-ibmi.connectDirect`,
       async (connectionData: ConnectionData): Promise<boolean> => {

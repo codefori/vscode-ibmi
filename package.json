@@ -1400,20 +1400,26 @@
 				"title": "Collapse all",
 				"category": "IBM i",
 				"icon": "$(collapse-all)"
+			},			
+			{
+				"command": "code-for-ibmi.sortIFSFilesByDate",
+				"title": "Date",
+				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.collapseObjectBrowser",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Collapse all",
-				"category": "IBM i",
-				"icon": "$(collapse-all)"
+				"command": "code-for-ibmi.sortIFSFilesByName",
+				"title": "Name",
+				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.collapseIFSBrowser",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Collapse all",
-				"category": "IBM i",
-				"icon": "$(collapse-all)"
+				"command": "code-for-ibmi.sortMembersByDate",
+				"title": "Date",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.sortMembersByName",
+				"title": "Name",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1520,7 +1526,33 @@
 				}
 			]
 		},
+		"submenus": [
+			{
+				"id": "code-for-ibmi.sortIFSFiles",
+				"label": "Sort by"
+			},
+			{
+				"id": "code-for-ibmi.sortMembers",
+				"label": "Sort by"
+			}
+		],
 		"menus": {
+			"code-for-ibmi.sortIFSFiles": [
+				{
+					"command": "code-for-ibmi.sortIFSFilesByName"
+				},
+				{
+					"command": "code-for-ibmi.sortIFSFilesByDate"
+				}
+			],
+			"code-for-ibmi.sortMembers": [
+				{
+					"command": "code-for-ibmi.sortMembersByName"
+				},
+				{
+					"command": "code-for-ibmi.sortMembersByDate"
+				}
+			],
 			"commandPalette": [
 				{
 					"command": "code-for-ibmi.connectTo",
@@ -1569,6 +1601,26 @@
 				{
 					"command": "code-for-ibmi.launchTerminalPicker",
 					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.connectToPrevious",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortIFSFilesByDate",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortIFSFilesByName",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortMembersByDate",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortMembersByName",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -1686,16 +1738,6 @@
 					"command": "code-for-ibmi.collapseSearchView",
 					"group": "navigation@1",
 					"when": "view == searchView"
-				},
-				{
-					"command": "code-for-ibmi.collapseObjectBrowser",
-					"group": "navigation@2",
-					"when": "view == objectBrowser"
-				},
-				{
-					"command": "code-for-ibmi.collapseIFSBrowser",
-					"group": "navigation@2",
-					"when": "view == ifsBrowser"
 				}
 			],
 			"editor/title": [
@@ -1863,7 +1905,13 @@
 				},
 				{
 					"command": "code-for-ibmi.searchSourceFile",
-					"when": "viewItem =~ /^SPF.*$/"
+					"when": "viewItem =~ /^SPF.*$/",
+					"group": "4_sourceFileStuff@1"
+				},
+				{
+					"submenu": "code-for-ibmi.sortMembers",
+					"when": "view == objectBrowser && viewItem =~ /^SPF/ || viewItem =~ /^member/",
+					"group": "5_sourceFileStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
@@ -1934,6 +1982,11 @@
 					"command": "code-for-ibmi.createDirectory",
 					"when": "view == ifsBrowser && viewItem == directory",
 					"group": "2_ifsStuff@2"
+				},
+				{
+					"submenu": "code-for-ibmi.sortIFSFiles",
+					"when": "view == ifsBrowser",
+					"group": "5_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",

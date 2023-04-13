@@ -9,11 +9,17 @@ import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
 import { ConnectionConfiguration } from './Configuration';
 import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
+
+export type SortOptions = {
+  order: "name" | "date" | "?"
+  ascending?: boolean
+}
 
 export default class IBMiContent {
 
@@ -445,7 +451,9 @@ export default class IBMiContent {
    * @param mbr
    * @returns an array of IBMiMember 
    */
-  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`): Promise<IBMiMember[]> {
+  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sort: SortOptions = { order: "name" }): Promise<IBMiMember[]> {
+    sort.order = sort.order === '?' ? 'name' : sort.order;
+    
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
@@ -469,7 +477,8 @@ export default class IBMiContent {
           cast(a.system_table_name as char(10) for bit data) AS MBFILE,
           cast(b.system_table_member as char(10) for bit data) as MBNAME,
           coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
-          coalesce(b.partition_text, '') as MBMTXT
+          coalesce(b.partition_text, '') as MBMTXT,
+          b.last_change_timestamp as CHANGED
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
@@ -478,17 +487,15 @@ export default class IBMiContent {
           cast(a.system_table_schema as char(10) for bit data) = '${library}' 
           ${sourceFile !== `*ALL` ? `AND cast(a.system_table_name as char(10) for bit data) = '${sourceFile}'` : ``}
           ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
-          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}
+          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
       `;
       results = await this.runSQL(statement);
-
     } else {
       const tempLib = this.config.tempLibrary;
       const TempName = Tools.makeid();
 
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName, true);
-
       if (results.length === 1 && String(results[0].MBNAME).trim() === ``) {
         return [];
       }
@@ -504,7 +511,7 @@ export default class IBMiContent {
 
         results = results.filter(row => (
           (!pattern || pattern.test(String(row.MBNAME))) &&
-          (!patternExt || patternExt.test(String(row.MBSEU2)))));
+          (!patternExt || patternExt.test(String(row.MBSEU2)))))
       }
     }
 
@@ -516,15 +523,30 @@ export default class IBMiContent {
 
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
 
-    return results.map(result => ({
+    let sorter: (r1: IBMiMember, r2: IBMiMember) => number;
+    if (sort.order === 'name') {
+      sorter = (r1, r2) => r1.name.localeCompare(r2.name);
+    }
+    else {
+      sorter = (r1, r2) => r1.changed.localeCompare(r2.changed);
+    }
+
+    const members = results.map(result => ({
       asp: asp,
       library: library,
       file: String(result.MBFILE),
       name: String(result.MBNAME),
       extension: String(result.MBSEU2),
       recordLength: Number(result.MBMXRL) - 12,
-      text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim()
-    }));
+      text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
+      changed: `${result.CHANGED ? result.CHANGED : `${result.MBCHGD}${result.MBCHGT}`}`
+    } as IBMiMember)).sort(sorter);
+
+    if (sort.ascending === false) {
+      members.reverse();
+    }
+
+    return members;
   }
 
   /**
@@ -532,29 +554,36 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string): Promise<IFSFile[]> {
-    const items: IFSFile[] = [];
-
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
+    sort.order = sort.order === '?' ? 'name' : sort.order;
+    
     const fileListResult = (await this.ibmi.sendCommand({
-      command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
+      command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
     }));
 
     if (fileListResult.code === 0) {
       const fileList = fileListResult.stdout;
 
       //Remove current and dir up.
-      fileList.split(`\n`)
+      const items: IFSFile[] = fileList.split(`\n`)
         .filter(item => item !== `../` && item !== `./`)
-        .forEach(item => {
+        .map(item => {
           const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-          items.push({
+          return {
             type,
             name: (type === `directory` ? item.substring(0, item.length - 1) : item),
             path: path.posix.join(remotePath, item)
-          });
+          };
         });
 
-      return items.sort((a, b) => a.name.localeCompare(b.name));
+      if (sort.order === "name") {
+        items.sort((f1, f2) => f1.name.localeCompare(f2.name));
+        if (sort.ascending === false) {
+          items.reverse();
+        }
+      }
+
+      return items;
 
     } else {
       throw new Error(fileListResult.stderr);
