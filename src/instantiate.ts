@@ -1,3 +1,4 @@
+import { DB2Row } from './api/Tools';
 
 import * as vscode from "vscode";
 import Instance from "./api/Instance";
@@ -18,6 +19,7 @@ import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
+import { log } from 'console';
 
 export let instance: Instance;
 
@@ -174,12 +176,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
       const storage = instance.getStorage();
-      if (!storage) return;
-
-      const sources = storage.getSourceList();
-      const dirs = Object.keys(sources);
+      const content = instance.getContent();
+      if (!storage && !content) return;
       let list: string[] = [];
 
+      const sourceSeparator = {
+          label: 'Sources',
+          kind: vscode.QuickPickItemKind.Separator
+      };
+
+      const sources = storage!.getSourceList();
+      const dirs = Object.keys(sources);
+      
       dirs.forEach(dir => {
         sources[dir].forEach(source => {
           list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
@@ -188,26 +196,115 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       list.push(`Clear list`);
 
+      const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }))
+
       const quickPick = vscode.window.createQuickPick();
-      quickPick.items = list.map(item => ({ label: item }));
+      quickPick.items = listItems
       quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`;
 
-      quickPick.onDidChangeValue(() => {
+      quickPick.onDidChangeValue(async () => {
         // INJECT user values into proposed values
         if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
-      })
 
-      quickPick.onDidAccept(() => {
-        const selection = quickPick.selectedItems[0].label;
-        if (selection) {
-          if (selection === `Clear list`) {
-            storage.setSourceList({});
-            vscode.window.showInformationMessage(`Cleared list.`);
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
+        if (quickPick.value.length >= 3) {
+          const selectionSplit = quickPick.value.split('/')
+          let resultSet: DB2Row[] = []
+          switch (selectionSplit.length) {
+            case 1:
+              resultSet = await content!.runSQL(`SELECT SYSTEM_SCHEMA_NAME, SCHEMA_TEXT FROM QSYS2.SYSSCHEMAS WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' and SYSTEM_SCHEMA_NAME like upper('${quickPick.value}%') order by SYSTEM_SCHEMA_NAME `);
+
+              let listSchema: vscode.QuickPickItem[] = [...listItems]
+
+                resultSet.forEach(row => {
+                  listSchema.push({
+                    label: String(row.SYSTEM_SCHEMA_NAME),
+                    detail: String(row.SCHEMA_TEXT)
+                    })
+                })
+                
+                quickPick.items = [...listSchema]
+              
+              break;
+
+            case 2:
+              if (selectionSplit[1].length >= 3) {
+                resultSet = await content!.runSQL(`SELECT SYSTEM_TABLE_NAME, TEXT_DESCRIPTION FROM QSYS2.SYSFILES WHERE SYSTEM_TABLE_SCHEMA = '${selectionSplit[0]}' AND FILE_TYPE = 'SOURCE' and system_table_name like upper('${selectionSplit[1]}%') ORDER BY SYSTEM_TABLE_NAME`);
+
+                let listMember: vscode.QuickPickItem[] = [...listItems]
+
+                resultSet.forEach(row => {
+                  listMember.push({
+                    label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
+                    detail: String(row.TEXT_DESCRIPTION)
+                    })
+                })
+                quickPick.items = [...listMember]
+              }
+
+              break;
+
+            case 3:
+              if (selectionSplit[2].length >= 3) {
+                resultSet = await content!.runSQL(`SELECT TABLE_PARTITION, PARTITION_TEXT, lower(SOURCE_TYPE) SOURCE_TYPE
+                  FROM qsys2.SYSPARTITIONSTAT
+                  WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
+                        AND table_name = '${selectionSplit[1]}'
+                        AND SOURCE_TYPE IS NOT NULL
+                        AND TABLE_PARTITION like upper('${selectionSplit[2]}%')
+                        ORDER BY TABLE_PARTITION`);
+
+                let listFile: vscode.QuickPickItem[] = []
+
+                resultSet.forEach(row => {
+                  listFile.push({
+                    label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                    detail: String(row.PARTITION_TEXT)
+                    })
+                })
+                quickPick.items = [...listFile]
+              }
+
+              break;
+
+            default:
+              break;
           }
         }
-        quickPick.hide()
+      })
+
+      // quickPick.onDidTriggerButton( async e => {
+      //   if (e.tooltip === confirmeButton.tooltip) {
+      //     // const selection = quickPick.selectedItems[0].label;
+      //     if (quickPick.value) {
+      //       if (quickPick.value === `Clear list`) {
+      //         storage!.setSourceList({});
+      //         vscode.window.showInformationMessage(`Cleared list.`);
+      //       }
+      //       const selectionSplit = quickPick.value.split('/')
+      //       if (selectionSplit.length === 3) {
+      //         vscode.commands.executeCommand(`code-for-ibmi.openEditable`, quickPick.value, 0, { readonly });
+      //       }
+      //     }
+      //     quickPick.hide()
+      //   } 
+      // })
+
+      quickPick.onDidAccept(() => { 
+        const selection = quickPick.selectedItems[0].label;
+        if (selection) {
+          const selectionSplit = selection.split('/')
+          if (selectionSplit.length === 3) {
+            if (selection === `Clear list`) {
+              storage!.setSourceList({});
+              vscode.window.showInformationMessage(`Cleared list.`);
+            } else {
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
+            }
+            quickPick.hide()
+          } else {
+            quickPick.value = selection.toUpperCase() + '/'
+          }
+        }
       })
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
