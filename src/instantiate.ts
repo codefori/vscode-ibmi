@@ -180,8 +180,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (!storage && !content) return;
       let list: string[] = [];
 
-      const sourceSeparator = {
+      const sourceSeparator: vscode.QuickPickItem = {
           label: 'Sources',
+          kind: vscode.QuickPickItemKind.Separator
+      };
+
+      const fileSeparator: vscode.QuickPickItem = {
+          label: 'Files',
           kind: vscode.QuickPickItemKind.Separator
       };
 
@@ -195,6 +200,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       });
 
       list.push(`Clear list`);
+
+      // @todo: correct selection
 
       const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }))
 
@@ -213,16 +220,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             case 1:
               resultSet = await content!.runSQL(`SELECT SYSTEM_SCHEMA_NAME, SCHEMA_TEXT FROM QSYS2.SYSSCHEMAS WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' and SYSTEM_SCHEMA_NAME like upper('${quickPick.value}%') order by SYSTEM_SCHEMA_NAME `);
 
-              let listSchema: vscode.QuickPickItem[] = [...listItems]
-
+              if (resultSet.length > 0) {
+                let listSchema: vscode.QuickPickItem[] = []
+                
                 resultSet.forEach(row => {
                   listSchema.push({
                     label: String(row.SYSTEM_SCHEMA_NAME),
                     detail: String(row.SCHEMA_TEXT)
-                    })
+                  })
                 })
                 
-                quickPick.items = [...listSchema]
+                quickPick.items = [sourceSeparator,...listSchema,fileSeparator,...listItems]
+              }
               
               break;
 
@@ -230,15 +239,17 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               if (selectionSplit[1].length >= 3) {
                 resultSet = await content!.runSQL(`SELECT SYSTEM_TABLE_NAME, TEXT_DESCRIPTION FROM QSYS2.SYSFILES WHERE SYSTEM_TABLE_SCHEMA = '${selectionSplit[0]}' AND FILE_TYPE = 'SOURCE' and system_table_name like upper('${selectionSplit[1]}%') ORDER BY SYSTEM_TABLE_NAME`);
 
-                let listMember: vscode.QuickPickItem[] = [...listItems]
+                if (resultSet.length > 0) {
+                  let listMember: vscode.QuickPickItem[] = []
 
-                resultSet.forEach(row => {
-                  listMember.push({
-                    label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
-                    detail: String(row.TEXT_DESCRIPTION)
-                    })
-                })
-                quickPick.items = [...listMember]
+                  resultSet.forEach(row => {
+                    listMember.push({
+                      label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
+                      detail: String(row.TEXT_DESCRIPTION)
+                      })
+                  })
+                  quickPick.items = [sourceSeparator, ...listMember,fileSeparator,...listItems]
+                }
               }
 
               break;
@@ -253,15 +264,17 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                         AND TABLE_PARTITION like upper('${selectionSplit[2]}%')
                         ORDER BY TABLE_PARTITION`);
 
-                let listFile: vscode.QuickPickItem[] = []
+                if (resultSet.length > 0) {
+                  let listFile: vscode.QuickPickItem[] = []
 
-                resultSet.forEach(row => {
-                  listFile.push({
-                    label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
-                    detail: String(row.PARTITION_TEXT)
-                    })
-                })
-                quickPick.items = [...listFile]
+                  resultSet.forEach(row => {
+                    listFile.push({
+                      label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                      detail: String(row.PARTITION_TEXT)
+                      })
+                  })
+                  quickPick.items = [sourceSeparator,...listFile]
+                }
               }
 
               break;
