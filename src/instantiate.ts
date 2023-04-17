@@ -201,8 +201,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       list.push(`Clear list`);
 
-      // @todo: correct selection
-
       const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }))
 
       const quickPick = vscode.window.createQuickPick();
@@ -284,23 +282,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
         }
       })
-
-      // quickPick.onDidTriggerButton( async e => {
-      //   if (e.tooltip === confirmeButton.tooltip) {
-      //     // const selection = quickPick.selectedItems[0].label;
-      //     if (quickPick.value) {
-      //       if (quickPick.value === `Clear list`) {
-      //         storage!.setSourceList({});
-      //         vscode.window.showInformationMessage(`Cleared list.`);
-      //       }
-      //       const selectionSplit = quickPick.value.split('/')
-      //       if (selectionSplit.length === 3) {
-      //         vscode.commands.executeCommand(`code-for-ibmi.openEditable`, quickPick.value, 0, { readonly });
-      //       }
-      //     }
-      //     quickPick.hide()
-      //   } 
-      // })
 
       quickPick.onDidAccept(() => { 
         const selection = quickPick.selectedItems[0].label;
