@@ -1,4 +1,4 @@
-import { DB2Row } from './api/Tools';
+import { Tools } from './api/Tools';
 
 import * as vscode from "vscode";
 import Instance from "./api/Instance";
@@ -213,7 +213,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
         if (quickPick.value.length >= 3) {
           const selectionSplit = quickPick.value.split('/')
-          let resultSet: DB2Row[] = []
+          let resultSet: Tools.DB2Row[] = []
           switch (selectionSplit.length) {
             case 1:
               resultSet = await content!.runSQL(`SELECT SYSTEM_SCHEMA_NAME, SCHEMA_TEXT FROM QSYS2.SYSSCHEMAS WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' and SYSTEM_SCHEMA_NAME like upper('${quickPick.value}%') order by SYSTEM_SCHEMA_NAME `);
