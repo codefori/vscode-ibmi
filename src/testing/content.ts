@@ -6,6 +6,18 @@ import { commands } from "vscode";
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
   tests: [
+    {name: `newSQLjob`, test: async () => {
+      const content = instance.getContent();
+      const sql = await content?.newSQLJob();
+
+      const resultA = await sql?.query(`values (job_name)`);
+      const resultB = await sql?.query(`values (job_name)`);
+
+      console.log({resultA, resultB});
+
+      sql?.close();
+    }},
+
     {name: `Test runSQL (basic select)`, test: async () => {
       const content = instance.getContent();
   

@@ -213,6 +213,42 @@ export default class IBMiContent {
     }
   }
 
+  private async requestChannel(command: string) {
+    return new Promise((resolve, reject) => {
+      this.ibmi.client.connection.exec(command, {}, (err: any, stream: any) => {
+        if (err) reject(err);
+        resolve(stream);
+      })
+    })
+  }
+
+  async newSQLJob() {
+    const initCommand = `cl -IOE "call QSYS/QZDFMDB2 PARM('-i')"`;
+    // const initCommand = `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit/bin/java -jar /home/LINUX/srv.jar`;
+
+    const channel: any = await this.requestChannel(initCommand);
+
+    return {
+      query: async (query: string): Promise<Tools.DB2Row[]> => {
+        return new Promise(function(resolve, reject) {
+          let nextIsResult = false;
+          channel.stdin.write(query + `\n`);
+          channel.stdout.on(`data`, (data: Buffer) => {
+            const asString = String(data);
+            if (asString !== `DB2>\n`) {
+              channel.stdout.removeAllListeners(`data`);
+              resolve(Tools.db2Parse(asString));
+            }
+          })
+        });
+      },
+      close: async () => {
+        // TODO: close connection?
+        channel.close();
+      }
+    }
+  }
+
   /**
    * @param ileCommand Command that would change the library list, like CHGLIBL
    */
@@ -628,4 +664,12 @@ export default class IBMiContent {
       .map(error => error.split(':'))
       .map(codeText => ({ code: codeText[0], text: codeText[1] }));
   }
+}
+
+function bufferMatch(input: Buffer, numbers: number[]) {
+  for (let i = 0; i < numbers.length; i++) {
+    if (input[i] !== numbers[i]) return false
+  }
+
+  return true;
 }
