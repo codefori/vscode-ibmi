@@ -238,18 +238,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               case 2:
                 if (selectionSplit[1].length >= 3) {
-                  resultSet = await content!.runSQL(`SELECT SYSTEM_TABLE_NAME, TEXT_DESCRIPTION FROM QSYS2.SYSFILES WHERE SYSTEM_TABLE_SCHEMA = '${selectionSplit[0]}' AND FILE_TYPE = 'SOURCE' and system_table_name like upper('${selectionSplit[1]}%') ORDER BY SYSTEM_TABLE_NAME`);
+                  resultSet = await content!.runSQL(`SELECT SYSTEM_TABLE_NAME, TABLE_TEXT FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${selectionSplit[0]}' AND FILE_TYPE = 'S' and SYSTEM_TABLE_NAME like upper('${selectionSplit[1]}%') ORDER BY SYSTEM_TABLE_NAME`);
 
                   if (resultSet.length > 0) {
-                    let listMember: vscode.QuickPickItem[] = []
+                    let listFile: vscode.QuickPickItem[] = []
 
                     resultSet.forEach(row => {
-                      listMember.push({
+                      listFile.push({
                         label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
                         detail: String(row.TEXT_DESCRIPTION)
                         })
                     })
-                    quickPick.items = [sourceSeparator, ...listMember,fileSeparator,...listItems]
+                    quickPick.items = [sourceSeparator, ...listFile,fileSeparator,...listItems]
                   }
                 }
 
@@ -266,15 +266,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                           ORDER BY TABLE_PARTITION`);
 
                   if (resultSet.length > 0) {
-                    let listFile: vscode.QuickPickItem[] = []
+                    let listMember: vscode.QuickPickItem[] = []
 
                     resultSet.forEach(row => {
-                      listFile.push({
+                      listMember.push({
                         label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
                         detail: String(row.PARTITION_TEXT)
                         })
                     })
-                    quickPick.items = [sourceSeparator,...listFile]
+                    quickPick.items = [sourceSeparator,...listMember]
                   }
                 }
 
