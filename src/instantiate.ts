@@ -177,6 +177,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
       const storage = instance.getStorage();
       const content = instance.getContent();
+      const config = instance.getConfig()
+
       if (!storage && !content) return;
       let list: string[] = [];
 
@@ -211,74 +213,76 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         // INJECT user values into proposed values
         if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
 
-        if (quickPick.value.length >= 3) {
-          const selectionSplit = quickPick.value.split('/')
-          let resultSet: Tools.DB2Row[] = []
-          switch (selectionSplit.length) {
-            case 1:
-              resultSet = await content!.runSQL(`SELECT SYSTEM_SCHEMA_NAME, SCHEMA_TEXT FROM QSYS2.SYSSCHEMAS WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' and SYSTEM_SCHEMA_NAME like upper('${quickPick.value}%') order by SYSTEM_SCHEMA_NAME `);
-
-              if (resultSet.length > 0) {
-                let listSchema: vscode.QuickPickItem[] = []
-                
-                resultSet.forEach(row => {
-                  listSchema.push({
-                    label: String(row.SYSTEM_SCHEMA_NAME),
-                    detail: String(row.SCHEMA_TEXT)
-                  })
-                })
-                
-                quickPick.items = [sourceSeparator,...listSchema,fileSeparator,...listItems]
-              }
-              
-              break;
-
-            case 2:
-              if (selectionSplit[1].length >= 3) {
-                resultSet = await content!.runSQL(`SELECT SYSTEM_TABLE_NAME, TEXT_DESCRIPTION FROM QSYS2.SYSFILES WHERE SYSTEM_TABLE_SCHEMA = '${selectionSplit[0]}' AND FILE_TYPE = 'SOURCE' and system_table_name like upper('${selectionSplit[1]}%') ORDER BY SYSTEM_TABLE_NAME`);
+        if (config && config.enableSQL) {
+          if (quickPick.value.length >= 3) {
+            const selectionSplit = quickPick.value.split('/')
+            let resultSet: Tools.DB2Row[] = []
+            switch (selectionSplit.length) {
+              case 1:
+                resultSet = await content!.runSQL(`SELECT SYSTEM_SCHEMA_NAME, SCHEMA_TEXT FROM QSYS2.SYSSCHEMAS WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' and SYSTEM_SCHEMA_NAME like upper('${quickPick.value}%') order by SYSTEM_SCHEMA_NAME `);
 
                 if (resultSet.length > 0) {
-                  let listMember: vscode.QuickPickItem[] = []
-
+                  let listSchema: vscode.QuickPickItem[] = []
+                  
                   resultSet.forEach(row => {
-                    listMember.push({
-                      label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
-                      detail: String(row.TEXT_DESCRIPTION)
-                      })
+                    listSchema.push({
+                      label: String(row.SYSTEM_SCHEMA_NAME),
+                      detail: String(row.SCHEMA_TEXT)
+                    })
                   })
-                  quickPick.items = [sourceSeparator, ...listMember,fileSeparator,...listItems]
+                  
+                  quickPick.items = [sourceSeparator,...listSchema,fileSeparator,...listItems]
                 }
-              }
+                
+                break;
 
-              break;
+              case 2:
+                if (selectionSplit[1].length >= 3) {
+                  resultSet = await content!.runSQL(`SELECT SYSTEM_TABLE_NAME, TEXT_DESCRIPTION FROM QSYS2.SYSFILES WHERE SYSTEM_TABLE_SCHEMA = '${selectionSplit[0]}' AND FILE_TYPE = 'SOURCE' and system_table_name like upper('${selectionSplit[1]}%') ORDER BY SYSTEM_TABLE_NAME`);
 
-            case 3:
-              if (selectionSplit[2].length >= 3) {
-                resultSet = await content!.runSQL(`SELECT TABLE_PARTITION, PARTITION_TEXT, lower(SOURCE_TYPE) SOURCE_TYPE
-                  FROM qsys2.SYSPARTITIONSTAT
-                  WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
-                        AND table_name = '${selectionSplit[1]}'
-                        AND SOURCE_TYPE IS NOT NULL
-                        AND TABLE_PARTITION like upper('${selectionSplit[2]}%')
-                        ORDER BY TABLE_PARTITION`);
+                  if (resultSet.length > 0) {
+                    let listMember: vscode.QuickPickItem[] = []
 
-                if (resultSet.length > 0) {
-                  let listFile: vscode.QuickPickItem[] = []
-
-                  resultSet.forEach(row => {
-                    listFile.push({
-                      label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
-                      detail: String(row.PARTITION_TEXT)
-                      })
-                  })
-                  quickPick.items = [sourceSeparator,...listFile]
+                    resultSet.forEach(row => {
+                      listMember.push({
+                        label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
+                        detail: String(row.TEXT_DESCRIPTION)
+                        })
+                    })
+                    quickPick.items = [sourceSeparator, ...listMember,fileSeparator,...listItems]
+                  }
                 }
-              }
 
-              break;
+                break;
 
-            default:
-              break;
+              case 3:
+                if (selectionSplit[2].length >= 3) {
+                  resultSet = await content!.runSQL(`SELECT TABLE_PARTITION, PARTITION_TEXT, lower(SOURCE_TYPE) SOURCE_TYPE
+                    FROM qsys2.SYSPARTITIONSTAT
+                    WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
+                          AND table_name = '${selectionSplit[1]}'
+                          AND SOURCE_TYPE IS NOT NULL
+                          AND TABLE_PARTITION like upper('${selectionSplit[2]}%')
+                          ORDER BY TABLE_PARTITION`);
+
+                  if (resultSet.length > 0) {
+                    let listFile: vscode.QuickPickItem[] = []
+
+                    resultSet.forEach(row => {
+                      listFile.push({
+                        label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                        detail: String(row.PARTITION_TEXT)
+                        })
+                    })
+                    quickPick.items = [sourceSeparator,...listFile]
+                  }
+                }
+
+                break;
+
+              default:
+                break;
+            }
           }
         }
       })
