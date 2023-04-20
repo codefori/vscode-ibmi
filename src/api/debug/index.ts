@@ -320,7 +320,7 @@ export async function initialize(context: ExtensionContext) {
       if (connection) {
         const ptfInstalled = debugPTFInstalled();
         if (ptfInstalled) {
-          vscode.window.withProgress({location: vscode.ProgressLocation.Window}, async (progress) => {
+          vscode.window.withProgress({location: vscode.ProgressLocation.Notification}, async (progress) => {
             progress.report({message: `Ending Debug Service`});
             await server.stop(connection);
           });
