@@ -307,7 +307,6 @@ module.exports = class ObjectBrowser {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
-
         if (node) {
           //Running from right click
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
@@ -339,7 +338,7 @@ module.exports = class ObjectBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
         if (node) {
           const connection = getInstance().getConnection();
-          const { library, file, member, basename } = connection.parserMemberPath(node.path);
+          const { library, file, name, basename } = connection.parserMemberPath(node.path);
 
           const newText = await vscode.window.showInputBox({
             value: node.description,
@@ -352,7 +351,7 @@ module.exports = class ObjectBrowser {
 
             try {
               await connection.remoteCommand(
-                `CHGPFM FILE(${library}/${file}) MBR(${member}) TEXT('${escapedText}')`,
+                `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
               );
 
               if (GlobalConfiguration.get(`autoRefresh`)) {
