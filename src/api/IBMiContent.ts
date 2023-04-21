@@ -566,13 +566,14 @@ export default class IBMiContent {
   async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
+    const { 'sort': SORT } = this.ibmi.remoteFeatures;
 
     const items: IFSFile[] = [];
     let fileListResult;
 
-    if (STAT) {
+    if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
-        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .*`,
+        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`,
         directory: `${Tools.escapePath(remotePath)}`
       }));
     
