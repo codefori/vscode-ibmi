@@ -155,12 +155,8 @@ export class Login {
             password: true
           });
         }
-
-        if (!connectionConfig.passphrase) {
-          return;
-        }
       }
-
+ 
       try {
         const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings);
         if (connected.success) {
