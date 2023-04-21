@@ -197,6 +197,7 @@ export class SettingsUI {
               .addParagraph(`Only provide either the password or a private key - not both.`)
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
               .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
+              .addPassword(`passphrase`, `Passphrase`, `Only provide a passphrase if you want to update an existing one or set a new one.`)
               .addButtons({ id: `submitButton`, label: `Save` })
               .loadPage<any>(`Login Settings: ${name}`);
 
@@ -214,6 +215,13 @@ export class SettingsUI {
               };
 
               delete data.password;
+
+              if (data.passphrase && data.privateKey) {
+                context.secrets.delete(`${name}_passphrase`);
+                context.secrets.store(`${name}_passphrase`, `${data.passphrase}`);
+              };
+
+              delete data.passphrase;
 
               connection = {
                 ...connection,
