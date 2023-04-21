@@ -672,9 +672,9 @@ class Object extends vscode.TreeItem {
     this.contextValue = type;
     this.path = path;
     this.tooltip = `${path}`
-      .concat(`${size !== undefined ? `\nSize: ${size}` : ``}`)
-      .concat(`${modified ? `\nModifed: ${modified.toLocaleString()}` : ``}`)
-      .concat(`${owner ? `\nOwner: ${owner.toUpperCase()}` : ``}`);
+      .concat(`${size !== undefined ? `\nSize:\t\t${size}` : ``}`)
+      .concat(`${modified ? `\nModifed:\t${modified.toLocaleString()}` : ``}`)
+      .concat(`${owner ? `\nOwner:\t${owner.toUpperCase()}` : ``}`);
     this.parent = parent;
 
     if (type === `shortcut` || type === `directory`) {

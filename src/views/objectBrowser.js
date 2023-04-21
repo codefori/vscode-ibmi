@@ -1193,10 +1193,10 @@ class Member extends vscode.TreeItem {
     this.resourceUri = getMemberUri(member, filter.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
     this.tooltip = `${this.resourceUri.path}`
-      .concat(`${member.text ? `\nText: ${member.text}` : ``}`)
-      .concat(`${member.lines ? `\nLines: ${member.lines}` : ``}`)
-      .concat(`${member.created ? `\nCreated: ${member.created.toLocaleString()}` : ``}`)
-      .concat(`${member.changed ? `\nChanged: ${member.changed.toLocaleString()}` : ``}`);
+      .concat(`${member.text ? `\nText:\t\t${member.text}` : ``}`)
+      .concat(`${member.lines ? `\nLines:\t${member.lines}` : ``}`)
+      .concat(`${member.created ? `\nCreated:\t${member.created.toLocaleString()}` : ``}`)
+      .concat(`${member.changed ? `\nChanged:\t${member.changed.toLocaleString()}` : ``}`);
     this.command = {
       command: `vscode.open`,
       title: `Open Member`,
