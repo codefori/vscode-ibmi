@@ -1,8 +1,6 @@
 const vscode = require(`vscode`);
 
-const {CustomUI, Field} = require(`../../api/CustomUI`);
-
-const {instance} = require(`../../instantiate`);
+const {CustomUI} = require(`../../api/CustomUI`);
 
 const {GlobalConfiguration, ConnectionConfiguration} = require(`../../api/Configuration`);
 const Variables = require(`./varinfo`);
@@ -53,11 +51,11 @@ module.exports = class SettingsUI {
         { id: `duplicateAction`, label: `Duplicate`}
       );
     
-    const {panel, data} = await ui.loadPage(`Work with Actions`);
-    if (data) {
-      panel.dispose();
+    const page = await ui.loadPage(`Work with Actions`);
+    if (page && page.data) {
+      page.panel.dispose();
 
-      switch (data.buttons) {
+      switch (page.data.buttons) {
       case `newAction`:
         this.WorkAction(-1);
         break;
@@ -65,7 +63,7 @@ module.exports = class SettingsUI {
         this.DuplicateAction();
         break;
       default:
-        this.WorkAction(Number(data.actions));
+        this.WorkAction(Number(page.data.actions));
         break;
       }
     }
@@ -105,7 +103,7 @@ module.exports = class SettingsUI {
    * @param {object} ActionDefault Default action properties
    */
   static async WorkAction(id, ActionDefault) {
-    /** @type {ConnectionConfiguration.Parameters} */
+    const {instance} = require(`../../instantiate`);
     const config = instance.getConfig();
     let allActions = GlobalConfiguration.get(`actions`);
     let currentAction;
@@ -148,7 +146,7 @@ module.exports = class SettingsUI {
         `command`,
         `Command to run`, 
         `Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`,
-        { multiline: true, default: currentAction.command}
+        { rows: 5, default: currentAction.command}
       )
       .addTabs([
         {
@@ -220,8 +218,9 @@ module.exports = class SettingsUI {
       );
 
     while (stayOnPanel === true) {
-      const {panel, data} = await ui.loadPage(uiTitle);
-      if (data) {
+      const page = await ui.loadPage(uiTitle);
+      if (page && page.data) {        
+        const data = page.data;
         switch (data.buttons) {
         case `deleteAction`:
           const result = await vscode.window.showInformationMessage(`Are you sure you want to delete this action?`, { modal:true }, `Yes`, `No`)
@@ -264,7 +263,7 @@ module.exports = class SettingsUI {
         stayOnPanel=false;
       }
 
-      panel.dispose();
+      page.panel.dispose();
     }
 
     this.MainMenu();

@@ -3,24 +3,23 @@ import * as vscode from "vscode";
 import * as node_ssh from "node-ssh";
 import { ConnectionConfiguration } from "./Configuration";
 
-import {Tools} from './Tools';
+import { Tools } from './Tools';
 import path from 'path';
-import { ConnectionData, CommandData, StandardIO, CommandResult } from "../typings";
+import { CompileTools } from "./CompileTools";
+import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember, RemoteCommand } from "../typings";
 import * as configVars from './configVars';
+import { instance } from "../instantiate";
+import IBMiContent from "./IBMiContent";
+import { GlobalStorage, CachedServerSettings } from './Storage';
 
-export interface MemberParts {
-  asp?: string
-  library: string
-  file: string
-  member: string
-  extension: string
+export interface MemberParts extends IBMiMember {
   basename: string
 }
 
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `stat`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`]
   },
   {
     path: `/usr/bin/`,
@@ -85,10 +84,14 @@ export default class IBMi {
       setccsid: undefined,
       md5sum: undefined,
       bash: undefined,
+      chsh: undefined,
       stat: undefined,
       'GENCMDXML.PGM': undefined,
+      'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
-      'startDebugService.sh': undefined
+      'startDebugService.sh': undefined,
+      attr: undefined,
+      iconv: undefined
     };
 
     this.variantChars = {
@@ -107,14 +110,14 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
       if (!connectionObject.privateKey) (connectionObject.privateKey = null);
 
       configVars.replaceAll(connectionObject);
-  
+
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
         title: `Connecting`,
@@ -130,20 +133,25 @@ export default class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
-        this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        if (!reconnecting) {
+          this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+        }
 
         let tempLibrarySet = false;
 
         const disconnected = async () => {
           const choice = await vscode.window.showWarningMessage(`Connection lost`, {
             modal: true,
-            detail: `Connection to ${this.currentConnectionName} has timed out. Would you like to reconnect?`
+            detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
           }, `Yes`);
 
+          let disconnect = true;
           if (choice === `Yes`) {
-            this.connect(connectionObject);
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
+            disconnect = !(await this.connect(connectionObject, true)).success;
+          }
+
+          if (disconnect) {
+            this.end();
           };
         };
 
@@ -157,6 +165,11 @@ export default class IBMi {
 
         //Load existing config
         this.config = await ConnectionConfiguration.load(this.currentConnectionName);
+
+        // Load cached server settings.
+        const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
+        // Reload server settings?
+        const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
 
         progress.report({
           message: `Checking home directory.`
@@ -368,107 +381,118 @@ export default class IBMi {
             });
         }
 
-        progress.report({
-          message: `Checking for bad data areas.`
-        });
-
-        try {
-          await this.remoteCommand(
-            `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-            undefined
-          );
-
-          vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
-            detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
-            modal: true,
-          }, `Delete`, `Read more`).then(choice => {
-            switch (choice) {
-              case `Delete`:
-                this.remoteCommand(
-                  `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
-                )
-                  .then(() => {
-                    vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
-                  })
-                  .catch(e => {
-                    vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
-                  });
-                break;
-              case `Read more`:
-                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
-                break;
-            }
+        // Check for bad data areas?
+        if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
+          // Do nothing, bad data areas are already checked.
+        } else {
+          progress.report({
+            message: `Checking for bad data areas.`
           });
-        } catch (e) {
-          // It doesn't exist, we're all good.
-        }
 
-        try {
-          await this.remoteCommand(
-            `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-            undefined
-          );
-
-          vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
-            modal: false,
-          }, `Delete`, `Read more`).then(choice => {
-            switch (choice) {
-              case `Delete`:
-                this.remoteCommand(
-                  `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
-                )
-                  .then(() => {
-                    vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
-                  })
-                  .catch(e => {
-                    vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
-                  });
-                break;
-              case `Read more`:
-                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
-                break;
-            }
-          });
-        } catch (e) {
-          // It doesn't exist, we're all good.
-        }
-
-        progress.report({
-          message: `Checking installed components on host IBM i.`
-        });
-
-        // We need to check if our remote programs are installed.
-        remoteApps.push(
-          {
-            path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-            names: [`GENCMDXML.PGM`],
-            specific: `GENCMDXML.PGM`
-          }
-        );
-
-        //Next, we see what pase features are available (installed via yum)
-        //This may enable certain features in the future.
-        for (const feature of remoteApps) {
           try {
-            progress.report({
-              message: `Checking installed components on host IBM i: ${feature.path}`
-            });
+            await this.remoteCommand(
+              `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+              undefined
+            );
 
-            const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
-            if (typeof call === `string`) {
-              const files = call.split(`\n`);
-
-              if (feature.specific) {
-                for (const name of feature.names)
-                  this.remoteFeatures[name] = files.find(file => file.includes(name));
-              } else {
-                for (const name of feature.names)
-                  if (files.includes(name))
-                    this.remoteFeatures[name] = feature.path + name;
+            vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
+              detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
+              modal: true,
+            }, `Delete`, `Read more`).then(choice => {
+              switch (choice) {
+                case `Delete`:
+                  this.remoteCommand(
+                    `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
+                  )
+                    .then(() => {
+                      vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                    })
+                    .catch(e => {
+                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                    });
+                  break;
+                case `Read more`:
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  break;
               }
-            }
+            });
           } catch (e) {
-            console.log(e);
+            // It doesn't exist, we're all good.
+          }
+
+          try {
+            await this.remoteCommand(
+              `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+              undefined
+            );
+
+            vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
+              modal: false,
+            }, `Delete`, `Read more`).then(choice => {
+              switch (choice) {
+                case `Delete`:
+                  this.remoteCommand(
+                    `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
+                  )
+                    .then(() => {
+                      vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                    })
+                    .catch(e => {
+                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                    });
+                  break;
+                case `Read more`:
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  break;
+              }
+            });
+          } catch (e) {
+            // It doesn't exist, we're all good.
+          }
+        }
+
+        // Check for installed components?
+        // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
+        if (quickConnect === true && cachedServerSettings?.remoteFeatures && Object.keys(cachedServerSettings.remoteFeatures).sort().toString() === Object.keys(this.remoteFeatures).sort().toString()) {
+          this.remoteFeatures = cachedServerSettings.remoteFeatures;
+        } else {
+          progress.report({
+            message: `Checking installed components on host IBM i.`
+          });
+
+          // We need to check if our remote programs are installed.
+          remoteApps.push(
+            {
+              path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+              names: [`GENCMDXML.PGM`, `GETNEWLIBL.PGM`],
+              specific: `GE*.PGM`
+            }
+          );
+
+          //Next, we see what pase features are available (installed via yum)
+          //This may enable certain features in the future.
+          for (const feature of remoteApps) {
+            try {
+              progress.report({
+                message: `Checking installed components on host IBM i: ${feature.path}`
+              });
+
+              const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
+              if (typeof call === `string`) {
+                const files = call.split(`\n`);
+
+                if (feature.specific) {
+                  for (const name of feature.names)
+                    this.remoteFeatures[name] = files.find(file => file.includes(name));
+                } else {
+                  for (const name of feature.names)
+                    if (files.includes(name))
+                      this.remoteFeatures[name] = feature.path + name;
+                }
+              }
+            } catch (e) {
+              console.log(e);
+            }
           }
         }
 
@@ -476,143 +500,112 @@ export default class IBMi {
           let statement;
           let output;
 
-          progress.report({
-            message: `Checking for ASP information.`
-          });
-
-          //This is mostly a nice to have. We grab the ASP info so user's do
-          //not have to provide the ASP in the settings.
-          try {
-            statement = `SELECT * FROM QSYS2.ASP_INFO`;
-            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 0, {
-              stdin: statement
+          // Check for ASP information?
+          if (quickConnect === true && cachedServerSettings?.aspInfo) {
+            this.aspInfo = cachedServerSettings.aspInfo;
+          } else {
+            progress.report({
+              message: `Checking for ASP information.`
             });
 
-            if (typeof output === `string`) {
-              const rows = Tools.db2Parse(output);
-              rows.forEach((row: any) => {
-                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                  this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
-                }
+            //This is mostly a nice to have. We grab the ASP info so user's do
+            //not have to provide the ASP in the settings.
+            try {
+              statement = `SELECT * FROM QSYS2.ASP_INFO`;
+              output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 0, {
+                stdin: statement
+              });
+
+              if (typeof output === `string`) {
+                const rows = Tools.db2Parse(output);
+                rows.forEach((row: any) => {
+                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                    this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+                  }
+                });
+              }
+            } catch (e) {
+              //Oh well
+              progress.report({
+                message: `Failed to get ASP information.`
               });
             }
-          } catch (e) {
-            //Oh well
-            progress.report({
-              message: `Failed to get ASP information.`
-            });
           }
 
-          progress.report({
-            message: `Fetching conversion values.`
-          });
-
-          // Next, we're going to see if we can get the CCSID from the user or the system.
-          // Some things don't work without it!!!
-          try {
-            const CCSID_SYSVAL = -2;
-            statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
-            output = await this.sendCommand({
-              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-              stdin: statement
+          // Fetch conversion values?
+          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars) {
+            this.qccsid = cachedServerSettings.qccsid;
+            this.variantChars = cachedServerSettings.variantChars;
+          } else {
+            progress.report({
+              message: `Fetching conversion values.`
             });
 
-            if (output.stdout) {
-              const [row] = Tools.db2Parse(output.stdout);
-              if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
-                this.qccsid = row.CHARACTER_CODE_SET_ID;
-              }
-            }
-
-            if (this.qccsid === undefined || this.qccsid === CCSID_SYSVAL) {
-              statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+            // Next, we're going to see if we can get the CCSID from the user or the system.
+            // Some things don't work without it!!!
+            try {
+              const CCSID_SYSVAL = -2;
+              statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
               output = await this.sendCommand({
                 command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
                 stdin: statement
               });
 
               if (output.stdout) {
-                const rows = Tools.db2Parse(output.stdout);
-                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
-                if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
-                  this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+                const [row] = Tools.db2Parse(output.stdout);
+                if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
+                  this.qccsid = row.CHARACTER_CODE_SET_ID;
                 }
               }
-            }
 
-            if (this.config.enableSQL && this.qccsid === 65535) {
-              this.config.enableSQL = false;
-              vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
-            }
+              if (this.qccsid === undefined || this.qccsid === CCSID_SYSVAL) {
+                statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+                output = await this.sendCommand({
+                  command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                  stdin: statement
+                });
 
-            progress.report({
-              message: `Fetching local encoding values.`
-            });
-
-            statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-              + `  values ( cast( x'7B' as varchar(1) )`
-              + `         , cast( x'7C' as varchar(1) )`
-              + `         , cast( x'5B' as varchar(1) ) )`
-              + `)`
-              + `select HASH concat AT concat DOLLARSIGN as LOCAL`
-              + `  from VARIANTS; `;
-            output = await this.sendCommand({
-              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-              stdin: statement
-            });
-            if (output.stdout) {
-              const [row] = Tools.db2Parse(output.stdout);
-              if (row && row.LOCAL !== `null` && typeof row.LOCAL === 'string') {
-                this.variantChars.local = row.LOCAL;
+                if (output.stdout) {
+                  const rows = Tools.db2Parse(output.stdout);
+                  const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                  if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
+                    this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+                  }
+                }
               }
-            } else {
-              throw new Error(`There was an error running the SQL statement.`);
-            }
-          } catch (e) {
-            // Oh well!
-            console.log(e);
-          }
 
-          // Check users default shell.
-          // give user option to set bash as default shell.
-          try {
-            // make sure sql is enabled and bash is installed on system
-            if (this.config.enableSQL && 
-                this.remoteFeatures[`bash`]) {
-              const bashShellPath = '/QOpenSys/pkgs/bin/bash';
-              const commandShellResult = await this.sendCommand({
-                command: `echo $SHELL`
+              if (this.config.enableSQL && this.qccsid === 65535) {
+                this.config.enableSQL = false;
+                vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
+              }
+
+              progress.report({
+                message: `Fetching local encoding values.`
               });
-              if (!commandShellResult.stderr) {
-                let userDefaultShell = commandShellResult.stdout.trim();
-                if (userDefaultShell !== bashShellPath) {
-                  vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash?`, `Read More`,).then(async choice => {
-                    switch (choice) { 
-                      case `Set shell to bash?`:
-                        statement = `CALL QSYS2.SET_PASE_SHELL_INFO('*CURRENT', '/QOpenSys/pkgs/bin/bash')`;
-                        output = await this.sendCommand({
-                          command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                          stdin: statement
-                        });
 
-                        if (output.stdout) {
-                          vscode.window.showInformationMessage(`Default shell is now bash!`);
-                        } else {
-                          vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
-                        }
-                        break;
-
-                      case `Read More`:
-                        vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
-                        break;
-                    }
-                  });
+              statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+                + `  values ( cast( x'7B' as varchar(1) )`
+                + `         , cast( x'7C' as varchar(1) )`
+                + `         , cast( x'5B' as varchar(1) ) )`
+                + `)`
+                + `select HASH concat AT concat DOLLARSIGN as LOCAL`
+                + `  from VARIANTS; `;
+              output = await this.sendCommand({
+                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                stdin: statement
+              });
+              if (output.stdout) {
+                const [row] = Tools.db2Parse(output.stdout);
+                if (row && row.LOCAL !== `null` && typeof row.LOCAL === 'string') {
+                  this.variantChars.local = row.LOCAL;
                 }
+              } else {
+                throw new Error(`There was an error running the SQL statement.`);
               }
+            } catch (e) {
+              // Oh well!
+              console.log(e);
             }
-          } catch (e) {
-            // Oh well...trying to set default shell is not worth stopping for.
-            console.log(e);
           }
         } else {
           // Disable it if it's not found
@@ -623,6 +616,49 @@ export default class IBMi {
             });
             this.config.enableSQL = false;
           }
+        }
+
+        // Check users default shell.
+        // give user option to set bash as default shell.
+        try {
+          // make sure chsh and bash is installed
+          if (this.remoteFeatures[`chsh`] &&
+            this.remoteFeatures[`bash`]) {
+
+            const bashShellPath = '/QOpenSys/pkgs/bin/bash';
+            const commandShellResult = await this.sendCommand({
+              command: `echo $SHELL`
+            });
+
+            if (!commandShellResult.stderr) {
+              let userDefaultShell = commandShellResult.stdout.trim();
+              if (userDefaultShell !== bashShellPath) {
+
+                vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
+                  switch (choice) {
+                    case `Set shell to bash`:
+                      const commandSetBashResult = await this.sendCommand({
+                        command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+                      });
+
+                      if (!commandSetBashResult.stderr) {
+                        vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+                      } else {
+                        vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                      }
+                      break;
+
+                    case `Read More`:
+                      vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                      break;
+                  }
+                });
+              }
+            }
+          }
+        } catch (e) {
+          // Oh well...trying to set default shell is not worth stopping for.
+          console.log(e);
         }
 
         if (this.config.autoConvertIFSccsid) {
@@ -647,7 +683,23 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
-        vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+        if (!reconnecting) {
+          instance.setConnection(this);
+          vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+          await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+          instance.fire("connected");
+        }
+
+        GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
+          aspInfo: this.aspInfo,
+          qccsid: this.qccsid,
+          remoteFeatures: this.remoteFeatures,
+          variantChars: {
+            american: this.variantChars.american,
+            local: this.variantChars.local,
+          },
+          badDataAreasChecked: true
+        });
 
         return {
           success: true
@@ -660,17 +712,25 @@ export default class IBMi {
         this.client.dispose();
       }
 
+      if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+        modal: true,
+        detail: `Reconnection to ${this.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
+      }, `Yes`)) {
+        return this.connect(connectionObject, true);
+      }
+
       return {
         success: false,
         error: e
       };
     }
-    finally{
+    finally {
       ConnectionConfiguration.update(this.config!);
     }
   }
 
   /**
+   * @deprecated Use runCommand instead
    * @param {string} command 
    * @param {string} [directory] If not passed, will use current home directory
    */
@@ -680,6 +740,18 @@ export default class IBMi {
     command = command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
 
     return this.paseCommand(`system "` + command + `"`, directory);
+  }
+
+  /**
+   * - Send PASE/QSH/ILE commands simply
+   * - Commands sent here end in the 'IBM i Output' channel
+   * - When sending `ile` commands:
+   *   By default, it will use the library list of the connection,
+   *   but `&LIBL` and `&CURLIB` can be passed in the property
+   *   `env` to customise them.
+   */
+  runCommand(data: RemoteCommand) {
+    return CompileTools.runCommand(instance, data);
   }
 
   async sendQsh(options: CommandData) {
@@ -709,12 +781,15 @@ export default class IBMi {
     }
   }
 
+  /**
+   * Send commands to pase through the SSH connection.
+   * Commands sent here end up in the 'Code for IBM i' output channel.
+   */
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
-      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${
-        value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
-      }"`))
+      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
+        }"`))
     }
 
     commands.push(options.command);
@@ -775,14 +850,25 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  end() {
-    this.client.connection.removeAllListeners();
+  async end() {
+    this.client.connection?.removeAllListeners();
     this.client.dispose();
 
     if (this.outputChannel) {
       this.outputChannel.hide();
       this.outputChannel.dispose();
     }
+
+    await Promise.all([
+      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+    ]);
+
+    instance.setConnection(undefined);
+    instance.fire(`disconnected`);
+    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
+    vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }
 
   /**
@@ -827,14 +913,15 @@ export default class IBMi {
       throw new Error(`Invalid Source File name: ${file}`);
     }
 
+    //Having a blank extension is allowed but the . in the path is required
     if (!basename.includes(`.`)) {
       throw new Error(`Source Type extension is required.`);
     }
-    const member = basename.substring(0, basename.lastIndexOf(`.`));
+    const name = basename.substring(0, basename.lastIndexOf(`.`));
     const extension = basename.substring(basename.lastIndexOf(`.`) + 1).trim();
 
-    if (!validQsysName.test(member)) {
-      throw new Error(`Invalid Source Member name: ${member}`);
+    if (!validQsysName.test(name)) {
+      throw new Error(`Invalid Source Member name: ${name}`);
     }
     // The extension/source type has nearly the same naming rules as
     // the objects, except that a period is not allowed.  We can reuse
@@ -850,7 +937,7 @@ export default class IBMi {
       file,
       extension,
       basename,
-      member,
+      name,
       asp
     };
   }
@@ -888,27 +975,27 @@ export default class IBMi {
 
     return result;
   }
-  async uploadFiles(files: {local : string | vscode.Uri, remote : string}[], options?: node_ssh.SSHPutFilesOptions){
-    await this.client.putFiles(files.map(f => {return {local: this.fileToPath(f.local), remote: f.remote}}), options);
+  async uploadFiles(files: { local: string | vscode.Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    await this.client.putFiles(files.map(f => { return { local: this.fileToPath(f.local), remote: f.remote } }), options);
   }
 
-  async downloadFile(localFile: string | vscode.Uri, remoteFile: string){
+  async downloadFile(localFile: string | vscode.Uri, remoteFile: string) {
     await this.client.getFile(this.fileToPath(localFile), remoteFile);
   }
 
-  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory : string, options?: node_ssh.SSHGetPutDirectoryOptions){
+  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.client.putDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions){
+  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
-  fileToPath(file : string | vscode.Uri) : string{
-    if(typeof file === "string"){
+  fileToPath(file: string | vscode.Uri): string {
+    if (typeof file === "string") {
       return file;
     }
-    else{
+    else {
       return file.fsPath;
     }
   }

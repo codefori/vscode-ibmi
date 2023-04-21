@@ -33,32 +33,18 @@ export const LocalLanguageActions: Record<string, Action[]> = {
   ],
   COBOL: [
     {
-      name: `Create COBOL Program`,
-      command: `CRTBNDCBL PGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      name: `Create COBOL Program (SQL)`,
+      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
       deployFirst: true,
       environment: `ile`,
-      extensions: [`CBL`, `CBBLE`]
+      extensions: [`SQLCBL`, `SQLCBBLE`, `SQLCBLLE`, `COB`, `CBLLE`, `CBL`, `CBBLE`]
     },
     {
-      name: `Create COBOL Module`,
-      command: `CRTBNDRPG MODULE(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE)`,
+      name: `Create COBOL Module (SQL)`,
+      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB) TOSRCFILE(&CURLIB/QSQLTEMP)`,
       deployFirst: true,
       environment: `ile`,
-      extensions: [`CBL`, `CBBLE`]
-    },
-    {
-      name: `Create SQLCOBOL Program`,
-      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB)`,
-      deployFirst: true,
-      environment: `ile`,
-      extensions: [`SQLCBL`, `SQLCBBLE`]
-    },
-    {
-      name: `Create SQLCOBOL Module`,
-      command: `CRTSQLCBLI OBJ(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') OBJTYPE(*MODULE) OPTION(*EVENTF) DBGVIEW(*SOURCE) CLOSQLCSR(*ENDMOD) CVTCCSID(*JOB)`,
-      deployFirst: true,
-      environment: `ile`,
-      extensions: [`SQLCBL`, `SQLCBBLE`]
+      extensions: [`SQLCBL`, `SQLCBBLE`, `SQLCBLLE`, `COB`, `CBLLE`, `CBL`, `CBBLE`]
     }
   ],
   C: [
@@ -175,8 +161,7 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       environment: `pase`,
       deployFirst: true,
       postDownload: [
-        ".logs/joblog.json",
-        ".logs/output.log"
+        ".logs/",
       ]
     },
     {
@@ -188,8 +173,7 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       environment: `pase`,
       deployFirst: true,
       postDownload: [
-        ".logs/joblog.json",
-        ".logs/output.log"
+        ".logs/",
       ]
     }
   ]

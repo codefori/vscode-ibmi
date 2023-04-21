@@ -9,11 +9,17 @@ import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
 import { ConnectionConfiguration } from './Configuration';
 import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
+
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
+
+export type SortOptions = {
+  order: "name" | "date" | "?"
+  ascending?: boolean
+}
 
 export default class IBMiContent {
 
@@ -186,8 +192,10 @@ export default class IBMiContent {
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
 
-      // We join all new lines together
-      //statement = statement.replace(/\n/g, ` `);
+      // if comments present in sql statement, sql string needs to be checked
+      if (statement.search(`--`) > -1) {
+        statement = this.fixCommentsInSQLString(statement);
+      }
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
@@ -203,6 +211,37 @@ export default class IBMiContent {
     } else {
       throw new Error(`There is no way to run SQL on this system.`);
     }
+  }
+
+  /**
+   * @param ileCommand Command that would change the library list, like CHGLIBL
+   */
+  async getLibraryListFromCommand(ileCommand: string): Promise<{ currentLibrary: string; libraryList: string[]; } | undefined> {
+    if (this.ibmi.remoteFeatures[`GETNEWLIBL.PGM`]) {
+      const tempLib = this.config.tempLibrary;
+      const resultSet = await this.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
+      
+      let result = {
+        currentLibrary: `QGPL`,
+        libraryList: [] as string[]
+      };
+
+      resultSet.forEach(row => {
+        const libraryName = String(row.SYSTEM_SCHEMA_NAME);
+        switch (row.PORTION) {
+          case `CURRENT`:
+            result.currentLibrary = libraryName;
+            break;
+          case `USER`:
+            result.libraryList.push(libraryName);
+            break;
+        }
+      })
+
+      return result;
+    }
+
+    return undefined;
   }
 
   /**
@@ -302,6 +341,49 @@ export default class IBMiContent {
   }
 
   /**
+   * Validates a list of libraries
+   * @param newLibl Array of libraries to validate
+   * @returns Bad libraries
+   */
+  async validateLibraryList(newLibl: string[]): Promise<string[]> {
+    let badLibs: string[] = [];
+
+    newLibl = newLibl.filter(lib => {
+      if (lib.match(/^\d/)) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      if (lib.length > 10) {
+        badLibs.push(lib);
+        return false;
+      }
+
+      return true;
+    });
+
+    const result = await this.ibmi.sendQsh({
+      command: [
+        `liblist -d ` + this.ibmi.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+      ].join(`; `)
+    });
+
+    if (result.stderr) {
+      const lines = result.stderr.split(`\n`);
+
+      lines.forEach(line => {
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
+
+        // If there is an error about the library, remove it
+        if (badLib) badLibs.push(badLib);
+      });
+    }
+
+    return badLibs;
+  }
+
+  /**
    * @param filters 
    * @param sortOrder
    * @returns an array of IBMiFile 
@@ -369,7 +451,9 @@ export default class IBMiContent {
    * @param mbr
    * @returns an array of IBMiMember 
    */
-  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`): Promise<IBMiMember[]> {
+  async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sort: SortOptions = { order: "name" }): Promise<IBMiMember[]> {
+    sort.order = sort.order === '?' ? 'name' : sort.order;
+    
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
     let member = (mbr !== `*` ? mbr : null);
@@ -388,7 +472,7 @@ export default class IBMiContent {
 
       const statement = `
         SELECT
-          (b.avgrowsize - 12) as MBMXRL,
+          b.avgrowsize as MBMXRL,
           a.iasp_number as MBASP,
           cast(a.system_table_name as char(10) for bit data) AS MBFILE,
           cast(b.system_table_member as char(10) for bit data) as MBNAME,
@@ -405,17 +489,15 @@ export default class IBMiContent {
           cast(a.system_table_schema as char(10) for bit data) = '${library}' 
           ${sourceFile !== `*ALL` ? `AND cast(a.system_table_name as char(10) for bit data) = '${sourceFile}'` : ``}
           ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
-          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}
+          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
       `;
       results = await this.runSQL(statement);
-
     } else {
       const tempLib = this.config.tempLibrary;
       const TempName = Tools.makeid();
 
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${sourceFile}) TYPE(*MBR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
       results = await this.getTable(tempLib, TempName, TempName, true);
-
       if (results.length === 1 && String(results[0].MBNAME).trim() === ``) {
         return [];
       }
@@ -431,13 +513,12 @@ export default class IBMiContent {
         
         results = results.filter(row => (
           (!pattern || pattern.test(String(row.MBNAME))) &&
-          (!patternExt || patternExt.test(String(row.MBSEU2)))));
-          
+          (!patternExt || patternExt.test(String(row.MBSEU2)))))
       }
           
       results.forEach(element => {
-        element.CREATED = String(this.getDspfdDate(String(element.MBCCEN),String(element.MBCDAT),String(element.MBCTIM)).valueOf());
-        element.CHANGED = String(this.getDspfdDate(String(element.MBMRCN),String(element.MBMRDT),String(element.MBMRTM)).valueOf());
+        element.CREATED = this.getDspfdDate(String(element.MBCCEN),String(element.MBCDAT),String(element.MBCTIM)).valueOf();
+        element.CHANGED = this.getDspfdDate(String(element.MBMRCN),String(element.MBMRDT),String(element.MBMRTM)).valueOf();
       });
     }
 
@@ -448,19 +529,33 @@ export default class IBMiContent {
     results = results.sort((a, b) => String(a.MBNAME).localeCompare(String(b.MBNAME)));
 
     const asp = this.ibmi.aspInfo[Number(results[0].MBASP)];
-    
-    return results.map(result => ({
+
+    let sorter: (r1: IBMiMember, r2: IBMiMember) => number;
+    if (sort.order === 'name') {
+      sorter = (r1, r2) => r1.name.localeCompare(r2.name);
+    }
+    else {
+      sorter = (r1, r2) => r1.changed!.valueOf() - r2.changed!.valueOf();
+    }
+
+    const members = results.map(result => ({
       asp: asp,
       library: library,
       file: String(result.MBFILE),
       name: String(result.MBNAME),
       extension: String(result.MBSEU2),
-      recordLength: Number(result.MBMXRL),
+      recordLength: Number(result.MBMXRL) - 12,
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
       lines: Number(result.MBNRCD),
       created: new Date(result.CREATED ? Number(result.CREATED) : 0),
       changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
-    }));
+    } as IBMiMember)).sort(sorter);
+
+    if (sort.ascending === false) {
+      members.reverse();
+    }
+
+    return members;
   }
 
   /**
@@ -468,7 +563,8 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
+    sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
 
     const items: IFSFile[] = [];
@@ -506,7 +602,7 @@ export default class IBMiContent {
     } else {
 
       fileListResult = (await this.ibmi.sendCommand({
-        command: `ls -a -p -L ${Tools.escapePath(remotePath)}`
+        command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
       }));
 
       if (fileListResult.code === 0) {
@@ -527,10 +623,46 @@ export default class IBMiContent {
     }
 
     if (fileListResult.code === 0) {
-      return items.sort((a, b) => a.name.localeCompare(b.name));
+      if (sort.order === "name") {
+        items.sort((f1, f2) => f1.name.localeCompare(f2.name));
+        if (sort.ascending === false) {
+          items.reverse();
+        }
+      }
+
+      return items;
+
     } else {
       throw new Error(fileListResult.stderr);
     }
+  }
+
+  /**
+   * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
+   * Required to work with QZDFMDB2.
+   * @param inSql; sql statement
+   * @returns correctly formattted sql string containing comments
+   */
+  private fixCommentsInSQLString(inSql: string): string {
+    const newLine: string = `\n`;
+    let parsedSql: string = ``;
+
+    inSql.split(newLine)
+      .forEach(item => {
+        let goodLine = item + newLine;
+
+        const pos = item.search(`--`);
+        if (pos > 0) {
+          goodLine = item.slice(0, pos) + 
+                     newLine +
+                     item.slice(pos) +
+                     newLine;
+        }
+        parsedSql += goodLine;
+        
+      });
+
+    return parsedSql;
   }
 
   /**
@@ -547,7 +679,7 @@ export default class IBMiContent {
    * @param century; century code (1=20xx, 0=19xx)
    * @param dateString: string in YYMMDD
    * @param timeString: string in HHMMSS
-   * @returns string in ISO format YYYY-MM-DD HH:MM:SS
+   * @returns date
    */
   getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
     let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;

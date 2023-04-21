@@ -1,8 +1,12 @@
 
 const vscode = require(`vscode`);
 
-let {instance} = require(`../instantiate`);
-const {GlobalConfiguration, ConnectionConfiguration} = require(`../api/Configuration`);
+const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
+
+function getInstance(){
+  let { instance } = require(`../instantiate`);
+  return instance;
+}
 
 module.exports = class libraryListProvider {
   /**
@@ -13,27 +17,22 @@ module.exports = class libraryListProvider {
     this.emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this.emitter.event;
 
-    // used for targeted member list refreshes
-    this.targetLib = `*ALL`;
-    this.targetSpf = `*ALL`;
-    this.refreshCache = {}; // cache entries of format 'LIB/SPF': members[]
-
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.refreshLibraryListView`, async () => {
         this.refresh();
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
-        const storage = instance.getStorage();
+        const config = getInstance().getConfig();
+        const storage = getInstance().getStorage();
         const currentLibrary = config.currentLibrary.toUpperCase();
         let prevCurLibs = storage.getPreviousCurLibs();
         let list = [...prevCurLibs];
         const listHeader = [
           { label: `Currently active`, kind: vscode.QuickPickItemKind.Separator },
-          { label: currentLibrary},
+          { label: currentLibrary },
           { label: `Recently used`, kind: vscode.QuickPickItemKind.Separator }
         ];
         const clearList = `$(trash) Clear list`;
@@ -48,12 +47,12 @@ module.exports = class libraryListProvider {
           if (quickPick.value === ``) {
             quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
           } else if (!list.includes(quickPick.value.toUpperCase())) {
-            quickPick.items = [{label: quickPick.value.toUpperCase()}].concat(listHeader)
-              .concat(list.map(lib => ({ label : lib })))
+            quickPick.items = [{ label: quickPick.value.toUpperCase() }].concat(listHeader)
+              .concat(list.map(lib => ({ label: lib })))
           }
         })
-        
-        quickPick.onDidAccept( async () => {
+
+        quickPick.onDidAccept(async () => {
           const newLibrary = quickPick.selectedItems[0].label;
           if (newLibrary) {
             if (newLibrary === clearList) {
@@ -93,9 +92,10 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
-        const connection = instance.getConnection();
+        const connection = getInstance().getConnection();
+        const content = getInstance().getContent();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         const libraryList = config.libraryList;
 
         const newLibraryListStr = await vscode.window.showInputBox({
@@ -115,7 +115,7 @@ module.exports = class libraryListProvider {
               .split(` `)
               .map(lib => lib.toUpperCase())
               .filter((lib, idx, libl) => lib && libl.indexOf(lib) === idx);
-            const badLibs = await this.validateLibraryList(newLibraryList);
+            const badLibs = await content.validateLibraryList(newLibraryList);
 
             if (badLibs.length > 0) {
               newLibraryList = newLibraryList.filter(lib => !badLibs.includes(lib));
@@ -130,13 +130,14 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = ``) => {
+        const content = getInstance().getContent();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         let addingLib;
 
         let libraryList = [...config.libraryList];
 
-        if(typeof newLibrary !== `string` || newLibrary == ``){
+        if (typeof newLibrary !== `string` || newLibrary == ``) {
           addingLib = await vscode.window.showInputBox({
             prompt: `Library to add`
           });
@@ -147,7 +148,7 @@ module.exports = class libraryListProvider {
         if (addingLib) {
           if (addingLib.length <= 10) {
             libraryList.push(addingLib.toUpperCase());
-            const badLibs = await this.validateLibraryList(libraryList);
+            const badLibs = await content.validateLibraryList(libraryList);
 
             if (badLibs.length > 0) {
               libraryList = libraryList.filter(lib => !badLibs.includes(lib));
@@ -167,7 +168,7 @@ module.exports = class libraryListProvider {
         if (node) {
           //Running from right click
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
 
           let libraryList = config.libraryList;
 
@@ -186,7 +187,7 @@ module.exports = class libraryListProvider {
         if (node) {
           //Running from right click
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
 
           let libraryList = config.libraryList;
 
@@ -194,7 +195,7 @@ module.exports = class libraryListProvider {
           if (index >= 0 && (index - 1) >= 0) {
             const library = libraryList[index];
             libraryList.splice(index, 1);
-            libraryList.splice(index-1, 0, library);
+            libraryList.splice(index - 1, 0, library);
 
             config.libraryList = libraryList;
             await ConnectionConfiguration.update(config);
@@ -208,7 +209,7 @@ module.exports = class libraryListProvider {
         if (node) {
           //Running from right click
           /** @type {ConnectionConfiguration.Parameters} */
-          const config = instance.getConfig();
+          const config = getInstance().getConfig();
 
           let libraryList = config.libraryList;
 
@@ -216,7 +217,7 @@ module.exports = class libraryListProvider {
           if (index >= 0 && (index + 1) >= 0) {
             const library = libraryList[index];
             libraryList.splice(index, 1);
-            libraryList.splice(index+1, 0, library);
+            libraryList.splice(index + 1, 0, library);
 
             config.libraryList = libraryList;
             await ConnectionConfiguration.update(config);
@@ -227,10 +228,11 @@ module.exports = class libraryListProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.cleanupLibraryList`, async () => {
+        const content = getInstance().getContent();
         /** @type {ConnectionConfiguration.Parameters} */
-        const config = instance.getConfig();
+        const config = getInstance().getConfig();
         let libraryList = [...config.libraryList];
-        const badLibs = await this.validateLibraryList(libraryList);
+        const badLibs = await content.validateLibraryList(libraryList);
 
         if (badLibs.length > 0) {
           libraryList = libraryList.filter(lib => !badLibs.includes(lib));
@@ -243,52 +245,7 @@ module.exports = class libraryListProvider {
         }
       }),
     )
-  }
-
-  /**
-   * Validates a list of libraries
-   * @param {string[]} newLibl
-   * @returns {Promise<string[]>} Bad libraries
-   */
-  async validateLibraryList(newLibl) {
-    const connection = await instance.getConnection();
-
-    let badLibs = [];
-
-    newLibl = newLibl.filter(lib => {
-      if (lib.match(/^\d/)) {
-        badLibs.push(lib);
-        return false;
-      }
-
-      if (lib.length > 10) {
-        badLibs.push(lib);
-        return false;
-      }
-
-      return true;
-    });
-
-    /** @type {object} */
-    const result = await connection.sendQsh({
-      command: [
-        `liblist -d ` + connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
-      ].join(` && `)
-    });
-
-    if (result.stderr) {
-      const lines = result.stderr.split(`\n`);
-
-      lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
-
-        // If there is an error about the library, remove it
-        if (badLib) badLibs.push(badLib);
-      });
-    }
-
-    return badLibs;
+    getInstance().onEvent(`connected`, () => this.refresh());
   }
 
   refresh() {
@@ -307,23 +264,22 @@ module.exports = class libraryListProvider {
    * @returns {Promise<vscode.TreeItem[]>};
    */
   async getChildren() {
-    const connection = instance.getConnection();
-    const content = instance.getContent();
-    /** @type {ConnectionConfiguration.Parameters} */
-    const config = instance.getConfig();
-    const currentLibrary = config.currentLibrary.toUpperCase();
-    let items = [];
-    let libraries = [];
-
+    const items = [];
+    const connection = getInstance().getConnection();
     if (connection) {
+      const content = getInstance().getContent();
+      const config = getInstance().getConfig();
+      const currentLibrary = config.currentLibrary.toUpperCase();
+
+      const libraries = [];
       if (config.showDescInLibList === true) {
-        libraries = await content.getLibraryList([config.currentLibrary, ...config.libraryList]);
+        libraries.push(...await content.getLibraryList([currentLibrary, ...config.libraryList]));
       } else {
-        libraries = [config.currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` }});
+        libraries.push(...[currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` } }));
       }
-      items = libraries.map((lib, index) => {
+      items.push(...libraries.map((lib, index) => {
         return new Library(lib.name, lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
-      });
+      }));
     }
 
     return items;
