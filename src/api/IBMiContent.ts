@@ -478,7 +478,9 @@ export default class IBMiContent {
           cast(b.system_table_member as char(10) for bit data) as MBNAME,
           coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
           coalesce(b.partition_text, '') as MBMTXT,
-          b.last_change_timestamp as CHANGED
+          b.NUMBER_ROWS as MBNRCD,
+          extract(epoch from (b.CREATE_TIMESTAMP - current_timezone))*1000 as CREATED,
+          extract(epoch from (b.LAST_CHANGE_TIMESTAMP - current_timezone))*1000 as CHANGED
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
@@ -508,11 +510,16 @@ export default class IBMiContent {
         if (memberExt) {
           patternExt = new RegExp(`^` + memberExt.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
         }
-
+        
         results = results.filter(row => (
           (!pattern || pattern.test(String(row.MBNAME))) &&
           (!patternExt || patternExt.test(String(row.MBSEU2)))))
       }
+          
+      results.forEach(element => {
+        element.CREATED = this.getDspfdDate(String(element.MBCCEN),String(element.MBCDAT),String(element.MBCTIM)).valueOf();
+        element.CHANGED = this.getDspfdDate(String(element.MBMRCN),String(element.MBMRDT),String(element.MBMRTM)).valueOf();
+      });
     }
 
     if (results.length === 0) {
@@ -528,7 +535,7 @@ export default class IBMiContent {
       sorter = (r1, r2) => r1.name.localeCompare(r2.name);
     }
     else {
-      sorter = (r1, r2) => r1.changed.localeCompare(r2.changed);
+      sorter = (r1, r2) => r1.changed!.valueOf() - r2.changed!.valueOf();
     }
 
     const members = results.map(result => ({
@@ -539,7 +546,9 @@ export default class IBMiContent {
       extension: String(result.MBSEU2),
       recordLength: Number(result.MBMXRL) - 12,
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
-      changed: `${result.CHANGED ? result.CHANGED : `${result.MBCHGD}${result.MBCHGT}`}`
+      lines: Number(result.MBNRCD),
+      created: new Date(result.CREATED ? Number(result.CREATED) : 0),
+      changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
     } as IBMiMember)).sort(sorter);
 
     if (sort.ascending === false) {
@@ -556,26 +565,65 @@ export default class IBMiContent {
    */
   async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
+    const { 'stat': STAT } = this.ibmi.remoteFeatures;
+    const { 'sort': SORT } = this.ibmi.remoteFeatures;
+
+    const items: IFSFile[] = [];
+    let fileListResult;
+
+    if (STAT && SORT) {
+      fileListResult = (await this.ibmi.sendCommand({
+        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`,
+        directory: `${Tools.escapePath(remotePath)}`
+      }));
     
-    const fileListResult = (await this.ibmi.sendCommand({
-      command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
-    }));
-
-    if (fileListResult.code === 0) {
-      const fileList = fileListResult.stdout;
-
-      //Remove current and dir up.
-      const items: IFSFile[] = fileList.split(`\n`)
-        .filter(item => item !== `../` && item !== `./`)
-        .map(item => {
-          const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-          return {
-            type,
-            name: (type === `directory` ? item.substring(0, item.length - 1) : item),
-            path: path.posix.join(remotePath, item)
+      if (fileListResult.code === 0) {
+        const fileStatList = fileListResult.stdout;
+        const fileList = fileStatList.split(`\n`);
+    
+        //Remove current and dir up.
+        fileList.forEach(item => {
+          let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
+          [auth, hardLinks, owner, group, size, modified, name] = item.split(`\t`);
+    
+          if (name !== `..` && name !== `.`) {
+            const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: name,
+              path: path.posix.join(remotePath, name),
+              size: Number(size),
+              modified: new Date(Number(modified)*1000),
+              owner: owner
+            });
           };
         });
+      }
 
+    } else {
+
+      fileListResult = (await this.ibmi.sendCommand({
+        command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
+      }));
+
+      if (fileListResult.code === 0) {
+        const fileList = fileListResult.stdout;
+
+        //Remove current and dir up.
+        fileList.split(`\n`)
+          .filter(item => item !== `../` && item !== `./`)
+          .forEach(item => {
+            const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: (type === `directory` ? item.substring(0, item.length - 1) : item),
+              path: path.posix.join(remotePath, item)
+            });
+          });
+        }
+    }
+
+    if (fileListResult.code === 0) {
       if (sort.order === "name") {
         items.sort((f1, f2) => f1.name.localeCompare(f2.name));
         if (sort.ascending === false) {
@@ -588,7 +636,6 @@ export default class IBMiContent {
     } else {
       throw new Error(fileListResult.stderr);
     }
-
   }
 
   /**
@@ -627,5 +674,18 @@ export default class IBMiContent {
     return errorsString.split(`\n`)
       .map(error => error.split(':'))
       .map(codeText => ({ code: codeText[0], text: codeText[1] }));
+  }
+  
+  /**
+   * @param century; century code (1=20xx, 0=19xx)
+   * @param dateString: string in YYMMDD
+   * @param timeString: string in HHMMSS
+   * @returns date
+   */
+  getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
+    let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
+    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
+    [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
+    return new Date(Number(year), Number(month)-1, Number(day), Number(hours), Number(minutes), Number(seconds));
   }
 }

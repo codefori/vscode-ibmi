@@ -19,7 +19,7 @@ export interface MemberParts extends IBMiMember {
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`]
   },
   {
     path: `/usr/bin/`,
@@ -85,6 +85,8 @@ export default class IBMi {
       md5sum: undefined,
       bash: undefined,
       chsh: undefined,
+      stat: undefined,
+      sort: undefined,
       'GENCMDXML.PGM': undefined,
       'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
@@ -937,8 +939,7 @@ export default class IBMi {
       extension,
       basename,
       name,
-      asp,
-      changed: ``
+      asp
     };
   }
 

@@ -93,16 +93,21 @@ export interface IBMiMember {
   file: string
   name: string
   extension: string
-  changed: string
   recordLength?: number
   text?: string
   asp?: string
+  lines?: number
+  created?: Date
+  changed?: Date
 }
 
 export interface IFSFile {
   type: "directory" | "streamfile"
   name: string
   path: string
+  size?: number
+  modified?: Date | string
+  owner?: string
 }
 
 export interface IBMiError {
