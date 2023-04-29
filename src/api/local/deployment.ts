@@ -209,8 +209,6 @@ export namespace Deployment {
           setDeployLocation(undefined, folder, buildPossibleDeploymentDirectory(folder));
         }
       }
-    } else {
-      vscode.window.showErrorMessage(`No location selected for deployment.`);
     }
   }
 
