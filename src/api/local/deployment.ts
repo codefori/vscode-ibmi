@@ -1,5 +1,5 @@
 
-import path, { basename, dirname } from 'path';
+import path, { basename, dirname, posix } from 'path';
 import vscode, { WorkspaceFolder } from 'vscode';
 import { getLocalActions } from './actions';
 import { ConnectionConfiguration } from '../Configuration';
@@ -70,7 +70,7 @@ export namespace Deployment {
           const workspace = workspaces[0];
 
           if (existingPaths && !existingPaths[workspace.uri.fsPath]) {
-            const possibleDeployDir = path.posix.join(`/`, `home`, connection.currentUser, `builds`, workspace.name);
+            const possibleDeployDir = buildPossibleDeploymentDirectory(workspace);
             vscode.window.showInformationMessage(
               `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`,
               `Yes`,
@@ -204,7 +204,9 @@ export namespace Deployment {
           }
         }
       } else {
-        vscode.window.showErrorMessage(`Chosen location (${folder.uri.fsPath}) is not configured for deployment.`);
+        if(await vscode.window.showErrorMessage(`Chosen location (${folder.uri.fsPath}) is not configured for deployment.`, 'Set deploy location')){          
+          setDeployLocation(undefined, folder, buildPossibleDeploymentDirectory(folder));
+        }
       }
     } else {
       vscode.window.showErrorMessage(`No location selected for deployment.`);
@@ -487,9 +489,10 @@ export namespace Deployment {
     });
   }
 
-  async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder) {
+  async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder, value?:string) {
     const path = node?.path || await vscode.window.showInputBox({
       prompt: `Enter IFS directory to deploy to`,
+      value
     });
 
     if (path) {
@@ -601,3 +604,9 @@ export namespace Deployment {
       });
   }
 }
+function buildPossibleDeploymentDirectory(workspace: vscode.WorkspaceFolder) {
+  const user = instance.getConnection()?.currentUser;
+  //User should not be empty but we'll keep tmp as a fallback location
+  return user ? path.posix.join('/', 'home', user ,'builds', workspace.name) : path.posix.join('/', 'tmp', 'builds', workspace.name);
+}
+
