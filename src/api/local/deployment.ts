@@ -30,7 +30,7 @@ export namespace Deployment {
 
   const deploymentLog = vscode.window.createOutputChannel(`IBM i Deployment`);
   const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-  const changes: Map<string, vscode.Uri> = new Map;
+  const workspaceChanges: Map<vscode.WorkspaceFolder, Map<string, vscode.Uri>> = new Map;
 
   export function initialize(context: vscode.ExtensionContext) {
     button.command = {
@@ -169,7 +169,8 @@ export namespace Deployment {
           methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
         }
 
-        methods.push({ method: "changed" as DeploymentMethod, label: `Changes`, description: `${changes.size} change${changes.size > 1 ? `s` : ``} detected since last upload. ${!changes.size ? `Will skip deploy step.` : ``}` });
+        const changes = workspaceChanges.get(folder)?.size || 0;
+        methods.push({ method: "changed" as DeploymentMethod, label: `Changes`, description: `${changes} change${changes > 1 ? `s` : ``} detected since last upload. ${!changes ? `Will skip deploy step.` : ``}` });
 
         if (Tools.getGitAPI()) {
           methods.push(
@@ -193,7 +194,7 @@ export namespace Deployment {
           }
 
           const parameters: DeploymentParameters = {
-            localFolder: folder.uri,
+            workspaceFolder: folder,
             remotePath,
             ignoreRules,
             method
@@ -244,7 +245,7 @@ export namespace Deployment {
 
       deploymentLog.appendLine(`Deployment finished.`);
       vscode.window.showInformationMessage(`Deployment finished.`);
-      changes.clear();
+      workspaceChanges.get(parameters.workspaceFolder)?.clear();
       return true;
     }
     catch (error) {
@@ -280,11 +281,12 @@ export namespace Deployment {
   }
 
   async function deployChanged(parameters: DeploymentParameters) {
-    if (changes.size > 0) {
+    const changes = workspaceChanges.get(parameters.workspaceFolder);
+    if (changes && changes.size > 0) {
       const changedFiles = Array.from(changes.values())
         .filter(uri => {
           // We don't want stuff in the gitignore
-          const relative = toRelative(parameters.localFolder, uri);
+          const relative = toRelative(parameters.workspaceFolder.uri, uri);
           if (relative && parameters.ignoreRules) {
             return !parameters.ignoreRules.ignores(relative);
           }
@@ -297,7 +299,7 @@ export namespace Deployment {
 
       const uploads: Upload[] = changedFiles
         .map(uri => {
-          const relative = toRelative(parameters.localFolder, uri);
+          const relative = toRelative(parameters.workspaceFolder.uri, uri);
           const remote = path.posix.join(parameters.remotePath, relative);
           deploymentLog.appendLine(`UPLOADING: ${uri.fsPath} -> ${remote}`);
           return {
@@ -320,7 +322,7 @@ export namespace Deployment {
     const gitApi = Tools.getGitAPI();
 
     if (gitApi && gitApi.repositories.length > 0) {
-      const repository = gitApi.repositories.find(r => r.rootUri.fsPath === parameters.localFolder.fsPath);
+      const repository = gitApi.repositories.find(r => r.rootUri.fsPath === parameters.workspaceFolder.uri.fsPath);
 
       if (repository) {
         let gitFiles;
@@ -337,7 +339,7 @@ export namespace Deployment {
 
         if (gitFiles.length > 0) {
           const uploads: Upload[] = gitFiles.map(change => {
-            const relative = toRelative(parameters.localFolder, change.uri);
+            const relative = toRelative(parameters.workspaceFolder.uri, change.uri);
             const remote = path.posix.join(parameters.remotePath, relative);
             deploymentLog.appendLine(`UPLOADING: ${change.uri.fsPath} -> ${remote}`);
             return {
@@ -359,7 +361,7 @@ export namespace Deployment {
           vscode.window.showWarningMessage(`No ${changeType} changes to deploy.`);
         }
       } else {
-        throw new Error(`No repository found for ${parameters.localFolder.fsPath}`);
+        throw new Error(`No repository found for ${parameters.workspaceFolder.uri.fsPath}`);
       }
     } else {
       throw new Error(`No repositories are open.`);
@@ -374,7 +376,7 @@ export namespace Deployment {
         await deployAll(parameters);
       }
       else {
-        const name = basename(parameters.localFolder.path);
+        const name = basename(parameters.workspaceFolder.uri.path);
         await vscode.window.withProgress({
           location: vscode.ProgressLocation.Notification,
           title: `Synchronizing ${name}`,
@@ -389,7 +391,7 @@ export namespace Deployment {
           const remoteMD5: MD5Entry[] = md5sumOut.stdout.split(`\n`).map(line => toMD5Entry(line.trim()));
 
           progress.report({ message: `creating transfer list`, increment: 25 });
-          const localRoot = `${parameters.localFolder.fsPath}${parameters.localFolder.fsPath.startsWith('/') ? '/' : '\\'}`;
+          const localRoot = `${parameters.workspaceFolder.uri.fsPath}${parameters.workspaceFolder.uri.fsPath.startsWith('/') ? '/' : '\\'}`;
           const localFiles = (await findFiles(parameters, "**/*", "**/.git*"))
             .map(file => ({ uri: file, path: file.fsPath.replace(localRoot, '').replace(/\\/g, '/') }));
 
@@ -441,7 +443,7 @@ export namespace Deployment {
   }
 
   async function deployAll(parameters: DeploymentParameters) {
-    const name = basename(parameters.localFolder.path);
+    const name = basename(parameters.workspaceFolder.uri.path);
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Deploying ${name}`,
@@ -449,7 +451,7 @@ export namespace Deployment {
       progress.report({ message: `Deploying ${name}` });
       if (parameters.remotePath.startsWith(`/`)) {
         try {
-          await getClient().putDirectory(parameters.localFolder.fsPath, parameters.remotePath, {
+          await getClient().putDirectory(parameters.workspaceFolder.uri.fsPath, parameters.remotePath, {
             recursive: true,
             concurrency: 5,
             tick: (localPath, remotePath, error) => {
@@ -467,7 +469,7 @@ export namespace Deployment {
               }
             },
             validate: localPath => {
-              const relative = path.relative(parameters.localFolder.fsPath, localPath);
+              const relative = path.relative(parameters.workspaceFolder.uri.fsPath, localPath);
               if (relative && parameters.ignoreRules) {
                 return !parameters.ignoreRules.ignores(relative);
               }
@@ -518,25 +520,32 @@ export namespace Deployment {
   async function buildWatcher() {
     const invalidFs = [`member`, `streamfile`];
     const watcher = vscode.workspace.createFileSystemWatcher(`**`);
+    
+    const getChangesMap = (uri: vscode.Uri) => {
+      if(!invalidFs.includes(uri.scheme) && !uri.fsPath.includes(`.git`)){
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+        if(workspaceFolder){
+          let changes = workspaceChanges.get(workspaceFolder);
+          if(!changes){
+            changes = new Map;
+            workspaceChanges.set(workspaceFolder, changes);
+          }
+          return changes;
+        }
+      }
+    }
 
     watcher.onDidChange(uri => {
-      if (invalidFs.includes(uri.scheme)) return;
-      if (uri.fsPath.includes(`.git`)) return;
-      changes.set(uri.fsPath, uri);
+      getChangesMap(uri)?.set(uri.fsPath, uri);
     });
-    watcher.onDidCreate(async uri => {
-      if (invalidFs.includes(uri.scheme)) return;
-      if (uri.fsPath.includes(`.git`)) return;
+    watcher.onDidCreate(async uri => {            
       const fileStat = await vscode.workspace.fs.stat(uri);
-
       if (fileStat.type === vscode.FileType.File) {
-        changes.set(uri.fsPath, uri);
+        getChangesMap(uri)?.set(uri.fsPath, uri);
       }
     });
     watcher.onDidDelete(uri => {
-      if (invalidFs.includes(uri.scheme)) return;
-      if (uri.fsPath.includes(`.git`)) return;
-      changes.delete(uri.fsPath);
+      getChangesMap(uri)?.delete(uri.fsPath);
     });
 
     return watcher;
@@ -590,12 +599,12 @@ export namespace Deployment {
   }
 
   async function findFiles(parameters: DeploymentParameters, includePattern: string, excludePattern?: string) {
-    const root = parameters.localFolder.fsPath;
+    const root = parameters.workspaceFolder.uri.fsPath;
     return (await vscode.workspace.findFiles(new vscode.RelativePattern(root, includePattern),
       excludePattern ? new vscode.RelativePattern(root, excludePattern) : null))
       .filter(file => {
         if (parameters.ignoreRules) {
-          const relative = toRelative(parameters.localFolder, file);
+          const relative = toRelative(parameters.workspaceFolder.uri, file);
           return !parameters.ignoreRules.ignores(relative);
         }
         else {
