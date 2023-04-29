@@ -1,4 +1,5 @@
-
+import tar from 'tar';
+import tmp from 'tmp';
 import path, { basename, dirname, posix } from 'path';
 import vscode, { WorkspaceFolder } from 'vscode';
 import { getLocalActions } from './actions';
@@ -7,7 +8,7 @@ import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { instance } from '../../instantiate';
 import ignore from 'ignore'
 import { NodeSSH } from 'node-ssh';
-import { readFileSync } from 'fs';
+import { createWriteStream, readFileSync } from 'fs';
 import Crypto from 'crypto';
 import IBMi from '../IBMi';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
@@ -205,7 +206,7 @@ export namespace Deployment {
           }
         }
       } else {
-        if(await vscode.window.showErrorMessage(`Chosen location (${folder.uri.fsPath}) is not configured for deployment.`, 'Set deploy location')){          
+        if (await vscode.window.showErrorMessage(`Chosen location (${folder.uri.fsPath}) is not configured for deployment.`, 'Set deploy location')) {
           setDeployLocation(undefined, folder, buildPossibleDeploymentDirectory(folder));
         }
       }
@@ -449,6 +450,10 @@ export namespace Deployment {
       progress.report({ message: `Deploying ${name}` });
       if (parameters.remotePath.startsWith(`/`)) {
         try {
+          const files = (await findFiles(parameters, "**/*", "**/.git*"))
+            .map(file => path.relative(parameters.workspaceFolder.uri.fsPath, file.fsPath));
+          const result = compress(parameters.workspaceFolder, files);
+          await getClient().putFile(result, '/tmp/deploy.tar.gz');
           await getClient().putDirectory(parameters.workspaceFolder.uri.fsPath, parameters.remotePath, {
             recursive: true,
             concurrency: 5,
@@ -489,7 +494,7 @@ export namespace Deployment {
     });
   }
 
-  async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder, value?:string) {
+  async function setDeployLocation(node: any, workspaceFolder?: WorkspaceFolder, value?: string) {
     const path = node?.path || await vscode.window.showInputBox({
       prompt: `Enter IFS directory to deploy to`,
       value
@@ -518,13 +523,13 @@ export namespace Deployment {
   async function buildWatcher() {
     const invalidFs = [`member`, `streamfile`];
     const watcher = vscode.workspace.createFileSystemWatcher(`**`);
-    
+
     const getChangesMap = (uri: vscode.Uri) => {
-      if(!invalidFs.includes(uri.scheme) && !uri.fsPath.includes(`.git`)){
+      if (!invalidFs.includes(uri.scheme) && !uri.fsPath.includes(`.git`)) {
         const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-        if(workspaceFolder){
+        if (workspaceFolder) {
           let changes = workspaceChanges.get(workspaceFolder);
-          if(!changes){
+          if (!changes) {
             changes = new Map;
             workspaceChanges.set(workspaceFolder, changes);
           }
@@ -536,7 +541,7 @@ export namespace Deployment {
     watcher.onDidChange(uri => {
       getChangesMap(uri)?.set(uri.fsPath, uri);
     });
-    watcher.onDidCreate(async uri => {            
+    watcher.onDidCreate(async uri => {
       const fileStat = await vscode.workspace.fs.stat(uri);
       if (fileStat.type === vscode.FileType.File) {
         getChangesMap(uri)?.set(uri.fsPath, uri);
@@ -611,9 +616,18 @@ export namespace Deployment {
       });
   }
 }
+
 function buildPossibleDeploymentDirectory(workspace: vscode.WorkspaceFolder) {
   const user = instance.getConnection()?.currentUser;
   //User should not be empty but we'll keep tmp as a fallback location
-  return user ? path.posix.join('/', 'home', user ,'builds', workspace.name) : path.posix.join('/', 'tmp', 'builds', workspace.name);
+  return user ? path.posix.join('/', 'home', user, 'builds', workspace.name) : path.posix.join('/', 'tmp', 'builds', workspace.name);
 }
 
+function compress(workspaceFolder: vscode.WorkspaceFolder, files: string[]) {
+  const tarballFile = tmp.fileSync({ postfix: ".tar" }).name;
+  console.log("Tarball", tarballFile);
+  tar.create({ cwd: workspaceFolder.uri.fsPath, sync:true, file: tarballFile}, files);
+  console.log("Tarball created");
+
+  return tarballFile;
+}
