@@ -574,7 +574,7 @@ export default class IBMiContent {
     if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
         command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`,
-        directory: `${Tools.escapePath(remotePath)}`
+        directory: `${remotePath}`
       }));
     
       if (fileListResult.code === 0) {
@@ -598,6 +598,11 @@ export default class IBMiContent {
             });
           };
         });
+      } else {
+        // Ignore error on empty directories...
+        if (fileListResult.stderr.includes(`No such file or directory`)) {
+          fileListResult.code = 0;
+        }
       }
 
     } else {
