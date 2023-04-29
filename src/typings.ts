@@ -1,4 +1,4 @@
-import { ExtensionContext, Uri } from "vscode";
+import { ExtensionContext, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
 import { CustomUI, Field } from "./api/CustomUI";
@@ -14,7 +14,7 @@ export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "comp
 
 export interface DeploymentParameters {
   method: DeploymentMethod
-  localFolder: Uri
+  workspaceFolder: WorkspaceFolder
   remotePath: string
   ignoreRules?: Ignore
 }
