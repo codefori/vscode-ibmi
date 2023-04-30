@@ -535,7 +535,8 @@ export namespace Deployment {
       deploymentLog.appendLine(`Uploaded deployment tarball as ${remoteTarball}`);
 
       progress?.report({ message: `extracting deployment tarball to ${parameters.remotePath}...` });
-      await connection.sendCommand({ command: `tar -xf ${remoteTarball}`, directory: parameters.remotePath });
+      //Extract and remove tar's PaxHeader metadata folder
+      await connection.sendCommand({ command: `tar -xf ${remoteTarball} && rm -rf PaxHeader`, directory: parameters.remotePath });
 
       const entries: string[] = [];
       tar.t({ sync: true, file: localTarball.name, onentry: entry => entries.push(entry.path) });
