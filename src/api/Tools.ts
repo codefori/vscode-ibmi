@@ -164,4 +164,8 @@ export namespace Tools {
     }
     return gitAPI;
   }
+
+  export function distinct(value: any, index: number, array: any[]) {
+    return array.indexOf(value) === index;
+  }
 }
