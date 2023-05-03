@@ -458,7 +458,7 @@ export namespace CompileTools {
                 const downloadDirectories = chosenAction.postDownload.map(path.parse)
                   .map(pathInfo => pathInfo.dir || pathInfo.base) //Get directories or files' parent directory
                   .filter(Tools.distinct) //Remove duplicates
-                  .map(downloadDirectory => vscode.Uri.parse(`${localDir}/${downloadDirectory}`)); //Create local Uri path
+                  .map(downloadDirectory => vscode.Uri.parse((path.posix.join(localDir, downloadDirectory)))); //Create local Uri path
 
                 for (const downloadPath of downloadDirectories) {                  
                   try {
@@ -489,7 +489,7 @@ export namespace CompileTools {
                 // Then we download the files that is specified.
                 const downloads = chosenAction.postDownload.map(
                   async (downloadPath) => {
-                    const localPath = vscode.Uri.parse(`${localDir}/${downloadPath}`).fsPath;
+                    const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
                     const remotePath = path.posix.join(remoteDir, downloadPath);
                     const isDirectoryCall = (await connection.sendCommand({
                       command: `cd ${remotePath}`
