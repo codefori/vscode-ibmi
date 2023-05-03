@@ -90,7 +90,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
-    async readFile(uri: vscode.Uri, retry?: boolean): Promise<Uint8Array> {
+    async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
@@ -106,7 +106,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
         }
         else {
-            if (retry) {
+            if (retrying) {
                 throw new Error("Not connected to IBM i");
             }
             else{
