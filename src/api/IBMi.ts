@@ -172,6 +172,23 @@ export default class IBMi {
         // Reload server settings?
         const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
 
+        // Check shell output for additional user text - this will confuse Code...
+        progress.report({
+          message: `Checking shell output.`
+        });
+
+        const checkShellText = `This should be the only text!`;
+        const checkShellResult = await this.sendCommand({
+          command: `echo "${checkShellText}"`
+        });
+        if (checkShellResult.stderr || checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
+          await vscode.window.showErrorMessage(`Error in shell configuration!`, {
+            detail: `This extension will not function properly, since the output from shell commands have additional content. This can be caused by running commands like "echo" or other\ncommands creating output in your shell start script.\n\nCode for IBM i cannot function correctly and will exit.`,
+            modal: true
+            });
+          throw(`Shell config error, connection aborted.`);
+        }
+
         progress.report({
           message: `Checking home directory.`
         });
