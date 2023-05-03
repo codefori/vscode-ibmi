@@ -32,7 +32,9 @@
 		"theme": "dark"
 	},
 	"activationEvents": [
-		"onStartupFinished"
+		"onStartupFinished",
+		"onFileSystem:member",
+		"onFileSystem:streamfile"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
