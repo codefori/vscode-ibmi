@@ -355,17 +355,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidAccept(() => { 
         const selection = quickPick.selectedItems[0].label;
         if (selection) {
-          const selectionSplit = selection.split('/')
-          if (selectionSplit.length === 3) {
-            if (selection === `Clear list`) {
-              storage!.setSourceList({});
-              vscode.window.showInformationMessage(`Cleared list.`);
-            } else {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
-            }
+          if (selection === `Clear list`) {
+            storage!.setSourceList({});
+            vscode.window.showInformationMessage(`Cleared list.`);
             quickPick.hide()
           } else {
-            quickPick.value = selection.toUpperCase() + '/'
+            const selectionSplit = selection.split('/')
+            if (selectionSplit.length === 3) {
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
+              quickPick.hide()
+            } else {
+              quickPick.value = selection.toUpperCase() + '/'
+            }
           }
         }
       })
