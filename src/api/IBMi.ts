@@ -22,7 +22,7 @@ let remoteApps = [
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`, `tar`, `find`]
+    names: [`setccsid`, `iconv`, `attr`, `tar`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -90,7 +90,6 @@ export default class IBMi {
       'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
-      find: undefined,
       attr: undefined,
       iconv: undefined
     };
