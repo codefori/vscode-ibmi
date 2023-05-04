@@ -47,6 +47,7 @@ export namespace ConnectionConfiguration {
     readOnlyMode: boolean;
     quickConnect: boolean;
     [name: string]: any;
+    goToFileAutoSuggest: number;
   }
 
   export interface ObjectFilters {
@@ -121,7 +122,8 @@ export namespace ConnectionConfiguration {
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),
-      quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined)
+      quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
+      goToFileAutoSuggest: (parameters.goToFileAutoSuggest || -1)
     }
   }
 

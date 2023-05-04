@@ -383,7 +383,12 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
-							}
+							},
+              "code-for-ibmi.goToFileAutoSuggest": {
+                "type": "number",
+                "default": -1,
+                "description": "Number of characters to enter before suggesting Library / Source file / Member when typing path to source file. (-1 to disable)"
+              }
 						}
 					}
 				},
@@ -795,11 +800,6 @@
 							"command": "?CALL &LIBRARY/&NAME"
 						}
 					]
-				},
-				"code-for-ibmi.goToFileAutoSuggest": {
-					"type": "number",
-					"default": -1,
-					"description": "Number of characters to enter before suggesting Library / Source file / Member when typing path to source file. (-1 to disable)"
 				}
 			}
 		},
