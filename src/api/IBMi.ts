@@ -183,7 +183,7 @@ export default class IBMi {
         });
         if (checkShellResult.stderr || checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
           await vscode.window.showErrorMessage(`Error in shell configuration!`, {
-            detail: `This extension will not function properly, since the output from shell commands have additional content. This can be caused by running commands like "echo" or other\ncommands creating output in your shell start script.\n\nCode for IBM i cannot function correctly and will exit.`,
+            detail: `This extension can not work with the shell configured on ${this.currentConnectionName},\nsince the output from shell commands have additional content.\nThis can be caused by running commands like "echo" or other\ncommands creating output in your shell start script.\n\nThe connection to ${this.currentConnectionName} will be aborted.`,
             modal: true
             });
           throw(`Shell config error, connection aborted.`);
