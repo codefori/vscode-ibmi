@@ -26,14 +26,14 @@ export class ObjectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, async () => {
         const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
         if (lastConnection) {
-          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
+          return await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server, reloadServerSettings?: boolean) => {
         if (!this._attemptingConnection) {
           this._attemptingConnection = true;
 
@@ -49,10 +49,10 @@ export class ObjectBrowserProvider {
 
           switch (typeof name) {
             case `string`: // Name of connection object
-              await Login.LoginToPrevious(name, context);
+              await Login.LoginToPrevious(name, context, reloadServerSettings);
               break;
             case `object`: // A Server object
-              await Login.LoginToPrevious(name.name, context);
+              await Login.LoginToPrevious(name.name, context, reloadServerSettings);
               break;
             default:
               vscode.window.showErrorMessage(`Use the Server Browser to select which system to connect to.`);
@@ -60,6 +60,13 @@ export class ObjectBrowserProvider {
           }
 
           this._attemptingConnection = false;
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.connectToAndReload`, async (server: Server) => {
+        if (!this._attemptingConnection && server) {
+          const reloadServerSettings = true;
+          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, server.name, reloadServerSettings);
         }
       }),
 
@@ -83,6 +90,9 @@ export class ObjectBrowserProvider {
               const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
               const newConnectionSettings = connectionSettings.filter(connection => connection.name !== server.name);
               await GlobalConfiguration.set(`connectionSettings`, newConnectionSettings);
+
+              // Also remove the cached connection settings
+              GlobalStorage.get().deleteServerSettingsCache(server.name);
 
               // Then remove the password
               context.secrets.delete(`${server.name}_password`);

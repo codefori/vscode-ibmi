@@ -1,6 +1,7 @@
 import assert from "assert";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
+import { commands } from "vscode";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -64,6 +65,23 @@ export const ContentSuite: TestSuite = {
       ].join(`\n`));
 
       assert.strictEqual(rows?.length, 1);
+    }},
+
+    {name: `Compare runSQL and old runQuery (deprecated)`, test: async () => {
+      const content = instance.getContent();
+
+      const query = [
+        `-- myselect`,
+        `select *`,
+        `from qiws.qcustcdt --my table`,
+        `limit 1`,
+      ].join(`\n`);
+  
+      const rowsA = await content?.runSQL(query);
+
+      const rowsB = await commands.executeCommand(`code-for-ibmi.runQuery`, query);
+
+      assert.deepStrictEqual(rowsA, rowsB);
     }},
 
     {name: `Test getTable (SQL disabled)`, test: async () => {

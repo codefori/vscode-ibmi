@@ -9,6 +9,7 @@ import { CompileTools } from "./CompileTools";
 import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember, RemoteCommand } from "../typings";
 import * as configVars from './configVars';
 import { instance } from "../instantiate";
+import { GlobalStorage, CachedServerSettings } from './Storage';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -17,11 +18,11 @@ export interface MemberParts extends IBMiMember {
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`]
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`, `find`]
+    names: [`setccsid`, `iconv`, `attr`, `tar`, `find`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -83,11 +84,15 @@ export default class IBMi {
       md5sum: undefined,
       bash: undefined,
       chsh: undefined,
+      stat: undefined,
+      sort: undefined,
       'GENCMDXML.PGM': undefined,
       'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
-      find: undefined
+      find: undefined,
+      attr: undefined,
+      iconv: undefined
     };
 
     this.variantChars = {
@@ -106,7 +111,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
@@ -161,6 +166,11 @@ export default class IBMi {
 
         //Load existing config
         this.config = await ConnectionConfiguration.load(this.currentConnectionName);
+
+        // Load cached server settings.
+        const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
+        // Reload server settings?
+        const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
 
         progress.report({
           message: `Checking home directory.`
@@ -372,107 +382,118 @@ export default class IBMi {
             });
         }
 
-        progress.report({
-          message: `Checking for bad data areas.`
-        });
-
-        try {
-          await this.remoteCommand(
-            `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-            undefined
-          );
-
-          vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
-            detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
-            modal: true,
-          }, `Delete`, `Read more`).then(choice => {
-            switch (choice) {
-              case `Delete`:
-                this.remoteCommand(
-                  `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
-                )
-                  .then(() => {
-                    vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
-                  })
-                  .catch(e => {
-                    vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
-                  });
-                break;
-              case `Read more`:
-                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
-                break;
-            }
+        // Check for bad data areas?
+        if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
+          // Do nothing, bad data areas are already checked.
+        } else {
+          progress.report({
+            message: `Checking for bad data areas.`
           });
-        } catch (e) {
-          // It doesn't exist, we're all good.
-        }
 
-        try {
-          await this.remoteCommand(
-            `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-            undefined
-          );
-
-          vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
-            modal: false,
-          }, `Delete`, `Read more`).then(choice => {
-            switch (choice) {
-              case `Delete`:
-                this.remoteCommand(
-                  `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
-                )
-                  .then(() => {
-                    vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
-                  })
-                  .catch(e => {
-                    vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
-                  });
-                break;
-              case `Read more`:
-                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
-                break;
-            }
-          });
-        } catch (e) {
-          // It doesn't exist, we're all good.
-        }
-
-        progress.report({
-          message: `Checking installed components on host IBM i.`
-        });
-
-        // We need to check if our remote programs are installed.
-        remoteApps.push(
-          {
-            path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-            names: [`GENCMDXML.PGM`, `GETNEWLIBL.PGM`],
-            specific: `GE*.PGM`
-          }
-        );
-
-        //Next, we see what pase features are available (installed via yum)
-        //This may enable certain features in the future.
-        for (const feature of remoteApps) {
           try {
-            progress.report({
-              message: `Checking installed components on host IBM i: ${feature.path}`
-            });
+            await this.remoteCommand(
+              `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+              undefined
+            );
 
-            const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
-            if (typeof call === `string`) {
-              const files = call.split(`\n`);
-
-              if (feature.specific) {
-                for (const name of feature.names)
-                  this.remoteFeatures[name] = files.find(file => file.includes(name));
-              } else {
-                for (const name of feature.names)
-                  if (files.includes(name))
-                    this.remoteFeatures[name] = feature.path + name;
+            vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
+              detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
+              modal: true,
+            }, `Delete`, `Read more`).then(choice => {
+              switch (choice) {
+                case `Delete`:
+                  this.remoteCommand(
+                    `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
+                  )
+                    .then(() => {
+                      vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                    })
+                    .catch(e => {
+                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                    });
+                  break;
+                case `Read more`:
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  break;
               }
-            }
+            });
           } catch (e) {
-            console.log(e);
+            // It doesn't exist, we're all good.
+          }
+
+          try {
+            await this.remoteCommand(
+              `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+              undefined
+            );
+
+            vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
+              modal: false,
+            }, `Delete`, `Read more`).then(choice => {
+              switch (choice) {
+                case `Delete`:
+                  this.remoteCommand(
+                    `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
+                  )
+                    .then(() => {
+                      vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                    })
+                    .catch(e => {
+                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                    });
+                  break;
+                case `Read more`:
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  break;
+              }
+            });
+          } catch (e) {
+            // It doesn't exist, we're all good.
+          }
+        }
+
+        // Check for installed components?
+        // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
+        if (quickConnect === true && cachedServerSettings?.remoteFeatures && Object.keys(cachedServerSettings.remoteFeatures).sort().toString() === Object.keys(this.remoteFeatures).sort().toString()) {
+          this.remoteFeatures = cachedServerSettings.remoteFeatures;
+        } else {
+          progress.report({
+            message: `Checking installed components on host IBM i.`
+          });
+
+          // We need to check if our remote programs are installed.
+          remoteApps.push(
+            {
+              path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+              names: [`GENCMDXML.PGM`, `GETNEWLIBL.PGM`],
+              specific: `GE*.PGM`
+            }
+          );
+
+          //Next, we see what pase features are available (installed via yum)
+          //This may enable certain features in the future.
+          for (const feature of remoteApps) {
+            try {
+              progress.report({
+                message: `Checking installed components on host IBM i: ${feature.path}`
+              });
+
+              const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
+              if (typeof call === `string`) {
+                const files = call.split(`\n`);
+
+                if (feature.specific) {
+                  for (const name of feature.names)
+                    this.remoteFeatures[name] = files.find(file => file.includes(name));
+                } else {
+                  for (const name of feature.names)
+                    if (files.includes(name))
+                      this.remoteFeatures[name] = feature.path + name;
+                }
+              }
+            } catch (e) {
+              console.log(e);
+            }
           }
         }
 
@@ -480,101 +501,112 @@ export default class IBMi {
           let statement;
           let output;
 
-          progress.report({
-            message: `Checking for ASP information.`
-          });
-
-          //This is mostly a nice to have. We grab the ASP info so user's do
-          //not have to provide the ASP in the settings.
-          try {
-            statement = `SELECT * FROM QSYS2.ASP_INFO`;
-            output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 0, {
-              stdin: statement
+          // Check for ASP information?
+          if (quickConnect === true && cachedServerSettings?.aspInfo) {
+            this.aspInfo = cachedServerSettings.aspInfo;
+          } else {
+            progress.report({
+              message: `Checking for ASP information.`
             });
 
-            if (typeof output === `string`) {
-              const rows = Tools.db2Parse(output);
-              rows.forEach((row: any) => {
-                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                  this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
-                }
+            //This is mostly a nice to have. We grab the ASP info so user's do
+            //not have to provide the ASP in the settings.
+            try {
+              statement = `SELECT * FROM QSYS2.ASP_INFO`;
+              output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 0, {
+                stdin: statement
+              });
+
+              if (typeof output === `string`) {
+                const rows = Tools.db2Parse(output);
+                rows.forEach((row: any) => {
+                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                    this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
+                  }
+                });
+              }
+            } catch (e) {
+              //Oh well
+              progress.report({
+                message: `Failed to get ASP information.`
               });
             }
-          } catch (e) {
-            //Oh well
-            progress.report({
-              message: `Failed to get ASP information.`
-            });
           }
 
-          progress.report({
-            message: `Fetching conversion values.`
-          });
-
-          // Next, we're going to see if we can get the CCSID from the user or the system.
-          // Some things don't work without it!!!
-          try {
-            const CCSID_SYSVAL = -2;
-            statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
-            output = await this.sendCommand({
-              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-              stdin: statement
+          // Fetch conversion values?
+          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars) {
+            this.qccsid = cachedServerSettings.qccsid;
+            this.variantChars = cachedServerSettings.variantChars;
+          } else {
+            progress.report({
+              message: `Fetching conversion values.`
             });
 
-            if (output.stdout) {
-              const [row] = Tools.db2Parse(output.stdout);
-              if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
-                this.qccsid = row.CHARACTER_CODE_SET_ID;
-              }
-            }
-
-            if (this.qccsid === undefined || this.qccsid === CCSID_SYSVAL) {
-              statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+            // Next, we're going to see if we can get the CCSID from the user or the system.
+            // Some things don't work without it!!!
+            try {
+              const CCSID_SYSVAL = -2;
+              statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
               output = await this.sendCommand({
                 command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
                 stdin: statement
               });
 
               if (output.stdout) {
-                const rows = Tools.db2Parse(output.stdout);
-                const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
-                if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
-                  this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+                const [row] = Tools.db2Parse(output.stdout);
+                if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
+                  this.qccsid = row.CHARACTER_CODE_SET_ID;
                 }
               }
-            }
 
-            if (this.config.enableSQL && this.qccsid === 65535) {
-              this.config.enableSQL = false;
-              vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
-            }
+              if (this.qccsid === undefined || this.qccsid === CCSID_SYSVAL) {
+                statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+                output = await this.sendCommand({
+                  command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                  stdin: statement
+                });
 
-            progress.report({
-              message: `Fetching local encoding values.`
-            });
-
-            statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-              + `  values ( cast( x'7B' as varchar(1) )`
-              + `         , cast( x'7C' as varchar(1) )`
-              + `         , cast( x'5B' as varchar(1) ) )`
-              + `)`
-              + `select HASH concat AT concat DOLLARSIGN as LOCAL`
-              + `  from VARIANTS; `;
-            output = await this.sendCommand({
-              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-              stdin: statement
-            });
-            if (output.stdout) {
-              const [row] = Tools.db2Parse(output.stdout);
-              if (row && row.LOCAL !== `null` && typeof row.LOCAL === 'string') {
-                this.variantChars.local = row.LOCAL;
+                if (output.stdout) {
+                  const rows = Tools.db2Parse(output.stdout);
+                  const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+                  if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
+                    this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+                  }
+                }
               }
-            } else {
-              throw new Error(`There was an error running the SQL statement.`);
+
+              if (this.config.enableSQL && this.qccsid === 65535) {
+                this.config.enableSQL = false;
+                vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
+              }
+
+              progress.report({
+                message: `Fetching local encoding values.`
+              });
+
+              statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+                + `  values ( cast( x'7B' as varchar(1) )`
+                + `         , cast( x'7C' as varchar(1) )`
+                + `         , cast( x'5B' as varchar(1) ) )`
+                + `)`
+                + `select HASH concat AT concat DOLLARSIGN as LOCAL`
+                + `  from VARIANTS; `;
+              output = await this.sendCommand({
+                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                stdin: statement
+              });
+              if (output.stdout) {
+                const [row] = Tools.db2Parse(output.stdout);
+                if (row && row.LOCAL !== `null` && typeof row.LOCAL === 'string') {
+                  this.variantChars.local = row.LOCAL;
+                }
+              } else {
+                throw new Error(`There was an error running the SQL statement.`);
+              }
+            } catch (e) {
+              // Oh well!
+              console.log(e);
             }
-          } catch (e) {
-            // Oh well!
-            console.log(e);
           }
         } else {
           // Disable it if it's not found
@@ -658,6 +690,17 @@ export default class IBMi {
           await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
           instance.fire("connected");
         }
+
+        GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
+          aspInfo: this.aspInfo,
+          qccsid: this.qccsid,
+          remoteFeatures: this.remoteFeatures,
+          variantChars: {
+            american: this.variantChars.american,
+            local: this.variantChars.local,
+          },
+          badDataAreasChecked: true
+        });
 
         return {
           success: true

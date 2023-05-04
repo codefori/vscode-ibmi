@@ -38,6 +38,18 @@ export async function startup(connection: IBMi) {
   return;
 }
 
+export async function stop(connection: IBMi) {
+  const endResult = await connection.sendCommand({
+    command: `${path.posix.join(directory, `stopDebugService.sh`)}`
+  });
+
+  if (endResult.code === 0) {
+    window.showInformationMessage(`Ended Debug Service.`);
+  } else {
+    window.showErrorMessage(endResult.stdout || endResult.stderr);
+  }
+}
+
 export async function getRunningJob(localPort: string, content: IBMiContent): Promise<string | undefined> {
   const rows = await content.runSQL(`select job_name, authorization_name from qsys2.netstat_job_info j where local_port = ${localPort} group by job_name, authorization_name`);
 

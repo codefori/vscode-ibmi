@@ -1,4 +1,4 @@
-import { ExtensionContext, Uri } from "vscode";
+import { ExtensionContext, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
 import { CustomUI, Field } from "./api/CustomUI";
@@ -10,11 +10,11 @@ export interface CodeForIBMi {
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 
-export type DeploymentMethod = "all" |  "staged" |  "unstaged" |  "changed" |  "compare";
+export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
 export interface DeploymentParameters {
   method: DeploymentMethod
-  localFolder: Uri
+  workspaceFolder: WorkspaceFolder
   remotePath: string
   ignoreRules?: Ignore
 }
@@ -99,20 +99,26 @@ export interface IBMiMember {
   recordLength?: number
   text?: string
   asp?: string
+  lines?: number
+  created?: Date
+  changed?: Date
 }
 
 export interface IFSFile {
   type: "directory" | "streamfile"
   name: string
   path: string
+  size?: number
+  modified?: Date | string
+  owner?: string
 }
 
-export interface IBMiError{
+export interface IBMiError {
   code: string
   text: string
 }
 
-export interface Filter{
+export interface Filter {
   library: string,
   filter: string
 }

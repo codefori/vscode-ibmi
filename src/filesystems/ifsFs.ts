@@ -10,14 +10,20 @@ export class IFSFS implements vscode.FileSystemProvider {
     return { dispose: () => { } };
   }
 
-  async readFile(uri: vscode.Uri): Promise<Uint8Array> {
+  async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
     const contentApi = instance.getContent();
     if (contentApi) {
       const fileContent = await contentApi.downloadStreamfile(uri.path);
       return new Uint8Array(Buffer.from(fileContent, `utf8`));
     }
     else {
-      throw new Error("Not connected to IBM i");
+      if (retrying) {
+        throw new Error("Not connected to IBM i");
+      }
+      else {
+        await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
+        return this.readFile(uri, true);
+      }
     }
   }
 

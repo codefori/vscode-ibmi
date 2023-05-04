@@ -132,14 +132,14 @@ export namespace CompileTools {
             const workspaceRootFolder = vscode.workspace.workspaceFolders?.[evfeventInfo.workspace];
             const storage = instance.getStorage();
 
-            if(workspaceRootFolder && storage){
+            if (workspaceRootFolder && storage) {
               const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceRootFolder);
-              const relativeCompilePath = file.toLowerCase().replace(workspaceDeployPath , '');
-              const diagnosticTargetFile = vscode.Uri.joinPath(workspaceRootFolder.uri,relativeCompilePath); 
-              
-              if(diagnosticTargetFile !== undefined){
+              const relativeCompilePath = file.toLowerCase().replace(workspaceDeployPath, '');
+              const diagnosticTargetFile = vscode.Uri.joinPath(workspaceRootFolder.uri, relativeCompilePath);
+
+              if (diagnosticTargetFile !== undefined) {
                 ileDiagnostics.set(diagnosticTargetFile, diagnostics);
-              }else{
+              } else {
                 vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
               }
             }
@@ -450,26 +450,46 @@ export namespace CompileTools {
               if (currentWorkspace) {
                 const client = connection.client;
                 const remoteDir = config.homeDirectory;
-                const localDir = currentWorkspace.uri.fsPath;
+                const localDir = currentWorkspace.uri.path;
 
-                // First, we need to create the relative directories in the workspace
-                // incase they don't exist. For example, if the path is `.logs/joblog.json`
+                // First, we need to create or clear the relative directories in the workspace
+                // in case they don't exist. For example, if the path is `.logs/joblog.json`
                 // then we would need to create `.logs`.
-                try {
-                  const directories = chosenAction.postDownload.map(downloadPath => {
-                    const pathInfo = path.parse(downloadPath);
-                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir || pathInfo.base)));
-                  });
+                const downloadDirectories = chosenAction.postDownload.map(path.parse)
+                  .map(pathInfo => pathInfo.dir || pathInfo.base) //Get directories or files' parent directory
+                  .filter(Tools.distinct) //Remove duplicates
+                  .map(downloadDirectory => vscode.Uri.parse((path.posix.join(localDir, downloadDirectory)))); //Create local Uri path
 
-                  await Promise.all(directories);
-                } catch (e) {
-                  // We don't really care if it errors. The directories might already exist.
+                for (const downloadPath of downloadDirectories) {                  
+                  try {
+                    const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
+                    if(stat.type !== vscode.FileType.Directory){
+                      if(await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")){
+                        await vscode.workspace.fs.delete(downloadPath);
+                        throw new Error("Create directory");
+                      }
+                    }
+                    else if(stat.type !== vscode.FileType.Directory){
+                      await vscode.workspace.fs.delete(downloadPath, {recursive: true});
+                      throw new Error("Create directory");
+                    }
+                  }
+                  catch(e){
+                    //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
+                    try {
+                      await vscode.workspace.fs.createDirectory(downloadPath)
+                    }
+                    catch(error){
+                      vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
+                      console.log(error);
+                    }
+                  }
                 }
 
                 // Then we download the files that is specified.
                 const downloads = chosenAction.postDownload.map(
                   async (downloadPath) => {
-                    const localPath = path.join(localDir, downloadPath);
+                    const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
                     const remotePath = path.posix.join(remoteDir, downloadPath);
                     const isDirectoryCall = (await connection.sendCommand({
                       command: `cd ${remotePath}`
@@ -527,9 +547,9 @@ export namespace CompileTools {
       };
 
       if (options.env) {
-        const libl: string|undefined = options.env[`&LIBL`];
-        const curlib: string|undefined = options.env[`&CURLIB`];
-        
+        const libl: string | undefined = options.env[`&LIBL`];
+        const curlib: string | undefined = options.env[`&CURLIB`];
+
         if (libl) ileSetup.libraryList = libl.split(` `);
         if (curlib) ileSetup.currentLibrary = curlib;
       }

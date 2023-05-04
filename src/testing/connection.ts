@@ -1,6 +1,7 @@
 import assert from "assert";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
+import { commands } from "vscode";
 
 export const ConnectionSuite: TestSuite = {
   name: `Connection tests`,
@@ -139,6 +140,22 @@ export const ConnectionSuite: TestSuite = {
   
       assert.strictEqual(result?.code, 0);
       assert.strictEqual(result.stdout.includes(`Library List`), true);
+    }},
+
+    {name: `runCommand API compared to code-for-ibmi.runCommand (deprecated)`, test: async () => {
+      const connection = instance.getConnection();
+  
+      const resultA = await connection?.runCommand({
+        command: `DSPLIBL`,
+        environment: `ile`
+      });
+  
+      const resultB = await commands.executeCommand(`code-for-ibmi.runCommand`, {
+        command: `DSPLIBL`,
+        environment: `ile`
+      });
+
+      assert.deepStrictEqual(resultA, resultB);
     }},
 
     {name: `Test runCommand (ILE, custom libl)`, test: async () => {
