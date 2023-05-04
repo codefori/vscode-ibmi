@@ -23,6 +23,18 @@ export const ContentSuite: TestSuite = {
         basename: `MATH.MBR`
       });
     }},
+
+    {name: `Test memberResolve with bad name`, test: async () => {
+      const content = instance.getContent();
+  
+      const member = await content?.memberResolve(`BOOOP`, [
+        {library: `QSYSINC`, name: `MIH`}, // Doesn't exist here
+        {library: `NOEXIST`, name: `SUP`}, // Doesn't exist here
+        {library: `QSYSINC`, name: `H`} // Doesn't exist here
+      ]);
+  
+      assert.deepStrictEqual(member, undefined);
+    }},
   
     {name: `Test streamfileResolve`, test: async () => {
       const content = instance.getContent();
@@ -30,6 +42,14 @@ export const ContentSuite: TestSuite = {
       const streamfilePath = await content?.streamfileResolve(`git`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
+    }},
+
+    {name: `Test streamfileResolve with bad name`, test: async () => {
+      const content = instance.getContent();
+  
+      const streamfilePath = await content?.streamfileResolve(`sup`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+  
+      assert.strictEqual(streamfilePath, undefined);
     }},
     
     {name: `Test runSQL (basic select)`, test: async () => {
