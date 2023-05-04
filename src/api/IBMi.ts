@@ -9,7 +9,6 @@ import { CompileTools } from "./CompileTools";
 import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember, RemoteCommand } from "../typings";
 import * as configVars from './configVars';
 import { instance } from "../instantiate";
-import IBMiContent from "./IBMiContent";
 import { GlobalStorage, CachedServerSettings } from './Storage';
 
 export interface MemberParts extends IBMiMember {
@@ -19,11 +18,11 @@ export interface MemberParts extends IBMiMember {
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`]
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`]
+    names: [`setccsid`, `iconv`, `attr`, `tar`]
   },
   {
     path: `/QSYS.LIB/`,
