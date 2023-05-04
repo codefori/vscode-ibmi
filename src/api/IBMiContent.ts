@@ -643,32 +643,24 @@ export default class IBMiContent {
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember|undefined> {
-    const find = this.ibmi.remoteFeatures.find;
-    if (find) {
-      const command = [
-        find,
-        // TODO: think about how to get the ASP for each library?
-        ...files.map(file => `/QSYS.LIB/${file.library.toUpperCase()}.LIB/${file.name.toUpperCase()}.FILE`),
-        `-name '${member.toUpperCase()}.*'`
-      ].join(` `);
+    const command = `for f in ${files.map(file => `/QSYS.LIB/${file.library.toUpperCase()}.LIB/${file.name.toUpperCase()}.FILE/${member.toUpperCase()}.MBR`).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
 
-      const result = await this.ibmi.sendCommand({
-        command,
-      });
+    const result = await this.ibmi.sendCommand({
+      command,
+    });
 
-      if (result.code === 0) {
-        const [firstMost] = result.stdout.split(`\n`);
+    if (result.code === 0) {
+      const [firstMost] = result.stdout.split(`,`);
 
-        if (firstMost) {
-          try {
-            const simplePath = Tools.unqualifyPath(firstMost);
-            
-            // This can error if the path format is wrong for some reason.
-            // Not that this would ever happen, but better to be safe than sorry
-            return this.ibmi.parserMemberPath(simplePath);
-          } catch (e) {
-            console.log(e);
-          }
+      if (firstMost) {
+        try {
+          const simplePath = Tools.unqualifyPath(firstMost);
+          
+          // This can error if the path format is wrong for some reason.
+          // Not that this would ever happen, but better to be safe than sorry
+          return this.ibmi.parserMemberPath(simplePath);
+        } catch (e) {
+          console.log(e);
         }
       }
     }
@@ -677,23 +669,16 @@ export default class IBMiContent {
   }
 
   async streamfileResolve(name: string, directories: string[]): Promise<string|undefined> {
-    const find = this.ibmi.remoteFeatures.find;
-    if (find) {
-      const command = [
-        find,
-        ...directories,
-        `-name '${name}'`
-      ].join(` `);
+    const command = `for f in ${directories.map(dir => path.posix.join(dir, name)).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
 
-      const result = await this.ibmi.sendCommand({
-        command,
-      });
+    const result = await this.ibmi.sendCommand({
+      command,
+    });
 
-      if (result.code === 0 && result.stdout) {
-        const [firstMost] = result.stdout.split(`\n`);
+    if (result.code === 0 && result.stdout) {
+      const [firstMost] = result.stdout.split(`\n`);
 
-        return firstMost;
-      }
+      return firstMost;
     }
 
     return undefined;
