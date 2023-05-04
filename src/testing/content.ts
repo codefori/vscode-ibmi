@@ -9,8 +9,8 @@ export const ContentSuite: TestSuite = {
       const content = instance.getContent();
   
       const member = await content?.memberResolve(`MATH`, [
-        {library: `QSYSINC`, name: `MIH`},
-        {library: `QSYSINC`, name: `H`}
+        {library: `QSYSINC`, name: `MIH`}, // Doesn't exist here
+        {library: `QSYSINC`, name: `H`} // Does exist
       ]);
   
       assert.deepStrictEqual(member, {
@@ -26,7 +26,7 @@ export const ContentSuite: TestSuite = {
     {name: `Test streamfileResolve`, test: async () => {
       const content = instance.getContent();
   
-      const streamfilePath = await content?.streamfileResolve([`git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+      const streamfilePath = await content?.streamfileResolve(`git`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
     }},
