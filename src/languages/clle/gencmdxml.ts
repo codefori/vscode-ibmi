@@ -1,4 +1,4 @@
-module.exports = [
+export const content = [
   `pgm parm(&name &cmd)`,
   `  dcl  &name     *char     10`,
   `  dcl  &cmd      *char     20`,
