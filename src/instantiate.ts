@@ -424,7 +424,7 @@ async function onConnected(context: vscode.ExtensionContext) {
   // CL content assist
   const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
   if (clExtension) {
-    (require(`./languages/clle/clCommands`)).init();
+    (require(`./languages/clle/clAPI`)).init();
   }
 
   initGetNewLibl(instance);
