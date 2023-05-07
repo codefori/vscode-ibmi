@@ -18,6 +18,7 @@ import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
+import * as clRunner from "./languages/clle/clRunner";
 
 export let instance: Instance;
 
@@ -400,6 +401,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);
   }
+
+  clRunner.initialise(context);
 }
 
 function updateConnectedBar() {
