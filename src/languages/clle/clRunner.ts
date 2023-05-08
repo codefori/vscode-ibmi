@@ -58,10 +58,23 @@ export function initialise(context: ExtensionContext) {
 
 function getCommandString(selection: Selection, document: TextDocument): {content: string, range?: {start: number, end: number}} {
   if (selection.isEmpty) {
-    const startLine = selection.start.line;
-    let line = startLine;
+    let line = selection.start.line;
+
+    // First let's find out if this command belong to another command
+    if ((line-1) >= 0) {
+      let preLine = document.lineAt(line-1).text.trim();
+
+      while ((line-1) >= 0 && preLine.endsWith(`+`)) {
+        line--;
+        preLine = document.lineAt(line-1).text.trim();
+      };
+    }
+
+    // Then fetch all the lines
+    const startLine = line;
     let content = [document.lineAt(line).text.trim()];
 
+    // Then we fetch the next continuation lines
     while (content[content.length - 1].endsWith(`+`)) {
       line += 1;
       content.push(document.lineAt(line).text.trim());
