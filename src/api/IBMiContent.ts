@@ -650,7 +650,7 @@ export default class IBMiContent {
     });
 
     if (result.code === 0) {
-      const [firstMost] = result.stdout.split(`,`);
+      const firstMost = result.stdout;
 
       if (firstMost) {
         try {
@@ -676,7 +676,7 @@ export default class IBMiContent {
     });
 
     if (result.code === 0 && result.stdout) {
-      const [firstMost] = result.stdout.split(`\n`);
+      const firstMost = result.stdout;
 
       return firstMost;
     }
