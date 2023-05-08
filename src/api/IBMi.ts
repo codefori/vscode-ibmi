@@ -91,7 +91,8 @@ export default class IBMi {
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
       attr: undefined,
-      iconv: undefined
+      iconv: undefined,
+      tar: undefined,
     };
 
     this.variantChars = {
