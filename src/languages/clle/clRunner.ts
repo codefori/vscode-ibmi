@@ -12,10 +12,11 @@ export function initialise(context: ExtensionContext) {
         const document = editor.document;
 
         if (document && document.languageId === `cl`) {
-          const selectedCommand = getCommandString(editor.selection, document);
           const connection = instance.getConnection();
 
           if (connection) {
+            const selectedCommand = getCommandString(editor.selection, document);
+            
             if (selectedCommand.range) {
               editor.selection = new Selection(
                 new Position(selectedCommand.range.start, 0), 
