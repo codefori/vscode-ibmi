@@ -471,8 +471,8 @@ export default class IBMi {
 
         // Check for installed components?
         // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
-        if (quickConnect === true && cachedServerSettings?.remoteFeatures && Object.keys(cachedServerSettings.remoteFeatures).sort().toString() === Object.keys(this.remoteFeatures).sort().toString()) {
-          this.remoteFeatures = cachedServerSettings.remoteFeatures;
+        if (quickConnect === true && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
+          Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
         } else {
           progress.report({
             message: `Checking installed components on host IBM i.`
@@ -712,6 +712,7 @@ export default class IBMi {
           aspInfo: this.aspInfo,
           qccsid: this.qccsid,
           remoteFeatures: this.remoteFeatures,
+          remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
           variantChars: {
             american: this.variantChars.american,
             local: this.variantChars.local,
