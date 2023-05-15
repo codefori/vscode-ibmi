@@ -1,4 +1,4 @@
-import { ExtensionContext, Uri } from "vscode";
+import { ExtensionContext, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
 import { CustomUI, Field } from "./api/CustomUI";
@@ -14,7 +14,7 @@ export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "comp
 
 export interface DeploymentParameters {
   method: DeploymentMethod
-  localFolder: Uri
+  workspaceFolder: WorkspaceFolder
   remotePath: string
   ignoreRules?: Ignore
 }
@@ -93,16 +93,21 @@ export interface IBMiMember {
   file: string
   name: string
   extension: string
-  changed: string
   recordLength?: number
   text?: string
   asp?: string
+  lines?: number
+  created?: Date
+  changed?: Date
 }
 
 export interface IFSFile {
   type: "directory" | "streamfile"
   name: string
   path: string
+  size?: number
+  modified?: Date | string
+  owner?: string
 }
 
 export interface IBMiError {

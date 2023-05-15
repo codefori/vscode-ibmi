@@ -307,18 +307,17 @@ module.exports = class ObjectBrowser {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
-
         if (node) {
           //Running from right click
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
             const connection = getInstance().getConnection();
-            const { library, file, member } = connection.parserMemberPath(node.path);
+            const { library, file, name } = connection.parserMemberPath(node.path);
 
             try {
               await connection.remoteCommand(
-                `RMVM FILE(${library}/${file}) MBR(${member})`,
+                `RMVM FILE(${library}/${file}) MBR(${name})`,
               );
 
               vscode.window.showInformationMessage(`Deleted ${node.path}.`);
@@ -339,7 +338,7 @@ module.exports = class ObjectBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node) => {
         if (node) {
           const connection = getInstance().getConnection();
-          const { library, file, member, basename } = connection.parserMemberPath(node.path);
+          const { library, file, name, basename } = connection.parserMemberPath(node.path);
 
           const newText = await vscode.window.showInputBox({
             value: node.description,
@@ -352,7 +351,7 @@ module.exports = class ObjectBrowser {
 
             try {
               await connection.remoteCommand(
-                `CHGPFM FILE(${library}/${file}) MBR(${member}) TEXT('${escapedText}')`,
+                `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
               );
 
               if (GlobalConfiguration.get(`autoRefresh`)) {
@@ -430,11 +429,11 @@ module.exports = class ObjectBrowser {
 
         if (originPath) {
           const connection = getInstance().getConnection();
-          const { asp, library, file, member } = connection.parserMemberPath(node.path);
+          const { asp, library, file, name } = connection.parserMemberPath(node.path);
           const data = fs.readFileSync(originPath[0].fsPath, `utf8`);
 
           try {
-            contentApi.uploadMemberContent(asp, library, file, member, data);
+            contentApi.uploadMemberContent(asp, library, file, name, data);
             vscode.window.showInformationMessage(`Member was uploaded.`);
           } catch (e) {
             vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
@@ -1193,7 +1192,11 @@ class Member extends vscode.TreeItem {
     this.description = member.text;
     this.resourceUri = getMemberUri(member, filter.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
-    this.tooltip = `${this.resourceUri.path}${member.text ? `\n(${member.text})` : ``}`;
+    this.tooltip = `${this.resourceUri.path}`
+      .concat(`${member.text ? `\nText:\t\t${member.text}` : ``}`)
+      .concat(`${member.lines != undefined ? `\nLines:\t${member.lines}` : ``}`)
+      .concat(`${member.created ? `\nCreated:\t${member.created.toLocaleString()}` : ``}`)
+      .concat(`${member.changed ? `\nChanged:\t${member.changed.toLocaleString()}` : ``}`);
     this.command = {
       command: `vscode.open`,
       title: `Open Member`,

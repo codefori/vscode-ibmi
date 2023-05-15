@@ -9,7 +9,6 @@ import { CompileTools } from "./CompileTools";
 import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember, RemoteCommand } from "../typings";
 import * as configVars from './configVars';
 import { instance } from "../instantiate";
-import IBMiContent from "./IBMiContent";
 import { GlobalStorage, CachedServerSettings } from './Storage';
 
 export interface MemberParts extends IBMiMember {
@@ -19,11 +18,11 @@ export interface MemberParts extends IBMiMember {
 let remoteApps = [
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`]
   },
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`]
+    names: [`setccsid`, `iconv`, `attr`, `tar`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -85,12 +84,15 @@ export default class IBMi {
       md5sum: undefined,
       bash: undefined,
       chsh: undefined,
+      stat: undefined,
+      sort: undefined,
       'GENCMDXML.PGM': undefined,
       'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
       attr: undefined,
-      iconv: undefined
+      iconv: undefined,
+      tar: undefined,
     };
 
     this.variantChars = {
@@ -169,6 +171,23 @@ export default class IBMi {
         const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
         // Reload server settings?
         const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
+
+        // Check shell output for additional user text - this will confuse Code...
+        progress.report({
+          message: `Checking shell output.`
+        });
+
+        const checkShellText = `This should be the only text!`;
+        const checkShellResult = await this.sendCommand({
+          command: `echo "${checkShellText}"`
+        });
+        if (checkShellResult.stderr || checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
+          await vscode.window.showErrorMessage(`Error in shell configuration!`, {
+            detail: `This extension can not work with the shell configured on ${this.currentConnectionName},\nsince the output from shell commands have additional content.\nThis can be caused by running commands like "echo" or other\ncommands creating output in your shell start script.\n\nThe connection to ${this.currentConnectionName} will be aborted.`,
+            modal: true
+            });
+          throw(`Shell config error, connection aborted.`);
+        }
 
         progress.report({
           message: `Checking home directory.`
@@ -452,8 +471,8 @@ export default class IBMi {
 
         // Check for installed components?
         // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
-        if (quickConnect === true && cachedServerSettings?.remoteFeatures && Object.keys(cachedServerSettings.remoteFeatures).sort().toString() === Object.keys(this.remoteFeatures).sort().toString()) {
-          this.remoteFeatures = cachedServerSettings.remoteFeatures;
+        if (quickConnect === true && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
+          Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
         } else {
           progress.report({
             message: `Checking installed components on host IBM i.`
@@ -693,6 +712,7 @@ export default class IBMi {
           aspInfo: this.aspInfo,
           qccsid: this.qccsid,
           remoteFeatures: this.remoteFeatures,
+          remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
           variantChars: {
             american: this.variantChars.american,
             local: this.variantChars.local,
@@ -937,8 +957,7 @@ export default class IBMi {
       extension,
       basename,
       name,
-      asp,
-      changed: ``
+      asp
     };
   }
 

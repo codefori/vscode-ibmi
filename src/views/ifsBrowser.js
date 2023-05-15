@@ -619,7 +619,7 @@ module.exports = class IFSBrowser {
           const objects = await content.getFileList(element.path, element.sort);
           items.push(...objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
-            .map(object => new Object(object.type, object.name, object.path, object.type === `streamfile` ? element : undefined)));
+            .map(object => new Object(object.type, object.name, object.path, object.size, object.modified, object.owner, object.type === `streamfile` ? element : undefined)));
 
           await this.storeIFSList(element.path, objects.filter(o => o.type === `streamfile`).map(o => o.name));
 
@@ -661,13 +661,20 @@ class Object extends vscode.TreeItem {
    * @param {"shortcut"|"directory"|"streamfile"} type
    * @param {string} label
    * @param {string} path
+   * @param {number} [size]
+   * @param {Date} [modified]
+   * @param {string} [owner]
    * @param {Object?} parent
    */
-  constructor(type, label, path, parent) {
+  constructor(type, label, path, size, modified, owner, parent) {
     super(label);
 
     this.contextValue = type;
     this.path = path;
+    this.tooltip = `${path}`
+      .concat(`${size !== undefined ? `\nSize:\t\t${size}` : ``}`)
+      .concat(`${modified ? `\nModifed:\t${modified.toLocaleString()}` : ``}`)
+      .concat(`${owner ? `\nOwner:\t${owner.toUpperCase()}` : ``}`);
     this.parent = parent;
 
     if (type === `shortcut` || type === `directory`) {

@@ -26,10 +26,10 @@ export class ObjectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, async () => {
         const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
         if (lastConnection) {
-          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
+          return await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
         }
       }),
 

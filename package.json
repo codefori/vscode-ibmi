@@ -32,7 +32,9 @@
 		"theme": "dark"
 	},
 	"activationEvents": [
-		"onStartupFinished"
+		"onStartupFinished",
+		"onFileSystem:member",
+		"onFileSystem:streamfile"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -851,6 +853,12 @@
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
+				"command": "code-for-ibmi.debug.stop",
+				"title": "Stop Debug Service",
+				"category": "IBM i Debug",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
 				"command": "code-for-ibmi.debug.activeEditor",
 				"title": "Start Debugging Active Source",
 				"category": "IBM i",
@@ -1405,7 +1413,7 @@
 				"title": "Collapse all",
 				"category": "IBM i",
 				"icon": "$(collapse-all)"
-			},			
+			},
 			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
 				"title": "Date",
@@ -2136,6 +2144,7 @@
 		"@types/glob": "^7.1.3",
 		"@types/node": "^12.20.55",
 		"@types/source-map-support": "^0.5.6",
+		"@types/tar": "^6.1.4",
 		"@types/tmp": "^0.2.3",
 		"@types/vscode": "^1.66.0",
 		"esbuild-loader": "^3.0.1",
@@ -2154,6 +2163,7 @@
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
 		"node-ssh": "^11.1.1",
+		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2"
 	},
