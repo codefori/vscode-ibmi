@@ -192,24 +192,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           listFile: vscode.QuickPickItem[] = [],
           listMember: vscode.QuickPickItem[] = [];
 
-      // Create a cache for Schema if autosuggest enabled
-      if (listSchema.length === 0 && goToFileAutoSuggest && config && config.enableSQL && goToFileAutoSuggest >= 0) {
-        const resultSetLibrary = await content!.runSQL(`SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
-          ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
-        FROM QSYS2.SYSSCHEMAS 
-        WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' 
-          ORDER BY 1 `);
-        
-        if (listSchema.length === 0 && resultSetLibrary.length > 0) {                     
-          resultSetLibrary.forEach(row => {
-            listSchema.push({
-              label: String(row.SYSTEM_SCHEMA_NAME),
-              detail: String(row.SCHEMA_TEXT)
-            })
-          })
-        }
-      }          
-      
       dirs.forEach(dir => {
         sources[dir].forEach(source => {
           list.push(`${dir}${dir.endsWith(`/`) ? `` : `/`}${source}`);
@@ -222,14 +204,35 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = listItems;
-      quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`;
+      quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext use '*' for wildcard or /home/xx/file.txt)`;
 
+      // Create a cache for Schema if autosuggest enabled
+      if (listSchema.length === 0 && goToFileAutoSuggest && config && config.enableSQL && goToFileAutoSuggest >= 0) {
+        const resultSetLibrary = await content!.runSQL(`SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
+          ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
+        FROM QSYS2.SYSSCHEMAS 
+        WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' 
+          ORDER BY 1 `);
+
+        quickPick.placeholder = `Caching...`;
+        
+        if (listSchema.length === 0 && resultSetLibrary.length > 0) {                     
+          resultSetLibrary.forEach(row => {
+            listSchema.push({
+              label: String(row.SYSTEM_SCHEMA_NAME),
+              detail: String(row.SCHEMA_TEXT)
+            })
+          })
+        }
+
+        quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext use '*' for wildcard or /home/xx/file.txt)`;
+      }          
+      
       quickPick.onDidChangeValue(async () => {
         // INJECT user values into proposed values
         if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
 
         // autosuggest
-        // if (goToFileAutoSuggest && config && config.enableSQL && goToFileAutoSuggest > 0 && (!quickPick.value.startsWith(`/`))) {
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`))) {
           const asteriskIndex = quickPick.value.indexOf(`*`) ;
           if (asteriskIndex >= 0 ) {
@@ -247,12 +250,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 listMember = [];
 
                 filterText = quickPick.value.toUpperCase().substring(0, asteriskIndex);
-
-                // if (selectionSplit[0].length >= goToFileAutoSuggest) {
-                  // listDisplay = listSchema.filter(schema => schema.label.startsWith(quickPick.value.toUpperCase()));
-                  listDisplay = listSchema.filter(schema => schema.label.startsWith(filterText));
-                // }
-                      
+                listDisplay = listSchema.filter(schema => schema.label.startsWith(filterText));
+    
                 quickPick.items = [
                   {
                     label: 'Libraries',
@@ -273,7 +272,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 if (listFile.length === 0) {
 
                   filterText = selectionSplit[1].toUpperCase().substring(0, selectionSplit[1].indexOf(`*`));
-                    
+
                   resultSet = await content!.runSQL(`SELECT 
                     ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
                     ifnull(TABLE_TEXT, '') TABLE_TEXT 
@@ -293,10 +292,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   }
                 }
 
-                // if (selectionSplit[1].length >= goToFileAutoSuggest) {
-                  listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0].toUpperCase() + '/' + filterText.toUpperCase()));
-                // }
-                  
+                listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0].toUpperCase() + '/' + filterText.toUpperCase()));
+
                 quickPick.items = [
                   {
                     label: 'Sources files',
@@ -339,9 +336,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   }               
                 }
 
-                // if (selectionSplit[2].length >= goToFileAutoSuggest) {
-                  listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + filterText.toUpperCase()));
-                // }
+                listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + filterText.toUpperCase()));
 
                 quickPick.items = [
                   {
