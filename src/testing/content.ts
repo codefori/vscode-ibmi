@@ -6,6 +6,52 @@ import { commands } from "vscode";
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
   tests: [
+    {name: `Test memberResolve`, test: async () => {
+      const content = instance.getContent();
+  
+      const member = await content?.memberResolve(`MATH`, [
+        {library: `QSYSINC`, name: `MIH`}, // Doesn't exist here
+        {library: `QSYSINC`, name: `H`} // Does exist
+      ]);
+  
+      assert.deepStrictEqual(member, {
+        asp: undefined,
+        library: `QSYSINC`,
+        file: `H`,
+        name: `MATH`,
+        extension: `MBR`,
+        basename: `MATH.MBR`
+      });
+    }},
+
+    {name: `Test memberResolve with bad name`, test: async () => {
+      const content = instance.getContent();
+  
+      const member = await content?.memberResolve(`BOOOP`, [
+        {library: `QSYSINC`, name: `MIH`}, // Doesn't exist here
+        {library: `NOEXIST`, name: `SUP`}, // Doesn't exist here
+        {library: `QSYSINC`, name: `H`} // Doesn't exist here
+      ]);
+  
+      assert.deepStrictEqual(member, undefined);
+    }},
+  
+    {name: `Test streamfileResolve`, test: async () => {
+      const content = instance.getContent();
+  
+      const streamfilePath = await content?.streamfileResolve(`git`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+  
+      assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
+    }},
+
+    {name: `Test streamfileResolve with bad name`, test: async () => {
+      const content = instance.getContent();
+  
+      const streamfilePath = await content?.streamfileResolve(`sup`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+  
+      assert.strictEqual(streamfilePath, undefined);
+    }},
+    
     {name: `Test runSQL (basic select)`, test: async () => {
       const content = instance.getContent();
   

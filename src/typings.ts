@@ -76,9 +76,12 @@ export interface Profile {
   profile: string
 }
 
-export interface IBMiObject {
+export interface QsysPath {
   library: string,
   name: string,
+}
+
+export interface IBMiObject extends QsysPath {
   type: string,
   text: string,
   attribute?: string
