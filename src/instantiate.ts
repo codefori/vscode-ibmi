@@ -177,7 +177,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const storage = instance.getStorage();
       const content = instance.getContent();
       const config = instance.getConfig();
-      let goToFileAutoSuggest = -1;
+      let goToFileAutoSuggest = false;
       if (config) {
         goToFileAutoSuggest = config.goToFileAutoSuggest;
       }
@@ -207,7 +207,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext use '*' for wildcard or /home/xx/file.txt)`;
 
       // Create a cache for Schema if autosuggest enabled
-      if (listSchema.length === 0 && goToFileAutoSuggest && config && config.enableSQL && goToFileAutoSuggest >= 0) {
+      if (listSchema.length === 0 && goToFileAutoSuggest && config && config.enableSQL) {
         const resultSetLibrary = await content!.runSQL(`SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
           ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
         FROM QSYS2.SYSSCHEMAS 
@@ -233,7 +233,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
 
         // autosuggest
-        if (config && config.enableSQL && (!quickPick.value.startsWith(`/`))) {
+        if (config && config.enableSQL && goToFileAutoSuggest && (!quickPick.value.startsWith(`/`))) {
           const asteriskIndex = quickPick.value.indexOf(`*`) ;
           if (asteriskIndex >= 0 ) {
 

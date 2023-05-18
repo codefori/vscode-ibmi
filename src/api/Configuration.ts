@@ -47,7 +47,7 @@ export namespace ConnectionConfiguration {
     readOnlyMode: boolean;
     quickConnect: boolean;
     [name: string]: any;
-    goToFileAutoSuggest: number;
+    goToFileAutoSuggest: boolean;
   }
 
   export interface ObjectFilters {
