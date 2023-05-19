@@ -1,9 +1,9 @@
-import vscode, { TreeDataProvider } from "vscode";
+import vscode from "vscode";
 import { GlobalConfiguration, ConnectionConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { Library } from "../typings";
 
-export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
+export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryNode | undefined | null | void> = new vscode.EventEmitter();
   readonly onDidChangeTreeData: vscode.Event<LibraryNode | undefined | null | void> = this._emitter.event;;
 
@@ -64,12 +64,11 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
                   if (newLibraryOK) {
                     quickPick.hide();
                     config.currentLibrary = newLibrary;
-                    await ConnectionConfiguration.update(config);
                     vscode.window.showInformationMessage(`Changed current library to ${newLibrary}.`);
                     prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
                     prevCurLibs.splice(0, 0, currentLibrary);
                     await storage.setPreviousCurLibs(prevCurLibs);
-                    if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+                    await this.updateConfig(config);
                   }
                 } else {
                   quickPick.hide();
@@ -116,8 +115,7 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
             }
 
             config.libraryList = newLibraryList;
-            await ConnectionConfiguration.update(config);
-            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+            await this.updateConfig(config);
           }
         }
       }),
@@ -148,8 +146,7 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
               }
 
               config.libraryList = libraryList;
-              await ConnectionConfiguration.update(config);
-              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              await this.updateConfig(config);
             } else {
               vscode.window.showErrorMessage(`Library is too long.`);
             }
@@ -169,14 +166,13 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
               libraryList.splice(index, 1);
 
               config.libraryList = libraryList;
-              await ConnectionConfiguration.update(config);
-              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              await this.updateConfig(config);
             }
           }
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryUp`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryUp`, async (node: LibraryNode) => {
         if (node) {
           //Running from right click
           const config = instance.getConfig();
@@ -190,14 +186,13 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
               libraryList.splice(index - 1, 0, library);
 
               config.libraryList = libraryList;
-              await ConnectionConfiguration.update(config);
-              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              await this.updateConfig(config);
             }
           }
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryDown`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryDown`, async (node: LibraryNode) => {
         if (node) {
           //Running from right click
           const config = instance.getConfig();
@@ -210,8 +205,7 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
               libraryList.splice(index + 1, 0, library);
 
               config.libraryList = libraryList;
-              await ConnectionConfiguration.update(config);
-              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              await this.updateConfig(config);
             }
           }
         }
@@ -227,9 +221,8 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
           if (badLibs.length > 0) {
             libraryList = libraryList.filter(lib => !badLibs.includes(lib));
             vscode.window.showWarningMessage(`The following libraries were removed from the updated library list as they are invalid: ${badLibs.join(`, `)}`);
-            config.libraryList = libraryList;
-            await ConnectionConfiguration.update(config);
-            if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+            config.libraryList = libraryList;            
+            await this.updateConfig(config);
           } else {
             vscode.window.showInformationMessage(`Library list were validated without any errors.`);
           }
@@ -239,12 +232,19 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
     instance.onEvent(`connected`, () => this.refresh());
   }
 
-  refresh() {
-    this._emitter.fire();
+  private async updateConfig(config: ConnectionConfiguration.Parameters){
+    await ConnectionConfiguration.update(config);
+    if (GlobalConfiguration.get(`autoRefresh`)) {
+      this.refresh();
+    }
+  }
+
+  refresh(element?: LibraryNode) {
+    this._emitter.fire(element);
   }
 
   getTreeItem(element: LibraryNode): vscode.TreeItem {
-      return element;  
+    return element;
   }
 
   async getChildren(): Promise<LibraryNode[]> {
@@ -263,7 +263,7 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
           libraries.push(...[currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` } }));
         }
         items.push(...libraries.map((lib, index) => {
-          return new LibraryNode(lib.name, lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
+          return new LibraryNode(lib.name.toUpperCase(), lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
         }));
       }
     }
@@ -272,13 +272,10 @@ export class LibraryListProvider implements TreeDataProvider<LibraryNode>{
 }
 
 class LibraryNode extends vscode.TreeItem implements Library {
-  readonly path: string;
-
-  constructor(library: string, text: string = ``, attribute: string = ``, context: string = `library`) {
-    super(library.toUpperCase(), vscode.TreeItemCollapsibleState.None);
+  constructor(readonly path: string, text: string = ``, attribute: string = ``, context: 'currentLibrary' | 'library' = `library`) {
+    super(path, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = context;
     this.description = (context === `currentLibrary` ? `(current library) ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
-    this.path = library.toUpperCase();
   }
 }
