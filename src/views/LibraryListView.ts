@@ -1,11 +1,11 @@
 import vscode from "vscode";
 import { GlobalConfiguration, ConnectionConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
-import { Library } from "../typings";
+import { Library as LibraryListEntry } from "../typings";
 
-export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>{
-  private readonly _emitter: vscode.EventEmitter<LibraryNode | undefined | null | void> = new vscode.EventEmitter();
-  readonly onDidChangeTreeData: vscode.Event<LibraryNode | undefined | null | void> = this._emitter.event;;
+export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
+  private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
+  readonly onDidChangeTreeData: vscode.Event<LibraryListNode | undefined | null | void> = this._emitter.event;;
 
   constructor(context: vscode.ExtensionContext) {
     context.subscriptions.push(
@@ -154,7 +154,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.removeFromLibraryList`, async (node: LibraryNode) => {
+      vscode.commands.registerCommand(`code-for-ibmi.removeFromLibraryList`, async (node: LibraryListNode) => {
         if (node) {
           //Running from right click
           const config = instance.getConfig();
@@ -172,7 +172,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryUp`, async (node: LibraryNode) => {
+      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryUp`, async (node: LibraryListNode) => {
         if (node) {
           //Running from right click
           const config = instance.getConfig();
@@ -192,7 +192,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryDown`, async (node: LibraryNode) => {
+      vscode.commands.registerCommand(`code-for-ibmi.moveLibraryDown`, async (node: LibraryListNode) => {
         if (node) {
           //Running from right click
           const config = instance.getConfig();
@@ -239,15 +239,15 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>
     }
   }
 
-  refresh(element?: LibraryNode) {
+  refresh(element?: LibraryListNode) {
     this._emitter.fire(element);
   }
 
-  getTreeItem(element: LibraryNode): vscode.TreeItem {
+  getTreeItem(element: LibraryListNode): vscode.TreeItem {
     return element;
   }
 
-  async getChildren(): Promise<LibraryNode[]> {
+  async getChildren(): Promise<LibraryListNode[]> {
     const items = [];
     const connection = instance.getConnection();
     if (connection) {
@@ -263,7 +263,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>
           libraries.push(...[currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` } }));
         }
         items.push(...libraries.map((lib, index) => {
-          return new LibraryNode(lib.name.toUpperCase(), lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
+          return new LibraryListNode(lib.name.toUpperCase(), lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
         }));
       }
     }
@@ -271,7 +271,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryNode>
   }
 }
 
-class LibraryNode extends vscode.TreeItem implements Library {
+class LibraryListNode extends vscode.TreeItem implements LibraryListEntry {
   constructor(readonly path: string, text: string = ``, attribute: string = ``, context: 'currentLibrary' | 'library' = `library`) {
     super(path, vscode.TreeItemCollapsibleState.None);
 
