@@ -31,7 +31,7 @@ export function initialise(context: ExtensionContext) {
 
             if (commandResult) {
               if (commandResult.code === 0 || commandResult.code === null) {
-                window.showErrorMessage(
+                window.showInformationMessage(
                   `Command was successful.`,
                   GlobalConfiguration.get<boolean>(`logCompileOutput`) ? `Show Output` : ''
                 ).then(async (item) => {
@@ -67,7 +67,7 @@ function getCommandString(selection: Selection, document: TextDocument): {conten
 
       while ((line-1) >= 0 && preLine.endsWith(`+`)) {
         line--;
-        preLine = document.lineAt(line-1).text.trim();
+        preLine = document.lineAt(line).text.trim();
       };
     }
 

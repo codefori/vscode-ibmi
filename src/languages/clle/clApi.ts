@@ -25,7 +25,6 @@ export async function init() {
 }
 
 function checkRequirements() {
-  /** @type {IBMi} */
   const connection = instance.getConnection();
 
   return (connection !== undefined && connection.remoteFeatures[`GENCMDXML.PGM`] !== undefined);

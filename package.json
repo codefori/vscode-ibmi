@@ -1479,8 +1479,8 @@
 			},
 			{
 				"command": "code-for-ibmi.cl.runSelected",
-        "key": "ctrl+r",
-        "mac": "cmd+r",
+				"key": "ctrl+r",
+				"mac": "cmd+r",
 				"when": "editorLangId == cl"
 			}
 		],
@@ -1643,7 +1643,7 @@
 				},
 				{
 					"command": "code-for-ibmi.cl.runSelected",
-					"when": "code-for-ibmi:connected"
+					"when": "code-for-ibmi:connected && editorLangId === cl"
 				}
 			],
 			"view/title": [
