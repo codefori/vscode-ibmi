@@ -479,7 +479,7 @@ export default class IBMiContent {
           coalesce(b.partition_text, '') as MBMTXT,
           b.NUMBER_ROWS as MBNRCD,
           extract(epoch from (b.CREATE_TIMESTAMP - current_timezone))*1000 as CREATED,
-          extract(epoch from (b.LAST_CHANGE_TIMESTAMP - current_timezone))*1000 as CHANGED
+          extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP - current_timezone))*1000 as CHANGED
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
