@@ -18,6 +18,7 @@ import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
+import * as clRunner from "./languages/clle/clRunner";
 
 export let instance: Instance;
 
@@ -400,6 +401,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);
   }
+
+  clRunner.initialise(context);
 }
 
 function updateConnectedBar() {
@@ -424,7 +427,7 @@ async function onConnected(context: vscode.ExtensionContext) {
   // CL content assist
   const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
   if (clExtension) {
-    (require(`./languages/clle/clCommands`)).init();
+    (require(`./languages/clle/clAPI`)).init();
   }
 
   initGetNewLibl(instance);

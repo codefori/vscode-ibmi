@@ -1428,6 +1428,11 @@
 				"command": "code-for-ibmi.sortMembersByName",
 				"title": "Name",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.cl.runSelected",
+				"title": "Run selected CL command",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1471,6 +1476,12 @@
 				"command": "code-for-ibmi.connectTo",
 				"key": "ctrl+alt+c",
 				"mac": "cmd+alt+c"
+			},
+			{
+				"command": "code-for-ibmi.cl.runSelected",
+				"key": "ctrl+r",
+				"mac": "cmd+r",
+				"when": "editorLangId == cl"
 			}
 		],
 		"viewsContainers": {
@@ -1629,6 +1640,10 @@
 				{
 					"command": "code-for-ibmi.sortMembersByName",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.cl.runSelected",
+					"when": "code-for-ibmi:connected && editorLangId === cl"
 				}
 			],
 			"view/title": [
