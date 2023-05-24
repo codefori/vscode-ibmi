@@ -6,7 +6,7 @@ import { commands } from "vscode";
 export const ILEErrorSuite: TestSuite = {
   name: `ILE Error API tests`,
   tests: [
-    {name: `Basic test (CRTSQLRPGI)`, test: async () => {
+    {name: `Basic test (CRTSQLRPGI, member)`, test: async () => {
       const lines = [
         `TIMESTAMP  0 20230524115628`,
         `PROCESSOR  0 999 1`,
@@ -69,5 +69,69 @@ export const ILEErrorSuite: TestSuite = {
       assert.strictEqual(lineErrors[1]?.sev, 30);
       assert.strictEqual(lineErrors[1]?.text, `Position 25 Variable FIRSTNME not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`);
     }},
+
+    {name: `Basic test (CRTSQLRPGI, streamfile)`, test: async () => {
+      const lines = [
+        `TIMESTAMP  0 20230524122108`,
+        `PROCESSOR  0 999 1`,
+        `FILEID     0 999 000000 026 QTEMP/QSQLTEMP1(EMPLOYEES) 20230524122108 0`,
+        `FILEID     0 001 000000 071 /home/LINUX/builds/ibmi-company_system/qrpglesrc/employees.pgm.sqlrpgle 20230429182220 0`,
+        `ERROR      0 001 1 000041 000041 000 000041 000 SQL1001 S 30 048 External file definition for EMPLOYEE not found.`,
+        `ERROR      0 001 1 000095 000095 020 000095 020 SQL1103 W 10 069 Position 20 Column definitions for table EMPLOYEE in *LIBL not found.`,
+        `ERROR      0 001 1 000105 000105 025 000105 025 SQL0312 S 30 212 Position 25 Variable EMPLOYEE not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `ERROR      0 001 1 000105 000105 034 000105 034 SQL0312 S 30 209 Position 34 Variable EMPNO not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `ERROR      0 001 1 000106 000106 025 000106 025 SQL0312 S 30 212 Position 25 Variable EMPLOYEE not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `ERROR      0 001 1 000106 000106 034 000106 034 SQL0312 S 30 212 Position 34 Variable FIRSTNME not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `ERROR      0 001 1 000107 000107 025 000107 025 SQL0312 S 30 212 Position 25 Variable EMPLOYEE not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `ERROR      0 001 1 000107 000107 034 000107 034 SQL0312 S 30 212 Position 34 Variable LASTNAME not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `ERROR      0 001 1 000108 000108 025 000108 025 SQL0312 S 30 212 Position 25 Variable EMPLOYEE not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `ERROR      0 001 1 000108 000108 034 000108 034 SQL0312 S 30 207 Position 34 Variable JOB not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`,
+        `EXPANSION  0 001 000000 000000 999 000051 000115`,
+        `EXPANSION  0 001 000098 000098 999 000154 000171`,
+        `EXPANSION  0 001 000098 000098 999 000182 000195`,
+        `EXPANSION  0 001 000108 000108 999 000206 000209`,
+        `EXPANSION  0 001 000123 000123 999 000225 000236`,
+        `FILEEND    0 001 000153`,
+        `FILEEND    0 999 000266`,
+      ];
+
+      const errors = parseErrors(lines);
+
+      const filePath = `/home/LINUX/builds/ibmi-company_system/qrpglesrc/employees.pgm.sqlrpgle`;
+
+      assert.strictEqual(errors.size, 1);
+      assert.strictEqual(errors.has(filePath), true);
+
+      const fileErrors = errors.get(filePath);
+      assert.notStrictEqual(fileErrors, undefined);
+      assert.strictEqual(fileErrors?.length, 10);
+
+      const errorA = fileErrors.find(err => err.linenum === 41);
+      assert.notStrictEqual(errorA, undefined);
+
+      assert.strictEqual(errorA?.code, `SQL1001`);
+      assert.strictEqual(errorA?.linenum, 41);
+      assert.strictEqual(errorA?.column, 0);
+      assert.strictEqual(errorA?.toColumn, 0);
+      assert.strictEqual(errorA?.sev, 30);
+      assert.strictEqual(errorA?.text, `External file definition for EMPLOYEE not found.`);
+
+      const lineErrors = fileErrors.filter(err => err.linenum === 106);
+      assert.strictEqual(lineErrors.length, 2);
+
+      assert.strictEqual(lineErrors[0]?.code, `SQL0312`);
+      assert.strictEqual(lineErrors[0]?.linenum, 106);
+      assert.strictEqual(lineErrors[0]?.column, 25);
+      assert.strictEqual(lineErrors[0]?.toColumn, 25);
+      assert.strictEqual(lineErrors[0]?.sev, 30);
+      assert.strictEqual(lineErrors[0]?.text, `Position 25 Variable EMPLOYEE not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`);
+
+      assert.strictEqual(lineErrors[1]?.code, `SQL0312`);
+      assert.strictEqual(lineErrors[1]?.linenum, 106);
+      assert.strictEqual(lineErrors[1]?.column, 34);
+      assert.strictEqual(lineErrors[1]?.toColumn, 34);
+      assert.strictEqual(lineErrors[1]?.sev, 30);
+      assert.strictEqual(lineErrors[1]?.text, `Position 34 Variable FIRSTNME not defined or not usable. Reason: No declaration for the variable exists, the declaration is not within the current scope, or the variable does not have an equivalent SQL data type.`);
+    }}
   ]
 }
