@@ -62,15 +62,8 @@ function getCommandString(selection: Selection, document: TextDocument): {conten
     let line = selection.start.line;
 
     // First let's find out if this command belong to another command
-    if ((line-1) >= 0) {
-      let preLine = document.lineAt(line-1).text.trim();
-
-      while ((line-1) >= 0 && preLine.endsWith(`+`)) {
-        line--;
-        preLine = document.lineAt(line).text.trim();
-      };
-    }
-
+    while((line-1) >= 0 && document.lineAt(line-1).text.trim().endsWith(`+`) && line-- > 0);
+    
     // Then fetch all the lines
     const startLine = line;
     let content = [document.lineAt(line).text.trim()];
