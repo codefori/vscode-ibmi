@@ -19,6 +19,7 @@ import { QsysFsOptions, RemoteCommand } from "./typings";
 import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import * as clRunner from "./languages/clle/clRunner";
+import { init as clApiInit } from "./languages/clle/clApi";
 
 export let instance: Instance;
 
@@ -65,10 +66,10 @@ export async function disconnect(): Promise<boolean> {
     if (!document.isClosed && [`member`, `streamfile`, `object`].includes(document.uri.scheme)) {
       if (document.isDirty) {
         if (doDisconnect) {
-          if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))){
+          if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))) {
             break;
           }
-          else{
+          else {
             doDisconnect = false;
           }
         }
@@ -283,7 +284,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         ext: undefined
       };
 
-      let inputPath: string|undefined
+      let inputPath: string | undefined
 
       if (qualifiedObject) {
         // Value passed in via parameter
@@ -427,7 +428,7 @@ async function onConnected(context: vscode.ExtensionContext) {
   // CL content assist
   const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
   if (clExtension) {
-    (require(`./languages/clle/clAPI`)).init();
+    clApiInit();
   }
 
   initGetNewLibl(instance);
@@ -439,17 +440,17 @@ async function onConnected(context: vscode.ExtensionContext) {
 async function onDisconnected() {
   // Close the tabs with no dirty editors
   vscode.window.tabGroups.all
-  .filter(group => !group.tabs.some(tab => tab.isDirty))
-  .forEach(group => {
-    group.tabs.forEach(tab => {
-      if (tab.input instanceof vscode.TabInputText) {
-        const uri = tab.input.uri;
-        if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
-          vscode.window.tabGroups.close(tab);
+    .filter(group => !group.tabs.some(tab => tab.isDirty))
+    .forEach(group => {
+      group.tabs.forEach(tab => {
+        if (tab.input instanceof vscode.TabInputText) {
+          const uri = tab.input.uri;
+          if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
+            vscode.window.tabGroups.close(tab);
+          }
         }
-      }
-    })
-  });
+      })
+    });
 
   // Hide the bar items
   [
