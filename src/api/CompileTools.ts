@@ -1,21 +1,20 @@
 
-import vscode, { InlineValueVariableLookup, window } from 'vscode';
 import path from 'path';
+import vscode, { window } from 'vscode';
 
-import { ConnectionConfiguration, GlobalConfiguration } from './Configuration';
-import { CustomUI, Field } from './CustomUI';
-import { getEnvConfig } from './local/env';
+import { GlobalConfiguration } from './Configuration';
+import { CustomUI } from './CustomUI';
 import { getLocalActions, getiProjActions } from './local/actions';
+import { getEnvConfig } from './local/env';
 
-import { Deployment } from './local/deployment';
-import { parseErrors } from './errors/handler';
-import { GitExtension } from './import/git';
-import Instance from './Instance';
-import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
-import IBMi, { MemberParts } from './IBMi';
-import { Tools } from './Tools';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { instance } from '../instantiate';
+import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
+import IBMi from './IBMi';
+import Instance from './Instance';
+import { Tools } from './Tools';
+import { parseErrors } from './errors/handler';
+import { Deployment } from './local/deployment';
 
 export interface ILELibrarySettings {
   currentLibrary: string;
