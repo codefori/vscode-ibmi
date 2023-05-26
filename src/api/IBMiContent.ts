@@ -667,6 +667,26 @@ export default class IBMiContent {
 
     return undefined;
   }
+  
+  async objectResolve(object: string, libraries: string[]): Promise<string|undefined> {
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+
+    const result = await this.ibmi.sendCommand({
+      command,
+    });
+
+    if (result.code === 0) {
+      const firstMost = result.stdout;
+
+      if (firstMost) {
+        const lib = Tools.unqualifyPath(firstMost);
+
+        return lib.split('/')[1];
+      }
+    }
+
+    return undefined;
+  }
 
   async streamfileResolve(name: string, directories: string[]): Promise<string|undefined> {
     const command = `for f in ${directories.map(dir => path.posix.join(dir, name)).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
