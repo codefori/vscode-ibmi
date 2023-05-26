@@ -1,7 +1,7 @@
 
+import path from 'path';
 import * as vscode from "vscode";
 import Instance from "./api/Instance";
-import path from 'path';
 
 import { CompileTools } from './api/CompileTools';
 
@@ -12,14 +12,15 @@ import { CustomUI, Field, Page } from './api/CustomUI';
 import { SearchView } from "./views/searchView";
 import { VariablesUI } from "./webviews/variables";
 
+import { dirname } from 'path';
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
+import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { init as clApiInit } from "./languages/clle/clApi";
+import * as clRunner from "./languages/clle/clRunner";
+import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
-import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
-import { initGetNewLibl } from "./languages/clle/getnewlibl";
-import * as clRunner from "./languages/clle/clRunner";
-import { init as clApiInit } from "./languages/clle/clApi";
 
 export let instance: Instance;
 
@@ -342,8 +343,19 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-      Terminal.selectAndOpen(instance);
+      return Terminal.selectAndOpen(instance);
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
+      const content = instance.getContent();
+      if (content) {
+        const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
+        const terminal = vscode.window.terminals.find(t => t.name === 'IBM i PASE') ||
+          await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
+        terminal?.sendText(`cd ${path}`);        
+      }
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
       const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
       if (newValue) {
