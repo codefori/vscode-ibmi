@@ -1433,6 +1433,11 @@
 				"command": "code-for-ibmi.cl.runSelected",
 				"title": "Run selected CL command",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openTerminalHere",
+				"title": "Open PASE terminal here",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1644,6 +1649,10 @@
 				{
 					"command": "code-for-ibmi.cl.runSelected",
 					"when": "code-for-ibmi:connected && editorLangId === cl"
+				},
+				{
+					"command": "code-for-ibmi.openTerminalHere",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2057,14 +2066,19 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
+					"command": "code-for-ibmi.openTerminalHere",
+					"when": "view == ifsBrowser",
+					"group": "4_ifsStuff@3"
+				},
+				{
 					"command": "code-for-ibmi.moveIFSShortcutToTop",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@1"
+					"group": "5_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutToBottom",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@4"
+					"group": "5_ifsStuff@4"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
