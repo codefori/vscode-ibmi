@@ -77,9 +77,6 @@ export namespace Terminal {
     channel.stdout.on(`data`, (data: any) => {
       writeEmitter.fire(String(data))
     });
-    channel.stderr.on(`data`, (data: any) => {
-      writeEmitter.fire(String(data))
-    });
 
     const emulatorTerminal = vscode.window.createTerminal({
       name: `IBM i ${terminalSettings.type}`,
