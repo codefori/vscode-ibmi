@@ -35,6 +35,41 @@ export const ContentSuite: TestSuite = {
   
       assert.deepStrictEqual(member, undefined);
     }},
+
+    {name: `Test objectResolve .FILE`, test: async () => {
+      const content = instance.getContent();
+  
+      const lib = await content?.objectResolve(`MIH`, [
+        "QSYS2", // Doesn't exist here
+        "QSYSINC" // Does exist
+      ]);
+  
+      assert.strictEqual(lib, "QSYSINC");
+    }},
+
+    {name: `Test objectResolve .PGM`, test: async () => {
+      const content = instance.getContent();
+  
+      const lib = await content?.objectResolve(`CMRCV`, [
+        "QSYSINC", // Doesn't exist here
+        "QSYS2" // Does exist 
+      ]);
+  
+      assert.strictEqual(lib, "QSYS2");
+    }},
+
+    {name: `Test objectResolve with bad name`, test: async () => {
+      const content = instance.getContent();
+
+      const lib = await content?.objectResolve(`BOOOP`, [
+        "BADLIB", // Doesn't exist here
+        "QSYS2", // Doesn't exist here
+        "QSYSINC", // Doesn't exist here
+      ]);
+  
+      assert.strictEqual(lib, undefined);
+  
+    }},
   
     {name: `Test streamfileResolve`, test: async () => {
       const content = instance.getContent();
