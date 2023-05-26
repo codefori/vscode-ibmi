@@ -627,7 +627,10 @@ export default class IBMiContent {
 
     if (fileListResult.code !== 0) {
       //Filter out the error occurring when is stat is run on an empty directory
-      const errors = fileListResult.stderr.split("\n").filter(e => !e.toLowerCase().includes("cannot stat '*'"));
+      const errors = fileListResult.stderr.split("\n")
+        .filter(e => !e.toLowerCase().includes("cannot stat '*'"))
+        .filter(Tools.distinct);
+
       if (errors.length) {
         errors.forEach(error => vscode.window.showErrorMessage(error));
         vscode.window.showErrorMessage(`${errors.length} error${errors.length > 1 ? 's' : ''} occurred while listing files.`);
