@@ -60,14 +60,14 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       new ProfilesView(context)
     ),
     commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData): Promise<boolean> => {
+      async (connectionData: ConnectionData, reloadSettings = false): Promise<boolean> => {
         const existingConnection = instance.getConnection();
 
         if (existingConnection) {
           return false;
         }
 
-        return (await new IBMi().connect(connectionData)).success;
+        return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
     workspace.onDidChangeConfiguration(async event => {
