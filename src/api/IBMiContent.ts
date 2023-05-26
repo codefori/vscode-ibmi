@@ -1,14 +1,14 @@
-import { default as IBMi } from './IBMi';
-import path from 'path';
-import util from 'util';
-import tmp from 'tmp';
 import { parse } from 'csv-parse/sync';
-import { Tools } from './Tools';
-import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
-import { ConnectionConfiguration } from './Configuration';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import path from 'path';
+import tmp from 'tmp';
+import util from 'util';
 import vscode from "vscode";
+import { ObjectTypes } from '../schemas/Objects';
+import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { ConnectionConfiguration } from './Configuration';
+import { default as IBMi } from './IBMi';
+import { Tools } from './Tools';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -597,10 +597,9 @@ export default class IBMiContent {
         };
       });
 
-    } else {
-
+    } else {      
       fileListResult = (await this.ibmi.sendCommand({
-        command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
+        command: `${this.ibmi.remoteFeatures.ls} -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
       }));
 
       const fileList = fileListResult.stdout;
