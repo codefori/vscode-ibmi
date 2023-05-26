@@ -5,11 +5,13 @@ import { ConnectionSuite } from "./connection";
 import { ContentSuite } from "./content";
 import { ToolsSuite } from "./tools";
 import { TestSuitesTreeProvider } from "./testCasesTree";
+import { ILEErrorSuite } from "./ileErrors";
 
 const suites : TestSuite[] = [
   ConnectionSuite,
   ContentSuite,
-  ToolsSuite
+  ToolsSuite,
+  ILEErrorSuite
 ]
 
 export type TestSuite = {
