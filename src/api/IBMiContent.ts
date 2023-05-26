@@ -1,14 +1,14 @@
 import { default as IBMi } from './IBMi';
 
-import path from 'path';
-import util from 'util';
-import tmp from 'tmp';
 import { parse } from 'csv-parse/sync';
-import { Tools } from './Tools';
-import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
-import { ConnectionConfiguration } from './Configuration';
+import path from 'path';
+import tmp from 'tmp';
+import util from 'util';
+import { ObjectTypes } from '../schemas/Objects';
 import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { ConnectionConfiguration } from './Configuration';
+import { Tools } from './Tools';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -733,5 +733,16 @@ export default class IBMiContent {
     let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
     return new Date(Number(year), Number(month)-1, Number(day), Number(hours), Number(minutes), Number(seconds));
+  }
+
+  /**
+   * Return `true` if `remotePath` denotes a directory
+   * 
+   * @param remotePath: a remote IFS path
+   */
+  async isDirectory(remotePath : string){
+    return (await this.ibmi.sendCommand({
+      command: `cd ${remotePath}`
+    })).code === 0;
   }
 }

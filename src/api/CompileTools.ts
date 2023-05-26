@@ -1,21 +1,20 @@
 
-import vscode, { InlineValueVariableLookup, window } from 'vscode';
 import path from 'path';
+import vscode, { window } from 'vscode';
 
-import { ConnectionConfiguration, GlobalConfiguration } from './Configuration';
-import { CustomUI, Field } from './CustomUI';
-import { getEnvConfig } from './local/env';
+import { GlobalConfiguration } from './Configuration';
+import { CustomUI } from './CustomUI';
 import { getLocalActions, getiProjActions } from './local/actions';
+import { getEnvConfig } from './local/env';
 
-import { Deployment } from './local/deployment';
-import { parseErrors } from './errors/handler';
-import { GitExtension } from './import/git';
-import Instance from './Instance';
-import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
-import IBMi, { MemberParts } from './IBMi';
-import { Tools } from './Tools';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { instance } from '../instantiate';
+import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
+import IBMi from './IBMi';
+import Instance from './Instance';
+import { Tools } from './Tools';
+import { parseErrors } from './errors/handler';
+import { Deployment } from './local/deployment';
 
 export interface ILELibrarySettings {
   currentLibrary: string;
@@ -197,8 +196,9 @@ export namespace CompileTools {
   }
 
   export async function runAction(instance: Instance, uri: vscode.Uri) {
-    const connection = instance.getConnection();
+    const connection = instance.getConnection();    
     const config = instance.getConfig();
+    const content = instance.getContent();
 
     const uriOptions = parseFSOptions(uri);
 
@@ -214,7 +214,7 @@ export namespace CompileTools {
 
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
 
-    if (connection && config) {
+    if (connection && config && content) {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
       const fragment = uri.fragment.toUpperCase();
 
@@ -491,13 +491,11 @@ export namespace CompileTools {
                   async (downloadPath) => {
                     const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
                     const remotePath = path.posix.join(remoteDir, downloadPath);
-                    const isDirectoryCall = (await connection.sendCommand({
-                      command: `cd ${remotePath}`
-                    }));
-                    if (isDirectoryCall.code === 1) {
-                      return client.getFile(localPath, remotePath);
+                    
+                    if (await content.isDirectory(remotePath)) {
+                      return client.getDirectory(localPath, remotePath);                      
                     } else {
-                      return client.getDirectory(localPath, remotePath);
+                      return client.getFile(localPath, remotePath);
                     }
                   }
                 );
