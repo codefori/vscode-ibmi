@@ -1,5 +1,6 @@
 
 import vscode from 'vscode';
+import { instance } from '../instantiate';
 import IBMi from './IBMi';
 import Instance from './Instance';
 
@@ -147,6 +148,8 @@ export namespace Terminal {
     } else {
       channel.stdin.write(`echo "Terminal started. Thanks for using Code for IBM i"\n`);
     }
+
+    instance.onEvent('disconnected', () => emulatorTerminal.dispose());
 
     return emulatorTerminal;
   }
