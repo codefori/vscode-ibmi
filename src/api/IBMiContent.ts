@@ -678,10 +678,10 @@ export default class IBMiContent {
     if (result.code === 0) {
       const firstMost = result.stdout;
 
-      // Only want the library name 
-      const split = firstMost.split("/", 3)[2];
-      if (split) {
-        return split.slice(0, split.length - ".LIB".length);
+      if (firstMost) {
+        const lib = Tools.unqualifyPath(firstMost);
+
+        return lib.split('/')[1];
       }
     }
 
