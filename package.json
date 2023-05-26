@@ -1436,7 +1436,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openTerminalHere",
-				"title": "Open PASE terminal here",
+				"title": "Open terminal here",
 				"category": "IBM i"
 			}
 		],
