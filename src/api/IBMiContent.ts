@@ -1,15 +1,14 @@
 import { default as IBMi } from './IBMi';
 
-import path from 'path';
-import util from 'util';
-import tmp from 'tmp';
 import { parse } from 'csv-parse/sync';
-import { Tools } from './Tools';
-import { ObjectTypes } from '../schemas/Objects';
 import fs from 'fs';
+import path from 'path';
+import tmp from 'tmp';
+import util from 'util';
+import { ObjectTypes } from '../schemas/Objects';
+import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile } from '../typings';
-
+import { Tools } from './Tools';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -643,6 +642,68 @@ export default class IBMiContent {
     }
   }
 
+  async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember|undefined> {
+    const command = `for f in ${files.map(file => `/QSYS.LIB/${file.library.toUpperCase()}.LIB/${file.name.toUpperCase()}.FILE/${member.toUpperCase()}.MBR`).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
+
+    const result = await this.ibmi.sendCommand({
+      command,
+    });
+
+    if (result.code === 0) {
+      const firstMost = result.stdout;
+
+      if (firstMost) {
+        try {
+          const simplePath = Tools.unqualifyPath(firstMost);
+          
+          // This can error if the path format is wrong for some reason.
+          // Not that this would ever happen, but better to be safe than sorry
+          return this.ibmi.parserMemberPath(simplePath);
+        } catch (e) {
+          console.log(e);
+        }
+      }
+    }
+
+    return undefined;
+  }
+  
+  async objectResolve(object: string, libraries: string[]): Promise<string|undefined> {
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+
+    const result = await this.ibmi.sendCommand({
+      command,
+    });
+
+    if (result.code === 0) {
+      const firstMost = result.stdout;
+
+      if (firstMost) {
+        const lib = Tools.unqualifyPath(firstMost);
+
+        return lib.split('/')[1];
+      }
+    }
+
+    return undefined;
+  }
+
+  async streamfileResolve(name: string, directories: string[]): Promise<string|undefined> {
+    const command = `for f in ${directories.map(dir => path.posix.join(dir, name)).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
+
+    const result = await this.ibmi.sendCommand({
+      command,
+    });
+
+    if (result.code === 0 && result.stdout) {
+      const firstMost = result.stdout;
+
+      return firstMost;
+    }
+
+    return undefined;
+  }
+
   /**
    * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
    * Required to work with QZDFMDB2.
@@ -692,5 +753,16 @@ export default class IBMiContent {
     let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
     return new Date(Number(year), Number(month)-1, Number(day), Number(hours), Number(minutes), Number(seconds));
+  }
+
+  /**
+   * Return `true` if `remotePath` denotes a directory
+   * 
+   * @param remotePath: a remote IFS path
+   */
+  async isDirectory(remotePath : string){
+    return (await this.ibmi.sendCommand({
+      command: `cd ${remotePath}`
+    })).code === 0;
   }
 }

@@ -23,6 +23,7 @@ import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
 import { initialise } from "./testing";
 import { IFSFS } from "./filesystems/ifsFs";
+import { LibraryListProvider } from "./views/LibraryListView";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -48,25 +49,25 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ),
     window.registerTreeDataProvider(
       `helpView`,
-      new HelpView()
+      new HelpView(context)
     ),
     window.registerTreeDataProvider(
       `libraryListView`,
-      new (require(`./views/libraryListView`))(context)
+      new LibraryListProvider(context)
     ),
     window.registerTreeDataProvider(
       `profilesView`,
       new ProfilesView(context)
     ),
     commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData): Promise<boolean> => {
+      async (connectionData: ConnectionData, reloadSettings = false): Promise<boolean> => {
         const existingConnection = instance.getConnection();
 
         if (existingConnection) {
           return false;
         }
 
-        return (await new IBMi().connect(connectionData)).success;
+        return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
     workspace.onDidChangeConfiguration(async event => {

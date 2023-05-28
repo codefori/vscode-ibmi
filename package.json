@@ -1428,6 +1428,16 @@
 				"command": "code-for-ibmi.sortMembersByName",
 				"title": "Name",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.cl.runSelected",
+				"title": "Run selected CL command",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openTerminalHere",
+				"title": "Open terminal here",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1471,6 +1481,12 @@
 				"command": "code-for-ibmi.connectTo",
 				"key": "ctrl+alt+c",
 				"mac": "cmd+alt+c"
+			},
+			{
+				"command": "code-for-ibmi.cl.runSelected",
+				"key": "ctrl+r",
+				"mac": "cmd+r",
+				"when": "editorLangId == cl"
 			}
 		],
 		"viewsContainers": {
@@ -1628,6 +1644,14 @@
 				},
 				{
 					"command": "code-for-ibmi.sortMembersByName",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.cl.runSelected",
+					"when": "code-for-ibmi:connected && editorLangId === cl"
+				},
+				{
+					"command": "code-for-ibmi.openTerminalHere",
 					"when": "never"
 				}
 			],
@@ -2042,14 +2066,19 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
+					"command": "code-for-ibmi.openTerminalHere",
+					"when": "view == ifsBrowser",
+					"group": "4_ifsStuff@3"
+				},
+				{
 					"command": "code-for-ibmi.moveIFSShortcutToTop",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@1"
+					"group": "5_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutToBottom",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@4"
+					"group": "5_ifsStuff@4"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",

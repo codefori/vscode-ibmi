@@ -76,9 +76,12 @@ export interface Profile {
   profile: string
 }
 
-export interface IBMiObject {
+export interface QsysPath {
   library: string,
   name: string,
+}
+
+export interface IBMiObject extends QsysPath {
   type: string,
   text: string,
   attribute?: string
@@ -133,4 +136,8 @@ export interface QsysFsOptions {
   readonly?: boolean
 }
 
-export type IBMiEvent = "connected" | "disconnected" | "deployLocation"
+export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
+
+export interface Library {
+  path:string
+}

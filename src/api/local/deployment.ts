@@ -196,6 +196,7 @@ export namespace Deployment {
           };
 
           if (await deploy(parameters)) {
+            instance.fire(`deploy`);
             return folder.index;
           }
         }
@@ -537,7 +538,7 @@ export namespace Deployment {
       progress?.report({ message: `extracting deployment tarball to ${parameters.remotePath}...` });
       //Extract and remove tar's PaxHeader metadata folder
       const result = await connection.sendCommand({ command: `${connection.remoteFeatures.tar} -xf ${remoteTarball} && rm -rf PaxHeader`, directory: parameters.remotePath });
-      if(result.code !== 0){
+      if (result.code !== 0) {
         throw new Error(`Tarball extraction failed: ${result.stderr}`)
       }
 
