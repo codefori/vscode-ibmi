@@ -3,6 +3,11 @@ import vscode from 'vscode';
 import {instance} from '../instantiate';
 
 export class HelpView {
+  private _extension_version: string;
+
+  constructor(context: vscode.ExtensionContext) {
+    this._extension_version = context.extension.packageJSON.version;
+  }
 
   public getTreeItem(element : vscode.TreeItem) : vscode.TreeItem {
     return element;
@@ -14,6 +19,10 @@ export class HelpView {
 
     const issueUrl = [
       `Issue text goes here.`,
+      ``,
+      `Code for IBM i version: ${this._extension_version}`,
+      `${vscode.env.appName} version: ${vscode.version}`,
+      `Platform: ${process.platform}`,
       ``,
       `* QCCSID: ${connection?.qccsid || '?'}`,
       `* Features:`,

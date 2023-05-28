@@ -49,7 +49,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ),
     window.registerTreeDataProvider(
       `helpView`,
-      new HelpView()
+      new HelpView(context)
     ),
     window.registerTreeDataProvider(
       `libraryListView`,
