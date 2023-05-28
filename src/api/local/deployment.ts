@@ -1,18 +1,17 @@
+import Crypto from 'crypto';
+import { readFileSync } from 'fs';
+import ignore from 'ignore';
+import path, { basename } from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
-import path, { basename, dirname, posix } from 'path';
 import vscode, { WorkspaceFolder } from 'vscode';
-import { getLocalActions } from './actions';
-import { ConnectionConfiguration } from '../Configuration';
-import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { instance } from '../../instantiate';
-import ignore from 'ignore'
-import { NodeSSH } from 'node-ssh';
-import { createWriteStream, readFileSync } from 'fs';
-import Crypto from 'crypto';
-import IBMi from '../IBMi';
+import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
+import { ConnectionConfiguration } from '../Configuration';
+import IBMi from '../IBMi';
 import { Tools } from '../Tools';
+import { getLocalActions } from './actions';
 
 export namespace Deployment {
   interface MD5Entry {

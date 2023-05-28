@@ -1,15 +1,15 @@
 
-import * as vscode from "vscode";
 import * as node_ssh from "node-ssh";
+import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
-import { Tools } from './Tools';
 import path from 'path';
-import { CompileTools } from "./CompileTools";
-import { ConnectionData, CommandData, StandardIO, CommandResult, IBMiMember, RemoteCommand } from "../typings";
-import * as configVars from './configVars';
 import { instance } from "../instantiate";
-import { GlobalStorage, CachedServerSettings } from './Storage';
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, StandardIO } from "../typings";
+import { CompileTools } from "./CompileTools";
+import { CachedServerSettings, GlobalStorage } from './Storage';
+import { Tools } from './Tools';
+import * as configVars from './configVars';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -17,13 +17,13 @@ export interface MemberParts extends IBMiMember {
 
 let remoteApps = [
   {
-    path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`]
+    path: `/usr/bin/`,
+    names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`]
   },
   {
-    path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`, `tar`]
-  },
+    path: `/QOpenSys/pkgs/bin/`,
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`]
+  },  
   {
     path: `/QSYS.LIB/`,
     // In the future, we may use a generic specific. 
