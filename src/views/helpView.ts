@@ -14,9 +14,9 @@ export class HelpView {
 
   public async getChildren(): Promise<HelpItem[]> {
     return [
-      new HelpOpenUrkItem(`book`, `Get started`, `https://halcyon-tech.github.io/vscode-ibmi/#/`),
-      new HelpOpenUrkItem(`output`, `Open official Forum`, `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
-      new HelpOpenUrkItem(`eye`, `Review Issues`, `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
+      new HelpOpenUrlItem(`book`, `Get started`, `https://halcyon-tech.github.io/vscode-ibmi/#/`),
+      new HelpOpenUrlItem(`output`, `Open official Forum`, `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
+      new HelpOpenUrlItem(`eye`, `Review Issues`, `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
       new HelpIssueItem(),
     ];
   }
@@ -31,7 +31,7 @@ class HelpItem extends vscode.TreeItem {
   }
 }
 
-class HelpOpenUrkItem extends HelpItem {
+class HelpOpenUrlItem extends HelpItem {
   constructor(icon: string, text: string, url: string) {
     super(icon, text);
 
@@ -62,11 +62,29 @@ function openNewIssue() {
     `Code for IBM i version: ${code4ibmi?.packageJSON.version}`,
     `${vscode.env.appName} version: ${vscode.version}`,
     `Platform: ${process.platform}`,
+    getExtensions(true),
+    ``,
+    getExtensions(false),
     ``,
     getRemoteSection(),
   ].join(`\n`);
 
   vscode.commands.executeCommand(`vscode.open`, `https://github.com/halcyon-tech/vscode-ibmi/issues/new?body=${encodeURIComponent(issueUrl)}`);
+}
+
+function getExtensions(active: boolean) {
+  return ['<details>',
+    `<summary>${active? 'Active' : 'Disabled'} extensions</summary>`,
+    '',
+    `\`\`\``,
+    ...vscode.extensions.all.filter(extension => extension.isActive === active)
+      .map(extension => extension.packageJSON)
+      .map(p => `${p.displayName} (${p.name}): ${p.version}`)
+      .sort(),
+    `\`\`\``,
+    `</details>`
+  ]
+    .join("\n");
 }
 
 function getRemoteSection() {
