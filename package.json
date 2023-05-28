@@ -1506,15 +1506,15 @@
 		"views": {
 			"ibmi-explorer": [
 				{
+					"id": "helpView",
+					"name": "Help and Support",
+					"when": "!code-for-ibmi:helpViewDisabled"
+				},
+				{
 					"id": "connectionBrowser",
 					"name": "Servers",
 					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
-				},
-				{
-					"id": "helpView",
-					"name": "Help and Support",
-					"when": "code-for-ibmi:connected && code-for-ibmi:helpViewDisabled !== true"
-				},
+				},				
 				{
 					"id": "profilesView",
 					"name": "Profiles",
