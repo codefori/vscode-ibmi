@@ -73,24 +73,22 @@ function openNewIssue() {
 }
 
 function getExtensions(active: boolean) {
-  return ['<details>',
-    `<summary>${active? 'Active' : 'Disabled'} extensions</summary>`,
-    '',
+  return createSection(
+    `${active ? 'Active' : 'Disabled'} extensions`,
     `\`\`\``,
     ...vscode.extensions.all.filter(extension => extension.isActive === active)
-      .map(extension => extension.packageJSON)
-      .map(p => `${p.displayName} (${p.name}): ${p.version}`)
-      .sort(),
+    .map(extension => extension.packageJSON)
+    .map(p => `${p.displayName} (${p.name}): ${p.version}`)
+    .sort(),
     `\`\`\``,
-    `</details>`
-  ]
-    .join("\n");
+  );
 }
 
 function getRemoteSection() {
   const connection = instance.getConnection();
   const config = instance.getConfig();
   if (connection && config) {
+    //getOutput(connection.outputChannel?.name || "", connection.outputChannel!);
     return [`* QCCSID: ${connection?.qccsid || '?'}`,
       `* Features:`,
     ...Object.keys(connection?.remoteFeatures || {}).map(
@@ -107,9 +105,26 @@ function getRemoteSection() {
       `Errors:`,
       `\`\`\`json`,
     JSON.stringify(connection?.lastErrors || [], null, 2),
-      `\`\`\``].join("\n");
+      `\`\`\``]
+      .join("\n");
   }
   else {
     return "*_Not connected_*";
   }
+}
+
+function getOutput(title: string, output: vscode.OutputChannel) {
+  return createSection(
+    title,
+    output.name
+  );
+}
+
+function createSection(summary: string, ...details: string[]) {
+  return ['<details>',
+    `<summary>${summary}</summary>`,
+    '',
+    ...details,
+    `</details>`
+  ].join("\n");
 }
