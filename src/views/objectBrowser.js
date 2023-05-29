@@ -1195,8 +1195,8 @@ class Member extends vscode.TreeItem {
     this.tooltip = `${this.resourceUri.path}`
       .concat(`${member.text ? `\nText:\t\t${member.text}` : ``}`)
       .concat(`${member.lines != undefined ? `\nLines:\t${member.lines}` : ``}`)
-      .concat(`${member.created ? `\nCreated:\t${member.created.toLocaleString()}` : ``}`)
-      .concat(`${member.changed ? `\nChanged:\t${member.changed.toLocaleString()}` : ``}`);
+      .concat(`${member.created ? `\nCreated:\t${member.created.toISOString().slice(0,19).replace(`T`, ` `)}` : ``}`)
+      .concat(`${member.changed ? `\nChanged:\t${member.changed.toISOString().slice(0,19).replace(`T`, ` `)}` : ``}`);
     this.command = {
       command: `vscode.open`,
       title: `Open Member`,
