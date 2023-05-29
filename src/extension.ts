@@ -1,29 +1,29 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, window, commands, workspace } from "vscode";
+import { ExtensionContext, commands, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { instance, loadAllofExtension } from './instantiate';
 import { CustomUI } from "./api/CustomUI";
+import { instance, loadAllofExtension } from './instantiate';
 
-import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
-import IBMi from "./api/IBMi";
-import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
-import { CodeForIBMi, ConnectionData } from "./typings";
-import * as Sandbox from "./sandbox";
-import { Deployment } from "./api/local/deployment";
-import { parseErrors } from "./api/errors/handler";
-import { GlobalStorage } from "./api/Storage";
 import { CompileTools } from "./api/CompileTools";
-import { HelpView } from "./views/helpView";
-import { ProfilesView } from "./views/ProfilesView";
+import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import IBMi from "./api/IBMi";
+import { GlobalStorage } from "./api/Storage";
 import * as Debug from './api/debug';
+import { parseErrors } from "./api/errors/handler";
+import { Deployment } from "./api/local/deployment";
+import { IFSFS } from "./filesystems/ifsFs";
+import * as Sandbox from "./sandbox";
+import { initialise } from "./testing";
+import { CodeForIBMi, ConnectionData } from "./typings";
+import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
+import { LibraryListProvider } from "./views/LibraryListView";
+import { ProfilesView } from "./views/ProfilesView";
+import { HelpView } from "./views/helpView";
 import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
-import { initialise } from "./testing";
-import { IFSFS } from "./filesystems/ifsFs";
-import { LibraryListProvider } from "./views/LibraryListView";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -49,7 +49,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ),
     window.registerTreeDataProvider(
       `helpView`,
-      new HelpView(context)
+      new HelpView()
     ),
     window.registerTreeDataProvider(
       `libraryListView`,
