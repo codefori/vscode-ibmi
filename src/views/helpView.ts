@@ -1,5 +1,6 @@
 
 import vscode from 'vscode';
+import IBMi from '../api/IBMi';
 import { instance } from '../instantiate';
 
 export class HelpView {
@@ -54,19 +55,17 @@ class HelpIssueItem extends HelpItem {
   }
 }
 
-function openNewIssue() {
+async function openNewIssue() {
   const code4ibmi = vscode.extensions.getExtension("halcyontechltd.code-for-ibmi");
   const issueUrl = [
     `Issue text goes here.`,
     ``,
     `Code for IBM i version: ${code4ibmi?.packageJSON.version}`,
     `${vscode.env.appName} version: ${vscode.version}`,
-    `Platform: ${process.platform}`,
+    `Platform: ${process.platform}_${process.arch}`,
     getExtensions(true),
     ``,
-    getExtensions(false),
-    ``,
-    getRemoteSection(),
+    await getRemoteSection(),
   ].join(`\n`);
 
   vscode.commands.executeCommand(`vscode.open`, `https://github.com/halcyon-tech/vscode-ibmi/issues/new?body=${encodeURIComponent(issueUrl)}`);
@@ -77,47 +76,53 @@ function getExtensions(active: boolean) {
     `${active ? 'Active' : 'Disabled'} extensions`,
     `\`\`\``,
     ...vscode.extensions.all.filter(extension => extension.isActive === active)
-    .map(extension => extension.packageJSON)
-    .map(p => `${p.displayName} (${p.name}): ${p.version}`)
-    .sort(),
+      .map(extension => extension.packageJSON)
+      .map(p => `${p.displayName} (${p.name}): ${p.version}`)
+      .sort(),
     `\`\`\``,
   );
 }
 
-function getRemoteSection() {
+async function getRemoteSection() {
   const connection = instance.getConnection();
   const config = instance.getConfig();
   if (connection && config) {
-    //getOutput(connection.outputChannel?.name || "", connection.outputChannel!);
-    return [`* QCCSID: ${connection?.qccsid || '?'}`,
-      `* Features:`,
-    ...Object.keys(connection?.remoteFeatures || {}).map(
-      (feature) => `   * ${feature}: ${connection?.remoteFeatures[feature] !== undefined}`
-    ),
-    `* SQL enabled: ${config ? config.enableSQL : '?'}`,
-    `* Source dates enabled: ${config ? config.enableSourceDates : '?'}`,
+    return [
+      createSection(`Remote system`,
+        `* QCCSID: ${connection?.qccsid || '?'}`,
+        `* Enabled features:`,
+      ...Object.keys(connection?.remoteFeatures || {}).filter(f => connection?.remoteFeatures[f]).map(f =>`  * ${f}`).sort(),
+      `* SQL enabled: ${config ? config.enableSQL : '?'}`,
+      `* Source dates enabled: ${config ? config.enableSourceDates : '?'}`),
       ``,
-      `Variants`,
-      `\`\`\`json`,
-    JSON.stringify(connection?.variantChars || {}, null, 2),
-      `\`\`\``,
+    createSection(`Shell env`, `\`\`\`bash`, ...await getEnv(connection), `\`\`\``,),
       ``,
-      `Errors:`,
+    createSection(`Variants`,
       `\`\`\`json`,
-    JSON.stringify(connection?.lastErrors || [], null, 2),
-      `\`\`\``]
-      .join("\n");
+     JSON.stringify(connection?.variantChars || {}, null, 2),
+      `\`\`\``),
+    ``,
+    createSection(`Errors`,
+      `\`\`\`json`,
+      JSON.stringify(connection?.lastErrors || [], null, 2),
+      `\`\`\``)
+    ].join("\n");
   }
   else {
     return "*_Not connected_*";
   }
 }
 
-function getOutput(title: string, output: vscode.OutputChannel) {
-  return createSection(
-    title,
-    output.name
-  );
+async function getEnv(connection: IBMi) {
+  const result = await connection.runCommand({ command: "env", environment: 'pase' });
+  if (result?.code === 0 && result.stdout) {
+    return result.stdout.split("\n")
+      .map(e => e.trim())
+      .sort();
+  }
+  else {
+    return [];
+  }
 }
 
 function createSection(summary: string, ...details: string[]) {
