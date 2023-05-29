@@ -1,10 +1,10 @@
 {
   "name": "@halcyontech/vscode-ibmi-types",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "Types for vscode-ibmi",
   "typings": "./typings.d.ts",
   "scripts": {
-    "prepublish": "rm -rf filesystems schemas views webviews languages",
+    "prepublish": "rm -rf filesystems schemas views webviews languages testing",
     "deploy": "npm publish --access public"
   },
   "repository": {
