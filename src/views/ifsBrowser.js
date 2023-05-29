@@ -673,7 +673,7 @@ class Object extends vscode.TreeItem {
     this.path = path;
     this.tooltip = `${path}`
       .concat(`${size !== undefined ? `\nSize:\t\t${size}` : ``}`)
-      .concat(`${modified ? `\nModifed:\t${modified.toLocaleString()}` : ``}`)
+      .concat(`${modified ? `\nModifed:\t${new Date(modified.getTime()-modified.getTimezoneOffset()*60*1000).toISOString().slice(0,19).replace(`T`, ` `)}` : ``}`)
       .concat(`${owner ? `\nOwner:\t${owner.toUpperCase()}` : ``}`);
     this.parent = parent;
 
