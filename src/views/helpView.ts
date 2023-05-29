@@ -58,9 +58,11 @@ class HelpIssueItem extends HelpItem {
 async function openNewIssue() {
   const code4ibmi = vscode.extensions.getExtension("halcyontechltd.code-for-ibmi");
   const issue = [
-    `Issue text goes here.`,
+    `👉🏻 Issue text goes here.`,
     ``,
     `<hr />`,
+    ``,
+    `⚠️ **REMOVE THIS LINE AND ANY SENSITIVE INFORMATION BELOW!** ⚠️`,
     ``,
     '|Context|Version|',
     '|-|-|',
@@ -78,6 +80,10 @@ async function openNewIssue() {
   let issueUrl = encodeURIComponent(issue);
   if (issueUrl.length > 8130) {
     //Empirically tested: issueUrl must not exceed 8130 characters
+    if(await vscode.window.showWarningMessage("Issue data is too long. It will be truncated.", "Copy full data to clipboard")){
+      await vscode.env.clipboard.writeText(issue);
+    }
+    
     issueUrl = issueUrl.substring(0, 8130);
   }
 
@@ -144,7 +150,7 @@ async function getRemoteSection() {
     });
   }
   else {
-    return "*_Not connected_*";
+    return "**_Not connected_** 🔌";
   }
 }
 
