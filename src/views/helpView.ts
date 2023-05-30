@@ -171,7 +171,7 @@ function getRemoteFeatures(connection : IBMi) {
     }
   });
   
-  const maxLine = Array.from(features.values()).map(e => e.length).sort().reverse()[0];
+  const maxLine = Array.from(features.values()).map(e => e.length).sort((len1, len2) => len1 - len2).reverse()[0];
   const dirs = Array.from(features.keys());
   const rows = [];
   for (let i = 0; i < maxLine; i++) {
