@@ -1,4 +1,5 @@
 
+import { parse } from 'path';
 import vscode from 'vscode';
 import IBMi from '../api/IBMi';
 import { instance } from '../instantiate';
@@ -131,8 +132,9 @@ async function getRemoteSection() {
             `|SQL|${config.enableSQL ? 'Enabled' : 'Disabled'}`,
             `|Source dates|${config.enableSourceDates ? 'Enabled' : 'Disabled'}`,
             '',
-            `* Enabled features:`,
-            ...Object.keys(connection?.remoteFeatures || {}).filter(f => connection?.remoteFeatures[f]).map(f => `  * ${f}`).sort(),
+            `### Enabled features`,
+            '',
+            ...getRemoteFeatures(connection)
           ),
           ``,
           createSection(`Shell env`, `\`\`\`bash`, ...await getEnv(connection), `\`\`\``,),
@@ -152,6 +154,33 @@ async function getRemoteSection() {
   else {
     return "**_Not connected_** 🔌";
   }
+}
+
+function getRemoteFeatures(connection : IBMi) {
+  const features : Map<string, string[]> = new Map;
+  Object.values(connection.remoteFeatures).forEach(feature => {
+    if(feature){
+      const featurePath = parse(feature);
+      let featureDir = features.get(featurePath.dir);
+      if(!featureDir){
+        featureDir = [];
+        features.set(featurePath.dir, featureDir);
+      }
+      featureDir.push(featurePath.base);
+    }
+  });
+
+  const maxLine = Array.from(features.values()).map(e => e.length).sort().reverse()[0];
+  const dirs = Array.from(features.keys());
+  const rows = [];
+  for (let i = 0; i < maxLine; i++) {
+    rows.push(`|${dirs.map(dir => features.get(dir)![i] || '').join('|')}|`);
+  }
+  return [
+    `|${dirs.join('|')}|`,
+    `|${dirs.map(d => '-').join('|')}|`,
+    ...rows
+  ]  
 }
 
 async function getEnv(connection: IBMi) {
