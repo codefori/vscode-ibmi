@@ -1,4 +1,5 @@
 
+import { parse } from 'path';
 import vscode from 'vscode';
 import IBMi from '../api/IBMi';
 import { instance } from '../instantiate';
@@ -58,9 +59,11 @@ class HelpIssueItem extends HelpItem {
 async function openNewIssue() {
   const code4ibmi = vscode.extensions.getExtension("halcyontechltd.code-for-ibmi");
   const issue = [
-    `Issue text goes here.`,
+    `👉🏻 Issue text goes here.`,
     ``,
     `<hr />`,
+    ``,
+    `⚠️ **REMOVE THIS LINE AND ANY SENSITIVE INFORMATION BELOW!** ⚠️`,
     ``,
     '|Context|Version|',
     '|-|-|',
@@ -78,6 +81,10 @@ async function openNewIssue() {
   let issueUrl = encodeURIComponent(issue);
   if (issueUrl.length > 8130) {
     //Empirically tested: issueUrl must not exceed 8130 characters
+    if(await vscode.window.showWarningMessage("Issue data is too long. It will be truncated.", "Copy full data to clipboard")){
+      await vscode.env.clipboard.writeText(issue);
+    }
+    
     issueUrl = issueUrl.substring(0, 8130);
   }
 
@@ -121,12 +128,13 @@ async function getRemoteSection() {
             '|-|-|',
             `|IBM i OS|${osVersion?.OS || '?'}|`,
             `|Tech Refresh|${osVersion?.TR || '?'}|`,
-            `|QCCSID|${connection.qccsid || '?'}|`,
+            `|CCSID|${connection.qccsid || '?'}|`,
             `|SQL|${config.enableSQL ? 'Enabled' : 'Disabled'}`,
             `|Source dates|${config.enableSourceDates ? 'Enabled' : 'Disabled'}`,
             '',
-            `* Enabled features:`,
-            ...Object.keys(connection?.remoteFeatures || {}).filter(f => connection?.remoteFeatures[f]).map(f => `  * ${f}`).sort(),
+            `### Enabled features`,
+            '',
+            ...getRemoteFeatures(connection)
           ),
           ``,
           createSection(`Shell env`, `\`\`\`bash`, ...await getEnv(connection), `\`\`\``,),
@@ -144,8 +152,36 @@ async function getRemoteSection() {
     });
   }
   else {
-    return "*_Not connected_*";
+    return "**_Not connected_** 🔌";
   }
+}
+
+function getRemoteFeatures(connection : IBMi) {
+  const features : Map<string, string[]> = new Map;
+  Object.values(connection.remoteFeatures).forEach(feature => {
+    if(feature){
+      const featurePath = parse(feature);
+      let featureDir = features.get(featurePath.dir);
+      if(!featureDir){
+        featureDir = [];
+        features.set(featurePath.dir, featureDir);
+      }
+      featureDir.push(featurePath.base);
+      featureDir.sort();
+    }
+  });
+  
+  const maxLine = Array.from(features.values()).map(e => e.length).sort((len1, len2) => len1 - len2).reverse()[0];
+  const dirs = Array.from(features.keys());
+  const rows = [];
+  for (let i = 0; i < maxLine; i++) {
+    rows.push(`|${dirs.map(dir => features.get(dir)![i] || '').join('|')}|`);
+  }
+  return [
+    `|${dirs.join('|')}|`,
+    `|${dirs.map(d => '-').join('|')}|`,
+    ...rows
+  ]  
 }
 
 async function getEnv(connection: IBMi) {
