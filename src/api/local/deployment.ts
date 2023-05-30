@@ -298,6 +298,9 @@ export namespace Deployment {
           if (relative && parameters.ignoreRules) {
             return !parameters.ignoreRules.ignores(relative);
           }
+          else{
+            return true;
+          }
         });
     } else {
       // Skip upload, but still run the Action
@@ -502,13 +505,16 @@ export namespace Deployment {
   }
 
   async function findFiles(parameters: DeploymentParameters, includePattern: string, excludePattern?: string) {
-    const root = parameters.workspaceFolder.uri.fsPath;
-    return (await vscode.workspace.findFiles(new vscode.RelativePattern(root, includePattern),
-      excludePattern ? new vscode.RelativePattern(root, excludePattern) : null))
+    const root = parameters.workspaceFolder.uri;
+    return (await vscode.workspace.findFiles(new vscode.RelativePattern(parameters.workspaceFolder, includePattern),
+      excludePattern ? new vscode.RelativePattern(parameters.workspaceFolder, excludePattern) : null))
       .filter(file => {
         if (parameters.ignoreRules) {
-          const relative = toRelative(parameters.workspaceFolder.uri, file);
+          const relative = toRelative(root, file);
           return !parameters.ignoreRules.ignores(relative);
+        }
+        else{
+          return true;
         }
       });
   }
