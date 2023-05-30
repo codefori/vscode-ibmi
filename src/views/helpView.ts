@@ -15,7 +15,7 @@ export class HelpView {
 
   public async getChildren(): Promise<HelpItem[]> {
     return [
-      new HelpOpenUrlItem(`book`, `Get started`, `https://halcyon-tech.github.io/vscode-ibmi/#/`),
+      new HelpOpenUrlItem(`book`, `Get started`, `https://halcyon-tech.github.io/docs/#/`),
       new HelpOpenUrlItem(`output`, `Open official Forum`, `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
       new HelpOpenUrlItem(`eye`, `Review Issues`, `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
       new HelpIssueItem(),
