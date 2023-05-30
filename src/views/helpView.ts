@@ -167,9 +167,10 @@ function getRemoteFeatures(connection : IBMi) {
         features.set(featurePath.dir, featureDir);
       }
       featureDir.push(featurePath.base);
+      featureDir.sort();
     }
   });
-
+  
   const maxLine = Array.from(features.values()).map(e => e.length).sort().reverse()[0];
   const dirs = Array.from(features.keys());
   const rows = [];
