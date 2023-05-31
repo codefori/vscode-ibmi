@@ -186,8 +186,9 @@ export const ContentSuite: TestSuite = {
       const qsysLib = objects?.find(obj => obj.name === `QSYS.LIB`);
 
       assert.strictEqual(qsysLib?.name, `QSYS.LIB`);
-      assert.strictEqual(qsysLib?.path, `/QSYS.LIB/`);
+      assert.strictEqual(qsysLib?.path, `/QSYS.LIB`);
       assert.strictEqual(qsysLib?.type, `directory`);
+      assert.strictEqual(qsysLib?.owner, `qsys`);
     }},
 
     {name: `Test getFileList (non-existing file)`, test: async () => {
