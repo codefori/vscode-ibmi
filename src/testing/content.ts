@@ -244,12 +244,14 @@ export const ContentSuite: TestSuite = {
 
     {name: `getMemberList (SQL, no filter)`, test: async () => {
       const content = instance.getContent();
-  
-      const members = await content?.getMemberList(`qsysinc`, `mih`);
 
-      assert.strictEqual(members?.length, 148);
+      let members = await content?.getMemberList(`qsysinc`, `mih`, `*inxen`);
 
-      const actbpgm = members.find(mbr => mbr.name === `ACTBPGM`);
+      assert.strictEqual(members?.length, 3);
+
+      members = await content?.getMemberList(`qsysinc`, `mih`);
+
+      const actbpgm = members?.find(mbr => mbr.name === `ACTBPGM`);
 
       assert.strictEqual(actbpgm?.name, `ACTBPGM`);
       assert.strictEqual(actbpgm?.extension, `C`);
