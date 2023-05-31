@@ -455,8 +455,8 @@ export default class IBMiContent {
 
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
-    let member = (mbr !== `*` ? mbr : null);
-    let memberExt = (ext !== `*` ? ext : null);
+    let member = (mbr !== `*` ? mbr.toUpperCase() : null);
+    let memberExt = (ext !== `*` ? ext.toUpperCase() : null);
 
     let results: Tools.DB2Row[];
 
