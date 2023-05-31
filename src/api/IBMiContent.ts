@@ -749,7 +749,7 @@ export default class IBMiContent {
    */
   getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
     let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
-    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
+    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
     return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
   }
