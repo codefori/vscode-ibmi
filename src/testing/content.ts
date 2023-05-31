@@ -190,16 +190,12 @@ export const ContentSuite: TestSuite = {
       assert.strictEqual(qsysLib?.type, `directory`);
     }},
 
-    {name: `Test getFileList`, test: async () => {
+    {name: `Test getFileList (non-existing file)`, test: async () => {
       const content = instance.getContent();
-  
-      const objects = await content?.getFileList(`/`);
 
-      const qsysLib = objects?.find(obj => obj.name === `QSYS.LIB`);
+      const objects = await content?.getFileList(`/tmp/${Date.now()}`);
 
-      assert.strictEqual(qsysLib?.name, `QSYS.LIB`);
-      assert.strictEqual(qsysLib?.path, `/QSYS.LIB/`);
-      assert.strictEqual(qsysLib?.type, `directory`);
+      assert.strictEqual(objects?.length, 0);
     }},
 
     {name: `Test getObjectList (all objects)`, test: async () => {
