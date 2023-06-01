@@ -87,6 +87,7 @@ module.exports = class IFSBrowser {
 
       vscode.commands.registerCommand(`code-for-ibmi.addIFSShortcut`, async (node) => {
         const config = getInstance().getConfig();
+        const content = getInstance().getContent();
 
         let newDirectory;
 
@@ -102,7 +103,9 @@ module.exports = class IFSBrowser {
           if (newDirectory) {
             newDirectory = newDirectory.trim();
 
-            if (!shortcuts.includes(newDirectory)) {
+            if (await content.isDirectory(newDirectory) !== true) {
+              throw(`${newDirectory} is not a directory.`);
+            } else if (!shortcuts.includes(newDirectory)) {
               shortcuts.push(newDirectory);
               config.ifsShortcuts = shortcuts;
               await ConnectionConfiguration.update(config);
@@ -111,7 +114,7 @@ module.exports = class IFSBrowser {
             }
           }
         } catch (e) {
-          console.log(e);
+          vscode.window.showErrorMessage(`Error creating IFS shortcut! ${e}`);
         }
       }),
 

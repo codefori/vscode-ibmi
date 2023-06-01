@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import util from 'util';
 import vscode from "vscode";
 import { ObjectTypes } from '../schemas/Objects';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath, CommandResult } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -455,8 +455,8 @@ export default class IBMiContent {
 
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
-    let member = (mbr !== `*` ? mbr : null);
-    let memberExt = (ext !== `*` ? ext : null);
+    let member = (mbr !== `*` ? mbr.toUpperCase() : null);
+    let memberExt = (ext !== `*` ? ext.toUpperCase() : null);
 
     let results: Tools.DB2Row[];
 
@@ -568,53 +568,55 @@ export default class IBMiContent {
     const { 'sort': SORT } = this.ibmi.remoteFeatures;
 
     const items: IFSFile[] = [];
-    let fileListResult;
+    let fileListResult: CommandResult;
 
     if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
-        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`,
-        directory: `${remotePath}`
+        command: `cd ${remotePath} && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
       }));
 
-      const fileStatList = fileListResult.stdout;
-      const fileList = fileStatList.split(`\n`);
+      if (fileListResult.stdout !== '') {
+        const fileStatList = fileListResult.stdout;
+        const fileList = fileStatList.split(`\n`);
 
-      //Remove current and dir up.
-      fileList.forEach(item => {
-        let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
-        [auth, hardLinks, owner, group, size, modified, name] = item.split(`\t`);
+        //Remove current and dir up.
+        fileList.forEach(item => {
+          let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
+          [auth, hardLinks, owner, group, size, modified, name] = item.split(`\t`);
 
-        if (name !== `..` && name !== `.`) {
-          const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
-          items.push({
-            type: type,
-            name: name,
-            path: path.posix.join(remotePath, name),
-            size: Number(size),
-            modified: new Date(Number(modified) * 1000),
-            owner: owner
-          });
-        };
-      });
-
+          if (name !== `..` && name !== `.`) {
+            const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: name,
+              path: path.posix.join(remotePath, name),
+              size: Number(size),
+              modified: new Date(Number(modified) * 1000),
+              owner: owner
+            });
+          };
+        });
+      }
     } else {      
       fileListResult = (await this.ibmi.sendCommand({
         command: `${this.ibmi.remoteFeatures.ls} -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
       }));
 
-      const fileList = fileListResult.stdout;
+      if (fileListResult.stdout !== '') {
+        const fileList = fileListResult.stdout;
 
-      //Remove current and dir up.
-      fileList.split(`\n`)
-        .filter(item => item !== `../` && item !== `./`)
-        .forEach(item => {
-          const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-          items.push({
-            type: type,
-            name: (type === `directory` ? item.substring(0, item.length - 1) : item),
-            path: path.posix.join(remotePath, item)
+        //Remove current and dir up.
+        fileList.split(`\n`)
+          .filter(item => item !== `../` && item !== `./`)
+          .forEach(item => {
+            const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: (type === `directory` ? item.substring(0, item.length - 1) : item),
+              path: path.posix.join(remotePath, item)
+            });
           });
-        });
+      }
     }
 
     if (sort.order === "name") {
@@ -747,7 +749,7 @@ export default class IBMiContent {
    */
   getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
     let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
-    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
+    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
     return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
   }
