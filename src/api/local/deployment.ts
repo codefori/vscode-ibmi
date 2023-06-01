@@ -1,6 +1,6 @@
 import Crypto from 'crypto';
 import { readFileSync } from 'fs';
-import ignore, { Ignore } from 'ignore';
+import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
@@ -555,7 +555,7 @@ export namespace Deployment {
 }
 
 async function getDefaultIgnoreRules(workspaceFolder: vscode.WorkspaceFolder): Promise<Ignore> {
-  const ignoreRules = ignore({ ignorecase: true }).add(`.git`);
+  const ignoreRules = createIgnore({ ignorecase: true }).add(`.git`);
   // get the .gitignore file from workspace
   const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `**/.gitignore`), ``, 1);
   if (gitignores.length > 0) {
