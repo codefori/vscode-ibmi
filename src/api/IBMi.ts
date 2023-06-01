@@ -127,7 +127,7 @@ export default class IBMi {
           message: `Connecting via SSH.`
         });
 
-        await this.client.connect(connectionObject);
+        await this.client.connect(connectionObject as node_ssh.Config);
 
         this.currentConnectionName = connectionObject.name;
         this.currentHost = connectionObject.host;
@@ -156,9 +156,9 @@ export default class IBMi {
           };
         };
 
-        this.client.connection.once(`timeout`, disconnected);
-        this.client.connection.once(`end`, disconnected);
-        this.client.connection.once(`error`, disconnected);
+        this.client.connection!.once(`timeout`, disconnected);
+        this.client.connection!.once(`end`, disconnected);
+        this.client.connection!.once(`error`, disconnected);
 
         progress.report({
           message: `Loading configuration.`
@@ -179,7 +179,8 @@ export default class IBMi {
 
         const checkShellText = `This should be the only text!`;
         const checkShellResult = await this.sendCommand({
-          command: `echo "${checkShellText}"`
+          command: `echo "${checkShellText}"`,
+          directory: `.` // Will use whatever the user profile default is
         });
         if (checkShellResult.stderr || checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
           await vscode.window.showErrorMessage(`Error in shell configuration!`, {
