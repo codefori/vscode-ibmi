@@ -585,6 +585,10 @@ module.exports = class IFSBrowser {
           //Running from command.
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.ifs.copyPath`, async (node) => {
+        await vscode.env.clipboard.writeText(node.path);
+      }),
     )
 
     getInstance().onEvent(`connected`, () => this.refresh());
