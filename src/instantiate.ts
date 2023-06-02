@@ -115,6 +115,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
+      if(!options?.readonly && !path.startsWith('/')){
+        const [library, name] = path.split('/');
+        const writable = await instance.getContent()?.checkObject({library, name, type: '*FILE'}, "*UPD");
+        if(!writable){
+          options = options || {};
+          options.readonly = true;
+        }
+      }
       const uri = getUriFromPath(path, options);
       try {
         if (line) {

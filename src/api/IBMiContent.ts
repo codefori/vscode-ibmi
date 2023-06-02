@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import util from 'util';
 import vscode from "vscode";
 import { ObjectTypes } from '../schemas/Objects';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath, CommandResult } from '../typings';
+import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -14,6 +14,8 @@ const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
+
+type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
 
 export type SortOptions = {
   order: "name" | "date" | "?"
@@ -597,7 +599,7 @@ export default class IBMiContent {
           };
         });
       }
-    } else {      
+    } else {
       fileListResult = (await this.ibmi.sendCommand({
         command: `${this.ibmi.remoteFeatures.ls} -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
       }));
@@ -666,8 +668,8 @@ export default class IBMiContent {
 
     return undefined;
   }
-  
-  async objectResolve(object: string, libraries: string[]): Promise<string|undefined> {
+
+  async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
     const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
@@ -759,9 +761,15 @@ export default class IBMiContent {
    * 
    * @param remotePath: a remote IFS path
    */
-  async isDirectory(remotePath : string){
+  async isDirectory(remotePath: string) {
     return (await this.ibmi.sendCommand({
       command: `cd ${remotePath}`
     })).code === 0;
+  }
+
+  async checkObject(object: { library: string, name: string, type: string }, ...authorities: Authority[]) {
+    return (await this.ibmi.runCommand({
+      command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`
+    }))?.code === 0;
   }
 }
