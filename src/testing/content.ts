@@ -1,7 +1,7 @@
 import assert from "assert";
+import { commands } from "vscode";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
-import { commands } from "vscode";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,

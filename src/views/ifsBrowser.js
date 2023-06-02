@@ -623,7 +623,7 @@ module.exports = class IFSBrowser {
       if (element) { //Chosen directory
         //Fetch members
         try {
-          const objects = await content.getFileList(element.path, element.sort);
+          const objects = await content.getFileList(element.path, element.sort, this.handleFileListErrors);
           items.push(...objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
             .map(object => new Object(object.type, object.name, object.path, object.size, object.modified, object.owner, object.type === `streamfile` ? element : undefined)));
@@ -646,6 +646,15 @@ module.exports = class IFSBrowser {
 
   getParent(item) {
     return item.parent;
+  }
+
+  /**
+   * 
+   * @param {string[]} errors 
+   */
+  handleFileListErrors(errors) {
+    errors.forEach(error => vscode.window.showErrorMessage(error));
+    vscode.window.showErrorMessage(`${errors.length} error${errors.length > 1 ? `s` : ``} occurred while listing files.`);
   }
 
   /**

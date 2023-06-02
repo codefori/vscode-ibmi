@@ -3,9 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import vscode from "vscode";
 import { ObjectTypes } from '../schemas/Objects';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath, CommandResult } from '../typings';
+import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -562,7 +561,7 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?:(errors:string[]) => void): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
     const { 'sort': SORT } = this.ibmi.remoteFeatures;
@@ -633,8 +632,7 @@ export default class IBMiContent {
         .filter(Tools.distinct);
 
       if (errors.length) {
-        errors.forEach(error => vscode.window.showErrorMessage(error));
-        vscode.window.showErrorMessage(`${errors.length} error${errors.length > 1 ? 's' : ''} occurred while listing files.`);
+        onListError ? onListError(errors) : errors.forEach(console.log);
       }
     }
 
