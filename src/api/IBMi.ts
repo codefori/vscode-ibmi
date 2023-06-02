@@ -175,18 +175,16 @@ export default class IBMi {
 
         const checkShellText = `This should be the only text!`;
         const checkShellResult = await this.sendCommand({
-          command: `echo "${checkShellText}"`,
-          directory: `/` // Will use root as the working directory for this command
+          command: `echo "${checkShellText}"`
         });
-        if (checkShellResult.stderr || checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
+        if (checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
           const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
             detail: [
               `This extension can not work with the shell configured on ${this.currentConnectionName},`,
               `since the output from shell commands have additional content.`,
               `This can be caused by running commands like "echo" or other`, 
               `commands creating output in your shell start script.`, ``, 
-              `The connection to ${this.currentConnectionName} will be aborted.`,
-              checkShellResult.stderr.length > 0 ? `\n${checkShellResult.stderr}` : ``
+              `The connection to ${this.currentConnectionName} will be aborted.`
             ].join(`\n`),
             modal: true
           }, `Read more`);
