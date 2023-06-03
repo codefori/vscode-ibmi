@@ -156,10 +156,6 @@ export default class IBMi {
           };
         };
 
-        this.client.connection!.once(`timeout`, disconnected);
-        this.client.connection!.once(`end`, disconnected);
-        this.client.connection!.once(`error`, disconnected);
-
         progress.report({
           message: `Loading configuration.`
         });
@@ -179,16 +175,31 @@ export default class IBMi {
 
         const checkShellText = `This should be the only text!`;
         const checkShellResult = await this.sendCommand({
-          command: `echo "${checkShellText}"`,
-          directory: `.` // Will use whatever the user profile default is
+          command: `echo "${checkShellText}"`
         });
-        if (checkShellResult.stderr || checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
-          await vscode.window.showErrorMessage(`Error in shell configuration!`, {
-            detail: `This extension can not work with the shell configured on ${this.currentConnectionName},\nsince the output from shell commands have additional content.\nThis can be caused by running commands like "echo" or other\ncommands creating output in your shell start script.\n\nThe connection to ${this.currentConnectionName} will be aborted.`,
+        if (checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
+          const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
+            detail: [
+              `This extension can not work with the shell configured on ${this.currentConnectionName},`,
+              `since the output from shell commands have additional content.`,
+              `This can be caused by running commands like "echo" or other`, 
+              `commands creating output in your shell start script.`, ``, 
+              `The connection to ${this.currentConnectionName} will be aborted.`
+            ].join(`\n`),
             modal: true
-            });
+          }, `Read more`);
+
+          if (chosen === `Read more`) {
+            vscode.commands.executeCommand(`vscode.open`, `https://halcyon-tech.github.io/docs/#/pages/tips/setup`);
+          }
+          
           throw(`Shell config error, connection aborted.`);
         }
+
+        // Register handlers after we might have to abort due to bad configuration.
+        this.client.connection!.once(`timeout`, disconnected);
+        this.client.connection!.once(`end`, disconnected);
+        this.client.connection!.once(`error`, disconnected);
 
         progress.report({
           message: `Checking home directory.`
