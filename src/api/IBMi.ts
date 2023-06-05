@@ -893,7 +893,8 @@ export default class IBMi {
     await Promise.all([
       vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
       vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshSPLFBrowser")
     ]);
 
     instance.setConnection(undefined);
@@ -967,9 +968,9 @@ export default class IBMi {
       library,
       file,
       extension,
-      basename,
       name,
-      asp
+      asp,
+      basename
     };
   }
 

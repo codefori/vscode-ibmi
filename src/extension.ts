@@ -23,6 +23,7 @@ import { LibraryListProvider } from "./views/LibraryListView";
 import { ProfilesView } from "./views/ProfilesView";
 import { HelpView } from "./views/helpView";
 import IFSBrowser from "./views/ifsBrowser";
+import SPLFBrowser from "./views/splfBrowser";
 import ObjectBrowser from "./views/objectBrowser";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
@@ -40,6 +41,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   };
 
   new IFSBrowser(context);
+  new SPLFBrowser(context);
   new ObjectBrowser(context);
 
   context.subscriptions.push(

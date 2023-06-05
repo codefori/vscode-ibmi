@@ -21,6 +21,7 @@ import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
+import { SplfFS } from "./filesystems/qsys/SplfFs";
 
 export let instance: Instance;
 
@@ -64,7 +65,7 @@ export async function disconnect(): Promise<boolean> {
 
   for (const document of vscode.workspace.textDocuments) {
     // This code will check that sources are saved before closing
-    if (!document.isClosed && [`member`, `streamfile`, `object`].includes(document.uri.scheme)) {
+    if (!document.isClosed && [`member`, `streamfile`, `object`,`spooledfile`].includes(document.uri.scheme)) {
       if (document.isDirty) {
         if (doDisconnect) {
           if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))) {
@@ -403,13 +404,17 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);
-
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
       isCaseSensitive: false
     })
   );
-
+  context.subscriptions.push(
+    vscode.workspace.registerFileSystemProvider(`spooledfile`, new QSysFS(context), {
+      isCaseSensitive: false
+    })
+  );
+    
   // Color provider
   if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);
@@ -457,7 +462,7 @@ async function onDisconnected() {
       group.tabs.forEach(tab => {
         if (tab.input instanceof vscode.TabInputText) {
           const uri = tab.input.uri;
-          if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
+          if ([`member`, `streamfile`, `object`, `spooledfile`].includes(uri.scheme)) {
             vscode.window.tabGroups.close(tab);
           }
         }
