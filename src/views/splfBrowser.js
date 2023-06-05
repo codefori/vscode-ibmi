@@ -200,22 +200,29 @@ module.exports = class SPLFBrowser {
             if (deletionConfirmed) {
               const connection = getInstance().getConnection();
               const content = getInstance().getContent();
- 
+
               const objects = await content.getUserSpooledFileList(node.user, node.sort, node.name);
+              let commands = ``;
+              let commandsNum = 0;
               objects.forEach(async function (object) {
-                try {
-                  await connection.runCommand({
-                    command: `DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`
-                    , environment: `ile`
-                  });
-
-                  // vscode.window.showInformationMessage(`Deleted ${object.name}, ${object.qualified_job_name}.`);
-                  deleteCount += 1;
-
-                } catch (e) {
-                  vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
-                }
+                commands += (deleteCount >= 0?`\n`:``)+`DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`;
+                deleteCount += 1;
               });
+              // objects.forEach(async function (object) {
+              try {
+                await connection.runCommand({
+                  // command: `DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`
+                  command: `${commands}`
+                  , environment: `ile`
+                });
+
+                // vscode.window.showInformationMessage(`Deleted ${object.name}, ${object.qualified_job_name}.`);
+                // deleteCount += 1;
+
+              } catch (e) {
+                vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
+              }
+              // });
             }
             else {
               vscode.window.showInformationMessage(`Deletion canceled.`);
@@ -334,7 +341,7 @@ module.exports = class SPLFBrowser {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.searchSpooledFiles`, async (node) => { 
+      vscode.commands.registerCommand(`code-for-ibmi.searchSpooledFiles`, async (node) => {
         const connection = getInstance().getConnection();
         const content = getInstance().getContent();
         /** @type {ConnectionConfiguration.Parameters} */
@@ -387,7 +394,7 @@ module.exports = class SPLFBrowser {
 
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.downloadSpooledfile`, async (node) => { 
+      vscode.commands.registerCommand(`code-for-ibmi.downloadSpooledfile`, async (node) => {
         const config = getInstance().getConfig();
         const contentApi = getInstance().getContent();
         const connection = getInstance().getConnection();
@@ -395,7 +402,7 @@ module.exports = class SPLFBrowser {
 
         if (node) {
           let fileExtension = await vscode.window.showInputBox({
-            prompt: `Type of file to create, TXT`,
+            prompt: `Type of file to create, TXT, PDF, HTML`,
             value: `TXT`
           });
           if (!fileExtension) {return}
@@ -403,8 +410,6 @@ module.exports = class SPLFBrowser {
           switch (fileExtension) {
           case `pdf`:
           case `html`:
-            vscode.window.showErrorMessage(`file type of ${fileExtension} is not supported at this time!`)
-            return;
           case `txt`:
             fileExtension.toLowerCase();
             break;
@@ -413,7 +418,8 @@ module.exports = class SPLFBrowser {
           }
 
           const splfContent = await contentApi.downloadSpooledFileContent(node.path, node.name, node.qualified_job_name, node.number, fileExtension);
-          const fileName = node.name+`.`+fileExtension;
+          const fileName = node.name+`_`+node.qualified_job_name+`_`+node.number+`.`+fileExtension;
+          // let localFilepath = os.homedir() +`\\` +extraFolder +`\\` +fileName;
           let localFilepath = os.homedir() +`\\` +fileName;
           localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(localFilepath) });
 
@@ -438,6 +444,7 @@ module.exports = class SPLFBrowser {
       }),
     )
 
+    // getInstance().onEvent(`connected`, () => this.refresh());
   }
 
   async moveFilterInList(filterName, filterMovement) {
@@ -500,13 +507,14 @@ module.exports = class SPLFBrowser {
       const content = getInstance().getContent();
       const config = getInstance().getConfig();
 
-      if (element) { 
+      if (element) { //Chosen USER??
         // let filter;
         switch (element.contextValue.split(`_`)[0]) {
         case `splfuser`:
           //Fetch spooled files
           try {
-            const objects = await content.getUserSpooledFileList(element.filter.userNameName, element.sort);
+            const objects = await content.getUserSpooledFileList(element.filter.userName, element.sort);
+            // console.log(JSON.stringify(objects));
             items.push(...objects
               .map(object => new SPLF(`SPLF`, element, object, element.filter)));
 
@@ -521,30 +529,19 @@ module.exports = class SPLFBrowser {
         }
 
       } else { // no context exists in tree yet, get from settings
-        // let usersList = [];
-        // usersList = config.usersSpooledFile;
-        // usersList.push(...await content.getLibraryList([currentLibrary, ...config.libraryList]));
-        // usersList.push(...config.usersSpooledFile.map(user => await content.getUserProfileText(user) ;
-        
-
         items.push(...config.usersSpooledFile.map(
-          theUser => new FilterItem(element, {userName :theUser }, connection.currentUser )));
-        // items.map(item => {
-              
-        // text: (content.getUserProfileText(user) +`(`+ content.getUserSpooledFileCount(user) +`)`)
-        // });
+          theUser => new FilterItem(element, { userName: theUser, }, connection.currentUser)    
+        ));
       }
     }
-
     return items;
   }
-
   /** 
    * getParemt
    * required implementation for TreeDataProvider 
    * 
    */
-  getParent(element) {
+  getParent(element){
     return element.parent;
   }
 }
@@ -555,17 +552,18 @@ class FilterItem extends vscode.TreeItem {
    * @param {import("../typings/IBMiSplfUser")} filter
    * @param {string} currentUser
    */
-  constructor(parent, filter, currentUser ) {
+  constructor(parent, filter, currentUser) {
     super(filter, vscode.TreeItemCollapsibleState.Collapsed);
     const icon = objectIcons[`OUTQ`] || objectIcons[``];
-    this.protected = filter.userName.toLocalUpperCase()!==currentUser.toLocaleUpperCase()?true:false;
+    this.protected = filter.userName.toLocaleUpperCase()!== currentUser.toLocaleUpperCase()?true:false;
     this.contextValue = `splfuser${this.protected ? `_readonly` : ``}`;
     this.path = filter.userName;
     this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     this.parent = parent;
     this.user = filter.userName;
-    this.iconPath = new vscode.ThemeIcon(icon,(this.protected?new vscode.ThemeColor(`list.errorForeground`):undefined));
-    
+    this.iconPath = new vscode.ThemeIcon(icon, (this.protected ? new vscode.ThemeColor(`list.errorForeground`) : undefined));
+
+    this.name = filter.userName;
     this._description = `${filter.userName} ${this.protected ? `(readonly)` : ``}`;
     this.description = this._description;
 
@@ -623,7 +621,7 @@ class SPLF extends vscode.TreeItem {
       title: `Open Spooled File`,
       arguments: [this.resourceUri]
     };
-    this.iconPath = new vscode.ThemeIcon(icon,(this.protected?new vscode.ThemeColor(`list.errorForeground`):undefined));
+    this.iconPath = new vscode.ThemeIcon(icon, (this.protected ? new vscode.ThemeColor(`list.errorForeground`) : undefined));
   }
 }
 

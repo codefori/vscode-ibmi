@@ -419,11 +419,11 @@ export default class IBMi {
             message: `Checking for bad data areas.`
           });
 
-          try {
-            await this.remoteCommand(
-              `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-              undefined
-            );
+        try {
+          await this.remoteCommand(
+            `CHKOBJ OBJ(QSYS/xcptoimpf) OBJTYPE(*DTAARA)`,
+            undefined
+          );
 
             vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
               detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
@@ -432,7 +432,7 @@ export default class IBMi {
               switch (choice) {
                 case `Delete`:
                   this.remoteCommand(
-                    `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
+                    `DLTOBJ OBJ(QSYS/xcptoimpf) OBJTYPE(*DTAARA)`
                   )
                     .then(() => {
                       vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
@@ -450,11 +450,11 @@ export default class IBMi {
             // It doesn't exist, we're all good.
           }
 
-          try {
-            await this.remoteCommand(
-              `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-              undefined
-            );
+        try {
+          await this.remoteCommand(
+            `CHKOBJ OBJ(QSYS/xcpfrmimpf) OBJTYPE(*DTAARA)`,
+            undefined
+          );
 
             vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
               modal: false,
@@ -462,7 +462,7 @@ export default class IBMi {
               switch (choice) {
                 case `Delete`:
                   this.remoteCommand(
-                    `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
+                    `DLTOBJ OBJ(QSYS/xcpfrmimpf) OBJTYPE(*DTAARA)`
                   )
                     .then(() => {
                       vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);

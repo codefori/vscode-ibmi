@@ -996,17 +996,21 @@ module.exports = class ObjectBrowser {
 
           filter = config.objectFilters.find(filter => filter.name === obj.filter);
           let objects = await content.getObjectList(filter, objectSortOrder);
-          if (objectNamesLower === true) {
-            objects = objects.map(object => {
-              object.name = object.name.toLocaleLowerCase();
-              object.type = object.type.toLocaleLowerCase();
-              object.attribute = object.attribute.toLocaleLowerCase();
-              return object;
-            })
-          };
-          items.push(...objects.map(object =>
-            object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(element, filter, object) : new ILEObject(element, filter, object)
-          ));
+          if (objects.length === 0) {
+            items.push(...objects.map(object => new SPF(element, filter, {library:``, name: ``, text: `** Empty **`})  ));
+          } else {
+            if (objectNamesLower === true) {
+              objects = objects.map(object => {
+                object.name = object.name.toLocaleLowerCase();
+                object.type = object.type.toLocaleLowerCase();
+                object.attribute = object.attribute.toLocaleLowerCase();
+                return object;
+              })
+            };
+            items.push(...objects.map(object =>
+              object.attribute.toLocaleUpperCase() === `*PHY` ? new SPF(element, filter, object) : new ILEObject(element, filter, object)
+            ));
+          }
           break;
 
         case `SPF`:

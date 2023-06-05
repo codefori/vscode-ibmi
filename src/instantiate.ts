@@ -404,17 +404,19 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);
-  context.subscriptions.push(
-    vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
-      isCaseSensitive: false
-    })
+
+  let fsp = vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
+    isCaseSensitive: false
+  })
+  context.subscriptions.push(fsp
   );
-  context.subscriptions.push(
-    vscode.workspace.registerFileSystemProvider(`spooledfile`, new QSysFS(context), {
-      isCaseSensitive: false
-    })
+  
+  fsp = vscode.workspace.registerFileSystemProvider(`spooledfile`, new SplfFS(context), {
+    isCaseSensitive: false
+  })
+  const dd = context.subscriptions.push(fsp 
   );
-    
+  
   // Color provider
   if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);

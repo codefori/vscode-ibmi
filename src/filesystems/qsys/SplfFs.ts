@@ -82,6 +82,7 @@ export class SplfFS implements vscode.FileSystemProvider {
       const lpath = uri.path.split(`/`);
       const lfilename = lpath[3].split(`~`);
       const qualified_job_name = lfilename[3]+'/'+lfilename[2]+'/'+lfilename[1];
+      // const qualified_job_name = lfilename;
       const splf_number = lfilename[4].replace(`.splf`,``);
       const name = lfilename[0];
       

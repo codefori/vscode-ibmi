@@ -140,12 +140,14 @@ export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deplo
 
 export interface Library {
   path:string
-
-  export interface IBMiSplfUser {
-    user: string
-    text: string
-  }
   
+}
+
+export interface IBMiSplfUser {
+  user: string
+  text: string
+}
+
 export interface IBMiSpooledFile {
   user: string
   name: string

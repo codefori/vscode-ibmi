@@ -41,7 +41,7 @@ export namespace Search {
       }
 
       const result = await connection.sendQsh({
-        command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${asp}/QSYS.LIB/${connection.sysNameInAmerican(library)}.LIB/${connection.sysNameInAmerican(sourceFile)}.FILE/${memberFilter ? connection.sysNameInAmerican(memberFilter) : `*`}`,
+        command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${asp}/QSYS.LIB/${connection.sysNameInAmerican(library)}.LIB/${connection.sysNameInAmerican(sourceFile)}.FILE/*`,
       });
 
       if (!result.stderr) {
@@ -105,7 +105,7 @@ export namespace Search {
         command: ``
       } as CommandResult;
       if (!result.stderr) {
-        // path: "/${user}/QEZJOBLOG/QPJOBLOG_D000D2034A_${user}_849412_1.splf" <- path should be like this
+        // path: "/${user}/QEZJOBLOG/QPJOBLOG~D000D2034A~[USERPROFILE]~849412~1.splf" <- path should be like this
         // TODO: Path issue with part names with underscores in them.  Need a different job separator token or can we use more sub parts to the path??
         return parseGrepOutput(result.stdout || '', filter,
           path => connection.sysNameInLocal(path)); 
@@ -118,7 +118,7 @@ export namespace Search {
       throw new Error("Please connect to an IBM i");
     }
   }
-  
+
   export async function searchIFS(instance: Instance, path: string, searchTerm: string): Promise<Result[]> {
     const connection = instance.getConnection();
     if (connection) {

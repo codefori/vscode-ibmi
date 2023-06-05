@@ -29,7 +29,7 @@ import ObjectBrowser from "./views/objectBrowser";
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
-  console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
+  console.log(`Congratulations, your extension "code-for-ibmi-w" is now active!`);
 
   await loadAllofExtension(context);
 

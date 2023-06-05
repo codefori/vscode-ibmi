@@ -14,11 +14,11 @@
 	],
 	"author": {
 		"name": "Halcyon Tech Ltd",
-		"url": "https://github.com/halcyon-tech"
+		"url": "https://github.com/halcyon-tech/"
 	},
 	"publisher": "halcyontechltd",
 	"repository": {
-		"url": "https://github.com/halcyon-tech/code-for-ibmi"
+		"url": "https://github.com/halcyon-tech/vscode-ibmi"
 	},
 	"license": "MIT",
 	"engines": {
@@ -796,44 +796,6 @@
 							],
 							"name": "Call program",
 							"command": "?CALL &LIBRARY/&NAME"
-						},
-						{
-							"type": "object",
-							"extensions": [
-								"PF"
-							],
-							"environment": "ile",
-							"name": "Copy data ",
-							"command": "CPYF FROMFILE(${FL|From File Library|&LIBRARY}/${FM|From File|&NAME}) TOFILE(${TL|To File Library|&USERNAME,*LIBL}/${TOFILE|To file|&NAME}) MBROPT(${MBROPT|Member option(*REPLACE, *ADD)|*REPLACE}) FROMRCD(1) FMTOPT(${FMTOPT|Format option (*MAP, *DROP, *NOCHK)|*MAP *DROP}) ERRLVL(${ERRLVL|Error level (Number, *NOMAX)|0})",
-							"deployFirst": false
-						},
-						{
-							"type": "member",
-							"extensions": [
-								"SQLRPGLE"
-							],
-							"environment": "ile",
-							"name": "Create SQL ILE RPG Module(CRTSQLRPGI)",
-							"command": "?CRTSQLRPGI OBJ(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)",
-							"deployFirst": false
-						},
-						{
-							"type": "member",
-							"extensions": [
-								"PRTF"
-							],
-							"environment": "ile",
-							"name": "Create Printer File (CRTPRTF) (PRTF)",
-							"command": "CRTPRTF  FILE(&OPENLIB/&OPENMBR)  SRCFILE(&OPENLIB/&OPENSPF) SRCMBR(&OPENMBR)  DEVTYPE(*SCS) PAGESIZE(*N 132) REPLACE(*YES) OPTION(*EVENTF)"
-						},
-						{
-							"type": "member",
-							"extensions": [
-								"GLOBAL"
-							],
-							"environment": "ile",
-							"name": "ADD member to Development source",
-							"command": "ADDPFM FILE(&CURLIB/${SRCF|Source file (10)|}) MBR(${MBR|Member name (10)|}) TEXT(${TXT|Member text|}) SRCTYPE(${TYPE|Member type|})      "
 						}
 					]
 				}
@@ -2406,7 +2368,7 @@
 		"@types/tmp": "^0.2.3",
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
-		"node-ssh": "^13.1.0",
+		"node-ssh": "^11.1.1",
 		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2"
