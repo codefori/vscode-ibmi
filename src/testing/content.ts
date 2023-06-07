@@ -203,7 +203,7 @@ export const ContentSuite: TestSuite = {
     {name: `Test getFileList (special chars)`, test: async () => {
       const connection = instance.getConnection();
       const content = instance.getContent();
-      const files = [`name with blank`, `name_with_dollar$`, `name_with_quote'`];
+      const files = [`name with blank`, `name_with_quote'`, `name_with_dollar$`];
       const dir = `/tmp/${Date.now()}`;
       const dirWithSubdir = `${dir}/${files[0]}`;
 
@@ -219,6 +219,7 @@ export const ContentSuite: TestSuite = {
 
       const objects = await content?.getFileList(`${dirWithSubdir}`);
       assert.strictEqual(objects?.length, files.length);
+      assert.deepStrictEqual(objects?.map(a => {return a.name}).sort(), files.sort());
 
       result = await connection?.sendCommand({command: `rm -r "${dir}"`});
       assert.strictEqual(result?.code, 0);
