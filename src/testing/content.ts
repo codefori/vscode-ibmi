@@ -2,6 +2,7 @@ import assert from "assert";
 import { commands } from "vscode";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
+import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -197,6 +198,30 @@ export const ContentSuite: TestSuite = {
       const objects = await content?.getFileList(`/tmp/${Date.now()}`);
 
       assert.strictEqual(objects?.length, 0);
+    }},
+
+    {name: `Test getFileList (special chars)`, test: async () => {
+      const connection = instance.getConnection();
+      const content = instance.getContent();
+      const files = [`name with blank`, `name_with_dollar$`, `name_with_quote'`];
+      const dir = `/tmp/${Date.now()}`;
+      const dirWithSubdir = `${dir}/${files[0]}`;
+
+      let result: CommandResult | undefined;
+
+      result = await connection?.sendCommand({command: `mkdir -p "${dirWithSubdir}"`});
+      assert.strictEqual(result?.code, 0);
+
+      for (const file of files) {
+        result = await connection?.sendCommand({command: `touch "${dirWithSubdir}/${file}"`});
+        assert.strictEqual(result?.code, 0);
+      };
+
+      const objects = await content?.getFileList(`${dirWithSubdir}`);
+      assert.strictEqual(objects?.length, files.length);
+
+      result = await connection?.sendCommand({command: `rm -r "${dir}"`});
+      assert.strictEqual(result?.code, 0);
     }},
 
     {name: `Test getObjectList (all objects)`, test: async () => {
