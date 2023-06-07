@@ -573,7 +573,7 @@ export default class IBMiContent {
 
     if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
-        command: `cd ${remotePath} && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
+        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
       }));
 
       if (fileListResult.stdout !== '') {
