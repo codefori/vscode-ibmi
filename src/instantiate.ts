@@ -177,10 +177,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const storage = instance.getStorage();
       const content = instance.getContent();
       const config = instance.getConfig();
-      let goToFileAutoSuggest = false;
-      if (config) {
-        goToFileAutoSuggest = config.goToFileAutoSuggest;
-      }
 
       if (!storage && !content) return;
       let list: string[] = [];
@@ -204,17 +200,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = listItems;
-      quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext use '*' for wildcard or /home/xx/file.txt)`;
+      quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (wildcard: '*') or /home/xx/file.txt)`;
 
       // Create a cache for Schema if autosuggest enabled
-      if (listSchema.length === 0 && goToFileAutoSuggest && config && config.enableSQL) {
+      if (listSchema.length === 0 && config && config.enableSQL) {
         const resultSetLibrary = await content!.runSQL(`SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
           ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
         FROM QSYS2.SYSSCHEMAS 
-        WHERE SYSTEM_SCHEMA_NAME NOT LIKE 'Q%' 
           ORDER BY 1 `);
-
-        quickPick.placeholder = `Caching...`;
         
         if (listSchema.length === 0 && resultSetLibrary.length > 0) {                     
           resultSetLibrary.forEach(row => {
@@ -224,8 +217,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             })
           })
         }
-
-        quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext use '*' for wildcard or /home/xx/file.txt)`;
       }          
       
       quickPick.onDidChangeValue(async () => {
@@ -233,10 +224,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
 
         // autosuggest
-        if (config && config.enableSQL && goToFileAutoSuggest && (!quickPick.value.startsWith(`/`))) {
+        if (config && config.enableSQL && (!quickPick.value.startsWith(`/`))) {
           const asteriskIndex = quickPick.value.indexOf(`*`) ;
           if (asteriskIndex >= 0 ) {
-
             let filterText = '';
 
             const selectionSplit = quickPick.value.split('/');
@@ -269,6 +259,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               case 2:
                 // Create cache
+                listMember = [];
                 if (listFile.length === 0) {
 
                   filterText = selectionSplit[1].toUpperCase().substring(0, selectionSplit[1].indexOf(`*`));
@@ -296,7 +287,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
                 quickPick.items = [
                   {
-                    label: 'Sources files',
+                    label: 'Source files',
                     kind: vscode.QuickPickItemKind.Separator
                   },
                   ...listDisplay,

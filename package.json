@@ -385,12 +385,7 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
-							},
-              "code-for-ibmi.goToFileAutoSuggest": {
-                "type": "boolean",
-                "default": false,
-                "description": "Suggesting Library / Source file / Member when typing path to source file."
-              }
+							}
 						}
 					}
 				},
