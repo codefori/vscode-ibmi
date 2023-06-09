@@ -4,7 +4,7 @@ import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
 import { ObjectTypes } from '../schemas/Objects';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath, IBMiSpooledFile, IBMiSplfUser, CommandResult } from '../typings';
+import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -13,6 +13,8 @@ const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
+
+type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
 
 export type SortOptions = {
   order: "name" | "date" | "?"
@@ -264,7 +266,7 @@ export default class IBMiContent {
     } else {
       const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
       await this.ibmi.remoteCommand(
-        `WCPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
+        `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
         `TOSTMF('${tempRmt}') ` +
         `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`
       );
@@ -386,16 +388,13 @@ export default class IBMiContent {
    * @param sortOrder
    * @returns an array of IBMiFile 
    */
-  async getObjectList(filters: { library: string; object?: string; types?: string[]; member?: string; memberType?: string; }, sortOrder?: `name` | `type`): Promise<IBMiFile[]> {
+  async getObjectList(filters: { library: string; object?: string; types?: string[]; }, sortOrder?: `name` | `type`): Promise<IBMiFile[]> {
     const library = filters.library.toUpperCase();
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
-    const member = (filters.member ? filters.member.toUpperCase() : filters.member);
-    const mbrtype = (filters.memberType ? filters.memberType.toUpperCase() : filters.memberType);
 
     const tempLib = this.config.tempLibrary;
     const tempName = Tools.makeid();
-    var objQuery;
 
     if (sourceFilesOnly) {
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`);
@@ -463,7 +462,6 @@ export default class IBMiContent {
     let results: Tools.DB2Row[];
 
     if (this.config.enableSQL) {
-
       if (member) {
         member = member.replace(/[*]/g, `%`);
       }
@@ -471,26 +469,28 @@ export default class IBMiContent {
       if (memberExt) {
         memberExt = memberExt.replace(/[*]/g, `%`);
       }
-      const statement = `SELECT
-        b.avgrowsize as MBMXRL,
-        a.iasp_number as MBASP,
-        cast(a.system_table_name as char(10) for bit data) AS MBFILE,
-        cast(b.system_table_member as char(10) for bit data) as MBNAME,
-        coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
-        coalesce(b.partition_text, '') as MBMTXT,
-        b.NUMBER_ROWS as MBNRCD,
-        extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
-        extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
-      FROM qsys2.systables AS a
-        JOIN qsys2.syspartitionstat AS b
-          ON b.table_schema = a.table_schema AND
-            b.table_name = a.table_name
-      WHERE
-        cast(a.system_table_schema as char(10) for bit data) = '${library}' 
-        ${sourceFile !== `*ALL` ? `AND cast(a.system_table_name as char(10) for bit data) = '${sourceFile}'` : ``}
-        ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
-        ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
-    `;
+
+      const statement = `
+        SELECT
+          b.avgrowsize as MBMXRL,
+          a.iasp_number as MBASP,
+          cast(a.system_table_name as char(10) for bit data) AS MBFILE,
+          cast(b.system_table_member as char(10) for bit data) as MBNAME,
+          coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
+          coalesce(b.partition_text, '') as MBMTXT,
+          b.NUMBER_ROWS as MBNRCD,
+          extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
+          extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
+        FROM qsys2.systables AS a
+          JOIN qsys2.syspartitionstat AS b
+            ON b.table_schema = a.table_schema AND
+              b.table_name = a.table_name
+        WHERE
+          cast(a.system_table_schema as char(10) for bit data) = '${library}' 
+          ${sourceFile !== `*ALL` ? `AND cast(a.system_table_name as char(10) for bit data) = '${sourceFile}'` : ``}
+          ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
+          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
+      `;
       results = await this.runSQL(statement);
     } else {
       const tempLib = this.config.tempLibrary;
@@ -563,7 +563,7 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?: (errors: string[]) => void): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?:(errors:string[]) => void): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
     const { 'sort': SORT } = this.ibmi.remoteFeatures;
@@ -573,7 +573,7 @@ export default class IBMiContent {
 
     if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
-        command: `cd ${remotePath} && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
+        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
       }));
 
       if (fileListResult.stdout !== '') {
@@ -704,121 +704,6 @@ export default class IBMiContent {
   }
 
   /**
-  * @param filter
-  * @param sortOrder
-  * @returns an array of IBMiSplfUser 
-  */
-  async getUserSpooledFileFilter(user: string, sort: SortOptions = { order: "date" }, splfName?: string): Promise<IBMiSpooledFile[]> {
-    sort.order = sort.order === '?' ? 'name' : sort.order;
-    user = user.toUpperCase();
-
-    const tempLib = this.config.tempLibrary;
-    const tempName = Tools.makeid();
-    var objQuery;
-    let results: Tools.DB2Row[];
-
-    objQuery = `select QE.SPOOLED_FILE_NAME, QE.SPOOLED_FILE_NUMBER, QE.STATUS, QE.CREATION_TIMESTAMP, QE.USER_DATA, QE.SIZE, QE.TOTAL_PAGES, QE.QUALIFIED_JOB_NAME, QE.JOB_NAME, QE.JOB_USER, QE.JOB_NUMBER, QE.FORM_TYPE, QE.OUTPUT_QUEUE_LIBRARY, QE.OUTPUT_QUEUE
-from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAILABLE = '*FILEEND' ${splfName ? ` and SPOOLED_FILE_NAME = '${splfName}'` : ""}`;
-    results = await this.runSQL(objQuery);
-    if (results.length === 0) {
-      return [];
-    }
-    results = results.sort((a, b) => String(a.MBSPOOLED_FILE_NAMENAME).localeCompare(String(b.SPOOLED_FILE_NAME)));
-
-    let sorter: (r1: IBMiSpooledFile, r2: IBMiSpooledFile) => number;
-    if (sort.order === 'name') {
-      sorter = (r1, r2) => r1.name.localeCompare(r2.name);
-    }
-    else {
-      sorter = (r1, r2) => r1.creation_timestamp.localeCompare(r2.creation_timestamp);
-    }
-    return results
-      .map(object => ({
-        user: user,
-        name: this.ibmi.sysNameInLocal(String(object.SPOOLED_FILE_NAME)),
-        number: Number(object.SPOOLED_FILE_NUMBER),
-        status: this.ibmi.sysNameInLocal(String(object.STATUS)),
-        creation_timestamp: object.CREATION_TIMESTAMP,
-        user_data: this.ibmi.sysNameInLocal(String(object.USER_DATA)),
-        size: Number(object.SIZE),
-        total_pages: Number(object.TOTAL_PAGES),
-        qualified_job_name: this.ibmi.sysNameInLocal(String(object.QUALIFIED_JOB_NAME)),
-        job_name: this.ibmi.sysNameInLocal(String(object.JOB_NAME)),
-        job_user: this.ibmi.sysNameInLocal(String(object.JOB_USER)),
-        job_number: String(object.JOB_NUMBER),
-        form_type: this.ibmi.sysNameInLocal(String(object.FORM_TYPE)),
-        queue_library: this.ibmi.sysNameInLocal(String(object.OUTPUT_QUEUE_LIBRARY)),
-        queue: this.ibmi.sysNameInLocal(String(object.OUTPUT_QUEUE)),
-      } as IBMiSpooledFile))
-      .sort(sorter);
-  }
-  /**
-  * @param filter
-  * @returns an array of IBMiSplfUser 
-  */
-  // async saveUserSpooledFileFiltertoFS(filter: string, userSplfList: Promise<IBMiSpooledFile[]>) {
-  async saveUserSpooledFileFiltertoFS(filter: string, content: string) {
-
-    const client = this.ibmi.client;
-    const tempRmt = this.getTempRemote(filter);
-    const tmpobj = await tmpFile();
-    // const content = JSON.stringify(userSplfList);
-
-    try {
-      await writeFileAsync(tmpobj, content, `utf8`);
-
-      await client.putFile(tmpobj, tempRmt);
-
-      return tempRmt;
-    } catch (error) {
-      console.log(`Failed saving list of spooled files to search through: ` + error);
-      return undefined;
-    }
-  }
-
-  /**
-  * @param user
-  * @returns a string that is the quantity of spooled files owned by user
-  */
-  async getUserSpooledFileCount(user: string): Promise<String> {
-    user = user.toUpperCase();
-
-    const tempLib = this.config.tempLibrary;
-    const tempName = Tools.makeid();
-    let results: Tools.DB2Row[];
-
-    const objQuery = `select count(*) USER_SPLF_COUNT
-    from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE 
-    where FILE_AVAILABLE = '*FILEEND' group by QE.JOB_USER`;
-    results = await this.runSQL(objQuery);
-    if (results.length === 0) {
-      return ` ${user} user has no spooled files`;
-    }
-    return String(results[0].USER_SPLF_COUNT);
-  }
-  /**
-  * @param user
-  * @returns a string for user profile text 
-  */
-  async getUserProfileText(user: string): Promise<string | undefined> {
-    user = user.toUpperCase();
-
-    const tempLib = this.config.tempLibrary;
-    const tempName = Tools.makeid();
-    let results: Tools.DB2Row[];
-
-    const objQuery = `select UT.OBJTEXT USER_PROFILE_TEXT
-    from table ( QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*USRPRF', OBJECT_NAME => '${user}') ) UT 
-    where 1=1`;
-    results = await this.runSQL(objQuery);
-    if (results.length === 0) {
-      return ` I dont know where to find the text for ${user}`;
-    }
-    const userText: string = String(results[0].USER_PROFILE_TEXT);
-    return userText;
-  }
-
-  /**
    * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
    * Required to work with QZDFMDB2.
    * @param inSql; sql statement
@@ -880,71 +765,9 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
     })).code === 0;
   }
 
-  /**
-  * Download the contents of a source member
-  */
-  async downloadSpooledFileContent(uriPath: string, name: string, qualified_job_name: string, splf_number: string, fileExtension: string, additionalPath? :string) {
-    name = name.toUpperCase();
-    qualified_job_name = qualified_job_name.toUpperCase();
-
-    const tempRmt = this.getTempRemote(uriPath);
-    const tmpobj = await tmpFile();
-
-    const tmpName = path.basename(tempRmt);
-    const tmpFolder = path.dirname(tempRmt) + (additionalPath? `/${additionalPath}`:``);
-
-    // const path = homeDirectory +(folder !== undefined ? '/'+folder :'');
-    const client = this.ibmi.client;
-
-    let retried = false;
-    let retry = 1;
-    let fileEncoding = `utf8`;
-    while (retry > 0) {
-      retry--;
-      try {
-        //If this command fails we need to try again after we delete the temp remote
-        switch (fileExtension.toLowerCase()) {
-          case `pdf`:
-
-            await this.ibmi.runCommand({
-              // command: `ISPHERE/CVTSPLF FROMFILE(${name}) TOSTREAM(${tmpName}) TODIR(${tmpFolder}) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOFMT(*PDF) STOPT(*REPLACE)`
-              // command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}_a') WSCST(*PDF) STMFOPT(*REPLACE)`
-              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*PDF) STMFOPT(*REPLACE)\nDLYJOB DLY(1)\nCPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
-              , environment: `ile`
-            });
-            // fileEncoding = 'binary';
-            break;
-          default:
-            // With the use of CPYSPLF and CPY to create a text based stream file in 1208, there are possibilities that the data becomes corrupt
-            // in the tempRmt object
-            this.ibmi.sendCommand({
-              command: `rm -f ${tempRmt}`
-            });
-
-            // fileExtension = `txt`;
-            // DLYJOB to ensure the CPY command completes in time.
-            await this.ibmi.runCommand({
-              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*NONE) STMFOPT(*REPLACE)\nDLYJOB DLY(1)\nCPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
-              , environment: `ile`
-            });
-        }
-      } catch (e) {
-        if (String(e).startsWith(`CPDA08A`)) {
-          if (!retried) {
-            await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
-            retry++;
-            retried = true;
-          } else {
-            throw e;
-          }
-        } else {
-          throw e;
-        }
-      }
-    }
-
-    await client.getFile(tmpobj, tempRmt);
-    return await readFileAsync(tmpobj, fileEncoding);
-
+  async checkObject(object: { library: string, name: string, type: string }, ...authorities: Authority[]) {
+    return (await this.ibmi.runCommand({
+      command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`
+    }))?.code === 0;
   }
 }
