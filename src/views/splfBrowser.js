@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 const fs = require(`fs`);
 const os = require(`os`);
 const util = require(`util`);
-// const path = require(`path`);
+const path = require(`path`);
 
 const writeFileAsync = util.promisify(fs.writeFile);
 
@@ -65,13 +65,16 @@ module.exports = class SPLFBrowser {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addUserSpooledFileList`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.addUserSpooledFileFilter`, async (node) => {
         const config = getInstance().getConfig();
         const connection = getInstance().getConnection();
 
         let newUserSplfs;
+        let usersSpooledFile = [];
 
-        let usersSpooledFile = config.usersSpooledFile;
+        if (config.usersSpooledFile) {
+          usersSpooledFile = config.usersSpooledFile;
+        }
         // let autoSortusersSpooledFile = config.autoSortusersSpooledFile;
 
         newUserSplfs = await vscode.window.showInputBox({
@@ -87,7 +90,7 @@ module.exports = class SPLFBrowser {
               usersSpooledFile.push(newUserSplfs);
               config.usersSpooledFile = usersSpooledFile;
               await ConnectionConfiguration.update(config);
-              vscode.commands.executeCommand(`code-for-ibmi.sortUserSpooledFileList`);
+              vscode.commands.executeCommand(`code-for-ibmi.sortUserSpooledFileFilter`);
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
             }
           }
@@ -96,7 +99,7 @@ module.exports = class SPLFBrowser {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.deleteUserSpooledFileList`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.deleteUserSpooledFileFilter`, async (node) => {
         const { instance } = (require(`../instantiate`));
         const config = getInstance().getConfig();
 
@@ -130,7 +133,7 @@ module.exports = class SPLFBrowser {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.sortUserSpooledFileList`, async (node) => {
+      vscode.commands.registerCommand(`code-for-ibmi.sortUserSpooledFileFilter`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
         const config = getInstance().getConfig();
 
@@ -201,9 +204,8 @@ module.exports = class SPLFBrowser {
               const connection = getInstance().getConnection();
               const content = getInstance().getContent();
 
-              const objects = await content.getUserSpooledFileList(node.user, node.sort, node.name);
+              const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name);
               let commands = ``;
-              let commandsNum = 0;
               objects.forEach(async function (object) {
                 commands += (deleteCount >= 0?`\n`:``)+`DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`;
                 deleteCount += 1;
@@ -211,13 +213,9 @@ module.exports = class SPLFBrowser {
               // objects.forEach(async function (object) {
               try {
                 await connection.runCommand({
-                  // command: `DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`
                   command: `${commands}`
                   , environment: `ile`
                 });
-
-                // vscode.window.showInformationMessage(`Deleted ${object.name}, ${object.qualified_job_name}.`);
-                // deleteCount += 1;
 
               } catch (e) {
                 vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
@@ -327,11 +325,9 @@ module.exports = class SPLFBrowser {
                 , environment: `ile`
               });
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-              // vscode.window.showInformationMessage(`${node.path} was copied to ${newName}.`);
-              // vscode.window.showInformationMessage(`${Tools.escapePath(node.path)} was copied to ${Tools.escapePath(newName)}.`);
 
             } catch (e) {
-              vscode.window.showErrorMessage(`Error copying ${node.contextValue}! ${e}`);
+              vscode.window.showErrorMessage(`Error copying ${node.path}! ${e}`);
             }
           }
 
@@ -374,21 +370,49 @@ module.exports = class SPLFBrowser {
               progress.report({
                 message: `'${searchTerm}' in ${searchPath} spooled files.`
               });
+              const splfnum = await content.getUserSpooledFileCount(searchPath);
+              if (splfnum > 0) {
+                // NOTE: if more messages are added, lower the timeout interval
+                const timeoutInternal = 9000;
+                const searchMessages = [
+                  `'${searchTerm}' in ${node.path} spooled files.`,
+                  `This is taking a while because there are ${splfnum} spooled files. Searching '${searchTerm}' in ${node.path} still.`,
+                  `What's so special about '${searchTerm}' anyway?`,
+                  `Still searching '${searchTerm}' in ${node.path}...`,
+                  `Wow. This really is taking a while. Let's hope you get the result you want.`,
+                  `How does one end up with ${splfnum} spooled files.  Ever heared of cleaning up?`,
+                  `'${searchTerm}' in ${node.path}.`,
+                ];
 
-              let results = await Search.searchUserSpooledFiles(getInstance(), searchTerm, searchPath);
+                let currentMessage = 0;
+                const messageTimeout = setInterval(() => {
+                  if (currentMessage < searchMessages.length) {
+                    progress.report({
+                      message: searchMessages[currentMessage]
+                    });
+                    currentMessage++;
+                  } else {
+                    clearInterval(messageTimeout);
+                  }
+                }, timeoutInternal);
 
-              if (results.length > 0) {
-                const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
+                let results = await Search.searchUserSpooledFiles(getInstance(), searchTerm, searchPath);
 
-                setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
+                if (results.length > 0) {
+                  const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
+                  setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
+
+                } else {
+                  vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchPath}.`);
+                }
               } else {
-                vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchPath}.`);
+                vscode.window.showErrorMessage(`No members to search.`);
               }
             });
 
           } catch (e) {
-            vscode.window.showErrorMessage(`Error searching streamfiles.`);
+            vscode.window.showErrorMessage(`Error searching spooled files.`);
           }
         }
 
@@ -418,9 +442,9 @@ module.exports = class SPLFBrowser {
           }
 
           const splfContent = await contentApi.downloadSpooledFileContent(node.path, node.name, node.qualified_job_name, node.number, fileExtension);
-          const fileName = node.name+`_`+node.qualified_job_name+`_`+node.number+`.`+fileExtension;
-          // let localFilepath = os.homedir() +`\\` +extraFolder +`\\` +fileName;
-          let localFilepath = os.homedir() +`\\` +fileName;
+          const tmpExt = path.extname(node.path);
+          const fileName = path.basename(node.path, tmpExt);
+          let localFilepath = os.homedir() +`\\` +fileName +`.`+fileExtension;
           localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(localFilepath) });
 
           if (localFilepath) {
@@ -513,7 +537,7 @@ module.exports = class SPLFBrowser {
         case `splfuser`:
           //Fetch spooled files
           try {
-            const objects = await content.getUserSpooledFileList(element.filter.userName, element.sort);
+            const objects = await content.getUserSpooledFileFilter(element.filter.userName, element.sort);
             // console.log(JSON.stringify(objects));
             items.push(...objects
               .map(object => new SPLF(`SPLF`, element, object, element.filter)));

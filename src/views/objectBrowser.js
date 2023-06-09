@@ -1196,6 +1196,7 @@ class Member extends vscode.TreeItem {
     this.description = member.text;
     this.resourceUri = getMemberUri(member, filter.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
+    this.protected = filter.protected;
     this.tooltip = `${this.resourceUri.path}`
       .concat(`${member.text ? `\nText:\t\t${member.text}` : ``}`)
       .concat(`${member.lines != undefined ? `\nLines:\t${member.lines}` : ``}`)
