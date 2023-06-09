@@ -14,6 +14,8 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
+type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
+
 export type SortOptions = {
   order: "name" | "date" | "?"
   ascending?: boolean
@@ -571,7 +573,7 @@ export default class IBMiContent {
 
     if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
-        command: `cd ${remotePath} && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
+        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
       }));
 
       if (fileListResult.stdout !== '') {
@@ -596,7 +598,7 @@ export default class IBMiContent {
           };
         });
       }
-    } else {      
+    } else {
       fileListResult = (await this.ibmi.sendCommand({
         command: `${this.ibmi.remoteFeatures.ls} -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
       }));
@@ -664,8 +666,8 @@ export default class IBMiContent {
 
     return undefined;
   }
-  
-  async objectResolve(object: string, libraries: string[]): Promise<string|undefined> {
+
+  async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
     const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
@@ -757,9 +759,15 @@ export default class IBMiContent {
    * 
    * @param remotePath: a remote IFS path
    */
-  async isDirectory(remotePath : string){
+  async isDirectory(remotePath: string) {
     return (await this.ibmi.sendCommand({
       command: `cd ${remotePath}`
     })).code === 0;
+  }
+
+  async checkObject(object: { library: string, name: string, type: string }, ...authorities: Authority[]) {
+    return (await this.ibmi.runCommand({
+      command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`
+    }))?.code === 0;
   }
 }
