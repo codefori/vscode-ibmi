@@ -4,7 +4,7 @@ import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
 import { ObjectTypes } from '../schemas/Objects';
-import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath, IBMiSpooledFile } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -462,38 +462,6 @@ export default class IBMiContent {
     let results: Tools.DB2Row[];
 
     if (this.config.enableSQL) {
-<<<<<<< HEAD
-      if (member) {
-        member = member.replace(/[*]/g, `%`);
-      }
-
-      if (memberExt) {
-        memberExt = memberExt.replace(/[*]/g, `%`);
-      }
-
-      const statement = `
-        SELECT
-          b.avgrowsize as MBMXRL,
-          a.iasp_number as MBASP,
-          cast(a.system_table_name as char(10) for bit data) AS MBFILE,
-          cast(b.system_table_member as char(10) for bit data) as MBNAME,
-          coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
-          coalesce(b.partition_text, '') as MBMTXT,
-          b.NUMBER_ROWS as MBNRCD,
-          extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
-          extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
-        FROM qsys2.systables AS a
-          JOIN qsys2.syspartitionstat AS b
-            ON b.table_schema = a.table_schema AND
-              b.table_name = a.table_name
-        WHERE
-          cast(a.system_table_schema as char(10) for bit data) = '${library}' 
-          ${sourceFile !== `*ALL` ? `AND cast(a.system_table_name as char(10) for bit data) = '${sourceFile}'` : ``}
-          ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
-          ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
-      `;
-      results = await this.runSQL(statement);
-=======
 
         if (member) {
           member = member.replace(/[*]/g, `%`);
@@ -523,7 +491,6 @@ export default class IBMiContent {
         ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
     `;
         results = await this.runSQL(statement);
->>>>>>> parent of f5043b23 (updates to SPLF viewer)
     } else {
       const tempLib = this.config.tempLibrary;
       const TempName = Tools.makeid();
@@ -736,13 +703,11 @@ export default class IBMiContent {
   }
 
   /**
-<<<<<<< HEAD
-=======
   * @param filter
   * @param sortOrder
-  * @returns an array of IBMiSplfUser 
+  * @returns an array of IBMiSpooledFile 
   */
-  async getUserSpooledFileList(user: string, sort: SortOptions = { order: "date" }, splfName?: string): Promise<IBMiSpooledFile[]> {
+  async getUserSpooledFileFilter(user: string, sort: SortOptions = { order: "date" }, splfName?: string): Promise<IBMiSpooledFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     user = user.toUpperCase();
 
@@ -786,10 +751,74 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
       } as IBMiSpooledFile))
       .sort(sorter);
   }
+   /**
+  * Download the contents of a source member
+  */
+   async downloadSpooledFileContent(uriPath: string, name: string, qualified_job_name: string, splf_number: string, fileExtension: string, additionalPath? :string) {
+    name = name.toUpperCase();
+    qualified_job_name = qualified_job_name.toUpperCase();
+
+    const tempRmt = this.getTempRemote(uriPath);
+    const tmpobj = await tmpFile();
+
+    const tmpName = path.basename(tempRmt);
+    const tmpFolder = path.dirname(tempRmt) + (additionalPath? `/${additionalPath}`:``);
+
+    // const path = homeDirectory +(folder !== undefined ? '/'+folder :'');
+    const client = this.ibmi.client;
+
+    let retried = false;
+    let retry = 1;
+    let fileEncoding = `utf8`;
+    while (retry > 0) {
+      retry--;
+      try {
+        //If this command fails we need to try again after we delete the temp remote
+        switch (fileExtension.toLowerCase()) {
+          case `pdf`:
+
+            await this.ibmi.runCommand({
+              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*PDF) STMFOPT(*REPLACE)\nDLYJOB DLY(1)\nCPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+              , environment: `ile`
+            });
+            break;
+          default:
+            // With the use of CPYSPLF and CPY to create a text based stream file in 1208, there are possibilities that the data becomes corrupt
+            // in the tempRmt object
+            this.ibmi.sendCommand({
+              command: `rm -f ${tempRmt}`
+            });
+
+            // fileExtension = `txt`;
+            // DLYJOB to ensure the CPY command completes in time.
+            await this.ibmi.runCommand({
+              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*NONE) STMFOPT(*REPLACE)\nDLYJOB DLY(1)\nCPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+              , environment: `ile`
+            });
+        }
+      } catch (e) {
+        if (String(e).startsWith(`CPDA08A`)) {
+          if (!retried) {
+            await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
+            retry++;
+            retried = true;
+          } else {
+            throw e;
+          }
+        } else {
+          throw e;
+        }
+      }
+    }
+
+    await client.getFile(tmpobj, tempRmt);
+    return await readFileAsync(tmpobj, fileEncoding);
+
+  }
 
   /**
-  * @param filter
-  * @returns an array of IBMiSplfUser 
+  * @param user
+  * @returns a string with the count of spooled file for user
   */
   async getUserSpooledFileCount(user: string): Promise<String> {
     user = user.toUpperCase();
@@ -808,7 +837,7 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
     return String(results[0].USER_SPLF_COUNT);
   }
   /**
-  * @param filter
+  * @param user
   * @returns an string for user profile text 
   */
   async getUserProfileText(user: string): Promise<string | undefined> {
@@ -830,7 +859,6 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
   }
 
   /**
->>>>>>> parent of f5043b23 (updates to SPLF viewer)
    * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
    * Required to work with QZDFMDB2.
    * @param inSql; sql statement
@@ -892,78 +920,9 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
     })).code === 0;
   }
 
-<<<<<<< HEAD
   async checkObject(object: { library: string, name: string, type: string }, ...authorities: Authority[]) {
     return (await this.ibmi.runCommand({
       command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`
     }))?.code === 0;
-=======
-  /**
-  * Download the contents of a source member
-  */
-  async downloadSpooledFileContent(uriPath: string, name: string, qualified_job_name: string, splf_number: string, fileExtension: string) {
-    name = name.toUpperCase();
-    qualified_job_name = qualified_job_name.toUpperCase();
-
-    const tempRmt = this.getTempRemote(uriPath);
-    const tmpobj = await tmpFile();
-
-    const tmpName = path.basename(tempRmt);
-    const tmpFolder = path.dirname(tempRmt);
-
-    // const path = homeDirectory +(folder !== undefined ? '/'+folder :'');
-    const client = this.ibmi.client;
-
-    let retried = false;
-    let retry = 1;
-    let fileEncoding = `utf8`;
-    while (retry > 0) {
-      retry--;
-      try {
-        //If this command fails we need to try again after we delete the temp remote
-        switch (fileExtension.toLowerCase()) {
-          case `pdf`:
-
-            await this.ibmi.runCommand({
-              // command: `ISPHERE/CVTSPLF FROMFILE(${name}) TOSTREAM(${tmpName}) TODIR(${tmpFolder}) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOFMT(*PDF) STOPT(*REPLACE)`
-              // command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}_a') WSCST(*PDF) STMFOPT(*REPLACE)`
-              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*PDF) STMFOPT(*REPLACE)\nDLYJOB DLY(1)\nCPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
-              , environment: `ile`
-            });
-            // fileEncoding = 'binary';
-            break;
-          default:
-            // With the use of CPYSPLF and CPY to create a text based stream file in 1208, there are possibilities that the data becomes corrupt
-            // in the tempRmt object
-            this.ibmi.sendCommand({
-              command: `rm -f ${tempRmt}`
-            });
-
-            // fileExtension = `txt`;
-            // DLYJOB to ensure the CPY command completes in time.
-            await this.ibmi.runCommand({
-              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*NONE) STMFOPT(*REPLACE)\nDLYJOB DLY(1)\nCPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
-              , environment: `ile`
-            });
-        }
-      } catch (e) {
-        if (String(e).startsWith(`CPDA08A`)) {
-          if (!retried) {
-            await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
-            retry++;
-            retried = true;
-          } else {
-            throw e;
-          }
-        } else {
-          throw e;
-        }
-      }
-    }
-
-    await client.getFile(tmpobj, tempRmt);
-    return await readFileAsync(tmpobj, fileEncoding);
-
->>>>>>> parent of f5043b23 (updates to SPLF viewer)
   }
 }
