@@ -74,7 +74,7 @@ export const ContentSuite: TestSuite = {
     {name: `Test streamfileResolve`, test: async () => {
       const content = instance.getContent();
   
-      const streamfilePath = await content?.streamfileResolve(`git`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+      const streamfilePath = await content?.streamfileResolve([`git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
     }},
@@ -82,9 +82,17 @@ export const ContentSuite: TestSuite = {
     {name: `Test streamfileResolve with bad name`, test: async () => {
       const content = instance.getContent();
   
-      const streamfilePath = await content?.streamfileResolve(`sup`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+      const streamfilePath = await content?.streamfileResolve([`sup`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, undefined);
+    }},
+
+    {name: `Test streamfileResolve with multiple names`, test: async () => {
+      const content = instance.getContent();
+  
+      const streamfilePath = await content?.streamfileResolve([`sup`, `sup2`, `git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+  
+      assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
     }},
     
     {name: `Test runSQL (basic select)`, test: async () => {
