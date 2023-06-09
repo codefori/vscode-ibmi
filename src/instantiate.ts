@@ -358,8 +358,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const content = instance.getContent();
       if (content) {
         const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
-        const terminal = vscode.window.terminals.find(t => t.name === 'IBM i PASE') ||
-          await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
+        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
         terminal?.sendText(`cd ${path}`);        
       }
     }),
