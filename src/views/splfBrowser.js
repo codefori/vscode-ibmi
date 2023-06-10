@@ -2,7 +2,7 @@ const vscode = require(`vscode`);
 const fs = require(`fs`);
 const os = require(`os`);
 const util = require(`util`);
-const path = require(`patsh`);
+const path = require(`path`);
 
 const writeFileAsync = util.promisify(fs.writeFile);
 
