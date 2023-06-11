@@ -119,13 +119,14 @@ async function getRemoteSection() {
         TR: "n/a"
       };
       try {
-        const [osVersion] = await content.runSQL(
+        const [osVersionRow] = await content.runSQL(
           `SELECT PTF_GROUP_TARGET_RELEASE as OS, PTF_GROUP_LEVEL AS TR ` +
           `FROM QSYS2.GROUP_PTF_INFO ` +
           `WHERE PTF_GROUP_DESCRIPTION = 'TECHNOLOGY REFRESH' AND PTF_GROUP_STATUS = 'INSTALLED' ` +
           `ORDER BY PTF_GROUP_TARGET_RELEASE, PTF_GROUP_LEVEL DESC ` +
           `LIMIT 1`
         );
+        Object.assign(osVersion, osVersionRow);
       }
       catch (error) {
         console.log(`Couldn't run QSYS2.GROUP_PTF_INFO: ${error}`);
