@@ -211,18 +211,20 @@ export const ContentSuite: TestSuite = {
 
       result = await connection?.sendCommand({command: `mkdir -p "${dirWithSubdir}"`});
       assert.strictEqual(result?.code, 0);
+      try{
+        for (const file of files) {
+          result = await connection?.sendCommand({command: `touch "${dirWithSubdir}/${file}"`});
+          assert.strictEqual(result?.code, 0);
+        };
 
-      for (const file of files) {
-        result = await connection?.sendCommand({command: `touch "${dirWithSubdir}/${file}"`});
+        const objects = await content?.getFileList(`${dirWithSubdir}`);
+        assert.strictEqual(objects?.length, files.length);
+        assert.deepStrictEqual(objects?.map(a => a.name).sort(), files.sort());
+      }
+      finally{
+        result = await connection?.sendCommand({command: `rm -r "${dir}"`});
         assert.strictEqual(result?.code, 0);
-      };
-
-      const objects = await content?.getFileList(`${dirWithSubdir}`);
-      assert.strictEqual(objects?.length, files.length);
-      assert.deepStrictEqual(objects?.map(a => {return a.name}).sort(), files.sort());
-
-      result = await connection?.sendCommand({command: `rm -r "${dir}"`});
-      assert.strictEqual(result?.code, 0);
+      }
     }},
 
     {name: `Test getObjectList (all objects)`, test: async () => {
