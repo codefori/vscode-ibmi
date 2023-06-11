@@ -84,7 +84,7 @@ export class ExtendedIBMiContent {
 
   /**
    * Determine the member record length 
-   * @param {string} member sql alias path
+   * @param {string} aliasPath member sql alias path e.g. ILEDITOR.QGPL_QRPGLESC_MYRPGPGM
    * @param {string} lib
    * @param {string} spf
    */
