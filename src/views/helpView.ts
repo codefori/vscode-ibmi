@@ -131,11 +131,12 @@ async function getRemoteSection() {
       catch (error) {
         console.log(`Couldn't run QSYS2.GROUP_PTF_INFO: ${error}`);
         try {
-          const [osVersionRow] = await content.runSQL(`Select DATA_AREA_VALUE as OS ` +
+          const [osVersionRow] = await content.runSQL(`Select Substring(DATA_AREA_VALUE, 0, 7) as OS ` +
             `From TABLE(QSYS2.DATA_AREA_INFO(` +
             `DATA_AREA_NAME => 'QSS1MRI',` +
             `DATA_AREA_LIBRARY => 'QUSRSYS'))` +
             `Fetch first row only`);
+
             Object.assign(osVersion, osVersionRow);
         }
         catch (anotherError) {
