@@ -29,11 +29,11 @@ export class TestSuitesTreeProvider implements vscode.TreeDataProvider<vscode.Tr
 
 class TestSuiteItem extends vscode.TreeItem {
     constructor(readonly testSuite: TestSuite) {
-        super(testSuite.name, vscode.TreeItemCollapsibleState.Expanded);
+        super(testSuite.name, testSuite.failure ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Expanded);
         this.description = `${this.testSuite.tests.filter(tc => tc.status === "pass").length}/${this.testSuite.tests.length}`;
 
         let color;
-        if (this.testSuite.tests.some(tc => tc.status === "failed")) {
+        if (this.testSuite.failure || this.testSuite.tests.some(tc => tc.status === "failed")) {
             color = "testing.iconFailed";
         }
         else if (this.testSuite.tests.some(tc => !tc.status)) {
@@ -43,10 +43,11 @@ class TestSuiteItem extends vscode.TreeItem {
             color = "testing.iconPassed";
         }
         this.iconPath = new vscode.ThemeIcon("beaker", new vscode.ThemeColor(color));
+        this.tooltip = this.testSuite.failure;
     }
 
     getChilren() {
-        return this.testSuite.tests.map(tc => new TestCaseItem(this.label as string, tc));
+        return this.testSuite.failure ? [] : this.testSuite.tests.map(tc => new TestCaseItem(this.label as string, tc));
     }
 }
 
@@ -75,8 +76,13 @@ class TestCaseItem extends vscode.TreeItem {
 
         this.iconPath = new vscode.ThemeIcon(icon, new vscode.ThemeColor(color));
 
-        if (testCase.failure)
+        if(testCase.duration){
+            this.tooltip = `Duration: ${testCase.duration} millisecond(s)`;
+        }
+
+        if (testCase.failure){
             this.tooltip = new vscode.MarkdownString(['```', testCase.failure, '```'].join(`\n`));
+        }
 
         if (testCase.status !== `running`) {
             this.command = {
