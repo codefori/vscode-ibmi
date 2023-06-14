@@ -1,3 +1,5 @@
+import Crypto from 'crypto';
+import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
 import { API, GitExtension } from "./import/git";
@@ -194,5 +196,13 @@ export namespace Tools {
 
   export function distinct(value: any, index: number, array: any[]) {
     return array.indexOf(value) === index;
+  }
+
+  export function md5Hash(file: vscode.Uri): string {
+    const bytes = readFileSync(file.fsPath);
+    return Crypto.createHash("md5")
+      .update(bytes)
+      .digest("hex")
+      .toLowerCase();
   }
 }
