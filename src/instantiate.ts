@@ -21,7 +21,7 @@ import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
-import { SplfFS } from "./filesystems/qsys/SplfFs";
+import { SplfFS, getUriFromPath_Splf } from "./filesystems/qsys/SplfFs";
 
 export let instance: Instance;
 
@@ -116,6 +116,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
+      let uri = {};
       if(!options?.readonly && !path.startsWith('/')){
         const [library, name] = path.split('/');
         const writable = await instance.getContent()?.checkObject({library, name, type: '*FILE'}, "*UPD");
@@ -123,12 +124,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           options = options || {};
           options.readonly = true;
         }
+        uri = getUriFromPath(path, options);
       }
       else if (path.toLocaleUpperCase().endsWith('.SPLF')) {
         options = options || {};
         options.readonly = true;
+        uri = getUriFromPath_Splf(path, options);
       }
-      const uri = getUriFromPath(path, options);
       console.log(uri);
       try {
         if (line) {
@@ -417,17 +419,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);
 
-  let fsp = vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
+  context.subscriptions.push( vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
     isCaseSensitive: false
-  })
-  context.subscriptions.push(fsp
-  );
+  }) );
   
-  fsp = vscode.workspace.registerFileSystemProvider(`spooledfile`, new SplfFS(context), {
+  context.subscriptions.push(vscode.workspace.registerFileSystemProvider(`spooledfile`, new SplfFS(context), {
     isCaseSensitive: false
-  })
-  const dd = context.subscriptions.push(fsp 
-  );
+  }) );
   
   // Color provider
   if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {

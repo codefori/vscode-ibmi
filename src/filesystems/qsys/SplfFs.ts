@@ -6,6 +6,9 @@ import { IBMiSpooledFile, QsysFsOptions } from "../../typings";
 export function getSpooledFileUri(splf: IBMiSpooledFile, options?: QsysFsOptions) {
   return getUriFromPath(`${splf.user}/${splf.queue}/${splf.name}~${splf.job_name}~${splf.job_user}~${splf.job_number}~${splf.number}.splf`, options);
 }
+export function getUriFromPath_Splf(path: string, options?: QsysFsOptions) {
+  return getUriFromPath(path, options);
+}
 
 export function getUriFromPath(path: string, options?: QsysFsOptions) {
   const query = stringify(options as ParsedUrlQueryInput);

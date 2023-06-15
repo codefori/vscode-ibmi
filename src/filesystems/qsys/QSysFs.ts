@@ -14,9 +14,6 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
     if (path.startsWith(`/`)) {
         //IFS path
         return vscode.Uri.parse(path).with({ scheme: `streamfile`, path, query });
-    } else if (path.toLocaleUpperCase().endsWith(`.SPLF`)) {
-        //Spooled File path
-        return vscode.Uri.parse(path).with({ scheme: `spooledfile`, path: `/${path}`, query });
     } else {
         //QSYS path
         return vscode.Uri.parse(path).with({ scheme: `member`, path: `/${path}`, query });
