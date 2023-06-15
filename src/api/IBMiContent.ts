@@ -463,14 +463,14 @@ export default class IBMiContent {
 
     if (this.config.enableSQL) {
 
-        if (member) {
-          member = member.replace(/[*]/g, `%`);
-        }
+      if (member) {
+        member = member.replace(/[*]/g, `%`);
+      }
 
-        if (memberExt) {
-          memberExt = memberExt.replace(/[*]/g, `%`);
-        }
-        const statement = `SELECT
+      if (memberExt) {
+        memberExt = memberExt.replace(/[*]/g, `%`);
+      }
+      const statement = `SELECT
         b.avgrowsize as MBMXRL,
         a.iasp_number as MBASP,
         cast(a.system_table_name as char(10) for bit data) AS MBFILE,
@@ -490,7 +490,7 @@ export default class IBMiContent {
         ${member ? `AND rtrim(cast(b.system_table_member as char(10) for bit data)) like '${member}'` : ``}
         ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
     `;
-        results = await this.runSQL(statement);
+      results = await this.runSQL(statement);
     } else {
       const tempLib = this.config.tempLibrary;
       const TempName = Tools.makeid();
@@ -562,7 +562,7 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?:(errors:string[]) => void): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?: (errors: string[]) => void): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
     const { 'sort': SORT } = this.ibmi.remoteFeatures;
@@ -666,7 +666,7 @@ export default class IBMiContent {
     return undefined;
   }
 
-  async objectResolve(object: string, libraries: string[]): Promise<string|undefined> {
+  async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
     const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
@@ -703,9 +703,10 @@ export default class IBMiContent {
   }
 
   /**
-  * @param filter
-  * @param sortOrder
-  * @returns an array of IBMiSpooledFile 
+  * @param {string} user 
+  * @param {string} sortOrder
+  * @param {string=} splfName
+  * @returns {Promise<IBMiSpooledFile[]>}
   */
   async getUserSpooledFileFilter(user: string, sort: SortOptions = { order: "date" }, splfName?: string): Promise<IBMiSpooledFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
@@ -751,10 +752,17 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
       } as IBMiSpooledFile))
       .sort(sorter);
   }
-   /**
+  /**
   * Download the contents of a source member
+  * @param {string} uriPath 
+  * @param {string} name 
+  * @param {string} qualified_job_name 
+  * @param {string} splf_number 
+  * @param {string} fileExtension 
+  * @param {string=} additionalPath 
+  * @returns {string} a string containing spooled file data 
   */
-   async downloadSpooledFileContent(uriPath: string, name: string, qualified_job_name: string, splf_number: string, fileExtension: string, additionalPath? :string) {
+  async downloadSpooledFileContent(uriPath: string, name: string, qualified_job_name: string, splf_number: string, fileExtension: string, additionalPath?: string) {
     name = name.toUpperCase();
     qualified_job_name = qualified_job_name.toUpperCase();
 
@@ -762,7 +770,7 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
     const tmpobj = await tmpFile();
 
     const tmpName = path.basename(tempRmt);
-    const tmpFolder = path.dirname(tempRmt) + (additionalPath? `/${additionalPath}`:``);
+    const tmpFolder = path.dirname(tempRmt) + (additionalPath ? `/${additionalPath}` : ``);
 
     // const path = homeDirectory +(folder !== undefined ? '/'+folder :'');
     const client = this.ibmi.client;
@@ -776,9 +784,9 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
         //If this command fails we need to try again after we delete the temp remote
         switch (fileExtension.toLowerCase()) {
           case `pdf`:
-
+            fileEncoding = ``;
             await this.ibmi.runCommand({
-              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*PDF) STMFOPT(*REPLACE)\nDLYJOB DLY(1)\nCPY OBJ('${tempRmt}') TOOBJ('${tempRmt}') TOCCSID(1208) DTAFMT(*TEXT) REPLACE(*YES)`
+              command: `CPYSPLF FILE(${name}) TOFILE(*TOSTMF) JOB(${qualified_job_name}) SPLNBR(${splf_number}) TOSTMF('${tempRmt}') WSCST(*PDF) STMFOPT(*REPLACE)\nDLYJOB DLY(1)`
               , environment: `ile`
             });
             break;
@@ -817,19 +825,21 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
   }
 
   /**
-  * @param user
-  * @returns a string with the count of spooled file for user
+  * @param {string} user
+  * @param {string=} splfName
+  * @returns {Promise<String>} a string with the count of spooled file for user
   */
-  async getUserSpooledFileCount(user: string): Promise<String> {
+  async getUserSpooledFileCount(user: string, splfName?: string): Promise<String> {
     user = user.toUpperCase();
 
-    const tempLib = this.config.tempLibrary;
-    const tempName = Tools.makeid();
+    // const tempLib = this.config.tempLibrary;
+    // const tempName = Tools.makeid();
     let results: Tools.DB2Row[];
 
     const objQuery = `select count(*) USER_SPLF_COUNT
     from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE 
-    where FILE_AVAILABLE = '*FILEEND' group by QE.JOB_USER`;
+    where FILE_AVAILABLE = '*FILEEND' ${splfName ? `and SPOOLED_FILE_NAME = '${splfName}'` : ""} 
+    group by QE.JOB_USER` ;
     results = await this.runSQL(objQuery);
     if (results.length === 0) {
       return ` ${user} user has no spooled files`;
@@ -837,8 +847,8 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
     return String(results[0].USER_SPLF_COUNT);
   }
   /**
-  * @param user
-  * @returns an string for user profile text 
+  * @param {string} user
+  * @returns a promised string for user profile text 
   */
   async getUserProfileText(user: string): Promise<string | undefined> {
     user = user.toUpperCase();

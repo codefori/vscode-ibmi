@@ -19,9 +19,18 @@
 		"no-undef": "warn",
 		"no-unreachable": "warn",
 		"no-var": "error",
-		"quotes": ["warn", "backtick"],
+		"quotes": [
+			"warn",
+			"backtick"
+		],
 		"constructor-super": "warn",
 		"valid-typeof": "warn",
-		"indent": ["error", 2]
+		"indent": [
+			"error",
+			2,
+			{
+				"SwitchCase": 0
+			}
+		]
 	}
 }

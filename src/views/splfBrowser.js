@@ -208,13 +208,16 @@ module.exports = class SPLFBrowser {
               let commands = ``;
               let commandsNum = 0;
               objects.forEach(async function (object) {
-                commands += (deleteCount >= 0?`\n`:``)+`DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`;
+                commands += (deleteCount >= 0 ? `\n` : ``) + `DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`;
                 deleteCount += 1;
               });
-              // objects.forEach(async function (object) {
+              let commands_fewer = []``;
               try {
+                for (let index = 0; index < commands.length;) {
+                  commands_fewer = commands.split(index, index + 20);
+                  index += 20;
+                }
                 await connection.runCommand({
-                  // command: `DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`
                   command: `${commands}`
                   , environment: `ile`
                 });
@@ -352,20 +355,22 @@ module.exports = class SPLFBrowser {
 
         let searchPath;
         if (node)
-          searchPath = node.path;
+          searchPath = node.name;
         else {
-          searchPath = config.homeDirectory;
-          searchPath = await vscode.window.showInputBox({
-            value: searchPath,
-            prompt: `Enter user to search over`,
-            title: `Search user spooled files`
-          })
+          // searchPath = config.homeDirectory;
+          // searchPath = await vscode.window.showInputBox({
+          //   value: searchPath,
+          //   prompt: `Enter user to search over`,
+          //   title: `Search user spooled files`
+          // })
+          return;
         }
 
         if (!searchPath) return;
 
         let searchTerm = await vscode.window.showInputBox({
-          prompt: `Search ${searchPath}.`
+          prompt: `Search in spooled files named ${searchPath}.`
+          // prompt: `Search ${searchPath}.`
         });
 
         if (searchTerm) {
@@ -375,20 +380,20 @@ module.exports = class SPLFBrowser {
               title: `Searching`,
             }, async progress => {
               progress.report({
-                message: `'${searchTerm}' in ${searchPath} spooled files.`
+                message: `'${searchTerm}' in ${node.user}, ${searchPath} spooled files.`
               });
-              const splfnum = await content.getUserSpooledFileCount(searchPath);
+              const splfnum = await content.getUserSpooledFileCount(node.user, searchPath);
               if (splfnum > 0) {
                 // NOTE: if more messages are added, lower the timeout interval
                 const timeoutInternal = 9000;
                 const searchMessages = [
                   `'${searchTerm}' in ${node.path} spooled files.`,
-                  `This is taking a while because there are ${splfnum} spooled files. Searching '${searchTerm}' in ${node.path} still.`,
+                  `This is taking a while because there are ${splfnum} spooled files. Searching '${searchTerm}' in ${node.user} still.`,
                   `What's so special about '${searchTerm}' anyway?`,
                   `Still searching '${searchTerm}' in ${node.path}...`,
                   `Wow. This really is taking a while. Let's hope you get the result you want.`,
                   `How does one end up with ${splfnum} spooled files.  Ever heared of cleaning up?`,
-                  `'${searchTerm}' in ${node.path}.`,
+                  `'${searchTerm}' in ${node.user}.`,
                 ];
                 let currentMessage = 0;
                 const messageTimeout = setInterval(() => {
@@ -401,7 +406,7 @@ module.exports = class SPLFBrowser {
                     clearInterval(messageTimeout);
                   }
                 }, timeoutInternal);
-                let results = await Search.searchUserSpooledFiles(getInstance(), searchTerm, searchPath);
+                let results = await Search.searchUserSpooledFiles(getInstance(), searchTerm, node.user, searchPath);
 
                 if (results.length > 0) {
                   const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
@@ -412,7 +417,7 @@ module.exports = class SPLFBrowser {
                   vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchPath}.`);
                 }
               } else {
-                vscode.window.showErrorMessage(`No members to search.`);
+                vscode.window.showErrorMessage(`No spooled files to search.`);
               }
             });
 
@@ -434,7 +439,7 @@ module.exports = class SPLFBrowser {
             prompt: `Type of file to create, TXT, PDF, HTML`,
             value: `TXT`
           });
-          if (!fileExtension) {return}
+          if (!fileExtension) { return }
           fileExtension = fileExtension.toLowerCase()
           switch (fileExtension) {
           case `pdf`:
@@ -450,7 +455,7 @@ module.exports = class SPLFBrowser {
           const tmpExt = path.extname(node.path);
           const fileName = path.basename(node.path, tmpExt);
           // let localFilepath = os.homedir() +`\\` +extraFolder +`\\` +fileName +`.`+fileExtension; //FUTURE: in case we let user pick another download loc
-          let localFilepath = os.homedir() +`\\` +fileName +`.`+fileExtension;
+          let localFilepath = os.homedir() + `\\` + fileName + `.` + fileExtension;
           localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(localFilepath) });
 
           if (localFilepath) {
@@ -461,7 +466,14 @@ module.exports = class SPLFBrowser {
               if (localPath[0] === `/`) localPath = localPath.substring(1);
             }
             try {
-              await writeFileAsync(localPath, splfContent, `utf8`);
+              let fileEncoding = `utf8`;
+              switch (fileExtension.toLowerCase()) {
+              case `pdf`:
+                fileEncoding = ``;
+                break;
+              default:
+              }
+              await writeFileAsync(localPath, splfContent, fileEncoding);
               vscode.window.showInformationMessage(`Spooled File was downloaded.`);
             } catch (e) {
               vscode.window.showErrorMessage(`Error downloading Spoooled File! ${e}`);
@@ -560,7 +572,7 @@ module.exports = class SPLFBrowser {
 
       } else { // no context exists in tree yet, get from settings
         items.push(...config.usersSpooledFile.map(
-          theUser => new FilterItem(element, { userName: theUser, }, connection.currentUser)    
+          theUser => new FilterItem(element, { userName: theUser, }, connection.currentUser)
         ));
       }
     }
@@ -571,7 +583,7 @@ module.exports = class SPLFBrowser {
    * required implementation for TreeDataProvider 
    * 
    */
-  getParent(element){
+  getParent(element) {
     return element.parent;
   }
 }
@@ -585,7 +597,7 @@ class FilterItem extends vscode.TreeItem {
   constructor(parent, filter, currentUser) {
     super(filter, vscode.TreeItemCollapsibleState.Collapsed);
     const icon = objectIcons[`OUTQ`] || objectIcons[``];
-    this.protected = filter.userName.toLocaleUpperCase()!== currentUser.toLocaleUpperCase()?true:false;
+    this.protected = filter.userName.toLocaleUpperCase() !== currentUser.toLocaleUpperCase() ? true : false;
     this.contextValue = `splfuser${this.protected ? `_readonly` : ``}`;
     this.path = filter.userName;
     this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
@@ -641,11 +653,18 @@ class SPLF extends vscode.TreeItem {
 
     this.description = ` - ` + this.status + ` - Pages: ` + this.total_pages;
     this.iconPath = new vscode.ThemeIcon(icon);
-    this.tooltip = ``;
     this.protected = parent.protected;
     this.contextValue = `spooledfile${parent.protected ? `_readonly` : ``}`;
     this.resourceUri = getSpooledFileUri(object, parent.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
+    this.tooltip = ``
+      .concat(`${object.qualified_job_name ? `\nJob:\t\t\t ${object.qualified_job_name}` : ``}`)
+      .concat(`${object.user_data != undefined ? `\nUser Data:\t ${object.user_data}` : ``}`)
+      .concat(`${object.creation_timestamp ? `\nCreated:\t\t ${object.creation_timestamp}` : ``}`)
+      .concat(`${object.size ? `\nSize in bytes:\t ${object.size}` : ``}`)
+      .concat(`${object.form_type ? `\nForm Type:\t ${object.form_type}` : ``}`)
+      .concat(`${object.queue ? `\nOutput Queue: ${object.queue_library}/${object.queue}` : ``}`)
+    ;
     this.command = {
       command: `vscode.open`,
       title: `Open Spooled File`,

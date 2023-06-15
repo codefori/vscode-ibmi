@@ -2284,7 +2284,7 @@
 				},
 				{
 					"command": "code-for-ibmi.searchSpooledFiles",
-					"when": "view == splfBrowser && viewItem =~ /^splfuser.*$/",
+					"when": "view == splfBrowser && viewItem =~ /^spooledfile.*$/",
 					"group": "4_splfuser@1"
 				},
 				{

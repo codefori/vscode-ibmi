@@ -124,7 +124,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           options.readonly = true;
         }
       }
+      else if (path.toLocaleUpperCase().endsWith('.SPLF')) {
+        options = options || {};
+        options.readonly = true;
+      }
       const uri = getUriFromPath(path, options);
+      console.log(uri);
       try {
         if (line) {
           // If a line is provided, we have to do a specific open

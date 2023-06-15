@@ -63,7 +63,7 @@ export namespace Search {
     const content = instance.getContent();
 
     if (connection && config && content) {
-      const objects = await content.getUserSpooledFileFilter(filter);
+      const objects = await content.getUserSpooledFileFilter(filter, { order: "date" ,ascending:false } ,splfName);
       const searchSplfList = objects.map(o => ({
         user: o.user,
         queue: o.queue,
