@@ -3,6 +3,7 @@ import vscode from "vscode";
 import { instance } from "../instantiate";
 import { ConnectionSuite } from "./connection";
 import { ContentSuite } from "./content";
+import { DeploymentSuite } from "./deployment";
 import { ILEErrorSuite } from "./ileErrors";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
@@ -10,6 +11,7 @@ import { ToolsSuite } from "./tools";
 const suites: TestSuite[] = [
   ConnectionSuite,
   ContentSuite,
+  DeploymentSuite,
   ToolsSuite,
   ILEErrorSuite
 ]
