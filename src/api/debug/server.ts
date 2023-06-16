@@ -25,7 +25,7 @@ export async function startup(connection: IBMi) {
 
   const password = encryptResult.stdout;
 
-  const keystorePath = certificates.getKeystorePath();
+  const keystorePath = certificates.getKeystorePath(connection);
 
   connection.sendCommand({
     command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(directory, `startDebugService.sh`)}"`

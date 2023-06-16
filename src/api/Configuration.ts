@@ -39,6 +39,7 @@ export namespace ConnectionConfiguration {
     connectringStringFor5250: string;
     autoSaveBeforeAction: boolean;
     showDescInLibList: boolean;
+    debugCertDirectory: string;
     debugPort: string;
     debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
@@ -108,6 +109,7 @@ export namespace ConnectionConfiguration {
       connectringStringFor5250 : parameters.connectringStringFor5250 || `localhost`,
       autoSaveBeforeAction : (parameters.autoSaveBeforeAction === true),
       showDescInLibList : (parameters.showDescInLibList === true),
+      debugCertDirectory: (parameters.debugCertDirectory || "/QIBM/ProdData/IBMiDebugService/bin/certs"),
       debugPort: (parameters.debugPort || "8005"),
       debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
