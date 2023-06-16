@@ -322,15 +322,15 @@ export async function initialize(context: ExtensionContext) {
     if (connection && connection?.remoteFeatures[`startDebugService.sh`]) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-      const remoteCerts = await certificates.checkRemoteExists(connection);
+      const remoteCertsExist = await certificates.checkRemoteExists(connection);
 
-      if (remoteCerts) {
+      if (remoteCertsExist) {
         vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
         if (connection.config!.debugIsSecure) {
-          const localExists = await certificates.checkLocalExists(connection);
+          const localCertsExists = await certificates.checkLocalExists(connection);
 
-          if (localExists) {
+          if (localCertsExists) {
             vscode.commands.executeCommand(`setContext`, localCertContext, true);
           } else {
             vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
