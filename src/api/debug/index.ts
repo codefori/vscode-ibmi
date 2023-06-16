@@ -319,7 +319,8 @@ export async function initialize(context: ExtensionContext) {
   // Run during startup:
   instance.onEvent("connected", async () => {
     const connection = instance.getConnection();
-    if (connection && connection?.remoteFeatures[`startDebugService.sh`]) {
+    const content = instance.getContent();
+    if (connection && content && connection?.remoteFeatures[`startDebugService.sh`]) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
       const remoteCertsExist = await certificates.checkRemoteExists(connection);
@@ -337,9 +338,19 @@ export async function initialize(context: ExtensionContext) {
           }
         }
       } else {
-        const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-        if (openTut === `Take me there`) {
-          vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+        const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
+        if (existingDebugService) {
+          const openSettings = await vscode.window.showInformationMessage(`Looks like the Debug Service is already running, but couldn't find the certificates in the configuration location.`, `Open settings`);
+          if (openSettings === `Open settings`) {
+            // Open directory to the debugger tab
+            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
+          }
+
+        } else {
+          const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+          if (openTut === `Take me there`) {
+            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+          }
         }
       }
     }
