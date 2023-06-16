@@ -26,7 +26,10 @@ module.exports = class SettingsUI {
   static init(context) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (/** @type {Server} */ server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (
+        /** @type {Server|undefined} */ server,
+        /** @type {string|undefined} */ tab,
+      ) => {
         const { instance } = require(`../../instantiate`);
         const connectionSettings = GlobalConfiguration.get(`connectionSettings`);
         const connection = instance.getConnection();
@@ -156,7 +159,8 @@ module.exports = class SettingsUI {
 
         const ui = new CustomUI();
 
-        ui.addComplexTabs(tabs)
+        // If `tab` is provided, we can open directory to a specific tab.. pretty cool
+        ui.addComplexTabs(tabs, tabs.findIndex(t => t.label === tab))
           .addHorizontalRule()
           .addButtons({ id: `save`, label:`Save settings` });
 
