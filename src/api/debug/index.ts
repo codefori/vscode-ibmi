@@ -246,7 +246,7 @@ export async function initialize(context: ExtensionContext) {
           } else {
             vscode.window.showWarningMessage(`Certificates can only be imported when secure mode is enabled.`, `Open configuration`).then(result => {
               if (result === `Open configuration`) {
-                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
               }
             });
           }
