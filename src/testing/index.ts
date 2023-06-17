@@ -77,7 +77,7 @@ async function runTests() {
     }
     catch (error: any) {
       console.log(error);
-      suite.failure = error.message;
+      suite.failure = String(error);
     }
     finally {
       suite.status = "done";
@@ -105,7 +105,7 @@ async function runTest(test: TestCase) {
   catch (error: any) {
     console.log(error);
     test.status = "failed";
-    test.failure = error.message;
+    test.failure = String(error);
   }
   finally {
     test.duration = +(new Date()) - start;
