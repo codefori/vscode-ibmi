@@ -49,7 +49,7 @@ class TestSuiteItem extends vscode.TreeItem {
         else {
             color = "testing.iconPassed";
         }
-        this.iconPath = new vscode.ThemeIcon("beaker", new vscode.ThemeColor(color));
+        this.iconPath = new vscode.ThemeIcon(testSuite.status === "running" ? "gear~spin" : "beaker", new vscode.ThemeColor(color));
         this.tooltip = this.testSuite.failure;
     }
 }
