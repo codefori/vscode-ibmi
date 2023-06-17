@@ -1,19 +1,20 @@
-import { default as IBMi } from './IBMi';
-
 import { parse } from 'csv-parse/sync';
 import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
 import { ObjectTypes } from '../schemas/Objects';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
+import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
+
+type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
 
 export type SortOptions = {
   order: "name" | "date" | "?"
@@ -219,7 +220,7 @@ export default class IBMiContent {
     if (this.ibmi.remoteFeatures[`GETNEWLIBL.PGM`]) {
       const tempLib = this.config.tempLibrary;
       const resultSet = await this.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
-      
+
       let result = {
         currentLibrary: `QGPL`,
         libraryList: [] as string[]
@@ -452,11 +453,11 @@ export default class IBMiContent {
    */
   async getMemberList(lib: string, spf: string, mbr: string = `*`, ext: string = `*`, sort: SortOptions = { order: "name" }): Promise<IBMiMember[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
-    
+
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
-    let member = (mbr !== `*` ? mbr : null);
-    let memberExt = (ext !== `*` ? ext : null);
+    let member = (mbr !== `*` ? mbr.toUpperCase() : null);
+    let memberExt = (ext !== `*` ? ext.toUpperCase() : null);
 
     let results: Tools.DB2Row[];
 
@@ -478,8 +479,8 @@ export default class IBMiContent {
           coalesce(cast(b.source_type as varchar(10) for bit data), '') as MBSEU2,
           coalesce(b.partition_text, '') as MBMTXT,
           b.NUMBER_ROWS as MBNRCD,
-          extract(epoch from (b.CREATE_TIMESTAMP - current_timezone))*1000 as CREATED,
-          extract(epoch from (b.LAST_CHANGE_TIMESTAMP - current_timezone))*1000 as CHANGED
+          extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
+          extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
         FROM qsys2.systables AS a
           JOIN qsys2.syspartitionstat AS b
             ON b.table_schema = a.table_schema AND
@@ -509,15 +510,15 @@ export default class IBMiContent {
         if (memberExt) {
           patternExt = new RegExp(`^` + memberExt.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
         }
-        
+
         results = results.filter(row => (
           (!pattern || pattern.test(String(row.MBNAME))) &&
           (!patternExt || patternExt.test(String(row.MBSEU2)))))
       }
-          
+
       results.forEach(element => {
-        element.CREATED = this.getDspfdDate(String(element.MBCCEN),String(element.MBCDAT),String(element.MBCTIM)).valueOf();
-        element.CHANGED = this.getDspfdDate(String(element.MBMRCN),String(element.MBMRDT),String(element.MBMRTM)).valueOf();
+        element.CREATED = this.getDspfdDate(String(element.MBCCEN), String(element.MBCDAT), String(element.MBCTIM)).valueOf();
+        element.CHANGED = this.getDspfdDate(String(element.MBMRCN), String(element.MBMRDT), String(element.MBMRTM)).valueOf();
       });
     }
 
@@ -562,29 +563,28 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?:(errors:string[]) => void): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
     const { 'sort': SORT } = this.ibmi.remoteFeatures;
 
     const items: IFSFile[] = [];
-    let fileListResult;
+    let fileListResult: CommandResult;
 
     if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
-        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`,
-        directory: `${remotePath}`
+        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
       }));
-    
-      if (fileListResult.code === 0) {
+
+      if (fileListResult.stdout !== '') {
         const fileStatList = fileListResult.stdout;
         const fileList = fileStatList.split(`\n`);
-    
+
         //Remove current and dir up.
         fileList.forEach(item => {
           let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
           [auth, hardLinks, owner, group, size, modified, name] = item.split(`\t`);
-    
+
           if (name !== `..` && name !== `.`) {
             const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
             items.push({
@@ -592,25 +592,18 @@ export default class IBMiContent {
               name: name,
               path: path.posix.join(remotePath, name),
               size: Number(size),
-              modified: new Date(Number(modified)*1000),
+              modified: new Date(Number(modified) * 1000),
               owner: owner
             });
           };
         });
-      } else {
-        // Ignore error on empty directories...
-        if (fileListResult.stderr.includes(`No such file or directory`)) {
-          fileListResult.code = 0;
-        }
       }
-
     } else {
-
       fileListResult = (await this.ibmi.sendCommand({
-        command: `ls -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
+        command: `${this.ibmi.remoteFeatures.ls} -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
       }));
 
-      if (fileListResult.code === 0) {
+      if (fileListResult.stdout !== '') {
         const fileList = fileListResult.stdout;
 
         //Remove current and dir up.
@@ -624,25 +617,31 @@ export default class IBMiContent {
               path: path.posix.join(remotePath, item)
             });
           });
-        }
-    }
-
-    if (fileListResult.code === 0) {
-      if (sort.order === "name") {
-        items.sort((f1, f2) => f1.name.localeCompare(f2.name));
-        if (sort.ascending === false) {
-          items.reverse();
-        }
       }
-
-      return items;
-
-    } else {
-      throw new Error(fileListResult.stderr);
     }
+
+    if (sort.order === "name") {
+      items.sort((f1, f2) => f1.name.localeCompare(f2.name));
+      if (sort.ascending === false) {
+        items.reverse();
+      }
+    }
+
+    if (fileListResult.code !== 0) {
+      //Filter out the error occurring when is stat is run on an empty directory
+      const errors = fileListResult.stderr.split("\n")
+        .filter(e => !e.toLowerCase().includes("cannot stat '*'"))
+        .filter(Tools.distinct);
+
+      if (errors.length) {
+        onListError ? onListError(errors) : errors.forEach(console.log);
+      }
+    }
+
+    return items;
   }
 
-  async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember|undefined> {
+  async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     const command = `for f in ${files.map(file => `/QSYS.LIB/${file.library.toUpperCase()}.LIB/${file.name.toUpperCase()}.FILE/${member.toUpperCase()}.MBR`).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
@@ -655,7 +654,7 @@ export default class IBMiContent {
       if (firstMost) {
         try {
           const simplePath = Tools.unqualifyPath(firstMost);
-          
+
           // This can error if the path format is wrong for some reason.
           // Not that this would ever happen, but better to be safe than sorry
           return this.ibmi.parserMemberPath(simplePath);
@@ -667,8 +666,8 @@ export default class IBMiContent {
 
     return undefined;
   }
-  
-  async objectResolve(object: string, libraries: string[]): Promise<string|undefined> {
+
+  async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
     const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
@@ -688,7 +687,7 @@ export default class IBMiContent {
     return undefined;
   }
 
-  async streamfileResolve(name: string, directories: string[]): Promise<string|undefined> {
+  async streamfileResolve(name: string, directories: string[]): Promise<string | undefined> {
     const command = `for f in ${directories.map(dir => path.posix.join(dir, name)).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
@@ -720,13 +719,13 @@ export default class IBMiContent {
 
         const pos = item.search(`--`);
         if (pos > 0) {
-          goodLine = item.slice(0, pos) + 
-                     newLine +
-                     item.slice(pos) +
-                     newLine;
+          goodLine = item.slice(0, pos) +
+            newLine +
+            item.slice(pos) +
+            newLine;
         }
         parsedSql += goodLine;
-        
+
       });
 
     return parsedSql;
@@ -741,7 +740,7 @@ export default class IBMiContent {
       .map(error => error.split(':'))
       .map(codeText => ({ code: codeText[0], text: codeText[1] }));
   }
-  
+
   /**
    * @param century; century code (1=20xx, 0=19xx)
    * @param dateString: string in YYMMDD
@@ -750,9 +749,9 @@ export default class IBMiContent {
    */
   getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
     let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
-    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
+    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
-    return new Date(Number(year), Number(month)-1, Number(day), Number(hours), Number(minutes), Number(seconds));
+    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
   }
 
   /**
@@ -760,9 +759,15 @@ export default class IBMiContent {
    * 
    * @param remotePath: a remote IFS path
    */
-  async isDirectory(remotePath : string){
+  async isDirectory(remotePath: string) {
     return (await this.ibmi.sendCommand({
       command: `cd ${remotePath}`
     })).code === 0;
+  }
+
+  async checkObject(object: { library: string, name: string, type: string }, ...authorities: Authority[]) {
+    return (await this.ibmi.runCommand({
+      command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`
+    }))?.code === 0;
   }
 }

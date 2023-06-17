@@ -1,7 +1,8 @@
 import assert from "assert";
+import { commands } from "vscode";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
-import { commands } from "vscode";
+import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -186,20 +187,44 @@ export const ContentSuite: TestSuite = {
       const qsysLib = objects?.find(obj => obj.name === `QSYS.LIB`);
 
       assert.strictEqual(qsysLib?.name, `QSYS.LIB`);
-      assert.strictEqual(qsysLib?.path, `/QSYS.LIB/`);
+      assert.strictEqual(qsysLib?.path, `/QSYS.LIB`);
       assert.strictEqual(qsysLib?.type, `directory`);
+      assert.strictEqual(qsysLib?.owner, `qsys`);
     }},
 
-    {name: `Test getFileList`, test: async () => {
+    {name: `Test getFileList (non-existing file)`, test: async () => {
       const content = instance.getContent();
-  
-      const objects = await content?.getFileList(`/`);
 
-      const qsysLib = objects?.find(obj => obj.name === `QSYS.LIB`);
+      const objects = await content?.getFileList(`/tmp/${Date.now()}`);
 
-      assert.strictEqual(qsysLib?.name, `QSYS.LIB`);
-      assert.strictEqual(qsysLib?.path, `/QSYS.LIB/`);
-      assert.strictEqual(qsysLib?.type, `directory`);
+      assert.strictEqual(objects?.length, 0);
+    }},
+
+    {name: `Test getFileList (special chars)`, test: async () => {
+      const connection = instance.getConnection();
+      const content = instance.getContent();
+      const files = [`name with blank`, `name_with_quote'`, `name_with_dollar$`];
+      const dir = `/tmp/${Date.now()}`;
+      const dirWithSubdir = `${dir}/${files[0]}`;
+
+      let result: CommandResult | undefined;
+
+      result = await connection?.sendCommand({command: `mkdir -p "${dirWithSubdir}"`});
+      assert.strictEqual(result?.code, 0);
+      try{
+        for (const file of files) {
+          result = await connection?.sendCommand({command: `touch "${dirWithSubdir}/${file}"`});
+          assert.strictEqual(result?.code, 0);
+        };
+
+        const objects = await content?.getFileList(`${dirWithSubdir}`);
+        assert.strictEqual(objects?.length, files.length);
+        assert.deepStrictEqual(objects?.map(a => a.name).sort(), files.sort());
+      }
+      finally{
+        result = await connection?.sendCommand({command: `rm -r "${dir}"`});
+        assert.strictEqual(result?.code, 0);
+      }
     }},
 
     {name: `Test getObjectList (all objects)`, test: async () => {
@@ -247,12 +272,14 @@ export const ContentSuite: TestSuite = {
 
     {name: `getMemberList (SQL, no filter)`, test: async () => {
       const content = instance.getContent();
-  
-      const members = await content?.getMemberList(`qsysinc`, `mih`);
 
-      assert.strictEqual(members?.length, 148);
+      let members = await content?.getMemberList(`qsysinc`, `mih`, `*inxen`);
 
-      const actbpgm = members.find(mbr => mbr.name === `ACTBPGM`);
+      assert.strictEqual(members?.length, 3);
+
+      members = await content?.getMemberList(`qsysinc`, `mih`);
+
+      const actbpgm = members?.find(mbr => mbr.name === `ACTBPGM`);
 
       assert.strictEqual(actbpgm?.name, `ACTBPGM`);
       assert.strictEqual(actbpgm?.extension, `C`);

@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.8.0",
+	"version": "1.9.4",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1438,6 +1438,11 @@
 				"command": "code-for-ibmi.openTerminalHere",
 				"title": "Open terminal here",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.ifs.copyPath",
+				"title": "Copy Path",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1506,15 +1511,15 @@
 		"views": {
 			"ibmi-explorer": [
 				{
+					"id": "helpView",
+					"name": "Help and Support",
+					"when": "!code-for-ibmi:helpViewDisabled"
+				},
+				{
 					"id": "connectionBrowser",
 					"name": "Servers",
 					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
-				},
-				{
-					"id": "helpView",
-					"name": "Help and Support",
-					"when": "code-for-ibmi:connected && code-for-ibmi:helpViewDisabled !== true"
-				},
+				},				
 				{
 					"id": "profilesView",
 					"name": "Profiles",
@@ -1652,6 +1657,10 @@
 				},
 				{
 					"command": "code-for-ibmi.openTerminalHere",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.ifs.copyPath",
 					"when": "never"
 				}
 			],
@@ -2064,6 +2073,11 @@
 					"command": "code-for-ibmi.changeWorkingDirectory",
 					"when": "view == ifsBrowser && viewItem == shortcut",
 					"group": "3_ifsStuff@3"
+				},
+				{
+					"command": "code-for-ibmi.ifs.copyPath",
+					"when": "view == ifsBrowser",
+					"group": "4_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.openTerminalHere",
