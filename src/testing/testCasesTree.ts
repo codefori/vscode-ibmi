@@ -59,7 +59,7 @@ class TestCaseItem extends vscode.TreeItem {
         super(testCase.name, vscode.TreeItemCollapsibleState.None);
         let icon;
         let color;
-        if (this.testSuite.failure) {
+        if (!testCase.status && this.testSuite.failure) {
             color = "disabledForeground";
             icon = "circle-slash";
         }

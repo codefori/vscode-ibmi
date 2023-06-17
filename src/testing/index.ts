@@ -39,9 +39,9 @@ export function initialise(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
     instance.onEvent(`connected`, runTests);
     instance.onEvent(`disconnected`, resetTests);
-    testSuitesTreeProvider = new TestSuitesTreeProvider(suites);    
+    testSuitesTreeProvider = new TestSuitesTreeProvider(suites);
     context.subscriptions.push(
-      vscode.window.createTreeView("testingView", {treeDataProvider: testSuitesTreeProvider, showCollapseAll: true}),
+      vscode.window.createTreeView("testingView", { treeDataProvider: testSuitesTreeProvider, showCollapseAll: true }),
       vscode.commands.registerCommand(`code-for-ibmi.testing.specific`, (suiteName: string, testName: string) => {
         if (suiteName && testName) {
           const suite = suites.find(suite => suite.name === suiteName);
@@ -77,7 +77,7 @@ async function runTests() {
     }
     catch (error: any) {
       console.log(error);
-      suite.failure = String(error);
+      suite.failure = `${error.message ? error.message : error}`;
     }
     finally {
       suite.status = "done";
@@ -85,7 +85,13 @@ async function runTests() {
       if (suite.after) {
         console.log();
         console.log(`Post-processing suite ${suite.name}`);
-        await suite.after();
+        try {
+          await suite.after();
+        }
+        catch (error: any) {
+          console.log(error);
+          suite.failure = `${error.message ? error.message : error}`;
+        }
       }
       testSuitesTreeProvider.refresh(suite);
     }
@@ -105,7 +111,7 @@ async function runTest(test: TestCase) {
   catch (error: any) {
     console.log(error);
     test.status = "failed";
-    test.failure = String(error);
+    test.failure = `${error.message ? error.message : error}`;
   }
   finally {
     test.duration = +(new Date()) - start;
