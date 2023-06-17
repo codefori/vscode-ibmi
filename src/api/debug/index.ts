@@ -44,7 +44,7 @@ export async function initialize(context: ExtensionContext) {
         case `member`:
           const memberPath = connection.parserMemberPath(uri.path);
           qualifiedPath.library = memberPath.library;
-          qualifiedPath.object = memberPath.member;
+          qualifiedPath.object = memberPath.name;
           break;
         case `streamfile`:
         case `file`:
@@ -87,7 +87,7 @@ export async function initialize(context: ExtensionContext) {
     return password;
   }
 
-  const debugPTFInstalled = async () => {
+  const debugPTFInstalled = () => {
     const connection = instance.getConnection();
     return connection?.remoteFeatures[`startDebugService.sh`] !== undefined;
   }
@@ -162,7 +162,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const ptfInstalled = await debugPTFInstalled();
+        const ptfInstalled = debugPTFInstalled();
 
         if (ptfInstalled) {
           const remoteExists = await certificates.checkRemoteExists(connection);
@@ -211,7 +211,7 @@ export async function initialize(context: ExtensionContext) {
       const connection = instance.getConnection();
 
       if (connection) {
-        const ptfInstalled = await debugPTFInstalled();
+        const ptfInstalled = debugPTFInstalled();
 
         if (ptfInstalled) {
           let localCertsOk = false;
@@ -262,7 +262,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.start`, async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const ptfInstalled = await debugPTFInstalled();
+        const ptfInstalled = debugPTFInstalled();
         if (ptfInstalled) {
           const remoteExists = await certificates.checkRemoteExists(connection);
           if (remoteExists) {
@@ -311,6 +311,19 @@ export async function initialize(context: ExtensionContext) {
           }
         } else {
           vscode.window.showErrorMessage(`Debug PTF not installed.`);
+        }
+      }
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.debug.stop`, async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const ptfInstalled = debugPTFInstalled();
+        if (ptfInstalled) {
+          vscode.window.withProgress({location: vscode.ProgressLocation.Notification}, async (progress) => {
+            progress.report({message: `Ending Debug Service`});
+            await server.stop(connection);
+          });
         }
       }
     })

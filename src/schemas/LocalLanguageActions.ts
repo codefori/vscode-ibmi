@@ -161,8 +161,8 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       environment: `pase`,
       deployFirst: true,
       postDownload: [
-        ".logs/joblog.json",
-        ".logs/output.log"
+        ".logs",
+        ".evfevent"
       ]
     },
     {
@@ -174,8 +174,8 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       environment: `pase`,
       deployFirst: true,
       postDownload: [
-        ".logs/joblog.json",
-        ".logs/output.log"
+        ".logs",
+        ".evfevent"
       ]
     }
   ]

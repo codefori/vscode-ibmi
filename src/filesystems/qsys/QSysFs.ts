@@ -22,16 +22,19 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly || isProtectedFilter(fsOptions.filter)) {
+    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly) {
         return FilePermission.Readonly;
     }
 }
 
-function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
-    return parse(uri.query);
+export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
+    const parameters = parse(uri.query);
+    return {
+        readonly: parameters.readonly === `true`
+    };
 }
 
-function isProtectedFilter(filter?: string): boolean {
+export function isProtectedFilter(filter?: string): boolean {
     return filter && instance.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
 }
 
@@ -87,11 +90,11 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
-    async readFile(uri: vscode.Uri): Promise<Uint8Array> {
+    async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             const memberContent = this.extendedMemberSupport ?
                 await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
                 await contentApi.downloadMemberContent(asp, library, file, member);
@@ -103,7 +106,13 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
         }
         else {
-            throw new Error("Not connected to IBM i");
+            if (retrying) {
+                throw new Error("Not connected to IBM i");
+            }
+            else{
+                await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
+                return this.readFile(uri, true);                
+            }            
         }
     }
 
@@ -111,7 +120,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, member } = connection.parserMemberPath(uri.path);
+            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             this.extendedMemberSupport ?
                 await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
                 await contentApi.uploadMemberContent(asp, library, file, member, content);

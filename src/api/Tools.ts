@@ -1,7 +1,15 @@
 import { API, GitExtension } from "./import/git";
 import vscode from "vscode";
+import path from "path"
 
 export namespace Tools {
+  export class SqlError extends Error {
+    public sqlstate: string = "0";
+    constructor(message: string) {
+      super(message);
+    }
+  }
+
   export interface DB2Headers {
     name: string
     from: number
@@ -26,7 +34,7 @@ export namespace Tools {
 
     let headers: DB2Headers[];
 
-    let SQLSTATE;
+    let SQLSTATE: string;
 
     const rows: DB2Row[] = [];
 
@@ -48,7 +56,9 @@ export namespace Tools {
           }
 
           if (!SQLSTATE.startsWith(`01`)) {
-            throw new Error(`${data[index + 3]} (${SQLSTATE})`);
+            let sqlError = new SqlError(`${data[index + 3]} (${SQLSTATE})`);
+            sqlError.sqlstate = SQLSTATE;
+            throw sqlError;
           }
         }
         return;
@@ -131,6 +141,32 @@ export namespace Tools {
   }
 
   /**
+   * Unqualify member path from root
+   */
+  export function unqualifyPath(memberPath: string) {
+    const pathInfo = path.posix.parse(memberPath);
+    let splitPath = pathInfo.dir.split(path.posix.sep);
+
+    // Remove use of `QSYS.LIB` two libraries in the path aren't value
+    const isInQsys = splitPath.filter(part => part.endsWith(`.LIB`)).length === 2;
+    if (isInQsys) {
+      splitPath = splitPath.filter(part => part !== `QSYS.LIB`);
+    }
+
+    const correctedDir = splitPath.map(part => {
+      const partInfo = path.posix.parse(part);
+      if ([`.FILE`, `.LIB`].includes(partInfo.ext)) {
+        return partInfo.name
+      } else {
+        return part
+      }
+    })
+    .join(path.posix.sep);
+
+    return path.posix.join(correctedDir, pathInfo.base);
+  }
+
+  /**
    * @param Path
    * @returns the escaped path
    */
@@ -154,5 +190,9 @@ export namespace Tools {
       }
     }
     return gitAPI;
+  }
+
+  export function distinct(value: any, index: number, array: any[]) {
+    return array.indexOf(value) === index;
   }
 }

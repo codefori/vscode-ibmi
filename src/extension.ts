@@ -1,24 +1,29 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, window, commands, workspace } from "vscode";
+import { ExtensionContext, commands, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
+import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
-import { CustomUI, Field } from "./api/CustomUI";
 
-import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
-import IBMi from "./api/IBMi";
-import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
-import { CodeForIBMi, ConnectionData } from "./typings";
-import * as Sandbox from "./sandbox";
-import { Deployment } from "./api/local/deployment";
-import { parseErrors } from "./api/errors/handler";
-import { GlobalStorage } from "./api/Storage";
 import { CompileTools } from "./api/CompileTools";
-import { HelpView } from "./views/helpView";
-import { ProfilesView } from "./views/ProfilesView";
+import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import IBMi from "./api/IBMi";
+import { GlobalStorage } from "./api/Storage";
 import * as Debug from './api/debug';
+import { parseErrors } from "./api/errors/handler";
+import { Deployment } from "./api/local/deployment";
+import { IFSFS } from "./filesystems/ifsFs";
+import * as Sandbox from "./sandbox";
+import { initialise } from "./testing";
+import { CodeForIBMi, ConnectionData } from "./typings";
+import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
+import { LibraryListProvider } from "./views/LibraryListView";
+import { ProfilesView } from "./views/ProfilesView";
+import { HelpView } from "./views/helpView";
+import IFSBrowser from "./views/ifsBrowser";
+import ObjectBrowser from "./views/objectBrowser";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -34,6 +39,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
   };
 
+  new IFSBrowser(context);
+  new ObjectBrowser(context);
+
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `connectionBrowser`,
@@ -45,29 +53,21 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ),
     window.registerTreeDataProvider(
       `libraryListView`,
-      new (require(`./views/libraryListView`))(context)
+      new LibraryListProvider(context)
     ),
     window.registerTreeDataProvider(
       `profilesView`,
       new ProfilesView(context)
     ),
-    window.registerTreeDataProvider(
-      `ifsBrowser`,
-      new (require(`./views/ifsBrowser`))(context)
-    ),
-    window.registerTreeDataProvider(
-      `objectBrowser`,
-      new (require(`./views/objectBrowser`))(context)
-    ),
     commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData): Promise<boolean> => {
+      async (connectionData: ConnectionData, reloadSettings = false): Promise<boolean> => {
         const existingConnection = instance.getConnection();
 
         if (existingConnection) {
           return false;
         }
 
-        return (await new IBMi().connect(connectionData)).success;
+        return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
     workspace.onDidChangeConfiguration(async event => {
@@ -83,7 +83,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         }
       }
     }),
-    workspace.registerFileSystemProvider(`streamfile`, new (require(`./filesystems/ifs`)), {
+    workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
     })
   );
@@ -97,7 +97,22 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
 
-  return { instance, CustomUI, Field, baseContext: context, deploy: Deployment.deploy, evfeventParser: parseErrors };
+  console.log(`Developer environment: ${process.env.DEV}`);
+  if (process.env.DEV) {
+    // Run tests if not in production build
+    initialise(context);
+  }
+
+  instance.onEvent(`connected`, () => {
+    Promise.all([
+      commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
+      commands.executeCommand("code-for-ibmi.refreshProfileView")
+    ]);
+  })
+
+  return { instance, customUI: () => new CustomUI(), deploy: Deployment.deploy, evfeventParser: parseErrors };
 }
 
 // this method is called when your extension is deactivated
