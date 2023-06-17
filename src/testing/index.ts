@@ -65,25 +65,27 @@ async function runTests() {
       if (suite.before) {
         console.log(`Pre-processing suite ${suite.name}`);
         await suite.before();
+        testSuitesTreeProvider.refresh(suite);
       }
 
       console.log(`Running suite ${suite.name} (${suite.tests.length})`);
       console.log();
       for (const test of suite.tests) {
         await runTest(test);
-      }      
+      }
     }
     catch (error: any) {
       console.log(error);
-      suite.failure = error.message;      
-      testSuitesTreeProvider.refresh();
+      suite.failure = error.message;
     }
-    finally{
+    finally {
+      testSuitesTreeProvider.refresh(suite);
       if (suite.after) {
         console.log();
         console.log(`Post-processing suite ${suite.name}`);
         await suite.after();
       }
+      testSuitesTreeProvider.refresh(suite);
     }
   }
 }
@@ -91,7 +93,7 @@ async function runTests() {
 async function runTest(test: TestCase) {
   console.log(`\tRunning ${test.name}`);
   test.status = "running";
-  testSuitesTreeProvider.refresh();
+  testSuitesTreeProvider.refresh(test);
   const start = +(new Date());
   try {
     await test.test();
@@ -105,7 +107,7 @@ async function runTest(test: TestCase) {
   }
   finally {
     test.duration = +(new Date()) - start;
-    testSuitesTreeProvider.refresh();
+    testSuitesTreeProvider.refresh(test);
   }
 }
 

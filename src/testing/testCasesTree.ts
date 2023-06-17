@@ -1,28 +1,35 @@
 import vscode from "vscode";
 import { TestCase, TestSuite } from ".";
 
-export class TestSuitesTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem>{
-    private readonly emitter: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter();
-    readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem | vscode.TreeItem[] | null | undefined> = this.emitter.event;
+type TestObject = TestSuite | TestCase;
+
+export class TestSuitesTreeProvider implements vscode.TreeDataProvider<TestObject>{
+    private readonly emitter: vscode.EventEmitter<TestObject | undefined | null | void> = new vscode.EventEmitter();
+    readonly onDidChangeTreeData: vscode.Event<void | TestObject | TestObject[] | null | undefined> = this.emitter.event;
 
     constructor(readonly testSuites: TestSuite[]) {
 
     }
 
-    refresh(element?: TestSuiteItem) {
+    refresh(element?: TestObject) {
         this.emitter.fire(element);
     }
 
-    getTreeItem(element: vscode.TreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        return element;
+    getTreeItem(element: TestObject): vscode.TreeItem | Thenable<vscode.TreeItem> {
+        if("tests" in element){
+            return new TestSuiteItem(element);
+        }
+        else{
+            return new TestCaseItem(this.testSuites.find(ts => ts.tests.includes(element))!, element);
+        }
     }
 
-    getChildren(element?: TestSuiteItem): vscode.ProviderResult<vscode.TreeItem[]> {
-        if (element) {
-            return element.getChilren();
+    getChildren(element?: TestObject): vscode.ProviderResult<TestObject[]> {
+        if (element && "tests" in element) {
+            return element.tests;
         }
         else {
-            return this.testSuites.sort((ts1, ts2) => ts1.name.localeCompare(ts2.name)).map(ts => new TestSuiteItem(ts));
+            return this.testSuites.sort((ts1, ts2) => ts1.name.localeCompare(ts2.name));
         }
     }
 }
@@ -44,10 +51,6 @@ class TestSuiteItem extends vscode.TreeItem {
         }
         this.iconPath = new vscode.ThemeIcon("beaker", new vscode.ThemeColor(color));
         this.tooltip = this.testSuite.failure;
-    }
-
-    getChilren() {
-        return this.testSuite.tests.map(tc => new TestCaseItem(this.testSuite, tc));
     }
 }
 
