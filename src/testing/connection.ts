@@ -1,10 +1,10 @@
 import assert from "assert";
+import { commands } from "vscode";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
-import { commands } from "vscode";
 import { CommandResult } from "../typings";
 
-export const ConnectionSuite: TestSuite = {
+export const ConnectionSuite: TestSuite = {  
   name: `Connection tests`,
   tests: [
     {name: `Test sendCommand`, test: async () => {
