@@ -29,7 +29,7 @@ export class TestSuitesTreeProvider implements vscode.TreeDataProvider<vscode.Tr
 
 class TestSuiteItem extends vscode.TreeItem {
     constructor(readonly testSuite: TestSuite) {
-        super(testSuite.name, testSuite.failure ? vscode.TreeItemCollapsibleState.None : vscode.TreeItemCollapsibleState.Expanded);
+        super(testSuite.name, vscode.TreeItemCollapsibleState.Expanded);
         this.description = `${this.testSuite.tests.filter(tc => tc.status === "pass").length}/${this.testSuite.tests.length}`;
 
         let color;
@@ -47,47 +47,52 @@ class TestSuiteItem extends vscode.TreeItem {
     }
 
     getChilren() {
-        return this.testSuite.failure ? [] : this.testSuite.tests.map(tc => new TestCaseItem(this.label as string, tc));
+        return this.testSuite.tests.map(tc => new TestCaseItem(this.testSuite, tc));
     }
 }
 
 class TestCaseItem extends vscode.TreeItem {
-    constructor(suiteName: string, readonly testCase: TestCase) {
+    constructor(readonly testSuite: TestSuite, readonly testCase: TestCase) {
         super(testCase.name, vscode.TreeItemCollapsibleState.None);
         let icon;
         let color;
-        switch (testCase.status) {
-            case "running":
-                color = "testing.runAction";
-                icon = "gear~spin";
-                break;
-            case "failed":
-                color = "testing.iconFailed";
-                icon = "close";
-                break;
-            case "pass":
-                color = "testing.iconPassed";
-                icon = "pass";
-                break;
-            default:
-                color = "testing.iconQueued";
-                icon = "watch";
+        if (this.testSuite.failure) {
+            color = "disabledForeground";
+            icon = "circle-slash";
         }
-
+        else {
+            switch (testCase.status) {
+                case "running":
+                    color = "testing.runAction";
+                    icon = "gear~spin";
+                    break;
+                case "failed":
+                    color = "testing.iconFailed";
+                    icon = "close";
+                    break;
+                case "pass":
+                    color = "testing.iconPassed";
+                    icon = "pass";
+                    break;
+                default:
+                    color = "testing.iconQueued";
+                    icon = "watch";
+            }
+        }
         this.iconPath = new vscode.ThemeIcon(icon, new vscode.ThemeColor(color));
 
-        if(testCase.duration){
+        if (testCase.duration) {
             this.tooltip = `Duration: ${testCase.duration} millisecond(s)`;
         }
 
-        if (testCase.failure){
+        if (testCase.failure) {
             this.tooltip = new vscode.MarkdownString(['```', testCase.failure, '```'].join(`\n`));
         }
 
         if (testCase.status !== `running`) {
             this.command = {
                 command: `code-for-ibmi.testing.specific`,
-                arguments: [suiteName, testCase.name],
+                arguments: [this.testSuite.name, testCase.name],
                 title: `Re-run test`
             };
         }
