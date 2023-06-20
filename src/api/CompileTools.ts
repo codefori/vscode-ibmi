@@ -557,10 +557,19 @@ export namespace CompileTools {
         getDefaultVariables(instance, ileSetup)
       );
 
-      if (commandString.startsWith(`?`)) {
-        commandString = await vscode.window.showInputBox({ prompt: `Run Command`, value: commandString.substring(1) }) || '';
-      } else {
-        commandString = await showCustomInputs(`Run Command`, commandString, title);
+      if (commandString) {
+        const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+        let promptedCommands = [];
+        for (let command of commands) {
+          if (command.startsWith(`?`)) {
+            command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
+          } else {
+            command = await showCustomInputs(`Run Command`, command, title);
+          }
+          promptedCommands.push(command);
+          if (!command) break;
+        }
+        commandString = !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
       }
 
       if (commandString) {
