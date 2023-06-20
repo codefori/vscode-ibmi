@@ -679,11 +679,11 @@ export namespace CompileTools {
         if (end >= 0) {
           let currentInput = command.substring(start + 2, end);
 
-          const [name, label, initalValue] = currentInput.split(`|`);
+          const [name, label, initialValue] = currentInput.split(`|`);
           components.push({
             name,
             label,
-            initialValue: initalValue || ``,
+            initialValue: initialValue || ``,
             start,
             end: end + 1
           });
