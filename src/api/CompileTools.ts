@@ -551,10 +551,9 @@ export namespace CompileTools {
         if (libl) ileSetup.libraryList = libl.split(` `);
         if (curlib) ileSetup.currentLibrary = curlib;
       }
-      // let multiCmdJoin = ` && `;
-      // if (options.multiCmdJoin) {
-      //   let multiCmdJoin = options.multiCmdJoin;
-      // }
+      if (!options.multiCmdJoin) {
+        options.multiCmdJoin = ` && `;
+      }
 
       let commandString = replaceValues(
         options.command,

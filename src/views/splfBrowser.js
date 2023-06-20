@@ -6,11 +6,13 @@ const path = require(`path`);
 
 const writeFileAsync = util.promisify(fs.writeFile);
 
-let { setSearchResults } = require(`../instantiate`);
+// let { setSearchResults } = require(`../instantiate`);
+const { setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
 const { getSpooledFileUri } = require(`../filesystems/qsys/SplfFs`);
 const { Tools } = require(`../api/Tools`);
+const { ExtendedIBMiContent } = require(`../filesystems/qsys/extendedContent`);
 
 function getInstance() {
   const { instance } = (require(`../instantiate`));
@@ -196,53 +198,35 @@ module.exports = class SPLFBrowser {
           let deletionConfirmed = false;
           let fewercommands = ``;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ALL spooled files named ${node.name} for user ${node.user}?`, `Yes`, `Cancel`);
-
+          
           if (result === `Yes`) {
             deletionConfirmed = true;
-
+            const connection = getInstance().getConnection();
+            const content = getInstance().getContent();
+            const TempFileName = Tools.makeid();
+            const TempMbrName = Tools.makeid();
+            const asp = ``;
+            const tempLib = content.config.tempLibrary;
+            
             if (deletionConfirmed) {
-              const connection = getInstance().getConnection();
-              const content = getInstance().getContent();
 
               const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name);
               try {
-                objects.forEach(async function (object) {
-                  deleteCount += 1;
-                  await connection.runCommand({
-                    command: `DLTSPLF FILE(${object.name}) JOB(${object.qualified_job_name}) SPLNBR(${object.number})`
-                    , environment: `ile`
-                    ,multiCmdJoin : ` & `
-                  });
+                let commands = objects.map(o => (
+                  `DLTSPLF FILE(${o.name}) JOB(${o.qualified_job_name}) SPLNBR(${o.number})`              
+                )); 
+                let dltCmdSrc = `// BCHJOB  JOB(DLTSPLFS) JOBQ(*JOBD)\n` +commands.join(`\n`) +`\n// ENDBCHJOB`;
+                await connection.runCommand({
+                  command: `CRTSRCPF FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) RCDLEN(112)`
+                  ,environment: `ile`
                 });
-                // const commands = objects.map(o => ({
-                //   command: `DLTSPLF FILE(${o.name}) JOB(${o.qualified_job_name}) SPLNBR(${o.number})`              
-                // })); 
-                //   commands.forEach(async function (cmd) {
-                //     fewercommands = (deleteBatch > 0 ? `${fewercommands}\n${cmd.command}` : `${cmd.command}`);
-                //     deleteBatch += 1;
-                //     // if (deleteBatch >= 10) {
-                //     // console.log(fewercommands);
-                //     // await connection.runCommand({
-                //     //   command: `${fewercommands}`
-                //     //   , environment: `ile`
-                //     //   ,multiCmdJoin : ` & `
-                //     // });
-                //     await Tools.sleep(1000);
-                //     deleteCount += deleteBatch; // Assumes good completion
-                //     // fewercommands = ` `;
-                //     deleteBatch = 0;
-                //     // }
-                //   });
-                //   console.log(fewercommands);
-                //   await connection.runCommand({
-                //     command: `${fewercommands}`
-                //     , environment: `ile`
-                //     ,multiCmdJoin : ` & `
-                //   });
+                await content.uploadMemberContent(asp, tempLib, TempFileName, TempMbrName, dltCmdSrc)
+                let dltCommands = `SBMDBJOB FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) JOBQ(QUSRNOMAX)`;
+                await connection.runCommand({
+                  command: dltCommands
+                  ,environment: `ile`
+                });
                 
-                // vscode.window.showInformationMessage(`Deleted ${object.name}, ${object.qualified_job_name}.`);
-                // deleteCount += 1;
-
               } catch (e) {
                 vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
               }
@@ -254,6 +238,10 @@ module.exports = class SPLFBrowser {
             if (deleteCount > 0) {
               // if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
               vscode.window.showInformationMessage(`Deleted ${deleteCount} spooled files.`);
+              await connection.runCommand({
+                command: `DLTF FILE(${tempLib}/${TempFileName}) `
+                ,environment: `ile`
+              });
             }
 
           }
