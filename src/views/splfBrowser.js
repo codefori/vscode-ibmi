@@ -442,14 +442,14 @@ module.exports = class SPLFBrowser {
 
         if (node) {
           let fileExtension = await vscode.window.showInputBox({
-            prompt: `Type of file to create, TXT, PDF, HTML`,
+            prompt: `Type of file to create, TXT, PDF`,
             value: `TXT`
           });
           if (!fileExtension) { return }
           fileExtension = fileExtension.toLowerCase()
           switch (fileExtension) {
           case `pdf`:
-          case `html`:
+          // case `html`:
           case `txt`:
             fileExtension.toLowerCase();
             break;
