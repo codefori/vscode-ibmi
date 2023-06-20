@@ -719,12 +719,12 @@ export namespace CompileTools {
         }
       }
 
-      commandUI.addButtons({ id: `execute`, label: `Execute` });
+      commandUI.addButtons({ id: `execute`, label: `Execute` }, { id: `cancel`, label: `Cancel` });
 
       const page = await commandUI.loadPage(name);
       if (page) {
         page.panel.dispose();
-        if (page.data) {
+        if (page.data && page.data.buttons !== `cancel`) {
           const dataEntries = Object.entries(page.data);
           for (const component of components.reverse()) {
             const value = dataEntries.find(([key]) => key === component.name)?.[1];
