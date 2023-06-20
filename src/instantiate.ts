@@ -65,7 +65,7 @@ export async function disconnect(): Promise<boolean> {
 
   for (const document of vscode.workspace.textDocuments) {
     // This code will check that sources are saved before closing
-    if (!document.isClosed && [`member`, `streamfile`, `object`,`spooledfile`].includes(document.uri.scheme)) {
+    if (!document.isClosed && [`member`, `streamfile`, `object`, `spooledfile`].includes(document.uri.scheme)) {
       if (document.isDirty) {
         if (doDisconnect) {
           if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))) {
@@ -117,10 +117,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
       let uri = {};
-      if(!options?.readonly && !path.startsWith('/')){
+      if (!options?.readonly && !path.startsWith('/')) {
         const [library, name] = path.split('/');
-        const writable = await instance.getContent()?.checkObject({library, name, type: '*FILE'}, "*UPD");
-        if(!writable){
+        const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
+        if (!writable) {
           options = options || {};
           options.readonly = true;
         }
@@ -367,7 +367,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (content) {
         const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
         const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
-        terminal?.sendText(`cd ${path}`);        
+        terminal?.sendText(`cd ${path}`);
       }
     }),
 
@@ -419,14 +419,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);
 
-  context.subscriptions.push( vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
+  context.subscriptions.push(vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
     isCaseSensitive: false
-  }) );
-  
-  context.subscriptions.push(vscode.workspace.registerFileSystemProvider(`spooledfile`, new SplfFS(context), {
+  }), vscode.workspace.registerFileSystemProvider(`spooledfile`, new SplfFS(context), {
     isCaseSensitive: false
-  }) );
-  
+  }));
+
   // Color provider
   if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);

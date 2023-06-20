@@ -33,6 +33,7 @@ export interface RemoteCommand {
   environment?: "ile" | "qsh" | "pase";
   cwd?: string;
   env?: Record<string, string>;
+  multiCmdJoin?: string;
 }
 
 export interface CommandData extends StandardIO {

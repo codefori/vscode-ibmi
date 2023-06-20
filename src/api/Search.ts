@@ -71,7 +71,7 @@ export namespace Search {
         name: o.name,
         number: o.number
       
-      })); // no error
+      })); 
 
       const largeString = JSON.stringify(searchSplfList);
       const sqlStatement = `with USER_SPOOLED_FILES (SFUSER, OUTQ, QJOB, SFILE, SFILE_NUMBER) as (
@@ -84,7 +84,7 @@ export namespace Search {
         ,ALL_USER_SPOOLED_FILE_DATA (SFUSER, OUTQ, QJOB, SFILE, SFILE_NUMBER, SPOOL_DATA, ORDINAL_POSITION) as (
               select SFUSER, OUTQ, QJOB, SFILE, SFILE_NUMBER, SPOOLED_DATA, SD.ORDINAL_POSITION
                 from USER_SPOOLED_FILES
-                ,table (SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => QJOB, SPOOLED_FILE_NAME => SFILE, SPOOLED_FILE_NUMBER => SFILE_NUMBER)) SD )
+                ,table (SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => QJOB, SPOOLED_FILE_NAME => SFILE, SPOOLED_FILE_NUMBER => SFILE_NUMBER, IGNORE_ERRORS => 'NO')) SD )
           select trim(SFUSER)||'/'||trim(OUTQ)||'/'||trim(SFILE)||'~'||replace(trim(QJOB),'/','~')||'~'||trim(SFILE_NUMBER)||'.splf'||':'||char(ORDINAL_POSITION)||':'||varchar(trim(SPOOL_DATA),132) SEARCH_RESULT
             from ALL_USER_SPOOLED_FILE_DATA AMD
             where upper(SPOOL_DATA) like upper('%${sanitizeSearchTerm(searchTerm)}%')`;

@@ -547,10 +547,14 @@ export namespace CompileTools {
       if (options.env) {
         const libl: string | undefined = options.env[`&LIBL`];
         const curlib: string | undefined = options.env[`&CURLIB`];
-
+        
         if (libl) ileSetup.libraryList = libl.split(` `);
         if (curlib) ileSetup.currentLibrary = curlib;
       }
+      // let multiCmdJoin = ` && `;
+      // if (options.multiCmdJoin) {
+      //   let multiCmdJoin = options.multiCmdJoin;
+      // }
 
       let commandString = replaceValues(
         options.command,
@@ -628,7 +632,7 @@ export namespace CompileTools {
                 ...commands.map(command =>
                   `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`,
                 )
-              ].join(` && `),
+              ].join(options.multiCmdJoin),
               directory: cwd,
               ...callbacks
             });

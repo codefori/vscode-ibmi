@@ -195,4 +195,8 @@ export namespace Tools {
   export function distinct(value: any, index: number, array: any[]) {
     return array.indexOf(value) === index;
   }
+
+  export function sleep(ms:number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+ }
 }
