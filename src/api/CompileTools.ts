@@ -551,9 +551,6 @@ export namespace CompileTools {
         if (libl) ileSetup.libraryList = libl.split(` `);
         if (curlib) ileSetup.currentLibrary = curlib;
       }
-      if (!options.multiCmdJoin) {
-        options.multiCmdJoin = ` && `;
-      }
 
       let commandString = replaceValues(
         options.command,
@@ -631,7 +628,7 @@ export namespace CompileTools {
                 ...commands.map(command =>
                   `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`,
                 )
-              ].join(options.multiCmdJoin),
+              ].join(` && `),
               directory: cwd,
               ...callbacks
             });
