@@ -721,7 +721,7 @@ export namespace CompileTools {
 
       commandUI.addButtons({ id: `execute`, label: `Execute` }, { id: `cancel`, label: `Cancel` });
 
-      const page = await commandUI.loadPage(name);
+      const page = await commandUI.loadPage<any>(name);
       if (page) {
         page.panel.dispose();
         if (page.data && page.data.buttons !== `cancel`) {
