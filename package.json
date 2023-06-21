@@ -2349,7 +2349,7 @@
 				},
 				{
 					"command": "code-for-ibmi.copySpooledFile",
-					"when": "view == splfBrowser && viewItem =~ /^spooledfile.*$/",
+					"when": "view == splfBrowser && viewItem =~ /^spooledfile_Never.*$/",
 					"group": "2_spooledfile@4"
 				},
 				{

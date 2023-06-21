@@ -110,12 +110,6 @@ export class SplfFS implements vscode.FileSystemProvider {
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
     const lpath = uri.path.split(`/`);
-    const lfilename = lpath[3].split(`~`);
-    // const qualified_job_name = lfilename[3] + '/' + lfilename[2] + '/' + lfilename[1];
-    // const splf_number = lfilename[4].replace(`.splf`, ``);
-    // const name = lfilename[0];
-    // const tmpExt = path.extname(uri);
-    // const fileName = path.basename(uri, tmpExt);
     let localFilepath = os.homedir() + `/` + lpath[3] + `.txt`;
     let savFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(localFilepath) });
     if (savFilepath) {
