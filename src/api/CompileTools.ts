@@ -559,7 +559,7 @@ export namespace CompileTools {
 
       if (commandString) {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
-        let promptedCommands = [];
+        const promptedCommands = [];
         for (let command of commands) {
           if (command.startsWith(`?`)) {
             command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
