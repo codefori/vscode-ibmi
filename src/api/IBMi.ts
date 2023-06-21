@@ -15,7 +15,7 @@ export interface MemberParts extends IBMiMember {
   basename: string
 }
 
-let remoteApps = [
+let remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
     names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`]
@@ -93,6 +93,7 @@ export default class IBMi {
       attr: undefined,
       iconv: undefined,
       tar: undefined,
+      ls: undefined,
     };
 
     this.variantChars = {
