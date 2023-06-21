@@ -28,6 +28,8 @@ export class Login {
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
       .addFile(`privateKey`, `Private Key`)
+      .addPassword(`passphrase`, `Passphrase`)
+      .addCheckbox(`savePassphrase`, `Save Passphrase`)
       .addButtons(
         { id: `connect`, label: `Connect` },
         { id: `saveExit`, label: `Save & Exit` }
@@ -54,10 +56,13 @@ export class Login {
               host: data.host,
               port: data.port,
               username: data.username,
-              privateKey: data.privateKey
+              privateKey: data.privateKey,
+              passphrase: data.passphrase
             });
 
             if (data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
+
+            if (data.savePassphrase) context.secrets.store(`${data.name}_passphrase`, `${data.passphrase}`);
 
             await GlobalConfiguration.set(`connections`, existingConnections);
             vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
@@ -129,6 +134,7 @@ export class Login {
     let connectionConfig = existingConnections.find(item => item.name === name);
     if (connectionConfig) {
       if (!connectionConfig.privateKey) {
+        // Authentication with Username and Password
         connectionConfig.password = await context.secrets.get(`${connectionConfig.name}_password`);
         if (!connectionConfig.password) {
           connectionConfig.password = await vscode.window.showInputBox({
@@ -140,8 +146,17 @@ export class Login {
         if (!connectionConfig.password) {
           return;
         }
+      } else {
+        // Authentication with privateKey and passphrase
+        connectionConfig.passphrase = await context.secrets.get(`${connectionConfig.name}_passphrase`);
+        if (!connectionConfig.passphrase) {
+          connectionConfig.passphrase = await vscode.window.showInputBox({
+            prompt: `Passphrase for ${connectionConfig.name}`,
+            password: true
+          });
+        }
       }
-
+ 
       try {
         const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings);
         if (connected.success) {
