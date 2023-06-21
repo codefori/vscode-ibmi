@@ -388,13 +388,16 @@ export default class IBMiContent {
    * @param sortOrder
    * @returns an array of IBMiFile 
    */
-  async getObjectList(filters: { library: string; object?: string; types?: string[]; }, sortOrder?: `name` | `type`): Promise<IBMiFile[]> {
+  async getObjectList(filters: { library: string; object?: string; types?: string[]; member?: string; memberType?: string; }, sortOrder?: `name` | `type`): Promise<IBMiFile[]> {
     const library = filters.library.toUpperCase();
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
+    const member = (filters.member ? filters.member.toUpperCase() : filters.member);
+    const mbrtype = (filters.memberType ? filters.memberType.toUpperCase() : filters.memberType);
 
     const tempLib = this.config.tempLibrary;
     const tempName = Tools.makeid();
+    var objQuery;
 
     if (sourceFilesOnly) {
       await this.ibmi.remoteCommand(`DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${tempName})`);
@@ -462,7 +465,6 @@ export default class IBMiContent {
     let results: Tools.DB2Row[];
 
     if (this.config.enableSQL) {
-
       if (member) {
         member = member.replace(/[*]/g, `%`);
       }
@@ -491,6 +493,7 @@ export default class IBMiContent {
         ${memberExt ? `AND rtrim(coalesce(cast(b.source_type as varchar(10) for bit data), '')) like '${memberExt}'` : ``}        
     `;
       results = await this.runSQL(statement);
+      // }
     } else {
       const tempLib = this.config.tempLibrary;
       const TempName = Tools.makeid();
@@ -547,7 +550,8 @@ export default class IBMiContent {
       text: `${result.MBMTXT || ``}${sourceFile === `*ALL` ? ` (${result.MBFILE})` : ``}`.trim(),
       lines: Number(result.MBNRCD),
       created: new Date(result.CREATED ? Number(result.CREATED) : 0),
-      changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+      changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0),
+      usercontent: result.USERCONTENT
     } as IBMiMember)).sort(sorter);
 
     if (sort.ascending === false) {

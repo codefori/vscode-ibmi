@@ -1203,7 +1203,9 @@ class Member extends vscode.TreeItem {
       .concat(`${member.text ? `\nText:\t\t${member.text}` : ``}`)
       .concat(`${member.lines != undefined ? `\nLines:\t${member.lines}` : ``}`)
       .concat(`${member.created ? `\nCreated:\t${member.created.toISOString().slice(0,19).replace(`T`, ` `)}` : ``}`)
-      .concat(`${member.changed ? `\nChanged:\t${member.changed.toISOString().slice(0,19).replace(`T`, ` `)}` : ``}`);
+      .concat(`${member.changed ? `\nChanged:\t${member.changed.toISOString().slice(0,19).replace(`T`, ` `)}` : ``}`)
+      .concat(`${member.usercontent ? `\nUser Context:\t${member.usercontent}` : ``}`)
+    ;
     this.command = {
       command: `vscode.open`,
       title: `Open Member`,

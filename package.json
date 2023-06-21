@@ -13,12 +13,12 @@
 		"as400"
 	],
 	"author": {
-		"name": "Halcyon Tech Ltd",
-		"url": "https://github.com/halcyon-tech/"
+		"name": "mtyler forked project from Halcyon Tech Ltd",
+		"url": "https://github.com/m-tyler/"
 	},
 	"publisher": "halcyontechltd",
 	"repository": {
-		"url": "https://github.com/halcyon-tech/vscode-ibmi"
+		"url": "https://github.com/m-tyler/vscode-ibmi"
 	},
 	"license": "MIT",
 	"engines": {
@@ -1575,6 +1575,36 @@
 				"key": "ctrl+r",
 				"mac": "cmd+r",
 				"when": "editorLangId == cl"
+			},
+			{
+				"command": "editor.action.deleteLines",
+				"key": "alt+d",
+				"mac": "alt+d"
+			},
+			{
+				"command": "editor.action.joinLines",
+				"key": "alt+j",
+				"mac": "alt+j"
+			},
+			{
+				"command": "editor.action.transformToTitlecase",
+				"key": "alt+t"
+			},
+			{
+				"command": "vscode-rpgfree.rpgleFree",
+				"key": "shift+alt+v"
+			},
+			{
+				"command": "editor.action.transformToUppercase",
+				"key": "alt+u"
+			},
+			{
+				"command": "editor.action.transformToLowercase",
+				"key": "alt+i"
+			},
+			{
+				"command": "outline.focus",
+				"key": "ctrl+alt+o"
 			}
 		],
 		"viewsContainers": {

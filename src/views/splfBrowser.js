@@ -64,7 +64,6 @@ module.exports = class SPLFBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.refreshSPLFBrowser`, async () => {
         this.refresh();
       }),
-
       vscode.commands.registerCommand(`code-for-ibmi.addUserSpooledFileFilter`, async (node) => {
         const config = getInstance().getConfig();
         const connection = getInstance().getConnection();
@@ -98,7 +97,6 @@ module.exports = class SPLFBrowser {
           console.log(e);
         }
       }),
-
       vscode.commands.registerCommand(`code-for-ibmi.deleteUserSpooledFileFilter`, async (node) => {
         const { instance } = (require(`../instantiate`));
         const config = getInstance().getConfig();
@@ -132,7 +130,6 @@ module.exports = class SPLFBrowser {
           console.log(e);
         }
       }),
-
       vscode.commands.registerCommand(`code-for-ibmi.sortUserSpooledFileFilter`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
         const config = getInstance().getConfig();
@@ -155,36 +152,31 @@ module.exports = class SPLFBrowser {
           console.log(e);
         }
       }),
-
       vscode.commands.registerCommand(`code-for-ibmi.deleteSpooledFile`, async (node) => {
         if (node) {
           //Running from right click
-          let deletionConfirmed = false;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete spooled file ${node.path}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
-            deletionConfirmed = true;
 
-            if (deletionConfirmed) {
-              const connection = getInstance().getConnection();
+            const connection = getInstance().getConnection();
 
-              try {
-                await connection.runCommand({
-                  command: `DLTSPLF FILE(${node.name}) JOB(${node.qualified_job_name}) SPLNBR(${node.number})`
-                  , environment: `ile`
-                });
+            try {
+              await connection.runCommand({
+                command: `DLTSPLF FILE(${node.name}) JOB(${node.qualified_job_name}) SPLNBR(${node.number})`
+                , environment: `ile`
+              });
 
-                vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
 
-                if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
-              }
+              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
             }
-            else {
-              vscode.window.showInformationMessage(`Deletion canceled.`);
-            }
-
+            
+          }
+          else {
+            vscode.window.showInformationMessage(`Deletion canceled.`);
           }
         } else {
           //Running from command.
@@ -193,57 +185,58 @@ module.exports = class SPLFBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.deleteNamedSpooledFiles`, async (node) => {
         if (node) {
           //Running from right click
-          let deleteBatch = 0;
           let deleteCount = 0;
-          let deletionConfirmed = false;
-          let fewercommands = ``;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ALL spooled files named ${node.name} for user ${node.user}?`, `Yes`, `Cancel`);
           
           if (result === `Yes`) {
-            deletionConfirmed = true;
             const connection = getInstance().getConnection();
             const content = getInstance().getContent();
             const TempFileName = Tools.makeid();
             const TempMbrName = Tools.makeid();
             const asp = ``;
             const tempLib = content.config.tempLibrary;
+            let commandResult = ``;
             
-            if (deletionConfirmed) {
 
-              const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name);
-              try {
-                let commands = objects.map(o => (
-                  `DLTSPLF FILE(${o.name}) JOB(${o.qualified_job_name}) SPLNBR(${o.number})`              
-                )); 
-                let dltCmdSrc = `// BCHJOB  JOB(DLTSPLFS) JOBQ(*JOBD)\n` +commands.join(`\n`) +`\n// ENDBCHJOB`;
-                await connection.runCommand({
-                  command: `CRTSRCPF FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) RCDLEN(112)`
-                  ,environment: `ile`
-                });
-                await content.uploadMemberContent(asp, tempLib, TempFileName, TempMbrName, dltCmdSrc)
-                let dltCommands = `SBMDBJOB FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) JOBQ(QUSRNOMAX)`;
-                await connection.runCommand({
-                  command: dltCommands
-                  ,environment: `ile`
-                });
-                
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
+            const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name);
+            try {
+              let commands = objects.map(o => (
+                `DLTSPLF FILE(${o.name}) JOB(${o.qualified_job_name}) SPLNBR(${o.number})`              
+              )); 
+              deleteCount = commands.length;
+              let dltCmdSrc = `// BCHJOB  JOB(DLTSPLFS) JOBQ(*JOBD)\n` +commands.join(`\n`) +`\n// ENDBCHJOB`;
+              await connection.runCommand({
+                command: `CRTSRCPF FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) RCDLEN(112)`
+                ,environment: `ile`
+              });
+              await content.uploadMemberContent(asp, tempLib, TempFileName, TempMbrName, dltCmdSrc)
+              let dltCommands = `SBMDBJOB FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) JOBQ(QUSRNOMAX)`;
+              const commandResult = await connection.runCommand({
+                command: dltCommands
+                ,environment: `ile`
+              });
+              if (commandResult) {
+                vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+                if (commandResult.code === 0 || commandResult.code === null) {
+                } else {
+                }
               }
-              // });
-            }
-            else {
-              vscode.window.showInformationMessage(`Deletion canceled.`);
+                
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
             }
             if (deleteCount > 0) {
-              // if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
               vscode.window.showInformationMessage(`Deleted ${deleteCount} spooled files.`);
               await connection.runCommand({
                 command: `DLTF FILE(${tempLib}/${TempFileName}) `
                 ,environment: `ile`
               });
             }
-
+            
+          }
+          else {
+            vscode.window.showInformationMessage(`Deletion canceled.`);
           }
         } else {
           //Running from command.
@@ -252,42 +245,37 @@ module.exports = class SPLFBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.deleteUserSpooledFiles`, async (node) => {
         if (node) {
           //Running from right click
-          let deletionConfirmed = false;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ALL spooled files for ${node.user}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
-            deletionConfirmed = true;
 
-            if (deletionConfirmed) {
-              const connection = getInstance().getConnection();
+            const connection = getInstance().getConnection();
 
-              try {
-                const commandResult = await connection.runCommand({
-                  command: `DLTSPLF FILE(*SELECT) SELECT(*CURRENT)`
-                  , environment: `ile`
-                });
-                if (commandResult) {
-                  vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
-                  if (commandResult.code === 0 || commandResult.code === null) {
-                  } else {
-                  }
+            try {
+              const commandResult = await connection.runCommand({
+                command: `DLTSPLF FILE(*SELECT) SELECT(*CURRENT)`
+                , environment: `ile`
+              });
+              if (commandResult) {
+                vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+                if (commandResult.code === 0 || commandResult.code === null) {
+                } else {
                 }
-
-                if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error deleting user spooled files! ${e}`);
               }
-            }
-            else {
-              vscode.window.showInformationMessage(`Deletion canceled.`);
-            }
 
+              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+            } catch (e) {
+              vscode.window.showErrorMessage(`Error deleting user spooled files! ${e}`);
+            }
+            
+          }
+          else {
+            vscode.window.showInformationMessage(`Deletion canceled.`);
           }
         } else {
           //Running from command.
         }
       }),
-
       vscode.commands.registerCommand(`code-for-ibmi.moveSpooledFile`, async (node) => {
         if (node) {
           //Running from right click
@@ -319,6 +307,7 @@ module.exports = class SPLFBrowser {
       }),
       vscode.commands.registerCommand(`code-for-ibmi.copySpooledFile`, async (node) => {
         /** @type {ConnectionConfiguration.Parameters} */
+        throw new Error("code-for-ibmi.copySpooledFile not implemented.");
         const config = getInstance().getConfig();
         const homeDirectory = config.homeDirectory;
 
@@ -334,6 +323,9 @@ module.exports = class SPLFBrowser {
             const connection = getInstance().getConnection();
 
             try {
+              let a =`CRTPF FILE(ILEDITOR/DBF133) RCDLEN(133)`;
+              let b =`CPYSPLF FILE(QPDSPDTA) TOFILE(ILEDITOR/DBF133) JOB(045057/QSYSOPR/D000DOPWM1) SPLNBR(3) CTLCHAR(*FCFC)`;
+              let c =`CPYSPLF FILE(QPDSPDTA) TOFILE(ILEDITOR/DBF133) JOB(045057/QSYSOPR/D000DOPWM1) SPLNBR(3) CTLCHAR(*FCFC)`;
               await connection.runCommand({
                 command: `DUPSPLF FILE(${node.name}) JOB(${node.qualified_job_name}) SPLNBR(${node.number}) NEWSPLF(${newName})`
                 , environment: `ile`
@@ -352,7 +344,6 @@ module.exports = class SPLFBrowser {
           console.log(this);
         }
       }),
-
       vscode.commands.registerCommand(`code-for-ibmi.searchSpooledFiles`, async (node) => {
         const connection = getInstance().getConnection();
         const content = getInstance().getContent();
@@ -433,7 +424,6 @@ module.exports = class SPLFBrowser {
         }
 
       }),
-
       vscode.commands.registerCommand(`code-for-ibmi.downloadSpooledfile`, async (node) => {
         const config = getInstance().getConfig();
         const contentApi = getInstance().getContent();
@@ -660,7 +650,7 @@ class SPLF extends vscode.TreeItem {
     this.description = ` - ` + this.status + ` - Pages: ` + this.total_pages;
     this.iconPath = new vscode.ThemeIcon(icon);
     this.protected = parent.protected;
-    this.contextValue = `spooledfile${parent.protected ? `_readonly` : ``}`;
+    this.contextValue = `spooledfile`;
     this.resourceUri = getSpooledFileUri(object, parent.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
     this.tooltip = ``
