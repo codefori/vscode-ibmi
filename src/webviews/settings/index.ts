@@ -113,9 +113,9 @@ export class SettingsUI {
             .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
             .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
         } else if (connection) {
-          terminalsTab.addHeading('Enable 5250 emulation to change these settings');
+          terminalsTab.addParagraph('Enable 5250 emulation to change these settings');
         } else {
-          terminalsTab.addHeading('Connect to the server to see these settings.');
+          terminalsTab.addParagraph('Connect to the server to see these settings.');
         }
 
         const debuggerTab = new Section();
@@ -126,9 +126,9 @@ export class SettingsUI {
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing)
             .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
         } else if (connection) {
-          debuggerTab.addHeading('Enable the debug service to change these settings');
+          debuggerTab.addParagraph('Enable the debug service to change these settings');
         } else {
-          debuggerTab.addHeading('Connect to the server to see these settings.');
+          debuggerTab.addParagraph('Connect to the server to see these settings.');
         }
 
         let tabs: ComplexTab[] = [
