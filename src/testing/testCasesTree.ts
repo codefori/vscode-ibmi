@@ -1,28 +1,35 @@
 import vscode from "vscode";
 import { TestCase, TestSuite } from ".";
 
-export class TestSuitesTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem>{
-    private readonly emitter: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter();
-    readonly onDidChangeTreeData: vscode.Event<void | vscode.TreeItem | vscode.TreeItem[] | null | undefined> = this.emitter.event;
+type TestObject = TestSuite | TestCase;
+
+export class TestSuitesTreeProvider implements vscode.TreeDataProvider<TestObject>{
+    private readonly emitter: vscode.EventEmitter<TestObject | undefined | null | void> = new vscode.EventEmitter();
+    readonly onDidChangeTreeData: vscode.Event<void | TestObject | TestObject[] | null | undefined> = this.emitter.event;
 
     constructor(readonly testSuites: TestSuite[]) {
 
     }
 
-    refresh(element?: TestSuiteItem) {
+    refresh(element?: TestObject) {
         this.emitter.fire(element);
     }
 
-    getTreeItem(element: vscode.TreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        return element;
+    getTreeItem(element: TestObject): vscode.TreeItem | Thenable<vscode.TreeItem> {
+        if("tests" in element){
+            return new TestSuiteItem(element);
+        }
+        else{
+            return new TestCaseItem(this.testSuites.find(ts => ts.tests.includes(element))!, element);
+        }
     }
 
-    getChildren(element?: TestSuiteItem): vscode.ProviderResult<vscode.TreeItem[]> {
-        if (element) {
-            return element.getChilren();
+    getChildren(element?: TestObject): vscode.ProviderResult<TestObject[]> {
+        if (element && "tests" in element) {
+            return element.tests;
         }
         else {
-            return this.testSuites.sort((ts1, ts2) => ts1.name.localeCompare(ts2.name)).map(ts => new TestSuiteItem(ts));
+            return this.testSuites.sort((ts1, ts2) => ts1.name.localeCompare(ts2.name));
         }
     }
 }
@@ -33,7 +40,7 @@ class TestSuiteItem extends vscode.TreeItem {
         this.description = `${this.testSuite.tests.filter(tc => tc.status === "pass").length}/${this.testSuite.tests.length}`;
 
         let color;
-        if (this.testSuite.tests.some(tc => tc.status === "failed")) {
+        if (this.testSuite.failure || this.testSuite.tests.some(tc => tc.status === "failed")) {
             color = "testing.iconFailed";
         }
         else if (this.testSuite.tests.some(tc => !tc.status)) {
@@ -42,46 +49,53 @@ class TestSuiteItem extends vscode.TreeItem {
         else {
             color = "testing.iconPassed";
         }
-        this.iconPath = new vscode.ThemeIcon("beaker", new vscode.ThemeColor(color));
-    }
-
-    getChilren() {
-        return this.testSuite.tests.map(tc => new TestCaseItem(this.label as string, tc));
+        this.iconPath = new vscode.ThemeIcon(testSuite.status === "running" ? "gear~spin" : "beaker", new vscode.ThemeColor(color));
+        this.tooltip = this.testSuite.failure;
     }
 }
 
 class TestCaseItem extends vscode.TreeItem {
-    constructor(suiteName: string, readonly testCase: TestCase) {
+    constructor(readonly testSuite: TestSuite, readonly testCase: TestCase) {
         super(testCase.name, vscode.TreeItemCollapsibleState.None);
         let icon;
         let color;
-        switch (testCase.status) {
-            case "running":
-                color = "testing.runAction";
-                icon = "gear~spin";
-                break;
-            case "failed":
-                color = "testing.iconFailed";
-                icon = "close";
-                break;
-            case "pass":
-                color = "testing.iconPassed";
-                icon = "pass";
-                break;
-            default:
-                color = "testing.iconQueued";
-                icon = "watch";
+        if (!testCase.status && this.testSuite.failure) {
+            color = "disabledForeground";
+            icon = "circle-slash";
         }
-
+        else {
+            switch (testCase.status) {
+                case "running":
+                    color = "testing.runAction";
+                    icon = "gear~spin";
+                    break;
+                case "failed":
+                    color = "testing.iconFailed";
+                    icon = "close";
+                    break;
+                case "pass":
+                    color = "testing.iconPassed";
+                    icon = "pass";
+                    break;
+                default:
+                    color = "testing.iconQueued";
+                    icon = "watch";
+            }
+        }
         this.iconPath = new vscode.ThemeIcon(icon, new vscode.ThemeColor(color));
 
-        if (testCase.failure)
+        if (testCase.duration) {
+            this.tooltip = `Duration: ${testCase.duration} millisecond(s)`;
+        }
+
+        if (testCase.failure) {
             this.tooltip = new vscode.MarkdownString(['```', testCase.failure, '```'].join(`\n`));
+        }
 
         if (testCase.status !== `running`) {
             this.command = {
                 command: `code-for-ibmi.testing.specific`,
-                arguments: [suiteName, testCase.name],
+                arguments: [this.testSuite.name, testCase.name],
                 title: `Re-run test`
             };
         }

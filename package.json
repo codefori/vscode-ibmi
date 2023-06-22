@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.9.3",
+	"version": "1.9.4",
 	"keywords": [
 		"ibmi",
 		"rpgle",
