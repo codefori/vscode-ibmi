@@ -268,8 +268,6 @@ export class CustomUI extends Section {
             const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
 
             const validateInputs = (optionalId) => {
-              console.log("Validating stuff: " + optionalId);
-
               const testFields = optionalId ? inputFields.filter(theField => theField.id === optionalId) : inputFields
 
               let isValid = true;
@@ -277,7 +275,6 @@ export class CustomUI extends Section {
               for (const field of testFields) {
                 const fieldElement = document.getElementById(field.id);
                 const currentValue = fieldElement.value || "";
-                console.log({field, currentValue, fieldElement});
 
                 let isInvalid = false;
 
