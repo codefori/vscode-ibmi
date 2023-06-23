@@ -117,12 +117,6 @@ export class Section {
   }
 
   addField(field: Field) {
-    switch (field.type) {
-      case `submit`:
-        console.warn(`Submit fields are no longer supported. Consider using buttons instead.`);
-        break;
-    }
-
     this.fields.push(field);
     return this;
   }
@@ -203,8 +197,6 @@ export class CustomUI extends Section {
   }
 
   private getHTML(panel: vscode.WebviewPanel, title: string) {
-    const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
-
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
@@ -256,9 +248,6 @@ export class CustomUI extends Section {
     <script>
         (function () {
             const vscode = acquireVsCodeApi();
-
-            // Legacy: single submit button
-            const submitButton = document.getElementById('${submitButton.id}');
 
             // New: many button that can be pressed to submit
             const groupButtons = ${JSON.stringify(allFields.filter(field => field.type == `buttons`).map(field => field.items).flat())};
@@ -330,12 +319,6 @@ export class CustomUI extends Section {
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
               fieldElement.onkeyup = (e) => {validateInputs(field.id)};
-            }
-
-            // Legacy: when only one button was supported
-            if (submitButton) {
-              submitButton.onclick = doDone;
-              submitButton.onKeyDown = doDone;
             }
 
             // Now many buttons can be pressed to submit
@@ -420,7 +403,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
+export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -467,9 +450,6 @@ export class Field {
     this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
 
     switch (this.type) {
-      case `submit`:
-        return /* html */`<vscode-button id="${this.id}">${this.label}</vscode-button>`;
-
       case `buttons`:
         return /* html */`
           <vscode-form-group variant="settings-group">
