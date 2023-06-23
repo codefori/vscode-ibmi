@@ -128,8 +128,7 @@ export class SettingsUI {
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing)
             .addHorizontalRule()
             .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
-            .addInput(`debugCertDirectory`, `Certificate directory`, `This directory must be accessible to all users who wish to use the Debug Service. It contains the certificates to both start and connect to the Debug Service. (<code>debug_service.pfx</code> and <code>debug_service.crt</code>)`)
-            .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
+            .addInput(`debugCertDirectory`, `Certificate directory`, `This directory must be accessible to all users who wish to use the Debug Service. It contains the certificates to both start and connect to the Debug Service. (<code>debug_service.pfx</code> and <code>debug_service.crt</code>)`, {default: config.debugCertDirectory})
         }
 
         let tabs: ComplexTab[] = [
