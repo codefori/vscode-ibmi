@@ -1,7 +1,7 @@
 
+import path from 'path';
 import * as vscode from "vscode";
 import Instance from "./api/Instance";
-import path from 'path';
 
 import { CompileTools } from './api/CompileTools';
 
@@ -12,12 +12,15 @@ import { CustomUI, Field, Page } from './api/CustomUI';
 import { SearchView } from "./views/searchView";
 import { VariablesUI } from "./webviews/variables";
 
+import { dirname } from 'path';
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
+import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { init as clApiInit } from "./languages/clle/clApi";
+import * as clRunner from "./languages/clle/clRunner";
+import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
-import { getUriFromPath, QSysFS } from "./filesystems/qsys/QSysFs";
-import { initGetNewLibl } from "./languages/clle/getnewlibl";
 
 export let instance: Instance;
 
@@ -64,10 +67,10 @@ export async function disconnect(): Promise<boolean> {
     if (!document.isClosed && [`member`, `streamfile`, `object`].includes(document.uri.scheme)) {
       if (document.isDirty) {
         if (doDisconnect) {
-          if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))){
+          if (await vscode.window.showTextDocument(document).then(() => vscode.window.showErrorMessage(`Cannot disconnect while files have not been saved.`, 'Disconnect anyway'))) {
             break;
           }
-          else{
+          else {
             doDisconnect = false;
           }
         }
@@ -112,6 +115,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
+      if(!options?.readonly && !path.startsWith('/')){
+        const [library, name] = path.split('/');
+        const writable = await instance.getContent()?.checkObject({library, name, type: '*FILE'}, "*UPD");
+        if(!writable){
+          options = options || {};
+          options.readonly = true;
+        }
+      }
       const uri = getUriFromPath(path, options);
       try {
         if (line) {
@@ -282,7 +293,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         ext: undefined
       };
 
-      let inputPath: string|undefined
+      let inputPath: string | undefined
 
       if (qualifiedObject) {
         // Value passed in via parameter
@@ -340,8 +351,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-      Terminal.selectAndOpen(instance);
+      return Terminal.selectAndOpen(instance);
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
+      const content = instance.getContent();
+      if (content) {
+        const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
+        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
+        terminal?.sendText(`cd ${path}`);        
+      }
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
       const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
       if (newValue) {
@@ -400,6 +421,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);
   }
+
+  clRunner.initialise(context);
 }
 
 function updateConnectedBar() {
@@ -424,7 +447,7 @@ async function onConnected(context: vscode.ExtensionContext) {
   // CL content assist
   const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
   if (clExtension) {
-    (require(`./languages/clle/clCommands`)).init();
+    clApiInit();
   }
 
   initGetNewLibl(instance);
@@ -436,17 +459,17 @@ async function onConnected(context: vscode.ExtensionContext) {
 async function onDisconnected() {
   // Close the tabs with no dirty editors
   vscode.window.tabGroups.all
-  .filter(group => !group.tabs.some(tab => tab.isDirty))
-  .forEach(group => {
-    group.tabs.forEach(tab => {
-      if (tab.input instanceof vscode.TabInputText) {
-        const uri = tab.input.uri;
-        if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
-          vscode.window.tabGroups.close(tab);
+    .filter(group => !group.tabs.some(tab => tab.isDirty))
+    .forEach(group => {
+      group.tabs.forEach(tab => {
+        if (tab.input instanceof vscode.TabInputText) {
+          const uri = tab.input.uri;
+          if ([`member`, `streamfile`, `object`].includes(uri.scheme)) {
+            vscode.window.tabGroups.close(tab);
+          }
         }
-      }
-    })
-  });
+      })
+    });
 
   // Hide the bar items
   [

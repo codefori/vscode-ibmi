@@ -137,3 +137,7 @@ export interface QsysFsOptions {
 }
 
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
+
+export interface Library {
+  path:string
+}

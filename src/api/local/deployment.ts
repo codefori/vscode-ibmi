@@ -1,18 +1,15 @@
+import createIgnore, { Ignore } from 'ignore';
+import path, { basename } from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
-import path, { basename, dirname, posix } from 'path';
 import vscode, { WorkspaceFolder } from 'vscode';
-import { getLocalActions } from './actions';
-import { ConnectionConfiguration } from '../Configuration';
-import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { instance } from '../../instantiate';
-import ignore from 'ignore'
-import { NodeSSH } from 'node-ssh';
-import { createWriteStream, readFileSync } from 'fs';
-import Crypto from 'crypto';
-import IBMi from '../IBMi';
+import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
+import { ConnectionConfiguration } from '../Configuration';
+import IBMi from '../IBMi';
 import { Tools } from '../Tools';
+import { getLocalActions } from './actions';
 
 export namespace Deployment {
   interface MD5Entry {
@@ -148,16 +145,6 @@ export namespace Deployment {
       const existingPaths = storage?.getDeployment();
       const remotePath = existingPaths ? existingPaths[folder.uri.fsPath] : '';
 
-      // get the .gitignore file from workspace
-      const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(folder, `**/.gitignore`), ``, 1);
-      const ignoreRules = ignore({ ignorecase: true }).add(`.git`);
-      if (gitignores.length > 0) {
-        // get the content from the file
-        const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
-        ignoreRules.add(gitignoreContent.split(`\n`));
-        ignoreRules.add('**/.gitignore');
-      }
-
       if (remotePath) {
         const methods = [];
         if (getConnection().remoteFeatures.md5sum) {
@@ -191,7 +178,6 @@ export namespace Deployment {
           const parameters: DeploymentParameters = {
             workspaceFolder: folder,
             remotePath,
-            ignoreRules,
             method
           };
 
@@ -214,6 +200,8 @@ export namespace Deployment {
       deploymentLog.appendLine(`Deployment started using method "${parameters.method}"`);
       deploymentLog.appendLine(``);
       button.text = BUTTON_WORKING;
+
+      parameters.ignoreRules = parameters.ignoreRules || await getDefaultIgnoreRules(parameters.workspaceFolder);
 
       const name = basename(parameters.workspaceFolder.uri.path);
       await vscode.window.withProgress({
@@ -299,6 +287,9 @@ export namespace Deployment {
           if (relative && parameters.ignoreRules) {
             return !parameters.ignoreRules.ignores(relative);
           }
+          else {
+            return true;
+          }
         });
     } else {
       // Skip upload, but still run the Action
@@ -365,7 +356,7 @@ export namespace Deployment {
         const uploads: vscode.Uri[] = [];
         for await (const file of localFiles) {
           const remote = remoteMD5.find(e => e.path === file.path);
-          const md5 = md5Hash(file.uri);
+          const md5 = Tools.md5Hash(file.uri);
           if (!remote || remote.md5 !== md5) {
             uploads.push(file.uri);
           }
@@ -490,26 +481,21 @@ export namespace Deployment {
     };
   }
 
-  function md5Hash(file: vscode.Uri): string {
-    const bytes = readFileSync(file.fsPath);
-    return Crypto.createHash("md5")
-      .update(bytes)
-      .digest("hex")
-      .toLowerCase();
-  }
-
   function toRelative(root: vscode.Uri, file: vscode.Uri) {
     return path.relative(root.path, file.path).replace(/\\/g, `/`);
   }
 
   async function findFiles(parameters: DeploymentParameters, includePattern: string, excludePattern?: string) {
-    const root = parameters.workspaceFolder.uri.fsPath;
-    return (await vscode.workspace.findFiles(new vscode.RelativePattern(root, includePattern),
-      excludePattern ? new vscode.RelativePattern(root, excludePattern) : null))
+    const root = parameters.workspaceFolder.uri;
+    return (await vscode.workspace.findFiles(new vscode.RelativePattern(parameters.workspaceFolder, includePattern),
+      excludePattern ? new vscode.RelativePattern(parameters.workspaceFolder, excludePattern) : null))
       .filter(file => {
         if (parameters.ignoreRules) {
-          const relative = toRelative(parameters.workspaceFolder.uri, file);
+          const relative = toRelative(root, file);
           return !parameters.ignoreRules.ignores(relative);
+        }
+        else {
+          return true;
         }
       });
   }
@@ -556,4 +542,18 @@ export namespace Deployment {
       deploymentLog.appendLine(`${localTarball.name} deleted`);
     }
   }
+}
+
+async function getDefaultIgnoreRules(workspaceFolder: vscode.WorkspaceFolder): Promise<Ignore> {
+  const ignoreRules = createIgnore({ ignorecase: true }).add(`.git`);
+  // get the .gitignore file from workspace
+  const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `**/.gitignore`), ``, 1);
+  if (gitignores.length > 0) {
+    // get the content from the file
+    const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
+    ignoreRules.add(gitignoreContent.split(`\n`));
+    ignoreRules.add('**/.gitignore');
+  }
+
+  return ignoreRules;
 }

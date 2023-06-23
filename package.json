@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.8.0",
+	"version": "1.9.4",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1428,6 +1428,21 @@
 				"command": "code-for-ibmi.sortMembersByName",
 				"title": "Name",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.cl.runSelected",
+				"title": "Run selected CL command",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.openTerminalHere",
+				"title": "Open terminal here",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.ifs.copyPath",
+				"title": "Copy Path",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1471,6 +1486,12 @@
 				"command": "code-for-ibmi.connectTo",
 				"key": "ctrl+alt+c",
 				"mac": "cmd+alt+c"
+			},
+			{
+				"command": "code-for-ibmi.cl.runSelected",
+				"key": "ctrl+r",
+				"mac": "cmd+r",
+				"when": "editorLangId == cl"
 			}
 		],
 		"viewsContainers": {
@@ -1490,15 +1511,15 @@
 		"views": {
 			"ibmi-explorer": [
 				{
+					"id": "helpView",
+					"name": "Help and Support",
+					"when": "!code-for-ibmi:helpViewDisabled"
+				},
+				{
 					"id": "connectionBrowser",
 					"name": "Servers",
 					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
-				},
-				{
-					"id": "helpView",
-					"name": "Help and Support",
-					"when": "code-for-ibmi:connected && code-for-ibmi:helpViewDisabled !== true"
-				},
+				},				
 				{
 					"id": "profilesView",
 					"name": "Profiles",
@@ -1628,6 +1649,18 @@
 				},
 				{
 					"command": "code-for-ibmi.sortMembersByName",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.cl.runSelected",
+					"when": "code-for-ibmi:connected && editorLangId === cl"
+				},
+				{
+					"command": "code-for-ibmi.openTerminalHere",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.ifs.copyPath",
 					"when": "never"
 				}
 			],
@@ -2042,14 +2075,24 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
+					"command": "code-for-ibmi.ifs.copyPath",
+					"when": "view == ifsBrowser",
+					"group": "4_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.openTerminalHere",
+					"when": "view == ifsBrowser",
+					"group": "4_ifsStuff@3"
+				},
+				{
 					"command": "code-for-ibmi.moveIFSShortcutToTop",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@1"
+					"group": "5_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutToBottom",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "4_ifsStuff@4"
+					"group": "5_ifsStuff@4"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
