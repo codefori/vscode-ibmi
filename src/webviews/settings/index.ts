@@ -3,6 +3,7 @@ import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { GlobalConfiguration, ConnectionConfiguration } from "../../api/Configuration";
 import { ConnectionData, Server } from '../../typings';
 import { instance } from "../../instantiate";
+import * as certificates from "../../api/debug/certificates";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -85,7 +86,7 @@ export class SettingsUI {
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
           .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
 
-        let terminalsTab: Section|undefined;
+        let terminalsTab: Section | undefined;
 
         if (connection && connection.remoteFeatures.tn5250) {
           terminalsTab = new Section();
@@ -119,7 +120,7 @@ export class SettingsUI {
             .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
         }
 
-        let debuggerTab: Section|undefined;
+        let debuggerTab: Section | undefined;
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab = new Section();
           debuggerTab
@@ -128,7 +129,13 @@ export class SettingsUI {
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing)
             .addHorizontalRule()
             .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
-            .addInput(`debugCertDirectory`, `Certificate directory`, `This directory must be accessible to all users who wish to use the Debug Service. It contains the certificates to both start and connect to the Debug Service. (<code>debug_service.pfx</code> and <code>debug_service.crt</code>)`, {default: config.debugCertDirectory})
+            .addInput(`debugCertDirectory`, `Certificate directory`, `This directory must be accessible to all users who wish to use the Debug Service. It contains the certificates to both start and connect to the Debug Service. (<code>debug_service.pfx</code> and <code>debug_service.crt</code>)`, { default: config.debugCertDirectory });
+
+          const localCertExists = await certificates.checkLocalExists(connection);
+
+          debuggerTab
+            .addParagraph(`<b>${localCertExists ? `Client certificate for server has been imported.` : `No local client certificate exists. Debugging securely will not function correctly.`}</b>` + `To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
+            .addButtons({ id: `import`, label: `Import new certificate` })
         }
 
         let tabs: ComplexTab[] = [
@@ -151,38 +158,45 @@ export class SettingsUI {
           page.panel.dispose();
 
           const data = page.data;
-          for (const key in data) {
+          const button = data.buttons;
 
-            //In case we need to play with the data
-            switch (key) {
-              case `sourceASP`:
-                if (data[key].trim() === ``) data[key] = null;
-                break;
-              case `hideCompileErrors`:
-                data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
-                break;
+          if (button === `import`) {
+            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+
+          } else {
+            for (const key in data) {
+
+              //In case we need to play with the data
+              switch (key) {
+                case `sourceASP`:
+                  if (data[key].trim() === ``) data[key] = null;
+                  break;
+                case `hideCompileErrors`:
+                  data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
+                  break;
+              }
+
+              //Refresh connection browser if not connected
+              if (!instance.getConnection()) {
+                vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+              }
             }
 
-            //Refresh connection browser if not connected
-            if (!instance.getConnection()) {
-              vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+            if (restartFields.some(item => data[item] !== config[item])) {
+              restart = true;
             }
-          }
 
-          if (restartFields.some(item => data[item] !== config[item])) {
-            restart = true;
-          }
+            Object.assign(config, data);
+            await instance.setConfig(config);
 
-          Object.assign(config, data);
-          await instance.setConfig(config);
-
-          if (connection && restart) {
+            if (connection && restart) {
               vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
                 .then(async (value) => {
                   if (value === `Reload`) {
                     await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
                   }
                 });
+            }
           }
         }
       }),
