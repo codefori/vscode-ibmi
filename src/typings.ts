@@ -145,7 +145,7 @@ export interface Library {
 
 export interface IBMiSplfUser {
   user: string
-  text: string
+  text?: string
 }
 
 export interface IBMiSpooledFile {
