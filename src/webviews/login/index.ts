@@ -22,7 +22,7 @@ export class Login {
     const page = await new CustomUI()
       .addInput(`name`, `Connection Name`, undefined, {minlength: 1})
       .addInput(`host`, `Host or IP Address`, undefined, {minlength: 1})
-      .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5 })
+      .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
       .addInput(`username`, `Username`, undefined, {minlength: 1, maxlength: 10})
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)

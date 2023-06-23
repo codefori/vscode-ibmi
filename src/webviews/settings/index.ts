@@ -197,7 +197,7 @@ export class SettingsUI {
 
             const page = await new CustomUI()
               .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host, minlength: 1 })
-              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port), minlength: 1, maxlength: 5 })
+              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
               .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
               .addParagraph(`Only provide either the password or a private key - not both.`)
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)

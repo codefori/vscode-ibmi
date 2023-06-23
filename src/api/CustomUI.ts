@@ -52,7 +52,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number, regexTest?: string }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     this.addField(input);
     return this;
@@ -283,6 +283,11 @@ export class CustomUI extends Section {
 
                 if (field.minlength && currentValue.length < field.minlength) isInvalid = true;
                 if (field.maxlength && currentValue.length > field.maxlength) isInvalid = true;
+                if (field.regexTest) {
+                  if (!(new RegExp(field.regexTest)).test(currentValue)) {
+                    isInvalid = true;
+                  }
+                }
 
                 if (isInvalid) {
                   fieldElement.setAttribute("invalid", "true");
@@ -441,6 +446,7 @@ export class Field {
 
   public minlength?: number;
   public maxlength?: number;
+  public regexTest?: string;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
