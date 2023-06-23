@@ -153,8 +153,10 @@ export class SettingsUI {
 
         const ui = new CustomUI();
 
+        const defaultTab = tabs.findIndex(t => t.label === tab);
+
         // If `tab` is provided, we can open directory to a specific tab.. pretty cool
-        ui.addComplexTabs(tabs, tabs.findIndex(t => t.label === tab))
+        ui.addComplexTabs(tabs, (defaultTab >= 0 ? defaultTab : undefined))
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings` });
 
