@@ -50,12 +50,6 @@
 					"actions.json"
 				],
 				"url": "./src/schemas/actions.json"
-			},
-			{
-				"fileMatch": [
-					"iproj.json"
-				],
-				"url": "./src/schemas/iproj.json"
 			}
 		],
 		"configuration": {
