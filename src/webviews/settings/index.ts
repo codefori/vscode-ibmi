@@ -196,13 +196,13 @@ export class SettingsUI {
             let connection = connections[connectionIdx];
 
             const page = await new CustomUI()
-              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host })
-              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port) })
-              .addInput(`username`, `Username`, undefined, { default: connection.username })
+              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host, minlength: 1 })
+              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port), minlength: 1, maxlength: 5 })
+              .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
               .addParagraph(`Only provide either the password or a private key - not both.`)
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
               .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
-              .addButtons({ id: `submitButton`, label: `Save` })
+              .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
               .loadPage<any>(`Login Settings: ${name}`);
 
             if (page && page.data) {
