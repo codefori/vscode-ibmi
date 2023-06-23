@@ -86,10 +86,8 @@ export class SettingsUI {
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
           .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
 
-        let terminalsTab: Section | undefined;
-
+        const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
-          terminalsTab = new Section();
           terminalsTab
             .addSelect(`encodingFor5250`, `5250 encoding`, [{
               selected: config.encodingFor5250 === `default`,
@@ -118,11 +116,14 @@ export class SettingsUI {
             ], `The terminal type for the 5250 emulator.`)
             .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
             .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
+        } else if (connection) {
+          terminalsTab.addParagraph('Enable 5250 emulation to change these settings');
+        } else {
+          terminalsTab.addParagraph('Connect to the server to see these settings.');
         }
 
-        let debuggerTab: Section | undefined;
+        const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
-          debuggerTab = new Section();
           debuggerTab
             .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort })
             .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
@@ -136,13 +137,17 @@ export class SettingsUI {
           debuggerTab
             .addParagraph(`<b>${localCertExists ? `Client certificate for server has been imported.` : `No local client certificate exists. Debugging securely will not function correctly.`}</b>` + `To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
             .addButtons({ id: `import`, label: `Import new certificate` })
+        } else if (connection) {
+          debuggerTab.addParagraph('Enable the debug service to change these settings');
+        } else {
+          debuggerTab.addParagraph('Connect to the server to see these settings.');
         }
 
         let tabs: ComplexTab[] = [
           { label: `Features`, fields: featuresTab.fields },
           { label: `Source Code`, fields: sourceTab.fields },
-          terminalsTab ? { label: `Terminals`, fields: terminalsTab.fields } : undefined,
-          debuggerTab ? { label: `Debugger`, fields: debuggerTab.fields } : undefined,
+          { label: `Terminals`, fields: terminalsTab.fields },
+          { label: `Debugger`, fields: debuggerTab.fields },
           { label: `Temporary Data`, fields: tempDataTab.fields },
         ].filter(tab => tab !== undefined) as ComplexTab[];
 
