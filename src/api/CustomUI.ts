@@ -294,6 +294,23 @@ export class CustomUI extends Section {
                 }
               }
 
+              // If not validating a specific field, 
+              // then we can enable/disable certain buttons
+              if (!optionalId) {
+                for (const fieldData of groupButtons) {
+                  if (fieldData.requiresValidation) {
+                    const field = fieldData.id;
+                    
+                    let button = document.getElementById(field);
+                    if (isValid) {
+                      button.removeAttribute("disabled");
+                    } else {
+                      button.setAttribute("disabled", "true");
+                    }
+                  }
+                }
+              }
+
               return isValid;
             }
 
@@ -320,24 +337,24 @@ export class CustomUI extends Section {
             // Setup the input fields for validation
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
-              fieldElement.onkeyup = (e) => {validateInputs(field.id)};
+              fieldElement.onkeyup = (e) => {validateInputs()};
             }
 
             // Now many buttons can be pressed to submit
             for (const fieldData of groupButtons) {
-                const field = fieldData.id;
-                
-                console.log('group button', fieldData, document.getElementById(field));
-                var button = document.getElementById(field);
+              const field = fieldData.id;
+              
+              console.log('group button', fieldData, document.getElementById(field));
+              var button = document.getElementById(field);
 
-                const submitButtonAction = (event) => {
-                  const isValid = fieldData.requiresValidation ? validateInputs() : true;
-                  console.log({requiresValidation: fieldData.requiresValidation, isValid});
-                  if (isValid) doDone(event, field);
-                }
+              const submitButtonAction = (event) => {
+                const isValid = fieldData.requiresValidation ? validateInputs() : true;
+                console.log({requiresValidation: fieldData.requiresValidation, isValid});
+                if (isValid) doDone(event, field);
+              }
 
-                button.onclick = submitButtonAction;
-                button.onKeyDown = submitButtonAction;
+              button.onclick = submitButtonAction;
+              button.onKeyDown = submitButtonAction;
             }
 
             for (const field of submitfields) {
