@@ -2156,7 +2156,7 @@
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "viewItem =~ /^object/",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_workspace@1"
 				}
 			]
