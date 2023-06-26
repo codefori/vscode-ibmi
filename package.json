@@ -1494,12 +1494,6 @@
 				"icon": "$(move)"
 			},
 			{
-				"command": "code-for-ibmi.copySpooledFile",
-				"title": "Copy spooled file",
-				"enablement": "code-for-ibmi:connected",
-				"icon": "$(copy)"
-			},
-			{
 				"command": "code-for-ibmi.downloadSpooledfile",
 				"title": "Download spooled file",
 				"enablement": "code-for-ibmi:connected",
@@ -2346,11 +2340,6 @@
 					"command": "code-for-ibmi.moveSpooledFile",
 					"when": "view == splfBrowser && viewItem =~ /^spooledfile$/",
 					"group": "2_spooledfile@3"
-				},
-				{
-					"command": "code-for-ibmi.copySpooledFile",
-					"when": "view == splfBrowser && viewItem =~ /^spooledfile_Never.*$/",
-					"group": "2_spooledfile@4"
 				},
 				{
 					"command": "code-for-ibmi.downloadSpooledfile",
