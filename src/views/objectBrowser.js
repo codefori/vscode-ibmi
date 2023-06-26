@@ -67,6 +67,67 @@ module.exports = class ObjectBrowser {
         this.refresh();
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.createQuickFilter`, async (node, newFilter) => {        
+        /** @type {ConnectionConfiguration.Parameters} */
+        const config = getInstance().getConfig();
+        const objectFilters = config.objectFilters;
+
+        const LIBRARY_REGEX = /^(?<lib>[^/.() ]+)\*$/;
+        const FILTER_REGEX = /^(?<lib>[^/.() ]+)(\/(?<obj>[^/.() ]+))?(\/(?<mbr>[^/.() ]+))?(\.(?<mbrType>[^/.() ]+))?( \((?<objType>[^/.()]+)\))?$/;
+
+        newFilter = await vscode.window.showInputBox({
+          prompt: `Enter filter as LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`,
+          value: newFilter,
+          validateInput: newFilter => {
+            const libraryRegex = LIBRARY_REGEX.exec(newFilter.toUpperCase());
+            const filterRegex = FILTER_REGEX.exec(newFilter.toUpperCase());
+            if (!libraryRegex && !filterRegex) return `Invalid filter: ${newFilter}. Use format LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`;
+          }
+        });
+
+        if(newFilter) {
+          let regex = LIBRARY_REGEX.exec(newFilter.toUpperCase());
+
+          if (regex) {
+            const parsedFilter = regex.groups;
+            const filter = {
+              name: `Filter ${objectFilters.length + 1}`,
+              library: `QSYS`,
+              object: `${parsedFilter.lib}*`,
+              types: [`*LIB`],
+              member: `*`,
+              memberType: `*`,
+              protected: false
+            }
+            objectFilters.push(filter);
+          } else {
+            regex = FILTER_REGEX.exec(newFilter.toUpperCase());
+
+            if(regex) {
+              const parsedFilter = regex.groups;
+              const filter = {
+                name: `Filter ${objectFilters.length + 1}`,
+                library: parsedFilter.lib || `QGPL`,
+                object: parsedFilter.obj || `*`,
+                types: [parsedFilter.objType || `*SRCPF`],
+                member: parsedFilter.mbr || `*`,
+                memberType: parsedFilter.mbrType || `*`,
+                protected: false
+              }
+              objectFilters.push(filter);
+            } else {
+              if(await vscode.window.showErrorMessage(`Error creating filter ${newFilter}`, `Retry`)){
+                vscode.commands.executeCommand(`code-for-ibmi.createQuickFilter`, node, newFilter);
+              }
+            }
+          }
+
+          config.objectFilters = objectFilters;
+          await ConnectionConfiguration.update(config);
+          this.refresh();
+        }
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.copyFilter`, async (node) => {
         if (node) {
           await FiltersUI.init(node.filter, true);
