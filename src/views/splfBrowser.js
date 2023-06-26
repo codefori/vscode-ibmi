@@ -94,7 +94,7 @@ module.exports = class SPLFBrowser {
             }
           }
         } catch (e) {
-          console.log(e);
+          // console.log(e);
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.deleteUserSpooledFileFilter`, async (node) => {
@@ -127,7 +127,7 @@ module.exports = class SPLFBrowser {
             }
           }
         } catch (e) {
-          console.log(e);
+          // console.log(e);
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.sortUserSpooledFileFilter`, async (node) => {
@@ -149,7 +149,7 @@ module.exports = class SPLFBrowser {
           await ConnectionConfiguration.update(config);
           if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
         } catch (e) {
-          console.log(e);
+          // console.log(e);
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.deleteSpooledFile`, async (node) => {
@@ -302,66 +302,7 @@ module.exports = class SPLFBrowser {
 
         } else {
           //Running from command
-          console.log(this);
-        }
-      }),
-      vscode.commands.registerCommand(`code-for-ibmi.copySpooledFile`, async (node) => {
-        /** @type {ConnectionConfiguration.Parameters} */
-        // const content = getInstance().getContent();
-        // const TempCpyFileName = Tools.makeid();
-        // const TempSrcFileName = Tools.makeid();
-        // const TempSrcMbrName = Tools.makeid();
-        // const tempLib = content.config.tempLibrary;
-        // const asp = ``;
-        let newName =``;
-        
-        if (node) {
-          //Running from right click
-          
-          // let newName = await vscode.window.showInputBox({
-          //   prompt: `Name of new spooled file name`,
-          //   value: node.name
-          // });
-
-          if (newName) {
-            // const connection = getInstance().getConnection();
-            
-            // try {
-            //   let cpyCmdSrc = `// BCHJOB  JOB(CPYSPLF) JOBQ(*JOBD)\n` 
-            //           +  `\nCRTPF FILE(${tempLib}/${TempCpyFileName}) MBR(*FILE) RCDLEN(382)`
-            //           +  `\nCPYSPLF TOFILE(${tempLib}/${TempCpyFileName}) FILE(${node.name}) JOB(${node.qualified_job_name}) SPLNBR(${node.number}) CTLCHAR(*FCFC)`
-            //           +  `\nCPYF FROMFILE(${tempLib}/${TempCpyFileName}) TOFILE(*PRINT) OUTFMT(*CHAR)`
-            //           +  `\n// ENDBCHJOB`;
-            //   await connection.runCommand({
-            //     command: `CRTSRCPF FILE(${tempLib}/${TempSrcFileName}) MBR(${TempSrcMbrName}) RCDLEN(120)`
-            //     ,environment: `ile`
-            //   });
-            //   await content.uploadMemberContent(asp, tempLib, TempSrcFileName, TempSrcMbrName, cpyCmdSrc)
-            //   let cpyCommands = `SBMDBJOB FILE(${tempLib}/${TempSrcFileName}) MBR(${TempSrcMbrName}) JOBQ(QUSRNOMAX)`;
-            //   const commandResult = await connection.runCommand({
-            //     command: cpyCommands
-            //     ,environment: `ile`
-            //   });
-            //   // await connection.runCommand({
-            //   //   command: ``
-            //   //         +  `\nCRTPF FILE(${tempLib}/${TempFileName}) MBR(*FILE) RCDLEN(382)`
-            //   //         +  `\nCPYSPLF TOFILE(${tempLib}/${TempFileName}) FILE(${node.name}) JOB(${node.qualified_job_name}) SPLNBR(${node.number}) CTLCHAR(*FCFC)`
-            //   //         +  `\nCPYF FROMFILE(${tempLib}/${TempFileName}) TOFILE(*PRINT) OUTFMT(*CHAR)`
-            //   //   ,environment: `ile`
-            //   // });
-            //   if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-            //   // vscode.window.showInformationMessage(`${node.path} was copied to ${newName}.`);
-            //   // vscode.window.showInformationMessage(`${Tools.escapePath(node.path)} was copied to ${Tools.escapePath(newName)}.`);
-              
-            // } catch (e) {
-            //   vscode.window.showErrorMessage(`Error copying ${node.path}! ${e}`);
-            // }
-          }
-              
-        } else {
-          //Running from command
-          console.log(this);
-          throw new Error(`code-for-ibmi.copySpooledFile not implemented.`);
+          // console.log(this);
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.searchSpooledFiles`, async (node) => {
@@ -572,12 +513,11 @@ module.exports = class SPLFBrowser {
           //Fetch spooled files
           try {
             const objects = await content.getUserSpooledFileFilter(element.filter.userName, element.sort);
-            // console.log(JSON.stringify(objects));
             items.push(...objects
               .map(object => new SPLF(`SPLF`, element, object, element.filter)));
 
           } catch (e) {
-            console.log(e);
+            // console.log(e);
             vscode.window.showErrorMessage(e.message);
             items.push(new vscode.TreeItem(`Error loading user spooled files.`));
           }
