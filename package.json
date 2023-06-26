@@ -2146,7 +2146,7 @@
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && viewItem =~ /^object(?!.lib)/",
 					"group": "1_objActions@5"
 				},
 				{
