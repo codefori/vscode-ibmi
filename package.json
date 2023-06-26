@@ -1931,12 +1931,12 @@
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
-					"when": "view =~ /^(object|ifs)Browser$/ && viewItem =~ /^member.*$/ || viewItem == streamfile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@1"
 				},
 				{
 					"command": "code-for-ibmi.compareWithSelected",
-					"when": "view =~ /^(object|ifs)Browser$/ && viewItem =~ /^member.*$/ || viewItem == streamfile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@2"
 				},
 				{
@@ -1951,7 +1951,7 @@
 				},
 				{
 					"submenu": "code-for-ibmi.sortMembers",
-					"when": "view == objectBrowser && viewItem =~ /^SPF/ || viewItem =~ /^member/",
+					"when": "view == objectBrowser && (viewItem =~ /^SPF/ || viewItem =~ /^member/)",
 					"group": "5_sourceFileStuff@1"
 				},
 				{
