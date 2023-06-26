@@ -722,7 +722,7 @@ export default class IBMiContent {
     let results: Tools.DB2Row[];
 
     objQuery = `select QE.SPOOLED_FILE_NAME, QE.SPOOLED_FILE_NUMBER, QE.STATUS, QE.CREATION_TIMESTAMP, QE.USER_DATA, QE.SIZE, QE.TOTAL_PAGES, QE.QUALIFIED_JOB_NAME, QE.JOB_NAME, QE.JOB_USER, QE.JOB_NUMBER, QE.FORM_TYPE, QE.OUTPUT_QUEUE_LIBRARY, QE.OUTPUT_QUEUE
-from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAILABLE = '*FILEEND' ${splfName ? ` and SPOOLED_FILE_NAME = '${splfName}'` : ""}`;
+from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => ucase('${user}')) ) QE where FILE_AVAILABLE = '*FILEEND' ${splfName ? ` and SPOOLED_FILE_NAME = ucase('${splfName}')` : ""}`;
     results = await this.runSQL(objQuery);
     if (results.length === 0) {
       return [];
@@ -842,7 +842,7 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE where FILE_AVAI
 
     const objQuery = `select count(*) USER_SPLF_COUNT
     from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => '${user}') ) QE 
-    where FILE_AVAILABLE = '*FILEEND' ${splfName ? `and SPOOLED_FILE_NAME = '${splfName}'` : ""} 
+    where FILE_AVAILABLE = '*FILEEND' ${splfName ? `and SPOOLED_FILE_NAME = ucase('${splfName}')` : ""} 
     group by QE.JOB_USER` ;
     results = await this.runSQL(objQuery);
     if (results.length === 0) {

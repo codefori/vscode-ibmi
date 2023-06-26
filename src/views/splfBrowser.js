@@ -311,23 +311,29 @@ module.exports = class SPLFBrowser {
         /** @type {ConnectionConfiguration.Parameters} */
         const config = getInstance().getConfig();
 
-        let searchPath;
-        if (node)
-          searchPath = node.name;
+        let searchUser;
+        let searchName;
+        if (node) {
+          searchUser = node.user;
+          searchName = node.name;
+        }
         else {
-          // searchPath = config.homeDirectory;
-          // searchPath = await vscode.window.showInputBox({
-          //   value: searchPath,
-          //   prompt: `Enter user to search over`,
-          //   title: `Search user spooled files`
-          // })
-          return;
+          searchUser = await vscode.window.showInputBox({
+            value: config.currentLibrary,
+            prompt: `Enter user to search over`,
+            title: `Search user spooled files`
+          })
+          searchName = await vscode.window.showInputBox({
+            value: ``,
+            prompt: `Enter spooled file name to search over`,
+            title: `Search in named spooled file`
+          })
         }
 
-        if (!searchPath) return;
+        if (!searchName) return;
 
         let searchTerm = await vscode.window.showInputBox({
-          prompt: `Search in spooled files named ${searchPath}.`
+          prompt: `Search in spooled files named ${searchName}.`
           // prompt: `Search ${searchPath}.`
         });
 
@@ -338,20 +344,20 @@ module.exports = class SPLFBrowser {
               title: `Searching`,
             }, async progress => {
               progress.report({
-                message: `'${searchTerm}' in ${node.user}, ${searchPath} spooled files.`
+                message: `'${searchTerm}' in ${searchUser}, ${searchName} spooled files.`
               });
-              const splfnum = await content.getUserSpooledFileCount(node.user, searchPath);
+              const splfnum = await content.getUserSpooledFileCount(searchUser, searchName);
               if (splfnum > 0) {
                 // NOTE: if more messages are added, lower the timeout interval
                 const timeoutInternal = 9000;
                 const searchMessages = [
-                  `'${searchTerm}' in ${node.path} spooled files.`,
-                  `This is taking a while because there are ${splfnum} spooled files. Searching '${searchTerm}' in ${node.user} still.`,
+                  `'${searchTerm}' in ${searchUser} spooled files.`,
+                  `This is taking a while because there are ${splfnum} spooled files. Searching '${searchTerm}' in ${searchUser} still.`,
                   `What's so special about '${searchTerm}' anyway?`,
-                  `Still searching '${searchTerm}' in ${node.path}...`,
+                  `Still searching '${searchTerm}' in ${searchUser}...`,
                   `Wow. This really is taking a while. Let's hope you get the result you want.`,
                   `How does one end up with ${splfnum} spooled files.  Ever heared of cleaning up?`,
-                  `'${searchTerm}' in ${node.user}.`,
+                  `'${searchTerm}' in ${searchUser}.`,
                 ];
                 let currentMessage = 0;
                 const messageTimeout = setInterval(() => {
@@ -364,7 +370,7 @@ module.exports = class SPLFBrowser {
                     clearInterval(messageTimeout);
                   }
                 }, timeoutInternal);
-                let results = await Search.searchUserSpooledFiles(getInstance(), searchTerm, node.user, searchPath);
+                let results = await Search.searchUserSpooledFiles(getInstance(), searchTerm, searchUser, searchName);
 
                 if (results.length > 0) {
                   const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
@@ -372,7 +378,7 @@ module.exports = class SPLFBrowser {
                   setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
 
                 } else {
-                  vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchPath}.`);
+                  vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchName}.`);
                 }
               } else {
                 vscode.window.showErrorMessage(`No spooled files to search.`);
@@ -380,6 +386,7 @@ module.exports = class SPLFBrowser {
             });
 
           } catch (e) {
+            console.log(e);
             vscode.window.showErrorMessage(`Error searching spooled files.`);
           }
         }
