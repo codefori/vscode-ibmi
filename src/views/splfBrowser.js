@@ -216,7 +216,7 @@ module.exports = class SPLFBrowser {
                 ,environment: `ile`
               });
               if (commandResult) {
-                vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+                // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
                 if (commandResult.code === 0 || commandResult.code === null) {
                 } else {
                 }
@@ -257,7 +257,7 @@ module.exports = class SPLFBrowser {
                 , environment: `ile`
               });
               if (commandResult) {
-                vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+                // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
                 if (commandResult.code === 0 || commandResult.code === null) {
                 } else {
                 }
