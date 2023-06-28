@@ -1,9 +1,10 @@
 import assert from "assert";
+import { commands } from "vscode";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
-import { commands } from "vscode";
+import { CommandResult } from "../typings";
 
-export const ConnectionSuite: TestSuite = {
+export const ConnectionSuite: TestSuite = {  
   name: `Connection tests`,
   tests: [
     {name: `Test sendCommand`, test: async () => {
@@ -144,16 +145,20 @@ export const ConnectionSuite: TestSuite = {
 
     {name: `runCommand API compared to code-for-ibmi.runCommand (deprecated)`, test: async () => {
       const connection = instance.getConnection();
+      let resultA: CommandResult | null | undefined;
+      let resultB: CommandResult | null | undefined;
   
-      const resultA = await connection?.runCommand({
+      resultA = await connection?.runCommand({
         command: `DSPLIBL`,
         environment: `ile`
       });
-  
-      const resultB = await commands.executeCommand(`code-for-ibmi.runCommand`, {
+      resultA!.stdout = resultA!.stdout.split(`\n`).slice(1).join(`\n`); // Ignore first line, contains timestamp...
+
+      resultB = await commands.executeCommand(`code-for-ibmi.runCommand`, {
         command: `DSPLIBL`,
         environment: `ile`
       });
+      resultB!.stdout = resultB!.stdout.split(`\n`).slice(1).join(`\n`); // Ignore first line, contains timestamp...
 
       assert.deepStrictEqual(resultA, resultB);
     }},

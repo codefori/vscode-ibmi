@@ -87,6 +87,7 @@ module.exports = class IFSBrowser {
 
       vscode.commands.registerCommand(`code-for-ibmi.addIFSShortcut`, async (node) => {
         const config = getInstance().getConfig();
+        const content = getInstance().getContent();
 
         let newDirectory;
 
@@ -102,7 +103,9 @@ module.exports = class IFSBrowser {
           if (newDirectory) {
             newDirectory = newDirectory.trim();
 
-            if (!shortcuts.includes(newDirectory)) {
+            if (await content.isDirectory(newDirectory) !== true) {
+              throw(`${newDirectory} is not a directory.`);
+            } else if (!shortcuts.includes(newDirectory)) {
               shortcuts.push(newDirectory);
               config.ifsShortcuts = shortcuts;
               await ConnectionConfiguration.update(config);
@@ -111,7 +114,7 @@ module.exports = class IFSBrowser {
             }
           }
         } catch (e) {
-          console.log(e);
+          vscode.window.showErrorMessage(`Error creating IFS shortcut! ${e}`);
         }
       }),
 
@@ -585,6 +588,10 @@ module.exports = class IFSBrowser {
           //Running from command.
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.ifs.copyPath`, async (node) => {
+        await vscode.env.clipboard.writeText(node.path);
+      }),
     )
 
     getInstance().onEvent(`connected`, () => this.refresh());
@@ -616,7 +623,7 @@ module.exports = class IFSBrowser {
       if (element) { //Chosen directory
         //Fetch members
         try {
-          const objects = await content.getFileList(element.path, element.sort);
+          const objects = await content.getFileList(element.path, element.sort, this.handleFileListErrors);
           items.push(...objects.filter(o => o.type === `directory`)
             .concat(objects.filter(o => o.type === `streamfile`))
             .map(object => new Object(object.type, object.name, object.path, object.size, object.modified, object.owner, object.type === `streamfile` ? element : undefined)));
@@ -639,6 +646,15 @@ module.exports = class IFSBrowser {
 
   getParent(item) {
     return item.parent;
+  }
+
+  /**
+   * 
+   * @param {string[]} errors 
+   */
+  handleFileListErrors(errors) {
+    errors.forEach(error => vscode.window.showErrorMessage(error));
+    vscode.window.showErrorMessage(`${errors.length} error${errors.length > 1 ? `s` : ``} occurred while listing files.`);
   }
 
   /**

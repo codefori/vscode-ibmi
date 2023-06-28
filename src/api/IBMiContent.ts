@@ -3,9 +3,8 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import vscode from "vscode";
 import { ObjectTypes } from '../schemas/Objects';
-import { IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -14,6 +13,8 @@ const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
 
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
+
+type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
 
 export type SortOptions = {
   order: "name" | "date" | "?"
@@ -110,7 +111,7 @@ export default class IBMiContent {
   /**
    * Download the contents of a source member
    */
-  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string) {
+  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
     asp = asp || this.config.sourceASP;
     library = library.toUpperCase();
     sourceFile = sourceFile.toUpperCase();
@@ -118,7 +119,6 @@ export default class IBMiContent {
 
     const path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
-    const tmpobj = await tmpFile();
     const client = this.ibmi.client;
 
     let retried = false;
@@ -146,8 +146,11 @@ export default class IBMiContent {
       }
     }
 
-    await client.getFile(tmpobj, tempRmt);
-    return await readFileAsync(tmpobj, `utf8`);
+    if (!localPath) {
+      localPath = await tmpFile();
+    }
+    await client.getFile(localPath, tempRmt);
+    return await readFileAsync(localPath, `utf8`);
   }
 
   /**
@@ -455,8 +458,8 @@ export default class IBMiContent {
 
     const library = lib.toUpperCase();
     const sourceFile = spf.toUpperCase();
-    let member = (mbr !== `*` ? mbr : null);
-    let memberExt = (ext !== `*` ? ext : null);
+    let member = (mbr !== `*` ? mbr.toUpperCase() : null);
+    let memberExt = (ext !== `*` ? ext.toUpperCase() : null);
 
     let results: Tools.DB2Row[];
 
@@ -562,59 +565,61 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?: (errors: string[]) => void): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
     const { 'sort': SORT } = this.ibmi.remoteFeatures;
 
     const items: IFSFile[] = [];
-    let fileListResult;
+    let fileListResult: CommandResult;
 
     if (STAT && SORT) {
       fileListResult = (await this.ibmi.sendCommand({
-        command: `${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`,
-        directory: `${remotePath}`
+        command: `cd '${remotePath}' && ${STAT} --dereference --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" * .* ${sort.order === `date` ? `| ${SORT} --key=6` : ``} ${(sort.order === `date` && !sort.ascending) ? ` --reverse` : ``}`
       }));
 
-      const fileStatList = fileListResult.stdout;
-      const fileList = fileStatList.split(`\n`);
+      if (fileListResult.stdout !== '') {
+        const fileStatList = fileListResult.stdout;
+        const fileList = fileStatList.split(`\n`);
 
-      //Remove current and dir up.
-      fileList.forEach(item => {
-        let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
-        [auth, hardLinks, owner, group, size, modified, name] = item.split(`\t`);
+        //Remove current and dir up.
+        fileList.forEach(item => {
+          let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
+          [auth, hardLinks, owner, group, size, modified, name] = item.split(`\t`);
 
-        if (name !== `..` && name !== `.`) {
-          const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
-          items.push({
-            type: type,
-            name: name,
-            path: path.posix.join(remotePath, name),
-            size: Number(size),
-            modified: new Date(Number(modified) * 1000),
-            owner: owner
-          });
-        };
-      });
-
-    } else {      
+          if (name !== `..` && name !== `.`) {
+            const type = (auth.startsWith(`d`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: name,
+              path: path.posix.join(remotePath, name),
+              size: Number(size),
+              modified: new Date(Number(modified) * 1000),
+              owner: owner
+            });
+          };
+        });
+      }
+    } else {
       fileListResult = (await this.ibmi.sendCommand({
         command: `${this.ibmi.remoteFeatures.ls} -a -p -L ${sort.order === "date" ? "-t" : ""} ${(sort.order === 'date' && sort.ascending) ? "-r" : ""} ${Tools.escapePath(remotePath)}`
       }));
 
-      const fileList = fileListResult.stdout;
+      if (fileListResult.stdout !== '') {
+        const fileList = fileListResult.stdout;
 
-      //Remove current and dir up.
-      fileList.split(`\n`)
-        .filter(item => item !== `../` && item !== `./`)
-        .forEach(item => {
-          const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
-          items.push({
-            type: type,
-            name: (type === `directory` ? item.substring(0, item.length - 1) : item),
-            path: path.posix.join(remotePath, item)
+        //Remove current and dir up.
+        fileList.split(`\n`)
+          .filter(item => item !== `../` && item !== `./`)
+          .forEach(item => {
+            const type = (item.endsWith(`/`) ? `directory` : `streamfile`);
+            items.push({
+              type: type,
+              name: (type === `directory` ? item.substring(0, item.length - 1) : item),
+              path: path.posix.join(remotePath, item)
+            });
           });
-        });
+      }
     }
 
     if (sort.order === "name") {
@@ -631,8 +636,7 @@ export default class IBMiContent {
         .filter(Tools.distinct);
 
       if (errors.length) {
-        errors.forEach(error => vscode.window.showErrorMessage(error));
-        vscode.window.showErrorMessage(`${errors.length} error${errors.length > 1 ? 's' : ''} occurred while listing files.`);
+        onListError ? onListError(errors) : errors.forEach(console.log);
       }
     }
 
@@ -664,8 +668,8 @@ export default class IBMiContent {
 
     return undefined;
   }
-  
-  async objectResolve(object: string, libraries: string[]): Promise<string|undefined> {
+
+  async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
     const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
@@ -685,8 +689,8 @@ export default class IBMiContent {
     return undefined;
   }
 
-  async streamfileResolve(name: string, directories: string[]): Promise<string | undefined> {
-    const command = `for f in ${directories.map(dir => path.posix.join(dir, name)).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
+  async streamfileResolve(names: string[], directories: string[]): Promise<string | undefined> {
+    const command = `for f in ${directories.flatMap(dir => names.map(name => path.posix.join(dir, name))).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -747,7 +751,7 @@ export default class IBMiContent {
    */
   getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
     let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
-    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD).concat(HHMMSS);
+    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
     return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
   }
@@ -757,9 +761,15 @@ export default class IBMiContent {
    * 
    * @param remotePath: a remote IFS path
    */
-  async isDirectory(remotePath : string){
+  async isDirectory(remotePath: string) {
     return (await this.ibmi.sendCommand({
       command: `cd ${remotePath}`
     })).code === 0;
+  }
+
+  async checkObject(object: { library: string, name: string, type: string }, ...authorities: Authority[]) {
+    return (await this.ibmi.runCommand({
+      command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`
+    }))?.code === 0;
   }
 }

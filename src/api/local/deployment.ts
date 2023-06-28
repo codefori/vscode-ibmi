@@ -1,6 +1,4 @@
-import Crypto from 'crypto';
-import { readFileSync } from 'fs';
-import ignore, { Ignore } from 'ignore';
+import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
@@ -358,7 +356,7 @@ export namespace Deployment {
         const uploads: vscode.Uri[] = [];
         for await (const file of localFiles) {
           const remote = remoteMD5.find(e => e.path === file.path);
-          const md5 = md5Hash(file.uri);
+          const md5 = Tools.md5Hash(file.uri);
           if (!remote || remote.md5 !== md5) {
             uploads.push(file.uri);
           }
@@ -483,14 +481,6 @@ export namespace Deployment {
     };
   }
 
-  function md5Hash(file: vscode.Uri): string {
-    const bytes = readFileSync(file.fsPath);
-    return Crypto.createHash("md5")
-      .update(bytes)
-      .digest("hex")
-      .toLowerCase();
-  }
-
   function toRelative(root: vscode.Uri, file: vscode.Uri) {
     return path.relative(root.path, file.path).replace(/\\/g, `/`);
   }
@@ -555,7 +545,7 @@ export namespace Deployment {
 }
 
 async function getDefaultIgnoreRules(workspaceFolder: vscode.WorkspaceFolder): Promise<Ignore> {
-  const ignoreRules = ignore({ ignorecase: true }).add(`.git`);
+  const ignoreRules = createIgnore({ ignorecase: true }).add(`.git`);
   // get the .gitignore file from workspace
   const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `**/.gitignore`), ``, 1);
   if (gitignores.length > 0) {

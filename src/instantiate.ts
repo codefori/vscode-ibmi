@@ -115,6 +115,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
+      if (!options?.readonly && !path.startsWith('/')) {
+        const [library, name] = path.split('/');
+        const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
+        if (!writable) {
+          options = options || {};
+          options.readonly = true;
+        }
+      }
       const uri = getUriFromPath(path, options);
       try {
         if (line) {
@@ -219,53 +227,41 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       CompileTools.clearDiagnostics();
     }),
     vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
-      if (node) {
-        const uri = node.resourceUri || node;
-
-        CompileTools.runAction(instance, uri);
-
-      } else {
-        const editor = vscode.window.activeTextEditor;
-        let willRun = false;
-
-        if (editor) {
-          const config = instance.getConfig()!;
-          const uri = editor.document.uri;
-          willRun = true;
-          if (config.autoSaveBeforeAction) {
-            await editor.document.save();
-          } else {
-            if (editor.document.isDirty) {
-              let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
-
+      const editor = vscode.window.activeTextEditor;
+      const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
+      if (uri) {
+        const config = instance.getConfig();
+        if (config) {
+          let canRun = true;
+          if (editor && uri.path === editor.document.uri.path && editor.document.isDirty) {
+            if (config.autoSaveBeforeAction) {
+              await editor.document.save();
+            } else {
+              const result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
               switch (result) {
                 case `Save`:
                   await editor.document.save();
-                  willRun = true;
+                  canRun = true;
                   break;
                 case `Save automatically`:
                   config.autoSaveBeforeAction = true;
                   await ConnectionConfiguration.update(config);
                   await editor.document.save();
-                  willRun = true;
+                  canRun = true;
                   break;
                 default:
-                  willRun = false;
+                  canRun = false;
                   break;
               }
             }
           }
 
-          if (willRun) {
-            const scheme = uri.scheme;
-            switch (scheme) {
-              case `member`:
-              case `streamfile`:
-              case `file`:
-                CompileTools.runAction(instance, uri);
-                break;
-            }
+          if (canRun && [`member`, `streamfile`, `file`].includes(uri.scheme)) {
+            CompileTools.runAction(instance, uri);
           }
+        }
+        else{
+          vscode.window.showErrorMessage('Please connect to an IBM i first');
         }
       }
     }),
@@ -350,9 +346,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const content = instance.getContent();
       if (content) {
         const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
-        const terminal = vscode.window.terminals.find(t => t.name === 'IBM i PASE') ||
-          await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
-        terminal?.sendText(`cd ${path}`);        
+        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
+        terminal?.sendText(`cd ${path}`);
       }
     }),
 

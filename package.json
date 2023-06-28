@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.9.1",
+	"version": "1.9.4",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -694,7 +694,7 @@
 								"rpgle"
 							],
 							"name": "Create Bound RPG Program (CRTBNDRPG) with inputs",
-							"command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+							"command": "CRTBNDRPG PGM(${buildlib|Build library|&BUILDLIB}/${objectname|Object Name|&NAME}) SRCSTMF('${sourcePath|Source path|&FULLPATH}') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
 						},
 						{
 							"type": "streamfile",
@@ -703,7 +703,7 @@
 								"RPG"
 							],
 							"name": "Create Bound RPG Program (CRTBNDRPG)",
-							"command": "CRTBNDRPG PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+							"command": "CRTBNDRPG PGM(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) TGTCCSID(*JOB)"
 						},
 						{
 							"type": "streamfile",
@@ -719,7 +719,7 @@
 								"SQLRPGLE"
 							],
 							"name": "Create SQL ILE RPG Program (CRTSQLRPGI)",
-							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
 						},
 						{
 							"type": "streamfile",
@@ -727,7 +727,7 @@
 								"SQLRPGLE"
 							],
 							"name": "Create SQL ILE RPG Module (CRTSQLRPGI)",
-							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)"
+							"command": "?CRTSQLRPGI OBJ(&BUILDLIB/&NAME) SRCSTMF('&FULLPATH') OBJTYPE(*MODULE) CLOSQLCSR(*ENDMOD) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT) CVTCCSID(*JOB)"
 						},
 						{
 							"type": "streamfile",
@@ -1438,6 +1438,11 @@
 				"command": "code-for-ibmi.openTerminalHere",
 				"title": "Open terminal here",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.ifs.copyPath",
+				"title": "Copy Path",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1652,6 +1657,10 @@
 				},
 				{
 					"command": "code-for-ibmi.openTerminalHere",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.ifs.copyPath",
 					"when": "never"
 				}
 			],
@@ -2066,6 +2075,11 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
+					"command": "code-for-ibmi.ifs.copyPath",
+					"when": "view == ifsBrowser",
+					"group": "4_ifsStuff@1"
+				},
+				{
 					"command": "code-for-ibmi.openTerminalHere",
 					"when": "view == ifsBrowser",
 					"group": "4_ifsStuff@3"
@@ -2174,7 +2188,7 @@
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
-		"semver": "^7.3.5",
+		"semver": "^7.5.2",
 		"ts-loader": "^9.3.1",
 		"typescript": "^4.8.2",
 		"vscode-test": "^1.5.0",

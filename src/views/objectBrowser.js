@@ -1014,10 +1014,11 @@ module.exports = class ObjectBrowser {
           const spf = element;
 
           filter = config.objectFilters.find(filter => filter.name === spf.filter);
-          const path = spf.path.split(`/`);
+          const [library, file] = spf.path.split(`/`);
 
+          const writable = await content.checkObject({library, name: file, type: `*FILE`}, `*UPD`);
           try {
-            let members = await content.getMemberList(path[0], path[1], filter.member, filter.memberType, spf.sort);
+            let members = await content.getMemberList(library, file, filter.member, filter.memberType, spf.sort);
             if (objectNamesLower === true) {
               members = members.map(member => {
                 member.file = member.file.toLocaleLowerCase();
@@ -1026,7 +1027,7 @@ module.exports = class ObjectBrowser {
                 return member;
               })
             };
-            items.push(...members.map(member => new Member(spf, member, filter)));
+            items.push(...members.map(member => new Member(spf, member, filter, writable)));
 
             await this.storeMemberList(spf.path, members.map(member => `${member.name}.${member.extension}`));
           } catch (e) {
@@ -1184,13 +1185,15 @@ class Member extends vscode.TreeItem {
    * @param {SPF} parent 
    * @param {import(`../typings`).IBMiMember} member 
    * @param {ConnectionConfiguration.ObjectFilters} filter 
+   * @param {boolean} writable
    */
-  constructor(parent, member, filter) {
+  constructor(parent, member, filter, writable) {
     super(`${member.name}.${member.extension}`);
+    const readOnly = filter.protected || !writable;
     this.parent = parent;
-    this.contextValue = `member${filter.protected ? `_readonly` : ``}`;
+    this.contextValue = `member${readOnly ? `_readonly` : ``}`;
     this.description = member.text;
-    this.resourceUri = getMemberUri(member, filter.protected ? { readonly: true } : undefined);
+    this.resourceUri = getMemberUri(member, readOnly ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
     this.tooltip = `${this.resourceUri.path}`
       .concat(`${member.text ? `\nText:\t\t${member.text}` : ``}`)
@@ -1202,6 +1205,7 @@ class Member extends vscode.TreeItem {
       title: `Open Member`,
       arguments: [this.resourceUri]
     };
+    this.iconPath = readOnly ? new vscode.ThemeIcon(`lock-small`) : undefined;
   }
 }
 
