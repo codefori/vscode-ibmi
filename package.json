@@ -49,7 +49,7 @@
 				"fileMatch": [
 					"actions.json"
 				],
-				"url": "./src/schemas/actions.json"
+				"url": "./snippets/actions.json"
 			}
 		],
 		"configuration": {

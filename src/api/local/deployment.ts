@@ -4,7 +4,7 @@ import tar from 'tar';
 import tmp from 'tmp';
 import vscode, { WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
-import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
+import { LocalLanguageActions } from './LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
 import { ConnectionConfiguration } from '../Configuration';
 import IBMi from '../IBMi';
