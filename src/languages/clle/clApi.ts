@@ -1,9 +1,12 @@
+import * as xml2js from "xml2js";
+
 import { window } from "vscode";
 import { instance } from "../../instantiate";
 
 import * as gencmdxml from "./gencmdxml";
 
 export async function init() {
+  const connection = instance.getConnection()!;
   const clComponentsInstalled = checkRequirements();
 
   if (!clComponentsInstalled) {
@@ -15,6 +18,7 @@ export async function init() {
           try {
             await install();
             window.showInformationMessage(`CL components installed.`);
+            connection.remoteFeatures[`GENCMDXML.PGM`] = `INSTALLED`;
           } catch (e) {
             window.showInformationMessage(`Failed to install CL components.`);
           }
@@ -24,7 +28,7 @@ export async function init() {
   }
 }
 
-function checkRequirements() {
+export function checkRequirements() {
   const connection = instance.getConnection();
 
   return (connection !== undefined && connection.remoteFeatures[`GENCMDXML.PGM`] !== undefined);
@@ -47,4 +51,38 @@ async function install() {
   await connection.remoteCommand(
     `CRTBNDCL PGM(${tempLib}/GENCMDXML) SRCFILE(${tempLib}/QTOOLS) DBGVIEW(*SOURCE) TEXT('vscode-ibmi xml generator for commands')`
   );
+}
+
+export async function getDefinition(command: string, library = `*LIBL`) {
+  if (checkRequirements()) { 
+    const validLibrary = library || `*LIBL`;
+    
+    /** @type {IBMi} */
+    const connection = instance.getConnection();
+
+    const content = instance.getContent();
+
+    /** @type {Configuration} */
+    const config = instance.getConfig();
+
+    const tempLib = config!.tempLibrary;
+
+    const targetCommand = command.padEnd(10) + validLibrary.padEnd(10);
+    const targetName = command.toUpperCase().padEnd(10);
+
+    const result = await connection?.runCommand({
+      command: `CALL PGM(${tempLib}/GENCMDXML) PARM('${targetName}' '${targetCommand}')`,
+      environment: `ile`
+    });
+
+    if (result?.code === 0) {
+      const xml = await content!.downloadStreamfile(`/tmp/${targetName}`);
+
+      const commandData = await xml2js.parseStringPromise(xml);
+
+      return commandData;
+    } else {
+      return;
+    }
+  }
 }

@@ -5,10 +5,18 @@ import { instance } from "../instantiate";
 import util from 'util';
 import tmp from 'tmp';
 import { CommandResult } from "../typings";
+import {checkRequirements, getDefinition} from "../languages/clle/clApi";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
   tests: [
+    {name: `CL definition fetch`, test: async () => {
+      if (checkRequirements()) {
+        const def = await getDefinition(`CPYF`);
+        assert.notStrictEqual(def, undefined);
+      }
+    }},
+    
     {name: `Test memberResolve`, test: async () => {
       const content = instance.getContent();
   
