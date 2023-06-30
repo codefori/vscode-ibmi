@@ -144,7 +144,10 @@ export class ExtendedIBMiContent {
         }
 
         //We assume the alias still exists....
-        const query: string[] = [];
+        const tempTable = `QTEMP.NEWMEMBER`;
+        const query: string[] = [
+          `CREATE TABLE ${tempTable} LIKE "${lib}"."${spf}";`,
+        ];
 
         // Row length is the length of the SQL string used to insert each row
         const rowLength = recordLength + 55;
@@ -153,13 +156,17 @@ export class ExtendedIBMiContent {
 
         const rowGroups = sliceUp(rows, perInsert);
         rowGroups.forEach(rowGroup => {
-          query.push(`insert into ${aliasPath} values ${rowGroup.join(`,`)};`);
+          query.push(`insert into ${tempTable} values ${rowGroup.join(`,`)};`);
         });
+
+        query.push(
+          `CALL QSYS2.QCMDEXC('CLRPFM FILE(${lib}/${spf}) MBR(${mbr})');`,
+          `insert into ${aliasPath} (select * from ${tempTable});`
+        )
 
         await writeFileAsync(tmpobj, query.join(`\n`), `utf8`);
         await client.putFile(tmpobj, tempRmt);
 
-        await connection.remoteCommand(`CLRPFM FILE(${lib}/${spf}) MBR(${mbr})`);
         if (setccsid) await connection.paseCommand(`${setccsid} 1208 ${tempRmt}`);
         await connection.remoteCommand(
           `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
