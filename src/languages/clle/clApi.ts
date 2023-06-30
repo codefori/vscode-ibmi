@@ -4,6 +4,7 @@ import { window } from "vscode";
 import { instance } from "../../instantiate";
 
 import * as gencmdxml from "./gencmdxml";
+import { clDef } from "./clDef";
 
 export async function init() {
   const connection = instance.getConnection()!;
@@ -53,7 +54,7 @@ async function install() {
   );
 }
 
-export async function getDefinition(command: string, library = `*LIBL`) {
+export async function getDefinition(command: string, library = `*LIBL`): Promise<clDef | undefined> {
   if (checkRequirements()) { 
     const validLibrary = library || `*LIBL`;
     
@@ -80,7 +81,7 @@ export async function getDefinition(command: string, library = `*LIBL`) {
 
       const commandData = await xml2js.parseStringPromise(xml);
 
-      return commandData;
+      return commandData.QcdCLCmd;
     } else {
       return;
     }

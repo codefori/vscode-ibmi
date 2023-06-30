@@ -14,6 +14,8 @@ export const ContentSuite: TestSuite = {
       if (checkRequirements()) {
         const def = await getDefinition(`CPYF`);
         assert.notStrictEqual(def, undefined);
+        assert.strictEqual(def?.Cmd[0].$.CmdName, `CPYF`);
+        assert.strictEqual(def?.Cmd[0].Parm[0].$.PosNbr, `1`);
       }
     }},
     
