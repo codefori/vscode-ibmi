@@ -2087,12 +2087,12 @@
 				{
 					"command": "code-for-ibmi.moveIFSShortcutToTop",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "5_ifsStuff@1"
+					"group": "5_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutToBottom",
 					"when": "view == ifsBrowser && viewItem == shortcut",
-					"group": "5_ifsStuff@4"
+					"group": "5_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
