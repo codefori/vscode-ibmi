@@ -1856,7 +1856,7 @@
 				},
 				{
 					"command": "code-for-ibmi.createMember",
-					"when": "viewItem == SPF",
+					"when": "view == objectBrowser && viewItem == SPF",
 					"group": "inline"
 				},
 				{
@@ -1896,97 +1896,97 @@
 				},
 				{
 					"command": "code-for-ibmi.maintainFilter",
-					"when": "viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "4_filters@1"
 				},
 				{
 					"command": "code-for-ibmi.copyFilter",
-					"when": "viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "4_filters@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteFilter",
-					"when": "viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "4_filters@3"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",
-					"when": "viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterDown",
-					"when": "viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterToTop",
-					"when": "viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "5_filters@1"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterToBottom",
-					"when": "viewItem =~ /^filter.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "5_filters@2"
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
-					"when": "viewItem =~ /^member.*$/ || viewItem == streamfile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@1"
 				},
 				{
 					"command": "code-for-ibmi.compareWithSelected",
-					"when": "viewItem =~ /^member.*$/ || viewItem == streamfile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@2"
 				},
 				{
 					"command": "code-for-ibmi.createMember",
-					"when": "viewItem == SPF",
+					"when": "view == objectBrowser && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.searchSourceFile",
-					"when": "viewItem =~ /^SPF.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^SPF.*$/",
 					"group": "4_sourceFileStuff@1"
 				},
 				{
 					"submenu": "code-for-ibmi.sortMembers",
-					"when": "view == objectBrowser && viewItem =~ /^SPF/ || viewItem =~ /^member/",
+					"when": "view == objectBrowser && (viewItem =~ /^SPF/ || viewItem =~ /^member/)",
 					"group": "5_sourceFileStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "viewItem =~ /^member.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
 					"group": "1_workspace@1"
 				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
-					"when": "viewItem == member",
+					"when": "view == objectBrowser && viewItem == member",
 					"group": "2_memberStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.copyMember",
-					"when": "viewItem == member",
+					"when": "view == objectBrowser && viewItem == member",
 					"group": "2_memberStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteMember",
-					"when": "viewItem == member",
+					"when": "view == objectBrowser && viewItem == member",
 					"group": "2_memberStuff@4"
 				},
 				{
 					"command": "code-for-ibmi.renameMember",
-					"when": "viewItem == member",
+					"when": "view == objectBrowser && viewItem == member",
 					"group": "2_memberStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
-					"when": "viewItem =~ /^member.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
 					"group": "3_memberTransfer@1"
 				},
 				{
 					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
-					"when": "viewItem == member",
+					"when": "view == objectBrowser && viewItem == member",
 					"group": "3_memberTransfer@2"
 				},
 				{
@@ -2146,7 +2146,7 @@
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && viewItem =~ /^object(?!.lib)/",
 					"group": "1_objActions@5"
 				},
 				{
@@ -2156,7 +2156,7 @@
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "viewItem =~ /^object/",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_workspace@1"
 				}
 			]
