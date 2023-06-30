@@ -47,4 +47,5 @@ Thanks so much to everyone [who has contributed](https://github.com/halcyon-tech
 * [@angelorpa](https://github.com/angelorpa)
 * [@SanjulaGanepola](https://github.com/SanjulaGanepola)
 * [@shamby87](https://github.com/shamby87)
+* [@edmundreinhardt](https://github.com/edmundreinhardt)
 * [@richardm90](https://github.com/richardm90)
