@@ -66,6 +66,10 @@ export async function getiProjActions(currentWorkspace: WorkspaceFolder) {
             extensions: [`GLOBAL`],
             deployFirst: true,
             type: `file`,
+            postDownload: [
+              ".logs",
+              ".evfevent"
+            ]
           });
         }
 
@@ -77,6 +81,10 @@ export async function getiProjActions(currentWorkspace: WorkspaceFolder) {
             extensions: [`GLOBAL`],
             deployFirst: true,
             type: `file`,
+            postDownload: [
+              ".logs",
+              ".evfevent"
+            ]
           });
         }
       } catch (e: any) {

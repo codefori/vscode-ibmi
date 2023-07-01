@@ -3,8 +3,7 @@ import IBMi from "../../api/IBMi";
 import { CustomUI } from "../../api/CustomUI";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { ConnectionData } from '../../typings';
-
-let { instance, disconnect, setConnection, loadAllofExtension } = require(`../../instantiate`);
+import { disconnect, instance } from "../../instantiate";
 
 export class Login {
 
@@ -13,24 +12,24 @@ export class Login {
    * @param {} context
    */
   static async show(context: vscode.ExtensionContext) {
-    if (instance.getConnection()) {
-      vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
+    const connection = instance.getConnection();
+    if (connection) {
       if (!disconnect()) return;
     }
 
     const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
 
     const page = await new CustomUI()
-      .addInput(`name`, `Connection Name`)
-      .addInput(`host`, `Host or IP Address`)
-      .addInput(`port`, `Port (SSH)`, ``, { default: `22` })
-      .addInput(`username`, `Username`)
+      .addInput(`name`, `Connection Name`, undefined, {minlength: 1})
+      .addInput(`host`, `Host or IP Address`, undefined, {minlength: 1})
+      .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+      .addInput(`username`, `Username`, undefined, {minlength: 1, maxlength: 10})
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
       .addFile(`privateKey`, `Private Key`)
       .addButtons(
-        { id: `connect`, label: `Connect` },
+        { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
       )
       .loadPage<any>(`IBM i Login`);
@@ -75,11 +74,7 @@ export class Login {
               try {
                 const connected = await connection.connect(data);
                 if (connected.success) {
-                  setConnection(connection);
-                  loadAllofExtension(context);
-
                   if (newConnection) {
-
                     vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
                       if (selectionA === `Open configuration`) {
                         vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
@@ -120,12 +115,12 @@ export class Login {
    * @param name Connection name
    * @param context
    */
-  static async LoginToPrevious(name: string, context: vscode.ExtensionContext) {
-    if (instance.getConnection()) {
-
+  static async LoginToPrevious(name: string, context: vscode.ExtensionContext, reloadServerSettings?: boolean) {
+    const connection = instance.getConnection();
+    if (connection) {
       // If the user is already connected and trying to connect to a different system, disconnect them first
-      if (name !== instance.getConnection().currentConnectionName) {
-        vscode.window.showInformationMessage(`Disconnecting from ${instance.getConnection().currentHost}.`);
+      if (name !== connection.currentConnectionName) {
+        vscode.window.showInformationMessage(`Disconnecting from ${connection.currentHost}.`);
         if (!disconnect()) return false;
       }
     }
@@ -147,16 +142,10 @@ export class Login {
         }
       }
 
-      const connection = new IBMi();
-
       try {
-        const connected = await connection.connect(connectionConfig);
+        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings);
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
-
-          setConnection(connection);
-          loadAllofExtension(context);
-
         } else {
           vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
         }

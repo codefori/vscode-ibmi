@@ -1,21 +1,20 @@
-import { ExtensionContext, Uri } from "vscode";
+import { ExtensionContext, Uri, WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
+import { CustomUI, Field } from "./api/CustomUI";
 
 export interface CodeForIBMi {
   instance: Instance,
-  baseContext: ExtensionContext,
-  CustomUI: object, //CustomUI: typeof CustomUI
-  Field: object //Field: typeof Field;
+  customUI: () => CustomUI,
   deploy: (parameters: DeploymentParameters) => Promise<boolean>
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 
-export type DeploymentMethod = "all" |  "staged" |  "unstaged" |  "changed" |  "compare";
+export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
 export interface DeploymentParameters {
   method: DeploymentMethod
-  localFolder: Uri
+  workspaceFolder: WorkspaceFolder
   remotePath: string
   ignoreRules?: Ignore
 }
@@ -77,9 +76,12 @@ export interface Profile {
   profile: string
 }
 
-export interface IBMiObject {
+export interface QsysPath {
   library: string,
   name: string,
+}
+
+export interface IBMiObject extends QsysPath {
   type: string,
   text: string,
   attribute?: string
@@ -94,23 +96,29 @@ export interface IBMiMember {
   file: string
   name: string
   extension: string
-  recordLength: number
-  text: string
+  recordLength?: number
+  text?: string
   asp?: string
+  lines?: number
+  created?: Date
+  changed?: Date
 }
 
 export interface IFSFile {
   type: "directory" | "streamfile"
   name: string
   path: string
+  size?: number
+  modified?: Date | string
+  owner?: string
 }
 
-export interface IBMiError{
+export interface IBMiError {
   code: string
   text: string
 }
 
-export interface Filter{
+export interface Filter {
   library: string,
   filter: string
 }
@@ -125,6 +133,11 @@ export interface FileError {
 }
 
 export interface QsysFsOptions {
-  filter?: string
   readonly?: boolean
+}
+
+export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
+
+export interface Library {
+  path:string
 }

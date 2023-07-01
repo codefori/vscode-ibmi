@@ -2,9 +2,10 @@ import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
-import settingsUI from '../webviews/settings';
+import { SettingsUI } from '../webviews/settings';
 import { Login } from '../webviews/login';
 import { GlobalStorage } from '../api/Storage';
+import { instance } from '../instantiate';
 import { t } from "../locale";
 
 export class ObjectBrowserProvider {
@@ -17,7 +18,7 @@ export class ObjectBrowserProvider {
     this._emitter = new vscode.EventEmitter();
     this.onDidChangeTreeData = this._emitter.event;
 
-    settingsUI.init(context);
+    SettingsUI.init(context);
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.connect`, () => {
@@ -26,14 +27,14 @@ export class ObjectBrowserProvider {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectToPrevious`, async () => {
         const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
         if (lastConnection) {
-          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
+          return await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, lastConnection.name);
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.connectTo`, async (name?: string | Server, reloadServerSettings?: boolean) => {
         if (!this._attemptingConnection) {
           this._attemptingConnection = true;
 
@@ -49,10 +50,10 @@ export class ObjectBrowserProvider {
 
           switch (typeof name) {
             case `string`: // Name of connection object
-              await Login.LoginToPrevious(name, context);
+              await Login.LoginToPrevious(name, context, reloadServerSettings);
               break;
             case `object`: // A Server object
-              await Login.LoginToPrevious(name.name, context);
+              await Login.LoginToPrevious(name.name, context, reloadServerSettings);
               break;
             default:
               vscode.window.showErrorMessage(t(`connectionBrowser.connectTo.error`));
@@ -60,6 +61,13 @@ export class ObjectBrowserProvider {
           }
 
           this._attemptingConnection = false;
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.connectToAndReload`, async (server: Server) => {
+        if (!this._attemptingConnection && server) {
+          const reloadServerSettings = true;
+          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, server.name, reloadServerSettings);
         }
       }),
 
@@ -84,6 +92,9 @@ export class ObjectBrowserProvider {
               const newConnectionSettings = connectionSettings.filter(connection => connection.name !== server.name);
               await GlobalConfiguration.set(`connectionSettings`, newConnectionSettings);
 
+              // Also remove the cached connection settings
+              GlobalStorage.get().deleteServerSettingsCache(server.name);
+
               // Then remove the password
               context.secrets.delete(`${server.name}_password`);
 
@@ -93,6 +104,8 @@ export class ObjectBrowserProvider {
         }
       })
     );
+
+    instance.onEvent("disconnected", () => this.refresh())
   }
 
   refresh() {
@@ -107,7 +120,6 @@ export class ObjectBrowserProvider {
     const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
     return (GlobalConfiguration.get<ConnectionData[]>(`connections`) || [])
       .map(connection => new ServerItem(connection, connection.name === lastConnection?.name));
-
   }
 }
 

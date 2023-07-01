@@ -12,6 +12,7 @@ export interface Page<T> {
 export interface Button {
   id: string
   label: string
+  requiresValidation?: boolean
 }
 
 export interface SelectItem {
@@ -34,6 +35,11 @@ export interface ComplexTab {
 export class Section {
   readonly fields: Field[] = [];
 
+  addHeading(label: string, level: 1 | 2 | 3 | 4 | 5 | 6 = 1) {
+    this.addField(new Field(`heading`, level.toString(), label));
+    return this;
+  }
+
   addHorizontalRule() {
     this.addField(new Field('hr', '', ''));
     return this;
@@ -46,7 +52,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, multiline?: boolean }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number, regexTest?: string }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     this.addField(input);
     return this;
@@ -111,35 +117,44 @@ export class Section {
   }
 
   addField(field: Field) {
-    switch (field.type) {
-      case `submit`:
-        console.warn(`Submit fields are no longer supported. Consider using buttons instead.`);
-        break;
-    }
-
     this.fields.push(field);
     return this;
   }
 }
 
+const openedWebviews: Map<string, vscode.WebviewPanel> = new Map;
+
 export class CustomUI extends Section {
   /**
-   * If no callback is provided, a Promise will be returned
+   * If no callback is provided, a Promise will be returned.
+   * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
+   * 
    * @param title 
    * @param callback
    * @returns a Promise<Page<T>> if no callback is provided
    */
   loadPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
+    const webview = openedWebviews.get(title);
+    if(webview){
+      webview.reveal();      
+    }
+    else{
+      return this.createPage(title, callback);
+    }
+  }
+
+  private createPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
-      vscode.ViewColumn.Beside,
+      vscode.ViewColumn.One,
       {
-        enableScripts: true
+        enableScripts: true,
+        retainContextWhenHidden: true
       }
     );
 
-    panel.webview.html = this.getHTML(panel, title);
+    panel.webview.html = this.getHTML(panel, title);    
 
     let didSubmit = false;
 
@@ -152,11 +167,15 @@ export class CustomUI extends Section {
       );
 
       panel.onDidDispose(() => {
-        if (!didSubmit) callback({ panel });
-      });
+        openedWebviews.delete(title);
+        if (!didSubmit) {
+          callback({ panel });
+        }
 
+        openedWebviews.set(title, panel);
+      });
     } else {
-      return new Promise((resolve) => {
+      const page = new Promise<Page<T>>((resolve) => {
         panel.webview.onDidReceiveMessage(
           message => {
             didSubmit = true;
@@ -165,15 +184,19 @@ export class CustomUI extends Section {
         );
 
         panel.onDidDispose(() => {
-          if (!didSubmit) resolve({ panel });
+          openedWebviews.delete(title);
+          if (!didSubmit) {
+            resolve({ panel });
+          }
         });
       });
+      
+      openedWebviews.set(title, panel);
+      return page;
     }
   }
 
   private getHTML(panel: vscode.WebviewPanel, title: string) {
-    const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
-
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
@@ -209,24 +232,28 @@ export class CustomUI extends Section {
             .long-input {
               width: 100%;
             }
+
+            :root{
+              --dropdown-z-index: 666;
+            }
         </style>
     </head>
     
     <body>
-        <div id="laforma">
+        <vscode-form-container id="laforma">
             ${this.fields.map(field => field.getHTML()).join(``)}
-        </div>
+        </vscode-form-container>
     </body>
     
     <script>
         (function () {
             const vscode = acquireVsCodeApi();
 
-            // Legacy: single submit button
-            const submitButton = document.getElementById('${submitButton.id}');
-
             // New: many button that can be pressed to submit
-            const groupButtons = [${[...(allFields.filter(field => field.type == `buttons`).map(field => field.items?.map(item => `'${item.id}'`)))].join(`, `)}];
+            const groupButtons = ${JSON.stringify(allFields.filter(field => field.type == `buttons`).map(field => field.items).flat())};
+
+            // Input fields that can be validated
+            const inputFields = ${JSON.stringify(allFields.filter(field => field.type == `input`))};
 
             // Available trees in the fields, though only one is supported.
             const trees = [${trees.map(field => `'${field.id}'`).join(`,`)}];
@@ -234,61 +261,112 @@ export class CustomUI extends Section {
             // Fields which required a file path
             const filefields = [${allFields.filter(field => field.type == `file`).map(field => `'${field.id}'`).join(`,`)}];
 
+            // Fields which are checkboxes
+            const checkboxes = [${allFields.filter(field => field.type == `checkbox`).map(field => `'${field.id}'`).join(`,`)}];
+
             // Fields that have value which can be returned
             const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
+
+            const validateInputs = (optionalId) => {
+              const testFields = optionalId ? inputFields.filter(theField => theField.id === optionalId) : inputFields
+
+              let isValid = true;
+
+              for (const field of testFields) {
+                const fieldElement = document.getElementById(field.id);
+                const currentValue = fieldElement.value || "";
+
+                let isInvalid = false;
+
+                if (field.minlength && currentValue.length < field.minlength) isInvalid = true;
+                if (field.maxlength && currentValue.length > field.maxlength) isInvalid = true;
+                if (field.regexTest) {
+                  if (!(new RegExp(field.regexTest)).test(currentValue)) {
+                    isInvalid = true;
+                  }
+                }
+
+                if (isInvalid) {
+                  fieldElement.setAttribute("invalid", "true");
+                  isValid = false;
+                } else {
+                  fieldElement.removeAttribute("invalid");
+                }
+              }
+
+              // If not validating a specific field, 
+              // then we can enable/disable certain buttons
+              if (!optionalId) {
+                for (const fieldData of groupButtons) {
+                  if (fieldData.requiresValidation) {
+                    const field = fieldData.id;
+                    
+                    let button = document.getElementById(field);
+                    if (isValid) {
+                      button.removeAttribute("disabled");
+                    } else {
+                      button.setAttribute("disabled", "true");
+                    }
+                  }
+                }
+              }
+
+              return isValid;
+            }
+
     
-            const doDone = (event, buttonValue) => {
-                console.log('submit now!!', buttonValue)
+            const doDone = (event, buttonId) => {
+                console.log('submit now!!', buttonId)
                 if (event)
                     event.preventDefault();
-    
-                var data = {};
+                    
+                var data = document.querySelector('#laforma').data;
 
-                if (buttonValue) {
-                  data['buttons'] = buttonValue;
+                if (buttonId) {
+                  data['buttons'] = buttonId;
                 }
-    
-                for (const field of submitfields) {
-                  var fieldType = document.getElementById(field).nodeName.toLowerCase();
-                   switch (fieldType) {
-                    case "vscode-checkbox"
-                    :data[field] = document.getElementById(field).checked;
-                    break;
-                    default
-                    :data[field] = document.getElementById(field).value;
-                  }
+
+                // Convert the weird array value of checkboxes to boolean
+                for (const checkbox of checkboxes) {
+                  data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
                 }
 
                 vscode.postMessage(data);
             };
 
-            // Legacy: when only one button was supported
-            if (submitButton) {
-              submitButton.onclick = doDone;
-              submitButton.onKeyDown = doDone;
+            // Setup the input fields for validation
+            for (const field of inputFields) {
+              const fieldElement = document.getElementById(field.id);
+              fieldElement.onkeyup = (e) => {validateInputs()};
             }
 
-            console.log(groupButtons);
             // Now many buttons can be pressed to submit
-            for (const field of groupButtons) {
-                console.log('group button', field, document.getElementById(field));
-                var button = document.getElementById(field);
-                button.onclick = (event) => {
-                    doDone(event, field);
-                };
-                button.onKeyDown = (event) => {
-                    doDone(event, field);
-                };
+            for (const fieldData of groupButtons) {
+              const field = fieldData.id;
+              
+              console.log('group button', fieldData, document.getElementById(field));
+              var button = document.getElementById(field);
+
+              const submitButtonAction = (event) => {
+                const isValid = fieldData.requiresValidation ? validateInputs() : true;
+                console.log({requiresValidation: fieldData.requiresValidation, isValid});
+                if (isValid) doDone(event, field);
+              }
+
+              button.onclick = submitButtonAction;
+              button.onKeyDown = submitButtonAction;
             }
 
             for (const field of submitfields) {
                 const currentElement = document.getElementById(field);
-                if (currentElement.hasAttribute('multiline')) {
+                if (currentElement.hasAttribute('rows')) {
                   currentElement
                     .addEventListener('keyup', function(event) {
                         event.preventDefault();
-                        if (event.keyCode === 13 && event.shiftKey) {
-                          doDone();
+                        if (event.keyCode === 13 && event.altKey) {
+                          if (validateInputs()) {
+                            doDone();
+                          }
                         }
                     });
                 } else {
@@ -296,12 +374,15 @@ export class CustomUI extends Section {
                     .addEventListener('keyup', function(event) {
                         event.preventDefault();
                         if (event.keyCode === 13) {
-                          doDone();
+                          if (validateInputs()) {
+                            doDone();
+                          }
                         }
                     });
                 }
             }
 
+            // This is used to read the file in order to get the real path.
             for (const field of filefields) {
               document.getElementById(field)
                   .addEventListener('vsc-change', (e) => {
@@ -318,9 +399,10 @@ export class CustomUI extends Section {
             }
 
             document.addEventListener('DOMContentLoaded', () => {
+              validateInputs(); 
               var currentTree;
               ${trees.map(tree => {
-                return /*js*/`
+      return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
                   currentTree.addEventListener('vsc-select', (event) => {
@@ -330,7 +412,7 @@ export class CustomUI extends Section {
                     }
                   });
                   `
-              })}
+    })}
             });
 
         }())
@@ -340,7 +422,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr";
+export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -374,7 +456,11 @@ export class Field {
   public complexTabItems?: ComplexTab[];
   public default?: string;
   public readonly?: boolean;
-  public multiline?: boolean;
+  public rows?: number;
+
+  public minlength?: number;
+  public maxlength?: number;
+  public regexTest?: string;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
@@ -384,116 +470,112 @@ export class Field {
     this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
 
     switch (this.type) {
-      case `submit`:
-        return /* html */`<vscode-button id="${this.id}">${this.label}</vscode-button>`;
-
       case `buttons`:
         return /* html */`
-          <vscode-form-item>
+          <vscode-form-group variant="settings-group">
             ${this.items?.map(item => /* html */`<vscode-button id="${item.id}" style="margin:3px">${item.label}</vscode-button>`).join(``)}
-          </vscode-form-item>`;
+          </vscode-form-group>`;
+
+      case 'heading':
+        return /* html */ `<h${this.id}>${this.label}</h${this.id}>`;
 
       case `hr`:
         return /* html */ `<hr />`;
 
       case `checkbox`:
         return /* html */`
-          <vscode-form-item>
-            <vscode-form-control>
-            <vscode-checkbox id="${this.id}" ${this.default === `checked` ? `checked` : ``}>${this.label}</vscode-checkbox>
+          <vscode-form-group variant="settings-group">
+            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``}><vscode-label>${this.label}</vscode-label></vscode-checkbox>
             ${this.renderDescription()}
-            </vscode-form-control>
-          </vscode-form-item>`;
+          </vscode-form-group>`;
 
       case `tabs`:
         return /* html */`
-          <vscode-tabs selectedIndex="${this.default || 0}">
+          <vscode-tabs selected-index="${this.default || 0}">
             ${this.items?.map(item =>
               /* html */`
-              <header slot="header">${item.label}</header>
-              <section>
+              <vscode-tab-header slot="header">${item.label}</vscode-tab-header>
+              <vscode-tab-panel>
                 ${item.value}
-              </section>`
-          ).join(``)}
+              </vscode-tab-panel>`
+        ).join(``)}
           </vscode-tabs>`;
 
       case `complexTabs`:
         return /* html */`
-          <vscode-tabs selectedIndex="${this.default || 0}">
+          <vscode-tabs selected-index="${this.default || 0}">
             ${this.complexTabItems?.map(item =>
               /* html */`
-              <header slot="header">${item.label}</header>
-              <section>
+              <vscode-tab-header slot="header">${item.label}</vscode-tab-header>
+              <vscode-tab-panel>
               ${item.fields.map(field => field.getHTML()).join(` `)}
-              </section>`
-          ).join(``)}
+              </vscode-tab-panel>`
+        ).join(``)}
           </vscode-tabs>`;
 
       case `input`:
+        const multiline = (this.rows || 1) > 1;
+        const tag = multiline ? "vscode-textarea" : "vscode-textfield";
         return /* html */`
-          <vscode-form-item>
+          <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
-              ${this.renderDescription()}
-              <vscode-form-control>
-                  <vscode-inputbox class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${this.multiline ? `multiline` : ``}></vscode-inputbox>
-              </vscode-form-control>
-          </vscode-form-item>`;
+              ${this.renderDescription()}              
+              <${tag} class="long-input" id="${this.id}" name="${this.id}" 
+                ${this.default ? `value="${this.default}"` : ``} 
+                ${this.readonly ? `readonly` : ``} 
+                ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}
+                ${this.minlength ? `minlength="${this.minlength}"` : ``} 
+                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}>
+              /${tag}>
+          </vscode-form-group>`;
 
       case `paragraph`:
         return /* html */`
-          <vscode-form-item>
-              <vscode-form-description>${this.label}</vscode-form-description>
-          </vscode-form-item>`;
+          <vscode-form-group variant="settings-group">
+              <vscode-form-helper>${this.label}</vscode-form-helper>
+          </vscode-form-group>`;
 
       case `file`:
         return /* html */`
-          <vscode-form-item>
+          <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-form-control>
-                  <vscode-inputbox type="file" id="${this.id}" name="${this.id}"></vscode-inputbox>
-              </vscode-form-control>
-          </vscode-form-item>`;
+              <vscode-textfield type="file" id="${this.id}" name="${this.id}"></vscode-textfield>
+          </vscode-form-group>`;
 
       case `password`:
         return /* html */`
-          <vscode-form-item>
+          <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-form-control>
-                  <vscode-inputbox type="password" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``}></vscode-inputbox>
-              </vscode-form-control>
-          </vscode-form-item>`;
+              <vscode-textfield type="password" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``}></vscode-textfield>
+          </vscode-form-group>`;
 
       case `tree`:
         return /* html */`
-          <vscode-form-item>
+          <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-form-control>
-                  <vscode-tree id="${this.id}"></vscode-tree>
-              </vscode-form-control>
-          </vscode-form-item>`;
+              <vscode-tree id="${this.id}"></vscode-tree>
+          </vscode-form-group>`;
 
       case `select`:
         return /* html */`
-          <vscode-form-item>
+          <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-form-control>
-                  <vscode-single-select id="${this.id}">
-                      ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
-                  </vscode-single-select>
-              </vscode-form-control>
-          </vscode-form-item>`;
+              <vscode-single-select id="${this.id}" name="${this.id}">
+                  ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
+              </vscode-single-select>
+          </vscode-form-group>`;
     }
   }
 
   private renderLabel() {
-    return /* html */ `<vscode-form-label>${this.label}</vscode-form-label>`;
+    return /* html */ `<vscode-label>${this.label}</vscode-label>`;
   }
 
   private renderDescription() {
-    return this.description ? /* html */ `<vscode-form-description>${this.description}</vscode-form-description>` : ``;
+    return this.description ? /* html */ `<vscode-form-helper>${this.description}</vscode-form-helper>` : ``;
   }
 }

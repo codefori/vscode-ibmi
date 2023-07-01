@@ -1,8 +1,6 @@
 const vscode = require(`vscode`);
 const {ConnectionConfiguration} = require(`../../api/Configuration`);
-const {CustomUI, Field} = require(`../../api/CustomUI`);
-
-let {instance} = require(`../../instantiate`);
+const {CustomUI} = require(`../../api/CustomUI`);
 
 module.exports = class FiltersUI {
 
@@ -10,6 +8,7 @@ module.exports = class FiltersUI {
    * @param {string} name
    */
   static async init(name, copy = false) {
+    const {instance} = require(`../../instantiate`);
     /** @type {ConnectionConfiguration.Parameters} */
     const config = instance.getConfig();
     const objectFilters = config.objectFilters;

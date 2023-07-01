@@ -3,7 +3,7 @@ import * as path from "path";
 
 async function envExists(currentWorkspace: WorkspaceFolder) {
   const folderUri = currentWorkspace.uri;
-  const envUri = folderUri.with({ path: path.join(folderUri.path, `.env`) });
+  const envUri = folderUri.with({ path: path.join(folderUri.fsPath, `.env`) });
 
   try {
     await workspace.fs.stat(envUri);
@@ -21,7 +21,7 @@ export async function getEnvConfig(currentWorkspace: WorkspaceFolder) {
     let readData, readStr;
 
     // Then we get the local .env file
-    const envUri = folderUri.with({ path: path.join(folderUri.path, `.env`) });
+    const envUri = folderUri.with({ path: path.join(folderUri.fsPath, `.env`) });
     readData = await workspace.fs.readFile(envUri);
     readStr = Buffer.from(readData).toString(`utf8`);
 

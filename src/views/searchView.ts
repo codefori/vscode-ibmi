@@ -62,7 +62,7 @@ export class SearchView implements TreeDataProvider<any> {
 
 class HitSource extends vscode.TreeItem {
   private readonly _path: string;
-  private readonly _filter?: string;
+  private readonly _readonly?: boolean;
 
   constructor(readonly result: Search.Result, readonly term: string) {
     super(result.label ? result.label : path.posix.basename(result.path), vscode.TreeItemCollapsibleState.Expanded);
@@ -72,17 +72,17 @@ class HitSource extends vscode.TreeItem {
     this.iconPath = vscode.ThemeIcon.File;
     this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
     this._path = result.path;
-    this._filter = result.filter;
+    this._readonly = result.readonly;
     this.tooltip = result.path;
   }
 
   async getChildren() : Promise<LineHit[]> {
-    return this.result.lines.map(line => new LineHit(this.term, this._path, line, this._filter));
+    return this.result.lines.map(line => new LineHit(this.term, this._path, line, this._readonly));
   }
 }
 
 class LineHit extends vscode.TreeItem {
-  constructor(term: string, readonly path: string, line: Search.Line, filter?: string) {
+  constructor(term: string, readonly path: string, line: Search.Line, readonly?: boolean) {
     const highlights: [number, number][] = [];
 
     const upperContent = line.content.trim().toUpperCase();
@@ -113,7 +113,7 @@ class LineHit extends vscode.TreeItem {
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open`,
-      arguments: [this.path, line.number - 1, { filter } as QsysFsOptions]
+      arguments: [this.path, line.number - 1, (readonly ? {readonly: true} : undefined)]
     };
   }
 }

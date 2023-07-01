@@ -1,5 +1,5 @@
 import { FileError } from '../../../typings';
-import { formatIFS, formatName } from '../handler';
+import { formatIFS, formatName, getSourcePath } from '../handler';
 
 export namespace NewHandler {
   interface ErrorWithExpansion extends FileError {
@@ -77,7 +77,7 @@ export namespace NewHandler {
           break;
 
         case `FILEID`:
-          const validName = pieces[5].endsWith(`)`) ? formatName(pieces[5]) : formatIFS(pieces[5]);
+          const validName = pieces[5].endsWith(`)`) ? formatName(pieces[5]) : formatIFS(getSourcePath(lines, _FileID ));
 
           if (!truePaths.has(_FileID)) {
             truePaths.set(_FileID, validName);

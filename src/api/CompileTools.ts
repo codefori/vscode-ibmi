@@ -1,19 +1,25 @@
 
-import vscode, { InlineValueVariableLookup } from 'vscode';
 import path from 'path';
+import vscode, { window } from 'vscode';
 
-import { ConnectionConfiguration, GlobalConfiguration } from './Configuration';
-import { CustomUI, Field } from './CustomUI';
-import { getEnvConfig } from './local/env';
+import { GlobalConfiguration } from './Configuration';
+import { CustomUI } from './CustomUI';
 import { getLocalActions, getiProjActions } from './local/actions';
+import { getEnvConfig } from './local/env';
 
-import { Deployment } from './local/deployment';
-import { parseErrors } from './errors/handler';
-import { GitExtension } from './import/git';
-import Instance from './Instance';
+import { parseFSOptions } from '../filesystems/qsys/QSysFs';
+import { instance } from '../instantiate';
 import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
-import IBMi, { MemberParts } from './IBMi';
+import IBMi from './IBMi';
+import Instance from './Instance';
 import { Tools } from './Tools';
+import { parseErrors } from './errors/handler';
+import { Deployment } from './local/deployment';
+
+export interface ILELibrarySettings {
+  currentLibrary: string;
+  libraryList: string[];
+}
 
 export namespace CompileTools {
   type Variables = Map<string, string>
@@ -54,12 +60,28 @@ export namespace CompileTools {
   const actionUsed: Map<string, number> = new Map;
 
   export function register(context: vscode.ExtensionContext) {
+    outputBarItem.text = OUTPUT_BUTTON_BASE;
+    outputBarItem.command = outputBarItem.command = {
+      command: `code-for-ibmi.showOutputPanel`,
+      title: `Show IBM i Output`,
+    };
+
     context.subscriptions.push(
       outputChannel,
       ileDiagnostics,
       outputBarItem,
       vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, showOutput)
     );
+
+    instance.onEvent("connected", () => {
+      if (GlobalConfiguration.get<boolean>(`logCompileOutput`)) {
+        outputBarItem.show();
+      }
+    });
+
+    instance.onEvent("disconnected", () => {
+      outputBarItem.hide();
+    });
   }
 
   /**
@@ -106,30 +128,27 @@ export namespace CompileTools {
           }
 
           if (evfeventInfo.workspace !== undefined) {
-            const baseInfo = path.parse(file);
-            const parentInfo = path.parse(baseInfo.dir);
+            const workspaceRootFolder = vscode.workspace.workspaceFolders?.[evfeventInfo.workspace];
+            const storage = instance.getStorage();
 
-            const targetFile = (await vscode.workspace.findFiles(`**/${parentInfo.name}/${baseInfo.name}*`))
-              .find(uri => uri.path.includes(baseInfo.base));
-            if (targetFile) {
-              ileDiagnostics.set(targetFile, diagnostics);
-            } else {
-              // Look in active text documents...
-              const upperParent = parentInfo.name.toUpperCase();
-              const upperName = baseInfo.name.toUpperCase();
-              const possibleFiles = vscode.workspace.textDocuments
-                .filter(doc => doc.uri.scheme !== `git` && doc.uri.fsPath.toUpperCase().includes(`${upperParent}/${upperName}`))
-                .map(doc => doc.uri);
+            if (workspaceRootFolder && storage) {
+              const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceRootFolder);
+              const relativeCompilePath = file.toLowerCase().replace(workspaceDeployPath, '');
+              const diagnosticTargetFile = vscode.Uri.joinPath(workspaceRootFolder.uri, relativeCompilePath);
 
-              if (possibleFiles.length) {
-                ileDiagnostics.set(possibleFiles[0], diagnostics);
+              if (diagnosticTargetFile !== undefined) {
+                ileDiagnostics.set(diagnosticTargetFile, diagnostics);
+              } else {
+                vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
               }
             }
           } else {
             if (file.startsWith(`/`))
               ileDiagnostics.set(vscode.Uri.from({ scheme: `streamfile`, path: file }), diagnostics);
-            else
-              ileDiagnostics.set(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }), diagnostics);
+            else {
+              const memberUri = vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` });
+              ileDiagnostics.set(memberUri, diagnostics);
+            }
           }
         }
 
@@ -152,21 +171,20 @@ export namespace CompileTools {
     return string;
   }
 
-  function getDefaultVariables(instance: Instance): Variables {
+  function getDefaultVariables(instance: Instance, librarySettings: ILELibrarySettings): Variables {
     const variables: Variables = new Map;
 
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (connection && config) {
-      variables.set(`&BUILDLIB`, config.currentLibrary);
-      variables.set(`&CURLIB`, config.currentLibrary);
-      variables.set(`\\*CURLIB`, config.currentLibrary);
+      variables.set(`&BUILDLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
+      variables.set(`&CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
+      variables.set(`\\*CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
       variables.set(`&USERNAME`, connection.currentUser);
       variables.set(`{usrprf}`, connection.currentUser);
       variables.set(`&HOME`, config.homeDirectory);
 
-      const libraryList = buildLibraryList(config);
-      variables.set(`&LIBLC`, libraryList.join(`,`));
+      const libraryList = buildLibraryList(librarySettings);
       variables.set(`&LIBLS`, libraryList.join(` `));
 
       for (const variable of config.customVariables) {
@@ -178,11 +196,25 @@ export namespace CompileTools {
   }
 
   export async function runAction(instance: Instance, uri: vscode.Uri) {
+    const connection = instance.getConnection();    
+    const config = instance.getConfig();
+    const content = instance.getContent();
+
+    const uriOptions = parseFSOptions(uri);
+
+    if (uriOptions.readonly) {
+      window.showWarningMessage(`Cannot run Actions against readonly objects.`);
+      return;
+    }
+
+    if (config?.readOnlyMode) {
+      window.showWarningMessage(`Cannot run Actions while readonly mode is enabled in the connection settings.`);
+      return;
+    }
+
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
 
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
-    if (connection && config) {
+    if (connection && config && content) {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
       const fragment = uri.fragment.toUpperCase();
 
@@ -230,7 +262,7 @@ export namespace CompileTools {
             if (deployResult !== undefined) {
               workspace = deployResult;
             } else {
-              vscode.window.showWarningMessage(`Action ${chosenAction} was cancelled.`);
+              vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
               return;
             }
           }
@@ -250,7 +282,7 @@ export namespace CompileTools {
             case `member`:
               const memberDetail = connection.parserMemberPath(uri.path);
               evfeventInfo.library = memberDetail.library;
-              evfeventInfo.object = memberDetail.member;
+              evfeventInfo.object = memberDetail.name;
               evfeventInfo.extension = memberDetail.extension;
               evfeventInfo.asp = memberDetail.asp;
 
@@ -260,8 +292,8 @@ export namespace CompileTools {
               variables.set(`&OPENSPFL`, memberDetail.file.toLowerCase());
               variables.set(`&OPENSPF`, memberDetail.file);
 
-              variables.set(`&OPENMBRL`, memberDetail.member.toLowerCase());
-              variables.set(`&OPENMBR`, memberDetail.member);
+              variables.set(`&OPENMBRL`, memberDetail.name.toLowerCase());
+              variables.set(`&OPENMBR`, memberDetail.name);
 
               variables.set(`&EXTL`, memberDetail.extension.toLowerCase());
               variables.set(`&EXT`, memberDetail.extension);
@@ -380,10 +412,11 @@ export namespace CompileTools {
           const command = replaceValues(chosenAction.command, variables);
           try {
             const commandResult = await runCommand(instance, {
-              environment: chosenAction.environment,
+              environment,
               command,
               env: Object.fromEntries(variables)
-            });
+            },
+              chosenAction.name);
 
             if (commandResult) {
               const possibleObject = getObjectFromCommand(commandResult.command);
@@ -415,27 +448,56 @@ export namespace CompileTools {
 
             if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
               if (currentWorkspace) {
-                const clinet = connection.client;
+                const client = connection.client;
                 const remoteDir = config.homeDirectory;
-                const localDir = currentWorkspace.uri.fsPath;
+                const localDir = currentWorkspace.uri.path;
 
-                // First, we need to create the relative directories in the workspace
-                // incase they don't exist. For example, if the path is `.logs/joblog.json`
+                // First, we need to create or clear the relative directories in the workspace
+                // in case they don't exist. For example, if the path is `.logs/joblog.json`
                 // then we would need to create `.logs`.
-                try {
-                  const directories = chosenAction.postDownload.map(downloadPath => {
-                    const pathInfo = path.parse(downloadPath);
-                    return vscode.workspace.fs.createDirectory(vscode.Uri.parse(path.join(localDir, pathInfo.dir)));
-                  });
+                const downloadDirectories = chosenAction.postDownload.map(path.parse)
+                  .map(pathInfo => pathInfo.dir || pathInfo.base) //Get directories or files' parent directory
+                  .filter(Tools.distinct) //Remove duplicates
+                  .map(downloadDirectory => vscode.Uri.parse((path.posix.join(localDir, downloadDirectory)))); //Create local Uri path
 
-                  await Promise.all(directories);
-                } catch (e) {
-                  // We don't really care if it errors. The directories might already exist.
+                for (const downloadPath of downloadDirectories) {                  
+                  try {
+                    const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
+                    if(stat.type !== vscode.FileType.Directory){
+                      if(await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")){
+                        await vscode.workspace.fs.delete(downloadPath);
+                        throw new Error("Create directory");
+                      }
+                    }
+                    else if(stat.type !== vscode.FileType.Directory){
+                      await vscode.workspace.fs.delete(downloadPath, {recursive: true});
+                      throw new Error("Create directory");
+                    }
+                  }
+                  catch(e){
+                    //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
+                    try {
+                      await vscode.workspace.fs.createDirectory(downloadPath)
+                    }
+                    catch(error){
+                      vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
+                      console.log(error);
+                    }
+                  }
                 }
 
                 // Then we download the files that is specified.
                 const downloads = chosenAction.postDownload.map(
-                  downloadPath => clinet.getFile(path.join(localDir, downloadPath), path.posix.join(remoteDir, downloadPath))
+                  async (downloadPath) => {
+                    const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
+                    const remotePath = path.posix.join(remoteDir, downloadPath);
+                    
+                    if (await content.isDirectory(remotePath)) {
+                      return client.getDirectory(localPath, remotePath);                      
+                    } else {
+                      return client.getFile(localPath, remotePath);
+                    }
+                  }
                 );
 
                 Promise.all(downloads)
@@ -471,29 +533,51 @@ export namespace CompileTools {
   /**
    * Execute a command
    */
-  export async function runCommand(instance: Instance, options: RemoteCommand): Promise<CommandResult | null> {
+  export async function runCommand(instance: Instance, options: RemoteCommand, title?: string): Promise<CommandResult | null> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (config && connection) {
       const cwd = options.cwd;
 
+      let ileSetup: ILELibrarySettings = {
+        currentLibrary: config.currentLibrary,
+        libraryList: config.libraryList,
+      };
+
+      if (options.env) {
+        const libl: string | undefined = options.env[`&LIBL`];
+        const curlib: string | undefined = options.env[`&CURLIB`];
+
+        if (libl) ileSetup.libraryList = libl.split(` `);
+        if (curlib) ileSetup.currentLibrary = curlib;
+      }
+
       let commandString = replaceValues(
         options.command,
-        getDefaultVariables(instance)
+        getDefaultVariables(instance, ileSetup)
       );
 
-      if (commandString.startsWith(`?`)) {
-        commandString = await vscode.window.showInputBox({ prompt: `Run Command`, value: commandString.substring(1) }) || '';
-      } else {
-        commandString = await showCustomInputs(`Run Command`, commandString);
+      if (commandString) {
+        const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+        const promptedCommands = [];
+        for (let command of commands) {
+          if (command.startsWith(`?`)) {
+            command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
+          } else {
+            command = await showCustomInputs(`Run Command`, command, title);
+          }
+          promptedCommands.push(command);
+          if (!command) break;
+        }
+        commandString = !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
       }
 
       if (commandString) {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
         outputChannel.append(`\n\n`);
-        outputChannel.append(`Current library: ` + config.currentLibrary + `\n`);
-        outputChannel.append(`Library list: ` + config.libraryList.join(` `) + `\n`);
+        outputChannel.append(`Current library: ` + ileSetup.currentLibrary + `\n`);
+        outputChannel.append(`Library list: ` + ileSetup.libraryList.join(` `) + `\n`);
         outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
 
         const callbacks: StandardIO = {
@@ -512,7 +596,7 @@ export namespace CompileTools {
             const paseVars: Variables = new Map;
 
             // Get default variable
-            getDefaultVariables(instance).forEach((value: string, key: string) => {
+            getDefaultVariables(instance, ileSetup).forEach((value: string, key: string) => {
               if ((/^[A-Za-z\&]/i).test(key)) {
                 paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
               }
@@ -536,7 +620,7 @@ export namespace CompileTools {
           case `qsh`:
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, config),
+                ...buildLiblistCommands(connection, ileSetup),
                 ...commands,
               ].join(` && `),
               directory: cwd,
@@ -549,10 +633,10 @@ export namespace CompileTools {
             // escape $ and # in commands
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, config),
+                ...buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`
-                ),
+                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`,
+                )
               ].join(` && `),
               directory: cwd,
               ...callbacks
@@ -580,7 +664,7 @@ export namespace CompileTools {
    * @param command action's command string
    * @return the new command
    */
-  async function showCustomInputs(name: string, command: string): Promise<string> {
+  async function showCustomInputs(name: string, command: string, title?: string): Promise<string> {
     const components = [];
     let loop = true;
 
@@ -595,11 +679,11 @@ export namespace CompileTools {
         if (end >= 0) {
           let currentInput = command.substring(start + 2, end);
 
-          const [name, label, initalValue] = currentInput.split(`|`);
+          const [name, label, initialValue] = currentInput.split(`|`);
           components.push({
             name,
             label,
-            initialValue: initalValue || ``,
+            initialValue: initialValue || ``,
             start,
             end: end + 1
           });
@@ -613,6 +697,11 @@ export namespace CompileTools {
 
     if (components.length) {
       const commandUI = new CustomUI();
+
+      if (title) {
+        commandUI.addHeading(title, 2);
+      }
+
       for (const component of components) {
         if (component.initialValue.includes(`,`)) {
           //Select box
@@ -630,12 +719,12 @@ export namespace CompileTools {
         }
       }
 
-      commandUI.addButtons({ id: `execute`, label: `Execute` });
+      commandUI.addButtons({ id: `execute`, label: `Execute` }, { id: `cancel`, label: `Cancel` });
 
-      const page = await commandUI.loadPage(name);
+      const page = await commandUI.loadPage<any>(name);
       if (page) {
         page.panel.dispose();
-        if (page.data) {
+        if (page.data && page.data.buttons !== `cancel`) {
           const dataEntries = Object.entries(page.data);
           for (const component of components.reverse()) {
             const value = dataEntries.find(([key]) => key === component.name)?.[1];
@@ -671,7 +760,7 @@ export namespace CompileTools {
     }
   }
 
-  function buildLibraryList(config: ConnectionConfiguration.Parameters): string[] {
+  function buildLibraryList(config: ILELibrarySettings): string[] {
     //We have to reverse it because `liblist -a` adds the next item to the top always 
     return config.libraryList
       .map(library => {
@@ -685,7 +774,7 @@ export namespace CompileTools {
       }).reverse();
   }
 
-  function buildLiblistCommands(connection: IBMi, config: ConnectionConfiguration.Parameters): string[] {
+  function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
       `liblist -d ${connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`)}`,
       `liblist -c ${config.currentLibrary.replace(/\$/g, `\\$`)}`,
