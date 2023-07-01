@@ -22,6 +22,10 @@ export const da: Locale = {
   'connectionBrowser.connectTo.error': `Brug Servere vinduet til at vælge hvilket system, der skal forbindes til.`,
   'connectionBrowser.deleteConnection.warning': `Er du sikker på at du vil slette forbindelsen {0}?`,
   'connectionBrowser.ServerItem.tooltip': ` (forrige forbindelse)`,
-  'connectionBrowser.ServerItem.title': `Forbind`
-
+  'connectionBrowser.ServerItem.title': `Forbind`,
+  // helpView:
+  'helpView.getStarted': `Dokumentation`,
+  'helpView.officialForum': `Forum`,
+  'helpView.reviewIssues': `Se fejlrapporter`,
+  'helpView.reportIssue': `Opret en fejlrapport`,
 };

@@ -22,5 +22,10 @@ export const en: Locale = {
   'connectionBrowser.connectTo.error': `Use the Server Browser to select which system to connect to.`,
   'connectionBrowser.deleteConnection.warning': `Are you sure you want to delete the connection {0}?`,
   'connectionBrowser.ServerItem.tooltip': ` (previous connection)`,
-  'connectionBrowser.ServerItem.title': `Connect`
+  'connectionBrowser.ServerItem.title': `Connect`,
+  // helpView:
+  'helpView.getStarted': `Get started`,
+  'helpView.officialForum': `Open official Forum`,
+  'helpView.reviewIssues': `Review Issues`,
+  'helpView.reportIssue': `Report an Issue`,
 };
