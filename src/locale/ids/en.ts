@@ -14,5 +14,13 @@ export const en: Locale = {
   'sandbox.connected.modal.title': `Thanks for trying the Code for IBM i Sandbox!`,
   'sandbox.connected.modal.detail': `You are using this system at your own risk. Do not share any sensitive or private information.`,
   'sandbox.noconnection.modal.title': `Oh no! The sandbox is down.`,
-  'sandbox.noconnection.modal.detail': `Sorry, but the sandbox is offline right now. Try again another time.`
+  'sandbox.noconnection.modal.detail': `Sorry, but the sandbox is offline right now. Try again another time.`,
+  // ConnectionBrowser:
+  'connectionBrowser.connectTo.lastConnection': `Last connection`,
+  'connectionBrowser.connectTo.lastUsed': `Last used: {0}`,
+  'connectionBrowser.connectTo.title': `Last IBM i connections`,
+  'connectionBrowser.connectTo.error': `Use the Server Browser to select which system to connect to.`,
+  'connectionBrowser.deleteConnection.warning': `Are you sure you want to delete the connection {0}?`,
+  'connectionBrowser.ServerItem.tooltip': ` (previous connection)`,
+  'connectionBrowser.ServerItem.title': `Connect`
 };

@@ -14,5 +14,14 @@ export const da: Locale = {
   'sandbox.connected.modal.title': `Tak for at afprøve Code for IBM i Sandbox!`,
   'sandbox.connected.modal.detail': `Du bruger dette system på egen risiko. Del ingen følsomme eller private informationer.`,
   'sandbox.noconnection.modal.title': `Åh nej! "Sandkassen" er ikke tilgængelig.`,
-  'sandbox.noconnection.modal.detail': `Desværre, men "Sandkassen" er ikke tilgængelig lige nu. Prøv igen lidt senere.`
+  'sandbox.noconnection.modal.detail': `Desværre, men "Sandkassen" er ikke tilgængelig lige nu. Prøv igen lidt senere.`,
+  // ConnectionBrowser:
+  'connectionBrowser.connectTo.lastConnection': `Seneste forbindelse`,
+  'connectionBrowser.connectTo.lastUsed': `Senest brugt: {0}`,
+  'connectionBrowser.connectTo.title': `Seneste IBM i forbindelser`,
+  'connectionBrowser.connectTo.error': `Brug Servere vinduet til at vælge hvilket system, der skal forbindes til.`,
+  'connectionBrowser.deleteConnection.warning': `Er du sikker på at du vil slette forbindelsen {0}?`,
+  'connectionBrowser.ServerItem.tooltip': ` (forrige forbindelse)`,
+  'connectionBrowser.ServerItem.title': `Forbind`
+
 };

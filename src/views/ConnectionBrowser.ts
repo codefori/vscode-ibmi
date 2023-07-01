@@ -5,6 +5,7 @@ import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configurati
 import settingsUI from '../webviews/settings';
 import { Login } from '../webviews/login';
 import { GlobalStorage } from '../api/Storage';
+import { t } from "../locale";
 
 export class ObjectBrowserProvider {
   private _attemptingConnection: boolean;
@@ -39,9 +40,9 @@ export class ObjectBrowserProvider {
           if (!name) {
             const lastConnections = GlobalStorage.get().getLastConnections() || [];
             if (lastConnections && lastConnections.length) {
-              name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: "Last connection" },
-              ...lastConnections.map(lc => ({ label: lc.name, description: `Last used: ${new Date(lc.timestamp).toLocaleString()}` }))],
-                { title: "Last IBM i connections" }
+              name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: t(`connectionBrowser.connectTo.lastConnection`) },
+              ...lastConnections.map(lc => ({ label: lc.name, description: t(`connectionBrowser.connectTo.lastUsed`, [String(new Date(lc.timestamp).toLocaleString())]) }))],
+                { title: t(`connectionBrowser.connectTo.title`) }
               ))?.label;
             }
           }
@@ -54,7 +55,7 @@ export class ObjectBrowserProvider {
               await Login.LoginToPrevious(name.name, context);
               break;
             default:
-              vscode.window.showErrorMessage(`Use the Server Browser to select which system to connect to.`);
+              vscode.window.showErrorMessage(t(`connectionBrowser.connectTo.error`));
               break;
           }
 
@@ -69,10 +70,10 @@ export class ObjectBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (server: Server) => {
         if (!this._attemptingConnection && server) {
           vscode.window.showWarningMessage(
-            `Are you sure you want to delete the connection ${server.name}?`,
-            `Yes`, `No`
+            t(`connectionBrowser.deleteConnection.warning`, [server.name]),
+            t(`Yes`), t(`No`)
           ).then(async (value) => {
-            if (value === `Yes`) {
+            if (value === t(`Yes`)) {
               // First remove the connection details
               const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
               const newConnections = connections.filter(connection => connection.name !== server.name);
@@ -119,12 +120,12 @@ class ServerItem extends vscode.TreeItem implements Server {
 
     this.contextValue = `server`;
     this.description = `${connection.username}@${connection.host}`;
-    this.tooltip = lastConnected ? " (previous connection)" : "";
+    this.tooltip = lastConnected ? t(`connectionBrowser.ServerItem.tooltip`) : "";
     this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `remote`, lastConnected ? new vscode.ThemeColor("notificationsWarningIcon.foreground") : undefined);
 
     this.command = {
       command: `code-for-ibmi.connectTo`,
-      title: `Connect`,
+      title: t(`connectionBrowser.ServerItem.title`),
       arguments: [this]
     };
   }
