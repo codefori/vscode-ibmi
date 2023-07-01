@@ -1,8 +1,10 @@
 import { env } from "vscode";
 import {en} from "./ids/en";
+import {da} from "./ids/da";
 
 const locales: {[locale: string]: Locale} = {
-  en
+  en,
+  da
 }
 
 export type Locale = {[id: string]: string};
