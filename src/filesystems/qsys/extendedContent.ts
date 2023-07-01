@@ -46,17 +46,8 @@ export class ExtendedIBMiContent {
       } catch (e) { }
 
       if (!this.sourceDateHandler.recordLengths.has(alias)) {
-        const result = await content.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
-        if (result.length > 0) {
-          this.sourceDateHandler.recordLengths.set(alias, Number(result[0].LENGTH));
-        } else {
-          const result = await content.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
-          if (result.length > 0) {
-            this.sourceDateHandler.recordLengths.set(alias, Number(result[0].LENGTH));
-          } else {
-            this.sourceDateHandler.recordLengths.set(alias, DEFAULT_RECORD_LENGTH);
-          }
-        }
+        let recordLength = await this.getRecordLength(aliasPath, lib, spf);
+        this.sourceDateHandler.recordLengths.set(alias, recordLength);
       }
 
       let rows;
@@ -92,6 +83,31 @@ export class ExtendedIBMiContent {
   }
 
   /**
+   * Determine the member record length 
+   * @param {string} aliasPath member sql alias path e.g. ILEDITOR.QGPL_QRPGLESC_MYRPGPGM
+   * @param {string} lib
+   * @param {string} spf
+   */
+  private async getRecordLength(aliasPath: string, lib: string, spf: string): Promise<number> {
+    const content = instance.getContent();
+    let recordLength: number = DEFAULT_RECORD_LENGTH;
+
+    if (content) {
+      const result = await content.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
+      if (result.length > 0) {
+        recordLength = Number(result[0].LENGTH);
+      } else {
+        const result = await content.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
+        if (result.length > 0) {
+          recordLength = Number(result[0].LENGTH);
+        }
+      }
+    }
+
+    return recordLength;
+  }
+
+  /**
    * Upload to a member with source dates 
    * @param {string|undefined} asp 
    * @param {string} lib 
@@ -118,7 +134,7 @@ export class ExtendedIBMiContent {
         const tmpobj = await tmpFile();
 
         const sourceData = body.split(`\n`);
-        const recordLength = this.sourceDateHandler.recordLengths.get(alias) || DEFAULT_RECORD_LENGTH;
+        const recordLength = this.sourceDateHandler.recordLengths.get(alias) || await this.getRecordLength(aliasPath, lib, spf);
 
         const decimalSequence = sourceData.length >= 10000;
 
