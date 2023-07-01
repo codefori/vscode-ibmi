@@ -205,7 +205,7 @@ function sliceUp(arr: any[], size: number): any[] {
   return result;
 }
 
-function escapeString(val: string): string {
+export function escapeString(val: string): string {
   val = val.replace(/[\0\n\r\b\t'\x1a]/g, function (s) {
     switch (s) {
       case `\0`:
