@@ -15,7 +15,7 @@ export function t(id: string, values: string[] = []) {
 
   if (values.length > 0) {
     values.forEach((value, i) => {
-      text = text.replace(new RegExp(`{${i}}`, `g`), value);
+      text = text.replaceAll(`{${i}}`, value);
     });
   }
 
