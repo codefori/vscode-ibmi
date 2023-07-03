@@ -549,6 +549,41 @@ module.exports = class SPLFBrowser {
   getParent(element) {
     return element.parent;
   }
+  /**
+   * Called on hover to resolve the {@link TreeItem.tooltip TreeItem} property if it is undefined.
+   * Called on tree item click/open to resolve the {@link TreeItem.command TreeItem} property if it is undefined.
+   * Only properties that were undefined can be resolved in `resolveTreeItem`.
+   * Functionality may be expanded later to include being called to resolve other missing
+   * properties on selection and/or on open.
+   *
+   * Will only ever be called once per TreeItem.
+   *
+   * onDidChangeTreeData should not be triggered from within resolveTreeItem.
+   *
+   * *Note* that this function is called when tree items are already showing in the UI.
+   * Because of that, no property that changes the presentation (label, description, etc.)
+   * can be changed.
+   *
+   * @param item Undefined properties of `item` should be set then `item` should be returned.
+   * @param element The object associated with the TreeItem.
+   * @param token A cancellation token.
+   * @return The resolved tree item or a thenable that resolves to such. It is OK to return the given
+   * `item`. When no result is returned, the given `item` will be used.
+   * @param {vscode.TreeItem} item
+   * @param {vscode.TreeDataProvider<T>} element 
+   * @param {vscode.CancellationToken} token
+   * @returns {ProviderResult<TreeItem>};
+   */
+  async resolveTreeItem(item, element, token)
+  {
+    const content = getInstance().getContent();
+    const splfNum = await content.getUserSpooledFileCount(item.name);
+    const userText = await content.getUserProfileText(item.name);
+    item.tooltip = ``
+      .concat(`${userText ? `\nUser Text:\t\t\t  ${userText}` : ``}`)
+      .concat(`${splfNum  ? `\nSpooled Fiile Count: ${splfNum}` : ``}`)
+    return item;
+  }
 }
 
 class FilterItem extends vscode.TreeItem {
