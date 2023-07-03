@@ -371,12 +371,14 @@ module.exports = class IFSBrowser {
         /** @type {{local: string, remote: string}[]} */
         const uploads = [];
 
-        chosenFiles.forEach(uri => {
-          uploads.push({
-            local: uri.fsPath,
-            remote: path.posix.join(root, path.basename(uri.fsPath))
-          })
-        });
+        if (chosenFiles) {
+          chosenFiles.forEach(uri => {
+            uploads.push({
+              local: uri.fsPath,
+              remote: path.posix.join(root, path.basename(uri.fsPath))
+            })
+          });
+        }
 
         if (uploads.length > 0) {
           client.putFiles(uploads, {
