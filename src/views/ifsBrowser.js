@@ -402,8 +402,8 @@ module.exports = class IFSBrowser {
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
-            if ((GlobalConfiguration.get(`safeDeleteMode`)) && node.path.endsWith(`/`)) { //Check if path is directory
-              const dirName = path.basename(node.path.substring(0, node.path.length - 1))  //Get the name of the directory to be deleted
+            if ((GlobalConfiguration.get(`safeDeleteMode`)) && node.contextValue === `directory`) { //Check if path is directory
+              const dirName = path.basename(node.path)  //Get the name of the directory to be deleted
 
               const deletionPrompt = `Once you delete the directory, it cannot be restored.\nPlease type \"` + dirName + `\" to confirm deletion.`;
               const input = await vscode.window.showInputBox({
