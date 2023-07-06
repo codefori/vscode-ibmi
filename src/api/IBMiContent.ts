@@ -288,7 +288,7 @@ export default class IBMiContent {
         cast: true,
         onRecord(record) {
           for (const key of Object.keys(record)) {
-            record[key] = record[key] === ` ` ? `` : record[key]
+            record[key] = record[key] === ` ` ? `` : record[key];
           }
           return record;
         }
