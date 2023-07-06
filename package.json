@@ -1973,7 +1973,7 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
 					"group": "1_workspace@1"
-				},				
+				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
 					"when": "view == objectBrowser && viewItem == member",
