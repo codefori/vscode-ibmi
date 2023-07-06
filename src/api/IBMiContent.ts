@@ -286,6 +286,12 @@ export default class IBMiContent {
         columns: true,
         skip_empty_lines: true,
         cast: true,
+        onRecord(record) {
+          for (const key of Object.keys(record)) {
+            record[key] = record[key] === ` ` ? `` : record[key]
+          }
+          return record;
+        }
       });
     }
 
