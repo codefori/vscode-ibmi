@@ -40,7 +40,7 @@
 	"contributes": {
 		"snippets": [
 			{
-				"path": "./snippets/cl.code-snippets",
+				"path": "./schemas/cl.code-snippets",
 				"language": "cl"
 			}
 		],
@@ -49,7 +49,7 @@
 				"fileMatch": [
 					"actions.json"
 				],
-				"url": "./snippets/actions.json"
+				"url": "./schemas/actions.json"
 			}
 		],
 		"configuration": {
