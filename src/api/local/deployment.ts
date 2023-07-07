@@ -547,7 +547,7 @@ export namespace Deployment {
 async function getDefaultIgnoreRules(workspaceFolder: vscode.WorkspaceFolder): Promise<Ignore> {
   const ignoreRules = createIgnore({ ignorecase: true }).add(`.git`);
   // get the .gitignore file from workspace
-  const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `**/.gitignore`), ``, 1);
+  const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.gitignore`), ``, 1);
   if (gitignores.length > 0) {
     // get the content from the file
     const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
