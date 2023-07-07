@@ -97,10 +97,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     disconnectBarItem,
     terminalBarItem,
     actionsBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, () => {
+    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
       if (instance.getConnection()) {
-        disconnect();
-      } else {
+        await disconnect();
+      } else if(!silent) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
