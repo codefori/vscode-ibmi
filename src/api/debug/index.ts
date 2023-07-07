@@ -24,8 +24,40 @@ export async function initialize(context: ExtensionContext) {
     return debugclient !== undefined;
   }
 
-  const startDebugging = (options: DebugOptions) => {
-    startDebug(instance, options);
+  const startDebugging = async (library: string, object: string) => {
+    if (debugExtensionAvailable()) {
+      const connection = instance.getConnection();
+      if (connection) {
+        if (connection.remoteFeatures[`startDebugService.sh`]) {
+          const password = await getPassword();
+
+          if (password) {
+            const debugOpts: DebugOptions = {
+              password,
+              library: library,
+              object: object
+            };
+
+            startDebug(instance, debugOpts);
+          }
+        } else {
+          const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+          if (openTut === `Take me there`) {
+            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+          }
+        }
+      }
+
+    } else {
+      vscode.window.showInformationMessage(`Debug extension missing`, {
+        detail: `The IBM i Debug extension is not installed. It can be installed from the Marketplace.`,
+        modal: true
+      }, `Go to Marketplace`).then(result => {
+        if (result === `Go to Marketplace`) {
+          vscode.commands.executeCommand('code-for-ibmi.debug.extension');
+        }
+      });
+    }
   }
 
   const getObjectFromUri = (uri: Uri) => {
@@ -119,43 +151,20 @@ export async function initialize(context: ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
-      if (debugExtensionAvailable()) {
-        const connection = instance.getConnection();
-        if (connection) {
-          if (connection.remoteFeatures[`startDebugService.sh`]) {
-            const activeEditor = vscode.window.activeTextEditor;
+      const activeEditor = vscode.window.activeTextEditor;
+      if (activeEditor) {
+        const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
 
-            if (activeEditor) {
-              const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
-              const password = await getPassword();
-
-              if (password && qualifiedObject.library && qualifiedObject.object) {
-                const debugOpts: DebugOptions = {
-                  password,
-                  library: qualifiedObject.library,
-                  object: qualifiedObject.object
-                };
-
-                startDebugging(debugOpts);
-              }
-            }
-          } else {
-            const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-            if (openTut === `Take me there`) {
-              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
-            }
-          }
+        if (qualifiedObject.library && qualifiedObject.object) {
+          startDebugging(qualifiedObject.library, qualifiedObject.object);
         }
+      }
+    }),
 
-      } else {
-        vscode.window.showInformationMessage(`Debug extension missing`, {
-          detail: `The IBM i Debug extension is not installed. It can be installed from the Marketplace.`,
-          modal: true
-        }, `Go to Marketplace`).then(result => {
-          if (result === `Go to Marketplace`) {
-            vscode.commands.executeCommand('code-for-ibmi.debug.extension');
-          }
-        });
+    vscode.commands.registerCommand(`code-for-ibmi.debug.program`, async (node) => {
+      const [library, object] = node.path.split(`/`);
+      if (library && object) {
+        startDebugging(library, object);
       }
     }),
 
@@ -320,8 +329,8 @@ export async function initialize(context: ExtensionContext) {
       if (connection) {
         const ptfInstalled = debugPTFInstalled();
         if (ptfInstalled) {
-          vscode.window.withProgress({location: vscode.ProgressLocation.Notification}, async (progress) => {
-            progress.report({message: `Ending Debug Service`});
+          vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
+            progress.report({ message: `Ending Debug Service` });
             await server.stop(connection);
           });
         }

@@ -861,6 +861,12 @@
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
+				"command": "code-for-ibmi.debug.program",
+				"title": "Debug Program",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
 				"command": "code-for-ibmi.debug.endDebug",
 				"title": "Stop Debugging",
 				"category": "IBM i",
@@ -1973,6 +1979,11 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
 					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.debug.program",
+					"when": "view == objectBrowser && viewItem =~ /^object.pgm.*/",
+					"group": "2_debug@1"
 				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
