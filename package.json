@@ -40,7 +40,7 @@
 	"contributes": {
 		"snippets": [
 			{
-				"path": "./snippets/cl.code-snippets",
+				"path": "./schemas/cl.code-snippets",
 				"language": "cl"
 			}
 		],
@@ -49,13 +49,7 @@
 				"fileMatch": [
 					"actions.json"
 				],
-				"url": "./src/schemas/actions.json"
-			},
-			{
-				"fileMatch": [
-					"iproj.json"
-				],
-				"url": "./src/schemas/iproj.json"
+				"url": "./schemas/actions.json"
 			}
 		],
 		"configuration": {
