@@ -55,15 +55,15 @@ export class SettingsUI {
 
         const tempDataTab = new Section();
         tempDataTab
-          .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary })
-          .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir })
+          .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10 })
+          .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1 })
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData)
           .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts);
 
         const sourceTab = new Section();
         sourceTab
           .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP })
-          .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID })
+          .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addSelect(`sourceDateMode`, `Source date tracking mode`, [
             {
@@ -82,10 +82,8 @@ export class SettingsUI {
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
           .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
 
-        let terminalsTab: Section|undefined;
-
+        const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
-          terminalsTab = new Section();
           terminalsTab
             .addSelect(`encodingFor5250`, `5250 encoding`, [{
               selected: config.encodingFor5250 === `default`,
@@ -114,23 +112,30 @@ export class SettingsUI {
             ], `The terminal type for the 5250 emulator.`)
             .addCheckbox(`setDeviceNameFor5250`, `Set Device Name for 5250`, `When enabled, the user will be able to enter a device name before the terminal starts.`, config.setDeviceNameFor5250)
             .addInput(`connectringStringFor5250`, `Connection string for 5250`, `Default is <code>localhost</code>. A common SSL string is <code>ssl:localhost 992</code>`, { default: config.connectringStringFor5250 });
+        } else if (connection) {
+          terminalsTab.addParagraph('Enable 5250 emulation to change these settings');
+        } else {
+          terminalsTab.addParagraph('Connect to the server to see these settings.');
         }
 
-        let debuggerTab: Section|undefined;
+        const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
-          debuggerTab = new Section();
           debuggerTab
-            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort })
+            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
             .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing)
             .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
+        } else if (connection) {
+          debuggerTab.addParagraph('Enable the debug service to change these settings');
+        } else {
+          debuggerTab.addParagraph('Connect to the server to see these settings.');
         }
 
         let tabs: ComplexTab[] = [
           { label: `Features`, fields: featuresTab.fields },
           { label: `Source Code`, fields: sourceTab.fields },
-          terminalsTab ? { label: `Terminals`, fields: terminalsTab.fields } : undefined,
-          debuggerTab ? { label: `Debugger`, fields: debuggerTab.fields } : undefined,
+          { label: `Terminals`, fields: terminalsTab.fields },
+          { label: `Debugger`, fields: debuggerTab.fields },
           { label: `Temporary Data`, fields: tempDataTab.fields },
         ].filter(tab => tab !== undefined) as ComplexTab[];
 
@@ -138,45 +143,48 @@ export class SettingsUI {
 
         ui.addComplexTabs(tabs)
           .addHorizontalRule()
-          .addButtons({ id: `save`, label: `Save settings` });
+          .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
 
         const page = await ui.loadPage<any>(`Settings: ${config.name}`);
-        if (page && page.data) {
+        if (page) {
           page.panel.dispose();
 
-          const data = page.data;
-          for (const key in data) {
+          if (page.data) {
 
-            //In case we need to play with the data
-            switch (key) {
-              case `sourceASP`:
-                if (data[key].trim() === ``) data[key] = null;
-                break;
-              case `hideCompileErrors`:
-                data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
-                break;
+            const data = page.data;
+            for (const key in data) {
+
+              //In case we need to play with the data
+              switch (key) {
+                case `sourceASP`:
+                  if (data[key].trim() === ``) data[key] = null;
+                  break;
+                case `hideCompileErrors`:
+                  data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
+                  break;
+              }
+
+              //Refresh connection browser if not connected
+              if (!instance.getConnection()) {
+                vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+              }
             }
 
-            //Refresh connection browser if not connected
-            if (!instance.getConnection()) {
-              vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+            if (restartFields.some(item => data[item] !== config[item])) {
+              restart = true;
             }
-          }
 
-          if (restartFields.some(item => data[item] !== config[item])) {
-            restart = true;
-          }
+            Object.assign(config, data);
+            await instance.setConfig(config);
 
-          Object.assign(config, data);
-          await instance.setConfig(config);
-
-          if (connection && restart) {
+            if (connection && restart) {
               vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
                 .then(async (value) => {
                   if (value === `Reload`) {
                     await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
                   }
                 });
+            }
           }
         }
       }),
@@ -191,13 +199,13 @@ export class SettingsUI {
             let connection = connections[connectionIdx];
 
             const page = await new CustomUI()
-              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host })
-              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port) })
-              .addInput(`username`, `Username`, undefined, { default: connection.username })
+              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host, minlength: 1 })
+              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
               .addParagraph(`Only provide either the password or a private key - not both.`)
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
               .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
-              .addButtons({ id: `submitButton`, label: `Save` })
+              .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
               .loadPage<any>(`Login Settings: ${name}`);
 
             if (page && page.data) {

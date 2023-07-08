@@ -1,7 +1,9 @@
 import assert from "assert";
-import { commands } from "vscode";
+import { Uri, commands, workspace } from "vscode";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
+import util from 'util';
+import tmp from 'tmp';
 import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
@@ -75,7 +77,7 @@ export const ContentSuite: TestSuite = {
     {name: `Test streamfileResolve`, test: async () => {
       const content = instance.getContent();
   
-      const streamfilePath = await content?.streamfileResolve(`git`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+      const streamfilePath = await content?.streamfileResolve([`git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
     }},
@@ -83,9 +85,27 @@ export const ContentSuite: TestSuite = {
     {name: `Test streamfileResolve with bad name`, test: async () => {
       const content = instance.getContent();
   
-      const streamfilePath = await content?.streamfileResolve(`sup`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+      const streamfilePath = await content?.streamfileResolve([`sup`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, undefined);
+    }},
+
+    {name: `Test streamfileResolve with multiple names`, test: async () => {
+      const content = instance.getContent();
+  
+      const streamfilePath = await content?.streamfileResolve([`sup`, `sup2`, `git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+  
+      assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
+    }},
+
+    {name: `Test downloadMemberContent`, test: async () => {
+      const content = instance.getContent();
+
+      const tmpFile = await util.promisify(tmp.file)();
+      const memberContent = await content?.downloadMemberContent(undefined, 'QSYSINC', 'H', 'MATH', tmpFile);
+      const tmpFileContent = (await workspace.fs.readFile(Uri.file(tmpFile))).toString();
+  
+      assert.strictEqual(tmpFileContent, memberContent);
     }},
     
     {name: `Test runSQL (basic select)`, test: async () => {
