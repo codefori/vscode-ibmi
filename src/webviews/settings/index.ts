@@ -164,14 +164,14 @@ export class SettingsUI {
         if (page) {
           page.panel.dispose();
 
-          const data = page.data;
-          const button = data.buttons;
+          if (page.data) {
+            const data = page.data;
+            const button = data.buttons;
 
-          if (button === `import`) {
-            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            if (button === `import`) {
+              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
 
-          } else {
-            if (page.data) {
+            } else {
 
               const data = page.data;
               for (const key in data) {
