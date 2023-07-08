@@ -82,7 +82,7 @@ export class Login {
                       } else {
                         vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
                           if (selectionB === `Open configuration`) {
-                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Source Code`);
                           }
                         });
                       }

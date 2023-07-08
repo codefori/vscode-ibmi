@@ -3,12 +3,15 @@ import {promises as fs} from "fs";
 import * as os from "os";
 import IBMi from "../IBMi";
 
-const directory = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
 const pfxName = `debug_service.pfx`;
 const crtName = `debug_service.crt`;
 
-export function getKeystorePath() {
-  return path.posix.join(directory, pfxName);
+function getRemoteCertDirectory(connection: IBMi) {
+  return connection.config?.debugCertDirectory!;
+}
+
+export function getKeystorePath(connection: IBMi) {
+  return path.posix.join(getRemoteCertDirectory(connection), pfxName);
 }
 
 export function getLocalCertPath(connection: IBMi) {
@@ -17,7 +20,7 @@ export function getLocalCertPath(connection: IBMi) {
 }
 
 export async function checkRemoteExists(connection: IBMi) {
-  const pfxPath = getKeystorePath();
+  const pfxPath = getKeystorePath(connection);
 
   const dirList = await connection.sendCommand({
     command: `ls -p ${pfxPath}`
@@ -38,6 +41,8 @@ export async function setup(connection: IBMi) {
     `openssl x509 -req -in debug_service.csr -CA debug_service_ca.pem -CAkey debug_service_ca.key -CAcreateserial -out debug_service.crt -days 1095 -sha256`,
     `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`
   ];
+
+  const directory = getRemoteCertDirectory(connection);
 
   const mkdirResult = await connection.sendCommand({
     command: `mkdir -p ${directory}`
