@@ -15,7 +15,7 @@ import { VariablesUI } from "./webviews/variables";
 import { dirname } from 'path';
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
-import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { QSysFS, getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
@@ -97,10 +97,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     disconnectBarItem,
     terminalBarItem,
     actionsBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, () => {
+    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
       if (instance.getConnection()) {
-        disconnect();
-      } else {
+        await disconnect();
+      } else if(!silent) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
@@ -260,7 +260,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             CompileTools.runAction(instance, uri);
           }
         }
-        else{
+        else {
           vscode.window.showErrorMessage('Please connect to an IBM i first');
         }
       }
@@ -389,6 +389,20 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           ui.addField(Object.assign(uiField, field));
         });
         ui.loadPage(title, callback);
+      }
+    }),
+
+    vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
+      let uri;
+      if (node?.member) {
+        uri = getMemberUri(node?.member, { readonly: true });        
+      }
+      else if (node?.path) {
+        uri = getUriFromPath(node?.path, { readonly: true });
+      }
+
+      if (uri) {
+        return vscode.commands.executeCommand(`vscode.open`, uri);
       }
     })
   );

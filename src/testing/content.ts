@@ -5,6 +5,7 @@ import { instance } from "../instantiate";
 import util from 'util';
 import tmp from 'tmp';
 import { CommandResult } from "../typings";
+import { Tools } from "../api/Tools";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -178,6 +179,32 @@ export const ContentSuite: TestSuite = {
       assert.strictEqual(typeof firstRow[`BALDUE`], `number`);
       assert.strictEqual(typeof firstRow[`CITY`], `string`);
     }},
+
+    {
+      name: `Test getTable (SQL compared to nosql)`, test: async () => {
+        const config = instance.getConfig();
+        const content = instance.getContent();
+        const connection = instance.getConnection();
+
+        assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+
+        // First we fetch the table in SQL mode
+        const tempLib = config!.tempLibrary;
+        const TempName = Tools.makeid();
+        await connection?.remoteCommand(`DSPOBJD OBJ(QSYS/QSYSINC) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+        const tableA = await content?.getTable(tempLib, TempName, TempName, true);
+
+        config!.enableSQL = false;
+
+        // Then we fetch the table without SQL
+        const tableB = await content?.getTable(tempLib, TempName, TempName, true);
+
+        // Reset the config
+        config!.enableSQL = true;
+
+        assert.notDeepStrictEqual(tableA, tableB);
+      }
+    },
 
     {name: `Test getTable (SQL enabled)`, test: async () => {
       const config = instance.getConfig();

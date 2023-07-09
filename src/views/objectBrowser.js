@@ -1193,6 +1193,7 @@ class Member extends vscode.TreeItem {
     super(`${member.name}.${member.extension}`);
     const readOnly = filter.protected || !writable;
     this.parent = parent;
+    this.member = member;
     this.contextValue = `member${readOnly ? `_readonly` : ``}`;
     this.description = member.text;
     this.resourceUri = getMemberUri(member, readOnly ? { readonly: true } : undefined);

@@ -3,6 +3,7 @@ import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { GlobalConfiguration, ConnectionConfiguration } from "../../api/Configuration";
 import { ConnectionData, Server } from '../../typings';
 import { instance } from "../../instantiate";
+import * as certificates from "../../api/debug/certificates";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -21,7 +22,10 @@ export class SettingsUI {
   static init(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (
+        /** @type {Server|undefined} */ server,
+        /** @type {string|undefined} */ tab,
+      ) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
 
@@ -41,7 +45,7 @@ export class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `showDescInLibList`, `tempDir`];
+        const restartFields = [`enableSQL`, `showDescInLibList`, `tempDir`, `debugCertDirectory`];
         let restart = false;
 
         const featuresTab = new Section();
@@ -124,7 +128,15 @@ export class SettingsUI {
             .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
             .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing)
+            .addHorizontalRule()
             .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
+            .addInput(`debugCertDirectory`, `Certificate directory`, `This remote path is only used when starting the Debug Service and or for downloading an existing client certificate. This directory must be accessible to all users who wish to start the Debug Service (<code>debug_service.pfx</code>) or download an existing client certificate (<code>debug_service.crt</code>). Optionally, you can import one below.`, { default: config.debugCertDirectory });
+
+          const localCertExists = await certificates.checkLocalExists(connection);
+
+          debuggerTab
+            .addParagraph(`<b>${localCertExists ? `Client certificate for server has been imported.` : `No local client certificate exists. Debugging securely will not function correctly.`}</b>` + ` To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
+            .addButtons({ id: `import`, label: `Import new certificate` })
         } else if (connection) {
           debuggerTab.addParagraph('Enable the debug service to change these settings');
         } else {
@@ -141,7 +153,10 @@ export class SettingsUI {
 
         const ui = new CustomUI();
 
-        ui.addComplexTabs(tabs)
+        const defaultTab = tabs.findIndex(t => t.label === tab);
+
+        // If `tab` is provided, we can open directory to a specific tab.. pretty cool
+        ui.addComplexTabs(tabs, (defaultTab >= 0 ? defaultTab : undefined))
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
 
@@ -150,40 +165,48 @@ export class SettingsUI {
           page.panel.dispose();
 
           if (page.data) {
-
             const data = page.data;
-            for (const key in data) {
+            const button = data.buttons;
 
-              //In case we need to play with the data
-              switch (key) {
-                case `sourceASP`:
-                  if (data[key].trim() === ``) data[key] = null;
-                  break;
-                case `hideCompileErrors`:
-                  data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
-                  break;
+            if (button === `import`) {
+              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+
+            } else {
+
+              const data = page.data;
+              for (const key in data) {
+
+                //In case we need to play with the data
+                switch (key) {
+                  case `sourceASP`:
+                    if (data[key].trim() === ``) data[key] = null;
+                    break;
+                  case `hideCompileErrors`:
+                    data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
+                    break;
+                }
+
+                //Refresh connection browser if not connected
+                if (!instance.getConnection()) {
+                  vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+                }
               }
 
-              //Refresh connection browser if not connected
-              if (!instance.getConnection()) {
-                vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+              if (restartFields.some(item => data[item] !== config[item])) {
+                restart = true;
               }
-            }
 
-            if (restartFields.some(item => data[item] !== config[item])) {
-              restart = true;
-            }
+              Object.assign(config, data);
+              await instance.setConfig(config);
 
-            Object.assign(config, data);
-            await instance.setConfig(config);
-
-            if (connection && restart) {
-              vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-                .then(async (value) => {
-                  if (value === `Reload`) {
-                    await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                  }
-                });
+              if (connection && restart) {
+                vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                  .then(async (value) => {
+                    if (value === `Reload`) {
+                      await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                    }
+                  });
+              }
             }
           }
         }

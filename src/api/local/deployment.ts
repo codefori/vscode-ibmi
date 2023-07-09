@@ -4,7 +4,7 @@ import tar from 'tar';
 import tmp from 'tmp';
 import vscode, { WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
-import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
+import { LocalLanguageActions } from './LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
 import { ConnectionConfiguration } from '../Configuration';
 import IBMi from '../IBMi';
@@ -523,7 +523,7 @@ export namespace Deployment {
 
       progress?.report({ message: `extracting deployment tarball to ${parameters.remotePath}...` });
       //Extract and remove tar's PaxHeader metadata folder
-      const result = await connection.sendCommand({ command: `${connection.remoteFeatures.tar} -xf ${remoteTarball} && rm -rf PaxHeader`, directory: parameters.remotePath });
+      const result = await connection.sendCommand({ command: `${connection.remoteFeatures.tar} -xof ${remoteTarball} && rm -rf PaxHeader`, directory: parameters.remotePath });
       if (result.code !== 0) {
         throw new Error(`Tarball extraction failed: ${result.stderr}`)
       }

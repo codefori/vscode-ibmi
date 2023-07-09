@@ -40,7 +40,7 @@
 	"contributes": {
 		"snippets": [
 			{
-				"path": "./snippets/cl.code-snippets",
+				"path": "./schemas/cl.code-snippets",
 				"language": "cl"
 			}
 		],
@@ -49,13 +49,7 @@
 				"fileMatch": [
 					"actions.json"
 				],
-				"url": "./src/schemas/actions.json"
-			},
-			{
-				"fileMatch": [
-					"iproj.json"
-				],
-				"url": "./src/schemas/iproj.json"
+				"url": "./schemas/actions.json"
 			}
 		],
 		"configuration": {
@@ -1453,6 +1447,12 @@
 				"command": "code-for-ibmi.ifs.copyPath",
 				"title": "Copy Path",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.browse",
+				"title": "Browse",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1671,6 +1671,10 @@
 				},
 				{
 					"command": "code-for-ibmi.ifs.copyPath",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.browse",
 					"when": "never"
 				}
 			],
@@ -1965,6 +1969,11 @@
 					"group": "5_sourceFileStuff@1"
 				},
 				{
+					"command": "code-for-ibmi.browse",
+					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
+					"group": "0_browse@1"
+				},
+				{
 					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
 					"group": "1_workspace@1"
@@ -2008,6 +2017,11 @@
 					"command": "code-for-ibmi.moveIFSShortcutUp",
 					"when": "view == ifsBrowser && viewItem == shortcut",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.browse",
+					"when": "view == ifsBrowser && viewItem == streamfile",
+					"group": "0_browse@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
