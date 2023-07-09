@@ -52,6 +52,7 @@ export const en: Locale = {
   'ifsBrowser.uploadStreamfile.uploadedFiles': `Uploaded files.`,
   'ifsBrowser.uploadStreamfile.errorMessage': `Error uploading files! {0}`,
   'ifsBrowser.uploadStreamfile.noFilesSelected': `No files selected.`,
+  'ifsBrowser.deleteIFS.rootNotAllowed': `Unable to delete root (/) from the IFS Browser.`,
   'ifsBrowser.deleteIFS.warningMessage': `Are you sure you want to delete {0}?`,
   'ifsBrowser.deleteIFS.deletionPrompt': `Once you delete the directory, it cannot be restored.\nPlease type \"{0}\" to confirm deletion.`,
   'ifsBrowser.deleteIFS.deletionPrompt2': ` (Press \'Escape\' to cancel)`,

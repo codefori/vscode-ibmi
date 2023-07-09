@@ -399,7 +399,7 @@ module.exports = class IFSBrowser {
 
         if (node) {
           if (node.path === `/`) {
-            vscode.window.showErrorMessage(`Unable to delete root (/) from the IFS Browser.`);
+            vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.rootNotAllowed`));
             return;
           }
 
