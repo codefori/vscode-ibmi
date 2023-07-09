@@ -397,6 +397,11 @@ module.exports = class IFSBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
 
         if (node) {
+          if (node.path === `/`) {
+            vscode.window.showErrorMessage(`Unable to delete root (/) from the IFS Browser.`);
+            return;
+          }
+
           //Running from right click
           let deletionConfirmed = false;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
