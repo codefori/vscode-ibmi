@@ -10,6 +10,7 @@ import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
+import { readFileSync } from "fs";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -116,7 +117,11 @@ export default class IBMi {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
-      if (!connectionObject.privateKey) (connectionObject.privateKey = null);
+      if (connectionObject.privateKey) {
+        connectionObject.privateKey = readFileSync(connectionObject.privateKey, {encoding: `utf-8`});
+      } else {
+        connectionObject.privateKey = null;
+      }
 
       configVars.replaceAll(connectionObject);
 
