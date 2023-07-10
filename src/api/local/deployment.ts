@@ -1,12 +1,10 @@
-import Crypto from 'crypto';
-import { readFileSync } from 'fs';
 import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
 import vscode, { WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
-import { LocalLanguageActions } from '../../schemas/LocalLanguageActions';
+import { LocalLanguageActions } from './LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
 import { ConnectionConfiguration } from '../Configuration';
 import IBMi from '../IBMi';
@@ -358,7 +356,7 @@ export namespace Deployment {
         const uploads: vscode.Uri[] = [];
         for await (const file of localFiles) {
           const remote = remoteMD5.find(e => e.path === file.path);
-          const md5 = md5Hash(file.uri);
+          const md5 = Tools.md5Hash(file.uri);
           if (!remote || remote.md5 !== md5) {
             uploads.push(file.uri);
           }
@@ -483,14 +481,6 @@ export namespace Deployment {
     };
   }
 
-  function md5Hash(file: vscode.Uri): string {
-    const bytes = readFileSync(file.fsPath);
-    return Crypto.createHash("md5")
-      .update(bytes)
-      .digest("hex")
-      .toLowerCase();
-  }
-
   function toRelative(root: vscode.Uri, file: vscode.Uri) {
     return path.relative(root.path, file.path).replace(/\\/g, `/`);
   }
@@ -533,7 +523,7 @@ export namespace Deployment {
 
       progress?.report({ message: `extracting deployment tarball to ${parameters.remotePath}...` });
       //Extract and remove tar's PaxHeader metadata folder
-      const result = await connection.sendCommand({ command: `${connection.remoteFeatures.tar} -xf ${remoteTarball} && rm -rf PaxHeader`, directory: parameters.remotePath });
+      const result = await connection.sendCommand({ command: `${connection.remoteFeatures.tar} -xof ${remoteTarball} && rm -rf PaxHeader`, directory: parameters.remotePath });
       if (result.code !== 0) {
         throw new Error(`Tarball extraction failed: ${result.stderr}`)
       }
@@ -557,7 +547,7 @@ export namespace Deployment {
 async function getDefaultIgnoreRules(workspaceFolder: vscode.WorkspaceFolder): Promise<Ignore> {
   const ignoreRules = createIgnore({ ignorecase: true }).add(`.git`);
   // get the .gitignore file from workspace
-  const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `**/.gitignore`), ``, 1);
+  const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.gitignore`), ``, 1);
   if (gitignores.length > 0) {
     // get the content from the file
     const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);

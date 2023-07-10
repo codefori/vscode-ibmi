@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { ObjectTypes } from '../schemas/Objects';
+import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
@@ -111,7 +111,7 @@ export default class IBMiContent {
   /**
    * Download the contents of a source member
    */
-  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string) {
+  async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
     asp = asp || this.config.sourceASP;
     library = library.toUpperCase();
     sourceFile = sourceFile.toUpperCase();
@@ -119,7 +119,6 @@ export default class IBMiContent {
 
     const path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
-    const tmpobj = await tmpFile();
     const client = this.ibmi.client;
 
     let retried = false;
@@ -147,8 +146,11 @@ export default class IBMiContent {
       }
     }
 
-    await client.getFile(tmpobj, tempRmt);
-    return await readFileAsync(tmpobj, `utf8`);
+    if (!localPath) {
+      localPath = await tmpFile();
+    }
+    await client.getFile(localPath, tempRmt);
+    return await readFileAsync(localPath, `utf8`);
   }
 
   /**
@@ -284,6 +286,12 @@ export default class IBMiContent {
         columns: true,
         skip_empty_lines: true,
         cast: true,
+        onRecord(record) {
+          for (const key of Object.keys(record)) {
+            record[key] = record[key] === ` ` ? `` : record[key];
+          }
+          return record;
+        }
       });
     }
 
@@ -563,7 +571,7 @@ export default class IBMiContent {
    * @param remotePath 
    * @return an array of IFSFile
    */
-  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?:(errors:string[]) => void): Promise<IFSFile[]> {
+  async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?: (errors: string[]) => void): Promise<IFSFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     const { 'stat': STAT } = this.ibmi.remoteFeatures;
     const { 'sort': SORT } = this.ibmi.remoteFeatures;
@@ -687,8 +695,8 @@ export default class IBMiContent {
     return undefined;
   }
 
-  async streamfileResolve(name: string, directories: string[]): Promise<string | undefined> {
-    const command = `for f in ${directories.map(dir => path.posix.join(dir, name)).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
+  async streamfileResolve(names: string[], directories: string[]): Promise<string | undefined> {
+    const command = `for f in ${directories.flatMap(dir => names.map(name => path.posix.join(dir, name))).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,

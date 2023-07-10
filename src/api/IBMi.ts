@@ -10,12 +10,13 @@ import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
+import { readFileSync } from "fs";
 
 export interface MemberParts extends IBMiMember {
   basename: string
 }
 
-let remoteApps = [
+let remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
     names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`]
@@ -93,6 +94,7 @@ export default class IBMi {
       attr: undefined,
       iconv: undefined,
       tar: undefined,
+      ls: undefined,
     };
 
     this.variantChars = {
@@ -115,7 +117,11 @@ export default class IBMi {
     try {
       connectionObject.keepaliveInterval = 35000;
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
-      if (!connectionObject.privateKey) (connectionObject.privateKey = null);
+      if (connectionObject.privateKey) {
+        connectionObject.privateKey = readFileSync(connectionObject.privateKey, {encoding: `utf-8`});
+      } else {
+        connectionObject.privateKey = null;
+      }
 
       configVars.replaceAll(connectionObject);
 
