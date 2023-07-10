@@ -227,7 +227,7 @@ export class SettingsUI {
               .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
               .addParagraph(`Only provide either the password or a private key - not both.`)
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
-              .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one.`)
+              .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
               .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
               .loadPage<any>(`Login Settings: ${name}`);
 
