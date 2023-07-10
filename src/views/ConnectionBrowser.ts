@@ -2,11 +2,11 @@ import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
-import { SettingsUI } from '../webviews/settings';
-import { Login } from '../webviews/login';
 import { GlobalStorage } from '../api/Storage';
 import { instance } from '../instantiate';
 import { t } from "../locale";
+import { Login } from '../webviews/login';
+import { SettingsUI } from '../webviews/settings';
 
 export class ObjectBrowserProvider {
   private _attemptingConnection: boolean;
@@ -42,7 +42,7 @@ export class ObjectBrowserProvider {
             const lastConnections = GlobalStorage.get().getLastConnections() || [];
             if (lastConnections && lastConnections.length) {
               name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: t(`connectionBrowser.connectTo.lastConnection`) },
-              ...lastConnections.map(lc => ({ label: lc.name, description: t(`connectionBrowser.connectTo.lastUsed`, [String(new Date(lc.timestamp).toLocaleString())]) }))],
+              ...lastConnections.map(lc => ({ label: lc.name, description: t(`connectionBrowser.connectTo.lastUsed`, new Date(lc.timestamp).toLocaleString()) }))],
                 { title: t(`connectionBrowser.connectTo.title`) }
               ))?.label;
             }
@@ -78,7 +78,7 @@ export class ObjectBrowserProvider {
       vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (server: Server) => {
         if (!this._attemptingConnection && server) {
           vscode.window.showWarningMessage(
-            t(`connectionBrowser.deleteConnection.warning`, [server.name]),
+            t(`connectionBrowser.deleteConnection.warning`, server.name),
             t(`Yes`), t(`No`)
           ).then(async (value) => {
             if (value === t(`Yes`)) {

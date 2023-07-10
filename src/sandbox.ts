@@ -1,8 +1,7 @@
 import { env } from "process";
 import querystring from "querystring";
-import { commands, ExtensionContext, extensions, Uri, window } from "vscode";
+import { commands, ExtensionContext, Uri, window } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
-import { GitExtension } from "./api/import/git";
 import { Tools } from "./api/Tools";
 import { instance } from "./instantiate";
 import { t } from "./locale";
@@ -30,7 +29,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                 if (!user) {
                   user = await window.showInputBox({
                     title: t(`sandbox.input.user.title`),
-                    prompt: t(`sandbox.input.user.prompt`, [server])
+                    prompt: t(`sandbox.input.user.prompt`, server)
                   });
                 }
 
@@ -40,7 +39,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                   pass = await window.showInputBox({
                     password: true,
                     title: t(`sandbox.input.password.title`),
-                    prompt: t(`sandbox.input.password.prompt`, [String(user), server])
+                    prompt: t(`sandbox.input.password.prompt`, String(user), server)
                   });
                 }
 
@@ -86,12 +85,12 @@ export async function registerUriHandler(context: ExtensionContext) {
                   } else {
                     window.showInformationMessage(t(`sandbox.failedToConnect.title`), {
                       modal: true,
-                      detail: t(`sandbox.failedToConnect`, [server, String(user)])
+                      detail: t(`sandbox.failedToConnect`, server, user)
                     });
                   }
 
                 } else {
-                  window.showErrorMessage(t(`sandbox.noPassword`, [server]));
+                  window.showErrorMessage(t(`sandbox.noPassword`, server));
                 }
               }
             } else {

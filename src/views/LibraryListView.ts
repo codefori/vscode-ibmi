@@ -1,8 +1,8 @@
 import vscode from "vscode";
-import { GlobalConfiguration, ConnectionConfiguration } from "../api/Configuration";
+import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
-import { Library as LibraryListEntry } from "../typings";
 import { t } from "../locale";
+import { Library as LibraryListEntry } from "../typings";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -65,7 +65,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                   if (newLibraryOK) {
                     quickPick.hide();
                     config.currentLibrary = newLibrary;
-                    vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.changedCurrent`, [newLibrary]));
+                    vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.changedCurrent`, newLibrary));
                     prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
                     prevCurLibs.splice(0, 0, currentLibrary);
                     await storage.setPreviousCurLibs(prevCurLibs);
@@ -73,7 +73,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                   }
                 } else {
                   quickPick.hide();
-                  vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.alreadyCurrent`, [newLibrary]))
+                  vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.alreadyCurrent`, newLibrary))
                 }
               }
             }
@@ -111,7 +111,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
               if (badLibs.length > 0) {
                 newLibraryList = newLibraryList.filter(lib => !badLibs.includes(lib));
-                vscode.window.showWarningMessage(t(`LibraryListView.changeUserLibraryList.removedLibs`, [badLibs.join(`, `)]));
+                vscode.window.showWarningMessage(t(`LibraryListView.changeUserLibraryList.removedLibs`, badLibs.join(`, `)));
               }
             }
 
@@ -143,7 +143,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
               if (badLibs.length > 0) {
                 libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-                vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, [badLibs.join(`, `)]));
+                vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
               }
 
               config.libraryList = libraryList;
@@ -221,7 +221,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
           if (badLibs.length > 0) {
             libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-            vscode.window.showWarningMessage(t(`LibraryListView.cleanupLibraryList.removedLibs`, [badLibs.join(`, `)]));
+            vscode.window.showWarningMessage(t(`LibraryListView.cleanupLibraryList.removedLibs`, badLibs.join(`, `)));
             config.libraryList = libraryList;            
             await this.updateConfig(config);
           } else {
