@@ -1,7 +1,11 @@
 import assert from "assert";
-import { commands } from "vscode";
+import { Uri, commands, workspace } from "vscode";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
+import util from 'util';
+import tmp from 'tmp';
+import { CommandResult } from "../typings";
+import { Tools } from "../api/Tools";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -74,7 +78,7 @@ export const ContentSuite: TestSuite = {
     {name: `Test streamfileResolve`, test: async () => {
       const content = instance.getContent();
   
-      const streamfilePath = await content?.streamfileResolve(`git`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+      const streamfilePath = await content?.streamfileResolve([`git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
     }},
@@ -82,9 +86,27 @@ export const ContentSuite: TestSuite = {
     {name: `Test streamfileResolve with bad name`, test: async () => {
       const content = instance.getContent();
   
-      const streamfilePath = await content?.streamfileResolve(`sup`, [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+      const streamfilePath = await content?.streamfileResolve([`sup`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
   
       assert.strictEqual(streamfilePath, undefined);
+    }},
+
+    {name: `Test streamfileResolve with multiple names`, test: async () => {
+      const content = instance.getContent();
+  
+      const streamfilePath = await content?.streamfileResolve([`sup`, `sup2`, `git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`])
+  
+      assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
+    }},
+
+    {name: `Test downloadMemberContent`, test: async () => {
+      const content = instance.getContent();
+
+      const tmpFile = await util.promisify(tmp.file)();
+      const memberContent = await content?.downloadMemberContent(undefined, 'QSYSINC', 'H', 'MATH', tmpFile);
+      const tmpFileContent = (await workspace.fs.readFile(Uri.file(tmpFile))).toString();
+  
+      assert.strictEqual(tmpFileContent, memberContent);
     }},
     
     {name: `Test runSQL (basic select)`, test: async () => {
@@ -122,23 +144,6 @@ export const ContentSuite: TestSuite = {
       assert.strictEqual(rows?.length, 1);
     }},
 
-    {name: `Compare runSQL and old runQuery (deprecated)`, test: async () => {
-      const content = instance.getContent();
-
-      const query = [
-        `-- myselect`,
-        `select *`,
-        `from qiws.qcustcdt --my table`,
-        `limit 1`,
-      ].join(`\n`);
-  
-      const rowsA = await content?.runSQL(query);
-
-      const rowsB = await commands.executeCommand(`code-for-ibmi.runQuery`, query);
-
-      assert.deepStrictEqual(rowsA, rowsB);
-    }},
-
     {name: `Test getTable (SQL disabled)`, test: async () => {
       const config = instance.getConfig();
       const content = instance.getContent();
@@ -157,6 +162,32 @@ export const ContentSuite: TestSuite = {
       assert.strictEqual(typeof firstRow[`BALDUE`], `number`);
       assert.strictEqual(typeof firstRow[`CITY`], `string`);
     }},
+
+    {
+      name: `Test getTable (SQL compared to nosql)`, test: async () => {
+        const config = instance.getConfig();
+        const content = instance.getContent();
+        const connection = instance.getConnection();
+
+        assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+
+        // First we fetch the table in SQL mode
+        const tempLib = config!.tempLibrary;
+        const TempName = Tools.makeid();
+        await connection?.remoteCommand(`DSPOBJD OBJ(QSYS/QSYSINC) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`);
+        const tableA = await content?.getTable(tempLib, TempName, TempName, true);
+
+        config!.enableSQL = false;
+
+        // Then we fetch the table without SQL
+        const tableB = await content?.getTable(tempLib, TempName, TempName, true);
+
+        // Reset the config
+        config!.enableSQL = true;
+
+        assert.notDeepStrictEqual(tableA, tableB);
+      }
+    },
 
     {name: `Test getTable (SQL enabled)`, test: async () => {
       const config = instance.getConfig();
@@ -197,6 +228,33 @@ export const ContentSuite: TestSuite = {
       const objects = await content?.getFileList(`/tmp/${Date.now()}`);
 
       assert.strictEqual(objects?.length, 0);
+    }},
+
+    {name: `Test getFileList (special chars)`, test: async () => {
+      const connection = instance.getConnection();
+      const content = instance.getContent();
+      const files = [`name with blank`, `name_with_quote'`, `name_with_dollar$`];
+      const dir = `/tmp/${Date.now()}`;
+      const dirWithSubdir = `${dir}/${files[0]}`;
+
+      let result: CommandResult | undefined;
+
+      result = await connection?.sendCommand({command: `mkdir -p "${dirWithSubdir}"`});
+      assert.strictEqual(result?.code, 0);
+      try{
+        for (const file of files) {
+          result = await connection?.sendCommand({command: `touch "${dirWithSubdir}/${file}"`});
+          assert.strictEqual(result?.code, 0);
+        };
+
+        const objects = await content?.getFileList(`${dirWithSubdir}`);
+        assert.strictEqual(objects?.length, files.length);
+        assert.deepStrictEqual(objects?.map(a => a.name).sort(), files.sort());
+      }
+      finally{
+        result = await connection?.sendCommand({command: `rm -r "${dir}"`});
+        assert.strictEqual(result?.code, 0);
+      }
     }},
 
     {name: `Test getObjectList (all objects)`, test: async () => {

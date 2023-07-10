@@ -1,4 +1,4 @@
-import { Action } from "../typings";
+import { Action } from "../../typings";
 
 export const LocalLanguageActions: Record<string, Action[]> = {
   RPGLE: [
@@ -113,7 +113,15 @@ export const LocalLanguageActions: Record<string, Action[]> = {
   SQL: [
     {
       extensions: [
-        `SQL`
+        `SQL`,
+        `TABLE`,
+        `VIEW`,
+        `SQLPRC`,
+        `SQLUDF`,
+        `SQLUDT`,
+        `SQLTRG`,
+        `SQLALIAS`,
+        `SQLSEQ`
       ],
       name: `Run SQL Statements (RUNSQLSTM)`,
       command: `RUNSQLSTM SRCSTMF('&FULLPATH') COMMIT(*NONE) NAMING(*SQL)`,

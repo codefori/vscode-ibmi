@@ -1,6 +1,8 @@
-import { API, GitExtension } from "./import/git";
+import Crypto from 'crypto';
+import { readFileSync } from "fs";
+import path from "path";
 import vscode from "vscode";
-import path from "path"
+import { API, GitExtension } from "./import/git";
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -116,12 +118,12 @@ export namespace Tools {
     return rows;
   }
 
-  export function makeid() {
+  export function makeid(length: number = 8) {
     let text = `O_`;
     const possible =
       `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
 
-    for (let i = 0; i < 8; i++)
+    for (let i = 0; i < length; i++)
       text += possible.charAt(Math.floor(Math.random() * possible.length));
 
     return text;
@@ -199,4 +201,12 @@ export namespace Tools {
   export function sleep(ms:number) {
     return new Promise(resolve => setTimeout(resolve, ms));
  }
+
+  export function md5Hash(file: vscode.Uri): string {
+    const bytes = readFileSync(file.fsPath);
+    return Crypto.createHash("md5")
+      .update(bytes)
+      .digest("hex")
+      .toLowerCase();
+  }
 }

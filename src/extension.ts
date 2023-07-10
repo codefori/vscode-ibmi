@@ -118,4 +118,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export async function deactivate() {
+  await commands.executeCommand(`code-for-ibmi.disconnect`, true);
+}

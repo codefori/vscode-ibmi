@@ -1,5 +1,5 @@
 import { FileError } from '../../../typings';
-import { formatIFS, formatName } from '../handler';
+import { formatIFS, formatName, getSourcePath } from '../handler';
 
 export namespace OldHandler {
   class ExpansionRange {
@@ -69,7 +69,7 @@ export namespace OldHandler {
               _FileIDs.set(_FileID, formatName(pieces[5]));
             }
             else {
-              _FileIDs.set(_FileID, formatIFS(pieces[5]));
+              _FileIDs.set(_FileID, formatIFS(getSourcePath(lines, _FileID)));
             }
 
             _Errors.set(_FileID, []);

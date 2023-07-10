@@ -15,7 +15,7 @@ import { VariablesUI } from "./webviews/variables";
 import { dirname } from 'path';
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
-import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { QSysFS, getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
@@ -98,10 +98,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     disconnectBarItem,
     terminalBarItem,
     actionsBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, () => {
+    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
       if (instance.getConnection()) {
-        disconnect();
-      } else {
+        await disconnect();
+      } else if(!silent) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
@@ -117,7 +117,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
       let uri = {};
-      if (!options?.readonly && !path.startsWith('/')) {
+      if  (!options?.readonly && !path.startsWith('/'))  {
         const [library, name] = path.split('/');
         const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
         if (!writable) {
@@ -235,53 +235,41 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       CompileTools.clearDiagnostics();
     }),
     vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
-      if (node) {
-        const uri = node.resourceUri || node;
-
-        CompileTools.runAction(instance, uri);
-
-      } else {
-        const editor = vscode.window.activeTextEditor;
-        let willRun = false;
-
-        if (editor) {
-          const config = instance.getConfig()!;
-          const uri = editor.document.uri;
-          willRun = true;
-          if (config.autoSaveBeforeAction) {
-            await editor.document.save();
-          } else {
-            if (editor.document.isDirty) {
-              let result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
-
+      const editor = vscode.window.activeTextEditor;
+      const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
+      if (uri) {
+        const config = instance.getConfig();
+        if (config) {
+          let canRun = true;
+          if (editor && uri.path === editor.document.uri.path && editor.document.isDirty) {
+            if (config.autoSaveBeforeAction) {
+              await editor.document.save();
+            } else {
+              const result = await vscode.window.showWarningMessage(`The file must be saved to run Actions.`, `Save`, `Save automatically`, `Cancel`);
               switch (result) {
                 case `Save`:
                   await editor.document.save();
-                  willRun = true;
+                  canRun = true;
                   break;
                 case `Save automatically`:
                   config.autoSaveBeforeAction = true;
                   await ConnectionConfiguration.update(config);
                   await editor.document.save();
-                  willRun = true;
+                  canRun = true;
                   break;
                 default:
-                  willRun = false;
+                  canRun = false;
                   break;
               }
             }
           }
 
-          if (willRun) {
-            const scheme = uri.scheme;
-            switch (scheme) {
-              case `member`:
-              case `streamfile`:
-              case `file`:
-                CompileTools.runAction(instance, uri);
-                break;
-            }
+          if (canRun && [`member`, `streamfile`, `file`].includes(uri.scheme)) {
+            CompileTools.runAction(instance, uri);
           }
+        }
+        else {
+          vscode.window.showErrorMessage('Please connect to an IBM i first');
         }
       }
     }),
@@ -382,33 +370,17 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return value;
     }),
 
-    // The follow commands are deprecated and to be removed for 1.9.0
-    vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail: RemoteCommand) => {
-      console.log(`Command 'code-for-ibmi.runCommand' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getConnection().runCommand' in the export API.`);
-      if (detail && detail.command) {
-        return CompileTools.runCommand(instance, detail);
+    vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
+      let uri;
+      if (node?.member) {
+        uri = getMemberUri(node?.member, { readonly: true });        
       }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
-      console.log(`Command 'code-for-ibmi.runQuery' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getContent().runSQL' in the export API.`);
-      const content = instance.getContent();
-      if (statement && content) {
-        return content.runSQL(statement);
-      } else {
-        return null;
+      else if (node?.path) {
+        uri = getUriFromPath(node?.path, { readonly: true });
       }
-    }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.launchUI`, <T>(title: string, fields: any[], callback: (page: Page<T>) => void) => {
-      console.log(`Command 'code-for-ibmi.launchUI' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'exports.customUI' in the export API.`);
-      if (title && fields && callback) {
-        const ui = new CustomUI();
-        fields.forEach(field => {
-          const uiField = new Field(field.type, field.id, field.label);
-          ui.addField(Object.assign(uiField, field));
-        });
-        ui.loadPage(title, callback);
+      if (uri) {
+        return vscode.commands.executeCommand(`vscode.open`, uri);
       }
     })
   );

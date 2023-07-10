@@ -301,15 +301,22 @@ export class SourceDateHandler {
         event.contentChanges[0].range.isSingleLine &&
         !event.contentChanges[0].text.includes(`\n`);
 
+      const isSpace = (isSingleLine && event.contentChanges[0].text === ` `);
+
       const currentEditingLine = isSingleLine ? event.contentChanges[0].range.start.line : undefined;
 
       const editedBefore = isSingleLine && currentEditingLine === this.lineEditedBefore;
-      const doRefresh = (!editedBefore || currentEditingLine !== this.lineEditedBefore || (event.contentChanges[0] && event.contentChanges[0].range.start.character === 0));
+      const isAtStartOfLine = (event.contentChanges[0] && event.contentChanges[0].range.start.character === 0);
+      const isDelete = (event.contentChanges[0] && event.contentChanges[0].text === `` && event.contentChanges[0].range.isEmpty === false)
+      const doRefresh = (!editedBefore || currentEditingLine !== this.lineEditedBefore || isAtStartOfLine || isDelete);
 
       if (doRefresh) {
         this._diffRefreshGutter(document);
       }
 
+      if (isDelete || isSpace) {
+        this.lineEditedBefore = 0;
+      } else
       if (event.contentChanges.length > 0) {
         this.lineEditedBefore = currentEditingLine || 0;
       }

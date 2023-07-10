@@ -788,7 +788,9 @@ module.exports = class ObjectBrowser {
               try {
                 newPathOK = true;
                 await connection.remoteCommand(
-                  `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
+                  node.type === `LIB` ?
+                    `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
+                    `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
                 );
                 if (GlobalConfiguration.get(`autoRefresh`)) {
                   vscode.window.showInformationMessage(`Copied object ${node.path} *${node.type} to ${escapedPath}.`);
@@ -1195,6 +1197,7 @@ class Member extends vscode.TreeItem {
     super(`${member.name}.${member.extension}`);
     const readOnly = filter.protected || !writable;
     this.parent = parent;
+    this.member = member;
     this.contextValue = `member${readOnly ? `_readonly` : ``}`;
     this.description = member.text;
     this.resourceUri = getMemberUri(member, readOnly ? { readonly: true } : undefined);

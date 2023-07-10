@@ -20,16 +20,16 @@ export class Login {
     const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
 
     const page = await new CustomUI()
-      .addInput(`name`, `Connection Name`)
-      .addInput(`host`, `Host or IP Address`)
-      .addInput(`port`, `Port (SSH)`, ``, { default: `22` })
-      .addInput(`username`, `Username`)
+      .addInput(`name`, `Connection Name`, undefined, {minlength: 1})
+      .addInput(`host`, `Host or IP Address`, undefined, {minlength: 1})
+      .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+      .addInput(`username`, `Username`, undefined, {minlength: 1, maxlength: 10})
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
-      .addFile(`privateKey`, `Private Key`)
+      .addFile(`privateKey`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`)
       .addButtons(
-        { id: `connect`, label: `Connect` },
+        { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
       )
       .loadPage<any>(`IBM i Login`);
@@ -82,7 +82,7 @@ export class Login {
                       } else {
                         vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
                           if (selectionB === `Open configuration`) {
-                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Source Code`);
                           }
                         });
                       }

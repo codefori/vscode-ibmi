@@ -9,6 +9,7 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/tsconfig.json
 src/**
+!src/schemas/**
 types/**
 docs/**
 .github/**

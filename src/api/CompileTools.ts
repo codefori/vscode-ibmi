@@ -557,10 +557,19 @@ export namespace CompileTools {
         getDefaultVariables(instance, ileSetup)
       );
 
-      if (commandString.startsWith(`?`)) {
-        commandString = await vscode.window.showInputBox({ prompt: `Run Command`, value: commandString.substring(1) }) || '';
-      } else {
-        commandString = await showCustomInputs(`Run Command`, commandString, title);
+      if (commandString) {
+        const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+        const promptedCommands = [];
+        for (let command of commands) {
+          if (command.startsWith(`?`)) {
+            command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
+          } else {
+            command = await showCustomInputs(`Run Command`, command, title);
+          }
+          promptedCommands.push(command);
+          if (!command) break;
+        }
+        commandString = !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
       }
 
       if (commandString) {
@@ -670,11 +679,11 @@ export namespace CompileTools {
         if (end >= 0) {
           let currentInput = command.substring(start + 2, end);
 
-          const [name, label, initalValue] = currentInput.split(`|`);
+          const [name, label, initialValue] = currentInput.split(`|`);
           components.push({
             name,
             label,
-            initialValue: initalValue || ``,
+            initialValue: initialValue || ``,
             start,
             end: end + 1
           });
@@ -710,12 +719,12 @@ export namespace CompileTools {
         }
       }
 
-      commandUI.addButtons({ id: `execute`, label: `Execute` });
+      commandUI.addButtons({ id: `execute`, label: `Execute` }, { id: `cancel`, label: `Cancel` });
 
-      const page = await commandUI.loadPage(name);
+      const page = await commandUI.loadPage<any>(name);
       if (page) {
         page.panel.dispose();
-        if (page.data) {
+        if (page.data && page.data.buttons !== `cancel`) {
           const dataEntries = Object.entries(page.data);
           for (const component of components.reverse()) {
             const value = dataEntries.find(([key]) => key === component.name)?.[1];
