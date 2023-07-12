@@ -719,6 +719,30 @@ export default class IBMi {
           vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
         }
 
+        // Validate configured library list.
+        if (this.config.libraryList) {
+          let validLibs: string[] = [];
+          let badLibs: string[] = [];
+
+          result = await this.sendCommand({
+            command: `for lib in ` + this.config.libraryList.map(lib => this.sysNameInAmerican(lib)).join(` `).replace(/\$/g, `\\$`)
+                                   + `; do if [ -d /QSYS.LIB/$lib.LIB ]; then echo $lib; fi; done`
+          });
+          if (result) {
+            validLibs = result.stdout.split(`\n`).filter(lib => lib.trim() !== ``).map(lib => this.sysNameInLocal(lib));
+            badLibs = this.config.libraryList.filter(lib => !validLibs.includes(lib)).map(lib => this.sysNameInLocal(lib));
+            
+            if (badLibs.length > 0) {
+              const chosen = await vscode.window.showWarningMessage(`The following ${badLibs.length > 1 ? `libraries` : `library`} does not exist: ${badLibs.join(`,`)}. Remove ${badLibs.length > 1 ? `them` : `it`} from the library list?`, `Yes`, `No`);
+              if (chosen === `Yes`) {
+                this.config!.libraryList = validLibs;
+              } else {
+                vscode.window.showWarningMessage(`The following libraries does not exist: ${badLibs.join(`,`)}.`);
+              }
+            }
+          }
+        }
+
         if (!reconnecting) {
           instance.setConnection(this);
           vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
