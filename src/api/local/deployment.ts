@@ -216,23 +216,23 @@ export namespace Deployment {
           const files: vscode.Uri[] = [];
           switch (parameters.method) {
             case "unstaged":
-              files.push(...await deployGit(parameters, 'working'));
+              files.push(...await getDeployGitFiles(parameters, 'working'));
               break;
 
             case "staged":
-              files.push(...await deployGit(parameters, 'staged'));
+              files.push(...await getDeployGitFiles(parameters, 'staged'));
               break;
 
             case "changed":
-              files.push(...await deployChanged(parameters));
+              files.push(...await getDeployChangedFiles(parameters));
               break;
 
             case "compare":
-              files.push(...await deployCompare(parameters, progress));
+              files.push(...await getDeployCompareFiles(parameters, progress));
               break;
 
             case "all":
-              files.push(...await deployAll(parameters));
+              files.push(...await getDeployAllFiles(parameters));
               break;
           }
 
@@ -277,7 +277,7 @@ export namespace Deployment {
     });
   }
 
-  export async function deployChanged(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
+  export async function getDeployChangedFiles(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
     const changes = workspaceChanges.get(parameters.workspaceFolder);
     if (changes && changes.size) {
       return Array.from(changes.values())
@@ -297,7 +297,7 @@ export namespace Deployment {
     }
   }
 
-  export async function deployGit(parameters: DeploymentParameters, changeType: 'staged' | 'working'): Promise<vscode.Uri[]> {
+  export async function getDeployGitFiles(parameters: DeploymentParameters, changeType: 'staged' | 'working'): Promise<vscode.Uri[]> {
     const useStagedChanges = (changeType == 'staged');
     const gitApi = Tools.getGitAPI();
 
@@ -331,12 +331,12 @@ export namespace Deployment {
     }
   }
 
-  export async function deployCompare(parameters: DeploymentParameters, progress?: vscode.Progress<{ message?: string }>): Promise<vscode.Uri[]> {
+  export async function getDeployCompareFiles(parameters: DeploymentParameters, progress?: vscode.Progress<{ message?: string }>): Promise<vscode.Uri[]> {
     if (getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
         deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all'");
-        return await deployAll(parameters);
+        return await getDeployAllFiles(parameters);
       }
       else {
         deploymentLog.appendLine("Starting MD5 synchronization transfer");
@@ -382,7 +382,7 @@ export namespace Deployment {
     }
   }
 
-  export async function deployAll(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
+  export async function getDeployAllFiles(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
     return (await findFiles(parameters, "**/*", "**/.git*"));
   }
 
