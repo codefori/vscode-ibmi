@@ -331,7 +331,7 @@ export namespace Deployment {
     }
   }
 
-  export async function deployCompare(parameters: DeploymentParameters, progress: vscode.Progress<{ message?: string }>): Promise<vscode.Uri[]> {
+  export async function deployCompare(parameters: DeploymentParameters, progress?: vscode.Progress<{ message?: string }>): Promise<vscode.Uri[]> {
     if (getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
@@ -340,7 +340,7 @@ export namespace Deployment {
       }
       else {
         deploymentLog.appendLine("Starting MD5 synchronization transfer");
-        progress.report({ message: `creating remote MD5 hash list` });
+        progress?.report({ message: `creating remote MD5 hash list` });
         const md5sumOut = await getConnection().sendCommand({
           directory: parameters.remotePath,
           command: `/QOpenSys/pkgs/bin/md5sum $(find . -type f)`
@@ -348,7 +348,7 @@ export namespace Deployment {
 
         const remoteMD5: MD5Entry[] = md5sumOut.stdout.split(`\n`).map(line => toMD5Entry(line.trim()));
 
-        progress.report({ message: `creating transfer list` });
+        progress?.report({ message: `creating transfer list` });
         const localRoot = `${parameters.workspaceFolder.uri.fsPath}${parameters.workspaceFolder.uri.fsPath.startsWith('/') ? '/' : '\\'}`;
         const localFiles = (await findFiles(parameters, "**/*", "**/.git*"))
           .map(file => ({ uri: file, path: file.fsPath.replace(localRoot, '').replace(/\\/g, '/') }));
@@ -365,12 +365,12 @@ export namespace Deployment {
         const toDelete: string[] = remoteMD5.filter(remote => !localFiles.some(local => remote.path === local.path))
           .map(remote => remote.path);
         if (toDelete.length) {
-          progress.report({ message: `deleting ${toDelete.length} remote file(s)`, });
+          progress?.report({ message: `deleting ${toDelete.length} remote file(s)`, });
           deploymentLog.appendLine(`\nDeleted:\n\t${toDelete.join('\n\t')}\n`);
           await getConnection().sendCommand({ directory: parameters.remotePath, command: `rm -f ${toDelete.join(' ')}` });
         }
 
-        progress.report({ message: `removing empty folders under ${parameters.remotePath}` });
+        progress?.report({ message: `removing empty folders under ${parameters.remotePath}` });
         //PASE's find doesn't support the -empty flag so rmdir is run on every directory; not very clean, but it works
         await getConnection().sendCommand({ command: "find . -depth -type d -exec rmdir {} + 2>/dev/null", directory: parameters.remotePath });
 
