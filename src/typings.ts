@@ -7,7 +7,7 @@ import { Deployment } from "./api/local/deployment";
 export interface CodeForIBMi {
   instance: Instance,
   customUI: () => CustomUI,
-  deployment: typeof Deployment
+  deployment: typeof Deployment,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 
@@ -140,5 +140,5 @@ export interface QsysFsOptions {
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
 
 export interface Library {
-  path:string
+  path: string
 }
