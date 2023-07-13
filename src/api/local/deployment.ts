@@ -277,7 +277,7 @@ export namespace Deployment {
     });
   }
 
-  async function deployChanged(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
+  export async function deployChanged(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
     const changes = workspaceChanges.get(parameters.workspaceFolder);
     if (changes && changes.size) {
       return Array.from(changes.values())
@@ -297,7 +297,7 @@ export namespace Deployment {
     }
   }
 
-  async function deployGit(parameters: DeploymentParameters, changeType: 'staged' | 'working'): Promise<vscode.Uri[]> {
+  export async function deployGit(parameters: DeploymentParameters, changeType: 'staged' | 'working'): Promise<vscode.Uri[]> {
     const useStagedChanges = (changeType == 'staged');
     const gitApi = Tools.getGitAPI();
 
@@ -331,7 +331,7 @@ export namespace Deployment {
     }
   }
 
-  async function deployCompare(parameters: DeploymentParameters, progress: vscode.Progress<{ message?: string }>): Promise<vscode.Uri[]> {
+  export async function deployCompare(parameters: DeploymentParameters, progress: vscode.Progress<{ message?: string }>): Promise<vscode.Uri[]> {
     if (getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
@@ -382,7 +382,7 @@ export namespace Deployment {
     }
   }
 
-  async function deployAll(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
+  export async function deployAll(parameters: DeploymentParameters): Promise<vscode.Uri[]> {
     return (await findFiles(parameters, "**/*", "**/.git*"));
   }
 
