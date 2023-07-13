@@ -1,12 +1,13 @@
-import { ExtensionContext, Uri, WorkspaceFolder } from "vscode";
+import { WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
-import { CustomUI, Field } from "./api/CustomUI";
+import { CustomUI } from "./api/CustomUI";
+import { Deployment } from "./api/local/deployment";
 
 export interface CodeForIBMi {
   instance: Instance,
   customUI: () => CustomUI,
-  deploy: (parameters: DeploymentParameters) => Promise<boolean>
+  deployment: typeof Deployment
   evfeventParser: (lines: string[]) => Map<string, FileError[]>
 }
 

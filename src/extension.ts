@@ -112,7 +112,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ]);
   })
 
-  return { instance, customUI: () => new CustomUI(), deploy: Deployment.deploy, evfeventParser: parseErrors };
+  return { instance, customUI: () => new CustomUI(), deployment: Deployment, evfeventParser: parseErrors };
 }
 
 // this method is called when your extension is deactivated
