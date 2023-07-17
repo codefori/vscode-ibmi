@@ -98,10 +98,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     disconnectBarItem,
     terminalBarItem,
     actionsBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
+    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?: boolean) => {
       if (instance.getConnection()) {
         await disconnect();
-      } else if(!silent) {
+      } else if (!silent) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
@@ -117,19 +117,21 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
       let uri = {};
-      if  (!options?.readonly && !path.startsWith('/'))  {
-        const [library, name] = path.split('/');
-        const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
-        if (!writable) {
-          options = options || {};
-          options.readonly = true;
-        }
-        uri = getUriFromPath(path, options);
-      }
-      else if (path.toLocaleUpperCase().endsWith('.SPLF')) {
+      if (path.toLocaleUpperCase().endsWith('.SPLF')) {
         options = options || {};
         options.readonly = true;
         uri = getUriFromPath_Splf(path, options);
+      }
+      else {
+        if (!options?.readonly && !path.startsWith('/')) {
+          const [library, name] = path.split('/');
+          const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
+          if (!writable) {
+            options = options || {};
+            options.readonly = true;
+          }
+        }
+        uri = getUriFromPath(path, options);
       }
       console.log(uri);
       try {
@@ -373,7 +375,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
       let uri;
       if (node?.member) {
-        uri = getMemberUri(node?.member, { readonly: true });        
+        uri = getMemberUri(node?.member, { readonly: true });
       }
       else if (node?.path) {
         uri = getUriFromPath(node?.path, { readonly: true });
