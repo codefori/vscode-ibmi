@@ -301,6 +301,8 @@ export class SourceDateHandler {
         event.contentChanges[0].range.isSingleLine &&
         !event.contentChanges[0].text.includes(`\n`);
 
+      const isSpace = (isSingleLine && event.contentChanges[0].text === ` `);
+
       const currentEditingLine = isSingleLine ? event.contentChanges[0].range.start.line : undefined;
 
       const editedBefore = isSingleLine && currentEditingLine === this.lineEditedBefore;
@@ -312,7 +314,7 @@ export class SourceDateHandler {
         this._diffRefreshGutter(document);
       }
 
-      if (isDelete) {
+      if (isDelete || isSpace) {
         this.lineEditedBefore = 0;
       } else
       if (event.contentChanges.length > 0) {

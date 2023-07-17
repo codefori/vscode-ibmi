@@ -15,7 +15,7 @@ import { VariablesUI } from "./webviews/variables";
 import { dirname } from 'path';
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
 import { Search } from "./api/Search";
-import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { QSysFS, getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
@@ -97,10 +97,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     disconnectBarItem,
     terminalBarItem,
     actionsBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, () => {
+    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
       if (instance.getConnection()) {
-        disconnect();
-      } else {
+        await disconnect();
+      } else if(!silent) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
@@ -260,7 +260,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             CompileTools.runAction(instance, uri);
           }
         }
-        else{
+        else {
           vscode.window.showErrorMessage('Please connect to an IBM i first');
         }
       }
@@ -362,33 +362,17 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return value;
     }),
 
-    // The follow commands are deprecated and to be removed for 1.9.0
-    vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail: RemoteCommand) => {
-      console.log(`Command 'code-for-ibmi.runCommand' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getConnection().runCommand' in the export API.`);
-      if (detail && detail.command) {
-        return CompileTools.runCommand(instance, detail);
+    vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
+      let uri;
+      if (node?.member) {
+        uri = getMemberUri(node?.member, { readonly: true });        
       }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
-      console.log(`Command 'code-for-ibmi.runQuery' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getContent().runSQL' in the export API.`);
-      const content = instance.getContent();
-      if (statement && content) {
-        return content.runSQL(statement);
-      } else {
-        return null;
+      else if (node?.path) {
+        uri = getUriFromPath(node?.path, { readonly: true });
       }
-    }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.launchUI`, <T>(title: string, fields: any[], callback: (page: Page<T>) => void) => {
-      console.log(`Command 'code-for-ibmi.launchUI' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'exports.customUI' in the export API.`);
-      if (title && fields && callback) {
-        const ui = new CustomUI();
-        fields.forEach(field => {
-          const uiField = new Field(field.type, field.id, field.label);
-          ui.addField(Object.assign(uiField, field));
-        });
-        ui.loadPage(title, callback);
+      if (uri) {
+        return vscode.commands.executeCommand(`vscode.open`, uri);
       }
     })
   );

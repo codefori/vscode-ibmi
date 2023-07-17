@@ -1,4 +1,4 @@
-import { Action } from "../typings";
+import { Action } from "../../typings";
 
 export const LocalLanguageActions: Record<string, Action[]> = {
   RPGLE: [

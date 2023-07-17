@@ -12,6 +12,7 @@ export interface Page<T> {
 export interface Button {
   id: string
   label: string
+  requiresValidation?: boolean
 }
 
 export interface SelectItem {
@@ -51,7 +52,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, indent?: number }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, indent?: number, minlength?: number, maxlength?: number, regexTest?: string }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     input.indent = options?.indent;
     this.addField(input);
@@ -136,12 +137,6 @@ export class Section {
   }
 
   addField(field: Field) {
-    switch (field.type) {
-      case `submit`:
-        console.warn(`Submit fields are no longer supported. Consider using buttons instead.`);
-        break;
-    }
-
     this.fields.push(field);
     return this;
   }
@@ -222,8 +217,6 @@ export class CustomUI extends Section {
   }
 
   private getHTML(panel: vscode.WebviewPanel, title: string) {
-    const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
-
     const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `heading`, `paragraph`, `tabs`, `complexTabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
@@ -297,11 +290,11 @@ export class CustomUI extends Section {
         (function () {
             const vscode = acquireVsCodeApi();
 
-            // Legacy: single submit button
-            const submitButton = document.getElementById('${submitButton.id}');
-
             // New: many button that can be pressed to submit
-            const groupButtons = [${[...(allFields.filter(field => field.type == `buttons`).map(field => field.items?.map(item => `'${item.id}'`)))].join(`, `)}];
+            const groupButtons = ${JSON.stringify(allFields.filter(field => field.type == `buttons`).map(field => field.items).flat())};
+
+            // Input fields that can be validated
+            const inputFields = ${JSON.stringify(allFields.filter(field => field.type == `input`))};
 
             // Available trees in the fields, though only one is supported.
             const trees = [${trees.map(field => `'${field.id}'`).join(`,`)}];
@@ -316,16 +309,64 @@ export class CustomUI extends Section {
             const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
             
             const complexMultiFields = new Map([${allFields.filter(field => field.type == `complexMulti`).map(field => `['${field.id}', [${field.subFields?.map(f => `'${f.id}'`).join(`,`)}]]`).join(`,`)}]);
-            
-            const doDone = (event, buttonValue) => {
-                console.log('submit now!!', buttonValue)
+        
+            const validateInputs = (optionalId) => {
+              const testFields = optionalId ? inputFields.filter(theField => theField.id === optionalId) : inputFields
+
+              let isValid = true;
+
+              for (const field of testFields) {
+                const fieldElement = document.getElementById(field.id);
+                const currentValue = fieldElement.value || "";
+
+                let isInvalid = false;
+
+                if (field.minlength && currentValue.length < field.minlength) isInvalid = true;
+                if (field.maxlength && currentValue.length > field.maxlength) isInvalid = true;
+                if (field.regexTest) {
+                  if (!(new RegExp(field.regexTest)).test(currentValue)) {
+                    isInvalid = true;
+                  }
+                }
+
+                if (isInvalid) {
+                  fieldElement.setAttribute("invalid", "true");
+                  isValid = false;
+                } else {
+                  fieldElement.removeAttribute("invalid");
+                }
+              }
+
+              // If not validating a specific field, 
+              // then we can enable/disable certain buttons
+              if (!optionalId) {
+                for (const fieldData of groupButtons) {
+                  if (fieldData.requiresValidation) {
+                    const field = fieldData.id;
+                    
+                    let button = document.getElementById(field);
+                    if (isValid) {
+                      button.removeAttribute("disabled");
+                    } else {
+                      button.setAttribute("disabled", "true");
+                    }
+                  }
+                }
+              }
+
+              return isValid;
+            }
+
+    
+            const doDone = (event, buttonId) => {
+                console.log('submit now!!', buttonId)
                 if (event)
                     event.preventDefault();
                     
                 var data = document.querySelector('#laforma').data;
 
-                if (buttonValue) {
-                  data['buttons'] = buttonValue;
+                if (buttonId) {
+                  data['buttons'] = buttonId;
                 }
 
                 // Convert the weird array value of checkboxes to boolean
@@ -345,23 +386,27 @@ export class CustomUI extends Section {
                 vscode.postMessage(data);
             };
 
-            // Legacy: when only one button was supported
-            if (submitButton) {
-              submitButton.onclick = doDone;
-              submitButton.onKeyDown = doDone;
+            // Setup the input fields for validation
+            for (const field of inputFields) {
+              const fieldElement = document.getElementById(field.id);
+              fieldElement.onkeyup = (e) => {validateInputs()};
             }
 
-            console.log(groupButtons);
             // Now many buttons can be pressed to submit
-            for (const field of groupButtons) {
-                console.log('group button', field, document.getElementById(field));
-                var button = document.getElementById(field);
-                button.onclick = (event) => {
-                    doDone(event, field);
-                };
-                button.onKeyDown = (event) => {
-                    doDone(event, field);
-                };
+            for (const fieldData of groupButtons) {
+              const field = fieldData.id;
+              
+              console.log('group button', fieldData, document.getElementById(field));
+              var button = document.getElementById(field);
+
+              const submitButtonAction = (event) => {
+                const isValid = fieldData.requiresValidation ? validateInputs() : true;
+                console.log({requiresValidation: fieldData.requiresValidation, isValid});
+                if (isValid) doDone(event, field);
+              }
+
+              button.onclick = submitButtonAction;
+              button.onKeyDown = submitButtonAction;
             }
             
             for (const field of submitfields) {
@@ -371,7 +416,9 @@ export class CustomUI extends Section {
                     .addEventListener('keyup', function(event) {
                         event.preventDefault();
                         if (event.keyCode === 13 && event.altKey) {
-                          doDone();
+                          if (validateInputs()) {
+                            doDone();
+                          }
                         }
                     });
                 } else {
@@ -379,7 +426,9 @@ export class CustomUI extends Section {
                     .addEventListener('keyup', function(event) {
                         event.preventDefault();
                         if (event.keyCode === 13) {
-                          doDone();
+                          if (validateInputs()) {
+                            doDone();
+                          }
                         }
                     });
                 }
@@ -463,6 +512,7 @@ export class CustomUI extends Section {
             });
 
             document.addEventListener('DOMContentLoaded', () => {
+              validateInputs(); 
               var currentTree;
               ${trees.map(tree => {
       return /*js*/`
@@ -485,7 +535,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading" | "radio"  | "complexMulti";
+export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading" | "radio"  | "complexMulti";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -525,6 +575,10 @@ export class Field {
   public indent?: number;
   public subFields?: Field[]; //For complexMultiSelect
 
+  public minlength?: number;
+  public maxlength?: number;
+  public regexTest?: string;
+
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
   }
@@ -534,9 +588,6 @@ export class Field {
     const indentAmmt = 4;
 
     switch (this.type) {
-      case `submit`:
-        return /* html */`<vscode-button id="${this.id}">${this.label}</vscode-button>`;
-
       case `buttons`:
         return /* html */`
           <vscode-form-group variant="settings-group">
@@ -587,7 +638,13 @@ export class Field {
           <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
               ${this.renderLabel()}
               ${this.renderDescription()}              
-              <${tag} class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}></${tag}>
+              <${tag} class="long-input" id="${this.id}" name="${this.id}" 
+                ${this.default ? `value="${this.default}"` : ``} 
+                ${this.readonly ? `readonly` : ``} 
+                ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}
+                ${this.minlength ? `minlength="${this.minlength}"` : ``} 
+                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}>
+              /${tag}>
           </vscode-form-group>`;
 
       case `paragraph`:

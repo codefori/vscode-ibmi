@@ -371,12 +371,14 @@ module.exports = class IFSBrowser {
         /** @type {{local: string, remote: string}[]} */
         const uploads = [];
 
-        chosenFiles.forEach(uri => {
-          uploads.push({
-            local: uri.fsPath,
-            remote: path.posix.join(root, path.basename(uri.fsPath))
-          })
-        });
+        if (chosenFiles) {
+          chosenFiles.forEach(uri => {
+            uploads.push({
+              local: uri.fsPath,
+              remote: path.posix.join(root, path.basename(uri.fsPath))
+            })
+          });
+        }
 
         if (uploads.length > 0) {
           client.putFiles(uploads, {
@@ -395,13 +397,18 @@ module.exports = class IFSBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node) => {
 
         if (node) {
+          if (node.path === `/`) {
+            vscode.window.showErrorMessage(`Unable to delete root (/) from the IFS Browser.`);
+            return;
+          }
+
           //Running from right click
           let deletionConfirmed = false;
           let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
 
           if (result === `Yes`) {
-            if ((GlobalConfiguration.get(`safeDeleteMode`)) && node.path.endsWith(`/`)) { //Check if path is directory
-              const dirName = path.basename(node.path.substring(0, node.path.length - 1))  //Get the name of the directory to be deleted
+            if ((GlobalConfiguration.get(`safeDeleteMode`)) && node.contextValue === `directory`) { //Check if path is directory
+              const dirName = path.basename(node.path)  //Get the name of the directory to be deleted
 
               const deletionPrompt = `Once you delete the directory, it cannot be restored.\nPlease type \"` + dirName + `\" to confirm deletion.`;
               const input = await vscode.window.showInputBox({

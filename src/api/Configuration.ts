@@ -40,6 +40,7 @@ export namespace ConnectionConfiguration {
     connectringStringFor5250: string;
     autoSaveBeforeAction: boolean;
     showDescInLibList: boolean;
+    debugCertDirectory: string;
     debugPort: string;
     debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
@@ -108,7 +109,7 @@ export namespace ConnectionConfiguration {
       autoConvertIFSccsid : (parameters.autoConvertIFSccsid === true),
       hideCompileErrors : parameters.hideCompileErrors || [],
       enableSourceDates : parameters.enableSourceDates === true,
-      sourceDateMode : parameters.sourceDateMode || "edit",
+      sourceDateMode : parameters.sourceDateMode || "diff",
       sourceDateGutter : parameters.sourceDateGutter === true,
       encodingFor5250 : parameters.encodingFor5250 || `default`,
       terminalFor5250 : parameters.terminalFor5250 || `default`,
@@ -116,6 +117,7 @@ export namespace ConnectionConfiguration {
       connectringStringFor5250 : parameters.connectringStringFor5250 || `localhost`,
       autoSaveBeforeAction : (parameters.autoSaveBeforeAction === true),
       showDescInLibList : (parameters.showDescInLibList === true),
+      debugCertDirectory: (parameters.debugCertDirectory || "/QIBM/ProdData/IBMiDebugService/bin/certs"),
       debugPort: (parameters.debugPort || "8005"),
       debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
