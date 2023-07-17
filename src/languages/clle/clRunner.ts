@@ -2,6 +2,8 @@ import { ExtensionContext, Position, Range, Selection, TextDocument, commands, w
 import { instance } from "../../instantiate";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { EndOfLine } from "vscode";
+import { generatePromptUI, getDefinition } from "./clApi";
+import { clDef } from "./clDef";
 
 export function initialise(context: ExtensionContext) {
   context.subscriptions.push(
@@ -51,6 +53,30 @@ export function initialise(context: ExtensionContext) {
               }
             }
           }
+        }
+      }
+    }),
+
+    commands.registerCommand(`code-for-ibmi.cl.promptCommand`, async () => {
+      const command = await window.showInputBox({
+        title: "Command",
+        prompt: "Enter CL Command to Prompt",
+      });
+
+      if (command) {
+        try {
+          const def: clDef | undefined = await getDefinition(command);
+  
+          if (def) {
+            const page = await generatePromptUI(def).loadPage<any>(`${def.Cmd[0].$.CmdName}`)
+
+            if (page && page.data) {
+              const data = page.data;
+              page.panel.dispose();
+            }
+          }
+        } catch (e) {
+          window.showErrorMessage(e.message);
         }
       }
     })

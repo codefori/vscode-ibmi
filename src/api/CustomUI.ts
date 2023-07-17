@@ -51,8 +51,9 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, indent?: number }) {
     const input = Object.assign(new Field('input', id, label, description), options);
+    input.indent = options?.indent;
     this.addField(input);
     return this;
   }
@@ -94,9 +95,20 @@ export class Section {
     return this;
   }
 
-  addSelect(id: string, label: string, items: SelectItem[], description?: string) {
+  addSelect(id: string, label: string, items: SelectItem[], description?: string, options?: { multiSelect?: boolean, comboBox?: boolean, indent?: number }) {
     const select = new Field('select', id, label, description);
     select.items = items;
+    select.multiSelect = options?.multiSelect;
+    select.comboBox = options?.comboBox;
+    select.indent = options?.indent;
+    this.addField(select);
+    return this;
+  }
+
+  addRadioGroup(id: string, label: string, items: SelectItem[], description?: string, options?: { indent?: number }) {
+    const select = new Field('radio', id, label, description);
+    select.items = items;
+    select.indent = options?.indent;
     this.addField(select);
     return this;
   }
@@ -112,6 +124,14 @@ export class Section {
     const buttonsField = new Field('buttons', '', '');
     buttonsField.items = buttons.filter(b => b);
     this.addField(buttonsField);
+    return this;
+  }
+
+  addComplexMultiselect(id: string, fields: Field[], options?: { indent?: number }) {
+    const input = new Field('complexMulti', id, '', '');
+    input.indent = options?.indent;
+    input.subFields = fields;
+    this.addField(input);
     return this;
   }
 
@@ -204,7 +224,7 @@ export class CustomUI extends Section {
   private getHTML(panel: vscode.WebviewPanel, title: string) {
     const submitButton = this.fields.find(field => field.type === `submit`) || { id: `` };
 
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `heading`, `paragraph`, `tabs`, `complexTabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
@@ -240,6 +260,27 @@ export class CustomUI extends Section {
               width: 100%;
             }
 
+            .multiselect-table {
+              border-color: var(--vscode-settings-textInputBorder, #cecece);
+              border-radius: 2px;
+              border-style: solid;
+              border-width: 1px;
+              background-color: var(--vscode-input-background,#fff);
+              width: 100%;
+              height: 100px;
+              overflow: scroll;
+            }
+
+            tr:hover {
+              background-color: var(--vscode-button-hoverBackground);
+              cursor: pointer;
+            }
+
+            .selected {
+              background-color: var(--vscode-button-hoverBackground)!important;
+              cursor: pointer;
+            }
+
             :root{
               --dropdown-z-index: 666;
             }
@@ -273,7 +314,9 @@ export class CustomUI extends Section {
 
             // Fields that have value which can be returned
             const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
-    
+            
+            const complexMultiFields = new Map([${allFields.filter(field => field.type == `complexMulti`).map(field => `['${field.id}', [${field.subFields?.map(f => `'${f.id}'`).join(`,`)}]]`).join(`,`)}]);
+            
             const doDone = (event, buttonValue) => {
                 console.log('submit now!!', buttonValue)
                 if (event)
@@ -288,6 +331,15 @@ export class CustomUI extends Section {
                 // Convert the weird array value of checkboxes to boolean
                 for (const checkbox of checkboxes) {
                   data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
+                }
+
+                for (const f of complexMultiFields) {
+                  let result = '';
+                  const table = document.getElementById(f[0]);
+                  for(let i = 0; i < table.rows.length; i++) {
+                    result += table.rows[i].cells[0].innerHTML + '\\n';
+                  }
+                  data[f[0]] = result;
                 }
 
                 vscode.postMessage(data);
@@ -311,7 +363,7 @@ export class CustomUI extends Section {
                     doDone(event, field);
                 };
             }
-
+            
             for (const field of submitfields) {
                 const currentElement = document.getElementById(field);
                 if (currentElement.hasAttribute('rows')) {
@@ -349,6 +401,67 @@ export class CustomUI extends Section {
                   })
             }
 
+            complexMultiFields.forEach((subFields, field) => {
+              const inputs = []
+              subFields.forEach(id => {
+                inputs.push(document.getElementById(id));
+              });
+              const addButton = document.getElementById(\`add-\${field}\`);
+              const removeButton = document.getElementById(\`remove-\${field}\`);
+              const result = document.getElementById(field);
+              addButton.addEventListener('vsc-click', (e) => {
+                let input = '';
+                for(i of inputs) {
+                  if(i.nodeName === 'VSCODE-RADIO-GROUP') {
+                    //Need to find which is selected, there must be a better way than this
+                    let checked = false;
+                    for(let j = 0; j < i.children.length; j++) {
+                      const item = i.children.item(j);
+                      if(item.getAttribute('aria-checked') === 'true') {
+                        input += item.value + ' ';
+                        checked = true;
+                        break;
+                      }
+                    }
+                    if(!checked) {
+                      input = '';
+                      break;
+                    }
+                  } else {
+                    if(i.value == '') {
+                      input = '';
+                      break;
+                    }
+                    input += i.value + ' ';
+                  }
+                }
+                input = input.trim();
+                if(input != '') {
+                  const cell = result.insertRow(-1).insertCell(-1);
+                  cell.innerHTML = input;
+                  cell.addEventListener('click', (e) => {
+                    const item = e.target
+                    if(item.className == '') {
+                      item.className = 'selected';
+                    } else {
+                      item.className = '';
+                    }
+                  })
+                  inputs.forEach((i) => {
+                    i.value = '';
+                  });
+                }
+              });
+              removeButton.addEventListener('vsc-click', (e) => {
+                for(let i = result.rows.length - 1; i >= 0; i--) {
+                  const cell = result.rows[i].cells[0];
+                  if(cell.className === 'selected') {
+                    result.deleteRow(i);
+                  }
+                }
+              });
+            });
+
             document.addEventListener('DOMContentLoaded', () => {
               var currentTree;
               ${trees.map(tree => {
@@ -372,7 +485,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
+export type FieldType = "input" | "password" | "submit" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading" | "radio"  | "complexMulti";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -407,6 +520,10 @@ export class Field {
   public default?: string;
   public readonly?: boolean;
   public rows?: number;
+  public multiSelect?: boolean;
+  public comboBox?: boolean;
+  public indent?: number;
+  public subFields?: Field[]; //For complexMultiSelect
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
@@ -414,6 +531,7 @@ export class Field {
 
   getHTML(): string {
     this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
+    const indentAmmt = 4;
 
     switch (this.type) {
       case `submit`:
@@ -466,7 +584,7 @@ export class Field {
         const multiline = (this.rows || 1) > 1;
         const tag = multiline ? "vscode-textarea" : "vscode-textfield";
         return /* html */`
-          <vscode-form-group variant="settings-group">
+          <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
               ${this.renderLabel()}
               ${this.renderDescription()}              
               <${tag} class="long-input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} ${this.readonly ? `readonly` : ``} ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}></${tag}>
@@ -503,13 +621,34 @@ export class Field {
           </vscode-form-group>`;
 
       case `select`:
+        const type = this.multiSelect ? `vscode-multi-select` : `vscode-single-select`;
         return /* html */`
-          <vscode-form-group variant="settings-group">
+          <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-single-select id="${this.id}" name="${this.id}">
+              <${type} id="${this.id}" name="${this.id}" ${this.comboBox ? `combobox` : ``}>
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
-              </vscode-single-select>
+              </${type}>
+          </vscode-form-group>`;
+
+      case `radio`:
+        return /* html */`
+          <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
+              ${this.renderLabel()}
+              ${this.renderDescription()}
+              <vscode-radio-group id="${this.id}">
+                  ${this.items?.map(item => /* html */`<vscode-radio label="${item.value}" name="${this.id}" value="${item.value}" ${item.selected ? `checked` : ``}>${item.description}</vscode-radio>`).join(`\n`)}
+              </vscode-radio-group>
+          </vscode-form-group>`;
+      
+      case `complexMulti`:
+        const indent =  this.indent ? `padding-left:${this.indent * indentAmmt}em` : ``;
+        return /* html */`
+          ${this.subFields?.map(field => field.getHTML()).join(`\n`)}
+          <vscode-form-group variant="settings-group" style="${indent}">
+              <vscode-button id="add-${this.id}" style="margin:3px">Add Item</vscode-button>
+              <vscode-button id="remove-${this.id}" style="margin:3px">Remove Selected Item</vscode-button>
+              <div class="multiselect-table"> <table id="${this.id}" name="${this.id}"></table></div>
           </vscode-form-group>`;
     }
   }

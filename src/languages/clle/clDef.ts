@@ -2,8 +2,10 @@ export interface clDef {
     $: {
         DTDVersion: string;
     };
-    Cmd: Array<clCommand>;
+    Cmd: clCommand[];
 }
+
+export type clType = clParm | clElem | clQual | clPmtCtl | clValues | clSngVal | clSpcVal | clChoicePgmText | clChoicePgmValues;
 
 export interface clCommand {
     $: {
@@ -29,8 +31,8 @@ export interface clCommand {
         ChgCmdExit: "YES" | "NO"; 
         RtvCmdExit: "YES" | "NO"; 
     }
-    Parm: Array<clParm>;
-    Dep?: Array<clDep>;
+    Parm: clParm[];
+    Dep?: clDep[];
 }
 
 export interface clParm {
@@ -41,7 +43,7 @@ export interface clParm {
         Max?: string;
         PmtCtlPgm?: string;
         PmtCtlLib?: string;
-        PmtCtl?: string;
+        PmtCtl?: "PMTRQS" | "PMTCTL";
         KeyParm?:  "YES" | "NO";
         PosNbr?: string;
         Prompt?: string;
@@ -78,14 +80,14 @@ export interface clParm {
         PassVal?: string;
         Choice?: string;
     }
-    Elem?: Array<clElem>;
-    Qual?: Array<clQual>;
-    PmtCtl?: Array<clPmtCtl>;
-    Values?: Array<clValues>;
-    SngVal?: Array<clSngVal>;
-    SpcVal?: Array<clSpcVal>;
-    ChoicePgmText?: Array<clChoicePgmText>;
-    ChoicePgmValues?: Array<clChoicePgmValues>;
+    Elem?: clElem[];
+    Qual?: clQual[];
+    PmtCtl?: clPmtCtl[];
+    Values?: clValues[];
+    SngVal?: clSngVal[];
+    SpcVal?: clSpcVal[];
+    ChoicePgmText?: clChoicePgmText[];
+    ChoicePgmValues?: clChoicePgmValues[];
 }
 
 export interface clElem {
@@ -121,13 +123,13 @@ export interface clElem {
         InlPmtLen?: string;
         Choice?: string;
     }
-    Elem?: Array<clElem>;
-    Qual?: Array<clQual>;
-    Values?: Array<clValues>;
-    SngVal?: Array<clSngVal>;
-    SpcVal?: Array<clSpcVal>;
-    ChoicePgmText?: Array<clChoicePgmText>;
-    ChoicePgmValues?: Array<clChoicePgmValues>;
+    Elem?: clElem[];
+    Qual?: clQual[];
+    Values?: clValues[];
+    SngVal?: clSngVal[];
+    SpcVal?: clSpcVal[];
+    ChoicePgmText?: clChoicePgmText[];
+    ChoicePgmValues?: clChoicePgmValues[];
 }
 
 export interface clQual {
@@ -157,10 +159,10 @@ export interface clQual {
         InlPmtLen?: string;
         Choice?: string;
     }
-    Values?: Array<clValues>;
-    SpcVal?: Array<clSpcVal>;
-    ChoicePgmText?: Array<clChoicePgmText>;
-    ChoicePgmValues?: Array<clChoicePgmValues>;
+    Values?: clValues[];
+    SpcVal?: clSpcVal[];
+    ChoicePgmText?: clChoicePgmText[];
+    ChoicePgmValues?: clChoicePgmValues[];
 }
 
 export interface clPmtCtl {
@@ -170,7 +172,7 @@ export interface clPmtCtl {
         NbrTrue?: string;
         LglRel?: string;
     }
-    PmtCtlCond?: Array<clPmtCtlCond>;
+    PmtCtlCond?: clPmtCtlCond[];
 }
 
 export interface clPmtCtlCond {
@@ -188,15 +190,15 @@ export interface clValue {
 }
 
 export interface clValues {
-    Value?: Array<clValue>;
+    Value?: clValue[];
 }
 
 export interface clSngVal {
-    Value?: Array<clValue>;
+    Value?: clValue[];
 }
 
 export interface clSpcVal {
-    Value?: Array<clValue>;
+    Value?: clValue[];
 }
 
 export interface clChoicePgmText {
@@ -206,7 +208,7 @@ export interface clChoicePgmText {
 }
 
 export interface clChoicePgmValues {
-    Value?: Array<clValue>;
+    Value?: clValue[];
 }
 
 export interface clDep {
@@ -219,7 +221,7 @@ export interface clDep {
         NbrTrue?: string;
         MsgID?: string;
     }
-    DepParm: Array<clDepParm>;
+    DepParm: clDepParm[];
 }
 
 export interface clDepParm {
