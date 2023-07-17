@@ -122,13 +122,13 @@ function addAllFields(parm: clParm, section: Section) {
   if (parm.Qual) {
     if(parseInt(parm.$.Max!) > 1) {
       const tempSection = new Section(); //To hold all the newly created fields for the elem list
-      layoutQuals(parm.Qual, tempSection, parm);
+      layoutQuals(parm.Qual, tempSection, parm, parm.$.Kwd, 1, parseInt(parm.$.Min!) > 0);
 
       section.addComplexMultiselect(parm.$.Kwd, tempSection.fields, {
         indent: 1
       });
     } else {
-      layoutQuals(parm.Qual, section, parm);
+      layoutQuals(parm.Qual, section, parm, parm.$.Kwd, 1, parseInt(parm.$.Min!) > 0);
     }
   } else if (parm.Elem) {
     // There is no input for the main param when it has elems, so just display the prompt
@@ -137,13 +137,13 @@ function addAllFields(parm: clParm, section: Section) {
     //In this case, we need to create one big multiselect that takes all fields
     if(parseInt(parm.$.Max!) > 1) {
       const tempSection = new Section(); //To hold all the newly created fields for the elem list
-      layoutElems(parm.Elem, tempSection, parm.$.Kwd, 1);
+      layoutElems(parm.Elem, tempSection, parm.$.Kwd, 1, parseInt(parm.$.Min!) > 0);
 
       section.addComplexMultiselect(parm.$.Kwd, tempSection.fields, {
         indent: 1
       });
     } else {
-      layoutElems(parm.Elem, section, parm.$.Kwd, 1);
+      layoutElems(parm.Elem, section, parm.$.Kwd, 1, parseInt(parm.$.Min!) > 0);
     }
   } else {
     if (parm.$.Type === "ELEM") {
@@ -155,15 +155,7 @@ function addAllFields(parm: clParm, section: Section) {
   }
 }
 
-function layoutQuals(quals: clQual[], section: Section, parent: clParm | clElem, parentKwd?: string, indents = 1): void {
-  let kwd: string;
-
-  if(isParm(parent)) {
-    kwd = parent.$.Kwd;
-  } else {
-    kwd = parentKwd!;
-  }
-
+function layoutQuals(quals: clQual[], section: Section, parent: clParm | clElem, kwd: string, indents = 1, required = false): void {
   quals.forEach((qual: clQual) => {
     //Cast this qual to a clElem so we can lay it out like the rest
     let node = qual as clElem;
@@ -174,30 +166,40 @@ function layoutQuals(quals: clQual[], section: Section, parent: clParm | clElem,
     }
     node.$.Max = "1";
 
-    layoutField(node, section, kwd, indent);
+    layoutField(node, section, {
+      parentKwd: kwd,
+      indents: indent,
+      required: required
+    });
   });
 }
 
-function layoutElems(elems: clElem[], section: Section, kwd: string, indents = 1): void {
+function layoutElems(elems: clElem[], section: Section, kwd: string, indents = 1, required = false): void {
   elems.forEach((elem) => {
-    layoutField(elem, section, kwd, indents);
+    layoutField(elem, section, {
+      parentKwd: kwd,
+      indents: indents,
+      required: required
+    });
   
     if(elem.Qual) {
-      layoutQuals(elem.Qual, section, elem, kwd, indents + 1);
+      layoutQuals(elem.Qual, section, elem, kwd, indents + 1, required && (parseInt(elem.$.Min!) > 0));
     } else if(elem.Elem) {
-      layoutElems(elem.Elem, section, kwd, indents + 1);
+      layoutElems(elem.Elem, section, kwd, indents + 1, required && (parseInt(elem.$.Min!) > 0));
     }
   });
 }
 
-function layoutField(node: clParm | clElem, section: Section, parentKwd?: string, indents?: number) {
+function layoutField(node: clParm | clElem, section: Section, options?: { parentKwd?: string, indents?: number, required?: boolean }) {
   let values: string[] = []
   let kwd = '';
+  const minlength = options?.required && (parseInt(node.$.Min!) > 0) ? 1 : 0; 
+  const maxLength = getMaxLength(node);
 
   if(isParm(node)) {
     kwd = node.$.Kwd
   } else {
-    kwd = `${parentKwd!}-${node.$.Prompt}`; // Elems use parent Kwd, adding the prompt for disambiguation
+    kwd = `${options?.parentKwd!}-${node.$.Prompt}`; // Elems use parent Kwd, adding the prompt for disambiguation
   }
 
   const children = getChildValues(node);
@@ -227,17 +229,17 @@ function layoutField(node: clParm | clElem, section: Section, parentKwd?: string
       if(parseInt(node.$.Max!) <= 1) {
         if(items.length < 4) {
           section.addRadioGroup(kwd, node.$.Prompt!, items, '', {
-            indent: indents
+            indent: options?.indents
           })
         } else {
           section.addSelect(kwd, node.$.Prompt!, items, '', {
-            indent: indents
+            indent: options?.indents
           });
         }
       } else {
         section.addSelect(kwd, node.$.Prompt!, items, '', {
           multiSelect: true,
-          indent: indents
+          indent: options?.indents
         });
       }
     } else {
@@ -245,16 +247,20 @@ function layoutField(node: clParm | clElem, section: Section, parentKwd?: string
         section.addInput(kwd, node.$.Prompt!, node.$.Choice, {
           default: node.$.Dft,
           rows: Math.min(parseInt(node.$.Max!), 5),
-          indent: indents
+          indent: options?.indents,
+          maxlength: maxLength,
+          minlength: minlength
         });
       } else {
         section.addComplexMultiselect(kwd, [
           ...new Section().addInput(`${kwd}-input`, node.$.Prompt!, node.$.Choice, {
               default: node.$.Dft,
-              indent: indents
+              indent: options?.indents,
+              maxlength: maxLength,
+              minlength: minlength
             }).fields
         ], {
-          indent: indents
+          indent: options?.indents
         });
       }
     } 
@@ -262,8 +268,49 @@ function layoutField(node: clParm | clElem, section: Section, parentKwd?: string
     section.addInput(kwd, node.$.Prompt!, node.$.Choice, {
       default: node.$.Dft,
       rows: Math.min(parseInt(node.$.Max!), 5),
-      indent: indents
+      indent: options?.indents,
+      maxlength: maxLength,
+      minlength: minlength
     });
+  }
+}
+
+function getMaxLength(node: clParm | clElem): number {
+  if(node.$.Len) {
+    return parseInt(node.$.Len)
+  }
+
+  //If there is no length specified, use the default values
+  switch (node.$.Type) {
+    case '*DEC':
+    case '*X':
+      return 15;
+
+    case '*HEX':
+      return 2;
+
+    case '*LGL':
+      return 1;
+
+    case '*CHAR':
+    case '*PNAME':
+      return 32;
+
+    case '*NAME':
+    case '*GENERIC':
+    case '*SNAME':
+    case '*CNAME':
+      return 10;
+
+    case '*VARNAME':
+      return 11;
+
+    case '*CMDSTR':
+      return 256;
+
+    default:
+      // Len is not allowed if not any of the above types, so return max length
+      return 20000;
   }
 }
 
