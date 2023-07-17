@@ -67,27 +67,26 @@ export namespace Search {
       const searchSplfList = objects.map(o => ({
         user: o.user,
         queue: o.queue,
-        qjobname: o.job_name,
-        qjobuser: o.job_user,
-        qjobnum: o.job_number,
+        qjob: o.qualified_job_name,
         name: o.name,
         number: o.number
       
       })); 
 
       const largeString = JSON.stringify(searchSplfList);
-      const sqlStatement = `with USER_SPOOLED_FILES (SFUSER, OUTQ, QJOBNAME,QJOBUSER,QJOBNUM, SFILE, SFILE_NUMBER) as (
-        select "user", "queue", "qjobname","qjobuser","qjobnum", "name", "number" from JSON_Table(
+      //SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME=>trim(QJOB),SPOOLED_FILE_NAME=>SFILE,SPOOLED_FILE_NUMBER=>SFILE_NUMBER,IGNORE_ERRORS=>'NO')
+      const sqlStatement = `with USER_SPOOLED_FILES (SFUSER,OUTQ,QJOB,SFILE,SFILE_NUMBER) as (
+        select "user","queue","qjob","name","number" from JSON_Table(
         '${largeString}' 
         ,'lax $'
-        COLUMNS( "user" char(10) ,"queue" char(10) ,"qjobname" char(10) ,"qjobuser" char(10) ,"qjobnum" char(6) ,"name" char(10) ,"number" int 
+        COLUMNS( "user" char(10),"queue" char(10),"qjob" char(28),"name" char(10),"number" int 
         )) as SPLF
         )
-        ,ALL_USER_SPOOLED_FILE_DATA (SFUSER, OUTQ, QJOBNAME,QJOBUSER,QJOBNUM, SFILE, SFILE_NUMBER, SPOOL_DATA, ORDINAL_POSITION) as (
-              select SFUSER, OUTQ, QJOBNAME,QJOBUSER,QJOBNUM, SFILE, SFILE_NUMBER, SPOOLED_DATA, SD.ORDINAL_POSITION
+        ,ALL_USER_SPOOLED_FILE_DATA (SFUSER,OUTQ,QJOB,SFILE,SFILE_NUMBER,SPOOL_DATA,ORDINAL_POSITION) as (
+              select SFUSER,OUTQ,QJOB,SFILE,SFILE_NUMBER,SPOOLED_DATA,SD.ORDINAL_POSITION
                 from USER_SPOOLED_FILES
-                ,table (SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME => (trim(qjobnum)||'/'||trim(qjobuser)||'/'||trim(qjobname)), SPOOLED_FILE_NAME => SFILE, SPOOLED_FILE_NUMBER => SFILE_NUMBER, IGNORE_ERRORS => 'NO')) SD )
-          select trim(SFUSER)||'/'||trim(OUTQ)||'/'||trim(SFILE)||'~'||trim(qjobname)||'~'||trim(qjobuser)||'~'||trim(qjobnum)||'~'||trim(SFILE_NUMBER)||'.splf'||':'||char(ORDINAL_POSITION)||':'||varchar(trim(SPOOL_DATA),132) SEARCH_RESULT
+                ,table (SYSTOOLS.SPOOLED_FILE_DATA(trim(QJOB),SFILE,SFILE_NUMBER,'NO')) SD )
+          select trim(SFUSER)||'/'||trim(OUTQ)||'/'||trim(SFILE)||'~'||trim(regexp_replace(QJOB,'(\\w*)\/(\\w*)\/(\\w*)','$3~$2~$1'))||'~'||trim(SFILE_NUMBER)||'.splf'||':'||char(ORDINAL_POSITION)||':'||varchar(trim(SPOOL_DATA),132) SEARCH_RESULT
             from ALL_USER_SPOOLED_FILE_DATA AMD
             where upper(SPOOL_DATA) like upper('%${sanitizeSearchTerm(searchTerm)}%')`;
       const rows = await content.runSQL(sqlStatement);
