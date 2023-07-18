@@ -33,6 +33,10 @@ disconnectBarItem.tooltip = `Disconnect from system.`;
 disconnectBarItem.text = `$(debug-disconnect)`;
 
 const connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
+connectedBarItem.command = {
+  command: `code-for-ibmi.showAdditionalSettings`,
+  title: `Show connection settings`
+};
 connectedBarItem.tooltip = new vscode.MarkdownString([
   `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
   `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
