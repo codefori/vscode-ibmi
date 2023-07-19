@@ -649,7 +649,10 @@ class SPLF extends vscode.TreeItem {
     this.queue_library = object.queue_library
     this.queue = object.queue
 
-    this.description = ` - ` + this.status + ` - Pages: ` + this.total_pages;
+    this.description = ` - ` + this.status 
+                      +` - Pages: ` + this.total_pages
+                      +`, Time: `+this.creation_timestamp.substring(11)
+    ;
     this.iconPath = new vscode.ThemeIcon(icon);
     this.protected = parent.protected;
     this.contextValue = `spooledfile${parent.protected ? `_readonly` : ``}`;
