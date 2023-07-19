@@ -85,14 +85,6 @@ export namespace Deployment {
               });
             }
           })
-
-          vscode.window.showInformationMessage(
-            `Current library is set to ${config.currentLibrary}.`,
-            `Change`
-          ).then(result => {
-            if (result === `Change`)
-              vscode.commands.executeCommand(`code-for-ibmi.changeCurrentLibrary`);
-          });
         }
       }
     });

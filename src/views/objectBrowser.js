@@ -665,17 +665,6 @@ module.exports = class ObjectBrowser {
           ConnectionConfiguration.update(config);
           if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
 
-          // Add to library list ?
-          await vscode.window.showInformationMessage(`Would you like to add the new library to the library list?`, `Yes`, `No`)
-            .then(async result => {
-              switch (result) {
-              case `Yes`:
-                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, newLibrary);
-                if (GlobalConfiguration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
-                break;
-              }
-            });
-
         } else {
           vscode.window.showErrorMessage(`Library name too long.`);
         }
