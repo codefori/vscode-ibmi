@@ -278,6 +278,12 @@ export namespace CompileTools {
             extension,
             workspace
           };
+
+          if (workspaceFolder) {
+            const envFileVars = await getEnvConfig(workspaceFolder);
+            Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
+          }
+
           switch (chosenAction.type) {
             case `member`:
               const memberDetail = connection.parserMemberPath(uri.path);
@@ -319,7 +325,13 @@ export namespace CompileTools {
                 name = name.substring(0, name.indexOf(`-`));
               }
 
-              evfeventInfo.library = config.currentLibrary;
+              if (variables.has(`&CURLIB`)) {
+                evfeventInfo.library = variables.get(`&CURLIB`)!;
+
+              } else {
+                evfeventInfo.library = config.currentLibrary;
+              }
+
               evfeventInfo.object = name;
               evfeventInfo.extension = ext;
 
@@ -403,11 +415,6 @@ export namespace CompileTools {
           }
 
           outputBarItem.text = OUTPUT_BUTTON_RUNNING;
-
-          if (workspaceFolder) {
-            const envFileVars = await getEnvConfig(workspaceFolder);
-            Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
-          }
 
           const command = replaceValues(chosenAction.command, variables);
           try {
