@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { ObjectTypes } from '../schemas/Objects';
+import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
@@ -286,6 +286,12 @@ export default class IBMiContent {
         columns: true,
         skip_empty_lines: true,
         cast: true,
+        onRecord(record) {
+          for (const key of Object.keys(record)) {
+            record[key] = record[key] === ` ` ? `` : record[key];
+          }
+          return record;
+        }
       });
     }
 

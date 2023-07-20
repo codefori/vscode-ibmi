@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "1.9.4",
+	"version": "2.0.2",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -40,7 +40,7 @@
 	"contributes": {
 		"snippets": [
 			{
-				"path": "./snippets/cl.code-snippets",
+				"path": "./schemas/cl.code-snippets",
 				"language": "cl"
 			}
 		],
@@ -49,13 +49,7 @@
 				"fileMatch": [
 					"actions.json"
 				],
-				"url": "./src/schemas/actions.json"
-			},
-			{
-				"fileMatch": [
-					"iproj.json"
-				],
-				"url": "./src/schemas/iproj.json"
+				"url": "./schemas/actions.json"
 			}
 		],
 		"configuration": {
@@ -2220,6 +2214,7 @@
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"semver": "^7.5.2",
+		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
 		"typescript": "^4.8.2",
 		"vscode-test": "^1.5.0",

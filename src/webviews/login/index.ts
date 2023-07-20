@@ -27,7 +27,7 @@ export class Login {
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
-      .addFile(`privateKey`, `Private Key`)
+      .addFile(`privateKey`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`)
       .addButtons(
         { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
@@ -82,7 +82,7 @@ export class Login {
                       } else {
                         vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
                           if (selectionB === `Open configuration`) {
-                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Source Code`);
                           }
                         });
                       }
