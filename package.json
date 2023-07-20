@@ -1982,7 +1982,7 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.program",
-					"when": "view == objectBrowser && viewItem =~ /^object.pgm.*/",
+					"when": "view == objectBrowser && !inDebugMode && viewItem =~ /^object.pgm.*/",
 					"group": "2_debug@1"
 				},
 				{
