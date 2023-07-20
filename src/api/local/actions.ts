@@ -96,3 +96,12 @@ export async function getiProjActions(currentWorkspace: WorkspaceFolder) {
 
   return actions;
 }
+
+export async function getEvfeventFiles(currentWorkspace: WorkspaceFolder) {
+  if (currentWorkspace) {
+    const relativeSearch = new RelativePattern(currentWorkspace, `**/.evfevent/*`);
+    const iprojectFiles = await workspace.findFiles(relativeSearch, null, 1);
+
+    return iprojectFiles;
+  }
+}

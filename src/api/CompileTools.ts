@@ -4,7 +4,7 @@ import vscode, { window } from 'vscode';
 
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
-import { getLocalActions, getiProjActions } from './local/actions';
+import { getEvfeventFiles, getLocalActions, getiProjActions } from './local/actions';
 import { getEnvConfig } from './local/env';
 
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
@@ -425,6 +425,8 @@ export namespace CompileTools {
             },
               chosenAction.name);
 
+            const useLocalEvfevent = workspaceFolder && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
+
             if (commandResult) {
               const possibleObject = getObjectFromCommand(commandResult.command);
               if (possibleObject) {
@@ -444,12 +446,14 @@ export namespace CompileTools {
                 });
               }
 
-              outputChannel.append(`\n`);
-              if (command.includes(`*EVENTF`)) {
-                outputChannel.appendLine(`Fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
-                refreshDiagnostics(instance, evfeventInfo);
-              } else {
-                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
+              if (!useLocalEvfevent) {
+                outputChannel.append(`\n`);
+                if (command.includes(`*EVENTF`)) {
+                  outputChannel.appendLine(`Fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                  refreshDiagnostics(instance, evfeventInfo);
+                } else {
+                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                }
               }
             }
 
@@ -508,9 +512,17 @@ export namespace CompileTools {
                 );
 
                 Promise.all(downloads)
-                  .then(result => {
+                  .then(async result => {
                     // Done!
                     outputChannel.appendLine(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}`);
+
+                    // Process locally downloaded evfevent files:
+                    if (useLocalEvfevent) {
+                      const evfeventFiles = await getEvfeventFiles(workspaceFolder);
+                      if (evfeventFiles) {
+                        // Continue here
+                      }
+                    }
                   })
                   .catch(error => {
                     vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
