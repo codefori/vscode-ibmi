@@ -423,6 +423,7 @@ export default class IBMiContent {
           attribute: String(object.PHFILA),
           text: String(object.PHTXT),
           count: Number(object.PHNOMB),
+          recordLength: Number(object.PHMXRL),
         } as IBMiFile))
         .sort((a, b) => a.library.localeCompare(b.library) || a.name.localeCompare(b.name));
     } else {
