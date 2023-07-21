@@ -1135,7 +1135,7 @@ class SPF extends vscode.TreeItem {
     this.description = this._description;
     this.tooltip = `${detail.library.toLocaleUpperCase()}/${detail.name.toLocaleUpperCase()}`
       .concat(`${detail.recordLength ? `\nRecord Length:\t\t${detail.recordLength}` : ``}`)
-      .concat(`${detail.recordLength ? `\nSource Length:\t\t${detail.recordLength-12}` : ``}`)
+      .concat(`${detail.recordLength ? `\nSource Columns:\t\t${detail.recordLength-12}` : ``}`)
       .concat(`${detail.count ? `\nMember Count: \t\t${detail.count}` : ``}`)
     /** @type {import("../api/IBMiContent").SortOptions}*/
     this.sort = { order: `?` };
