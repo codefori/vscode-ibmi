@@ -5,6 +5,7 @@ export const da: Locale = {
   'No': `Nej`,
   'Cancel': `Afbryd`,
   'Retry': `Prøv igen`,
+  'Continue': `Fortsæt`,
   'directory': `mappe`,
   'shortcut': `genvej`,
   'streamfile': `fil`,
@@ -169,4 +170,14 @@ export const da: Locale = {
   'objectBrowser.moveObject.infoMessage': `Flyttede objekt {0} *{1} til {2}.`,
   'objectBrowser.moveObject.infoMessage2': `Flyttede objekt {0} *{1} til {2}. Opfrisk object browser.`,
   'objectBrowser.moveObject.errorMessage2': `Fejl ved flytning af objekt {0}! {1}`,
+  // ProfilesView:
+  'ProfilesView.saveConnectionProfile.prompt': `Navn på profil`,
+  'ProfilesView.saveConnectionProfile.infoMessage': `Gemte aktuelle indstillinger til profil '{0}'.`,
+  'ProfilesView.deleteConnectionProfile.warningMessage': `Er du sikker på at du vil slette profilen '{0}'?`,
+  'ProfilesView.loadConnectionProfile.infoMessage': `Skiftede til profilen '{0}'.`,
+  'ProfilesView.loadCommandProfile.infoMessage': `Skiftede til profilen '{0}'.`,
+  'ProfilesView.loadCommandProfile.warningMessage': `Fejl ved at hente bibliotekslisten fra kommando. Feature er ikke installeret.`,
+  'ProfilesView.loadCommandProfile.errorMessage': `Fejl ved at hente bibliotekslisten fra kommando: {0}`,
+  'ProfilesView.setToDefault.infoMessage': `Nulstil til standard`,
+  'ProfilesView.setToDefault.detail': `Dette vil nulstille bibliotekslisten, aktuelle mappe og Bruger Variable.`,
 };

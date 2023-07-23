@@ -5,6 +5,7 @@ import { ConnectionConfiguration } from '../api/Configuration';
 
 import { instance } from '../instantiate';
 import { CommandProfile } from '../webviews/commandProfile';
+import { t } from "../locale";
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -30,7 +31,7 @@ export class ProfilesView {
 
           const savedProfileName = profileNode?.profile || await vscode.window.showInputBox({
             value: currentProfile,
-            prompt: `Name of profile`
+            prompt: t(`ProfilesView.saveConnectionProfile.prompt`)
           });
 
           if (savedProfileName) {
@@ -48,7 +49,7 @@ export class ProfilesView {
             ]);
             this.refresh();
 
-            vscode.window.showInformationMessage(`Saved current settings to profile ${savedProfileName}.`);
+            vscode.window.showInformationMessage(t(`ProfilesView.saveConnectionProfile.infoMessage`, savedProfileName));
           }
         }
       }),
@@ -59,12 +60,13 @@ export class ProfilesView {
           const currentProfiles = config.connectionProfiles;
           const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
           if (chosenProfile) {
-            vscode.window.showWarningMessage(`Are you sure you want to delete the ${chosenProfile.name} profile?`, `Yes`, `No`).then(async result => {
-              if (result === `Yes`) {
+            vscode.window.showWarningMessage(t(`ProfilesView.deleteConnectionProfile.warningMessage`, chosenProfile.name), t(`Yes`), t(`No`)).then(async result => {
+              if (result === t(`Yes`)) {
                 currentProfiles.splice(currentProfiles.findIndex(profile => profile === chosenProfile), 1);
                 config.connectionProfiles = currentProfiles;
                 await ConnectionConfiguration.update(config)
                 this.refresh();
+                // TODO: Add message about deleted profile!
               }
             })
           }
@@ -87,7 +89,7 @@ export class ProfilesView {
               storage.setLastProfile(chosenProfile.name)
             ]);
 
-            vscode.window.showInformationMessage(`Switched to ${chosenProfile.name}.`);
+            vscode.window.showInformationMessage(t(`ProfilesView.loadConnectionProfile.infoMessage`, chosenProfile.name));
             this.refresh();
           }
         }
@@ -104,6 +106,7 @@ export class ProfilesView {
           if (storedProfile !== undefined) {
             config.commandProfiles.splice(storedProfile, 1);
             await ConnectionConfiguration.update(config);
+            // TODO: Add message about deleting!
             this.refresh();
           }
         }
@@ -130,14 +133,14 @@ export class ProfilesView {
                   vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
                 ]);
 
-                vscode.window.showInformationMessage(`Switched to ${storedProfile.name}.`);
+                vscode.window.showInformationMessage(t(`ProfilesView.loadCommandProfile.infoMessage`, storedProfile.name));
                 this.refresh();
               } else {
-                window.showWarningMessage(`Failed to get library list from command. Feature not installed.`);
+                window.showWarningMessage(t(`ProfilesView.loadCommandProfile.warningMessage`));
               }
 
             } catch (e: any) {
-              window.showErrorMessage(`Failed to get library list from command: ${e.message}`);
+              window.showErrorMessage(t(`ProfilesView.loadCommandProfile.errorMessage`, e.message));
             }
           }
         }
@@ -149,11 +152,11 @@ export class ProfilesView {
         const storage = instance.getStorage();
 
         if (config && storage) {
-          window.showInformationMessage(`Reset to default`, {
-            detail: `This will reset the User Library List, working directory and Custom Variables back to the defaults.`,
+          window.showInformationMessage(t(`ProfilesView.setToDefault.infoMessage`), {
+            detail: t(`ProfilesView.setToDefault.detail`),
             modal: true
-          }, `Continue`).then(async result => {
-            if (result === `Continue`) {
+          }, t(`Continue`)).then(async result => {
+            if (result === t(`Continue`)) {
               const defaultName = `Default`;
 
               assignProfile({

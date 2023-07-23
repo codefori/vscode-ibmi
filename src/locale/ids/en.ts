@@ -5,6 +5,7 @@ export const en: Locale = {
   'No': `No`,
   'Cancel': `Cancel`,
   'Retry': `Retry`,
+  'Continue': `Continue`,
   'directory': `directory`,
   'shortcut': `shortcut`,
   'streamfile': `streamfile`,
@@ -170,4 +171,14 @@ export const en: Locale = {
   'objectBrowser.moveObject.infoMessage': `Moved object {0} *{1} to {2}.`,
   'objectBrowser.moveObject.infoMessage2': `Moved object {0} *{1} to {2}. Refresh object browser.`,
   'objectBrowser.moveObject.errorMessage2': `Error moving object {0}! {1}`,
+  // ProfilesView:
+  'ProfilesView.saveConnectionProfile.prompt': `Name of profile`,
+  'ProfilesView.saveConnectionProfile.infoMessage': `Saved current settings to profile '{0}'.`,
+  'ProfilesView.deleteConnectionProfile.warningMessage': `Are you sure you want to delete the '{0}' profile?`,
+  'ProfilesView.loadConnectionProfile.infoMessage': `Switched to profile '{0}'.`,
+  'ProfilesView.loadCommandProfile.infoMessage': `Switched to profile '{0}'.`,
+  'ProfilesView.loadCommandProfile.warningMessage': `Failed to get library list from command. Feature not installed.`,
+  'ProfilesView.loadCommandProfile.errorMessage': `Failed to get library list from command: {0}`,
+  'ProfilesView.setToDefault.infoMessage': `Reset to default`,
+  'ProfilesView.setToDefault.detail': `This will reset the User Library List, working directory and Custom Variables back to the defaults.`,
 };
