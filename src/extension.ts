@@ -24,6 +24,7 @@ import { ProfilesView } from "./views/ProfilesView";
 import { HelpView } from "./views/helpView";
 import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
+import { DeployTools } from "./api/local/deployTools";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -110,9 +111,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
       commands.executeCommand("code-for-ibmi.refreshProfileView")
     ]);
-  })
+  });
 
-  return { instance, customUI: () => new CustomUI(), deployment: Deployment, evfeventParser: parseErrors };
+  return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors };
 }
 
 // this method is called when your extension is deactivated
