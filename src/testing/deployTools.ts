@@ -7,9 +7,9 @@ import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
-import { Deployment } from "../api/local/deployment";
 import { instance } from "../instantiate";
 import { DeploymentMethod } from "../typings";
+import { DeployTools } from "../api/local/deployTools";
 
 type FileInfo = {
     md5: string
@@ -76,17 +76,17 @@ const fakeProject: Folder = {
     ],
 }
 
-export const DeploymentSuite: TestSuite = {
-    name: `Deployment tests`,
+export const DeployToolsSuite: TestSuite = {
+    name: `Deploy Tools tests`,
     before: async () => {
         const features = instance.getConnection()?.remoteFeatures;
-        assert.ok(features?.stat, "stat is required to run Deployment test suite");
-        assert.ok(features?.md5sum, "md5sum is required to run Deployment test suite");
+        assert.ok(features?.stat, "stat is required to run deploy tools test suite");
+        assert.ok(features?.md5sum, "md5sum is required to run deploy tools test suite");
 
         const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
         const tempDir = instance.getConfig()?.tempDir;
         assert.ok(workspaceFolder, "No workspace folder to work with");
-        assert.ok(tempDir, "Cannot run deployment tests: no remote temp directory defined");
+        assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 
         await createFolder(workspaceFolder.uri, tempDir, fakeProject);
         assert.ok(fakeProject.localPath, "Project has no local path");
@@ -165,7 +165,7 @@ async function deploy(method: DeploymentMethod) {
         `!${basename(fakeProject.localPath.path)}/**` //Allow content
     ]);
 
-    assert.ok(await Deployment.deploy({ method, remotePath: fakeProject.remotePath, workspaceFolder, ignoreRules }), `"${method}" deployment failed`);
+    assert.ok(await DeployTools.deploy({ method, remotePath: fakeProject.remotePath, workspaceFolder, ignoreRules }), `"${method}" deployment failed`);
     return await getRemoteFilesInfo();
 }
 
