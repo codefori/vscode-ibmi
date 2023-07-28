@@ -14,7 +14,7 @@ import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
 import { parseErrors } from './errors/handler';
-import { Deployment } from './local/deployment';
+import { DeployTools } from './local/deployTools';
 
 export interface ILELibrarySettings {
   currentLibrary: string;
@@ -258,7 +258,7 @@ export namespace CompileTools {
 
           let workspace = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
-            const deployResult = await Deployment.launchDeploy(workspaceFolder.index);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index);
             if (deployResult !== undefined) {
               workspace = deployResult;
             } else {
