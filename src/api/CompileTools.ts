@@ -576,8 +576,10 @@ export namespace CompileTools {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
         outputChannel.append(`\n\n`);
-        outputChannel.append(`Current library: ` + ileSetup.currentLibrary + `\n`);
-        outputChannel.append(`Library list: ` + ileSetup.libraryList.join(` `) + `\n`);
+        if (options.environment === `ile`) {
+          outputChannel.append(`Current library: ` + ileSetup.currentLibrary + `\n`);
+          outputChannel.append(`Library list: ` + ileSetup.libraryList.join(` `) + `\n`);
+        }
         outputChannel.append(`Commands:\n${commands.map(command => `\t\t${command}\n`).join(``)}\n`);
 
         const callbacks: StandardIO = {
