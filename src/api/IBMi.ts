@@ -213,14 +213,42 @@ export default class IBMi {
 
         let defaultHomeDir;
 
-        const commandResult = await this.sendCommand({
-          command: `pwd`,
+        const echoHomeResult = await this.sendCommand({
+          command: `echo $HOME`,
           directory: `.`
         });
-        if (commandResult.stderr) {
-          defaultHomeDir = undefined;
+        // If the home directory does not exist, stderr contains 'Could not chdir to home directory /home/________: No such file or directory'
+        if (echoHomeResult.stderr) {
+          // even if the home directory doesn't exist, the echo command gives us our real home in stdout
+          let actualHomeDir = echoHomeResult.stdout.trim();
+
+          // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
+          let doesHomeExist = (0 === (await this.sendCommand({ command: `test -w $HOME` })).code);
+          if (doesHomeExist) {
+            // home directory exists but we don't have write permission to it
+            await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is unusable. Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+          }
+          else if (reconnecting) {
+            vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) does not exist. Code for IBM i may not function correctly.`, { modal: false });
+          }
+          else if (await vscode.window.showWarningMessage(`Home directory does not exist`, {
+            modal: true,
+            detail: `Your home directory (${actualHomeDir}) does not exist, so Code for IBM i may not function correctly. Would you like to create this directory now?`,
+          }, `Yes`)) {
+            console.log(`creating home directory ${actualHomeDir}`);
+            let mkHomeCmd = `mkdir -p ${actualHomeDir} && chown ${connectionObject.username.toLowerCase()} ${actualHomeDir} && chmod 0755 ${actualHomeDir}`;
+            let mkHomeResult = await this.sendCommand({ command: mkHomeCmd });
+            if (0 === mkHomeResult.code) {
+              defaultHomeDir = actualHomeDir;
+            } else {
+              let mkHomeErrs = mkHomeResult.stderr;
+              // We still get 'Could not chdir to home directory' in stderr so we need to hackily gut that out, as well as the bashisms that are a side effect of our API
+              mkHomeErrs = mkHomeErrs.substring(1 + mkHomeErrs.indexOf(`\n`)).replace(`bash: line 1: `, ``);
+              await vscode.window.showWarningMessage(`Error creating home directory (${actualHomeDir}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator`, { modal: true });
+            }
+          }
         } else {
-          defaultHomeDir = commandResult.stdout.trim();
+          defaultHomeDir = echoHomeResult.stdout.trim();
         }
 
         //Get home directory if one isn't set
@@ -716,7 +744,7 @@ export default class IBMi {
               });
           }
         } else {
-          vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory. Please set a home directory using CHGUSRPRF USRPRF(${connectionObject.username.toUpperCase()}) HOMEDIR('/home/${connectionObject.username.toLowerCase()}')`);
+          vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory.`);
         }
 
         if (!reconnecting) {
