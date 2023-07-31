@@ -69,7 +69,7 @@ export async function getDefinition(command: string, library = `*LIBL`): Promise
 
     const tempLib = config!.tempLibrary;
 
-    const targetCommand = command.padEnd(10) + validLibrary.padEnd(10);
+    const targetCommand = command.padEnd(10).toUpperCase() + validLibrary.padEnd(10).toUpperCase();
     const targetName = command.toUpperCase().padEnd(10);
 
     const result = await connection?.runCommand({
@@ -105,13 +105,18 @@ export function generatePromptUI(def: clDef): CustomUI {
 
   const ui = new CustomUI();
   let tabs: ComplexTab[] = [
-    {label: 'Main Parameters', fields: mainOps.fields},
-    {label: 'Additional Parameters', fields: additionalOps.fields}
-  ]
+    {label: 'Main Parameters', fields: mainOps.fields}
+  ];
+
+  //Only add the tab if we actually have additional options
+  if(additionalOps.fields.length > 0) {
+    tabs.push({label: 'Additional Parameters', fields: additionalOps.fields});
+  }
+
   ui.addComplexTabs(tabs);
 
   ui.addButtons(
-    {id: 'run', label:'Run'},
+    {id: 'run', label:'Run', requiresValidation: true},
     {id: 'cancel', label:'Cancel'}
   )
 
@@ -133,6 +138,7 @@ function addAllFields(parm: clParm, section: Section) {
   } else if (parm.Elem) {
     // There is no input for the main param when it has elems, so just display the prompt
     section.addHeading(`${parm.$.Prompt!}:`, 4); //looks bad
+    if(!parm.Elem[0].$.Dft) parm.Elem[0].$.Dft = parm.$.Dft;
 
     //In this case, we need to create one big multiselect that takes all fields
     if(parseInt(parm.$.Max!) > 1) {
@@ -151,11 +157,18 @@ function addAllFields(parm: clParm, section: Section) {
       return;
     }
 
-    layoutField(parm, section);
+    layoutField(parm, section, {
+      required: parseInt(parm.$.Min!) > 0
+    });
   }
 }
 
 function layoutQuals(quals: clQual[], section: Section, parent: clParm | clElem, kwd: string, indents = 1, required = false): void {
+  if(!quals[0].$.Dft) {
+    //Use the default of the parent if the first qual doesn't have one
+    quals[0].$.Dft = parent.$.Dft;
+  }
+
   quals.forEach((qual: clQual) => {
     //Cast this qual to a clElem so we can lay it out like the rest
     let node = qual as clElem;
@@ -176,16 +189,36 @@ function layoutQuals(quals: clQual[], section: Section, parent: clParm | clElem,
 
 function layoutElems(elems: clElem[], section: Section, kwd: string, indents = 1, required = false): void {
   elems.forEach((elem) => {
-    layoutField(elem, section, {
-      parentKwd: kwd,
-      indents: indents,
-      required: required
-    });
-  
     if(elem.Qual) {
       layoutQuals(elem.Qual, section, elem, kwd, indents + 1, required && (parseInt(elem.$.Min!) > 0));
     } else if(elem.Elem) {
-      layoutElems(elem.Elem, section, kwd, indents + 1, required && (parseInt(elem.$.Min!) > 0));
+      if(elem.$.Prompt) {
+        section.addHeading(`${elem.$.Prompt}:`, 4, {
+          indent: indents
+        });
+        //Need to propogate down dft value to first in elem list if nested
+        if(!elem.Elem[0].$.Dft) elem.Elem[0].$.Dft = elem.$.Dft;
+      } else {
+        // Sometimes nested elems won't have a header, but we still want a bit of a gap to separate them (e.g ANZPFRDTA "Time period for report" section)
+        section.addParagraph(`\n`);
+      }
+
+      if(parseInt(elem.$.Max!) > 1) {
+        const tempSection = new Section(); //To hold all the newly created fields for the elem list
+        layoutElems(elem.Elem, tempSection, kwd, indents + 1, required && (parseInt(elem.$.Min!) > 0));
+  
+        section.addComplexMultiselect(`${kwd}-${elem.$.Prompt}`, tempSection.fields, {
+          indent: indents + 1
+        });
+      } else {
+        layoutElems(elem.Elem, section, kwd, indents + 1, required && (parseInt(elem.$.Min!) > 0));
+      }
+    } else {
+      layoutField(elem, section, {
+        parentKwd: kwd,
+        indents: indents,
+        required: required
+      });
     }
   });
 }
@@ -194,7 +227,7 @@ function layoutField(node: clParm | clElem, section: Section, options?: { parent
   let values: string[] = []
   let kwd = '';
   const minlength = options?.required && (parseInt(node.$.Min!) > 0) ? 1 : 0; 
-  const maxLength = getMaxLength(node);
+  const maxLength = Math.max(getMaxLength(node), node.$.Dft ? node.$.Dft.length : 0); //In case the default value has a longer value than a normal input
 
   if(isParm(node)) {
     kwd = node.$.Kwd
@@ -233,13 +266,18 @@ function layoutField(node: clParm | clElem, section: Section, options?: { parent
           })
         } else {
           section.addSelect(kwd, node.$.Prompt!, items, '', {
-            indent: options?.indents
+            indent: options?.indents,
+            comboBox: true,
+            maxlength: maxLength,
+            minlength: minlength
           });
         }
       } else {
         section.addSelect(kwd, node.$.Prompt!, items, '', {
           multiSelect: true,
-          indent: options?.indents
+          indent: options?.indents,
+          maxlength: maxLength,
+          minlength: minlength
         });
       }
     } else {
@@ -329,4 +367,151 @@ function isValue(node: any): node is clSngVal | clSpcVal | clValues | clChoicePg
 
 function isParm(node: any): node is clParm {
   return node.$.Kwd !== undefined && node.$.Type !== undefined;
+}
+
+export function generateClFromUI(def: clDef, data: any): string {
+  // `data` should be the data returned from a page that was generated by generatePromptUI
+  let result = def.Cmd[0].$.CmdName;
+
+  def.Cmd[0].Parm.forEach(parm => {
+    if(parm.Elem) {
+      const eString = getElemString(parm.Elem, parm.$.Kwd, data);
+      if(eString != '()') {
+        result += ` ${parm.$.Kwd}${eString}`
+      }
+    } else if(parm.Qual) {
+      const qString = getQualString(parm.Qual, parm.$.Kwd, data);
+      if(qString !== '') {
+        result += ` ${parm.$.Kwd}(${qString})`;
+      }
+    } else {
+      const input = data[parm.$.Kwd];
+      if(input instanceof Array<any>) {
+        if(input[0] !== parm.$.Dft) {
+          result += ` ${parm.$.Kwd}(`;
+          input.forEach(s => { result += `${s} `});
+          result = result.trim() + ')';
+        }
+      } else if(includeString(input, parm.$.Dft!)) {
+        result += ` ${parm.$.Kwd}(${input.trim().split(`\n`).join(' ')})`;
+      }
+    }
+  });
+
+  return result;
+}
+
+function getQualString(quals: clQual[], kwd: string, data: any): string {
+  let result = '';
+
+  // This is the case for multiselect quals, so format each entry
+  if(data[kwd]) {
+    const input: string = data[kwd];
+    const entries = input.trim().split(`\n`);
+    entries.forEach(entry => {
+      const split = entry.split(' ');
+      for(let i = quals.length-1; i >= 0; i--) {
+        if(includeString(split[i], quals[i].$.Dft!)) {
+          result += split[i].toUpperCase();
+          if(i !== 0) {
+            result += '/';
+          }
+        }
+      }
+      result += ' ';
+    })
+    return result.trim();
+  }
+  
+  // Should take form qual3/qual2/qual1
+  for(let i = quals.length-1; i >= 0; i--) {
+    const input: string = data[`${kwd}-${quals[i].$.Prompt?.replaceAll(`'`, '`')}`];
+    if(includeString(input, quals[i].$.Dft!)) {
+      result += input.toUpperCase();
+      if(i !== 0) {
+        result += '/';
+      }
+    }
+  }
+  return result;
+}
+
+function getElemString(elems: clElem[], kwd: string, data: any): string {
+  let result = `(`;
+  // Multiselect elems will have many parts already aggregated into a single output, so just use that as the result
+  if(data[kwd]) {
+    return parseElemMulti(elems, data[kwd]);
+  }
+
+  //Otherwise get all the individual inputs
+  for(const elem of elems) {
+    if(elem.Elem) {
+      if((parseInt(elem.$.Max!) > 1) && data[`${kwd}-${elem.$.Prompt}`]) {
+        //This elem has a sub-elem multiselect, so gather that data
+        result += parseElemMulti(elem.Elem, data[`${kwd}-${elem.$.Prompt}`]) + ` `;
+      } else {
+        const eString = getElemString(elem.Elem, kwd, data);
+        if(eString != '()') {
+          result += eString + ` `;
+        }
+      }
+    } else if(elem.Qual) {
+      result += getQualString(elem.Qual, kwd, data) + ` `;
+    } else {
+      const input: string | Array<string> = data[`${kwd}-${elem.$.Prompt?.replaceAll(`'`, '`')}`];
+  
+      if(input instanceof Array<string>) {
+        if(includeString(input[0], elem.$.Dft!)) {
+          result += input.join(' ');
+        }
+      } else if(includeString(input, elem.$.Dft!)) {
+        if(input.indexOf(`\n`) > 0) {
+          result += `(${input.split(`\n`).join(` `)}) `;
+        } else {
+          result += `${input} `;
+        }
+      }
+    }
+  }
+
+  return result.trim() + `)`;
+}
+
+function parseElemMulti(elems: clElem[], input: string): string {
+  let result = '('
+  const rows = input.trim().split(`\n`);
+  rows.forEach(row => {
+    // Split the string into each input (or multiline input that is wrapped in parentheses)
+    const split = row.trim().match(new RegExp('([^\\s\\(\\)]+)|\\([^)]*\\)', 'g'));
+    if(!split) return;
+    let temp = '';
+    let splitIndex = 0;
+    for(const elem of elems) {
+      if(elem.Qual) {
+        //Move backwards through the qual list to get correct order
+        splitIndex += elem.Qual.length-1;
+        for(let i = elem.Qual.length-1; i >= 0; i--) {
+          if(includeString(split[splitIndex], elem.Qual[i].$.Dft!)) {
+            temp += split[splitIndex].toUpperCase();
+            if(i !== 0) {
+              temp += '/';
+            }
+          }
+          splitIndex--;
+        }
+        temp += ' ';
+        splitIndex += elem.Qual.length;
+      } else if(includeString(split[splitIndex], elem.$.Dft!)) {
+        temp += `${split[splitIndex]} `;
+      }
+      splitIndex++;
+    }
+    result += `(${temp.trim()}) `
+  });
+
+  return result.trim() + `)`;
+}
+
+function includeString(input: string, dft: string): boolean {
+  return input !== undefined && input !== dft && input !== '';
 }

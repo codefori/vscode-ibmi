@@ -35,8 +35,9 @@ export interface ComplexTab {
 export class Section {
   readonly fields: Field[] = [];
 
-  addHeading(label: string, level: 1 | 2 | 3 | 4 | 5 | 6 = 1) {
-    this.addField(new Field(`heading`, level.toString(), label));
+  addHeading(label: string, level: 1 | 2 | 3 | 4 | 5 | 6 = 1, options?: { indent?: number }) {
+    const field = Object.assign(new Field(`heading`, level.toString(), label), options);
+    this.addField(field);
     return this;
   }
 
@@ -54,7 +55,6 @@ export class Section {
 
   addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, indent?: number, minlength?: number, maxlength?: number, regexTest?: string }) {
     const input = Object.assign(new Field('input', id, label, description), options);
-    input.indent = options?.indent;
     this.addField(input);
     return this;
   }
@@ -96,20 +96,16 @@ export class Section {
     return this;
   }
 
-  addSelect(id: string, label: string, items: SelectItem[], description?: string, options?: { multiSelect?: boolean, comboBox?: boolean, indent?: number }) {
-    const select = new Field('select', id, label, description);
+  addSelect(id: string, label: string, items: SelectItem[], description?: string, options?: { multiSelect?: boolean, comboBox?: boolean, indent?: number, minlength?: number, maxlength?: number }) {
+    const select = Object.assign(new Field('select', id, label, description), options);
     select.items = items;
-    select.multiSelect = options?.multiSelect;
-    select.comboBox = options?.comboBox;
-    select.indent = options?.indent;
     this.addField(select);
     return this;
   }
 
   addRadioGroup(id: string, label: string, items: SelectItem[], description?: string, options?: { indent?: number }) {
-    const select = new Field('radio', id, label, description);
+    const select = Object.assign(new Field('radio', id, label, description), options);
     select.items = items;
-    select.indent = options?.indent;
     this.addField(select);
     return this;
   }
@@ -129,8 +125,7 @@ export class Section {
   }
 
   addComplexMultiselect(id: string, fields: Field[], options?: { indent?: number }) {
-    const input = new Field('complexMulti', id, '', '');
-    input.indent = options?.indent;
+    const input = Object.assign(new Field('complexMulti', id, '', ''), options);
     input.subFields = fields;
     this.addField(input);
     return this;
@@ -476,6 +471,9 @@ export class CustomUI extends Section {
                       input = '';
                       break;
                     }
+                  } else if (i.nodeName === 'VSCODE-TEXTAREA') {
+                    // If there is a multiline input, we want to wrap in parens
+                    input += '(' + i.value.trim().replaceAll('\\n', ' ') + ') ';
                   } else {
                     if(i.value == '') {
                       input = '';
@@ -580,7 +578,7 @@ export class Field {
   public regexTest?: string;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
-
+    this.id = this.id.replaceAll(`'`, "`"); //Some CL prompts have single quotes, need to get rid of these for our HTML
   }
 
   getHTML(): string {
@@ -595,7 +593,7 @@ export class Field {
           </vscode-form-group>`;
 
       case 'heading':
-        return /* html */ `<h${this.id}>${this.label}</h${this.id}>`;
+        return /* html */ `<h${this.id} ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>${this.label}</h${this.id}>`;
 
       case `hr`:
         return /* html */ `<hr />`;
@@ -643,7 +641,7 @@ export class Field {
                 ${this.readonly ? `readonly` : ``} 
                 ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}
                 ${this.minlength ? `minlength="${this.minlength}"` : ``} 
-                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}>
+                ${this.maxlength && !multiline ? `maxlength="${this.maxlength }"` : ``}>
               /${tag}>
           </vscode-form-group>`;
 
@@ -683,7 +681,10 @@ export class Field {
           <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <${type} id="${this.id}" name="${this.id}" ${this.comboBox ? `combobox` : ``}>
+              <${type} id="${this.id}" name="${this.id}" 
+                ${this.comboBox ? `combobox` : `` } 
+                ${this.minlength ? `minlength="${this.minlength}"` : ``} 
+                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``} >
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
               </${type}>
           </vscode-form-group>`;

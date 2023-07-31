@@ -2,7 +2,7 @@ import { ExtensionContext, Position, Range, Selection, TextDocument, commands, w
 import { instance } from "../../instantiate";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { EndOfLine } from "vscode";
-import { generatePromptUI, getDefinition } from "./clApi";
+import { generateClFromUI, generatePromptUI, getDefinition } from "./clApi";
 import { clDef } from "./clDef";
 
 export function initialise(context: ExtensionContext) {
@@ -68,11 +68,13 @@ export function initialise(context: ExtensionContext) {
           const def: clDef | undefined = await getDefinition(command);
   
           if (def) {
-            const page = await generatePromptUI(def).loadPage<any>(`${def.Cmd[0].$.CmdName}`)
+            const page = await generatePromptUI(def).loadPage<any>(`${def.Cmd[0].$.Prompt} (${def.Cmd[0].$.CmdName})`)
 
             if (page && page.data) {
               const data = page.data;
+              const result =  generateClFromUI(def, data);
               page.panel.dispose();
+              window.showInformationMessage(result);
             }
           }
         } catch (e) {
