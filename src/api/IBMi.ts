@@ -214,19 +214,37 @@ export default class IBMi {
         let defaultHomeDir;
 
         const echoHomeResult = await this.sendCommand({
-          command: `echo $HOME`,
+          command: `echo $HOME && cd`,
           directory: `.`
         });
-        // If the home directory does not exist, stderr contains 'Could not chdir to home directory /home/________: No such file or directory'
-        if (echoHomeResult.stderr) {
-          // even if the home directory doesn't exist, the echo command gives us our real home in stdout
+        // Note: if the home directory does not exist, the behavior of the echo and cd command combo is as follows:
+        //   - stderr contains 'Could not chdir to home directory /home/________: No such file or directory'
+        //       (The output contains 'chdir' regardless of locale and shell, so maybe we could use that 
+        //        if we iterate on this code again in the future)
+        //   - stdout contains the name of the home directory (even if it does not exist)
+        //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
+        if (0 != echoHomeResult.code) {
           let actualHomeDir = echoHomeResult.stdout.trim();
 
           // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
-          let doesHomeExist = (0 === (await this.sendCommand({ command: `test -w $HOME` })).code);
+          let doesHomeExist = (0 === (await this.sendCommand({ command: `test -e ${actualHomeDir}` })).code);
           if (doesHomeExist) {
-            // home directory exists but we don't have write permission to it
-            await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is unusable. Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+            // Note: this logic might look backward because we fall into this (failure) leg on what looks like success (home dir exists).
+            //       But, remember, but we only got here if 'cd $HOME' failed.
+            //       Let's try to figure out why....
+            if (0 !== (await this.sendCommand({ command: `test -d ${actualHomeDir}` })).code) {
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not a directory! Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+            }
+            else if (0 !== (await this.sendCommand({ command: `test -w ${actualHomeDir}` })).code) {
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not writable! Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+            }
+            else if (0 !== (await this.sendCommand({ command: `test -x ${actualHomeDir}` })).code) {
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not usable due to permissions! Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+            }
+            else {
+              // not sure, but get your sys admin involved
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+            }
           }
           else if (reconnecting) {
             vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) does not exist. Code for IBM i may not function correctly.`, { modal: false });
