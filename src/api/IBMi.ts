@@ -214,16 +214,26 @@ export default class IBMi {
         let defaultHomeDir;
 
         const echoHomeResult = await this.sendCommand({
-          command: `echo $HOME && cd`,
+          command: `echo $HOME && cd && test -w $HOME`,
           directory: `.`
         });
-        // Note: if the home directory does not exist, the behavior of the echo and cd command combo is as follows:
+        // Note: if the home directory does not exist, the behavior of the echo/cd/test command combo is as follows:
         //   - stderr contains 'Could not chdir to home directory /home/________: No such file or directory'
         //       (The output contains 'chdir' regardless of locale and shell, so maybe we could use that 
         //        if we iterate on this code again in the future)
         //   - stdout contains the name of the home directory (even if it does not exist)
         //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
-        if (0 != echoHomeResult.code) {
+        //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
+        let isHomeUsable = (0 == echoHomeResult.code);
+        if (!isHomeUsable && quickConnect) {
+          // If quick connect is enabled, just show a non-modal dialog without details and continue
+          let actualHomeDir = echoHomeResult.stdout.trim();
+          vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is unusable. Code for IBM i may not function correctly. Please contact your system administrator`, { modal: false });
+        }
+        else if (!isHomeUsable) {
+          // If quick connect is not enabled, let's try to provide more valuable information to the user about why their home directory
+          // is bad and maybe even provide the opportunity to create the home directory
+
           let actualHomeDir = echoHomeResult.stdout.trim();
 
           // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
