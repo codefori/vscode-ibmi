@@ -268,7 +268,6 @@ function layoutField(node: clParm | clElem, section: Section, options?: { parent
           section.addSelect(kwd, node.$.Prompt!, items, '', {
             indent: options?.indents,
             comboBox: true,
-            maxlength: maxLength,
             minlength: minlength
           });
         }
@@ -276,7 +275,6 @@ function layoutField(node: clParm | clElem, section: Section, options?: { parent
         section.addSelect(kwd, node.$.Prompt!, items, '', {
           multiSelect: true,
           indent: options?.indents,
-          maxlength: maxLength,
           minlength: minlength
         });
       }

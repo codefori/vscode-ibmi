@@ -291,6 +291,9 @@ export class CustomUI extends Section {
             // Input fields that can be validated
             const inputFields = ${JSON.stringify(allFields.filter(field => field.type == `input`))};
 
+            // select fields that can be validated
+            const selectFields = ${JSON.stringify(allFields.filter(field => field.type == `select`))};
+
             // Available trees in the fields, though only one is supported.
             const trees = [${trees.map(field => `'${field.id}'`).join(`,`)}];
 
@@ -307,6 +310,8 @@ export class CustomUI extends Section {
         
             const validateInputs = (optionalId) => {
               const testFields = optionalId ? inputFields.filter(theField => theField.id === optionalId) : inputFields
+              const selects = optionalId ? selectFields.filter(theField => theField.id === optionalId) : selectFields
+              testFields.push(...selects);
 
               let isValid = true;
 
@@ -386,6 +391,12 @@ export class CustomUI extends Section {
               const fieldElement = document.getElementById(field.id);
               fieldElement.onkeyup = (e) => {validateInputs()};
             }
+
+            // Setup the select fields for validation
+           for (const field of selectFields) {
+             const fieldElement = document.getElementById(field.id);
+             fieldElement.addEventListener('vsc-change', (e) => {validateInputs()});
+           }
 
             // Now many buttons can be pressed to submit
             for (const fieldData of groupButtons) {
