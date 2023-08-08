@@ -225,13 +225,8 @@ export default class IBMi {
         //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
         //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
         let isHomeUsable = (0 == echoHomeResult.code);
-        if (!isHomeUsable && quickConnect) {
-          // If quick connect is enabled, just show a non-modal dialog without details and continue
-          let actualHomeDir = echoHomeResult.stdout.trim();
-          vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is unusable. Code for IBM i may not function correctly. Please contact your system administrator`, { modal: false });
-        }
-        else if (!isHomeUsable) {
-          // If quick connect is not enabled, let's try to provide more valuable information to the user about why their home directory
+        if (!isHomeUsable) {
+          // Let's try to provide more valuable information to the user about why their home directory
           // is bad and maybe even provide the opportunity to create the home directory
 
           let actualHomeDir = echoHomeResult.stdout.trim();
