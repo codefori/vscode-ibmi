@@ -276,9 +276,7 @@ export default class IBMi {
 
         // Check to see if we need to store a new value for the home directory
         if (defaultHomeDir) {
-          if (this.config.homeDirectory === defaultHomeDir) {
-            progress.report({message: `Configured home directory (${defaultHomeDir}) appears usable.`});
-          } else {
+          if (this.config.homeDirectory !== defaultHomeDir) {
             this.config.homeDirectory = defaultHomeDir;
             progress.report({message: `Configured home directory reset to ${defaultHomeDir}.`});
           }
