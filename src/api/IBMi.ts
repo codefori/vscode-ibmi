@@ -225,7 +225,9 @@ export default class IBMi {
         //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
         //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
         let isHomeUsable = (0 == echoHomeResult.code);
-        if (!isHomeUsable) {
+        if (isHomeUsable) {
+          defaultHomeDir = echoHomeResult.stdout.trim();
+        } else {
           // Let's try to provide more valuable information to the user about why their home directory
           // is bad and maybe even provide the opportunity to create the home directory
 
@@ -270,8 +272,6 @@ export default class IBMi {
               await vscode.window.showWarningMessage(`Error creating home directory (${actualHomeDir}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator`, { modal: true });
             }
           }
-        } else {
-          defaultHomeDir = echoHomeResult.stdout.trim();
         }
 
         //Get home directory if one isn't set
@@ -293,6 +293,7 @@ export default class IBMi {
               });
             }
           }
+          this.config.homeDirectory = `.`;
         }
 
         //Set a default IFS listing
