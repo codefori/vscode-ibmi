@@ -301,6 +301,12 @@ export default class IBMi {
           message: `Checking temporary library configuration.`
         });
 
+        // An *ALLOBJ user doing development? Naughty! 
+        const allObjCheckResult = await this.sendCommand({command: `test -w /QOpenSys/QIBM/ProdData`, directory: `.` });
+        if (0 == allObjCheckResult.code) {
+          vscode.window.showWarningMessage(`This user profile has a high level of authority. Doing development with this profile is not recommended.`, { modal: false});
+        }
+
         //Next, we need to check the temp lib (where temp outfile data lives) exists
         try {
           await this.remoteCommand(
