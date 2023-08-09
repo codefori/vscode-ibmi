@@ -260,7 +260,7 @@ export default class IBMi {
           }, `Yes`)) {
             console.log(`creating home directory ${actualHomeDir}`);
             let mkHomeCmd = `mkdir -p ${actualHomeDir} && chown ${connectionObject.username.toLowerCase()} ${actualHomeDir} && chmod 0755 ${actualHomeDir}`;
-            let mkHomeResult = await this.sendCommand({ command: mkHomeCmd });
+            let mkHomeResult = await this.sendCommand({ command: mkHomeCmd, directory: `.` });
             if (0 === mkHomeResult.code) {
               defaultHomeDir = actualHomeDir;
             } else {
