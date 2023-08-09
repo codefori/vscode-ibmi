@@ -274,26 +274,20 @@ export default class IBMi {
           }
         }
 
-        //Get home directory if one isn't set
+        // Check to see if we need to store a new value for the home directory
         if (defaultHomeDir) {
-          if (this.config.homeDirectory === `.`) {
-            // New connections always have `.` as the initial value
-            // But set the value to the real path
-            this.config.homeDirectory = defaultHomeDir;
+          if (this.config.homeDirectory === defaultHomeDir) {
+            progress.report({message: `Configured home directory (${defaultHomeDir}) appears usable.`});
           } else {
-            //If they have one set, check it exists.
-            const pwdResult = await this.sendCommand({
-              command: `pwd`
-            });
-            if (pwdResult.stderr) {
-              //If it doesn't exist, reset it
-              this.config.homeDirectory = defaultHomeDir;
-              progress.report({
-                message: `Configured home directory reset to ${defaultHomeDir}.`
-              });
-            }
+            this.config.homeDirectory = defaultHomeDir;
+            progress.report({message: `Configured home directory reset to ${defaultHomeDir}.`});
           }
+        } else {
+          // New connections always have `.` as the initial value. 
+          // If we can't find a usable home directory, just reset it to
+          // the initial default.
           this.config.homeDirectory = `.`;
+          progress.report({message: `Could not determine a usable home directory.`});
         }
 
         //Set a default IFS listing
