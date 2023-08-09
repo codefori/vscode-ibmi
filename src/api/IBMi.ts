@@ -182,7 +182,8 @@ export default class IBMi {
 
         const checkShellText = `This should be the only text!`;
         const checkShellResult = await this.sendCommand({
-          command: `echo "${checkShellText}"`
+          command: `echo "${checkShellText}"`,
+          directory: `.`
         });
         if (checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
           const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
