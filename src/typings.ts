@@ -125,7 +125,8 @@ export interface Filter {
 
 export interface FileError {
   sev: number
-  linenum: number
+  lineNum: number
+  toLineNum: number
   column: number
   toColumn: number
   text: string
@@ -139,5 +140,5 @@ export interface QsysFsOptions {
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
 
 export interface Library {
-  path:string
+  path: string
 }
