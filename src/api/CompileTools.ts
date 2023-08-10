@@ -4,7 +4,7 @@ import vscode, { window } from 'vscode';
 
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
-import { getLocalActions, getiProjActions } from './local/actions';
+import { getLocalActions } from './local/actions';
 import { getEnvConfig } from './local/env';
 
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
@@ -224,11 +224,8 @@ export namespace CompileTools {
       // Then, if we're being called from a local file
       // we fetch the Actions defined from the workspace.
       if (workspaceFolder && uri.scheme === `file`) {
-        const [localActions, iProjActions] = await Promise.all([
-          getLocalActions(workspaceFolder),
-          getiProjActions(workspaceFolder)
-        ]);
-        allActions.push(...localActions, ...iProjActions);
+        const localActions = await getLocalActions(workspaceFolder);
+        allActions.push(...localActions);
       }
 
       // We make sure all extensions are uppercase
