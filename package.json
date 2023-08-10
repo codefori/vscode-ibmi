@@ -417,11 +417,6 @@
 					"default": true,
 					"description": "When enabled, files will automatically be opened when copied or moved/renamed."
 				},
-				"code-for-ibmi.tryNewErrorParser": {
-					"type": "boolean",
-					"default": true,
-					"description": "Fix preview: Enable to test out the brand new error parser. Restart not required."
-				},
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
 					"default": true,
@@ -2212,6 +2207,7 @@
 	},
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.12.0",
+		"@ibm/ibmi-eventf-parser": "^1.0.2",
 		"@types/tmp": "^0.2.3",
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
