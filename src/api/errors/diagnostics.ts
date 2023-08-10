@@ -1,7 +1,7 @@
 
 import * as vscode from "vscode";
 import Instance from "../Instance";
-import { parseErrors } from "./handler";
+import { parseErrors } from "./parser";
 import { FileError } from "../../typings";
 import { getEvfeventFiles } from "../local/actions";
 
@@ -18,7 +18,7 @@ export interface EvfEventInfo {
 export function registerDiagnostics(): vscode.Disposable[] {
   return [
     ileDiagnostics,
-    
+
     vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
       clearDiagnostics();
     }),
@@ -26,8 +26,8 @@ export function registerDiagnostics(): vscode.Disposable[] {
 }
 
 /**
-   * Does what it says on the tin.
-   */
+ * Does what it says on the tin.
+ */
 export function clearDiagnostics() {
   ileDiagnostics.clear();
 }
@@ -42,15 +42,12 @@ export async function refreshDiagnosticsFromServer(instance: Instance, evfeventI
     clearDiagnostics();
 
     handleEvfeventLines(lines, instance, evfeventInfo);
-
-  }
-  else {
+  } else {
     throw new Error('Please connect to an IBM i');
   }
 }
 
 export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventInfo: EvfEventInfo) {
-
   if (evfeventInfo.workspace) {
     const evfeventFiles = await getEvfeventFiles(evfeventInfo.workspace);
     if (evfeventFiles) {
@@ -84,7 +81,8 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
       diagnostics.length = 0;
       for (const error of errors) {
         error.column = Math.max(error.column - 1, 0);
-        error.linenum = Math.max(error.linenum - 1, 0);
+        error.lineNum = Math.max(error.lineNum - 1, 0);
+        error.toLineNum = Math.max(error.toLineNum - 1, 0);
 
         if (error.column === 0 && error.toColumn === 0) {
           error.column = 0;
@@ -92,7 +90,7 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
         }
 
         const diagnostic = new vscode.Diagnostic(
-          new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
+          new vscode.Range(error.lineNum, error.column, error.toLineNum, error.toColumn),
           `${error.code}: ${error.text} (${error.sev})`,
           diagnosticSeverity(error)
         );
@@ -130,7 +128,6 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
         }
       }
     }
-
   } else {
     ileDiagnostics.clear();
   }
