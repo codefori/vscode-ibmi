@@ -2,13 +2,15 @@ import { WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
 import { CustomUI } from "./api/CustomUI";
+import { Tools } from "./api/Tools";
 import { DeployTools } from "./api/local/deployTools";
 
 export interface CodeForIBMi {
   instance: Instance,
   customUI: () => CustomUI,
   deployTools: typeof DeployTools,
-  evfeventParser: (lines: string[]) => Map<string, FileError[]>
+  evfeventParser: (lines: string[]) => Map<string, FileError[]>,
+  tools: typeof Tools
 }
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
