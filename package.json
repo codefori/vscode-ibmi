@@ -444,9 +444,10 @@
 				},
 				"code-for-ibmi.locale": {
           "type": "string",
-					"default": "en",
-          "enum": ["en", "da"],
+					"default": "inherit",
+          "enum": ["inherit", "en", "da"],
           "enumDescriptions": [
+						"Inherit from VS Code settings",
             "English",
             "Danish"
           ],

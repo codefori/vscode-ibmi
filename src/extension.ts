@@ -25,6 +25,7 @@ import { HelpView } from "./views/helpView";
 import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
 import { DeployTools } from "./api/local/deployTools";
+import { updateLocale } from "./locale";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -72,6 +73,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       }
     ),
     workspace.onDidChangeConfiguration(async event => {
+      if (event.affectsConfiguration(`code-for-ibmi.locale`)) {
+        updateLocale();
+      }
+
       if (event.affectsConfiguration(`code-for-ibmi.connections`)) {
         checkLastConnections();
       }

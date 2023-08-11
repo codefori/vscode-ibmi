@@ -3,14 +3,21 @@ import { GlobalConfiguration } from "../api/Configuration";
 import { da } from "./ids/da";
 import { en } from "./ids/en";
 
+export type Locale = {[id: string]: string};
+
 const locales: {[locale: string]: Locale} = {
   en,
   da
 }
 
-export type Locale = {[id: string]: string};
+let currentLocale = String(env.language);
 
-const currentLocale = String(GlobalConfiguration.get(`locale`) || env.language);
+export function updateLocale() {
+  const localeSetting = GlobalConfiguration.get(`locale`) as string;
+  const vscLocale = env.language;
+
+  currentLocale = (localeSetting === `inherit` ? vscLocale : localeSetting);
+}
 
 export function t(id: string, ...values: any[]) {
   // Check for the id in their local locale first, then default to en, then just show the id.
