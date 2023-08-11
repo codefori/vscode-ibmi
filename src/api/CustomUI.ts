@@ -35,8 +35,9 @@ export interface ComplexTab {
 export class Section {
   readonly fields: Field[] = [];
 
-  addHeading(label: string, level: 1 | 2 | 3 | 4 | 5 | 6 = 1) {
-    this.addField(new Field(`heading`, level.toString(), label));
+  addHeading(label: string, level: 1 | 2 | 3 | 4 | 5 | 6 = 1, options?: { indent?: number }) {
+    const field = Object.assign(new Field(`heading`, level.toString(), label), options);
+    this.addField(field);
     return this;
   }
 
@@ -52,7 +53,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number, regexTest?: string }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, indent?: number, minlength?: number, maxlength?: number, regexTest?: string }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     this.addField(input);
     return this;
@@ -95,8 +96,15 @@ export class Section {
     return this;
   }
 
-  addSelect(id: string, label: string, items: SelectItem[], description?: string) {
-    const select = new Field('select', id, label, description);
+  addSelect(id: string, label: string, items: SelectItem[], description?: string, options?: { multiSelect?: boolean, comboBox?: boolean, indent?: number, minlength?: number, maxlength?: number }) {
+    const select = Object.assign(new Field('select', id, label, description), options);
+    select.items = items;
+    this.addField(select);
+    return this;
+  }
+
+  addRadioGroup(id: string, label: string, items: SelectItem[], description?: string, options?: { indent?: number }) {
+    const select = Object.assign(new Field('radio', id, label, description), options);
     select.items = items;
     this.addField(select);
     return this;
@@ -113,6 +121,13 @@ export class Section {
     const buttonsField = new Field('buttons', '', '');
     buttonsField.items = buttons.filter(b => b);
     this.addField(buttonsField);
+    return this;
+  }
+
+  addComplexMultiselect(id: string, fields: Field[], options?: { indent?: number }) {
+    const input = Object.assign(new Field('complexMulti', id, '', ''), options);
+    input.subFields = fields;
+    this.addField(input);
     return this;
   }
 
@@ -197,7 +212,7 @@ export class CustomUI extends Section {
   }
 
   private getHTML(panel: vscode.WebviewPanel, title: string) {
-    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `paragraph`, `tabs`, `complexTabs`];
+    const notInputFields = [`submit`, `buttons`, `tree`, `hr`, `heading`, `paragraph`, `tabs`, `complexTabs`];
     const trees = this.fields.filter(field => field.type == `tree`);
 
     const complexTabFields = this.fields.filter(field => field.type === `complexTabs`).map(tabs => tabs.complexTabItems?.map(tab => tab.fields));
@@ -233,6 +248,27 @@ export class CustomUI extends Section {
               width: 100%;
             }
 
+            .multiselect-table {
+              border-color: var(--vscode-settings-textInputBorder, #cecece);
+              border-radius: 2px;
+              border-style: solid;
+              border-width: 1px;
+              background-color: var(--vscode-input-background,#fff);
+              width: 100%;
+              height: 100px;
+              overflow: scroll;
+            }
+
+            tr:hover {
+              background-color: var(--vscode-button-hoverBackground);
+              cursor: pointer;
+            }
+
+            .selected {
+              background-color: var(--vscode-button-hoverBackground)!important;
+              cursor: pointer;
+            }
+
             :root{
               --dropdown-z-index: 666;
             }
@@ -255,6 +291,9 @@ export class CustomUI extends Section {
             // Input fields that can be validated
             const inputFields = ${JSON.stringify(allFields.filter(field => field.type == `input`))};
 
+            // select fields that can be validated
+            const selectFields = ${JSON.stringify(allFields.filter(field => field.type == `select`))};
+
             // Available trees in the fields, though only one is supported.
             const trees = [${trees.map(field => `'${field.id}'`).join(`,`)}];
 
@@ -266,9 +305,13 @@ export class CustomUI extends Section {
 
             // Fields that have value which can be returned
             const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
-
+            
+            const complexMultiFields = new Map([${allFields.filter(field => field.type == `complexMulti`).map(field => `['${field.id}', [${field.subFields?.map(f => `'${f.id}'`).join(`,`)}]]`).join(`,`)}]);
+        
             const validateInputs = (optionalId) => {
               const testFields = optionalId ? inputFields.filter(theField => theField.id === optionalId) : inputFields
+              const selects = optionalId ? selectFields.filter(theField => theField.id === optionalId) : selectFields
+              testFields.push(...selects);
 
               let isValid = true;
 
@@ -331,6 +374,15 @@ export class CustomUI extends Section {
                   data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
                 }
 
+                for (const f of complexMultiFields) {
+                  let result = '';
+                  const table = document.getElementById(f[0]);
+                  for(let i = 0; i < table.rows.length; i++) {
+                    result += table.rows[i].cells[0].innerHTML + '\\n';
+                  }
+                  data[f[0]] = result;
+                }
+
                 vscode.postMessage(data);
             };
 
@@ -339,6 +391,12 @@ export class CustomUI extends Section {
               const fieldElement = document.getElementById(field.id);
               fieldElement.onkeyup = (e) => {validateInputs()};
             }
+
+            // Setup the select fields for validation
+           for (const field of selectFields) {
+             const fieldElement = document.getElementById(field.id);
+             fieldElement.addEventListener('vsc-change', (e) => {validateInputs()});
+           }
 
             // Now many buttons can be pressed to submit
             for (const fieldData of groupButtons) {
@@ -356,7 +414,7 @@ export class CustomUI extends Section {
               button.onclick = submitButtonAction;
               button.onKeyDown = submitButtonAction;
             }
-
+            
             for (const field of submitfields) {
                 const currentElement = document.getElementById(field);
                 if (currentElement.hasAttribute('rows')) {
@@ -398,6 +456,70 @@ export class CustomUI extends Section {
                   })
             }
 
+            complexMultiFields.forEach((subFields, field) => {
+              const inputs = []
+              subFields.forEach(id => {
+                inputs.push(document.getElementById(id));
+              });
+              const addButton = document.getElementById(\`add-\${field}\`);
+              const removeButton = document.getElementById(\`remove-\${field}\`);
+              const result = document.getElementById(field);
+              addButton.addEventListener('vsc-click', (e) => {
+                let input = '';
+                for(i of inputs) {
+                  if(i.nodeName === 'VSCODE-RADIO-GROUP') {
+                    //Need to find which is selected, there must be a better way than this
+                    let checked = false;
+                    for(let j = 0; j < i.children.length; j++) {
+                      const item = i.children.item(j);
+                      if(item.getAttribute('aria-checked') === 'true') {
+                        input += item.value + ' ';
+                        checked = true;
+                        break;
+                      }
+                    }
+                    if(!checked) {
+                      input = '';
+                      break;
+                    }
+                  } else if (i.nodeName === 'VSCODE-TEXTAREA') {
+                    // If there is a multiline input, we want to wrap in parens
+                    input += '(' + i.value.trim().replaceAll('\\n', ' ') + ') ';
+                  } else {
+                    if(i.value == '') {
+                      input = '';
+                      break;
+                    }
+                    input += i.value + ' ';
+                  }
+                }
+                input = input.trim();
+                if(input != '') {
+                  const cell = result.insertRow(-1).insertCell(-1);
+                  cell.innerHTML = input;
+                  cell.addEventListener('click', (e) => {
+                    const item = e.target
+                    if(item.className == '') {
+                      item.className = 'selected';
+                    } else {
+                      item.className = '';
+                    }
+                  })
+                  inputs.forEach((i) => {
+                    i.value = '';
+                  });
+                }
+              });
+              removeButton.addEventListener('vsc-click', (e) => {
+                for(let i = result.rows.length - 1; i >= 0; i--) {
+                  const cell = result.rows[i].cells[0];
+                  if(cell.className === 'selected') {
+                    result.deleteRow(i);
+                  }
+                }
+              });
+            });
+
             document.addEventListener('DOMContentLoaded', () => {
               validateInputs(); 
               var currentTree;
@@ -422,7 +544,7 @@ export class CustomUI extends Section {
   }
 }
 
-export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading";
+export type FieldType = "input" | "password" | "buttons" | "checkbox" | "file" | "complexTabs" | "tabs" | "tree" | "select" | "paragraph" | "hr" | "heading" | "radio"  | "complexMulti";
 
 export interface TreeListItemIcon {
   branch?: string;
@@ -457,17 +579,22 @@ export class Field {
   public default?: string;
   public readonly?: boolean;
   public rows?: number;
+  public multiSelect?: boolean;
+  public comboBox?: boolean;
+  public indent?: number;
+  public subFields?: Field[]; //For complexMultiSelect
 
   public minlength?: number;
   public maxlength?: number;
   public regexTest?: string;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
-
+    this.id = this.id.replaceAll(`'`, "`"); //Some CL prompts have single quotes, need to get rid of these for our HTML
   }
 
   getHTML(): string {
     this.default = typeof this.default === `string` ? this.default.replace(/"/g, `&quot;`) : undefined;
+    const indentAmmt = 4;
 
     switch (this.type) {
       case `buttons`:
@@ -477,7 +604,7 @@ export class Field {
           </vscode-form-group>`;
 
       case 'heading':
-        return /* html */ `<h${this.id}>${this.label}</h${this.id}>`;
+        return /* html */ `<h${this.id} ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>${this.label}</h${this.id}>`;
 
       case `hr`:
         return /* html */ `<hr />`;
@@ -517,7 +644,7 @@ export class Field {
         const multiline = (this.rows || 1) > 1;
         const tag = multiline ? "vscode-textarea" : "vscode-textfield";
         return /* html */`
-          <vscode-form-group variant="settings-group">
+          <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
               ${this.renderLabel()}
               ${this.renderDescription()}              
               <${tag} class="long-input" id="${this.id}" name="${this.id}" 
@@ -525,7 +652,7 @@ export class Field {
                 ${this.readonly ? `readonly` : ``} 
                 ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}
                 ${this.minlength ? `minlength="${this.minlength}"` : ``} 
-                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}>
+                ${this.maxlength && !multiline ? `maxlength="${this.maxlength }"` : ``}>
               /${tag}>
           </vscode-form-group>`;
 
@@ -560,13 +687,37 @@ export class Field {
           </vscode-form-group>`;
 
       case `select`:
+        const type = this.multiSelect ? `vscode-multi-select` : `vscode-single-select`;
         return /* html */`
-          <vscode-form-group variant="settings-group">
+          <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-single-select id="${this.id}" name="${this.id}">
+              <${type} id="${this.id}" name="${this.id}" 
+                ${this.comboBox ? `combobox` : `` } 
+                ${this.minlength ? `minlength="${this.minlength}"` : ``} 
+                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``} >
                   ${this.items?.map(item => /* html */`<vscode-option ${item.selected ? `selected` : ``} value="${item.value}" description="${item.text}">${item.description}</vscode-option>`)}
-              </vscode-single-select>
+              </${type}>
+          </vscode-form-group>`;
+
+      case `radio`:
+        return /* html */`
+          <vscode-form-group variant="settings-group" ${this.indent ? `style="padding-left:${this.indent * indentAmmt}em"` : ``}>
+              ${this.renderLabel()}
+              ${this.renderDescription()}
+              <vscode-radio-group id="${this.id}">
+                  ${this.items?.map(item => /* html */`<vscode-radio label="${item.value}" name="${this.id}" value="${item.value}" ${item.selected ? `checked` : ``}>${item.description}</vscode-radio>`).join(`\n`)}
+              </vscode-radio-group>
+          </vscode-form-group>`;
+      
+      case `complexMulti`:
+        const indent =  this.indent ? `padding-left:${this.indent * indentAmmt}em` : ``;
+        return /* html */`
+          ${this.subFields?.map(field => field.getHTML()).join(`\n`)}
+          <vscode-form-group variant="settings-group" style="${indent}">
+              <vscode-button id="add-${this.id}" style="margin:3px">Add Item</vscode-button>
+              <vscode-button id="remove-${this.id}" style="margin:3px">Remove Selected Item</vscode-button>
+              <div class="multiselect-table"> <table id="${this.id}" name="${this.id}"></table></div>
           </vscode-form-group>`;
     }
   }

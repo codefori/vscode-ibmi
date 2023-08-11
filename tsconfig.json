@@ -4,7 +4,8 @@
 		"target": "ES2019",
 		"outDir": "out",
 		"lib": [
-			"ES2019"
+			"ES2019",
+			"ES2021"
 		],
 		"forceConsistentCasingInFileNames": true,
 		"allowJs": true,

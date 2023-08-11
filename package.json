@@ -1434,6 +1434,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.cl.promptCommand",
+				"title": "Prompt CL Command",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.openTerminalHere",
 				"title": "Open terminal here",
 				"category": "IBM i"
@@ -2204,6 +2209,7 @@
 		"@types/tar": "^6.1.4",
 		"@types/tmp": "^0.2.3",
 		"@types/vscode": "^1.66.0",
+		"@types/xml2js": "^0.4.11",
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
@@ -2216,14 +2222,15 @@
 		"webpack-cli": "^4.5.0"
 	},
 	"dependencies": {
-		"@bendera/vscode-webview-elements": "^0.12.0",
+		"@bendera/vscode-webview-elements": "^0.15.0",
 		"@types/tmp": "^0.2.3",
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
 		"node-ssh": "^13.1.0",
 		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
-		"vscode-diff": "^2.0.2"
+		"vscode-diff": "^2.0.2",
+		"xml2js": "^0.6.0"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",

@@ -5,11 +5,21 @@ import { instance } from "../instantiate";
 import util from 'util';
 import tmp from 'tmp';
 import { CommandResult } from "../typings";
+import {checkRequirements, getDefinition} from "../languages/clle/clApi";
 import { Tools } from "../api/Tools";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
   tests: [
+    {name: `CL definition fetch`, test: async () => {
+      if (checkRequirements()) {
+        const def = await getDefinition(`CPYF`);
+        assert.notStrictEqual(def, undefined);
+        assert.strictEqual(def?.Cmd[0].$.CmdName, `CPYF`);
+        assert.strictEqual(def?.Cmd[0].Parm[0].$.PosNbr, `1`);
+      }
+    }},
+    
     {name: `Test memberResolve`, test: async () => {
       const content = instance.getContent();
   
