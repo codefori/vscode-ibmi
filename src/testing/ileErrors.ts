@@ -150,7 +150,7 @@ export const ILEErrorSuite: TestSuite = {
           `PROCESSOR  0 999 1`,
           `FILEID     0 999 000000 024 QTEMP/QSQLTEMP1(FIX1200) 20230405035632 0`,
           `FILEID     0 001 000000 646 /home/ANGELORPA/builds/sources/long-directory-name-for-testing-long-paths/subdirectory-with-a-long-name-for-testing-long-paths/another-subdirectory-with-a-long-name-for-testing-long-paths/one-more-subdirectory-this-is-the-last-one/01-long directory name w`,
-          `FILEIDCONT 0 001 000000 000 ith spaces in/02-long directory with space in his name/03-long directory name with space in for testing prupouse/04-long directory name with space in for testing event file parser/05-long directory name with space in for testing event file parser/06-long`,
+          `FILEIDCONT 0 001 000000 000 ith spaces in/02-long directory with space in his name/03-long directory name with space in for testing prupouse/04-long directory name with space in for testing event file parser/05-long directory name with space in for testing event file parser/06-long `,
           `FILEIDCONT 0 001 000000 000 directory name with space in for testing event file parser/sorce file long name with space in for testing event file parser.pmg.sqlrpgle 20230403024018 0`,
           `ERROR      0 999 2 000000 000000 000 000000 000 SQL0053 W 10 024 No SQL statements found.`,
           `EXPANSION  0 001 000000 000000 999 000006 000070`,
@@ -208,8 +208,8 @@ export const ILEErrorSuite: TestSuite = {
           ` name with space in for testing event file parser/06-long directory name with space in for testing event file parser/` +
           `sorce file long name with space in for testing event file parser.pmg.sqlrpgle`;
 
-        // erros.size is equal to the number of PROCESSOR records in the events file
-        assert.strictEqual(errors.size, 2);
+        // erros.size is equal 1 as even the error in the intermediate file can be mapped to the original source file
+        assert.strictEqual(errors.size, 1);
         assert.strictEqual(errors.has(filePath), true);
       }
     },
