@@ -20,7 +20,7 @@ import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { QsysFsOptions, RemoteCommand } from "./typings";
+import { Action, DeploymentMethod, QsysFsOptions, RemoteCommand } from "./typings";
 
 export let instance: Instance;
 
@@ -216,7 +216,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
       CompileTools.clearDiagnostics();
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
       const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
       if (uri) {
@@ -247,7 +247,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
 
           if (canRun && [`member`, `streamfile`, `file`].includes(uri.scheme)) {
-            CompileTools.runAction(instance, uri);
+            CompileTools.runAction(instance, uri, action, method);
           }
         }
         else {
