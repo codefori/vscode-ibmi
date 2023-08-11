@@ -45,9 +45,10 @@ export class Section {
     return this;
   }
 
-  addCheckbox(id: string, label: string, description?: string, checked?: boolean) {
+  addCheckbox(id: string, label: string, description?: string, checked?: boolean, readonly?: boolean) {
     const checkbox = new Field('checkbox', id, label, description);
     checkbox.default = checked ? 'checked' : '';
+    checkbox.readonly = readonly;
     this.addField(checkbox);
     return this;
   }
@@ -485,7 +486,13 @@ export class Field {
       case `checkbox`:
         return /* html */`
           <vscode-form-group variant="settings-group">
-            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``}><vscode-label>${this.label}</vscode-label></vscode-checkbox>
+            <vscode-checkbox 
+              id="${this.id}" 
+              name="${this.id}" 
+              ${this.default === `checked` ? `checked` : ``}>
+              ${this.readonly ? `disabled` : ``} 
+              <vscode-label>${this.label}</vscode-label>
+            </vscode-checkbox>
             ${this.renderDescription()}
           </vscode-form-group>`;
 
@@ -532,7 +539,7 @@ export class Field {
       case `paragraph`:
         return /* html */`
           <vscode-form-group variant="settings-group">
-              <vscode-form-helper>${this.label}</vscode-form-helper>
+              <span>${this.label}</span>
           </vscode-form-group>`;
 
       case `file`:

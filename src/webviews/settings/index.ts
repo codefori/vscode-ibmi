@@ -64,11 +64,18 @@ export class SettingsUI {
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData)
           .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts);
 
+        const sqlIsEnabled = config.enableSQL;
+
         const sourceTab = new Section();
         sourceTab
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode)
+          .addHorizontalRule()
+          .addParagraph(`${sqlIsEnabled ? `SQL is enabled.` : `SQL is disabled.`} Source ASP and Source file CCSID are only used when SQL disabled and source dates are not enabled.`)
           .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
-          .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
+          .addHorizontalRule()
+          .addParagraph(`${sqlIsEnabled ? `SQL is enabled.` : `SQL is disabled.`} Source dates are only supported when SQL is enabled.`)
+          .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates, !sqlIsEnabled)
           .addSelect(`sourceDateMode`, `Source date tracking mode`, [
             {
               selected: config.sourceDateMode === `edit`,
@@ -84,7 +91,6 @@ export class SettingsUI {
             },
           ], `Determine which method should be used to track changes while editing source members.`)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
-          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
 
         const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
