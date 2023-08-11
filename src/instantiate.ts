@@ -29,28 +29,20 @@ disconnectBarItem.command = {
   command: `code-for-ibmi.disconnect`,
   title: `Disconnect from system`
 }
+disconnectBarItem.tooltip = `Disconnect from system.`;
+disconnectBarItem.text = `$(debug-disconnect)`;
 
 const connectedBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 10);
 connectedBarItem.command = {
   command: `code-for-ibmi.showAdditionalSettings`,
-  title: `Show Additional Connection Settings`,
+  title: `Show connection settings`
 };
-disconnectBarItem.tooltip = `Disconnect from system.`;
-disconnectBarItem.text = `$(debug-disconnect)`;
-
-const terminalBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
-terminalBarItem.command = {
-  command: `code-for-ibmi.launchTerminalPicker`,
-  title: `Launch Terminal Picker`
-}
-terminalBarItem.text = `$(terminal) Terminals`;
-
-const actionsBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-actionsBarItem.command = {
-  command: `code-for-ibmi.showActionsMaintenance`,
-  title: `Show IBM i Actions`,
-};
-actionsBarItem.text = `$(file-binary) Actions`;
+connectedBarItem.tooltip = new vscode.MarkdownString([
+  `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
+  `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
+  `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`
+].join(`\n\n---\n\n`), true);
+connectedBarItem.tooltip.isTrusted = true;
 
 let selectedForCompare: vscode.Uri;
 let searchViewContext: SearchView;
@@ -95,8 +87,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
-    terminalBarItem,
-    actionsBarItem,
     vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
       if (instance.getConnection()) {
         await disconnect();
@@ -362,36 +352,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return value;
     }),
 
-    // The follow commands are deprecated and to be removed for 1.9.0
-    vscode.commands.registerCommand(`code-for-ibmi.runCommand`, (detail: RemoteCommand) => {
-      console.log(`Command 'code-for-ibmi.runCommand' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getConnection().runCommand' in the export API.`);
-      if (detail && detail.command) {
-        return CompileTools.runCommand(instance, detail);
-      }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.runQuery`, (statement?: string) => {
-      console.log(`Command 'code-for-ibmi.runQuery' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'instance.getContent().runSQL' in the export API.`);
-      const content = instance.getContent();
-      if (statement && content) {
-        return content.runSQL(statement);
-      } else {
-        return null;
-      }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.launchUI`, <T>(title: string, fields: any[], callback: (page: Page<T>) => void) => {
-      console.log(`Command 'code-for-ibmi.launchUI' has been deprecated. There is no guarantee it will be available after 1.8.0. Use 'exports.customUI' in the export API.`);
-      if (title && fields && callback) {
-        const ui = new CustomUI();
-        fields.forEach(field => {
-          const uiField = new Field(field.type, field.id, field.label);
-          ui.addField(Object.assign(uiField, field));
-        });
-        ui.loadPage(title, callback);
-      }
-    }),
-
     vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
       let uri;
       if (node?.member) {
@@ -430,7 +390,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 function updateConnectedBar() {
   const config = instance.getConfig();
   if (config) {
-    connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) Settings: ${config.name}`;
+    connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
   }
 }
 
@@ -440,8 +400,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   [
     connectedBarItem,
     disconnectBarItem,
-    terminalBarItem,
-    actionsBarItem
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
@@ -477,7 +435,5 @@ async function onDisconnected() {
   [
     disconnectBarItem,
     connectedBarItem,
-    terminalBarItem,
-    actionsBarItem,
   ].forEach(barItem => barItem.hide())
 }

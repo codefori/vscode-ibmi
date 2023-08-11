@@ -143,26 +143,6 @@ export const ConnectionSuite: TestSuite = {
       assert.strictEqual(result.stdout.includes(`Library List`), true);
     }},
 
-    {name: `runCommand API compared to code-for-ibmi.runCommand (deprecated)`, test: async () => {
-      const connection = instance.getConnection();
-      let resultA: CommandResult | null | undefined;
-      let resultB: CommandResult | null | undefined;
-  
-      resultA = await connection?.runCommand({
-        command: `DSPLIBL`,
-        environment: `ile`
-      });
-      resultA!.stdout = resultA!.stdout.split(`\n`).slice(1).join(`\n`); // Ignore first line, contains timestamp...
-
-      resultB = await commands.executeCommand(`code-for-ibmi.runCommand`, {
-        command: `DSPLIBL`,
-        environment: `ile`
-      });
-      resultB!.stdout = resultB!.stdout.split(`\n`).slice(1).join(`\n`); // Ignore first line, contains timestamp...
-
-      assert.deepStrictEqual(resultA, resultB);
-    }},
-
     {name: `Test runCommand (ILE, custom libl)`, test: async () => {
       const connection = instance.getConnection();
   

@@ -1,7 +1,7 @@
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 
-import { SourceDateMode } from "../../api/Configuration";
+import { GlobalConfiguration, SourceDateMode } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
@@ -98,7 +98,10 @@ export class SourceDateHandler {
 
   changeSourceDateMode(sourceDateMode: SourceDateMode) {
     this.sourceDateMode = sourceDateMode;
-    if (this.sourceDateMode === "diff") {
+
+    const dateSearchButtonEnabled = GlobalConfiguration.get<boolean>(`showDateSearchButton`);
+
+    if (this.sourceDateMode === "diff" && dateSearchButtonEnabled) {
       this.sourceDateSearchBarItem.show();
     }
     else {
@@ -301,6 +304,8 @@ export class SourceDateHandler {
         event.contentChanges[0].range.isSingleLine &&
         !event.contentChanges[0].text.includes(`\n`);
 
+      const isSpace = (isSingleLine && event.contentChanges[0].text === ` `);
+
       const currentEditingLine = isSingleLine ? event.contentChanges[0].range.start.line : undefined;
 
       const editedBefore = isSingleLine && currentEditingLine === this.lineEditedBefore;
@@ -312,7 +317,7 @@ export class SourceDateHandler {
         this._diffRefreshGutter(document);
       }
 
-      if (isDelete) {
+      if (isDelete || isSpace) {
         this.lineEditedBefore = 0;
       } else
       if (event.contentChanges.length > 0) {
