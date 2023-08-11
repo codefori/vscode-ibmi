@@ -3,6 +3,7 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
+import { readFileSync } from "fs";
 import path from 'path';
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, StandardIO } from "../typings";
@@ -10,7 +11,6 @@ import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
-import { readFileSync } from "fs";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -116,14 +116,15 @@ export default class IBMi {
   async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
+      
+      configVars.replaceAll(connectionObject);
+
       // Make sure we're not passing any blank strings, as node_ssh will try to validate it
       if (connectionObject.privateKey) {
         connectionObject.privateKey = readFileSync(connectionObject.privateKey, {encoding: `utf-8`});
       } else {
         connectionObject.privateKey = null;
-      }
-
-      configVars.replaceAll(connectionObject);
+      }      
 
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
@@ -181,7 +182,8 @@ export default class IBMi {
 
         const checkShellText = `This should be the only text!`;
         const checkShellResult = await this.sendCommand({
-          command: `echo "${checkShellText}"`
+          command: `echo "${checkShellText}"`,
+          directory: `.`
         });
         if (checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
           const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {

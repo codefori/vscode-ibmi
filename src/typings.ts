@@ -1,13 +1,14 @@
-import { ExtensionContext, Uri, WorkspaceFolder } from "vscode";
+import { WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
-import { CustomUI, Field } from "./api/CustomUI";
+import { CustomUI } from "./api/CustomUI";
 import { Tools } from "./api/Tools";
+import { DeployTools } from "./api/local/deployTools";
 
 export interface CodeForIBMi {
   instance: Instance,
   customUI: () => CustomUI,
-  deploy: (parameters: DeploymentParameters) => Promise<boolean>
+  deployTools: typeof DeployTools,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
   tools: typeof Tools
 }
@@ -141,5 +142,5 @@ export interface QsysFsOptions {
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
 
 export interface Library {
-  path:string
+  path: string
 }

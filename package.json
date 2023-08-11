@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.0.0",
+	"version": "2.0.2",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -441,6 +441,11 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
+				},
+				"code-for-ibmi.showDateSearchButton": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, will show the 'Date search' button in the status bar when source dates with diff mode is enabled."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
