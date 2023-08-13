@@ -443,15 +443,21 @@
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
 				},
 				"code-for-ibmi.locale": {
-          "type": "string",
+					"type": "string",
 					"default": "inherit",
-          "enum": ["inherit", "en", "da"],
-          "enumDescriptions": [
+					"enum": [
+						"inherit",
+						"en",
+						"da",
+						"fr"
+					],
+					"enumDescriptions": [
 						"Inherit from VS Code settings",
-            "English",
-            "Danish"
-          ],
-          "description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."
+						"English",
+						"Danish",
+						"French"
+					],
+					"description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."
 				},
 				"code-for-ibmi.showDateSearchButton": {
 					"type": "boolean",

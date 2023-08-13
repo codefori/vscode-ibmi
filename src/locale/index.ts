@@ -2,12 +2,14 @@ import { env } from "vscode";
 import { GlobalConfiguration } from "../api/Configuration";
 import { da } from "./ids/da";
 import { en } from "./ids/en";
+import { fr } from "./ids/fr";
 
 export type Locale = {[id: string]: string};
 
 const locales: {[locale: string]: Locale} = {
   en,
-  da
+  da,
+  fr
 }
 
 let currentLocale = String(env.language);

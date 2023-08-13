@@ -1,6 +1,6 @@
 import { Locale } from "..";
 
-export const en: Locale = {
+export const fr: Locale = {
   'Yes': `Oui`,
   'No': `Non`,
   'Cancel': `Annuler`,
