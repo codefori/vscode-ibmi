@@ -278,14 +278,13 @@ export default class IBMi {
         if (defaultHomeDir) {
           if (this.config.homeDirectory !== defaultHomeDir) {
             this.config.homeDirectory = defaultHomeDir;
-            progress.report({message: `Configured home directory reset to ${defaultHomeDir}.`});
+            vscode.window.showInformationMessage(`Configured home directory reset to ${defaultHomeDir}.`);
           }
         } else {
           // New connections always have `.` as the initial value. 
           // If we can't find a usable home directory, just reset it to
           // the initial default.
           this.config.homeDirectory = `.`;
-          progress.report({message: `Could not determine a usable home directory.`});
         }
 
         //Set a default IFS listing
