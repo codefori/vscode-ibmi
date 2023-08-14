@@ -4,7 +4,7 @@ import vscode, { WorkspaceFolder, window } from 'vscode';
 
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
-import { getEvfeventFiles, getLocalActions, getiProjActions } from './local/actions';
+import { getLocalActions } from './local/actions';
 import { getEnvConfig } from './local/env';
 
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
@@ -13,8 +13,8 @@ import { Action, CommandResult, RemoteCommand, StandardIO } from '../typings';
 import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
-import { Deployment } from './local/deployment';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
+import { DeployTools } from './local/deployTools';
 
 export interface ILELibrarySettings {
   currentLibrary: string;
@@ -126,11 +126,8 @@ export namespace CompileTools {
       // Then, if we're being called from a local file
       // we fetch the Actions defined from the workspace.
       if (workspaceFolder && uri.scheme === `file`) {
-        const [localActions, iProjActions] = await Promise.all([
-          getLocalActions(workspaceFolder),
-          getiProjActions(workspaceFolder)
-        ]);
-        allActions.push(...localActions, ...iProjActions);
+        const localActions = await getLocalActions(workspaceFolder);
+        allActions.push(...localActions);
       }
 
       // We make sure all extensions are uppercase
@@ -160,7 +157,7 @@ export namespace CompileTools {
 
           let workspaceId: number|undefined = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
-            const deployResult = await Deployment.launchDeploy(workspaceFolder.index);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index);
             if (deployResult !== undefined) {
               workspaceId = deployResult;
             } else {

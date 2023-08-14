@@ -99,6 +99,36 @@ export const ContentSuite: TestSuite = {
       assert.strictEqual(streamfilePath, `/QOpenSys/pkgs/bin/git`);
     }},
 
+
+
+    {name: `Test streamfileResolve with blanks in names`, test: async () => {
+      const connection = instance.getConnection();
+      const content = instance.getContent();
+      const files = [`normalname`, `name with blank`, `name_with_quote'`, `name_with_dollar$`];
+      const dir = `/tmp/${Date.now()}`;
+      const dirWithSubdir = `${dir}/${files[0]}`;
+
+      let result: CommandResult | undefined;
+
+      result = await connection?.sendCommand({command: `mkdir -p "${dir}"`});
+      assert.strictEqual(result?.code, 0);
+      try{
+        for (const file of files) {
+          result = await connection?.sendCommand({command: `touch "${dir}/${file}"`});
+          assert.strictEqual(result?.code, 0);
+        };
+
+        for (const file of files) {
+          let result = await content?.streamfileResolve([`${Date.now()}`, file], [`${Date.now()}`, dir]);
+          assert.strictEqual(result, `${dir}/${file}`, `Resolving file "${dir}/${file}" failed`);
+        }
+      }
+      finally{
+        result = await connection?.sendCommand({command: `rm -r "${dir}"`});
+        assert.strictEqual(result?.code, 0);
+      }
+    }},
+
     {name: `Test downloadMemberContent`, test: async () => {
       const content = instance.getContent();
 

@@ -2,6 +2,7 @@
 const vscode = require(`vscode`);
 const fs = require(`fs`);
 const os = require(`os`);
+const { t } = require(`../locale`);
 const util = require(`util`);
 
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -85,8 +86,8 @@ module.exports = class ObjectBrowser {
           const config = getInstance().getConfig();
           const filterName = node.filter;
 
-          vscode.window.showInformationMessage(`Delete filter ${filterName}?`, `Yes`, `No`).then(async (value) => {
-            if (value === `Yes`) {
+          vscode.window.showInformationMessage(t(`objectBrowser.deleteFilter.infoMessage`, filterName), t(`Yes`), t(`No`)).then(async (value) => {
+            if (value === t(`Yes`)) {
               const index = config.objectFilters.findIndex(filter => filter.name === filterName);
 
               if (index > -1) {
@@ -175,7 +176,7 @@ module.exports = class ObjectBrowser {
           let newData;
 
           fullName = await vscode.window.showInputBox({
-            prompt: `Name of new source member (member.ext)`,
+            prompt: t(`objectBrowser.createMember.prompt`),
             value: fullName,
             validateInput: (value) =>{
               try {
@@ -188,7 +189,7 @@ module.exports = class ObjectBrowser {
           });
 
           if(fullName){
-            const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Creating member ${fullPath}...` }, async (progress) =>{
+            const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t(`objectBrowser.createMember.progressTitle`, fullPath)}, async (progress) =>{
               try {
                 await connection.remoteCommand(
                   `ADDPFM FILE(${newData.library}/${newData.file}) MBR(${newData.name}) SRCTYPE(${newData.extension.length > 0 ? newData.extension : `*NONE`})`
@@ -208,7 +209,7 @@ module.exports = class ObjectBrowser {
             });
 
             if(error){
-              if(await vscode.window.showErrorMessage(`Error creating member ${fullPath}: ${error}`, `Retry`)){
+              if(await vscode.window.showErrorMessage(t(`objectBrowser.createMember.errorMessage`, fullPath, error), t(`Retry`))){
                 vscode.commands.executeCommand(`code-for-ibmi.createMember`, node, fullName);
               }
             }
@@ -228,13 +229,13 @@ module.exports = class ObjectBrowser {
           let newData;
 
           fullPath = await vscode.window.showInputBox({
-            prompt: `New path for copy of source member`,
+            prompt: t(`objectBrowser.copyMember.prompt`),
             value: node.path || fullPath,
             validateInput: (value) =>{
               try {
                 newData = connection.parserMemberPath(value);
                 if (newData.library === oldData.library && newData.file === oldData.file && newData.name === oldData.name) {
-                  return `Cannot copy member to itself!`;
+                  return t(`objectBrowser.copyMember.errorMessage`);
                 }
               } catch (e) {
                 return e.toString();
@@ -243,7 +244,7 @@ module.exports = class ObjectBrowser {
           });
 
           if (fullPath) {
-            const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Creating member ${fullPath.toUpperCase()}...` }, async (progress) =>{            
+            const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t(`objectBrowser.copyMember.progressTitle`, fullPath.toUpperCase()) }, async (progress) =>{            
               try {
                 let newMemberExists = true;
                 try {
@@ -257,13 +258,13 @@ module.exports = class ObjectBrowser {
                 }
 
                 if (newMemberExists) {
-                  const result = await vscode.window.showInformationMessage(`Are you sure you want overwrite member ${newData.name}?`, { modal: true }, `Yes`, `No`)
-                  if (result === `Yes`) {
+                  const result = await vscode.window.showInformationMessage(t(`objectBrowser.copyMember.overwrite`, newData.name), { modal: true }, t(`Yes`), t(`No`))
+                  if (result === t(`Yes`)) {
                     await connection.remoteCommand(
                       `RMVM FILE(${newData.library}/${newData.file}) MBR(${newData.name})`,
                     )
                   } else {
-                    throw `Member ${newData.name} already exists!`
+                    throw t(`objectBrowser.copyMember.errorMessage2`, newData.name)
                   }
                 }
 
@@ -297,7 +298,7 @@ module.exports = class ObjectBrowser {
             });
 
             if(error){
-              if(await vscode.window.showErrorMessage(`Error creating member ${fullPath}: ${error}`, `Retry`)){
+              if(await vscode.window.showErrorMessage(t(`objectBrowser.copyMember.errorMessage3`, fullPath, error), t(`Retry`))){
                 vscode.commands.executeCommand(`code-for-ibmi.copyMember`, node, fullPath);
               }
             }
@@ -309,9 +310,9 @@ module.exports = class ObjectBrowser {
       vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node) => {
         if (node) {
           //Running from right click
-          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path}?`, `Yes`, `Cancel`);
+          let result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteMember.warningMessage`, node.path), t(`Yes`), t(`Cancel`));
 
-          if (result === `Yes`) {
+          if (result === t(`Yes`)) {
             const connection = getInstance().getConnection();
             const { library, file, name } = connection.parserMemberPath(node.path);
 
@@ -320,13 +321,13 @@ module.exports = class ObjectBrowser {
                 `RMVM FILE(${library}/${file}) MBR(${name})`,
               );
 
-              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+              vscode.window.showInformationMessage(t(`objectBrowser.deleteMember.infoMessage`, node.path));
 
               if (GlobalConfiguration.get(`autoRefresh`)) {
                 this.refresh();
               }
             } catch (e) {
-              vscode.window.showErrorMessage(`Error deleting member! ${e}`);
+              vscode.window.showErrorMessage(t(`objectBrowser.deleteMember.errorMessage`, e));
             }
 
             //Not sure how to remove the item from the list. Must refresh - but that might be slow?
@@ -342,7 +343,7 @@ module.exports = class ObjectBrowser {
 
           const newText = await vscode.window.showInputBox({
             value: node.description,
-            prompt: `Update ${basename} text`
+            prompt: t(`objectBrowser.updateMemberText.prompt`, basename)
           });
 
           if (newText && newText !== node.description) {
@@ -358,7 +359,7 @@ module.exports = class ObjectBrowser {
                 this.refresh();
               }
             } catch (e) {
-              vscode.window.showErrorMessage(`Error changing member text! ${e}`);
+              vscode.window.showErrorMessage(t(`objectBrowser.updateMemberText.errorMessage`, e));
             }
           }
         } else {
@@ -378,7 +379,7 @@ module.exports = class ObjectBrowser {
           do {
             newBasename = await vscode.window.showInputBox({
               value: newBasename,
-              prompt: `Rename ${oldMember.basename}`
+              prompt: t(`objectBrowser.renameMember.prompt`, oldMember.basename)
             });
 
             if (newBasename) {
@@ -409,10 +410,10 @@ module.exports = class ObjectBrowser {
                   if (GlobalConfiguration.get(`autoRefresh`)) {
                     this.refresh();
                   }
-                  else vscode.window.showInformationMessage(`Renamed member. Refresh object browser.`);
+                  else vscode.window.showInformationMessage(t(`objectBrowser.renameMember.refreshMessage`));
                 } catch (e) {
                   newNameOK = false;
-                  vscode.window.showErrorMessage(`Error renaming member! ${e}`);
+                  vscode.window.showErrorMessage(t(`objectBrowser.renameMember.errorMessage`, e));
                 }
               }
             }
@@ -434,9 +435,9 @@ module.exports = class ObjectBrowser {
 
           try {
             contentApi.uploadMemberContent(asp, library, file, name, data);
-            vscode.window.showInformationMessage(`Member was uploaded.`);
+            vscode.window.showInformationMessage(t(`objectBrowser.uploadAndReplaceMemberAsFile.infoMessage`));
           } catch (e) {
-            vscode.window.showErrorMessage(`Error uploading content to member! ${e}`);
+            vscode.window.showErrorMessage(t(`objectBrowser.uploadAndReplaceMemberAsFile.errorMessage`, e));
           }
         }
 
@@ -463,9 +464,9 @@ module.exports = class ObjectBrowser {
 
             try {
               await writeFileAsync(localPath, memberContent, `utf8`);
-              vscode.window.showInformationMessage(`Member was downloaded.`);
+              vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
             } catch (e) {
-              vscode.window.showErrorMessage(`Error downloading member! ${e}`);
+              vscode.window.showErrorMessage(t(`objectBrowser.downloadMemberContent.errorMessage`, e));
             }
           }
 
@@ -478,14 +479,14 @@ module.exports = class ObjectBrowser {
         if (!node) {
           const connection = getInstance().getConnection();
           await vscode.window.showInputBox({
-            prompt: `Enter LIB/SPF/member.ext to search (member.ext is optional and can contain wildcards)`,
-            title: `Search source file`,
+            prompt: t(`objectBrowser.searchSourceFile.prompt`),
+            title: t(`objectBrowser.searchSourceFile.title`),
             validateInput: (input) => {
               input = input.trim();
               const path = input.split(`/`);
               let checkPath;
               if (path.length > 3) {
-                return `Please enter value in form LIB/SPF/member.ext`
+                return t(`objectBrowser.searchSourceFile.invalidForm`)
               } else if (path.length > 2) {                 // Check member
                 let checkMember = path[2].replace(/[*]/g, ``).split(`.`);
                 checkMember[0] = checkMember[0] !== `` ? checkMember[0] : `a`;
@@ -527,10 +528,10 @@ module.exports = class ObjectBrowser {
           const path = node.path.split(`/`);
 
           if (path[1] !== `*ALL`) {
-            const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? `(in ASP ${config.sourceASP}` : ``);
+            const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? t(`objectBrowser.searchSourceFile.aspText`, config.sourceASP) : ``);
 
             let searchTerm = await vscode.window.showInputBox({
-              prompt: `Search ${node.path}. ${aspText}`
+              prompt: t(`objectBrowser.searchSourceFile.prompt2`, node.path, aspText)
             });
 
             if (searchTerm) {
@@ -539,10 +540,10 @@ module.exports = class ObjectBrowser {
 
                 await vscode.window.withProgress({
                   location: vscode.ProgressLocation.Notification,
-                  title: `Searching`,
+                  title: t(`objectBrowser.searchSourceFile.title2`),
                 }, async progress => {
                   progress.report({
-                    message: `Fetching member list for ${node.path}.`
+                    message: t(`objectBrowser.searchSourceFile.progressMessage`, node.path)
                   });
 
                   members = await content.getMemberList(path[0], path[1], node.memberFilter);
@@ -551,15 +552,15 @@ module.exports = class ObjectBrowser {
                     // NOTE: if more messages are added, lower the timeout interval
                     const timeoutInternal = 9000;
                     const searchMessages = [
-                      `'${searchTerm}' in ${node.path}.`,
-                      `This is taking a while because there are ${members.length} members. Searching '${searchTerm}' in ${node.path} still.`,
-                      `What's so special about '${searchTerm}' anyway?`,
-                      `Still searching '${searchTerm}' in ${node.path}...`,
-                      `While you wait, why not make some tea?`,
-                      `Wow. This really is taking a while. Let's hope you get the result you want.`,
-                      `Why was six afraid of seven?`,
-                      `How does one end up with ${members.length} members?`,
-                      `'${searchTerm}' in ${node.path}.`,
+                      t(`objectBrowser.searchSourceFile.searchMessage1`, searchTerm, node.path),
+                      t(`objectBrowser.searchSourceFile.searchMessage2`, members.length, searchTerm, node.path),
+                      t(`objectBrowser.searchSourceFile.searchMessage3`, searchTerm),
+                      t(`objectBrowser.searchSourceFile.searchMessage4`, searchTerm, node.path),
+                      t(`objectBrowser.searchSourceFile.searchMessage5`),
+                      t(`objectBrowser.searchSourceFile.searchMessage6`),
+                      t(`objectBrowser.searchSourceFile.searchMessage7`),
+                      t(`objectBrowser.searchSourceFile.searchMessage8`, members.length),
+                      t(`objectBrowser.searchSourceFile.searchMessage9`, searchTerm, node.path),
                     ];
 
                     let currentMessage = 0;
@@ -607,21 +608,21 @@ module.exports = class ObjectBrowser {
                       setSearchResults(searchTerm, results);
 
                     } else {
-                      vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${node.path}.`);
+                      vscode.window.showInformationMessage(t(`objectBrowser.searchSourceFile.notFound`, searchTerm, node.path));
                     }
 
                   } else {
-                    vscode.window.showErrorMessage(`No members to search.`);
+                    vscode.window.showErrorMessage(t(`objectBrowser.searchSourceFile.noMembers`));
                   }
 
                 });
 
               } catch (e) {
-                vscode.window.showErrorMessage(`Error searching source members: ` + e);
+                vscode.window.showErrorMessage(t(`objectBrowser.searchSourceFile.errorMessage`, e));
               }
             }
           } else {
-            vscode.window.showErrorMessage(`Cannot search listings using *ALL.`);
+            vscode.window.showErrorMessage(t(`objectBrowser.searchSourceFile.errorMessage2`));
           }
 
         } else {
@@ -635,7 +636,7 @@ module.exports = class ObjectBrowser {
         const connection = getInstance().getConnection();
 
         const newLibrary = await vscode.window.showInputBox({
-          prompt: `Name of new library`
+          prompt: t(`objectBrowser.createLibrary.prompt`)
         });
 
         if (!newLibrary) return;
@@ -647,7 +648,7 @@ module.exports = class ObjectBrowser {
             `CRTLIB LIB(${newLibrary})`
           );
         } catch (e) {
-          vscode.window.showErrorMessage(`Cannot create library "${newLibrary}": ${e}`);
+          vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage`, newLibrary, e));
           return;
         }
 
@@ -658,15 +659,27 @@ module.exports = class ObjectBrowser {
             object: `*ALL`,
             types: [`*ALL`],
             member: `*`,
-            memberType: `*`
+            memberType: `*`,
+            protected: false
           });
 
           config.objectFilters = filters;
           ConnectionConfiguration.update(config);
           if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
 
+          // Add to library list ?
+          await vscode.window.showInformationMessage(t(`objectBrowser.createLibrary.infoMessage`), t(`Yes`), t(`No`))
+            .then(async result => {
+              switch (result) {
+              case t(`Yes`):
+                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, newLibrary);
+                if (GlobalConfiguration.get(`autoRefresh`)) vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
+                break;
+              }
+            });
+
         } else {
-          vscode.window.showErrorMessage(`Library name too long.`);
+          vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage2`));
         }
       }),
 
@@ -678,7 +691,7 @@ module.exports = class ObjectBrowser {
 
           //Running from right click
           const fileName = await vscode.window.showInputBox({
-            prompt: `Name of new source file`
+            prompt: t(`objectBrowser.createSourceFile.prompt`)
           });
 
           if (fileName) {
@@ -689,7 +702,7 @@ module.exports = class ObjectBrowser {
                 const library = filter.library;
                 const uriPath = `${library}/${fileName.toUpperCase()}`
 
-                vscode.window.showInformationMessage(`Creating source file ${uriPath}.`);
+                vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
 
                 await connection.remoteCommand(
                   `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`
@@ -699,10 +712,10 @@ module.exports = class ObjectBrowser {
                   this.refresh();
                 }
               } catch (e) {
-                vscode.window.showErrorMessage(`Error creating source file! ${e}`);
+                vscode.window.showErrorMessage(t(`objectBrowser.createSourceFile.errorMessage`, e));
               }
             } else {
-              vscode.window.showErrorMessage(`Source filename must be 10 chars or less.`);
+              vscode.window.showErrorMessage(t(`Source filename must be 10 chars or less.`));
             }
           }
 
@@ -718,10 +731,10 @@ module.exports = class ObjectBrowser {
           let newTextOK;
           do {
             newText = await vscode.window.showInputBox({
-              prompt: `Change object description for ${node.path}, *BLANK for no description`,
+              prompt: t(`objectBrowser.changeObjectDesc.prompt`, node.path),
               value: newText,
               validateInput: newText => {
-                return newText.length <= 50 ? null : `Object description must be 50 chars or less.`;
+                return newText.length <= 50 ? null : t(`objectBrowser.changeObjectDesc.errorMessage`);
               }
             });
 
@@ -735,13 +748,13 @@ module.exports = class ObjectBrowser {
                   `CHGOBJD OBJ(${node.path}) OBJTYPE(*${node.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
                 );
                 if (GlobalConfiguration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Changed object description for ${node.path} *${node.type}.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.changeObjectDesc.infoMessage`, node.path, node.type));
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Changed object description. Refresh object browser.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.changeObjectDesc.infoMessage2`));
                 }
               } catch (e) {
-                vscode.window.showErrorMessage(`Error changing description for ${node.path}! ${e}`);
+                vscode.window.showErrorMessage(t(`objectBrowser.changeObjectDesc.errorMessage2`, node.path, e));
                 newTextOK = false;
               }
             }
@@ -758,13 +771,13 @@ module.exports = class ObjectBrowser {
           let newPathOK;
           do {
             newPath = await vscode.window.showInputBox({
-              prompt: `Create duplicate object to new library/object`,
+              prompt: t(`objectBrowser.copyObject.prompt`),
               value: newPath,
               validateInput: newPath => {
                 let splitPath = newPath.split(`/`);
-                if (splitPath.length != 2) return `Invalid path: ${newPath}. Use format LIB/OBJ`;
-                if (splitPath[0].length > 10) return `Library must be 10 chars or less.`;
-                if (splitPath[1].length > 10) return `Object name must be 10 chars or less.`;
+                if (splitPath.length != 2) return t(`objectBrowser.copyObject.errorMessage`, newPath);
+                if (splitPath[0].length > 10) return t(`objectBrowser.copyObject.errorMessage2`);
+                if (splitPath[1].length > 10) return t(`objectBrowser.copyObject.errorMessage3`);
               }
             });
 
@@ -782,13 +795,13 @@ module.exports = class ObjectBrowser {
                     `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
                 );
                 if (GlobalConfiguration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Copied object ${node.path} *${node.type} to ${escapedPath}.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.copyObject.infoMessage`, node.path, node.type, escapedPath));
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Copied object ${node.path} *${node.type} to ${escapedPath}. Refresh object browser.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.copyObject.infoMessage2`, node.path, node.type, escapedPath));
                 }
               } catch (e) {
-                vscode.window.showErrorMessage(`Error copying object ${node.path}! ${e}`);
+                vscode.window.showErrorMessage(t(`objectBrowser.copyObject.errorMessage4`, node.path, e));
                 newPathOK = false;
               }
             }
@@ -803,24 +816,25 @@ module.exports = class ObjectBrowser {
 
         if (node) {
           //Running from right click
-          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ${node.path} *${node.type}?`, `Yes`, `Cancel`);
+          let result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteObject.warningMessage`, node.path, node.type), t(`Yes`), t(`Cancel`));
 
-          if (result === `Yes`) {
+          if (result === t(`Yes`)) {
             const connection = getInstance().getConnection();
             const [library, object] = node.path.split(`/`);
 
             try {
+              // TODO: Progress message about deleting!
               await connection.remoteCommand(
                 `DLTOBJ OBJ(${node.path}) OBJTYPE(*${node.type})`,
               );
 
-              vscode.window.showInformationMessage(`Deleted ${node.path} *${node.type}.`);
+              vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, node.path, node.type));
 
               if (GlobalConfiguration.get(`autoRefresh`)) {
                 this.refresh();
               }
             } catch (e) {
-              vscode.window.showErrorMessage(`Error deleting object! ${e}`);
+              vscode.window.showErrorMessage(t(`objectBrowser.deleteObject.errorMessage`, e));
             }
 
           }
@@ -836,10 +850,10 @@ module.exports = class ObjectBrowser {
           let newObjectOK;
           do {
             newObject = await vscode.window.showInputBox({
-              prompt: `Rename object`,
+              prompt: t(`objectBrowser.renameObject.prompt`),
               value: newObject,
               validateInput: newObject => {
-                return newObject.length <= 10 ? null : `Object name must be 10 chars or less.`;
+                return newObject.length <= 10 ? null : t(`objectBrowser.renameObject.errorMessage`);
               }
             });
 
@@ -848,18 +862,19 @@ module.exports = class ObjectBrowser {
               const connection = getInstance().getConnection();
 
               try {
+                // TODO: Progress message about renaming!
                 newObjectOK = true;
                 await connection.remoteCommand(
                   `RNMOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) NEWOBJ(${escapedObject})`
                 );
                 if (GlobalConfiguration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Renamed object ${node.path} *${node.type} to ${escapedObject}.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage`, node.path, node.type, escapedObject));
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Renamed object ${node.path} *${node.type} to ${escapedObject}. Refresh object browser.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage2`, node.path, node.type, escapedObject));
                 }
               } catch (e) {
-                vscode.window.showErrorMessage(`Error renaming object ${node.path}! ${e}`);
+                vscode.window.showErrorMessage(t(`objectBrowser.renameObject.errorMessage2`, node.path, e));
                 newObjectOK = false;
               }
             }
@@ -876,10 +891,10 @@ module.exports = class ObjectBrowser {
           let newLibraryOK;
           do {
             newLibrary = await vscode.window.showInputBox({
-              prompt: `Move object to new library`,
+              prompt: t(`objectBrowser.moveObject.prompt`),
               value: newLibrary,
               validateInput: newLibrary => {
-                return newLibrary.length <= 10 ? null : `Library must be 10 chars or less.`;
+                return newLibrary.length <= 10 ? null : t(`objectBrowser.moveObject.errorMessage`);
 
               }
             });
@@ -889,18 +904,19 @@ module.exports = class ObjectBrowser {
               const connection = getInstance().getConnection();
 
               try {
+                // TODO: Progress message about moving!
                 newLibraryOK = true;
                 await connection.remoteCommand(
                   `MOVOBJ OBJ(${node.path}) OBJTYPE(*${node.type}) TOLIB(${newLibrary})`
                 );
                 if (GlobalConfiguration.get(`autoRefresh`)) {
-                  vscode.window.showInformationMessage(`Moved object ${node.path} *${node.type} to ${escapedLibrary}.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.moveObject.infoMessage`, node.path, node.type, escapedLibrary));
                   this.refresh();
                 } else {
-                  vscode.window.showInformationMessage(`Moved object ${node.path} to ${escapedLibrary}. Refresh object browser.`);
+                  vscode.window.showInformationMessage(t(`objectBrowser.moveObject.infoMessage2`, node.path, node.type, escapedLibrary));
                 }
               } catch (e) {
-                vscode.window.showErrorMessage(`Error moving object ${node.path}! ${e}`);
+                vscode.window.showErrorMessage(t(`objectBrowser.moveObject.errorMessage2`, node.path, e));
                 newLibraryOK = false;
               }
             }
