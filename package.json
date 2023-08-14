@@ -419,7 +419,7 @@
 				},
 				"code-for-ibmi.tryNewErrorParser": {
 					"type": "boolean",
-					"default": false,
+					"default": true,
 					"description": "Fix preview: Enable to test out the brand new error parser. Restart not required."
 				},
 				"code-for-ibmi.autoRefresh": {
@@ -441,6 +441,23 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
+				},
+				"code-for-ibmi.locale": {
+					"type": "string",
+					"default": "inherit",
+					"enum": [
+						"inherit",
+						"en",
+						"da",
+						"fr"
+					],
+					"enumDescriptions": [
+						"Inherit from VS Code settings",
+						"English",
+						"Danish",
+						"French"
+					],
+					"description": "The locale used when displaying text in Code for IBM i."
 				},
 				"code-for-ibmi.showDateSearchButton": {
 					"type": "boolean",
