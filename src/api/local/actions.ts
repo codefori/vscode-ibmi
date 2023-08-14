@@ -40,14 +40,3 @@ export async function getLocalActions(currentWorkspace: WorkspaceFolder) {
 
   return actions;
 }
-
-export async function getEvfeventFiles(currentWorkspace: WorkspaceFolder) {
-  const evfeventFiles: Uri[] = [];
-
-  if (currentWorkspace) {
-    const relativeSearch = new RelativePattern(currentWorkspace, `**/.evfevent/*`);
-    evfeventFiles.push(...await workspace.findFiles(relativeSearch));
-  }
-
-  return evfeventFiles;
-}
