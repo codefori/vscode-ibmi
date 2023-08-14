@@ -1,4 +1,4 @@
-import { stringify, parse, ParsedUrlQueryInput } from "querystring";
+import { ParsedUrlQueryInput, parse, stringify } from "querystring";
 import vscode, { FilePermission } from "vscode";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions } from "../../typings";
@@ -51,7 +51,7 @@ export class QSysFS implements vscode.FileSystemProvider {
 
         context.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(async event => {
-                if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
+                if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`) || event.affectsConfiguration("code-for-ibmi.showDateSearchButton")) {
                     this.updateMemberSupport();
                 }
             }));
