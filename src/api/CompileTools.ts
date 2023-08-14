@@ -329,16 +329,22 @@ export namespace CompileTools {
             const useLocalEvfevent = currentWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
 
             if (commandResult) {
-              const possibleObject = getObjectFromCommand(commandResult.command);
-              if (possibleObject) {
-                Object.assign(evfeventInfo, possibleObject);
+              const isIleCommand = environment === `ile`;
+
+              if (isIleCommand) {
+                const possibleObject = getObjectFromCommand(commandResult.command);
+                if (possibleObject) {
+                  Object.assign(evfeventInfo, possibleObject);
+                }
               }
 
+              const actionName = (isIleCommand ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : chosenAction.name);
+
               if (commandResult.code === 0 || commandResult.code === null) {
-                vscode.window.showInformationMessage(`Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} was successful.`);
+                vscode.window.showInformationMessage(`Action ${actionName} was successful.`);
               } else {
                 vscode.window.showErrorMessage(
-                  `Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} was not successful.`,
+                  `Action ${actionName} was not successful.`,
                   GlobalConfiguration.get<boolean>(`logCompileOutput`) ? `Show Output` : ''
                 ).then(async (item) => {
                   if (item === `Show Output`) {
@@ -352,12 +358,13 @@ export namespace CompileTools {
               if (useLocalEvfevent) {
                 outputChannel.appendLine(`Fetching errors from .evfevent.`);
 
-              } else {
+              } 
+              else if (isIleCommand) {
                 if (command.includes(`*EVENTF`)) {
-                  outputChannel.appendLine(`Fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                  outputChannel.appendLine(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
                   refreshDiagnosticsFromServer(instance, evfeventInfo);
                 } else {
-                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors for ${actionName}.`);
                 }
               }
             }
