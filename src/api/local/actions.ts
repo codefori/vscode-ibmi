@@ -1,4 +1,4 @@
-import { RelativePattern, window, workspace, WorkspaceFolder, Uri } from "vscode";
+import { RelativePattern, window, workspace, WorkspaceFolder } from "vscode";
 import { Action } from "../../typings";
 
 export async function getLocalActions(currentWorkspace: WorkspaceFolder) {
