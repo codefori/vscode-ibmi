@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import Instance from "../Instance";
 import { parseErrors } from "./handler";
 import { FileError } from "../../typings";
+import { getEvfeventFiles } from "../local/actions";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -133,17 +134,6 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
   } else {
     ileDiagnostics.clear();
   }
-}
-
-export async function getEvfeventFiles(currentWorkspace: vscode.WorkspaceFolder) {
-  const evfeventFiles: vscode.Uri[] = [];
-
-  if (currentWorkspace) {
-    const relativeSearch = new vscode.RelativePattern(currentWorkspace, `**/.evfevent/*`);
-    evfeventFiles.push(...await vscode.workspace.findFiles(relativeSearch));
-  }
-
-  return evfeventFiles;
 }
 
 const diagnosticSeverity = (error: FileError) => {
