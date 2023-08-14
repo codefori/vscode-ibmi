@@ -95,7 +95,7 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, action?: Action, method?: DeploymentMethod) {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod) {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -119,7 +119,7 @@ export namespace CompileTools {
       const fragment = uri.fragment.toUpperCase();
 
       let availableActions: { label: string; action: Action; }[] = [];
-      if (!action) {
+      if (!customAction) {
         // First we grab a copy the predefined Actions in the VS Code settings
         const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
 
@@ -146,12 +146,12 @@ export namespace CompileTools {
           }));
       }
 
-      if (action || availableActions.length) {
+      if (customAction || availableActions.length) {
         if (GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)) {
           outputChannel.clear();
         }
 
-        const chosenAction = action || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
+        const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
         if (chosenAction) {
           actionUsed.set(chosenAction.name, Date.now());
           const environment = chosenAction.environment || `ile`;
