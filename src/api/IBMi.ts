@@ -724,6 +724,9 @@ export default class IBMi {
           // Do nothing, bad data areas are already checked.
         } else {
           if (this.config.libraryList) {
+            progress.report({
+              message: `Validate configured library list`
+            });
             let validLibs: string[] = [];
             let badLibs: string[] = [];
 
