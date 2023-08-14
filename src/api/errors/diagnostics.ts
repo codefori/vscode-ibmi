@@ -18,7 +18,7 @@ export interface EvfEventInfo {
 export function registerDiagnostics(): vscode.Disposable[] {
   return [
     ileDiagnostics,
-    
+
     vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
       clearDiagnostics();
     }),
