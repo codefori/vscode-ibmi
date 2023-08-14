@@ -82,16 +82,19 @@ export async function disconnect(): Promise<boolean> {
 }
 
 export async function loadAllofExtension(context: vscode.ExtensionContext) {
+  // No connection when the extension is first activated
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
+
   instance = new Instance(context);
   searchViewContext = new SearchView(context);
 
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
+    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?: boolean) => {
       if (instance.getConnection()) {
         await disconnect();
-      } else if(!silent) {
+      } else if (!silent) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
@@ -353,7 +356,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
       let uri;
       if (node?.member) {
-        uri = getMemberUri(node?.member, { readonly: true });        
+        uri = getMemberUri(node?.member, { readonly: true });
       }
       else if (node?.path) {
         uri = getUriFromPath(node?.path, { readonly: true });
