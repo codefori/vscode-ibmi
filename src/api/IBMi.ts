@@ -305,7 +305,7 @@ export default class IBMi {
           // An *ALLOBJ user doing development? Naughty! 
           const allObjCheckResult = await this.sendCommand({ command: `test -w /QOpenSys/QIBM/ProdData`, directory: `.` });
           if (0 === allObjCheckResult.code) {
-            vscode.window.showWarningMessage(`This user profile has a high level of authority. Performing devlopment activities with this profile is not recommended.`, { modal: false });
+            vscode.window.showWarningMessage(`This user profile has a high level of authority. Performing development activities with this profile is not recommended.`, { modal: false });
           }
         }
 
