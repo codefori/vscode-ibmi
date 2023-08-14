@@ -216,7 +216,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
       CompileTools.clearDiagnostics();
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node: any, action?: Action, method?: DeploymentMethod) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node: any, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
       const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
       if (uri) {
