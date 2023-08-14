@@ -457,7 +457,7 @@
 						"Danish",
 						"French"
 					],
-					"description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."
+					"description": "The locale used when displaying text in Code for IBM i."
 				},
 				"code-for-ibmi.showDateSearchButton": {
 					"type": "boolean",
