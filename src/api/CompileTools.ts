@@ -364,7 +364,7 @@ export namespace CompileTools {
                   outputChannel.appendLine(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
                   refreshDiagnosticsFromServer(instance, evfeventInfo);
                 } else {
-                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors for ${actionName}.`);
+                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
                 }
               }
             }
