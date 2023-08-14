@@ -1,6 +1,6 @@
 
 import path from 'path';
-import vscode, { window } from 'vscode';
+import vscode, { WorkspaceFolder, window } from 'vscode';
 
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
@@ -9,11 +9,11 @@ import { getEnvConfig } from './local/env';
 
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { instance } from '../instantiate';
-import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
+import { Action, CommandResult, RemoteCommand, StandardIO } from '../typings';
 import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
-import { parseErrors } from './errors/handler';
+import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
 import { DeployTools } from './local/deployTools';
 
 export interface ILELibrarySettings {
@@ -29,32 +29,11 @@ export namespace CompileTools {
     library?: string
   }
 
-  interface EvfEventInfo {
-    asp?: string
-    library: string,
-    object: string,
-    extension?: string,
-    workspace?: number
-  }
-
-  const diagnosticSeverity = (error: FileError) => {
-    switch (error.sev) {
-      case 20:
-        return vscode.DiagnosticSeverity.Warning;
-      case 30:
-      case 40:
-      case 50:
-        return vscode.DiagnosticSeverity.Error;
-      default: return vscode.DiagnosticSeverity.Information;
-    }
-  }
-
   const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
   const OUTPUT_BUTTON_BASE = `$(three-bars) Output`;
   const OUTPUT_BUTTON_RUNNING = `$(sync~spin) Output`;
 
   const outputChannel = vscode.window.createOutputChannel(`IBM i Output`);
-  const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
   const outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
   const actionUsed: Map<string, number> = new Map;
@@ -67,8 +46,8 @@ export namespace CompileTools {
     };
 
     context.subscriptions.push(
+      ...registerDiagnostics(),
       outputChannel,
-      ileDiagnostics,
       outputBarItem,
       vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, showOutput)
     );
@@ -82,83 +61,6 @@ export namespace CompileTools {
     instance.onEvent("disconnected", () => {
       outputBarItem.hide();
     });
-  }
-
-  /**
-   * Does what it says on the tin.
-   */
-  export function clearDiagnostics() {
-    ileDiagnostics.clear();
-  }
-
-  export async function refreshDiagnostics(instance: Instance, evfeventInfo: EvfEventInfo) {
-    const content = instance.getContent();
-    const config = instance.getConfig();
-    if (config && content) {
-      const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
-      const lines = tableData.map(row => String(row.EVFEVENT));
-      const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
-
-      const errorsByFiles = parseErrors(lines);
-
-      ileDiagnostics.clear();
-
-      const diagnostics: vscode.Diagnostic[] = [];
-      if (errorsByFiles.size) {
-        for (const [file, errors] of errorsByFiles.entries()) {
-          diagnostics.length = 0;
-          for (const error of errors) {
-            error.column = Math.max(error.column - 1, 0);
-            error.linenum = Math.max(error.linenum - 1, 0);
-
-            if (error.column === 0 && error.toColumn === 0) {
-              error.column = 0;
-              error.toColumn = 100;
-            }
-
-            if (!config.hideCompileErrors.includes(error.code)) {
-              const diagnostic = new vscode.Diagnostic(
-                new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
-                `${error.code}: ${error.text} (${error.sev})`,
-                diagnosticSeverity(error)
-              );
-
-              diagnostics.push(diagnostic);
-            }
-          }
-
-          if (evfeventInfo.workspace !== undefined) {
-            const workspaceRootFolder = vscode.workspace.workspaceFolders?.[evfeventInfo.workspace];
-            const storage = instance.getStorage();
-
-            if (workspaceRootFolder && storage) {
-              const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceRootFolder);
-              const relativeCompilePath = file.toLowerCase().replace(workspaceDeployPath, '');
-              const diagnosticTargetFile = vscode.Uri.joinPath(workspaceRootFolder.uri, relativeCompilePath);
-
-              if (diagnosticTargetFile !== undefined) {
-                ileDiagnostics.set(diagnosticTargetFile, diagnostics);
-              } else {
-                vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
-              }
-            }
-          } else {
-            if (file.startsWith(`/`))
-              ileDiagnostics.set(vscode.Uri.from({ scheme: `streamfile`, path: file }), diagnostics);
-            else {
-              const memberUri = vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` });
-              ileDiagnostics.set(memberUri, diagnostics);
-            }
-          }
-        }
-
-      } else {
-        ileDiagnostics.clear();
-      }
-    }
-    else {
-      throw new Error('Please connect to an IBM i');
-    }
   }
 
   function replaceValues(string: string, variables: Variables) {
@@ -253,19 +155,21 @@ export namespace CompileTools {
           actionUsed.set(chosenAction.name, Date.now());
           const environment = chosenAction.environment || `ile`;
 
-          let workspace = undefined;
+          let workspaceId: number|undefined = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
             const deployResult = await DeployTools.launchDeploy(workspaceFolder.index);
             if (deployResult !== undefined) {
-              workspace = deployResult;
+              workspaceId = deployResult;
             } else {
               vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
               return;
             }
           }
-          let currentWorkspace;
+
+          let currentWorkspace: WorkspaceFolder|undefined;
+
           if (vscode.workspace.workspaceFolders) {
-            currentWorkspace = vscode.workspace.workspaceFolders[workspace || 0];
+            currentWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
           }
 
           const variables: Variables = new Map;
@@ -273,8 +177,14 @@ export namespace CompileTools {
             object: '',
             library: '',
             extension,
-            workspace
+            workspace: currentWorkspace
           };
+
+          if (workspaceFolder) {
+            const envFileVars = await getEnvConfig(workspaceFolder);
+            Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
+          }
+
           switch (chosenAction.type) {
             case `member`:
               const memberDetail = connection.parserMemberPath(uri.path);
@@ -316,7 +226,13 @@ export namespace CompileTools {
                 name = name.substring(0, name.indexOf(`-`));
               }
 
-              evfeventInfo.library = config.currentLibrary;
+              if (variables.has(`&CURLIB`)) {
+                evfeventInfo.library = variables.get(`&CURLIB`)!;
+
+              } else {
+                evfeventInfo.library = config.currentLibrary;
+              }
+
               evfeventInfo.object = name;
               evfeventInfo.extension = ext;
 
@@ -401,11 +317,6 @@ export namespace CompileTools {
 
           outputBarItem.text = OUTPUT_BUTTON_RUNNING;
 
-          if (workspaceFolder) {
-            const envFileVars = await getEnvConfig(workspaceFolder);
-            Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
-          }
-
           const command = replaceValues(chosenAction.command, variables);
           try {
             const commandResult = await runCommand(instance, {
@@ -415,17 +326,25 @@ export namespace CompileTools {
             },
               chosenAction.name);
 
+            const useLocalEvfevent = currentWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
+
             if (commandResult) {
-              const possibleObject = getObjectFromCommand(commandResult.command);
-              if (possibleObject) {
-                Object.assign(evfeventInfo, possibleObject);
+              const isIleCommand = environment === `ile`;
+
+              if (isIleCommand) {
+                const possibleObject = getObjectFromCommand(commandResult.command);
+                if (possibleObject) {
+                  Object.assign(evfeventInfo, possibleObject);
+                }
               }
 
+              const actionName = (isIleCommand ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : chosenAction.name);
+
               if (commandResult.code === 0 || commandResult.code === null) {
-                vscode.window.showInformationMessage(`Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} was successful.`);
+                vscode.window.showInformationMessage(`Action ${actionName} was successful.`);
               } else {
                 vscode.window.showErrorMessage(
-                  `Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} was not successful.`,
+                  `Action ${actionName} was not successful.`,
                   GlobalConfiguration.get<boolean>(`logCompileOutput`) ? `Show Output` : ''
                 ).then(async (item) => {
                   if (item === `Show Output`) {
@@ -435,11 +354,18 @@ export namespace CompileTools {
               }
 
               outputChannel.append(`\n`);
-              if (command.includes(`*EVENTF`)) {
-                outputChannel.appendLine(`Fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
-                refreshDiagnostics(instance, evfeventInfo);
-              } else {
-                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
+              
+              if (useLocalEvfevent) {
+                outputChannel.appendLine(`Fetching errors from .evfevent.`);
+
+              } 
+              else if (isIleCommand) {
+                if (command.includes(`*EVENTF`)) {
+                  outputChannel.appendLine(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                  refreshDiagnosticsFromServer(instance, evfeventInfo);
+                } else {
+                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                }
               }
             }
 
@@ -498,9 +424,14 @@ export namespace CompileTools {
                 );
 
                 Promise.all(downloads)
-                  .then(result => {
+                  .then(async result => {
                     // Done!
                     outputChannel.appendLine(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}`);
+
+                    // Process locally downloaded evfevent files:
+                    if (useLocalEvfevent) {
+                      refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                    }
                   })
                   .catch(error => {
                     vscode.window.showErrorMessage(`Failed to download files as part of Action.`);

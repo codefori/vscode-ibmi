@@ -21,6 +21,7 @@ import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { QsysFsOptions, RemoteCommand } from "./typings";
+import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 
 export let instance: Instance;
 
@@ -213,9 +214,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
-      CompileTools.clearDiagnostics();
-    }),
     vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
       const editor = vscode.window.activeTextEditor;
       const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
@@ -323,7 +321,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         const [library, object] = inputPath.split(`/`);
         if (library && object) {
           const nameDetail = path.parse(object);
-          CompileTools.refreshDiagnostics(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined) });
+          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined) });
         }
       }
     }),

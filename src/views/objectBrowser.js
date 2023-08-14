@@ -659,7 +659,8 @@ module.exports = class ObjectBrowser {
             object: `*ALL`,
             types: [`*ALL`],
             member: `*`,
-            memberType: `*`
+            memberType: `*`,
+            protected: false
           });
 
           config.objectFilters = filters;
