@@ -1,4 +1,4 @@
-import { RelativePattern, window, workspace, WorkspaceFolder } from "vscode";
+import { RelativePattern, window, workspace, WorkspaceFolder, Uri } from "vscode";
 import { Action } from "../../typings";
 
 export async function getLocalActions(currentWorkspace: WorkspaceFolder) {
@@ -39,4 +39,15 @@ export async function getLocalActions(currentWorkspace: WorkspaceFolder) {
   }
 
   return actions;
+}
+
+export async function getEvfeventFiles(currentWorkspace: WorkspaceFolder) {
+  const evfeventFiles: Uri[] = [];
+
+  if (currentWorkspace) {
+    const relativeSearch = new RelativePattern(currentWorkspace, `**/.evfevent/*`);
+    evfeventFiles.push(...await workspace.findFiles(relativeSearch));
+  }
+
+  return evfeventFiles;
 }
