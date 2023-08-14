@@ -41,7 +41,7 @@ export const ActionSuite: TestSuite = {
   },
   tests: [
     {
-      name: `Create RPGLE Program`, test: async () => {
+      name: `Create RPGLE Program (from local, custom action)`, test: async () => {
         const action = LocalLanguageActions['RPGLE'][0];
         action.type = 'file';
         await CompileTools.runAction(instance, helloWorldProject.files![0].localPath!, action, 'all');
