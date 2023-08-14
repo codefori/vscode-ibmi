@@ -3,6 +3,7 @@ import { parse } from 'path';
 import vscode from 'vscode';
 import IBMi from '../api/IBMi';
 import { instance } from '../instantiate';
+import { t } from "../locale";
 
 export class HelpView {
 
@@ -16,9 +17,9 @@ export class HelpView {
 
   public async getChildren(): Promise<HelpItem[]> {
     return [
-      new HelpOpenUrlItem(`book`, `Get started`, `https://halcyon-tech.github.io/docs/#/`),
-      new HelpOpenUrlItem(`output`, `Open official Forum`, `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
-      new HelpOpenUrlItem(`eye`, `Review Issues`, `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
+      new HelpOpenUrlItem(`book`, t(`helpView.getStarted`), `https://halcyon-tech.github.io/docs/#/`),
+      new HelpOpenUrlItem(`output`, t(`helpView.officialForum`), `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
+      new HelpOpenUrlItem(`eye`, t(`helpView.reviewIssues`), `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
       new HelpIssueItem(),
     ];
   }
@@ -47,7 +48,7 @@ class HelpOpenUrlItem extends HelpItem {
 
 class HelpIssueItem extends HelpItem {
   constructor() {
-    super(`bug`, `Report an Issue`);
+    super(`bug`, t(`helpView.reportIssue`));
 
     this.command = {
       command: "code-for-ibmi.openNewIssue",
