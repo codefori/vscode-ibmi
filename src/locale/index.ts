@@ -13,6 +13,7 @@ const locales: {[locale: string]: Locale} = {
 }
 
 let currentLocale = String(env.language);
+updateLocale();
 
 export function updateLocale() {
   const localeSetting = GlobalConfiguration.get(`locale`) as string;
