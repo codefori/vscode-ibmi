@@ -77,7 +77,7 @@ module.exports = class ObjectBrowser {
 
         const newFilter = await vscode.window.showInputBox({
           prompt: `Enter filter as LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`,
-          value: newFilter,
+          value: ``,
           validateInput: newFilter => {
             const libraryRegex = LIBRARY_REGEX.exec(newFilter.toUpperCase());
             const filterRegex = FILTER_REGEX.exec(newFilter.toUpperCase());
