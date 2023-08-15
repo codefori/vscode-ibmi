@@ -271,7 +271,7 @@ export const ILEErrorSuite: TestSuite = {
       }
     },
     {
-      name: `Filter SQL errors (CRTSQLRPGI, streamfile)`, test: async () => {
+      name: `Filter errors (CRTSQLRPGI, streamfile)`, test: async () => {
         const lines = [
           "TIMESTAMP  0 20230815094609",
           "PROCESSOR  0 999 1",
@@ -398,7 +398,7 @@ export const ILEErrorSuite: TestSuite = {
         // main file errors
         const fileErrors = errors.get(filePath);
         assert.notStrictEqual(fileErrors, undefined);
-        assert.strictEqual(fileErrors?.length, 64);
+        assert.strictEqual(fileErrors?.length, 25);
 
         // copybook file errors
         const copybook_fileErrors = errors.get(copybook_file_path);

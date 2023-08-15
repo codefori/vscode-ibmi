@@ -42,15 +42,18 @@ export function parseErrors(lines: string[]): Map<string, FileError[]> {
       fileErrors.set(fileName, []);
     }
 
-    if (!(error.getMsg().includes(`name or indicator SQ`) && error.getMsgId().startsWith('SQL'))) {
+    const text = error.getMsg();
+    const code = error.getMsgId();
+    const sev = error.getSevNum();
+    if (!(text.includes(`name or indicator SQ`) && code.startsWith('RNF') && sev === 0)) {
       fileErrors.get(fileName)!.push({
-        sev: error.getSevNum(),
+        sev: sev,
         lineNum: error.getStartErrLine(),
         toLineNum: error.getEndErrLine(),
         column: error.getTokenStart(),
         toColumn: error.getTokenEnd(),
-        text: error.getMsg(),
-        code: error.getMsgId()
+        text: text,
+        code: code
       });
     }
   });
