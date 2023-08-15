@@ -166,10 +166,10 @@ export namespace CompileTools {
             }
           }
 
-          let currentWorkspace: WorkspaceFolder|undefined;
+          let fromWorkspace: WorkspaceFolder|undefined;
 
-          if (vscode.workspace.workspaceFolders) {
-            currentWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
+          if (chosenAction.type === `file` && vscode.workspace.workspaceFolders) {
+            fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
           }
 
           const variables: Variables = new Map;
@@ -177,7 +177,7 @@ export namespace CompileTools {
             object: '',
             library: '',
             extension,
-            workspace: currentWorkspace
+            workspace: fromWorkspace
           };
 
           if (workspaceFolder) {
@@ -245,8 +245,8 @@ export namespace CompileTools {
 
                   let baseDir = config.homeDirectory;
 
-                  if (currentWorkspace) {
-                    baseDir = currentWorkspace.uri.path;
+                  if (fromWorkspace) {
+                    baseDir = fromWorkspace.uri.path;
 
                     relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
                     variables.set(`&RELATIVEPATH`, relativePath);
@@ -326,7 +326,7 @@ export namespace CompileTools {
             },
               chosenAction.name);
 
-            const useLocalEvfevent = currentWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
+            const useLocalEvfevent = fromWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
 
             if (commandResult) {
               const isIleCommand = environment === `ile`;
@@ -370,10 +370,10 @@ export namespace CompileTools {
             }
 
             if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
-              if (currentWorkspace) {
+              if (fromWorkspace) {
                 const client = connection.client;
                 const remoteDir = config.homeDirectory;
-                const localDir = currentWorkspace.uri.path;
+                const localDir = fromWorkspace.uri.path;
 
                 // First, we need to create or clear the relative directories in the workspace
                 // in case they don't exist. For example, if the path is `.logs/joblog.json`
