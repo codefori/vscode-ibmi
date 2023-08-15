@@ -67,7 +67,7 @@ module.exports = class ObjectBrowser {
         this.refresh();
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.createQuickFilter`, async (node, newFilter) => {        
+      vscode.commands.registerCommand(`code-for-ibmi.createQuickFilter`, async () => {        
         /** @type {ConnectionConfiguration.Parameters} */
         const config = getInstance().getConfig();
         const objectFilters = config.objectFilters;
@@ -75,7 +75,7 @@ module.exports = class ObjectBrowser {
         const LIBRARY_REGEX = /^(?<lib>[^/.() ]+)\*$/;
         const FILTER_REGEX = /^(?<lib>[^/.() ]+)(\/(?<obj>[^/.() ]+))?(\/(?<mbr>[^/.() ]+))?(\.(?<mbrType>[^/.() ]+))?( \((?<objType>[^/.()]+)\))?$/;
 
-        newFilter = await vscode.window.showInputBox({
+        const newFilter = await vscode.window.showInputBox({
           prompt: `Enter filter as LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`,
           value: newFilter,
           validateInput: newFilter => {
@@ -115,10 +115,6 @@ module.exports = class ObjectBrowser {
                 protected: false
               }
               objectFilters.push(filter);
-            } else {
-              if(await vscode.window.showErrorMessage(`Error creating filter ${newFilter}`, `Retry`)){
-                vscode.commands.executeCommand(`code-for-ibmi.createQuickFilter`, node, newFilter);
-              }
             }
           }
 
