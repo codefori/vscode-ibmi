@@ -245,7 +245,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
 
           if (canRun && [`member`, `streamfile`, `file`].includes(uri.scheme)) {
-            CompileTools.runAction(instance, uri, action, method);
+            await CompileTools.runAction(instance, uri, action, method);
           }
         }
         else {
