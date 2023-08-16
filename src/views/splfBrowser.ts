@@ -204,7 +204,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
                 `DLTSPLF FILE(${o.name}) JOB(${o.qualified_job_name}) SPLNBR(${o.number})`              
               )); 
               deleteCount = commands.length;
-              let dltCmdSrc = `// BCHJOB  JOB(DLTSPLFS) JOBQ(*JOBD)\n` +commands.join(`\n`) +`\n// ENDBCHJOB`;
+              let dltCmdSrc = `// BCHJOB  JOB(DLTSPLFS) JOBQ(QUSRNOMAX)\n` +commands.join(`\n`) +`\n// ENDBCHJOB`;
               await connection.runCommand({
                 command: `CRTSRCPF FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) RCDLEN(112)`
                 ,environment: `ile`
