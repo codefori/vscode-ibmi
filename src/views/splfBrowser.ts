@@ -163,7 +163,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
 
             try {
               await connection.runCommand({
-                command: `DLTSPLF FILE(${node.name}) JOB(${node.qualified_job_name}) SPLNBR(${node.number})`
+                command: `DLTSPLF FILE(${node.name}) JOB(${node.qualifiedJobName}) SPLNBR(${node.number})`
                 , environment: `ile`
               });
 
