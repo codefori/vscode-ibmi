@@ -9,8 +9,8 @@ import { Tools } from '../Tools';
 import { Deployment } from './deployment';
 
 export namespace DeployTools {
-  export async function launchActionsSetup() {
-    const chosenWorkspace = await Deployment.getWorkspaceFolder();
+  export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder) {
+    const chosenWorkspace = workspaceFolder || await Deployment.getWorkspaceFolder();
 
     if (chosenWorkspace) {
       const types = Object.entries(LocalLanguageActions).map(([type, actions]) => ({ label: type, actions }));
@@ -42,9 +42,10 @@ export namespace DeployTools {
    * Deploy a workspace to a remote IFS location.
    * @param workspaceIndex if no index is provided, a prompt will be shown to pick one if there are multiple workspaces,
    * otherwise the current workspace will be used.
+   * @param method if no method is provided, a prompt will be shown to pick the deployment method.
    * @returns the index of the deployed workspace or `undefined` if the deployment failed
    */
-  export async function launchDeploy(workspaceIndex?: number): Promise<number | undefined> {
+  export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod): Promise<number | undefined> {
     const folder = await Deployment.getWorkspaceFolder(workspaceIndex);
     if (folder) {
       const storage = instance.getStorage();
@@ -53,26 +54,28 @@ export namespace DeployTools {
       const remotePath = existingPaths ? existingPaths[folder.uri.fsPath] : '';
 
       if (remotePath) {
-        const methods = [];
-        if (Deployment.getConnection().remoteFeatures.md5sum) {
-          methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
+        if (!method) {
+          const methods = [];
+          if (Deployment.getConnection().remoteFeatures.md5sum) {
+            methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
+          }
+
+          const changes = Deployment.workspaceChanges.get(folder)?.size || 0;
+          methods.push({ method: "changed" as DeploymentMethod, label: `Changes`, description: `${changes} change${changes > 1 ? `s` : ``} detected since last upload. ${!changes ? `Will skip deploy step.` : ``}` });
+
+          if (Tools.getGitAPI()) {
+            methods.push(
+              { method: "unstaged" as DeploymentMethod, label: `Working Changes`, description: `Unstaged changes in git` },
+              { method: "staged" as DeploymentMethod, label: `Staged Changes`, description: `` }
+            );
+          }
+
+          methods.push({ method: "all" as DeploymentMethod, label: `All`, description: `Every file in the local workspace` });
+
+          method = (await vscode.window.showQuickPick(methods,
+            { placeHolder: `Select deployment method to ${remotePath}` }
+          ))?.method;
         }
-
-        const changes = Deployment.workspaceChanges.get(folder)?.size || 0;
-        methods.push({ method: "changed" as DeploymentMethod, label: `Changes`, description: `${changes} change${changes > 1 ? `s` : ``} detected since last upload. ${!changes ? `Will skip deploy step.` : ``}` });
-
-        if (Tools.getGitAPI()) {
-          methods.push(
-            { method: "unstaged" as DeploymentMethod, label: `Working Changes`, description: `Unstaged changes in git` },
-            { method: "staged" as DeploymentMethod, label: `Staged Changes`, description: `` }
-          );
-        }
-
-        methods.push({ method: "all" as DeploymentMethod, label: `All`, description: `Every file in the local workspace` });
-
-        const method = (await vscode.window.showQuickPick(methods,
-          { placeHolder: `Select deployment method to ${remotePath}` }
-        ))?.method;
 
         if (method !== undefined) { //method can be 0 (ie. "all")
           const config = instance.getConfig();
@@ -321,7 +324,7 @@ export namespace DeployTools {
       ignoreRules.add(gitignoreContent.split(`\n`));
       ignoreRules.add('**/.gitignore');
     }
-  
+
     return ignoreRules;
   }
 }
