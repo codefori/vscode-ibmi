@@ -91,8 +91,11 @@ export const en: Locale = {
   'LibraryListView.changeUserLibraryList.prompt': `Changing library list (can use '*reset')`,
   'LibraryListView.changeUserLibraryList.removedLibs': `The following libraries were removed from the updated library list as they are invalid: {0}`,
   'LibraryListView.addToLibraryList.prompt': `Library to add`,
-  'LibraryListView.addToLibraryList.removedLibs': `The following libraries were removed from the updated library list as they are invalid: {0}`,
   'LibraryListView.addToLibraryList.tooLong': `Library is too long.`,
+  'LibraryListView.addToLibraryList.alreadyInList': `Library {0} was already in the library list.`,
+  'LibraryListView.addToLibraryList.invalidLib': `Library {0} does not exist.`,
+  'LibraryListView.addToLibraryList.addedLib': `Library {0} was added to the library list.`,
+  'LibraryListView.addToLibraryList.removedLibs': `The following libraries were removed from the updated library list as they are invalid: {0}`,
   'LibraryListView.cleanupLibraryList.removedLibs': `The following libraries were removed from the updated library list as they are invalid: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `Library list were validated without any errors.`,
   // objectBrowser:

@@ -91,8 +91,11 @@ export const da: Locale = {
   'LibraryListView.changeUserLibraryList.prompt': `Skift biblioteksliste (du kan bruge '*reset')`,
   'LibraryListView.changeUserLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
   'LibraryListView.addToLibraryList.prompt': `Tilføj bibliotek`,
-  'LibraryListView.addToLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
   'LibraryListView.addToLibraryList.tooLong': `Bibioteksnavn er for langt.`,
+  'LibraryListView.addToLibraryList.alreadyInList': `Bibliotek {0} er allerede i bibliotekslisten.`,
+  'LibraryListView.addToLibraryList.invalidLib': `Bibliotek {0} findes ikke.`,
+  'LibraryListView.addToLibraryList.addedLib': `Bibliotek {0} blev tilføjet til bibliotekslisten.`,
+  'LibraryListView.addToLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
   'LibraryListView.cleanupLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `Bibliotekslisten blev valideret uden fejl.`,
   // objectBrowser:
