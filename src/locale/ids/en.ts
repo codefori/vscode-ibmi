@@ -96,6 +96,7 @@ export const en: Locale = {
   'LibraryListView.addToLibraryList.invalidLib': `Library {0} does not exist.`,
   'LibraryListView.addToLibraryList.addedLib': `Library {0} was added to the library list.`,
   'LibraryListView.addToLibraryList.removedLibs': `The following libraries were removed from the updated library list as they are invalid: {0}`,
+  'LibraryListView.removeFromLibraryList.removedLib': `Library {0} was removed from the library list.`,
   'LibraryListView.cleanupLibraryList.removedLibs': `The following libraries were removed from the updated library list as they are invalid: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `Library list were validated without any errors.`,
   // objectBrowser:

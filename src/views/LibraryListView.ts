@@ -181,10 +181,12 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
             let index = libraryList.findIndex(file => file.toUpperCase() === node.path)
             if (index >= 0) {
+              const removedLib = libraryList[index];
               libraryList.splice(index, 1);
 
               config.libraryList = libraryList;
               await this.updateConfig(config);
+              vscode.window.showInformationMessage(t(`LibraryListView.removeFromLibraryList.removedLib`, removedLib));
             }
           }
         }

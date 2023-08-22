@@ -96,6 +96,7 @@ export const da: Locale = {
   'LibraryListView.addToLibraryList.invalidLib': `Bibliotek {0} findes ikke.`,
   'LibraryListView.addToLibraryList.addedLib': `Bibliotek {0} blev tilføjet til bibliotekslisten.`,
   'LibraryListView.addToLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
+  'LibraryListView.removeFromLibraryList.removedLib': `Bibliotek {0} blev fjernet fra bibliotekslisten.`,
   'LibraryListView.cleanupLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `Bibliotekslisten blev valideret uden fejl.`,
   // objectBrowser:
