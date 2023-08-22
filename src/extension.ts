@@ -12,7 +12,7 @@ import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuratio
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import * as Debug from './api/debug';
-import { parseErrors } from "./api/errors/handler";
+import { parseErrors } from "./api/errors/parser";
 import { Deployment } from "./api/local/deployment";
 import { IFSFS } from "./filesystems/ifsFs";
 import * as Sandbox from "./sandbox";
