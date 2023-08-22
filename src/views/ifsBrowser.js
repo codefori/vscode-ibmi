@@ -662,7 +662,7 @@ module.exports = class IFSBrowser {
    */
   handleFileListErrors(errors) {
     errors.forEach(error => vscode.window.showErrorMessage(error));
-    vscode.window.showErrorMessage(t(`ifsBrowser.handleFileListErrors.errorMessage`, [errors.length, errors.length > 1 ? t(`errors`) : t(`error`)]));
+    vscode.window.showErrorMessage(t(`ifsBrowser.handleFileListErrors.errorMessage`, errors.length, errors.length > 1 ? t(`errors`) : t(`error`)));
   }
 
   /**
