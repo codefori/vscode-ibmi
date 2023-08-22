@@ -32,6 +32,7 @@ export interface StandardIO {
  * External interface for extensions to call `code-for-ibmi.runCommand`
  */
 export interface RemoteCommand {
+  title?: string;
   command: string;
   environment?: "ile" | "qsh" | "pase";
   cwd?: string;

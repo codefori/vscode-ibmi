@@ -38,6 +38,7 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
+		"taskDefinitions": [{"type": "ibmi"}],
 		"snippets": [
 			{
 				"path": "./schemas/cl.code-snippets",
@@ -918,12 +919,6 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.showOutputPanel",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Show IBM i Output",
-				"category": "IBM i"
-			},
-			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login Settings",
 				"category": "IBM i"
@@ -1498,11 +1493,6 @@
 				"command": "code-for-ibmi.launchTerminalPicker",
 				"key": "ctrl+shift+j",
 				"mac": "cmd+shift+j"
-			},
-			{
-				"command": "code-for-ibmi.showOutputPanel",
-				"key": "ctrl+shift+f6",
-				"mac": "cmd+shift+f6"
 			},
 			{
 				"command": "code-for-ibmi.connectTo",
