@@ -30,8 +30,6 @@ export namespace CompileTools {
   }
 
   const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
-  const OUTPUT_BUTTON_BASE = `$(three-bars) Output`;
-  const OUTPUT_BUTTON_RUNNING = `$(sync~spin) Output`;
 
   const actionUsed: Map<string, number> = new Map;
 
@@ -127,10 +125,6 @@ export namespace CompileTools {
       }
 
       if (customAction || availableActions.length) {
-        if (GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)) {
-          // outputChannel.clear();
-        }
-
         const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
         if (chosenAction) {
           actionUsed.set(chosenAction.name, Date.now());
