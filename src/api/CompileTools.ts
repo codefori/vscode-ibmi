@@ -1,6 +1,6 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, WorkspaceFolder, tasks, window, workspace } from 'vscode';
+import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskPanelKind, WorkspaceFolder, tasks, window, workspace } from 'vscode';
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import { getLocalActions } from './local/actions';
@@ -292,18 +292,19 @@ export namespace CompileTools {
 
           const command = replaceValues(chosenAction.command, variables);
 
-          const task = await tasks.executeTask({
+          await tasks.executeTask({
             isBackground: true,
             name: chosenAction.name,
             definition: {type: `ibmi`},
             scope: workspaceFolder,
-            source: 'Actions',
+            source: 'IBM i',
             presentationOptions: {
               showReuseMessage: true,
               clear: true
             },
             problemMatchers: [],
             runOptions: {},
+            group: TaskGroup.Build,
             execution: new CustomExecution(async (e) => {
               const writeEmitter = new vscode.EventEmitter<string>();
               const closeEmitter = new vscode.EventEmitter<number>();
