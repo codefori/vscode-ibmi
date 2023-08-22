@@ -1295,6 +1295,13 @@
 				"icon": "$(filter)"
 			},
 			{
+				"command": "code-for-ibmi.createQuickFilter",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create Quick Filter",
+				"category": "IBM i",
+				"icon": "$(symbol-text)"
+			},
+			{
 				"command": "code-for-ibmi.copyFilter",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Copy Filter",
@@ -1728,12 +1735,17 @@
 				},
 				{
 					"command": "code-for-ibmi.createFilter",
-					"group": "navigation",
+					"group": "navigation@1",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createQuickFilter",
+					"group": "navigation@2",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.goToFile",
-					"group": "navigation",
+					"group": "navigation@4",
 					"when": "view == objectBrowser"
 				},
 				{
@@ -1778,17 +1790,17 @@
 				},
 				{
 					"command": "code-for-ibmi.createLibrary",
-					"group": "navigation",
+					"group": "navigation@3",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
-					"group": "navigation@1",
+					"group": "navigation@6",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.sortFilters",
-					"group": "navigation",
+					"group": "navigation@5",
 					"when": "view == objectBrowser"
 				},
 				{

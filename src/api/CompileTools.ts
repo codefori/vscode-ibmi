@@ -1,15 +1,13 @@
 
 import path from 'path';
 import vscode, { WorkspaceFolder, window } from 'vscode';
-
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import { getLocalActions } from './local/actions';
 import { getEnvConfig } from './local/env';
-
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { instance } from '../instantiate';
-import { Action, CommandResult, RemoteCommand, StandardIO } from '../typings';
+import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
@@ -97,8 +95,8 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri) {
-    const connection = instance.getConnection();    
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod) {
+    const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
@@ -120,44 +118,47 @@ export namespace CompileTools {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
       const fragment = uri.fragment.toUpperCase();
 
-      // First we grab a copy the predefined Actions in the VS Code settings
-      const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
+      let availableActions: { label: string; action: Action; }[] = [];
+      if (!customAction) {
+        // First we grab a copy the predefined Actions in the VS Code settings
+        const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
 
-      // Then, if we're being called from a local file
-      // we fetch the Actions defined from the workspace.
-      if (workspaceFolder && uri.scheme === `file`) {
-        const localActions = await getLocalActions(workspaceFolder);
-        allActions.push(...localActions);
+        // Then, if we're being called from a local file
+        // we fetch the Actions defined from the workspace.
+        if (workspaceFolder && uri.scheme === `file`) {
+          const localActions = await getLocalActions(workspaceFolder);
+          allActions.push(...localActions);
+        }
+
+        // We make sure all extensions are uppercase
+        allActions.forEach(action => {
+          if (action.extensions) {
+            action.extensions = action.extensions.map(ext => ext.toUpperCase());
+          };
+        });
+
+        // Then we get all the available Actions for the current context
+        availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
+          .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
+          .map(action => ({
+            label: action.name,
+            action
+          }));
       }
 
-      // We make sure all extensions are uppercase
-      allActions.forEach(action => {
-        if (action.extensions) {
-          action.extensions = action.extensions.map(ext => ext.toUpperCase());
-        };
-      });
-
-      // Then we get all the available Actions for the current context
-      const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
-        .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
-        .map(action => ({
-          label: action.name,
-          action
-        }));
-
-      if (availableActions.length) {
+      if (customAction || availableActions.length) {
         if (GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)) {
           outputChannel.clear();
         }
 
-        const chosenAction = ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
+        const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
         if (chosenAction) {
           actionUsed.set(chosenAction.name, Date.now());
           const environment = chosenAction.environment || `ile`;
 
-          let workspaceId: number|undefined = undefined;
+          let workspaceId: number | undefined = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
-            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
             if (deployResult !== undefined) {
               workspaceId = deployResult;
             } else {
@@ -354,11 +355,11 @@ export namespace CompileTools {
               }
 
               outputChannel.append(`\n`);
-              
+
               if (useLocalEvfevent) {
                 outputChannel.appendLine(`Fetching errors from .evfevent.`);
 
-              } 
+              }
               else if (isIleCommand) {
                 if (command.includes(`*EVENTF`)) {
                   outputChannel.appendLine(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
@@ -383,26 +384,26 @@ export namespace CompileTools {
                   .filter(Tools.distinct) //Remove duplicates
                   .map(downloadDirectory => vscode.Uri.parse((path.posix.join(localDir, downloadDirectory)))); //Create local Uri path
 
-                for (const downloadPath of downloadDirectories) {                  
+                for (const downloadPath of downloadDirectories) {
                   try {
                     const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
-                    if(stat.type !== vscode.FileType.Directory){
-                      if(await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")){
+                    if (stat.type !== vscode.FileType.Directory) {
+                      if (await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")) {
                         await vscode.workspace.fs.delete(downloadPath);
                         throw new Error("Create directory");
                       }
                     }
-                    else if(stat.type !== vscode.FileType.Directory){
-                      await vscode.workspace.fs.delete(downloadPath, {recursive: true});
+                    else if (stat.type !== vscode.FileType.Directory) {
+                      await vscode.workspace.fs.delete(downloadPath, { recursive: true });
                       throw new Error("Create directory");
                     }
                   }
-                  catch(e){
+                  catch (e) {
                     //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
                     try {
                       await vscode.workspace.fs.createDirectory(downloadPath)
                     }
-                    catch(error){
+                    catch (error) {
                       vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
                       console.log(error);
                     }
@@ -414,9 +415,9 @@ export namespace CompileTools {
                   async (downloadPath) => {
                     const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
                     const remotePath = path.posix.join(remoteDir, downloadPath);
-                    
+
                     if (await content.isDirectory(remotePath)) {
-                      return client.getDirectory(localPath, remotePath);                      
+                      return client.getDirectory(localPath, remotePath);
                     } else {
                       return client.getFile(localPath, remotePath);
                     }
