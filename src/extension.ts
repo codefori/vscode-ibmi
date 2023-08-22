@@ -12,7 +12,7 @@ import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuratio
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import * as Debug from './api/debug';
-import { parseErrors } from "./api/errors/handler";
+import { parseErrors } from "./api/errors/parser";
 import { Deployment } from "./api/local/deployment";
 import { IFSFS } from "./filesystems/ifsFs";
 import * as Sandbox from "./sandbox";
@@ -24,6 +24,9 @@ import { ProfilesView } from "./views/ProfilesView";
 import { HelpView } from "./views/helpView";
 import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
+import { Tools } from "./api/Tools";
+import { DeployTools } from "./api/local/deployTools";
+import { updateLocale } from "./locale";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -71,6 +74,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       }
     ),
     workspace.onDidChangeConfiguration(async event => {
+      if (event.affectsConfiguration(`code-for-ibmi.locale`)) {
+        updateLocale();
+      }
+
       if (event.affectsConfiguration(`code-for-ibmi.connections`)) {
         checkLastConnections();
       }
@@ -110,9 +117,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
       commands.executeCommand("code-for-ibmi.refreshProfileView")
     ]);
-  })
+  });
 
-  return { instance, customUI: () => new CustomUI(), deploy: Deployment.deploy, evfeventParser: parseErrors };
+  return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
 
 // this method is called when your extension is deactivated

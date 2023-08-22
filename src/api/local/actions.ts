@@ -41,58 +41,11 @@ export async function getLocalActions(currentWorkspace: WorkspaceFolder) {
   return actions;
 }
 
-/**
- * Gets actions from the `iproj.json` file
- */
-export async function getiProjActions(currentWorkspace: WorkspaceFolder) {
-  const actions: Action[] = [];
-
+export async function getEvfeventFiles(currentWorkspace: WorkspaceFolder) {
   if (currentWorkspace) {
-    const relativeSearch = new RelativePattern(currentWorkspace, `**/iproj.json`);
+    const relativeSearch = new RelativePattern(currentWorkspace, `**/.evfevent/*`);
     const iprojectFiles = await workspace.findFiles(relativeSearch, null, 1);
 
-    for (const file of iprojectFiles) {
-      const iProjectContent = await workspace.fs.readFile(file);
-      try {
-        const iProject = JSON.parse(iProjectContent.toString());
-
-        const description = iProject.description || `iproj.json`
-
-        if (iProject.buildCommand) {
-          actions.push({
-            name: `${description} (build)`,
-            command: iProject.buildCommand,
-            environment: `pase`,
-            extensions: [`GLOBAL`],
-            deployFirst: true,
-            type: `file`,
-            postDownload: [
-              ".logs",
-              ".evfevent"
-            ]
-          });
-        }
-
-        if (iProject.compileCommand) {
-          actions.push({
-            name: `${description} (compile)`,
-            command: `ERR=*EVENTF ${iProject.compileCommand}`,
-            environment: `pase`,
-            extensions: [`GLOBAL`],
-            deployFirst: true,
-            type: `file`,
-            postDownload: [
-              ".logs",
-              ".evfevent"
-            ]
-          });
-        }
-      } catch (e: any) {
-        // ignore
-        window.showErrorMessage(`Error parsing ${file.fsPath}: ${e.message}\n`);
-      }
-    };
+    return iprojectFiles;
   }
-
-  return actions;
 }

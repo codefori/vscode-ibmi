@@ -1,20 +1,18 @@
 
 import path from 'path';
-import vscode, { window } from 'vscode';
-
+import vscode, { WorkspaceFolder, window } from 'vscode';
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
-import { getLocalActions, getiProjActions } from './local/actions';
+import { getLocalActions } from './local/actions';
 import { getEnvConfig } from './local/env';
-
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { instance } from '../instantiate';
-import { Action, CommandResult, FileError, RemoteCommand, StandardIO } from '../typings';
+import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
-import { parseErrors } from './errors/handler';
-import { Deployment } from './local/deployment';
+import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
+import { DeployTools } from './local/deployTools';
 
 export interface ILELibrarySettings {
   currentLibrary: string;
@@ -29,32 +27,11 @@ export namespace CompileTools {
     library?: string
   }
 
-  interface EvfEventInfo {
-    asp?: string
-    library: string,
-    object: string,
-    extension?: string,
-    workspace?: number
-  }
-
-  const diagnosticSeverity = (error: FileError) => {
-    switch (error.sev) {
-      case 20:
-        return vscode.DiagnosticSeverity.Warning;
-      case 30:
-      case 40:
-      case 50:
-        return vscode.DiagnosticSeverity.Error;
-      default: return vscode.DiagnosticSeverity.Information;
-    }
-  }
-
   const PARM_REGEX = /(PNLGRP|OBJ|PGM|MODULE)\((?<object>.+?)\)/;
   const OUTPUT_BUTTON_BASE = `$(three-bars) Output`;
   const OUTPUT_BUTTON_RUNNING = `$(sync~spin) Output`;
 
   const outputChannel = vscode.window.createOutputChannel(`IBM i Output`);
-  const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
   const outputBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 
   const actionUsed: Map<string, number> = new Map;
@@ -67,8 +44,8 @@ export namespace CompileTools {
     };
 
     context.subscriptions.push(
+      ...registerDiagnostics(),
       outputChannel,
-      ileDiagnostics,
       outputBarItem,
       vscode.commands.registerCommand(`code-for-ibmi.showOutputPanel`, showOutput)
     );
@@ -82,83 +59,6 @@ export namespace CompileTools {
     instance.onEvent("disconnected", () => {
       outputBarItem.hide();
     });
-  }
-
-  /**
-   * Does what it says on the tin.
-   */
-  export function clearDiagnostics() {
-    ileDiagnostics.clear();
-  }
-
-  export async function refreshDiagnostics(instance: Instance, evfeventInfo: EvfEventInfo) {
-    const content = instance.getContent();
-    const config = instance.getConfig();
-    if (config && content) {
-      const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
-      const lines = tableData.map(row => String(row.EVFEVENT));
-      const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
-
-      const errorsByFiles = parseErrors(lines);
-
-      ileDiagnostics.clear();
-
-      const diagnostics: vscode.Diagnostic[] = [];
-      if (errorsByFiles.size) {
-        for (const [file, errors] of errorsByFiles.entries()) {
-          diagnostics.length = 0;
-          for (const error of errors) {
-            error.column = Math.max(error.column - 1, 0);
-            error.linenum = Math.max(error.linenum - 1, 0);
-
-            if (error.column === 0 && error.toColumn === 0) {
-              error.column = 0;
-              error.toColumn = 100;
-            }
-
-            if (!config.hideCompileErrors.includes(error.code)) {
-              const diagnostic = new vscode.Diagnostic(
-                new vscode.Range(error.linenum, error.column, error.linenum, error.toColumn),
-                `${error.code}: ${error.text} (${error.sev})`,
-                diagnosticSeverity(error)
-              );
-
-              diagnostics.push(diagnostic);
-            }
-          }
-
-          if (evfeventInfo.workspace !== undefined) {
-            const workspaceRootFolder = vscode.workspace.workspaceFolders?.[evfeventInfo.workspace];
-            const storage = instance.getStorage();
-
-            if (workspaceRootFolder && storage) {
-              const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceRootFolder);
-              const relativeCompilePath = file.toLowerCase().replace(workspaceDeployPath, '');
-              const diagnosticTargetFile = vscode.Uri.joinPath(workspaceRootFolder.uri, relativeCompilePath);
-
-              if (diagnosticTargetFile !== undefined) {
-                ileDiagnostics.set(diagnosticTargetFile, diagnostics);
-              } else {
-                vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
-              }
-            }
-          } else {
-            if (file.startsWith(`/`))
-              ileDiagnostics.set(vscode.Uri.from({ scheme: `streamfile`, path: file }), diagnostics);
-            else {
-              const memberUri = vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` });
-              ileDiagnostics.set(memberUri, diagnostics);
-            }
-          }
-        }
-
-      } else {
-        ileDiagnostics.clear();
-      }
-    }
-    else {
-      throw new Error('Please connect to an IBM i');
-    }
   }
 
   function replaceValues(string: string, variables: Variables) {
@@ -195,8 +95,8 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri) {
-    const connection = instance.getConnection();    
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod) {
+    const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
@@ -218,57 +118,59 @@ export namespace CompileTools {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
       const fragment = uri.fragment.toUpperCase();
 
-      // First we grab a copy the predefined Actions in the VS Code settings
-      const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
+      let availableActions: { label: string; action: Action; }[] = [];
+      if (!customAction) {
+        // First we grab a copy the predefined Actions in the VS Code settings
+        const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
 
-      // Then, if we're being called from a local file
-      // we fetch the Actions defined from the workspace.
-      if (workspaceFolder && uri.scheme === `file`) {
-        const [localActions, iProjActions] = await Promise.all([
-          getLocalActions(workspaceFolder),
-          getiProjActions(workspaceFolder)
-        ]);
-        allActions.push(...localActions, ...iProjActions);
+        // Then, if we're being called from a local file
+        // we fetch the Actions defined from the workspace.
+        if (workspaceFolder && uri.scheme === `file`) {
+          const localActions = await getLocalActions(workspaceFolder);
+          allActions.push(...localActions);
+        }
+
+        // We make sure all extensions are uppercase
+        allActions.forEach(action => {
+          if (action.extensions) {
+            action.extensions = action.extensions.map(ext => ext.toUpperCase());
+          };
+        });
+
+        // Then we get all the available Actions for the current context
+        availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
+          .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
+          .map(action => ({
+            label: action.name,
+            action
+          }));
       }
 
-      // We make sure all extensions are uppercase
-      allActions.forEach(action => {
-        if (action.extensions) {
-          action.extensions = action.extensions.map(ext => ext.toUpperCase());
-        };
-      });
-
-      // Then we get all the available Actions for the current context
-      const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
-        .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
-        .map(action => ({
-          label: action.name,
-          action
-        }));
-
-      if (availableActions.length) {
+      if (customAction || availableActions.length) {
         if (GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)) {
           outputChannel.clear();
         }
 
-        const chosenAction = ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
+        const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
         if (chosenAction) {
           actionUsed.set(chosenAction.name, Date.now());
           const environment = chosenAction.environment || `ile`;
 
-          let workspace = undefined;
+          let workspaceId: number | undefined = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
-            const deployResult = await Deployment.launchDeploy(workspaceFolder.index);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
             if (deployResult !== undefined) {
-              workspace = deployResult;
+              workspaceId = deployResult;
             } else {
               vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
               return;
             }
           }
-          let currentWorkspace;
-          if (vscode.workspace.workspaceFolders) {
-            currentWorkspace = vscode.workspace.workspaceFolders[workspace || 0];
+
+          let fromWorkspace: WorkspaceFolder|undefined;
+
+          if (chosenAction.type === `file` && vscode.workspace.workspaceFolders) {
+            fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
           }
 
           const variables: Variables = new Map;
@@ -276,8 +178,14 @@ export namespace CompileTools {
             object: '',
             library: '',
             extension,
-            workspace
+            workspace: fromWorkspace
           };
+
+          if (workspaceFolder) {
+            const envFileVars = await getEnvConfig(workspaceFolder);
+            Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
+          }
+
           switch (chosenAction.type) {
             case `member`:
               const memberDetail = connection.parserMemberPath(uri.path);
@@ -319,7 +227,13 @@ export namespace CompileTools {
                 name = name.substring(0, name.indexOf(`-`));
               }
 
-              evfeventInfo.library = config.currentLibrary;
+              if (variables.has(`&CURLIB`)) {
+                evfeventInfo.library = variables.get(`&CURLIB`)!;
+
+              } else {
+                evfeventInfo.library = config.currentLibrary;
+              }
+
               evfeventInfo.object = name;
               evfeventInfo.extension = ext;
 
@@ -332,8 +246,8 @@ export namespace CompileTools {
 
                   let baseDir = config.homeDirectory;
 
-                  if (currentWorkspace) {
-                    baseDir = currentWorkspace.uri.path;
+                  if (fromWorkspace) {
+                    baseDir = fromWorkspace.uri.path;
 
                     relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
                     variables.set(`&RELATIVEPATH`, relativePath);
@@ -404,11 +318,6 @@ export namespace CompileTools {
 
           outputBarItem.text = OUTPUT_BUTTON_RUNNING;
 
-          if (workspaceFolder) {
-            const envFileVars = await getEnvConfig(workspaceFolder);
-            Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
-          }
-
           const command = replaceValues(chosenAction.command, variables);
           try {
             const commandResult = await runCommand(instance, {
@@ -418,17 +327,25 @@ export namespace CompileTools {
             },
               chosenAction.name);
 
+            const useLocalEvfevent = fromWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
+
             if (commandResult) {
-              const possibleObject = getObjectFromCommand(commandResult.command);
-              if (possibleObject) {
-                Object.assign(evfeventInfo, possibleObject);
+              const isIleCommand = environment === `ile`;
+
+              if (isIleCommand) {
+                const possibleObject = getObjectFromCommand(commandResult.command);
+                if (possibleObject) {
+                  Object.assign(evfeventInfo, possibleObject);
+                }
               }
 
+              const actionName = (isIleCommand ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : chosenAction.name);
+
               if (commandResult.code === 0 || commandResult.code === null) {
-                vscode.window.showInformationMessage(`Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} was successful.`);
+                vscode.window.showInformationMessage(`Action ${actionName} was successful.`);
               } else {
                 vscode.window.showErrorMessage(
-                  `Action ${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object} was not successful.`,
+                  `Action ${actionName} was not successful.`,
                   GlobalConfiguration.get<boolean>(`logCompileOutput`) ? `Show Output` : ''
                 ).then(async (item) => {
                   if (item === `Show Output`) {
@@ -438,19 +355,26 @@ export namespace CompileTools {
               }
 
               outputChannel.append(`\n`);
-              if (command.includes(`*EVENTF`)) {
-                outputChannel.appendLine(`Fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
-                refreshDiagnostics(instance, evfeventInfo);
-              } else {
-                outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors from ${evfeventInfo.library}/${evfeventInfo.object}.`);
+
+              if (useLocalEvfevent) {
+                outputChannel.appendLine(`Fetching errors from .evfevent.`);
+
+              }
+              else if (isIleCommand) {
+                if (command.includes(`*EVENTF`)) {
+                  outputChannel.appendLine(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                  refreshDiagnosticsFromServer(instance, evfeventInfo);
+                } else {
+                  outputChannel.appendLine(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
+                }
               }
             }
 
             if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
-              if (currentWorkspace) {
+              if (fromWorkspace) {
                 const client = connection.client;
                 const remoteDir = config.homeDirectory;
-                const localDir = currentWorkspace.uri.path;
+                const localDir = fromWorkspace.uri.path;
 
                 // First, we need to create or clear the relative directories in the workspace
                 // in case they don't exist. For example, if the path is `.logs/joblog.json`
@@ -460,26 +384,26 @@ export namespace CompileTools {
                   .filter(Tools.distinct) //Remove duplicates
                   .map(downloadDirectory => vscode.Uri.parse((path.posix.join(localDir, downloadDirectory)))); //Create local Uri path
 
-                for (const downloadPath of downloadDirectories) {                  
+                for (const downloadPath of downloadDirectories) {
                   try {
                     const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
-                    if(stat.type !== vscode.FileType.Directory){
-                      if(await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")){
+                    if (stat.type !== vscode.FileType.Directory) {
+                      if (await vscode.window.showWarningMessage(`${downloadPath} exists but is a file.`, "Delete and create directory")) {
                         await vscode.workspace.fs.delete(downloadPath);
                         throw new Error("Create directory");
                       }
                     }
-                    else if(stat.type !== vscode.FileType.Directory){
-                      await vscode.workspace.fs.delete(downloadPath, {recursive: true});
+                    else if (stat.type !== vscode.FileType.Directory) {
+                      await vscode.workspace.fs.delete(downloadPath, { recursive: true });
                       throw new Error("Create directory");
                     }
                   }
-                  catch(e){
+                  catch (e) {
                     //Either fs.stat did not find the folder or it wasn't a folder and it's been deleted above
                     try {
                       await vscode.workspace.fs.createDirectory(downloadPath)
                     }
-                    catch(error){
+                    catch (error) {
                       vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
                       console.log(error);
                     }
@@ -491,9 +415,9 @@ export namespace CompileTools {
                   async (downloadPath) => {
                     const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
                     const remotePath = path.posix.join(remoteDir, downloadPath);
-                    
+
                     if (await content.isDirectory(remotePath)) {
-                      return client.getDirectory(localPath, remotePath);                      
+                      return client.getDirectory(localPath, remotePath);
                     } else {
                       return client.getFile(localPath, remotePath);
                     }
@@ -501,9 +425,14 @@ export namespace CompileTools {
                 );
 
                 Promise.all(downloads)
-                  .then(result => {
+                  .then(async result => {
                     // Done!
                     outputChannel.appendLine(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}`);
+
+                    // Process locally downloaded evfevent files:
+                    if (useLocalEvfevent) {
+                      refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                    }
                   })
                   .catch(error => {
                     vscode.window.showErrorMessage(`Failed to download files as part of Action.`);

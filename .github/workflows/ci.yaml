@@ -10,6 +10,8 @@ jobs:
       - uses: actions/setup-node@v2
         with:
           node-version: '16'
+          registry-url: 'https://registry.npmjs.org'
+
       - uses: actions/checkout@v2
       
       - run: npm install
@@ -23,3 +25,14 @@ jobs:
           
       - name: Publish to Open VSX
         run: npx ovsx publish -p ${{ secrets.OPENVSX_TOKEN }}
+
+      - name: Generate typings
+        run: npm run typings
+
+      - name: Cleanup typings
+        run: cd types && npm run prepublish
+
+      - name: Publish typings to npm
+        run: cd types && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

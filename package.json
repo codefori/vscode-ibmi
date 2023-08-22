@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.0.2",
+	"version": "2.1.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -417,11 +417,6 @@
 					"default": true,
 					"description": "When enabled, files will automatically be opened when copied or moved/renamed."
 				},
-				"code-for-ibmi.tryNewErrorParser": {
-					"type": "boolean",
-					"default": false,
-					"description": "Fix preview: Enable to test out the brand new error parser. Restart not required."
-				},
 				"code-for-ibmi.autoRefresh": {
 					"type": "boolean",
 					"default": true,
@@ -441,6 +436,28 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
+				},
+				"code-for-ibmi.locale": {
+					"type": "string",
+					"default": "inherit",
+					"enum": [
+						"inherit",
+						"en",
+						"da",
+						"fr"
+					],
+					"enumDescriptions": [
+						"Inherit from VS Code settings",
+						"English",
+						"Danish",
+						"French"
+					],
+					"description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."
+				},
+				"code-for-ibmi.showDateSearchButton": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, will show the 'Date search' button in the status bar when source dates with diff mode is enabled."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
@@ -1278,6 +1295,13 @@
 				"icon": "$(filter)"
 			},
 			{
+				"command": "code-for-ibmi.createQuickFilter",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Create Quick Filter",
+				"category": "IBM i",
+				"icon": "$(symbol-text)"
+			},
+			{
 				"command": "code-for-ibmi.copyFilter",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Copy Filter",
@@ -1711,12 +1735,17 @@
 				},
 				{
 					"command": "code-for-ibmi.createFilter",
-					"group": "navigation",
+					"group": "navigation@1",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.createQuickFilter",
+					"group": "navigation@2",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.goToFile",
-					"group": "navigation",
+					"group": "navigation@4",
 					"when": "view == objectBrowser"
 				},
 				{
@@ -1761,17 +1790,17 @@
 				},
 				{
 					"command": "code-for-ibmi.createLibrary",
-					"group": "navigation",
+					"group": "navigation@3",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
-					"group": "navigation@1",
+					"group": "navigation@6",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.sortFilters",
-					"group": "navigation",
+					"group": "navigation@5",
 					"when": "view == objectBrowser"
 				},
 				{
@@ -2190,7 +2219,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2019 --moduleResolution node"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2021 --moduleResolution node"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
@@ -2199,6 +2228,7 @@
 		"@types/tar": "^6.1.4",
 		"@types/tmp": "^0.2.3",
 		"@types/vscode": "^1.66.0",
+		"esbuild": "^0.19.2",
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
@@ -2212,6 +2242,7 @@
 	},
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.12.0",
+		"@ibm/ibmi-eventf-parser": "^1.0.2",
 		"@types/tmp": "^0.2.3",
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
