@@ -57,7 +57,7 @@ export interface Action {
   command: string;
   type?: "member" | "streamfile" | "object" | "file";
   environment: "ile" | "qsh" | "pase";
-  extensions: string[];
+  extensions?: string[];
   deployFirst?: boolean;
   postDownload?: string[];
 }
@@ -129,7 +129,8 @@ export interface Filter {
 
 export interface FileError {
   sev: number
-  linenum: number
+  lineNum: number
+  toLineNum: number
   column: number
   toColumn: number
   text: string

@@ -5,10 +5,9 @@ import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import { getLocalActions } from './local/actions';
 import { getEnvConfig } from './local/env';
-
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { instance } from '../instantiate';
-import { Action, CommandResult, RemoteCommand, StandardIO } from '../typings';
+import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
@@ -76,8 +75,8 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri) {
-    const connection = instance.getConnection();    
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod) {
+    const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
@@ -99,44 +98,47 @@ export namespace CompileTools {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
       const fragment = uri.fragment.toUpperCase();
 
-      // First we grab a copy the predefined Actions in the VS Code settings
-      const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
+      let availableActions: { label: string; action: Action; }[] = [];
+      if (!customAction) {
+        // First we grab a copy the predefined Actions in the VS Code settings
+        const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
 
-      // Then, if we're being called from a local file
-      // we fetch the Actions defined from the workspace.
-      if (workspaceFolder && uri.scheme === `file`) {
-        const localActions = await getLocalActions(workspaceFolder);
-        allActions.push(...localActions);
+        // Then, if we're being called from a local file
+        // we fetch the Actions defined from the workspace.
+        if (workspaceFolder && uri.scheme === `file`) {
+          const localActions = await getLocalActions(workspaceFolder);
+          allActions.push(...localActions);
+        }
+
+        // We make sure all extensions are uppercase
+        allActions.forEach(action => {
+          if (action.extensions) {
+            action.extensions = action.extensions.map(ext => ext.toUpperCase());
+          };
+        });
+
+        // Then we get all the available Actions for the current context
+        availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
+          .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
+          .map(action => ({
+            label: action.name,
+            action
+          }));
       }
 
-      // We make sure all extensions are uppercase
-      allActions.forEach(action => {
-        if (action.extensions) {
-          action.extensions = action.extensions.map(ext => ext.toUpperCase());
-        };
-      });
-
-      // Then we get all the available Actions for the current context
-      const availableActions = allActions.filter(action => action.type === uri.scheme && (action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
-        .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
-        .map(action => ({
-          label: action.name,
-          action
-        }));
-
-      if (availableActions.length) {
+      if (customAction || availableActions.length) {
         if (GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)) {
           // outputChannel.clear();
         }
 
-        const chosenAction = ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
+        const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
         if (chosenAction) {
           actionUsed.set(chosenAction.name, Date.now());
           const environment = chosenAction.environment || `ile`;
 
-          let workspaceId: number|undefined = undefined;
+          let workspaceId: number | undefined = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
-            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index);
+            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
             if (deployResult !== undefined) {
               workspaceId = deployResult;
             } else {
@@ -145,10 +147,10 @@ export namespace CompileTools {
             }
           }
 
-          let currentWorkspace: WorkspaceFolder|undefined;
+          let fromWorkspace: WorkspaceFolder|undefined;
 
-          if (vscode.workspace.workspaceFolders) {
-            currentWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
+          if (chosenAction.type === `file` && vscode.workspace.workspaceFolders) {
+            fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
           }
 
           const variables: Variables = new Map;
@@ -156,7 +158,7 @@ export namespace CompileTools {
             object: '',
             library: '',
             extension,
-            workspace: currentWorkspace
+            workspace: fromWorkspace
           };
 
           if (workspaceFolder) {
@@ -224,8 +226,8 @@ export namespace CompileTools {
 
                   let baseDir = config.homeDirectory;
 
-                  if (currentWorkspace) {
-                    baseDir = currentWorkspace.uri.path;
+                  if (fromWorkspace) {
+                    baseDir = fromWorkspace.uri.path;
 
                     relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
                     variables.set(`&RELATIVEPATH`, relativePath);
@@ -324,7 +326,7 @@ export namespace CompileTools {
                       env: Object.fromEntries(variables),
                     }, writeEmitter);
         
-                    const useLocalEvfevent = currentWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
+                    const useLocalEvfevent = fromWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
         
                     if (commandResult) {
                       const isIleCommand = environment === `ile`;
@@ -363,10 +365,10 @@ export namespace CompileTools {
                     }
         
                     if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
-                      if (currentWorkspace) {
+                      if (fromWorkspace) {
                         const client = connection.client;
                         const remoteDir = config.homeDirectory;
-                        const localDir = currentWorkspace.uri.path;
+                        const localDir = fromWorkspace.uri.path;
         
                         // First, we need to create or clear the relative directories in the workspace
                         // in case they don't exist. For example, if the path is `.logs/joblog.json`
