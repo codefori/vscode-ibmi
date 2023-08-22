@@ -1,13 +1,16 @@
-import { ExtensionContext, Uri, WorkspaceFolder } from "vscode";
+import { WorkspaceFolder } from "vscode";
 import Instance from "./api/Instance";
 import { Ignore } from 'ignore'
-import { CustomUI, Field } from "./api/CustomUI";
+import { CustomUI } from "./api/CustomUI";
+import { Tools } from "./api/Tools";
+import { DeployTools } from "./api/local/deployTools";
 
 export interface CodeForIBMi {
   instance: Instance,
   customUI: () => CustomUI,
-  deploy: (parameters: DeploymentParameters) => Promise<boolean>
-  evfeventParser: (lines: string[]) => Map<string, FileError[]>
+  deployTools: typeof DeployTools,
+  evfeventParser: (lines: string[]) => Map<string, FileError[]>,
+  tools: typeof Tools
 }
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
@@ -53,7 +56,7 @@ export interface Action {
   command: string;
   type?: "member" | "streamfile" | "object" | "file";
   environment: "ile" | "qsh" | "pase";
-  extensions: string[];
+  extensions?: string[];
   deployFirst?: boolean;
   postDownload?: string[];
 }
@@ -125,7 +128,8 @@ export interface Filter {
 
 export interface FileError {
   sev: number
-  linenum: number
+  lineNum: number
+  toLineNum: number
   column: number
   toColumn: number
   text: string
@@ -140,7 +144,6 @@ export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deplo
 
 export interface Library {
   path:string
-  
 }
 
 export interface IBMiSplfUser {

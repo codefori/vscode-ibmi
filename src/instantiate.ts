@@ -20,8 +20,9 @@ import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { QsysFsOptions, RemoteCommand } from "./typings";
 import { SplfFS, getUriFromPath_Splf } from "./filesystems/qsys/SplfFs";
+import { Action, DeploymentMethod, QsysFsOptions } from "./typings";
+import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 
 export let instance: Instance;
 
@@ -82,13 +83,16 @@ export async function disconnect(): Promise<boolean> {
 }
 
 export async function loadAllofExtension(context: vscode.ExtensionContext) {
+  // No connection when the extension is first activated
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
+
   instance = new Instance(context);
   searchViewContext = new SearchView(context);
 
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?:boolean) => {
+    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?: boolean) => {
       if (instance.getConnection()) {
         await disconnect();
       } else if (!silent) {
@@ -223,10 +227,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
-      CompileTools.clearDiagnostics();
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node: any, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
       const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
       if (uri) {
@@ -257,7 +258,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
 
           if (canRun && [`member`, `streamfile`, `file`].includes(uri.scheme)) {
-            CompileTools.runAction(instance, uri);
+            await CompileTools.runAction(instance, uri, action, method);
           }
         }
         else {
@@ -333,7 +334,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         const [library, object] = inputPath.split(`/`);
         if (library && object) {
           const nameDetail = path.parse(object);
-          CompileTools.refreshDiagnostics(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined) });
+          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined) });
         }
       }
     }),

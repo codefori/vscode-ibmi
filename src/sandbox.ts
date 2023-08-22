@@ -1,10 +1,10 @@
 import { env } from "process";
 import querystring from "querystring";
-import { commands, ExtensionContext, extensions, Uri, window } from "vscode";
+import { commands, ExtensionContext, Uri, window } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
-import { GitExtension } from "./api/import/git";
 import { Tools } from "./api/Tools";
 import { instance } from "./instantiate";
+import { t } from "./locale";
 import { ConnectionData } from "./typings";
 
 export async function registerUriHandler(context: ExtensionContext) {
@@ -21,15 +21,15 @@ export async function registerUriHandler(context: ExtensionContext) {
               const queryData = querystring.parse(uri.query);
 
               const save = queryData.save === `true`;
-              const server = queryData.server;
+              const server = String(queryData.server);
               let user: string | string[] | undefined = queryData.user;
               let pass: string | string[] | undefined = queryData.pass;
 
               if (server) {
                 if (!user) {
                   user = await window.showInputBox({
-                    title: `User for server`,
-                    prompt: `Enter username for ${server}`
+                    title: t(`sandbox.input.user.title`),
+                    prompt: t(`sandbox.input.user.prompt`, server)
                   });
                 }
 
@@ -38,8 +38,8 @@ export async function registerUriHandler(context: ExtensionContext) {
                 } else {
                   pass = await window.showInputBox({
                     password: true,
-                    title: `Password for server`,
-                    prompt: `Enter password for ${user}@${server}`
+                    title: t(`sandbox.input.password.title`),
+                    prompt: t(`sandbox.input.password.prompt`, String(user), server)
                   });
                 }
 
@@ -83,20 +83,20 @@ export async function registerUriHandler(context: ExtensionContext) {
                     }
 
                   } else {
-                    window.showInformationMessage(`Failed to connect`, {
+                    window.showInformationMessage(t(`sandbox.failedToConnect.title`), {
                       modal: true,
-                      detail: `Failed to connect to ${server} as ${user}.`
+                      detail: t(`sandbox.failedToConnect`, server, user)
                     });
                   }
 
                 } else {
-                  window.showErrorMessage(`Connection to ${server} ended as no password was provided.`);
+                  window.showErrorMessage(t(`sandbox.noPassword`, server));
                 }
               }
             } else {
-              window.showInformationMessage(`Failed to connect`, {
+              window.showInformationMessage(t(`sandbox.failedToConnect.title`), {
                 modal: true,
-                detail: `This Visual Studio Code instance is already connected to a server.`
+                detail: t(`sandbox.alreadyConnected`)
               });
             }
 
@@ -160,9 +160,9 @@ export async function handleStartup() {
 
     if (env.VSCODE_IBMI_SANDBOX) {
       console.log(`Sandbox mode enabled.`);
-      window.showInformationMessage(`Thanks for trying the Code for IBM i Sandbox!`, {
+      window.showInformationMessage(t(`sandbox.connected.modal.title`), {
         modal: true,
-        detail: `You are using this system at your own risk. Do not share any sensitive or private information.`
+        detail: t(`sandbox.connected.modal.detail`)
       });
     }
 
@@ -172,9 +172,9 @@ export async function handleStartup() {
       await initialSetup(connectionData.username);
 
     } else {
-      window.showInformationMessage(`Oh no! The sandbox is down.`, {
+      window.showInformationMessage(t(`sandbox.noconnection.modal.title`), {
         modal: true,
-        detail: `Sorry, but the sandbox is offline right now. Try again another time.`
+        detail: t(`sandbox.noconnection.modal.detail`)
       });
     }
   }

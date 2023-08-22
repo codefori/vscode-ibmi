@@ -700,7 +700,7 @@ export default class IBMiContent {
   }
 
   async streamfileResolve(names: string[], directories: string[]): Promise<string | undefined> {
-    const command = `for f in ${directories.flatMap(dir => names.map(name => path.posix.join(dir, name))).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${directories.flatMap(dir => names.map(name => `"${path.posix.join(dir, name)}"`)).join(` `)}; do if [ -f "$f" ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,

@@ -7,9 +7,9 @@ import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
-import { Deployment } from "../api/local/deployment";
 import { instance } from "../instantiate";
 import { DeploymentMethod } from "../typings";
+import { DeployTools } from "../api/local/deployTools";
 
 type FileInfo = {
     md5: string
@@ -18,14 +18,17 @@ type FileInfo = {
 
 type FilesInfo = Map<string, FileInfo>;
 
-class File {
+export class File {
     readonly content: string[] = [];
     localPath?: vscode.Uri;
     remotePath?: string;
 
-    constructor(readonly name: string) {
-        this.changeContent();
-
+    constructor(readonly name: string, content?: string[]) {
+        if(content) {
+            this.content = content;
+        } else {
+            this.changeContent();
+        }
     }
 
     changeContent() {
@@ -35,12 +38,12 @@ class File {
         }
     }
 
-    getContent(){
+    getContent() {
         return this.content.join(EOL);
     }
 }
 
-type Folder = {
+export type Folder = {
     name: string
     folders?: Folder[]
     files?: File[]
@@ -48,7 +51,7 @@ type Folder = {
     remotePath?: string;
 }
 
-const fakeProject: Folder = {
+export const fakeProject: Folder = {
     name: `DeleteMe_${Tools.makeid()}`,
     folders: [
         { name: "folder1", files: [new File("file11.txt"), new File("file22.txt"), new File("file23.txt")] },
@@ -76,17 +79,17 @@ const fakeProject: Folder = {
     ],
 }
 
-export const DeploymentSuite: TestSuite = {
-    name: `Deployment tests`,
+export const DeployToolsSuite: TestSuite = {
+    name: `Deploy Tools API tests`,
     before: async () => {
         const features = instance.getConnection()?.remoteFeatures;
-        assert.ok(features?.stat, "stat is required to run Deployment test suite");
-        assert.ok(features?.md5sum, "md5sum is required to run Deployment test suite");
+        assert.ok(features?.stat, "stat is required to run deploy tools test suite");
+        assert.ok(features?.md5sum, "md5sum is required to run deploy tools test suite");
 
         const workspaceFolder = vscode.workspace.workspaceFolders ? vscode.workspace.workspaceFolders[0] : undefined;
         const tempDir = instance.getConfig()?.tempDir;
         assert.ok(workspaceFolder, "No workspace folder to work with");
-        assert.ok(tempDir, "Cannot run deployment tests: no remote temp directory defined");
+        assert.ok(tempDir, "Cannot run deploy tools tests: no remote temp directory defined");
 
         await createFolder(workspaceFolder.uri, tempDir, fakeProject);
         assert.ok(fakeProject.localPath, "Project has no local path");
@@ -101,13 +104,13 @@ export const DeploymentSuite: TestSuite = {
             }
         },
         {
-            name: `Test 'Compare' deployment`, test: async () => {                
+            name: `Test 'Compare' deployment`, test: async () => {
                 createFile(fakeProject.localPath!, fakeProject.remotePath!, new File("new1.txt"));
                 createFile(fakeProject.folders![0].localPath!, fakeProject.folders![0].remotePath!, new File("newnew1.txt"));
                 createFile(fakeProject.folders![1].localPath!, fakeProject.folders![1].remotePath!, new File("newnew2.txt"));
-                
+
                 await vscode.workspace.fs.delete(fakeProject.folders![2].files![0].localPath!, { useTrash: false });
-                
+
                 await changeFile(fakeProject.files![0]);
                 await changeFile(fakeProject.folders![0].files![0]);
 
@@ -117,21 +120,21 @@ export const DeploymentSuite: TestSuite = {
                 assertFilesInfoEquals(locals, remotes);
 
                 let newFiles = 0;
-                let changed = 0;                
+                let changed = 0;
                 let deleted = 0;
                 oldRemotes.forEach((oldInfo, file) => {
                     const newInfos = remotes.get(file);
-                    if(newInfos && newInfos.date !== oldInfo.date){
+                    if (newInfos && newInfos.date !== oldInfo.date) {
                         changed++;
                     }
-                    else if(!newInfos){
+                    else if (!newInfos) {
                         deleted++;
                     }
                 });
-                
+
                 remotes.forEach((newInfo, file) => {
                     const oldInfo = oldRemotes.get(file);
-                    if(!oldInfo){
+                    if (!oldInfo) {
                         newFiles++;
                     }
                 });
@@ -165,11 +168,11 @@ async function deploy(method: DeploymentMethod) {
         `!${basename(fakeProject.localPath.path)}/**` //Allow content
     ]);
 
-    assert.ok(await Deployment.deploy({ method, remotePath: fakeProject.remotePath, workspaceFolder, ignoreRules }), `"${method}" deployment failed`);
+    assert.ok(await DeployTools.deploy({ method, remotePath: fakeProject.remotePath, workspaceFolder, ignoreRules }), `"${method}" deployment failed`);
     return await getRemoteFilesInfo();
 }
 
-async function createFolder(parent: vscode.Uri, remoteParent: string, folder: Folder) {
+export async function createFolder(parent: vscode.Uri, remoteParent: string, folder: Folder) {
     folder.localPath = vscode.Uri.joinPath(parent, folder.name);
     folder.remotePath = posix.join(remoteParent, folder.name);
     await vscode.workspace.fs.createDirectory(folder.localPath);
@@ -186,12 +189,12 @@ async function createFolder(parent: vscode.Uri, remoteParent: string, folder: Fo
 async function createFile(folder: vscode.Uri, remote: string, file: File): Promise<void> {
     file.localPath = vscode.Uri.joinPath(folder, file.name);
     file.remotePath = posix.join(remote, file.name);
-    await vscode.workspace.fs.writeFile(file.localPath, Buffer.from(file.content));
+    await vscode.workspace.fs.writeFile(file.localPath, Buffer.from(file.content.join(('\n')), `utf-8`));
 }
 
-async function changeFile(file : File){
+async function changeFile(file: File) {
     file.changeContent();
-    await vscode.workspace.fs.writeFile(file.localPath!, Buffer.from(file.content));
+    await vscode.workspace.fs.writeFile(file.localPath!, Buffer.from(file.content.join(('\n')), `utf-8`));
 }
 
 async function getLocalFilesInfo() {
