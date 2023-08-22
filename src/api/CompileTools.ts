@@ -326,14 +326,12 @@ export namespace CompileTools {
                     if (commandResult) {
                       const isIleCommand = environment === `ile`;
         
-                      if (isIleCommand) {
-                        const possibleObject = getObjectFromCommand(commandResult.command);
-                        if (possibleObject) {
-                          Object.assign(evfeventInfo, possibleObject);
-                        }
+                      const possibleObject = getObjectFromCommand(commandResult.command);
+                      if (isIleCommand && possibleObject) {
+                        Object.assign(evfeventInfo, possibleObject);
                       }
         
-                      const actionName = (isIleCommand ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : chosenAction.name);
+                      const actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : chosenAction.name);
         
                       if (commandResult.code === 0 || commandResult.code === null) {
                         vscode.window.showInformationMessage(`Action ${actionName} was successful.`);
@@ -349,7 +347,7 @@ export namespace CompileTools {
                         writeEmitter.fire(`Fetching errors from .evfevent.${NEWLINE}`);
         
                       } 
-                      else if (isIleCommand) {
+                      else if (isIleCommand && possibleObject) {
                         if (command.includes(`*EVENTF`)) {
                           writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                           refreshDiagnosticsFromServer(instance, evfeventInfo);
