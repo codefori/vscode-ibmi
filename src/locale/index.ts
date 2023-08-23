@@ -24,7 +24,7 @@ export function updateLocale() {
 
 export function t(id: string, ...values: any[]) {
   // Check for the id in their local locale first, then default to en, then just show the id.
-  let text = locales[currentLocale][id] ? locales[currentLocale][id] : (locales.en[id] || `!${id}!`);
+  let text = locales[currentLocale] && locales[currentLocale][id] ? locales[currentLocale][id] : (locales.en[id] || `!${id}!`);
 
   if (values.length > 0) {
     values.forEach((value, i) => {
