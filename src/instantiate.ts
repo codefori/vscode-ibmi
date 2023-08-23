@@ -12,7 +12,7 @@ import { SearchView } from "./views/searchView";
 import { VariablesUI } from "./webviews/variables";
 
 import { dirname } from 'path';
-import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import { Search } from "./api/Search";
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { QSysFS, getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
@@ -98,11 +98,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
-    vscode.workspace.onDidChangeConfiguration(async event => {
-      if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
-        updateConnectedBar();
-      }
-    }),
+    onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
     vscode.window.registerTreeDataProvider(
       `searchView`,
       searchViewContext
