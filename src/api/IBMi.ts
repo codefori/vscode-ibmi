@@ -798,7 +798,7 @@ export default class IBMi {
               const lines = result.stderr.split(`\n`);
         
               lines.forEach(line => {
-                const badLib = this.config?.libraryList.find(lib => line.includes(`ibrary ${lib}`));
+                const badLib = this.config?.libraryList.find(lib => line.includes(`ibrary ${lib} `));
         
                 // If there is an error about the library, store it
                 if (badLib) badLibs.push(badLib);
