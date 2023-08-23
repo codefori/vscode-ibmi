@@ -8,13 +8,16 @@ import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 
 import { CompileTools } from "./api/CompileTools";
-import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
+import { Tools } from "./api/Tools";
 import * as Debug from './api/debug';
 import { parseErrors } from "./api/errors/parser";
+import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
 import { IFSFS } from "./filesystems/ifsFs";
+import { updateLocale } from "./locale";
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
 import { CodeForIBMi, ConnectionData } from "./typings";
@@ -24,9 +27,6 @@ import { ProfilesView } from "./views/ProfilesView";
 import { HelpView } from "./views/helpView";
 import IFSBrowser from "./views/ifsBrowser";
 import ObjectBrowser from "./views/objectBrowser";
-import { Tools } from "./api/Tools";
-import { DeployTools } from "./api/local/deployTools";
-import { updateLocale } from "./locale";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -73,19 +73,13 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
-    workspace.onDidChangeConfiguration(async event => {
-      if (event.affectsConfiguration(`code-for-ibmi.locale`)) {
-        updateLocale();
-      }
-
-      if (event.affectsConfiguration(`code-for-ibmi.connections`)) {
-        checkLastConnections();
-      }
-
+    onCodeForIBMiConfigurationChange("locale", updateLocale),
+    onCodeForIBMiConfigurationChange("connections", checkLastConnections),
+    onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
       if (connection) {
         const config = instance.getConfig();
-        if (config && event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
+        if (config) {
           Object.assign(config, (await ConnectionConfiguration.load(config.name)));
         }
       }
