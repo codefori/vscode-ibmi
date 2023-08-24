@@ -22,6 +22,7 @@ import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, DeploymentMethod, QsysFsOptions } from "./typings";
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
+import { initGetMbr } from './languages/clle/getmbr';
 
 export let instance: Instance;
 
@@ -412,6 +413,7 @@ async function onConnected(context: vscode.ExtensionContext) {
   }
 
   initGetNewLibl(instance);
+  initGetMbr(instance);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
