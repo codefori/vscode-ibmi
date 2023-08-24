@@ -7,7 +7,7 @@ const getConfiguration = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
 }
 
-export function onCodeForIBMiConfigurationChange(props: string | string[], todo: (event: vscode.ConfigurationChangeEvent) => void) {
+export function onCodeForIBMiConfigurationChange<T>(props: string | string[], todo: (value: vscode.ConfigurationChangeEvent) => void) {
   const keys = (Array.isArray(props) ? props : Array.of(props)).map(key => `code-for-ibmi.${key}`);
   return vscode.workspace.onDidChangeConfiguration(async event => {
     if (keys.some(key => event.affectsConfiguration(key))) {

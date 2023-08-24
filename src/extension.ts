@@ -26,7 +26,7 @@ import { LibraryListProvider } from "./views/LibraryListView";
 import { ProfilesView } from "./views/ProfilesView";
 import { HelpView } from "./views/helpView";
 import IFSBrowser from "./views/ifsBrowser";
-import ObjectBrowser from "./views/objectBrowser";
+import { initializeObjectBrowser } from "./views/objectBrowser";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -43,7 +43,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   };
 
   new IFSBrowser(context);
-  new ObjectBrowser(context);
+  initializeObjectBrowser(context)
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
