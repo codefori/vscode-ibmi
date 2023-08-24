@@ -40,6 +40,37 @@ export const ContentSuite: TestSuite = {
       assert.deepStrictEqual(member, undefined);
     }},
 
+    {name: `Test memberResolveLibraryList`, test: async () => {
+      const content = instance.getContent();
+      const config = instance.getConfig();
+
+      const member = await content?.memberResolveLibraryList(`MATH`, `H`, {
+        libraryList: [`SYSTOOLS`, `QSYSINC`],
+        currentLibrary: config?.currentLibrary!
+      });
+
+      assert.deepStrictEqual(member, {
+        asp: undefined,
+        library: `QSYSINC`,
+        file: `H`,
+        name: `MATH`,
+        extension: `C`,
+        basename: `MATH.C`
+      });
+    }},
+
+    {name: `Test memberResolveLibraryList with bad name`, test: async () => {
+      const content = instance.getContent();
+      const config = instance.getConfig();
+
+      const member = await content?.memberResolveLibraryList(`BOOP`, `H`, {
+        libraryList: [`SYSTOOLS`, `QSYSINC`],
+        currentLibrary: config?.currentLibrary!
+      });
+
+      assert.deepStrictEqual(member, undefined);
+    }},
+
     {name: `Test objectResolve .FILE`, test: async () => {
       const content = instance.getContent();
   

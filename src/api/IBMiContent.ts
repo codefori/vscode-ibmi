@@ -8,6 +8,8 @@ import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, Qs
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
+import { CompileTools, ILELibrarySettings } from './CompileTools';
+import { instance } from '../instantiate';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -647,6 +649,32 @@ export default class IBMiContent {
     }
 
     return items;
+  }
+
+  async memberResolveLibraryList(member: string, file: string, libraryList?: ILELibrarySettings): Promise<IBMiMember | undefined> {
+    if (this.ibmi.remoteFeatures[`GETMBR.PGM`]) {
+      let env: {[id: string]: string} = {};
+
+      if (libraryList) {
+        if (libraryList.currentLibrary) env[`&CURLIB`] = libraryList.currentLibrary;
+        if (libraryList.currentLibrary) env[`&LIBL`] = libraryList.libraryList.join(` `);
+      }
+
+      const result = await CompileTools.runCommand(instance, {
+        command: `CALL ${this.config.tempLibrary}/GETMBR PARM('${file}' '${member}')`,
+        environment: 'ile',
+        env
+      });
+
+      if (result && (result.code === null || result.code === 0)) {
+        return this.ibmi.parserMemberPath(result.stdout);
+      } else {
+        return undefined;
+      }
+
+    } else {
+      throw new Error(`Member resolve feature is not enabled.`);
+    }
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {

@@ -21,6 +21,8 @@ export async function initGetMbr(instance: Instance) {
     await connection.remoteCommand(
       `CRTBNDCL PGM(${tempLib}/GETMBR) SRCFILE(${tempLib}/QTOOLS) DBGVIEW(*SOURCE) TEXT('vscode-ibmi member resolver')`
     );
+
+    connection.remoteFeatures[`GETMBR.PGM`] = `${config.tempLibrary}.GETMBR`;
   }
 }
 
@@ -32,13 +34,14 @@ function getSource() {
     `DCL VAR(&LIB) TYPE(*CHAR) LEN(10)`,
     `DCL VAR(&EXT) TYPE(*CHAR) LEN(10)`,
     `DCL VAR(&MSG) TYPE(*CHAR) LEN(50)`,
-  ``,
+    `dcl &NL *char 1 value( x'25' )`,
+    ``,
     `RTVMBRD FILE(*LIBL/&SRCPF) MBR(&NAME) RTNLIB(&LIB) SRCTYPE(&EXT)`,
     `CHGVAR VAR(&MSG) VALUE( +`,
     `  &LIB *TCAT '/' *TCAT +`,
     `  &SRCPF *TCAT '/' *TCAT +`,
     `  &NAME *TCAT '.' *TCAT +`,
-    `  &EXT +`,
+    `  &EXT *TCAT &NL +`,
     `)`,
     `CALLPRC PRC('printf') PARM(&MSG)`,
     `ENDPGM`,
