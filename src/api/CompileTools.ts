@@ -300,7 +300,7 @@ export namespace CompileTools {
             source: 'IBM i',
             presentationOptions: {
               showReuseMessage: true,
-              clear: true
+              clear: GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)
             },
             problemMatchers: [],
             runOptions: {},
