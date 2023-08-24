@@ -381,7 +381,7 @@ export default class IBMiContent {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `));
 
         // If there is an error about the library, remove it
         if (badLib) badLibs.push(badLib);

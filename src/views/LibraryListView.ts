@@ -137,20 +137,37 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           }
 
           if (addingLib) {
-            if (addingLib.length <= 10) {
-              libraryList.push(addingLib.toUpperCase());
-              const badLibs = await content.validateLibraryList(libraryList);
-
-              if (badLibs.length > 0) {
-                libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-                vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
-              }
-
-              config.libraryList = libraryList;
-              await this.updateConfig(config);
-            } else {
+            if (addingLib.length > 10) {
               vscode.window.showErrorMessage(t(`LibraryListView.addToLibraryList.tooLong`));
+              return;
             }
+
+            addingLib = addingLib.toUpperCase();
+
+            if (libraryList.includes(addingLib)) {
+              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.alreadyInList`, addingLib));
+              return;
+            }
+
+            let badLibs = await content.validateLibraryList([addingLib]);
+
+            if (badLibs.length > 0) {
+              libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.invalidLib`, badLibs.join(`, `)));
+            } else {
+              libraryList.push(addingLib);
+              vscode.window.showInformationMessage(t(`LibraryListView.addToLibraryList.addedLib`, addingLib));
+            }
+
+            badLibs = await content.validateLibraryList(libraryList);
+
+            if (badLibs.length > 0) {
+              libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
+            }
+
+            config.libraryList = libraryList;
+            await this.updateConfig(config);
           }
         }
       }),
@@ -164,10 +181,12 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
             let index = libraryList.findIndex(file => file.toUpperCase() === node.path)
             if (index >= 0) {
+              const removedLib = libraryList[index];
               libraryList.splice(index, 1);
 
               config.libraryList = libraryList;
               await this.updateConfig(config);
+              vscode.window.showInformationMessage(t(`LibraryListView.removeFromLibraryList.removedLib`, removedLib));
             }
           }
         }
