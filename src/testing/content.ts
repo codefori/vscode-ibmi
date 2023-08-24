@@ -59,6 +59,18 @@ export const ContentSuite: TestSuite = {
       });
     }},
 
+    {name: `Test memberResolveLibraryList with bad libraries`, test: async () => {
+      const content = instance.getContent();
+      const config = instance.getConfig();
+
+      const member = await content?.memberResolveLibraryList(`MATH`, `H`, {
+        libraryList: [`SYSTOOLS`, `QSYS2`, `QIWS`],
+        currentLibrary: config?.currentLibrary!
+      });
+
+      assert.deepStrictEqual(member, undefined);
+    }},
+
     {name: `Test memberResolveLibraryList with bad name`, test: async () => {
       const content = instance.getContent();
       const config = instance.getConfig();
