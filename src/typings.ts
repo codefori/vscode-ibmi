@@ -1,5 +1,6 @@
 import { Ignore } from 'ignore';
 import { WorkspaceFolder } from "vscode";
+import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
 import { Tools } from "./api/Tools";
@@ -124,11 +125,6 @@ export interface IBMiError {
   text: string
 }
 
-export interface Filter {
-  library: string,
-  filter: string
-}
-
 export interface FileError {
   sev: number
   lineNum: number
@@ -145,6 +141,24 @@ export interface QsysFsOptions {
 
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
 
-export interface Library {
+interface WithPath {
   path: string
+}
+
+export interface Library extends WithPath {}
+
+export interface FilteredItem {
+  filter: ConnectionConfiguration.ObjectFilters
+}
+
+export interface ObjectItem extends FilteredItem, WithPath {
+  object: IBMiObject
+}
+
+export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
+  sourceFile: IBMiFile
+}
+
+export interface MemberItem extends FilteredItem, WithPath {
+  member: IBMiMember
 }
