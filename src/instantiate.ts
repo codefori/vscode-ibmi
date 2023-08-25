@@ -215,7 +215,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
-      const uri = target && "fsPath" in target ? target : (target?.resourceUri || editor?.document.uri);
+      let uri;
+      if(target){
+        if("fsPath" in target){
+          uri = target;
+        }
+        else{
+          uri = target?.resourceUri;
+        }
+      } 
+      
+      uri = uri || editor?.document.uri;
+
       if (uri) {
         const config = instance.getConfig();
         if (config) {
