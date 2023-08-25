@@ -6,6 +6,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
   const config = instance.getConfig();
   if (config) {
     const objectFilters = config.objectFilters;
+    const filterIndex = filter ? objectFilters.findIndex(f => f.name === filter!.name) : -1;
     let newFilter = false;
 
     if (filter) {
@@ -81,17 +82,10 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
           data.name = `${data.name.trim()} (2)`;
         }
         objectFilters.push(data);
-      } else {
-        const index = objectFilters.findIndex(f => f.name === data.name);
-        if (index > -1) {
-          objectFilters[index] = {
-            ...filter,
-            ...data,
-          };
-        }
+      } else if (filterIndex > -1) {
+        objectFilters[filterIndex] = Object.assign(filter, data);
       }
 
-      config.objectFilters = objectFilters;
       await ConnectionConfiguration.update(config);
     }
   }
