@@ -122,7 +122,7 @@ export const fr: Locale = {
   'objectBrowser.updateMemberText.errorMessage': `Erreur lors de la mise à jour du texte du membre! {0}`,
   'objectBrowser.renameMember.prompt': `Renommer {0}`,
   'objectBrowser.renameMember.errorMessage': `Erreur lors du renommage du membre! {0}`,
-  'objectBrowser.renameMember.invalid.input': `Le nouveau nom du membre doit être différentd de l'ancien`,
+  'objectBrowser.renameMember.invalid.input': `Le nouveau nom du membre doit être différent de l'ancien`,
   'objectBrowser.uploadAndReplaceMemberAsFile.infoMessage': `Le membre a été uploadé.`,
   'objectBrowser.uploadAndReplaceMemberAsFile.errorMessage': `Erreur lors de l'upload du contenu du membre! {0}`,
   'objectBrowser.downloadMemberContent.infoMessage': `Le membre a été téléchargé.`,
