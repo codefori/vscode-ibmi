@@ -1003,7 +1003,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       if (result === t(`Yes`)) {
         const connection = getConnection();
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.deleteObject.progress") }
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.deleteObject.progress", node.path, node.object.type) }
           , async (progress) => {
             try {
               // TODO: Progress message about deleting!
@@ -1036,7 +1036,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (newObject) {
           const escapedObject = newObject.replace(/'/g, `''`).replace(/`/g, `\\\``).split(`/`);
           const connection = getConnection();
-          newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.renameObject.progress") }
+          newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.renameObject.progress", node.path, node.object.type, escapedObject) }
             , async (progress) => {
               try {
                 await connection.remoteCommand(
@@ -1073,7 +1073,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           const escapedLibrary = newLibrary.replace(/'/g, `''`).replace(/`/g, `\\\``);
           const connection = getConnection();
 
-          newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.moveObject.progress") }
+          newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.moveObject.progress", node.path, node.object.type, escapedLibrary) }
             , async (progress) => {
               try {
                 await connection.remoteCommand(
