@@ -9,7 +9,7 @@ import { Search } from "../api/Search";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { FilteredItem, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
+import { BrowserItem, BrowserItemParameters, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -35,40 +35,25 @@ const objectIcons = {
   '': `circle-large-outline`
 }
 
-type BrowserItemParameters = {
-  icon?: string
-  state?: vscode.TreeItemCollapsibleState
-  parent?: ObjectBrowserItem
-}
-
-class ObjectBrowserItem extends vscode.TreeItem {
-  constructor(label: string, readonly params?: BrowserItemParameters) {
-    super(label, params?.state);
-    this.iconPath = params?.icon ? new vscode.ThemeIcon(params.icon) : undefined;
-  }
-
-  get parent() {
-    return this.params?.parent;
-  }
-
-  getChildren?(): vscode.ProviderResult<ObjectBrowserItem[]>;
-
-  refresh() {
-    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`, this);
-  }
-}
-
-abstract class ObjectBrowserFilteredItem extends ObjectBrowserItem implements FilteredItem {
+class ObjectBrowserItem extends BrowserItem {
   constructor(readonly filter: ConnectionConfiguration.ObjectFilters, label: string, params?: BrowserItemParameters) {
     super(label, params);
   }
+
+  refresh(): void {
+    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`, this);
+  }
+
+  reveal(options?: FocusOptions) {
+    return vscode.commands.executeCommand<void>(`code-for-ibmi.revealInObjectBrowser`, this, options);
+  }
 }
 
-class ObjectBrowser implements vscode.TreeDataProvider<ObjectBrowserItem> {
-  private readonly emitter = new vscode.EventEmitter<ObjectBrowserItem | ObjectBrowserItem[] | undefined | null | void>();
+class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
+  private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
 
-  async moveFilterInList(node: ObjectBrowserFilterItem, filterMovement: `TOP` | `UP` | `DOWN` | `BOTTOM`) {
+  async moveFilterInList(node: ObjectBrowserItem, filterMovement: `TOP` | `UP` | `DOWN` | `BOTTOM`) {
     const config = getConfig();
     if (config) {
       const filterName = node.filter.name;
@@ -104,7 +89,7 @@ class ObjectBrowser implements vscode.TreeDataProvider<ObjectBrowserItem> {
     }
   }
 
-  refresh(node?: ObjectBrowserItem) {
+  refresh(node?: BrowserItem) {
     this.emitter.fire(node);
   }
 
@@ -121,15 +106,15 @@ class ObjectBrowser implements vscode.TreeDataProvider<ObjectBrowserItem> {
     return autoRefresh;
   }
 
-  getTreeItem(element: ObjectBrowserItem): vscode.TreeItem {
+  getTreeItem(element: BrowserItem): vscode.TreeItem {
     return element;
   }
 
-  getChildren(element?: ObjectBrowserItem): vscode.ProviderResult<ObjectBrowserItem[]> {
+  getChildren(element?: BrowserItem): vscode.ProviderResult<BrowserItem[]> {
     return element?.getChildren?.() || this.getFilters();
   }
 
-  getFilters(): ObjectBrowserItem[] {
+  getFilters(): BrowserItem[] {
     const config = getConfig();
     const filters = config.objectFilters;
     if (filters.length) {
@@ -139,12 +124,12 @@ class ObjectBrowser implements vscode.TreeDataProvider<ObjectBrowserItem> {
     }
   }
 
-  getParent(element: ObjectBrowserItem): vscode.ProviderResult<ObjectBrowserItem> {
+  getParent(element: BrowserItem): vscode.ProviderResult<BrowserItem> {
     return element.parent;
   }
 }
 
-class CreateFilterItem extends ObjectBrowserItem {
+class CreateFilterItem extends BrowserItem {
   constructor() {
     super(`${'objectBrowser.createFilter'}...`, { icon: "add" });
     this.command = {
@@ -158,7 +143,7 @@ class CreateFilterItem extends ObjectBrowserItem {
   }
 }
 
-class ObjectBrowserFilterItem extends ObjectBrowserFilteredItem {
+class ObjectBrowserFilterItem extends ObjectBrowserItem {
   constructor(filter: ConnectionConfiguration.ObjectFilters) {
     super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `filter${filter.protected ? `_readonly` : ``}`;
@@ -180,8 +165,8 @@ class ObjectBrowserFilterItem extends ObjectBrowserFilteredItem {
   }
 }
 
-class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserFilteredItem implements SourcePhysicalFileItem {
-  readonly sort: SortOptions = { order: "?" };
+class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements SourcePhysicalFileItem {
+  readonly sort: SortOptions = { order: "name", ascending: true };
   readonly path: string;
 
   constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiFile) {
@@ -201,10 +186,12 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserFilteredItem impl
     else {
       this.sort.ascending = !this.sort.ascending
     }
-    this.description = `${this.sourceFile.text ? `${this.sourceFile.text} ` : ``}(sort: ${sort.order} ${sort.ascending ? `🔼` : `🔽`})`;
+    this.description = `${this.sourceFile.text ? `${this.sourceFile.text} ` : ``}(sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
+    this.reveal({ expand: true });
+    this.refresh();
   }
 
-  async getChildren(): Promise<ObjectBrowserItem[] | undefined> {
+  async getChildren(): Promise<BrowserItem[] | undefined> {
     const content = getContent();
 
     const writable = await content.checkObject({
@@ -252,7 +239,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserFilteredItem impl
   }
 }
 
-class ObjectBrowserObjectItem extends ObjectBrowserFilteredItem implements ObjectItem {
+class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
   readonly path: string;
 
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
@@ -283,7 +270,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserFilteredItem implements Objec
   }
 }
 
-class ObjectBrowserMemberItem extends ObjectBrowserFilteredItem implements MemberItem {
+class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   readonly path: string;
   readonly sortBy: (sort: SortOptions) => void;
 
@@ -326,14 +313,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.sortMembersByName`, (item: ObjectBrowserSourcePhysicalFileItem | ObjectBrowserMemberItem) => {
       item.sortBy({ order: "name" });
-      objectTreeViewer.reveal(item, { expand: true });
-      objectBrowser.refresh(item);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.sortMembersByDate`, (item: ObjectBrowserSourcePhysicalFileItem | ObjectBrowserMemberItem) => {
       item.sortBy({ order: "date" });
-      objectTreeViewer.reveal(item, { expand: true });
-      objectBrowser.refresh(item);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createFilter`, async () => {
@@ -433,8 +416,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       objectBrowser.autoRefresh();
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, async (item?: ObjectBrowserItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, async (item?: BrowserItem) => {
       objectBrowser.refresh(item);
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.revealInObjectBrowser`, async (item: BrowserItem, options?: FocusOptions) => {
+      objectTreeViewer.reveal(item, options);
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
@@ -1094,7 +1081,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 return false;
               }
             });
-          }
+        }
       } while (newLibrary && !newLibraryOK)
     })
   );
