@@ -946,7 +946,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             node.object.text = newText;
             node.updateDescription();
             objectBrowser.refresh(node);
-            vscode.window.showInformationMessage(t(`objectBrowser.changeObjectDesc.infoMessage`, node.path, node.object.type));
+            vscode.window.showInformationMessage(t(`objectBrowser.changeObjectDesc.infoMessage`, node.path, node.object.type.toUpperCase()));
           } catch (e) {
             vscode.window.showErrorMessage(t(`objectBrowser.changeObjectDesc.errorMessage2`, node.path, e));
             newTextOK = false;
@@ -987,8 +987,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             if (oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()) {
               objectBrowser.refresh(node.parent);
             }
-            else if (!objectBrowser.autoRefresh(t(`objectBrowser.copyObject.infoMessage`, node.path, node.object.type, escapedPath))) {
-              vscode.window.showInformationMessage(t(`objectBrowser.copyObject.infoMessage2`, node.path, node.object.type, escapedPath));
+            else if (!objectBrowser.autoRefresh(t(`objectBrowser.copyObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedPath))) {
+              vscode.window.showInformationMessage(t(`objectBrowser.copyObject.infoMessage2`, node.path, node.object.type.toUpperCase(), escapedPath));
             }
           } catch (e) {
             vscode.window.showErrorMessage(t(`objectBrowser.copyObject.errorMessage4`, node.path, e));
@@ -999,11 +999,11 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.deleteObject`, async (node: ObjectBrowserObjectItem) => {
-      let result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteObject.warningMessage`, node.path, node.object.type), t(`Yes`), t(`Cancel`));
+      let result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteObject.warningMessage`, node.path, node.object.type.toUpperCase()), t(`Yes`), t(`Cancel`));
 
       if (result === t(`Yes`)) {
         const connection = getConnection();
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.deleteObject.progress", node.path, node.object.type) }
+        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.deleteObject.progress", node.path, node.object.type.toUpperCase()) }
           , async (progress) => {
             try {
               // TODO: Progress message about deleting!
@@ -1011,7 +1011,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 `DLTOBJ OBJ(${node.path}) OBJTYPE(${node.object.type})`,
               );
 
-              vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, node.path, node.object.type));
+              vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, node.path, node.object.type.toUpperCase()));
               objectBrowser.refresh(node.parent);
             } catch (e) {
               vscode.window.showErrorMessage(t(`objectBrowser.deleteObject.errorMessage`, e));
@@ -1036,14 +1036,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (newObject) {
           const escapedObject = newObject.replace(/'/g, `''`).replace(/`/g, `\\\``).split(`/`);
           const connection = getConnection();
-          newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.renameObject.progress", node.path, node.object.type, escapedObject) }
+          newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.renameObject.progress", node.path, node.object.type.toUpperCase(), escapedObject) }
             , async (progress) => {
               try {
                 await connection.remoteCommand(
                   `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`
                 );
 
-                vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage`, node.path, node.object.type, escapedObject));
+                vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedObject));
                 objectBrowser.refresh(node.parent);
                 return true;
               } catch (e) {
@@ -1073,15 +1073,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           const escapedLibrary = newLibrary.replace(/'/g, `''`).replace(/`/g, `\\\``);
           const connection = getConnection();
 
-          newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.moveObject.progress", node.path, node.object.type, escapedLibrary) }
+          newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.moveObject.progress", node.path, node.object.type.toUpperCase(), escapedLibrary) }
             , async (progress) => {
               try {
                 await connection.remoteCommand(
                   `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`
                 );
 
-                if (!objectBrowser.autoRefresh(t(`objectBrowser.moveObject.infoMessage`, node.path, node.object.type, escapedLibrary))) {
-                  vscode.window.showInformationMessage(t(`objectBrowser.moveObject.infoMessage2`, node.path, node.object.type, escapedLibrary));
+                if (!objectBrowser.autoRefresh(t(`objectBrowser.moveObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedLibrary))) {
+                  vscode.window.showInformationMessage(t(`objectBrowser.moveObject.infoMessage2`, node.path, node.object.type.toUpperCase(), escapedLibrary));
                 }
                 return true;
               } catch (e) {
