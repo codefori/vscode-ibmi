@@ -213,9 +213,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node: any, group?: any, action?: Action, method?: DeploymentMethod) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
-      const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
+      const uri = target && "fsPath" in target ? target : (target?.resourceUri || editor?.document.uri);
       if (uri) {
         const config = instance.getConfig();
         if (config) {
