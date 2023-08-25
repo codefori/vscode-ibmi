@@ -467,7 +467,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: MemberItem, fullPath) => {
+    vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath) => {
       const connection = getConnection();
       const oldMember = node.member;
       fullPath = await vscode.window.showInputBox({
@@ -532,7 +532,17 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               vscode.commands.executeCommand(`vscode.open`, getMemberUri(memberPath));
             }
 
-            objectBrowser.autoRefresh();
+            if(oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()){
+              if(oldMember.file.toLocaleLowerCase() === memberPath.file.toLocaleLowerCase()){
+                objectBrowser.refresh(node.parent);
+              }
+              else{
+                objectBrowser.refresh(node.parent?.parent);
+              }
+            }
+            else{
+              objectBrowser.autoRefresh();
+            }
           } catch (e) {
             return e;
           }
@@ -584,7 +594,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           await connection.remoteCommand(
             `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
           );
-
+          
+          node.description = newText;
           objectBrowser.refresh(node);
         } catch (e) {
           vscode.window.showErrorMessage(t(`objectBrowser.updateMemberText.errorMessage`, e));
@@ -843,7 +854,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       if (!newLibrary) return;
 
-      let filters = config.objectFilters;
+      const filters = config.objectFilters;
 
       try {
         await connection.remoteCommand(
@@ -936,9 +947,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           try {
             newTextOK = true;
             await connection.remoteCommand(
-              `CHGOBJD OBJ(${node.path}) OBJTYPE(*${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
+              `CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
             );
-
+            
+            node.object.text = newText;
             node.updateDescription();
             objectBrowser.refresh(node);
             vscode.window.showInformationMessage(t(`objectBrowser.changeObjectDesc.infoMessage`, node.path, node.object.type));
@@ -950,7 +962,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       } while (newText && !newTextOK)
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.copyObject`, async (node: ObjectItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.copyObject`, async (node: ObjectBrowserObjectItem) => {
       let newPath = node.path;
       let newPathOK;
       do {
@@ -976,10 +988,13 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             await connection.remoteCommand(
               node.object.type === `LIB` ?
                 `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
-                `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(*${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
+                `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
             );
 
-            if (!objectBrowser.autoRefresh(t(`objectBrowser.copyObject.infoMessage`, node.path, node.object.type, escapedPath))) {
+            if(oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()){
+              objectBrowser.refresh(node.parent);
+            }
+            else if (!objectBrowser.autoRefresh(t(`objectBrowser.copyObject.infoMessage`, node.path, node.object.type, escapedPath))) {
               vscode.window.showInformationMessage(t(`objectBrowser.copyObject.infoMessage2`, node.path, node.object.type, escapedPath));
             }
           } catch (e) {
@@ -1000,7 +1015,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             try {
               // TODO: Progress message about deleting!
               await connection.remoteCommand(
-                `DLTOBJ OBJ(${node.path}) OBJTYPE(*${node.object.type})`,
+                `DLTOBJ OBJ(${node.path}) OBJTYPE(${node.object.type})`,
               );
 
               vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, node.path, node.object.type));
@@ -1032,7 +1047,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             , async (progress) => {
               try {
                 await connection.remoteCommand(
-                  `RNMOBJ OBJ(${node.path}) OBJTYPE(*${node.object.type}) NEWOBJ(${escapedObject})`
+                  `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`
                 );
 
                 vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage`, node.path, node.object.type, escapedObject));
@@ -1069,7 +1084,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             , async (progress) => {
               try {
                 await connection.remoteCommand(
-                  `MOVOBJ OBJ(${node.path}) OBJTYPE(*${node.object.type}) TOLIB(${newLibrary})`
+                  `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`
                 );
 
                 if (!objectBrowser.autoRefresh(t(`objectBrowser.moveObject.infoMessage`, node.path, node.object.type, escapedLibrary))) {
