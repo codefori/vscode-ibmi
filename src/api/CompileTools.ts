@@ -331,6 +331,7 @@ export namespace CompileTools {
 
             if (commandResult) {
               const isIleCommand = environment === `ile`;
+              const isPaseWithIleErrors = environment === `pase`;
 
               if (isIleCommand) {
                 const possibleObject = getObjectFromCommand(commandResult.command);
@@ -360,7 +361,7 @@ export namespace CompileTools {
                 outputChannel.appendLine(`Fetching errors from .evfevent.`);
 
               }
-              else if (isIleCommand) {
+              else if (evfeventInfo.library && evfeventInfo.object) {
                 if (command.includes(`*EVENTF`)) {
                   outputChannel.appendLine(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.`);
                   refreshDiagnosticsFromServer(instance, evfeventInfo);
