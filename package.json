@@ -1365,6 +1365,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.revealInObjectBrowser",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Reveal Object Browser Item",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.createSourceFile",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Create Source File",
@@ -1765,6 +1771,10 @@
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.revealInObjectBrowser",
 					"when": "never"
 				}
 			],
