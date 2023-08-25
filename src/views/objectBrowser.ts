@@ -241,7 +241,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
 
 class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
   readonly path: string;
-  
+
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     const icon = Object.entries(objectIcons).find(([key]) => key === type.toUpperCase())?.[1] || objectIcons[``];
@@ -532,15 +532,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               vscode.commands.executeCommand(`vscode.open`, getMemberUri(memberPath));
             }
 
-            if(oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()){
-              if(oldMember.file.toLocaleLowerCase() === memberPath.file.toLocaleLowerCase()){
+            if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
+              if (oldMember.file.toLocaleLowerCase() === memberPath.file.toLocaleLowerCase()) {
                 objectBrowser.refresh(node.parent);
               }
-              else{
+              else {
                 objectBrowser.refresh(node.parent?.parent);
               }
             }
-            else{
+            else {
               objectBrowser.autoRefresh();
             }
           } catch (e) {
@@ -594,7 +594,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           await connection.remoteCommand(
             `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
           );
-          
+
           node.description = newText;
           objectBrowser.refresh(node);
         } catch (e) {
@@ -849,23 +849,23 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       const connection = getConnection();
 
       const newLibrary = await vscode.window.showInputBox({
-        prompt: t(`objectBrowser.createLibrary.prompt`)
+        prompt: t(`objectBrowser.createLibrary.prompt`),
+        validateInput: (library => library.length > 10 ? t(`objectBrowser.createLibrary.errorMessage2`) : undefined)
       });
 
-      if (!newLibrary) return;
+      if (newLibrary) {
 
-      const filters = config.objectFilters;
+        const filters = config.objectFilters;
 
-      try {
-        await connection.remoteCommand(
-          `CRTLIB LIB(${newLibrary})`
-        );
-      } catch (e) {
-        vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage`, newLibrary, e));
-        return;
-      }
+        try {
+          await connection.remoteCommand(
+            `CRTLIB LIB(${newLibrary})`
+          );
+        } catch (e) {
+          vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage`, newLibrary, e));
+          return;
+        }
 
-      if (newLibrary.length <= 10) {
         filters.push({
           name: newLibrary,
           library: newLibrary,
@@ -892,38 +892,31 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 break;
             }
           });
-
-      } else {
-        vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage2`));
       }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node: ObjectBrowserFilterItem) => {
       const filter = node.filter;
       const fileName = await vscode.window.showInputBox({
-        prompt: t(`objectBrowser.createSourceFile.prompt`)
+        prompt: t(`objectBrowser.createSourceFile.prompt`),
+        validateInput: (fileName => fileName.length > 10 ? t('objectBrowser.createSourceFile.errorMessage2') : undefined)
       });
 
       if (fileName) {
         const connection = getConnection();
+        try {
+          const library = filter.library;
+          const uriPath = `${library}/${fileName.toUpperCase()}`
 
-        if (fileName !== undefined && fileName.length > 0 && fileName.length <= 10) {
-          try {
-            const library = filter.library;
-            const uriPath = `${library}/${fileName.toUpperCase()}`
+          vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
 
-            vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
+          await connection.remoteCommand(
+            `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`
+          );
 
-            await connection.remoteCommand(
-              `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`
-            );
-
-            objectBrowser.refresh(node);
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`objectBrowser.createSourceFile.errorMessage`, e));
-          }
-        } else {
-          vscode.window.showErrorMessage(t(`Source filename must be 10 chars or less.`));
+          objectBrowser.refresh(node);
+        } catch (e) {
+          vscode.window.showErrorMessage(t(`objectBrowser.createSourceFile.errorMessage`, e));
         }
       }
     }),
@@ -949,7 +942,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             await connection.remoteCommand(
               `CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
             );
-            
+
             node.object.text = newText;
             node.updateDescription();
             objectBrowser.refresh(node);
@@ -991,7 +984,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
             );
 
-            if(oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()){
+            if (oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()) {
               objectBrowser.refresh(node.parent);
             }
             else if (!objectBrowser.autoRefresh(t(`objectBrowser.copyObject.infoMessage`, node.path, node.object.type, escapedPath))) {
