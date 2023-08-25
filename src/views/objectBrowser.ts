@@ -241,7 +241,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
 
 class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
   readonly path: string;
-
+  
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     const icon = Object.entries(objectIcons).find(([key]) => key === type.toUpperCase())?.[1] || objectIcons[``];
@@ -280,9 +280,9 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.contextValue = `member${readOnly ? `_readonly` : ``}`;
     this.description = member.text;
 
-    const resourceUri = getMemberUri(member, readOnly ? { readonly: true } : undefined);
-    this.path = resourceUri.path;
-    this.tooltip = `${resourceUri.path}`
+    this.resourceUri = getMemberUri(member, readOnly ? { readonly: true } : undefined);
+    this.path = this.resourceUri.path;
+    this.tooltip = `${this.path}`
       .concat(`${member.text ? `\n${t("text")}:\t\t${member.text}` : ``}`)
       .concat(`${member.lines != undefined ? `\n${t("lines")}:\t${member.lines}` : ``}`)
       .concat(`${member.created ? `\n${t("created")}:\t${member.created.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`)
@@ -293,7 +293,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.command = {
       command: `vscode.open`,
       title: `Open Member`,
-      arguments: [resourceUri]
+      arguments: [this.resourceUri]
     };
   }
 }
