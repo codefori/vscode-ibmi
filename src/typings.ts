@@ -1,7 +1,7 @@
+import { Ignore } from 'ignore';
 import { WorkspaceFolder } from "vscode";
-import Instance from "./api/Instance";
-import { Ignore } from 'ignore'
 import { CustomUI } from "./api/CustomUI";
+import Instance from "./api/Instance";
 import { Tools } from "./api/Tools";
 import { DeployTools } from "./api/local/deployTools";
 
@@ -51,11 +51,14 @@ export interface CommandResult {
   command?: string;
 }
 
+export type ActionType = "member" | "streamfile" | "object" | "file";
+export type ActionEnvironment = "ile" | "qsh" | "pase";
+
 export interface Action {
   name: string;
   command: string;
-  type?: "member" | "streamfile" | "object" | "file";
-  environment: "ile" | "qsh" | "pase";
+  type?: ActionType;
+  environment: ActionEnvironment;
   extensions?: string[];
   deployFirst?: boolean;
   postDownload?: string[];
