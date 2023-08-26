@@ -26,7 +26,11 @@ export const en: Locale = {
   'text':'Text',
   'lines':'Lines',
   'changed':'Changed',
-  'created':'Created',
+  'created':'Created',  
+  'duplicate': 'Duplicate',
+  'save': 'Save',
+  'delete': 'Delete',
+  'cancel': 'Cancel',
   // Sandbox:
   'sandbox.input.user.title': `User for server`,
   'sandbox.input.user.prompt': `Enter username for {0}`,
