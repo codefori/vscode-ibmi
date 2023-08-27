@@ -4,6 +4,7 @@ import Instance from "../Instance";
 import { parseErrors } from "./parser";
 import { FileError } from "../../typings";
 import { getEvfeventFiles } from "../local/actions";
+import { GlobalConfiguration } from "../Configuration";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -16,13 +17,27 @@ export interface EvfEventInfo {
 }
 
 export function registerDiagnostics(): vscode.Disposable[] {
-  return [
+  let disposables = [
     ileDiagnostics,
 
     vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
       clearDiagnostics();
     }),
-  ]
+  ];
+
+  if (GlobalConfiguration.get(`clearDiagnosticOnEdit`)) {
+    disposables.push(
+      vscode.workspace.onDidChangeTextDocument(e => {
+        if (ileDiagnostics.has(e.document.uri)) {
+          for (const change of e.contentChanges) {
+            clearDiagnostic(e.document.uri, change.range)
+          }
+        }
+      })
+    )
+  }
+
+  return disposables;
 }
 
 /**
@@ -30,6 +45,20 @@ export function registerDiagnostics(): vscode.Disposable[] {
  */
 export function clearDiagnostics() {
   ileDiagnostics.clear();
+}
+
+export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
+  const currentList = ileDiagnostics.get(uri);
+
+  if (currentList) {
+    const existing = currentList.findIndex(d => d.range.contains(changeRange));
+
+    if (existing >= 0) {
+      const newList = [...currentList.slice(0, existing), ...currentList.slice(existing+1)];
+
+      ileDiagnostics.set(uri, newList);
+    }
+  }
 }
 
 export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo) {
@@ -91,9 +120,11 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
 
         const diagnostic = new vscode.Diagnostic(
           new vscode.Range(error.lineNum, error.column, error.toLineNum, error.toColumn),
-          `${error.code}: ${error.text} (${error.sev})`,
+          `${error.text} (${error.sev})`,
           diagnosticSeverity(error)
         );
+
+        diagnostic.code = error.code;
 
         if (config) {
           if (!config.hideCompileErrors.includes(error.code)) {

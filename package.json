@@ -432,6 +432,11 @@
 					"default": true,
 					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
 				},
+				"code-for-ibmi.clearDiagnosticOnEdit": {
+					"type": "boolean",
+					"default": false,
+					"description": "When lines with ILE diagnostics are edited, the diagnostic will be removed. Requires reload/restart if changed."
+				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
 					"default": false,
