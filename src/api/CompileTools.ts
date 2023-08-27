@@ -331,7 +331,6 @@ export namespace CompileTools {
 
             if (commandResult) {
               const isIleCommand = environment === `ile`;
-              const isPaseWithIleErrors = environment === `pase`;
 
               if (isIleCommand) {
                 const possibleObject = getObjectFromCommand(commandResult.command);
