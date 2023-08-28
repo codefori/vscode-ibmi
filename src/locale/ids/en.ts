@@ -176,7 +176,7 @@ export const en: Locale = {
   'objectBrowser.deleteObject.warningMessage': `Are you sure you want to delete {0} {1}?`,
   'objectBrowser.deleteObject.infoMessage': `Deleted {0} {1}.`,
   'objectBrowser.deleteObject.errorMessage': `Error deleting object! {0}`,
-  'objectBrowser.deleteObject.progress':'Deleting object {0}...',
+  'objectBrowser.deleteObject.progress':'Deleting object {0} {1}...',
   'objectBrowser.renameObject.prompt': `Rename object`,
   'objectBrowser.renameObject.errorMessage': `Object name must be 10 chars or less.`,
   'objectBrowser.renameObject.infoMessage': `Renamed object {0} {1} to {2}.`,

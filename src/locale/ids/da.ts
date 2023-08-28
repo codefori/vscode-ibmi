@@ -176,7 +176,7 @@ export const da: Locale = {
   'objectBrowser.deleteObject.warningMessage': `Er du sikker på at du vil slette {0} {1}?`,
   'objectBrowser.deleteObject.infoMessage': `Slettede {0} {1}.`,
   'objectBrowser.deleteObject.errorMessage': `Fejl ved sletning af objekt! {0}`,
-  'objectBrowser.deleteObject.progress':'Sletter objekt {0}...',
+  'objectBrowser.deleteObject.progress':'Sletter objekt {0} {1}...',
   'objectBrowser.renameObject.prompt': `Omdøb objekt`,
   'objectBrowser.renameObject.errorMessage': `Objektnavn må være 10 tegn eller mindre.`,
   'objectBrowser.renameObject.infoMessage': `Omdøbte objekt {0} {1} til {2}.`,
