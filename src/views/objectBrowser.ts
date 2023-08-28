@@ -286,7 +286,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
       .concat(`${member.text ? `\n${t("text")}:\t\t${member.text}` : ``}`)
       .concat(`${member.lines != undefined ? `\n${t("lines")}:\t${member.lines}` : ``}`)
       .concat(`${member.created ? `\n${t("created")}:\t${member.created.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`)
-      .concat(`${member.changed ? `\n${"changed"}:\t${member.changed.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`);
+      .concat(`${member.changed ? `\n${t("changed")}:\t${member.changed.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`);
 
     this.sortBy = parent.sortBy;
 
