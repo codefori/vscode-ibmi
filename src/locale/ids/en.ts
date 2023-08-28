@@ -1,6 +1,7 @@
 import { Locale } from "..";
 
 export const en: Locale = {
+  // Common words and texts:
   'Yes': `Yes`,
   'No': `No`,
   'Cancel': `Cancel`,
@@ -21,6 +22,12 @@ export const en: Locale = {
   'save': 'Save',
   'delete': 'Delete',
   'cancel': 'Cancel',
+  'not.connected':'Not connected to an IBM i',
+  'text':'Text',
+  'lines':'Lines',
+  'changed':'Changed',
+  'created':'Created',
+  // Sandbox:
   'sandbox.input.user.title': `User for server`,
   'sandbox.input.user.prompt': `Enter username for {0}`,
   'sandbox.input.password.title': `Password for server`,
@@ -33,11 +40,6 @@ export const en: Locale = {
   'sandbox.connected.modal.detail': `You are using this system at your own risk. Do not share any sensitive or private information.`,
   'sandbox.noconnection.modal.title': `Oh no! The sandbox is down.`,
   'sandbox.noconnection.modal.detail': `Sorry, but the sandbox is offline right now. Try again another time.`,
-  'not.connected':'Not connected to an IBM i',
-  'text':'Text',
-  'lines':'Lines',
-  'changed':'Changed',
-  'created':'Created',
   // ConnectionBrowser:
   'connectionBrowser.connectTo.lastConnection': `Last connection`,
   'connectionBrowser.connectTo.lastUsed': `Last used: {0}`,
