@@ -1,6 +1,7 @@
 import { Locale } from "..";
 
 export const da: Locale = {
+  // Common words and texts:
   'Yes': `Ja`,
   'No': `Nej`,
   'Cancel': `Afbryd`,
@@ -17,6 +18,12 @@ export const da: Locale = {
   'clearList': `$(trash) Nulstil liste`,
   'clearedList': `Nulstillede liste.`,
   'currentLibrary': `(aktuelle bibliotek)`,
+  'not.connected':'Ikke forbundet til en IBM i',
+  'text':'Tekst',
+  'lines':'Linier',
+  'changed':'Ændret',
+  'created':'Oprettet',
+  // Sandbox:
   'sandbox.input.user.title': `Bruger for server`,
   'sandbox.input.user.prompt': `Indtast brugernavn for {0}`,
   'sandbox.input.password.title': `Kodeord for server`,

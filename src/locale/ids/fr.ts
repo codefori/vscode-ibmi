@@ -1,6 +1,7 @@
 import { Locale } from "..";
 
 export const fr: Locale = {
+  // Common words and texts:
   'Yes': `Oui`,
   'No': `Non`,
   'Cancel': `Annuler`,
@@ -17,6 +18,12 @@ export const fr: Locale = {
   'clearList': `$(trash) Effacer liste`,
   'clearedList': `Liste effacée.`,
   'currentLibrary': `(bibliothèque en cours)`,
+  'not.connected':'Non connecté à un IBM i',
+  'text':'Texte',
+  'lines':'Lignes',
+  'changed':'Modification',
+  'created':'Création',
+  // Sandbox:
   'sandbox.input.user.title': `Nom d'utilisateur`,
   'sandbox.input.user.prompt': `Entrez le nom d'utilisateur pour {0}`,
   'sandbox.input.password.title': `Mot de passe`,
@@ -29,11 +36,6 @@ export const fr: Locale = {
   'sandbox.connected.modal.detail': `Vous êtes seul responsable de l'utilisation du bas à sable. Ne partagez pas d'informations à caractère sensible ou privé.`,
   'sandbox.noconnection.modal.title': `Aïe aïe aïe, le bac à sable est en panne!`,
   'sandbox.noconnection.modal.detail': `Désolé, le bac à sable est est hors-ligne pour le moment. Réessayez plus tard.`,
-  'not.connected':'Non connecté à un IBM i',
-  'text':'Texte',
-  'lines':'Lignes',
-  'changed':'Modification',
-  'created':'Création',
   // ConnectionBrowser:
   'connectionBrowser.connectTo.lastConnection': `Dernière connexion`,
   'connectionBrowser.connectTo.lastUsed': `Dernière utilisation: {0}`,
