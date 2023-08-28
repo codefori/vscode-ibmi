@@ -168,7 +168,7 @@ export const fr: Locale = {
   'objectBrowser.deleteObject.warningMessage': `Êtes-vous sûr de vouloir supprimer {0} {1}?`,
   'objectBrowser.deleteObject.infoMessage': `{0} {1} supprimé.`,
   'objectBrowser.deleteObject.errorMessage': `Erreur lors de la suppression de l'objet! {0}`,
-  'objectBrowser.deleteObject.progress':`Suppression de l'objet {0}...`,
+  'objectBrowser.deleteObject.progress':`Suppression de l'objet {0} {1}...`,
   'objectBrowser.renameObject.prompt': `Renamer l'objet`,
   'objectBrowser.renameObject.errorMessage': `Le nom de l'objet doit faire au maximum 10 caractères de long.`,
   'objectBrowser.renameObject.infoMessage': `Objet {0} {1} renommé {2}.`,
