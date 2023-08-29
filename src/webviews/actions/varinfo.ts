@@ -35,15 +35,15 @@ export function getVariablesInfo(): VariableInfoList {
       { name: `&amp;RELATIVEPATH`, text: t("actions.RELATIVEPATH")},
       { name: `&amp;PARENT`, text: t("actions.PARENT")},
       { name: `&amp;BASENAME`, text: t("actions.BASENAME")},
-      { name: `&amp;NAME`, text: t("actions.stmf.NAME")},
-      { name: `&amp;EXT`, text: t("actions.stmf.EXT")},
+      { name: `&amp;NAME`, text: t("actions.streamfile.NAME")},
+      { name: `&amp;EXT`, text: t("actions.streamfile.EXT")},
       ...generic()
     ],
     object: [
       { name: `&amp;LIBRARY`, text: t("actions.LIBRARY")},
       { name: `&amp;NAME`, text: t("actions.NAME")},
-      { name: `&amp;TYPE`, text: t("actions.TYPE")},
-      { name: `&amp;EXT`, text: t("actions.EXT")},
+      { name: `&amp;TYPE`, text: t("actions.object.TYPE")},
+      { name: `&amp;EXT`, text: t("actions.object.EXT")},
       ...generic()
     ]
   }
