@@ -26,7 +26,11 @@ export const da: Locale = {
   'text':'Tekst',
   'lines':'Linier',
   'changed':'Ændret',
-  'created':'Oprettet',
+  'created':'Oprettet',  
+  'duplicate': 'Kopier',
+  'save': 'Gem',
+  'delete': 'Slet',
+  'cancel': 'Afbryd',
   // Sandbox:
   'sandbox.input.user.title': `Bruger for server`,
   'sandbox.input.user.prompt': `Indtast brugernavn for {0}`,
