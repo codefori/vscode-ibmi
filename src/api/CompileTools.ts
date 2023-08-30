@@ -82,6 +82,8 @@ export namespace CompileTools {
       variables.set(`\\*CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
       variables.set(`&USERNAME`, connection.currentUser);
       variables.set(`{usrprf}`, connection.currentUser);
+      variables.set(`&HOST`, connection.currentHost);
+      variables.set(`{host}`, connection.currentHost);
       variables.set(`&HOME`, config.homeDirectory);
 
       const libraryList = buildLibraryList(librarySettings);
