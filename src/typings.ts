@@ -1,8 +1,10 @@
-import { WorkspaceFolder } from "vscode";
-import Instance from "./api/Instance";
-import { Ignore } from 'ignore'
+import { Ignore } from 'ignore';
+import { ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
+import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
+import Instance from "./api/Instance";
 import { Tools } from "./api/Tools";
+import { ProviderResult } from './api/import/git';
 import { DeployTools } from "./api/local/deployTools";
 
 export interface CodeForIBMi {
@@ -121,11 +123,6 @@ export interface IBMiError {
   text: string
 }
 
-export interface Filter {
-  library: string,
-  filter: string
-}
-
 export interface FileError {
   sev: number
   lineNum: number
@@ -142,6 +139,47 @@ export interface QsysFsOptions {
 
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
 
-export interface Library {
+export interface WithPath {
   path: string
+}
+
+export interface Library extends WithPath { }
+
+export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean | number }
+
+export type BrowserItemParameters = {
+  icon?: string
+  state?: TreeItemCollapsibleState
+  parent?: BrowserItem
+}
+
+export class BrowserItem extends TreeItem {
+  constructor(label: string, readonly params?: BrowserItemParameters) {
+    super(label, params?.state);
+    this.iconPath = params?.icon ? new ThemeIcon(params.icon) : undefined;
+  }
+
+  get parent() {
+    return this.params?.parent;
+  }
+
+  getChildren?(): ProviderResult<BrowserItem[]>;
+  refresh?(): void;
+  reveal?(options?: FocusOptions): Thenable<void>;
+}
+
+export interface FilteredItem {
+  filter: ConnectionConfiguration.ObjectFilters
+}
+
+export interface ObjectItem extends FilteredItem, WithPath {
+  object: IBMiObject
+}
+
+export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
+  sourceFile: IBMiFile
+}
+
+export interface MemberItem extends FilteredItem, WithPath {
+  member: IBMiMember
 }

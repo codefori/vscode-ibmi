@@ -1365,6 +1365,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.revealInObjectBrowser",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Reveal Object Browser Item",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.createSourceFile",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Create Source File",
@@ -1689,6 +1695,86 @@
 				},
 				{
 					"command": "code-for-ibmi.browse",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterUp",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterDown",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterToTop",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterToBottom",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.createMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.updateMemberText",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadMemberAsFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.createSourceFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.changeObjectDesc",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.revealInObjectBrowser",
 					"when": "never"
 				}
 			],
