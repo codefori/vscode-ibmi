@@ -26,11 +26,7 @@ export const fr: Locale = {
   'text':'Texte',
   'lines':'Lignes',
   'changed':'Modification',
-  'created':'Création',  
-  'duplicate': 'Dupliquer',
-  'save': 'Enregistrer',
-  'delete': 'Supprimer',
-  'cancel': 'Annuler',
+  'created':'Création',
   // Sandbox:
   'sandbox.input.user.title': `Nom d'utilisateur`,
   'sandbox.input.user.prompt': `Entrez le nom d'utilisateur pour {0}`,
