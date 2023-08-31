@@ -2,15 +2,10 @@
 import path from 'path';
 import * as vscode from "vscode";
 import Instance from "./api/Instance";
-
 import { CompileTools } from './api/CompileTools';
-
 import { Terminal } from './api/Terminal';
-
-
 import { SearchView } from "./views/searchView";
 import { VariablesUI } from "./webviews/variables";
-
 import { dirname } from 'path';
 import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import { Search } from "./api/Search";
@@ -21,6 +16,7 @@ import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, DeploymentMethod, QsysFsOptions } from "./typings";
+import { ActionsUI } from './webviews/actions';
 
 export let instance: Instance;
 
@@ -374,8 +370,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     })
   );
 
-  (require(`./webviews/actions`)).init(context);
-  VariablesUI.init(context);
+  ActionsUI.initialize(context);
+  VariablesUI.initialize(context);
 
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);

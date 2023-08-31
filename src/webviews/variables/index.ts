@@ -9,7 +9,7 @@ export class VariablesUI {
    * Called to log in to an IBM i
    * @param {vscode.ExtensionContext} context
    */
-  static init(context: vscode.ExtensionContext) {
+  static initialize(context: vscode.ExtensionContext) {
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showVariableMaintenance`, async () => {
         this.MainMenu();
