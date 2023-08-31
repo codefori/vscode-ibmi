@@ -202,7 +202,7 @@ export const en: Locale = {
   'actions.CURLIB': 'Current library, changeable in Library List',
   'actions.USERNAME': `Username for connection`,
   'actions.HOME': `Current home/working directory, changable in IFS Browser`,
-  'actions.BUILDIB': `The same as <code>&amp;CURLIB</code>`,
+  'actions.BUILDLIB': `The same as <code>&amp;CURLIB</code>`,
   'actions.LIBLC': `Library list delimited by comma`,
   'actions.LIBLS': `Library list delimited by space`,
   'actions.OPENLIB': `Library name where the source member lives (<code>&amp;OPENLIBL</code> for lowercase)`,

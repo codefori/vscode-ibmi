@@ -198,7 +198,7 @@ export const fr: Locale = {
   'actions.CURLIB': 'Bibliothèque en cours, modifiable depuis la Liste des Bibliothèques',
   'actions.USERNAME': `Nom d'utilisateur de la connexion`,
   'actions.HOME': `Home/répertoire de travail en cours, modifiable depuis l'Exporateur IFS`,
-  'actions.BUILDIB': `Voir <code>&amp;CURLIB</code>`,
+  'actions.BUILDLIB': `Voir <code>&amp;CURLIB</code>`,
   'actions.LIBLC': `Liste des bilbiothèques, séparée par des virgules`,
   'actions.LIBLS': `Liste des bilbiothèques, séparée par des espaces`,
   'actions.OPENLIB': `Nom de la bibliothèque contenant le membre source (<code>&amp;OPENLIBL</code> pour le nom en minuscule)`,

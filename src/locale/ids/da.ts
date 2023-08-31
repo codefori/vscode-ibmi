@@ -202,7 +202,7 @@ export const da: Locale = {
   'actions.CURLIB': 'Aktuelle bibliotek (sættes i Library List)',
   'actions.USERNAME': `Brugernavn for forbindelsen`,
   'actions.HOME': `Aktuelle mappe (sættes i IFS Browser)`,
-  'actions.BUILDIB': `Det samme som <code>&amp;CURLIB</code>`,
+  'actions.BUILDLIB': `Det samme som <code>&amp;CURLIB</code>`,
   'actions.LIBLC': `Liste af biblioteker adskilt af komma`,
   'actions.LIBLS': `Liste af biblioteker adskilt af mellemrum`,
   'actions.OPENLIB': `Biblioteksnavn med source member (<code>&amp;OPENLIBL</code> for små bogstaver)`,
