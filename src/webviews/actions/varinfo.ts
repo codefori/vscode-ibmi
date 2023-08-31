@@ -16,6 +16,7 @@ const generic: () => VariableInfo[] = () => [
   { name: `&amp;CURLIB`, text: t(`actions.CURLIB`) },
   { name: `&amp;USERNAME`, text: t("actions.USERNAME")},
   { name: `&amp;HOME`, text: t("actions.HOME")},
+  { name: `&amp;HOST`, text: t("actions.HOST")},
   { name: `&amp;BUILDLIB`, text: t("actions.BUILDLIB")},
   { name: `&amp;LIBLC`, text: t("actions.LIBLC")},
   { name: `&amp;LIBLS`, text: t("actions.LIBLS") }
