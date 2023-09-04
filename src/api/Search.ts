@@ -69,7 +69,7 @@ export namespace Search {
 
         const grepRes = await connection.sendCommand({
           command: `${grep} -inr -F -f - ${ignoreString} ${Tools.escapePath(path)}`,
-          stdin: sanitizeSearchTerm(searchTerm)
+          stdin: searchTerm
         });
 
         if (grepRes.code == 0) {
@@ -120,7 +120,7 @@ export namespace Search {
 }
 
 function sanitizeSearchTerm(searchTerm: string): string {
-  return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\\\"`);
+  return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\"`);
 }
 
 function nthIndex(aString: string, pattern: string, n: number) {
