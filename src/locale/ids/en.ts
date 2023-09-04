@@ -77,6 +77,8 @@ export const en: Locale = {
   'ifsBrowser.deleteIFS.cancelled': `Deletion canceled.`,
   'ifsBrowser.moveIFS.prompt': `Name of new path`,
   'ifsBrowser.moveIFS.errorMessage': `Error renaming/moving {0}! {1}`,
+  'ifsBrowser.moveIFS.renamed': `{0} was renamed to {1}.`,
+  'ifsBrowser.moveIFS.moved': `{0} was moved to {1}.`,
   'ifsBrowser.copyIFS.prompt': `Name of new path`,
   'ifsBrowser.copyIFS.infoMessage': `{0} was copied to {1}.`,
   'ifsBrowser.copyIFS.errorMessage': `Error copying {0}! {1}`,

@@ -79,7 +79,7 @@ module.exports = class IFSBrowser {
           if (newDirectory && newDirectory !== homeDirectory) {
             config.homeDirectory = newDirectory;
             await ConnectionConfiguration.update(config);
-            vscode.window.showInformationMessage(t(`ifsBrowser.changeWorkingDirectory.message`, [newDirectory]));
+            vscode.window.showInformationMessage(t(`ifsBrowser.changeWorkingDirectory.message`, newDirectory));
           }
         } catch (e) {
           console.log(e);
@@ -105,7 +105,7 @@ module.exports = class IFSBrowser {
             newDirectory = newDirectory.trim();
 
             if (await content.isDirectory(newDirectory) !== true) {
-              throw(t(`ifsBrowser.addIFSShortcut.error`, [newDirectory]));
+              throw(t(`ifsBrowser.addIFSShortcut.error`, newDirectory));
             } else if (!shortcuts.includes(newDirectory)) {
               shortcuts.push(newDirectory);
               config.ifsShortcuts = shortcuts;
@@ -115,7 +115,7 @@ module.exports = class IFSBrowser {
             }
           }
         } catch (e) {
-          vscode.window.showErrorMessage(t(`ifsBrowser.addIFSShortcut.errorMessage`, [e]));
+          vscode.window.showErrorMessage(t(`ifsBrowser.addIFSShortcut.errorMessage`, e));
         }
       }),
 
@@ -311,7 +311,7 @@ module.exports = class IFSBrowser {
             if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
 
           } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.createDirectory.errorMessage`, [e]));
+            vscode.window.showErrorMessage(t(`ifsBrowser.createDirectory.errorMessage`, e));
           }
         }
       }),
@@ -338,7 +338,7 @@ module.exports = class IFSBrowser {
           const connection = getInstance().getConnection();
 
           try {
-            vscode.window.showInformationMessage(t(`ifsBrowser.createStreamfile.infoMessage`, [fullName]));
+            vscode.window.showInformationMessage(t(`ifsBrowser.createStreamfile.infoMessage`, fullName));
 
             await connection.paseCommand(`echo "" > ${Tools.escapePath(fullName)}`);
 
@@ -347,7 +347,7 @@ module.exports = class IFSBrowser {
             if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
 
           } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.createStreamfile.errorMessage`, [e]));
+            vscode.window.showErrorMessage(t(`ifsBrowser.createStreamfile.errorMessage`, e));
           }
         }
       }),
@@ -388,7 +388,7 @@ module.exports = class IFSBrowser {
             if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
             vscode.window.showInformationMessage(t(`ifsBrowser.uploadStreamfile.uploadedFiles`));
           }).catch(err => {
-            vscode.window.showErrorMessage(t(`ifsBrowser.uploadStreamfile.errorMessage`, [err]));
+            vscode.window.showErrorMessage(t(`ifsBrowser.uploadStreamfile.errorMessage`, err));
           });
         } else {
           vscode.window.showInformationMessage(t(`ifsBrowser.uploadStreamfile.noFilesSelected`));
@@ -405,13 +405,13 @@ module.exports = class IFSBrowser {
 
           //Running from right click
           let deletionConfirmed = false;
-          let result = await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, [node.path]), t(`Yes`), t(`Cancel`));
+          let result = await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, node.path), t(`Yes`), t(`Cancel`));
 
           if (result === t(`Yes`)) {
             if ((GlobalConfiguration.get(`safeDeleteMode`)) && node.contextValue === `directory`) { //Check if path is directory
               const dirName = path.basename(node.path)  //Get the name of the directory to be deleted
 
-              const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, [dirName]);
+              const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
               const input = await vscode.window.showInputBox({
                 placeHolder: dirName,
                 prompt: deletionPrompt,
@@ -430,11 +430,11 @@ module.exports = class IFSBrowser {
               try {
                 await connection.paseCommand(`rm -rf ${Tools.escapePath(node.path)}`)
 
-                vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, [node.path]));
+                vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, node.path));
 
                 if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
               } catch (e) {
-                vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, [e]));
+                vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
               }
 
             }
@@ -450,23 +450,32 @@ module.exports = class IFSBrowser {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
+        /** @type {ConnectionConfiguration.Parameters} */
+        const config = getInstance().getConfig();
+        const homeDirectory = config.homeDirectory;
+
         if (node) {
           //Running from right click
 
-          const fullName = await vscode.window.showInputBox({
+          let fullName = await vscode.window.showInputBox({
             prompt: t(`ifsBrowser.moveIFS.prompt`),
             value: node.path
           });
 
           if (fullName) {
+            fullName = path.posix.isAbsolute(fullName) ? fullName : path.posix.join(homeDirectory, fullName);
             const connection = getInstance().getConnection();
 
             try {
               await connection.paseCommand(`mv ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              vscode.window.showInformationMessage(t(path.posix.dirname(node.path) === path.posix.dirname(fullName) ? `ifsBrowser.moveIFS.renamed` : `ifsBrowser.moveIFS.moved`,
+                Tools.escapePath(node.path),
+                Tools.escapePath(fullName)
+              ));
 
             } catch (e) {
-              vscode.window.showErrorMessage(t(`ifsBrowser.moveIFS.errorMessage`, [t(node.contextValue), e]));
+              vscode.window.showErrorMessage(t(`ifsBrowser.moveIFS.errorMessage`, t(node.contextValue), e));
             }
           }
 
@@ -495,10 +504,10 @@ module.exports = class IFSBrowser {
             try {
               await connection.paseCommand(`cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-              vscode.window.showInformationMessage(t(`ifsBrowser.copyIFS.infoMessage`, [Tools.escapePath(node.path), Tools.escapePath(fullName)]));
+              vscode.window.showInformationMessage(t(`ifsBrowser.copyIFS.infoMessage`, Tools.escapePath(node.path), Tools.escapePath(fullName)));
 
             } catch (e) {
-              vscode.window.showErrorMessage(t(`ifsBrowser.copyIFS.errorMessage`, [t(node.contextValue), e]));
+              vscode.window.showErrorMessage(t(`ifsBrowser.copyIFS.errorMessage`, t(node.contextValue), e));
             }
           }
 
@@ -530,7 +539,7 @@ module.exports = class IFSBrowser {
           if (!searchPath) return;
 
           let searchTerm = await vscode.window.showInputBox({
-            prompt: t(`ifsBrowser.searchIFS.prompt2`, [searchPath])
+            prompt: t(`ifsBrowser.searchIFS.prompt2`, searchPath)
           });
 
           if (searchTerm) {
@@ -540,7 +549,7 @@ module.exports = class IFSBrowser {
                 title: t(`ifsBrowser.searchIFS.title2`),
               }, async progress => {
                 progress.report({
-                  message: t(`ifsBrowser.searchIFS.progressMessage`, [searchTerm, searchPath])
+                  message: t(`ifsBrowser.searchIFS.progressMessage`, searchTerm, searchPath)
                 });
 
                 let results = await Search.searchIFS(getInstance(), searchPath, searchTerm);
@@ -550,7 +559,7 @@ module.exports = class IFSBrowser {
                   setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
 
                 } else {
-                  vscode.window.showInformationMessage(t(`ifsBrowser.searchIFS.noResults`, [searchTerm, searchPath]));
+                  vscode.window.showInformationMessage(t(`ifsBrowser.searchIFS.noResults`, searchTerm, searchPath));
                 }
               });
 
@@ -588,7 +597,7 @@ module.exports = class IFSBrowser {
               await client.getFile(localPath, node.path);
               vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.infoMessage`));
             } catch (e) {
-              vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, [t(node.contextValue), e]));
+              vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, t(node.contextValue), e));
             }
           }
 
@@ -662,7 +671,7 @@ module.exports = class IFSBrowser {
    */
   handleFileListErrors(errors) {
     errors.forEach(error => vscode.window.showErrorMessage(error));
-    vscode.window.showErrorMessage(t(`ifsBrowser.handleFileListErrors.errorMessage`, [errors.length, errors.length > 1 ? t(`errors`) : t(`error`)]));
+    vscode.window.showErrorMessage(t(`ifsBrowser.handleFileListErrors.errorMessage`, errors.length, errors.length > 1 ? t(`errors`) : t(`error`)));
   }
 
   /**
