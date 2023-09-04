@@ -69,7 +69,7 @@ export namespace Search {
 
         const grepRes = await connection.sendCommand({
           command: `${grep} -inr -F -f - ${ignoreString} ${Tools.escapePath(path)}`,
-          stdin: sanitizeSearchTerm(searchTerm)
+          stdin: searchTerm
         });
 
         if (grepRes.code == 0) {
