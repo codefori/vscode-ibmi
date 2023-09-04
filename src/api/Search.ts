@@ -120,7 +120,7 @@ export namespace Search {
 }
 
 function sanitizeSearchTerm(searchTerm: string): string {
-  return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\\\"`);
+  return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\"`);
 }
 
 function nthIndex(aString: string, pattern: string, n: number) {
