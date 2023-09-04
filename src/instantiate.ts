@@ -2,26 +2,21 @@
 import path from 'path';
 import * as vscode from "vscode";
 import Instance from "./api/Instance";
-
 import { CompileTools } from './api/CompileTools';
-
 import { Terminal } from './api/Terminal';
-
-import { CustomUI, Field, Page } from './api/CustomUI';
-
 import { SearchView } from "./views/searchView";
 import { VariablesUI } from "./webviews/variables";
-
 import { dirname } from 'path';
-import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import { Search } from "./api/Search";
+import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { QSysFS, getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, DeploymentMethod, QsysFsOptions } from "./typings";
-import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
+import { ActionsUI } from './webviews/actions';
 
 export let instance: Instance;
 
@@ -98,11 +93,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(`Not currently connected to any system.`);
       }
     }),
-    vscode.workspace.onDidChangeConfiguration(async event => {
-      if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`)) {
-        updateConnectedBar();
-      }
-    }),
+    onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
     vscode.window.registerTreeDataProvider(
       `searchView`,
       searchViewContext
@@ -217,9 +208,20 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (node: any, group?: any, action?: Action, method?: DeploymentMethod) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
-      const uri = (node?.resourceUri || node || editor?.document.uri) as vscode.Uri;
+      let uri;
+      if(target){
+        if("fsPath" in target){
+          uri = target;
+        }
+        else{
+          uri = target?.resourceUri;
+        }
+      } 
+      
+      uri = uri || editor?.document.uri;
+
       if (uri) {
         const config = instance.getConfig();
         if (config) {
@@ -368,8 +370,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     })
   );
 
-  (require(`./webviews/actions`)).init(context);
-  VariablesUI.init(context);
+  ActionsUI.initialize(context);
+  VariablesUI.initialize(context);
 
   instance.onEvent("connected", () => onConnected(context));
   instance.onEvent("disconnected", onDisconnected);

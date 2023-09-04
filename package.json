@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -38,6 +38,7 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
+		"taskDefinitions": [{"type": "ibmi"}],
 		"snippets": [
 			{
 				"path": "./schemas/cl.code-snippets",
@@ -872,6 +873,12 @@
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
+				"command": "code-for-ibmi.debug.program",
+				"title": "Debug Program",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
 				"command": "code-for-ibmi.debug.endDebug",
 				"title": "Stop Debugging",
 				"category": "IBM i",
@@ -910,12 +917,6 @@
 			{
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"title": "Connection Settings",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.showOutputPanel",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Show IBM i Output",
 				"category": "IBM i"
 			},
 			{
@@ -1365,6 +1366,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.revealInObjectBrowser",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Reveal Object Browser Item",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.createSourceFile",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Create Source File",
@@ -1500,11 +1507,6 @@
 				"command": "code-for-ibmi.launchTerminalPicker",
 				"key": "ctrl+shift+j",
 				"mac": "cmd+shift+j"
-			},
-			{
-				"command": "code-for-ibmi.showOutputPanel",
-				"key": "ctrl+shift+f6",
-				"mac": "cmd+shift+f6"
 			},
 			{
 				"command": "code-for-ibmi.connectTo",
@@ -1689,6 +1691,86 @@
 				},
 				{
 					"command": "code-for-ibmi.browse",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterUp",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterDown",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterToTop",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterToBottom",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.createMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.updateMemberText",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameMember",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadMemberAsFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.createSourceFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.changeObjectDesc",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveObject",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.revealInObjectBrowser",
 					"when": "never"
 				}
 			],
@@ -1998,6 +2080,11 @@
 					"group": "1_workspace@1"
 				},
 				{
+					"command": "code-for-ibmi.debug.program",
+					"when": "view == objectBrowser && !inDebugMode && viewItem =~ /^object.pgm.*/",
+					"group": "2_debug@1"
+				},
+				{
 					"command": "code-for-ibmi.updateMemberText",
 					"when": "view == objectBrowser && viewItem == member",
 					"group": "2_memberStuff@1"
@@ -2219,7 +2306,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2019 --moduleResolution node"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2021 --moduleResolution node"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
