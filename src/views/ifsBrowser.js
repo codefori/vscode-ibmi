@@ -450,20 +450,29 @@ module.exports = class IFSBrowser {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node) => {
+        /** @type {ConnectionConfiguration.Parameters} */
+        const config = getInstance().getConfig();
+        const homeDirectory = config.homeDirectory;
+
         if (node) {
           //Running from right click
 
-          const fullName = await vscode.window.showInputBox({
+          let fullName = await vscode.window.showInputBox({
             prompt: t(`ifsBrowser.moveIFS.prompt`),
             value: node.path
           });
 
           if (fullName) {
+            fullName = path.posix.isAbsolute(fullName) ? fullName : path.posix.join(homeDirectory, fullName);
             const connection = getInstance().getConnection();
 
             try {
               await connection.paseCommand(`mv ${Tools.escapePath(node.path)} ${Tools.escapePath(fullName)}`);
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
+              vscode.window.showInformationMessage(t(path.posix.dirname(node.path) === path.posix.dirname(fullName) ? `ifsBrowser.moveIFS.renamed` : `ifsBrowser.moveIFS.moved`,
+                Tools.escapePath(node.path),
+                Tools.escapePath(fullName)
+              ));
 
             } catch (e) {
               vscode.window.showErrorMessage(t(`ifsBrowser.moveIFS.errorMessage`, t(node.contextValue), e));

@@ -66,6 +66,8 @@ export const da: Locale = {
   'ifsBrowser.deleteIFS.cancelled': `Sletning afbrudt.`,
   'ifsBrowser.moveIFS.prompt': `Nyt navn`,
   'ifsBrowser.moveIFS.errorMessage': `Fejl ved flytning/omdøbning af {0}! {1}`,
+  'ifsBrowser.moveIFS.renamed': `{0} blev omdøbt til {1}.`,
+  'ifsBrowser.moveIFS.moved': `{0} blev flyttet til {1}.`,
   'ifsBrowser.copyIFS.prompt': `Nyt navn`,
   'ifsBrowser.copyIFS.infoMessage': `{0} blev kopieret til {1}.`,
   'ifsBrowser.copyIFS.errorMessage': `Fejl ved kopiering af {0}! {1}`,
