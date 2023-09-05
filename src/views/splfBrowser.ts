@@ -9,9 +9,10 @@ const writeFileAsync = util.promisify(fs.writeFile);
 import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, QsysPath, IBMiSpooledFile, IBMiSplfUser } from '../typings';
 import { setSearchResults } from '../instantiate';
 import { GlobalConfiguration, ConnectionConfiguration } from '../api/Configuration';
-import { Search } from '../api/Search';
+import { SplfSearch } from '../api/spooledFileSearch';
 import { getSpooledFileUri } from '../filesystems/qsys/SplfFs';
 import { Tools } from '../api/Tools';
+import { t } from "../locale";
 
 function getInstance() {
   const { instance } = (require(`../instantiate`));
@@ -77,7 +78,8 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
         // let autoSortusersSpooledFile = config.autoSortusersSpooledFile;
 
         newUserSplfs = await vscode.window.showInputBox({
-          prompt: `User to show Spooled Files`,
+          // prompt: `User to show Spooled Files`,
+          prompt: t(`splfBrowser.addUserSpooledFileFilter.prompt`),
           value: connection.currentUser
         });
 
@@ -109,7 +111,8 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
           removeUser = node.path;
         } else {
           removeUser = await vscode.window.showQuickPick(usersSpooledFile, {
-            placeHolder: `Select filter name to remove`,
+            // placeHolder: `Select filter name to remove`,
+            placeHolder: t('splfBrowser.deleteUserSpooledFileFilter.placeHolder'),
           });
         }
 
@@ -155,7 +158,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
       vscode.commands.registerCommand(`code-for-ibmi.deleteSpooledFile`, async (node) => {
         if (node) {
           //Running from right click
-          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete spooled file ${node.path}?`, `Yes`, `Cancel`);
+          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteSpooledFile.warningMessage`, node.path), t(`Yes`), t(`Cancel`));
 
           if (result === `Yes`) {
 
@@ -163,20 +166,20 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
 
             try {
               await connection.runCommand({
-                command: `DLTSPLF FILE(${node.name}) JOB(${node.qualifiedJobName}) SPLNBR(${node.number})`
+                command: `DLTSPLF FILE(${node.name}) JOB(${node.jobNumber}/${node.jobUser}/${node.jobName}) SPLNBR(${node.number})`
                 , environment: `ile`
               });
 
-              vscode.window.showInformationMessage(`Deleted ${node.path}.`);
+              vscode.window.showInformationMessage(t(`splfBrowser.deleteSpooledFile.infoMessage `, node.path));
 
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
             } catch (e) {
-              vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
+              vscode.window.showErrorMessage(t(`splfBrowser.deleteSpooledFile.errorMessage`, e));
             }
             
           }
           else {
-            vscode.window.showInformationMessage(`Deletion canceled.`);
+            vscode.window.showInformationMessage(t('splfBrowser.deleteSpooledFile.cancelled'));
           }
         } else {
           //Running from command.
@@ -186,7 +189,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
         if (node) {
           //Running from right click
           let deleteCount = 0;
-          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ALL spooled files named ${node.name} for user ${node.user}?`, `Yes`, `Cancel`);
+          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteNamedSpooledFiles.warningMessage`,node.name,node.user), t(`Yes`), t(`Cancel`));
           
           if (result === `Yes`) {
             const connection = getInstance().getConnection();
@@ -195,10 +198,8 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
             const TempMbrName = Tools.makeid();
             const asp = ``;
             const tempLib = content.config.tempLibrary;
-            let commandResult = ``;
-            
 
-            const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name);
+            const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name, node.parent.filter);
             try {
               let commands = objects.map((o: any) => (
                 `DLTSPLF FILE(${o.name}) JOB(${o.qualified_job_name}) SPLNBR(${o.number})`              
@@ -223,11 +224,12 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
               }
                 
             } catch (e) {
-              vscode.window.showErrorMessage(`Error deleting user spooled file! ${e}`);
+              vscode.window.showErrorMessage(t(`splfBrowser.deleteNamedSpooledFiles.errorMessage`, e));
             }
             if (deleteCount > 0) {
-              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
-              vscode.window.showInformationMessage(`Deleted ${deleteCount} spooled files.`);
+              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh(node.parent);
+              // vscode.window.showInformationMessage(`Deleted ${deleteCount} spooled files.`);
+              vscode.window.showInformationMessage(t(`splfBrowser.deleteNamedSpooledFiles.infoMessage`,deleteCount));
               await connection.runCommand({
                 command: `DLTF FILE(${tempLib}/${TempFileName}) `
                 ,environment: `ile`
@@ -236,7 +238,8 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
             
           }
           else {
-            vscode.window.showInformationMessage(`Deletion canceled.`);
+            // vscode.window.showInformationMessage(`Deletion canceled.`);
+            vscode.window.showInformationMessage(t('splfBrowser.deleteNamedSpooledFiles.cancelled'));
           }
         } else {
           //Running from command.
@@ -245,7 +248,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
       vscode.commands.registerCommand(`code-for-ibmi.deleteUserSpooledFiles`, async (node) => {
         if (node) {
           //Running from right click
-          let result = await vscode.window.showWarningMessage(`Are you sure you want to delete ALL spooled files for ${node.user}?`, `Yes`, `Cancel`);
+          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteUserSpooledFiles.warningMessage`,node.user), t(`Yes`), t(`Cancel`));
 
           if (result === `Yes`) {
 
@@ -265,12 +268,13 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
 
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
             } catch (e) {
-              vscode.window.showErrorMessage(`Error deleting user spooled files! ${e}`);
+              vscode.window.showErrorMessage(t(`splfBrowser.deleteUserSpooledFiles.errorMessage`, e))
             }
             
           }
           else {
-            vscode.window.showInformationMessage(`Deletion canceled.`);
+            // vscode.window.showInformationMessage(`Deletion canceled.`);
+            vscode.window.showInformationMessage(t('splfBrowser.deleteUserSpooledFiles.cancelled'));
           }
         } else {
           //Running from command.
@@ -281,7 +285,8 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
           //Running from right click
 
           const newQueue = await vscode.window.showInputBox({
-            prompt: `Name of new OUTQ`,
+            // prompt: `Name of new OUTQ`,
+            prompt: t(`splfBrowser.moveSpooledFile.prompt`),
             value: node.queue
           });
 
@@ -296,7 +301,8 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
               if (GlobalConfiguration.get(`autoRefresh`)) this.refresh();
 
             } catch (e) {
-              vscode.window.showErrorMessage(`Error moving spooled file! ${e}`);
+              // vscode.window.showErrorMessage(`Error moving spooled file! ${e}`);
+              vscode.window.showErrorMessage(t(`splfBrowser.moveSpooledFile.errorMessage`, e));
             }
           }
 
@@ -313,6 +319,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
 
         let searchUser :any;
         let searchName :any;
+        let searchTerm :any;
         if (node) {
           searchUser = node.user;
           searchName = node.name;
@@ -320,44 +327,48 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
         else {
           searchUser = await vscode.window.showInputBox({
             value: config.currentLibrary,
-            prompt: `Enter user to search over`,
-            title: `Search user spooled files`
+            // prompt: `Enter user to search over`,
+            prompt: t(`splfBrowser.searchSpooledFiles.promptUserName`),
+            title: t(`splfBrowser.searchSpooledFiles.promptUserNameTitle`),
+            // title: `Search user spooled files`
           })
           searchName = await vscode.window.showInputBox({
             value: ``,
-            prompt: `Enter spooled file name to search over`,
-            title: `Search in named spooled file`
+            // prompt: `Enter spooled file name to search over`,
+            // title: `Search in named spooled file`
+            prompt: t(`splfBrowser.searchSpooledFiles.promptSplfName`),
+            title: t(`splfBrowser.searchSpooledFiles.promptSplfNameTitle`),
           })
         }
 
         if (!searchName) return;
 
-        let searchTerm :any = await vscode.window.showInputBox({
-          prompt: `Search in spooled files named ${searchName}.`
-          // prompt: `Search ${searchPath}.`
+        searchTerm = await vscode.window.showInputBox({
+          // prompt: `Search in spooled files named ${searchName}.`
+          prompt: t(`splfBrowser.searchSpooledFiles.promptsearchTerm`,searchName)
         });
 
         if (searchTerm) {
           try {
             await vscode.window.withProgress({
               location: vscode.ProgressLocation.Notification,
-              title: `Searching`,
+              title: t(`splfBrowser.searchSpooledFiles.progressTitle`),
             }, async progress => {
               progress.report({
-                message: `'${searchTerm}' in ${searchUser}, ${searchName} spooled files.`
+                message: t(`splfBrowser.searchSpooledFiles.progressMessage0`,[searchTerm],[searchUser],[searchName])
               });
               const splfnum = await content.getUserSpooledFileCount(searchUser, searchName);
               if (splfnum > 0) {
                 // NOTE: if more messages are added, lower the timeout interval
                 const timeoutInternal = 9000;
                 const searchMessages = [
-                  `'${searchTerm}' in ${searchUser} spooled files.`,
-                  `This is taking a while because there are ${splfnum} spooled files. Searching '${searchTerm}' in ${searchUser} still.`,
-                  `What's so special about '${searchTerm}' anyway?`,
-                  `Still searching '${searchTerm}' in ${searchUser}...`,
-                  `Wow. This really is taking a while. Let's hope you get the result you want.`,
-                  `How does one end up with ${splfnum} spooled files.  Ever heared of cleaning up?`,
-                  `'${searchTerm}' in ${searchUser}.`,
+                  t('splfBrowser.searchSpooledFiles.progressMessage1',[searchTerm],[searchName]),
+                  t('splfBrowser.searchSpooledFiles.progressMessage2',[splfnum],[searchTerm],[searchUser]),
+                  t('splfBrowser.searchSpooledFiles.progressMessage3',[searchTerm]),
+                  t('splfBrowser.searchSpooledFiles.progressMessage4',[searchTerm],[searchUser]),
+                  t('splfBrowser.searchSpooledFiles.progressMessage5'),
+                  t('splfBrowser.searchSpooledFiles.progressMessage6',[splfnum]),
+                  t('splfBrowser.searchSpooledFiles.progressMessage7',[searchTerm],[searchUser]),
                 ];
                 let currentMessage = 0;
                 const messageTimeout = setInterval(() => {
@@ -370,18 +381,62 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
                     clearInterval(messageTimeout);
                   }
                 }, timeoutInternal);
-                let results = await Search.searchUserSpooledFiles(getInstance(), searchTerm, searchUser, searchName);
+                let results = await SplfSearch.searchUserSpooledFiles(getInstance(), searchTerm, searchUser, searchName);
 
                 if (results.length > 0) {
-                  const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
                   setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
 
                 } else {
-                  vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchName}.`);
+                  // vscode.window.showInformationMessage(`No results found searching for '${searchTerm}' in ${searchName}.`);
+                  vscode.window.showInformationMessage(t(`splfBrowser.searchSpooledFiles.infoMessage`, [searchTerm],[searchName]));
                 }
               } else {
-                vscode.window.showErrorMessage(`No spooled files to search.`);
+                // vscode.window.showErrorMessage(`No spooled files to search.`);
+                vscode.window.showErrorMessage(t(`splfBrowser.searchSpooledFiles.errorMessage0`));
+              }
+            });
+            
+          } catch (e) {
+            console.log(e);
+            // vscode.window.showErrorMessage(`Error searching spooled files.`);
+            vscode.window.showErrorMessage(t(`splfBrowser.searchSpooledFiles.errorMessage1`));
+          }
+        }
+
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.filterSpooledFiles`, async (node) => {
+        const content = getInstance().getContent();
+
+        let searchUser :any;
+        let searchTerm :any;
+        if (node) {
+          searchUser = node.user;
+        }
+
+        if (!searchUser) return;
+
+        searchTerm = await vscode.window.showInputBox({
+          prompt: `Filter ${searchUser}'s spooled files. Delete value to clear filter.`,
+          value: `${node.filter}`
+        });
+
+        if (searchTerm) {
+          try {
+            await vscode.window.withProgress({
+              location: vscode.ProgressLocation.Notification,
+              title: `Filtering list of spooled files`,
+            }, async progress => {
+              progress.report({
+                message: `Filtering spooled files for ${searchUser}, using these words, ${searchTerm} spooled files.`
+              });
+              searchTerm = searchTerm.toLocaleUpperCase();
+              const splfnum = await content.getUserSpooledFileCount(searchUser);
+              if (splfnum > 0) {
+                node.addFilter(searchTerm);
+                this.refresh(node);
+              } else {
+                vscode.window.showErrorMessage(`No spooled files to filter.`);
               }
             });
 
@@ -389,6 +444,10 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
             console.log(e);
             vscode.window.showErrorMessage(`Error searching spooled files.`);
           }
+        }
+        else {
+          node.addFilter('');
+          this.refresh(node);
         }
 
       }),
@@ -453,42 +512,6 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
     // getInstance().onEvent(`connected`, () => this.refresh());
   }
 
-  async moveFilterInList(filterName: string, filterMovement: string) {
-    filterMovement = filterMovement.toUpperCase();
-    if (![`TOP`, `UP`, `DOWN`, `BOTTOM`].includes(filterMovement)) throw `Illegal filter movement value specified`;
-
-    /** @type {ConnectionConfiguration.Parameters} */
-    const config = getInstance().getConfig();
-
-    let usersSpooledFile = config.usersSpooledFile;
-    const from = usersSpooledFile.findIndex((filter: { name: string; }) => filter.name === filterName);
-    let to;
-
-    if (from === -1) throw `Filter ${filterName} is not found in list`;
-    if (from === 0 && [`TOP`, `UP`].includes(filterMovement)) throw `Filter ${filterName} is at top of list`;
-    if (from === usersSpooledFile.length && [`DOWN`, `BOTTOM`].includes(filterMovement)) throw `Filter ${filterName} is at bottom of list`;
-
-    switch (filterMovement) {
-    case `TOP`:
-      to = 0;
-      break;
-    case `UP`:
-      to = from - 1;
-      break;
-    case `DOWN`:
-      to = from + 1;
-      break;
-    case `BOTTOM`:
-      to = usersSpooledFile.length;
-      break;
-    }
-
-    const filter = usersSpooledFile[from];
-    usersSpooledFile.splice(from, 1);
-    usersSpooledFile.splice(to, 0, filter);
-    config.usersSpooledFile = usersSpooledFile;
-    await ConnectionConfiguration.update(config);
-  }
 
   refresh(target? :any) {
     this.emitter.fire(target);
@@ -519,9 +542,9 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
         case `splfuser`:
           //Fetch spooled files
           try {
-            const objects = await content.getUserSpooledFileFilter(element.filter.user, element.sort);
+            const objects = await content.getUserSpooledFileFilter(element.user, element.sort, undefined ,element.filter );
             items.push(...objects
-              .map((object: IBMiSpooledFile) => new SPLF(`SPLF`, element, object, element.filter)));
+              .map((object: IBMiSpooledFile) => new SPLF(`SPLF`, element, object)));
 
           } catch (e: any) {
             // console.log(e);
@@ -535,7 +558,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
 
       } else { // no context exists in tree yet, get from settings
         items.push(...config.usersSpooledFile.map(
-          (theUser: any) => new FilterItem(element, { user: theUser, }, connection.currentUser)
+          (theUser: any) => new UserSpooledFiles(element, { user: theUser, }, connection.currentUser)
         ));
       }
     }
@@ -586,37 +609,35 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
   }
 }
 
-class FilterItem extends vscode.TreeItem {
+class UserSpooledFiles extends vscode.TreeItem {
   protected: boolean;
   path: string;
   parent: vscode.TreeItem;
   user: string;
-  name: string;
   _description: string;
   description: string;
-  filter: IBMiSplfUser;
+  filter: string; // reduces tree items to matching tokens
   sort: { order: string };
   /**
    * @param {vscode.TreeItem} parent
-   * @param {import("../typings/IBMiSplfUser")} filter
+   * @param {import("../typings/IBMiSplfUser")} theUser
    * @param {string} currentUser
    */
-  constructor(parent: vscode.TreeItem, filter: IBMiSplfUser, currentUser: string) {
-    super(filter.user, vscode.TreeItemCollapsibleState.Collapsed);
+  constructor(parent: vscode.TreeItem, theUser: IBMiSplfUser, currentUser: string) {
+    super(theUser.user, vscode.TreeItemCollapsibleState.Collapsed);
+    this.user = theUser.user;
     const icon = objectIcons[`OUTQ`] || objectIcons[``];
-    this.protected = filter.user.toLocaleUpperCase() !== currentUser.toLocaleUpperCase() ? true : false;
+    this.protected = this.user.toLocaleUpperCase() !== currentUser.toLocaleUpperCase() ? true : false;
     this.contextValue = `splfuser${this.protected ? `_readonly` : ``}`;
-    this.path = filter.user;
+    this.path = theUser.user;
     this.collapsibleState = vscode.TreeItemCollapsibleState.Collapsed;
     this.parent = parent;
-    this.user = filter.user;
     this.iconPath = new vscode.ThemeIcon(icon, (this.protected ? new vscode.ThemeColor(`list.errorForeground`) : undefined));
 
-    this.name = filter.user;
-    this._description = `${filter.user} ${this.protected ? `(readonly)` : ``}`;
+    this._description = `${theUser.user} ${this.protected ? `(readonly)` : ``}`;
     this.description = this._description;
 
-    this.filter = filter;
+    this.filter = '';
     /** @type {import("../api/IBMiContent").SortOptions}*/
     this.sort = { order: `date` };
   }
@@ -624,10 +645,11 @@ class FilterItem extends vscode.TreeItem {
     this.sort = sort;
     this.description = `${this._description ? `${this._description} ` : ``}(sort: ${sort.order} ${sort.ascending ? `🔼` : `🔽`})`;
   }
+  addFilter( filter: string ) {this.filter = filter;} 
 }
 
 class SPLF extends vscode.TreeItem {
-  parent: FilterItem;
+  parent: UserSpooledFiles;
   type: string;
   user: string;
   name: string;
@@ -652,7 +674,7 @@ class SPLF extends vscode.TreeItem {
    * @param {import(`../typings`).IBMiSpooledFile} object
    * @param {ConnectionConfiguration.UserSplfFilters} filter 
    */
-  constructor(type: string, parent: FilterItem, object: IBMiSpooledFile, filter: FilterItem) {
+  constructor(type: string, parent: UserSpooledFiles, object: IBMiSpooledFile) {
 
     const icon = objectIcons[`${type}`] || objectIcons[``];
     super(`${object.name}.${type}`, vscode.TreeItemCollapsibleState.Collapsed);
@@ -683,11 +705,12 @@ class SPLF extends vscode.TreeItem {
     ;
     this.iconPath = new vscode.ThemeIcon(icon);
     this.protected = parent.protected;
-    this.contextValue = `spooledfile${parent.protected ? `_readonly` : ``}`;
+    this.contextValue = `spooledfile${this.protected ? `_readonly` : ``}`;
     this.resourceUri = getSpooledFileUri(object, parent.protected ? { readonly: true } : undefined);
     this.path = this.resourceUri.path;
     this.tooltip = ``
       .concat(`${object.qualified_job_name ? `Job:\t\t\t ${object.qualified_job_name}` : ``}`)
+      .concat(`${object.number ? `\nFile Number:\t ${object.number}` : ``}`)
       .concat(`${object.user_data != undefined ? `\nUser Data:\t ${object.user_data}` : ``}`)
       .concat(`${object.creation_timestamp ? `\nCreated:\t\t ${object.creation_timestamp}` : ``}`)
       .concat(`${object.size ? `\nSize in bytes:\t ${object.size}` : ``}`)

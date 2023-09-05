@@ -721,7 +721,7 @@ export default class IBMiContent {
   * @param {string=} splfName
   * @returns {Promise<IBMiSpooledFile[]>}
   */
-  async getUserSpooledFileFilter(user: string, sort: SortOptions = { order: "date" }, splfName?: string): Promise<IBMiSpooledFile[]> {
+  async getUserSpooledFileFilter(user: string, sort: SortOptions = { order: "date" }, splfName?: string, searchWords?: string): Promise<IBMiSpooledFile[]> {
     sort.order = sort.order === '?' ? 'name' : sort.order;
     user = user.toUpperCase();
 
@@ -745,7 +745,11 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => ucase('${user}')) ) QE where FI
     else {
       sorter = (r1, r2) => r1.creation_timestamp.localeCompare(r2.creation_timestamp);
     }
-    return results
+    let searchWords_ = searchWords?.split(' ')||[];
+    // console.log(searchWords_);
+    
+    // return results
+    let returnSplfList = results
       .map(object => ({
         user: user,
         name: this.ibmi.sysNameInLocal(String(object.SPOOLED_FILE_NAME)),
@@ -763,7 +767,11 @@ from table (QSYS2.SPOOLED_FILE_INFO(USER_NAME => ucase('${user}')) ) QE where FI
         queue_library: this.ibmi.sysNameInLocal(String(object.OUTPUT_QUEUE_LIBRARY)),
         queue: this.ibmi.sysNameInLocal(String(object.OUTPUT_QUEUE)),
       } as IBMiSpooledFile))
+      .filter(obj => searchWords_.length === 0 || searchWords_.some(term => Object.values(obj).join(" ").includes(term)))
       .sort(sorter);
+      
+      return returnSplfList;
+      
   }
   /**
   * Download the contents of a source member

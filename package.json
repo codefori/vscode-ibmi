@@ -1105,6 +1105,13 @@
 				"icon": "$(search)"
 			},
 			{
+				"command": "code-for-ibmi.filterSpooledFiles",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Filter Spooled Files",
+				"category": "IBM i",
+				"icon": "$(filter)"
+			},
+			{
 				"command": "code-for-ibmi.searchSpooledFiles",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Search Spooled Files",
@@ -2350,6 +2357,16 @@
 					"group": "1_workspace@1"
 				},
 				{
+					"command": "code-for-ibmi.filterSpooledFiles",
+					"when": "view == splfBrowser && viewItem =~ /^splfuser.*$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.filterSpooledFiles",
+					"when": "view == splfBrowser && viewItem =~ /^splfuser.*$/",
+					"group": "4_splfuser@1"
+				},
+				{
 					"command": "code-for-ibmi.searchSpooledFiles",
 					"when": "view == splfBrowser && viewItem =~ /^spooledfile.*$/",
 					"group": "4_splfuser@1"
@@ -2388,6 +2405,11 @@
 					"command": "code-for-ibmi.downloadSpooledfile",
 					"when": "view == splfBrowser && viewItem =~ /^spooledfile.*$/",
 					"group": "2_spooledfile@5"
+				},
+				{
+					"command": "code-for-ibmi.filterSpooledFiles",
+					"when": "view == splfBrowser && viewItem =~ /^spooledfile.*$/",
+					"group": "1_spooledfile@1"
 				}
 			]
 		},
