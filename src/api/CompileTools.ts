@@ -1,6 +1,6 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskPanelKind, WorkspaceFolder, tasks, window, workspace } from 'vscode';
+import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskPanelKind, TaskRevealKind, WorkspaceFolder, tasks, window, workspace } from 'vscode';
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import { getLocalActions } from './local/actions';
@@ -303,6 +303,8 @@ export namespace CompileTools {
             source: 'IBM i',
             presentationOptions: {
               showReuseMessage: true,
+              reveal: TaskRevealKind.Never,
+              focus: false,
               clear: GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)
             },
             problemMatchers: [],
