@@ -209,4 +209,8 @@ export namespace Tools {
       .digest("hex")
       .toLowerCase();
   }
+
+  export function capitalize(text:string) {
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
 }

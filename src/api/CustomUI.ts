@@ -109,9 +109,10 @@ export class Section {
     return this;
   }
 
-  addButtons(...buttons: Button[]) {
+  addButtons(...buttons: (Button | undefined)[]) {
     const buttonsField = new Field('buttons', '', '');
-    buttonsField.items = buttons.filter(b => b);
+    buttonsField.items = [];
+    buttons.filter(b => b).forEach(b => { if (b) buttonsField.items?.push(b); });
     this.addField(buttonsField);
     return this;
   }
@@ -135,10 +136,10 @@ export class CustomUI extends Section {
    */
   loadPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
     const webview = openedWebviews.get(title);
-    if(webview){
-      webview.reveal();      
+    if (webview) {
+      webview.reveal();
     }
-    else{
+    else {
       return this.createPage(title, callback);
     }
   }
@@ -154,7 +155,7 @@ export class CustomUI extends Section {
       }
     );
 
-    panel.webview.html = this.getHTML(panel, title);    
+    panel.webview.html = this.getHTML(panel, title);
 
     let didSubmit = false;
 
@@ -190,7 +191,7 @@ export class CustomUI extends Section {
           }
         });
       });
-      
+
       openedWebviews.set(title, panel);
       return page;
     }

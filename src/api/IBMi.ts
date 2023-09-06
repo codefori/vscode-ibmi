@@ -778,7 +778,7 @@ export default class IBMi {
 
         // Validate configured library list.
         if (quickConnect === true && cachedServerSettings?.libraryListValidated === true) {
-          // Do nothing, bad data areas are already checked.
+          // Do nothing, library list is already checked.
         } else {
           if (this.config.libraryList) {
             progress.report({
@@ -787,21 +787,31 @@ export default class IBMi {
             let validLibs: string[] = [];
             let badLibs: string[] = [];
 
-            result = await this.sendCommand({
-              command: `for lib in ` + this.config.libraryList.map(lib => this.sysNameInAmerican(lib)).join(` `).replace(/\$/g, `\\$`)
-                                    + `; do if [ -d /QSYS.LIB/$lib.LIB ]; then echo $lib; fi; done`
+            const result = await this.sendQsh({
+              command: [
+                `liblist -d ` + this.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+                ...this.config.libraryList.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+              ].join(`; `)
             });
-            if (result) {
-              validLibs = result.stdout.split(`\n`).filter(lib => lib.trim() !== ``).map(lib => this.sysNameInLocal(lib));
-              badLibs = this.config.libraryList.filter(lib => !validLibs.includes(lib)).map(lib => this.sysNameInLocal(lib));
-              
-              if (badLibs.length > 0) {
-                const chosen = await vscode.window.showWarningMessage(`The following ${badLibs.length > 1 ? `libraries` : `library`} does not exist: ${badLibs.join(`,`)}. Remove ${badLibs.length > 1 ? `them` : `it`} from the library list?`, `Yes`, `No`);
-                if (chosen === `Yes`) {
-                  this.config!.libraryList = validLibs;
-                } else {
-                  vscode.window.showWarningMessage(`The following libraries does not exist: ${badLibs.join(`,`)}.`);
-                }
+        
+            if (result.stderr) {
+              const lines = result.stderr.split(`\n`);
+        
+              lines.forEach(line => {
+                const badLib = this.config?.libraryList.find(lib => line.includes(`ibrary ${lib} `));
+        
+                // If there is an error about the library, store it
+                if (badLib) badLibs.push(badLib);
+              });
+            }
+        
+            if (result && badLibs.length > 0) {
+              validLibs = this.config.libraryList.filter(lib => !badLibs.includes(lib));
+              const chosen = await vscode.window.showWarningMessage(`The following ${badLibs.length > 1 ? `libraries` : `library`} does not exist: ${badLibs.join(`,`)}. Remove ${badLibs.length > 1 ? `them` : `it`} from the library list?`, `Yes`, `No`);
+              if (chosen === `Yes`) {
+                this.config!.libraryList = validLibs;
+              } else {
+                vscode.window.showWarningMessage(`The following libraries does not exist: ${badLibs.join(`,`)}.`);
               }
             }
           }

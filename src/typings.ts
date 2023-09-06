@@ -1,8 +1,10 @@
-import { WorkspaceFolder } from "vscode";
-import Instance from "./api/Instance";
-import { Ignore } from 'ignore'
+import { Ignore } from 'ignore';
+import { ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
+import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
+import Instance from "./api/Instance";
 import { Tools } from "./api/Tools";
+import { ProviderResult } from './api/import/git';
 import { DeployTools } from "./api/local/deployTools";
 
 export interface CodeForIBMi {
@@ -32,6 +34,7 @@ export interface StandardIO {
  * External interface for extensions to call `code-for-ibmi.runCommand`
  */
 export interface RemoteCommand {
+  title?: string;
   command: string;
   environment?: "ile" | "qsh" | "pase";
   cwd?: string;
@@ -51,11 +54,14 @@ export interface CommandResult {
   command?: string;
 }
 
+export type ActionType = "member" | "streamfile" | "object" | "file";
+export type ActionEnvironment = "ile" | "qsh" | "pase";
+
 export interface Action {
   name: string;
   command: string;
-  type?: "member" | "streamfile" | "object" | "file";
-  environment: "ile" | "qsh" | "pase";
+  type?: ActionType;
+  environment: ActionEnvironment;
   extensions?: string[];
   deployFirst?: boolean;
   postDownload?: string[];
@@ -121,11 +127,6 @@ export interface IBMiError {
   text: string
 }
 
-export interface Filter {
-  library: string,
-  filter: string
-}
-
 export interface FileError {
   sev: number
   lineNum: number
@@ -142,8 +143,49 @@ export interface QsysFsOptions {
 
 export type IBMiEvent = "connected" | "disconnected" | "deployLocation" | "deploy"
 
-export interface Library {
-  path:string
+export interface WithPath {
+  path: string
+}
+
+export interface Library extends WithPath { }
+
+export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean | number }
+
+export type BrowserItemParameters = {
+  icon?: string
+  state?: TreeItemCollapsibleState
+  parent?: BrowserItem
+}
+
+export class BrowserItem extends TreeItem {
+  constructor(label: string, readonly params?: BrowserItemParameters) {
+    super(label, params?.state);
+    this.iconPath = params?.icon ? new ThemeIcon(params.icon) : undefined;
+  }
+
+  get parent() {
+    return this.params?.parent;
+  }
+
+  getChildren?(): ProviderResult<BrowserItem[]>;
+  refresh?(): void;
+  reveal?(options?: FocusOptions): Thenable<void>;
+}
+
+export interface FilteredItem {
+  filter: ConnectionConfiguration.ObjectFilters
+}
+
+export interface ObjectItem extends FilteredItem, WithPath {
+  object: IBMiObject
+}
+
+export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
+  sourceFile: IBMiFile
+}
+
+export interface MemberItem extends FilteredItem, WithPath {
+  member: IBMiMember
 }
 
 export interface IBMiSplfUser {
@@ -167,4 +209,4 @@ export interface IBMiSpooledFile {
   form_type: string
   queue_library: string
   queue: string
-}
+}  
