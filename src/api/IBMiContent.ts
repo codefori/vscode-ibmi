@@ -397,12 +397,10 @@ export default class IBMiContent {
    * @param sortOrder
    * @returns an array of IBMiFile 
    */
-  async getObjectList(filters: { library: string; object?: string; types?: string[]; }, sortOrder?: SortOrder): Promise<IBMiFile[]> {
+  async getObjectList(filters: { library: string; object?: string; types?: string[];  }, sortOrder?: SortOrder): Promise<IBMiFile[]> {
     const library = filters.library.toUpperCase();
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
-    // const member = (filters.member ? filters.member.toUpperCase() : filters.member);
-    // const mbrtype = (filters.memberType ? filters.memberType.toUpperCase() : filters.memberType);
 
     const tempLib = this.config.tempLibrary;
     const tempName = Tools.makeid();
