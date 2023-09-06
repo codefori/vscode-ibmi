@@ -15,6 +15,7 @@ const writeFileAsync = util.promisify(fs.writeFile);
 const UTF8_CCSIDS = [`819`, `1208`, `1252`];
 
 type Authority = "*ADD" | "*DLT" | "*EXECUTE" | "*READ" | "*UPD" | "*NONE" | "*ALL" | "*CHANGE" | "*USE" | "*EXCLUDE" | "*AUTLMGT";
+export type SortOrder = `name` | `type`;
 
 export type SortOptions = {
   order: "name" | "date" | "?"
@@ -381,7 +382,7 @@ export default class IBMiContent {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib}`));
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `));
 
         // If there is an error about the library, remove it
         if (badLib) badLibs.push(badLib);
@@ -396,7 +397,7 @@ export default class IBMiContent {
    * @param sortOrder
    * @returns an array of IBMiFile 
    */
-  async getObjectList(filters: { library: string; object?: string; types?: string[]; }, sortOrder?: `name` | `type`): Promise<IBMiFile[]> {
+  async getObjectList(filters: { library: string; object?: string; types?: string[]; }, sortOrder?: SortOrder): Promise<IBMiFile[]> {
     const library = filters.library.toUpperCase();
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));

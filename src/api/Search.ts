@@ -1,5 +1,4 @@
 
-import { isProtectedFilter } from '../filesystems/qsys/QSysFs';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
 import { Tools } from './Tools';
@@ -19,7 +18,7 @@ export namespace Search {
     content: string
   }
 
-  export async function searchMembers(instance: Instance, library: string, sourceFile: string, memberFilter: string, searchTerm: string, filter?:string): Promise<Result[]> {
+  export async function searchMembers(instance: Instance, library: string, sourceFile: string, memberFilter: string, searchTerm: string, readOnly?:boolean): Promise<Result[]> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -43,7 +42,7 @@ export namespace Search {
       });
 
       if (!result.stderr) {
-        return parseGrepOutput(result.stdout || '', filter,
+        return parseGrepOutput(result.stdout || '', readOnly,
           path => connection.sysNameInLocal(path.replace(QSYS_PATTERN, ''))); //Transform QSYS path to URI 'member:' compatible path
       }
       else {
@@ -70,7 +69,7 @@ export namespace Search {
 
         const grepRes = await connection.sendCommand({
           command: `${grep} -inr -F -f - ${ignoreString} ${Tools.escapePath(path)}`,
-          stdin: sanitizeSearchTerm(searchTerm)
+          stdin: searchTerm
         });
 
         if (grepRes.code == 0) {
@@ -88,9 +87,8 @@ export namespace Search {
     }
   }
 
-  function parseGrepOutput(output: string, filter?: string, pathTransformer?: (path: string) => string): Result[] {
+  function parseGrepOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): Result[] {
     const results: Result[] = [];
-    const readonly = isProtectedFilter(filter);
     for (const line of output.split('\n')) {
       if (!line.startsWith(`Binary`)) {
         const parts = line.split(`:`); //path:line
@@ -122,7 +120,7 @@ export namespace Search {
 }
 
 function sanitizeSearchTerm(searchTerm: string): string {
-  return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\\\"`);
+  return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\"`);
 }
 
 function nthIndex(aString: string, pattern: string, n: number) {
