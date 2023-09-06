@@ -134,7 +134,7 @@ export namespace ConnectionConfiguration {
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
-      postActionView: (parameters.debpostActionViewugPort || "none")
+      postActionView: (parameters.debpostActionViewugPort || "task")
     }
   }
 
