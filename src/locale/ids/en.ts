@@ -183,7 +183,19 @@ export const en: Locale = {
   'ProfilesView.setToDefault.detail': `This will reset the User Library List, working directory and Custom Variables back to the defaults.`,
   // splfBrowser:
   'splfBrowser.addUserSpooledFileFilter.prompt': `User to show Spooled Files`,
+  
+  'splfBrowser.downloadSpooledfile.prompt': `Type of file to create, TXT, PDF`,
+  'splfBrowser.downloadSpooledfile.infoMessage': `Spooled File was downloaded.`,
+  'splfBrowser.downloadSpooledfile.error2': ``,
+
+  'splfBrowser.filterSpooledFiles.prompt': `Filter {0}'s spooled files. Delete value to clear filter.`,
+  'splfBrowser.filterSpooledFiles.message': `Filtering spooled files for ${0}, using these words, ${1} spooled files.`,
+  'splfBrowser.filterSpooledFiles.messageTitle': `Filtering list of spooled files`,
+  'splfBrowser.filterSpooledFiles.error1': `No spooled files to filter.`,
+  'splfBrowser.filterSpooledFiles.error2': `Error searching spooled files.`,
+
   'splfBrowser.deleteUserSpooledFileFilter.placeHolder': `Select filter name to remove`,
+
   'splfBrowser.deleteSpooledFile.warningMessage': `Are you sure you want to delete spooled file {0}?`,
   'splfBrowser.deleteSpooledFile.infoMessage': `Deleted {0}.`,
   'splfBrowser.deleteSpooledFile.errorMessage': `Error deleting user spooled file! {0}.`,
@@ -218,4 +230,15 @@ export const en: Locale = {
   'splfBrowser.searchSpooledFiles.infoMessage': `No results found searching for '{0}' in {1}.`,
   'splfBrowser.searchSpooledFiles.errorMessage0': `No spooled files to search.`,
   'splfBrowser.searchSpooledFiles.errorMessage1': `Error searching spooled files.`,
+  'splfBrowser.getChildern.errorMessage1': `Error loading user spooled files`,
+  'splfBrowser.resolveTreeItem.toolTip1': `User Text:\t\t\t  {0}`,
+  'splfBrowser.resolveTreeItem.toolTip2': `\nSpooled Fiile Count: ${0}`,
+  'splfBrowser.SPLF.description': `- {0} - Pages: {1}, Time: {2} `,
+  'splfBrowser.SPLF.toolTipJob': `Job:\t\t\t {0}`,
+  'splfBrowser.SPLF.toolTipFileNum': `\nFile Number:\t {0}`,
+  'splfBrowser.SPLF.toolTipUserData': `\nUser Data:\t {0}`,
+  'splfBrowser.SPLF.toolTipCreated': `\nCreated:\t\t {0}`,
+  'splfBrowser.SPLF.toolTipSize': `\nSize in bytes:\t {0}`,
+  'splfBrowser.SPLF.toolTipForm': `\nForm Type:\t {0}`,
+  'splfBrowser.SPLF.toolTipOQ': `\nOutput Queue: ${0}/${1}`,
 };
