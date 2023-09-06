@@ -210,7 +210,8 @@ export namespace CompileTools {
                 evfeventInfo.library = config.currentLibrary;
               }
 
-              evfeventInfo.object = name;
+              evfeventInfo.library = evfeventInfo.library.toUpperCase();
+              evfeventInfo.object = name.toUpperCase();
               evfeventInfo.extension = ext;
 
               let relativePath;
@@ -349,7 +350,7 @@ export namespace CompileTools {
                         writeEmitter.fire(`Fetching errors from .evfevent.${NEWLINE}`);
         
                       } 
-                      else if (isIleCommand && possibleObject) {
+                      else if (evfeventInfo.object && evfeventInfo.library) {
                         if (command.includes(`*EVENTF`)) {
                           writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                           refreshDiagnosticsFromServer(instance, evfeventInfo);
