@@ -23,7 +23,7 @@ export function initialise(context: ExtensionContext) {
               );
             }
             
-            return await CompileTools.runAction(instance, editor.document.uri, {
+            CompileTools.runAction(instance, editor.document.uri, {
               command: selectedCommand.content,
               environment: `ile`,
               name: `CL command`,
@@ -31,8 +31,6 @@ export function initialise(context: ExtensionContext) {
           }
         }
       }
-
-      return false;
     })
   )
 }
