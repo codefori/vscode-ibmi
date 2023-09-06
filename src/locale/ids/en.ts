@@ -215,7 +215,7 @@ export const en: Locale = {
   'splfBrowser.deleteSpooledFile.infoMessage': `Deleted {0}.`,
   'splfBrowser.deleteSpooledFile.errorMessage': `Error deleting user spooled file! {0}.`,
   'splfBrowser.deleteSpooledFile.cancelled': `Deletion canceled.`,
-  'splfBrowser.deleteNamedSpooledFiles.warningMessage': `Are you sure you want to delete ALL spooled files named {0} for user {1}?`,
+  'splfBrowser.deleteNamedSpooledFiles.warningMessage': `Are you sure you want to delete ALL spooled files named {0} for user {1}, using filter {2}?`,
   'splfBrowser.deleteNamedSpooledFiles.infoMessage': `Deleted {0} spooled files.`,
   'splfBrowser.deleteNamedSpooledFiles.errorMessage': `Error deleting user spooled files! {0}.`,
   'splfBrowser.deleteNamedSpooledFiles.cancelled': `Deletion canceled.`,

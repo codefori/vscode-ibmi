@@ -14,10 +14,6 @@ import { getSpooledFileUri } from '../filesystems/qsys/SplfFs';
 import { Tools } from '../api/Tools';
 import { t } from "../locale";
 
-function getInstance() {
-  const { instance } = (require(`../instantiate`));
-  return instance;
-}
 
 export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
   private emitter: vscode.EventEmitter<any>;
@@ -186,10 +182,11 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
         }
       }),
       vscode.commands.registerCommand(`code-for-ibmi.deleteNamedSpooledFiles`, async (node) => {
+        // TODO: make this function delete based on name or active filter
         if (node) {
           //Running from right click
           let deleteCount = 0;
-          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteNamedSpooledFiles.warningMessage`,node.name,node.user), t(`Yes`), t(`Cancel`));
+          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteNamedSpooledFiles.warningMessage`,node.name,node.user,node.parent.filter), t(`Yes`), t(`Cancel`));
           
           if (result === `Yes`) {
             const connection = getConnection();
@@ -381,7 +378,7 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
                     clearInterval(messageTimeout);
                   }
                 }, timeoutInternal);
-                let results = await SplfSearch.searchUserSpooledFiles(getInstance(), searchTerm, searchUser, searchName);
+                let results = await SplfSearch.searchUserSpooledFiles(instance, searchTerm, searchUser, searchName);
 
                 if (results.length > 0) {
 
