@@ -2,6 +2,7 @@ import { ExtensionContext, Position, Range, Selection, TextDocument, commands, w
 import { instance } from "../../instantiate";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { EndOfLine } from "vscode";
+import { CompileTools } from "../../api/CompileTools";
 
 export function initialise(context: ExtensionContext) {
   context.subscriptions.push(
@@ -24,32 +25,11 @@ export function initialise(context: ExtensionContext) {
               );
             }
             
-            const commandResult = await connection!.runCommand({
+            CompileTools.runAction(instance, editor.document.uri, {
               command: selectedCommand.content,
-              environment: `ile`
+              environment: `ile`,
+              name: `CL command`,
             });
-
-            if (commandResult) {
-              if (commandResult.code === 0 || commandResult.code === null) {
-                window.showInformationMessage(
-                  `Command was successful.`,
-                  GlobalConfiguration.get<boolean>(`logCompileOutput`) ? `Show Output` : ''
-                ).then(async (item) => {
-                  if (item === `Show Output`) {
-                    commands.executeCommand(`code-for-ibmi.showOutputPanel`);
-                  }
-                });
-              } else {
-                window.showErrorMessage(
-                  `Command did not end successfully.`,
-                  GlobalConfiguration.get<boolean>(`logCompileOutput`) ? `Show Output` : ''
-                ).then(async (item) => {
-                  if (item === `Show Output`) {
-                    commands.executeCommand(`code-for-ibmi.showOutputPanel`);
-                  }
-                });
-              }
-            }
           }
         }
       }

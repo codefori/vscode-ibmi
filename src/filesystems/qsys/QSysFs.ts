@@ -1,5 +1,6 @@
 import { ParsedUrlQueryInput, parse, stringify } from "querystring";
 import vscode, { FilePermission } from "vscode";
+import { onCodeForIBMiConfigurationChange } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
@@ -49,12 +50,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         this.sourceDateHandler = new SourceDateHandler(context);
         this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
 
-        context.subscriptions.push(
-            vscode.workspace.onDidChangeConfiguration(async event => {
-                if (event.affectsConfiguration(`code-for-ibmi.connectionSettings`) || event.affectsConfiguration("code-for-ibmi.showDateSearchButton")) {
-                    this.updateMemberSupport();
-                }
-            }));
+        context.subscriptions.push(onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()));
 
         instance.onEvent("connected", () => this.updateMemberSupport());
         instance.onEvent("disconnected", () => this.updateMemberSupport());
@@ -109,10 +105,10 @@ export class QSysFS implements vscode.FileSystemProvider {
             if (retrying) {
                 throw new Error("Not connected to IBM i");
             }
-            else{
+            else {
                 await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
-                return this.readFile(uri, true);                
-            }            
+                return this.readFile(uri, true);
+            }
         }
     }
 
