@@ -390,7 +390,7 @@
 									"none"
 								],
 								"description": "Determine which view should be shown when running Actions"
-							},
+							}
 						}
 					}
 				},
