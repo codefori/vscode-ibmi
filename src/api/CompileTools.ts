@@ -1,6 +1,6 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, WorkspaceFolder, tasks, window } from 'vscode';
+import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks, window } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import { GlobalConfiguration } from './Configuration';
@@ -293,6 +293,9 @@ export namespace CompileTools {
           }
 
           const command = replaceValues(chosenAction.command, variables);
+
+          const viewControl = config.postActionView || "none";
+
           const exitCode = await new Promise<number>(resolve =>
             tasks.executeTask({
               isBackground: true,
@@ -302,7 +305,9 @@ export namespace CompileTools {
               source: 'IBM i',
               presentationOptions: {
                 showReuseMessage: true,
-                clear: GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)
+                clear: GlobalConfiguration.get<boolean>(`clearOutputEveryTime`),
+                focus: false,
+                reveal: (viewControl === `task` ? TaskRevealKind.Always : TaskRevealKind.Never),
               },
               problemMatchers: [],
               runOptions: {},
@@ -318,6 +323,8 @@ export namespace CompileTools {
                   onDidClose: closeEmitter.event,
                   open: async (initialDimensions: vscode.TerminalDimensions | undefined) => {
                     let successful = false;
+                    let problemsFetched = false;
+
                     try {
                       const commandResult = await runCommand(instance, {
                         title: chosenAction.name,
@@ -357,6 +364,7 @@ export namespace CompileTools {
                           if (command.includes(`*EVENTF`)) {
                             writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                             refreshDiagnosticsFromServer(instance, evfeventInfo);
+                            problemsFetched = true;
                           } else {
                             writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                           }
@@ -426,6 +434,7 @@ export namespace CompileTools {
                               // Process locally downloaded evfevent files:
                               if (useLocalEvfevent) {
                                 refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                                problemsFetched = true;
                               }
                             })
                             .catch(error => {
@@ -434,6 +443,10 @@ export namespace CompileTools {
                               closeEmitter.fire(1);
                             });
                         }
+                      }
+
+                      if (problemsFetched && viewControl === `problems`) {
+                        commands.executeCommand(`workbench.action.problems.focus`);
                       }
 
                     } catch (e) {
