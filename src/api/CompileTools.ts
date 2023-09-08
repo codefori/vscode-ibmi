@@ -295,6 +295,8 @@ export namespace CompileTools {
           const command = replaceValues(chosenAction.command, variables);
 
           const viewControl = config.postActionView || "none";
+          const outputBuffer: string[] = [];
+          let actionName = chosenAction.name;
 
           const exitCode = await new Promise<number>(resolve =>
             tasks.executeTask({
@@ -316,6 +318,7 @@ export namespace CompileTools {
                 const writeEmitter = new vscode.EventEmitter<string>();
                 const closeEmitter = new vscode.EventEmitter<number>();
 
+                writeEmitter.event(s => outputBuffer.push(s));
                 closeEmitter.event(resolve);
 
                 const term: Pseudoterminal = {
@@ -343,16 +346,8 @@ export namespace CompileTools {
                           Object.assign(evfeventInfo, possibleObject);
                         }
 
-                        const actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : chosenAction.name);
-
-                        if (commandResult.code === 0 || commandResult.code === null) {
-                          vscode.window.showInformationMessage(`Action ${actionName} was successful.`);
-                          successful = true;
-                        } else {
-                          vscode.window.showErrorMessage(
-                            `Action ${actionName} was not successful.`
-                          )
-                        }
+                        actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
+                        successful = (commandResult.code === 0 || commandResult.code === null);
 
                         writeEmitter.fire(NEWLINE);
 
@@ -465,9 +460,23 @@ export namespace CompileTools {
             })
           );
 
-          return exitCode === 0;
+          const executionOK = (exitCode === 0);
+          const openOutputAction = "Open output"; //TODO: will be translated in the future
+          const openOutput = await (executionOK ?
+            vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
+            vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction));
+
+          if (openOutput) {
+            const now = new Date();
+            new CustomUI()
+              .addParagraph(outputBuffer.join("").replaceAll(" ", "&nbsp;").replaceAll("\r\n", "<br />"))
+              .setOptions({ fullWidth: true, consoleFont: true })
+              .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+          }
+
+          return executionOK;
         }
-        else{
+        else {
           return false;
         }        
       } else {
