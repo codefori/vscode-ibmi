@@ -227,7 +227,9 @@ export class SettingsUI {
               .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
               .addParagraph(`Only provide either the password or a private key - not both.`)
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
+              .addHorizontalRule()
               .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
+              .addInput(`passphrase`, `Private key passphrase`, undefined, {default: connection.passphrase})
               .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
               .loadPage<any>(`Login Settings: ${name}`);
 
@@ -245,6 +247,8 @@ export class SettingsUI {
               };
 
               delete data.password;
+
+              data.passphrase = data.passphrase.length > 0 ? data.passphrase : undefined;
 
               connection = {
                 ...connection,

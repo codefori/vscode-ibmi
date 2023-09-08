@@ -74,6 +74,7 @@ export interface ConnectionData {
   username: string;
   password?: string;
   privateKey: string | null;
+  passphrase?: string;
   keepaliveInterval?: number;
 }
 

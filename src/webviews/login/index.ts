@@ -27,7 +27,9 @@ export class Login {
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
+      .addHorizontalRule()
       .addFile(`privateKey`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`)
+      .addInput(`passphrase`, `Private key passphrase`)
       .addButtons(
         { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
@@ -54,7 +56,8 @@ export class Login {
               host: data.host,
               port: data.port,
               username: data.username,
-              privateKey: data.privateKey
+              privateKey: data.privateKey,
+              passphrase: data.passphrase.length > 0 ? data.passphrase : undefined
             });
 
             if (data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
