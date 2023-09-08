@@ -616,16 +616,14 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
    * @param {vscode.CancellationToken} token
    * @returns {ProviderResult<TreeItem>};
    */
-  async resolveTreeItem(item :SPLF, element :any, token :vscode.CancellationToken) :Promise<vscode.TreeItem>
+  async resolveTreeItem(item :UserSpooledFiles, element :any, token :vscode.CancellationToken) :Promise<vscode.TreeItem>
   {
     const content = getContent();
-    const splfNum = await content.getUserSpooledFileCount(item.name);
-    const userText = await content.getUserProfileText(item.name);
+    const splfNum = await content.getUserSpooledFileCount(item.user);
+    const userText = await content.getUserProfileText(item.user);
     item.tooltip = ``
       .concat(userText ?  t(`splfBrowser.resolveTreeItem.toolTip1`,userText) :``)
-      .concat(userText ?  t(`splfBrowser.resolveTreeItem.toolTip2`,userText) :``)
-      .concat(`${userText ? `User Text:\t\t\t  ${userText}` : ``}`)
-      .concat(`${splfNum  ? `\nSpooled Fiile Count: ${splfNum}` : ``}`)
+      .concat(userText ?  t(`splfBrowser.resolveTreeItem.toolTip2`,splfNum) :``)
     return item;
   }
 }
