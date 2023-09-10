@@ -469,8 +469,8 @@ export namespace CompileTools {
           if (openOutput) {
             const now = new Date();
             new CustomUI()
-              .addParagraph(outputBuffer.join("").replaceAll(" ", "&nbsp;").replaceAll("\r\n", "<br />"))
-              .setOptions({ fullWidth: true, consoleFont: true })
+              .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
+              .setOptions({ fullWidth: true })
               .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
           }
 

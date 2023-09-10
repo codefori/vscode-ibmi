@@ -6,7 +6,6 @@ const vscodeweb = require(`@bendera/vscode-webview-elements/dist/bundled`);
 
 type PanelOptions = {
   fullWidth?: boolean
-  consoleFont?: boolean
 };
 
 export interface Page<T> {
@@ -231,7 +230,6 @@ export class CustomUI extends Section {
               #laforma {
                 padding-left: ${this.options?.fullWidth ? '0' : '15'}%;
                 padding-right: ${this.options?.fullWidth ? '0' : '15'}%;
-                ${this.options?.consoleFont ? 'font-family: monospace;' : ''}
               }
             }
 
