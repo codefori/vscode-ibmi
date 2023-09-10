@@ -74,7 +74,7 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod) : Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -297,6 +297,7 @@ export namespace CompileTools {
           const viewControl = config.postActionView || "none";
           const outputBuffer: string[] = [];
           let actionName = chosenAction.name;
+          let hasRun = false;
 
           const exitCode = await new Promise<number>(resolve =>
             tasks.executeTask({
@@ -339,6 +340,7 @@ export namespace CompileTools {
                       const useLocalEvfevent = fromWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
 
                       if (commandResult) {
+                        hasRun = true;
                         const isIleCommand = environment === `ile`;
 
                         const possibleObject = getObjectFromCommand(commandResult.command);
@@ -461,24 +463,26 @@ export namespace CompileTools {
           );
 
           const executionOK = (exitCode === 0);
-          const openOutputAction = "Open output"; //TODO: will be translated in the future
-          const openOutput = await (executionOK ?
-            vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
-            vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction));
+          if (hasRun) {            
+            const openOutputAction = "Open output"; //TODO: will be translated in the future
+            const openOutput = await (executionOK ?
+              vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
+              vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction));
 
-          if (openOutput) {
-            const now = new Date();
-            new CustomUI()
-              .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
-              .setOptions({ fullWidth: true })
-              .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+            if (openOutput) {
+              const now = new Date();
+              new CustomUI()
+                .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
+                .setOptions({ fullWidth: true })
+                .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+            }
           }
 
           return executionOK;
         }
         else {
           return false;
-        }        
+        }
       } else {
         //No compile commands
         vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);
