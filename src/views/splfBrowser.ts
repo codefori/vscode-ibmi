@@ -186,9 +186,9 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
         if (node) {
           //Running from right click
           let deleteCount = 0;
-          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteNamedSpooledFiles.warningMessage`,node.name, node.user, node.parent.filter), t(`Yes`), t(`Cancel`), t(`All`));
+          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteNamedSpooledFiles.warningMessage`,node.name), t(`Yes`), t(`Cancel`));
           
-          if (result === `Yes` || result === `All`) {
+          if (result === `Yes`) {
             const connection = getConnection();
             const content = getContent();
             const TempFileName = Tools.makeid();
@@ -199,10 +199,6 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
 
             // const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name, node.parent.filter);
             if (result === `Yes`) {
-              objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name, node.parent.filter);
-            }
-            else if (result === `All`) 
-            {
               objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name);
             }
             try {
@@ -245,6 +241,71 @@ export default class SPLFBrowser implements vscode.TreeDataProvider<any> {
           else {
             // vscode.window.showInformationMessage(`Deletion canceled.`);
             vscode.window.showInformationMessage(t('splfBrowser.deleteNamedSpooledFiles.cancelled'));
+          }
+        } else {
+          //Running from command.
+        }
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.deleteFilteredSpooledFiles`, async (node) => {
+        // TODO: make this function delete based on name or active filter
+        if (node) {
+          //Running from right click
+          let deleteCount = 0;
+          let result = await vscode.window.showWarningMessage(t(`splfBrowser.deleteFilteredSpooledFiles.warningMessage`,node.name, node.parent.filter), t(`Yes`), t(`Cancel`));
+          
+          if (result === `Yes`) {
+            const connection = getConnection();
+            const content = getContent();
+            const TempFileName = Tools.makeid();
+            const TempMbrName = Tools.makeid();
+            const asp = ``;
+            const tempLib = getConfig().tempLibrary;
+            let objects: IBMiSpooledFile[] = [];
+
+            // const objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name, node.parent.filter);
+            if (result === `Yes`) {
+              objects = await content.getUserSpooledFileFilter(node.user, node.sort, node.name, node.parent.filter);
+            }
+            try {
+              let commands = objects.map((o: any) => (
+                `DLTSPLF FILE(${o.name}) JOB(${o.qualified_job_name}) SPLNBR(${o.number})`              
+              )); 
+              deleteCount = commands.length;
+              let dltCmdSrc = `// BCHJOB  JOB(DLTSPLFS) JOBQ(QUSRNOMAX)\n` +commands.join(`\n`) +`\n// ENDBCHJOB`;
+              await connection.runCommand({
+                command: `CRTSRCPF FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) RCDLEN(112)`
+                ,environment: `ile`
+              });
+              await content.uploadMemberContent(asp, tempLib, TempFileName, TempMbrName, dltCmdSrc)
+              let dltCommands = `SBMDBJOB FILE(${tempLib}/${TempFileName}) MBR(${TempMbrName}) JOBQ(QUSRNOMAX)`;
+              const commandResult = await connection.runCommand({
+                command: dltCommands
+                ,environment: `ile`
+              });
+              if (commandResult) {
+                // vscode.window.showInformationMessage(` ${commandResult.stdout}.`);
+                if (commandResult.code === 0 || commandResult.code === null) {
+                } else {
+                }
+              }
+                
+            } catch (e) {
+              vscode.window.showErrorMessage(t(`splfBrowser.deleteFilteredSpooledFiles.errorMessage`, e));
+            }
+            if (deleteCount > 0) {
+              if (GlobalConfiguration.get(`autoRefresh`)) this.refresh(node.parent);
+              // vscode.window.showInformationMessage(`Deleted ${deleteCount} spooled files.`);
+              vscode.window.showInformationMessage(t(`splfBrowser.deleteFilteredSpooledFiles.infoMessage`,deleteCount));
+              await connection.runCommand({
+                command: `DLTF FILE(${tempLib}/${TempFileName}) `
+                ,environment: `ile`
+              });
+            }
+            
+          }
+          else {
+            // vscode.window.showInformationMessage(`Deletion canceled.`);
+            vscode.window.showInformationMessage(t('splfBrowser.deleteFilteredSpooledFiles.cancelled'));
           }
         } else {
           //Running from command.

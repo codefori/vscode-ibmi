@@ -1515,7 +1515,13 @@
 			},
 			{
 				"command": "code-for-ibmi.deleteNamedSpooledFiles",
-				"title": "Delete like named spooled files",
+				"title": "Delete like NAMED spooled files",
+				"enablement": "code-for-ibmi:connected",
+				"icon": "$(delete)"
+			},
+			{
+				"command": "code-for-ibmi.deleteFilteredSpooledFiles",
+				"title": "Delete like FILTERED spooled files",
 				"enablement": "code-for-ibmi:connected",
 				"icon": "$(delete)"
 			},
@@ -2482,6 +2488,11 @@
 					"command": "code-for-ibmi.deleteNamedSpooledFiles",
 					"when": "view == splfBrowser && viewItem =~ /^spooledfile$/ ",
 					"group": "3_spooledfile@1"
+				},
+				{
+					"command": "code-for-ibmi.deleteFilteredSpooledFiles",
+					"when": "view == splfBrowser && viewItem =~ /^spooledfile$/ ",
+					"group": "3_spooledfile@2"
 				},
 				{
 					"command": "code-for-ibmi.moveSpooledFile",
