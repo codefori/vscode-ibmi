@@ -9,6 +9,7 @@ import { Search } from "../api/Search";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
+import { GlobalStorage } from '../api/Storage';
 import { BrowserItem, BrowserItemParameters, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
@@ -701,7 +702,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node?: SourcePhysicalFileItem) => {
       const parameters = {
-        path: node?.path,
+        path: node?.path || ``,
         filter: node?.filter
       }
 
@@ -743,103 +744,58 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       if (parameters.path) {
         const config = getConfig();
-        const content = getContent();
+        const storage = instance.getStorage();
 
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
           const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? t(`objectBrowser.searchSourceFile.aspText`, config.sourceASP) : ``);
 
-          const searchTerm = await vscode.window.showInputBox({
-            prompt: t(`objectBrowser.searchSourceFile.prompt2`, parameters.path, aspText)
-          });
+          let list = GlobalStorage.get().getPreviousSearchTerms();
+          const listHeader: vscode.QuickPickItem[] = [
+            { label: t(`objectBrowser.searchSourceFile.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
+          ];
+          const clearList = t(`clearList`);
+          const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
-          if (searchTerm) {
-            try {
-              await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: t(`objectBrowser.searchSourceFile.title2`),
-              }, async progress => {
-                progress.report({
-                  message: t(`objectBrowser.searchSourceFile.progressMessage`, parameters.path)
-                });
+          const quickPick = vscode.window.createQuickPick();
+          quickPick.items = list.length > 0 ? listHeader.concat(list.map(term => ({ label: term }))).concat(clearListArray) : [];
+          quickPick.placeholder = list.length > 0 ? t(`objectBrowser.searchSourceFile.placeholder`) : t(`objectBrowser.searchSourceFile.placeholder2`);
+          quickPick.title = t(`objectBrowser.searchSourceFile.title2`, parameters.path, aspText);
 
-                const members = await content.getMemberList(pathParts[0], pathParts[1], parameters.filter?.member);
-
-                if (members.length > 0) {
-                  // NOTE: if more messages are added, lower the timeout interval
-                  const timeoutInternal = 9000;
-                  const searchMessages = [
-                    t(`objectBrowser.searchSourceFile.searchMessage1`, searchTerm, parameters.path),
-                    t(`objectBrowser.searchSourceFile.searchMessage2`, members.length, searchTerm, parameters.path),
-                    t(`objectBrowser.searchSourceFile.searchMessage3`, searchTerm),
-                    t(`objectBrowser.searchSourceFile.searchMessage4`, searchTerm, parameters.path),
-                    t(`objectBrowser.searchSourceFile.searchMessage5`),
-                    t(`objectBrowser.searchSourceFile.searchMessage6`),
-                    t(`objectBrowser.searchSourceFile.searchMessage7`),
-                    t(`objectBrowser.searchSourceFile.searchMessage8`, members.length),
-                    t(`objectBrowser.searchSourceFile.searchMessage9`, searchTerm, parameters.path),
-                  ];
-
-                  let currentMessage = 0;
-                  const messageTimeout = setInterval(() => {
-                    if (currentMessage < searchMessages.length) {
-                      progress.report({
-                        message: searchMessages[currentMessage]
-                      });
-                      currentMessage++;
-                    } else {
-                      clearInterval(messageTimeout);
-                    }
-                  }, timeoutInternal);
-
-                  let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${parameters.filter?.member || `*`}.MBR`, searchTerm, parameters?.filter?.protected);
-
-                  // Filter search result by member type filter.
-                  if (results.length > 0 && parameters.filter?.member) {
-                    const patternExt = new RegExp(`^` + parameters.filter?.member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
-                    results = results.filter(result => {
-                      const resultPath = result.path.split(`/`);
-                      const resultName = resultPath[resultPath.length - 1];
-                      const member = members.find(member => member.name === resultName);
-                      return (member && patternExt.test(member.extension));
-                    })
-                  }
-
-                  if (results.length > 0) {
-                    const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
-
-                    // Format result to include member type.
-                    results.forEach(result => {
-                      const resultPath = result.path.split(`/`);
-                      const resultName = resultPath[resultPath.length - 1];
-                      result.path += `.${members.find(member => member.name === resultName)?.extension || ''}`;
-                      if (objectNamesLower === true) {
-                        result.path = result.path.toLowerCase();
-                      }
-                    });
-
-                    results = results.sort((a, b) => {
-                      return a.path.localeCompare(b.path);
-                    });
-
-                    setSearchResults(searchTerm, results);
-
-                  } else {
-                    vscode.window.showInformationMessage(t(`objectBrowser.searchSourceFile.notFound`, searchTerm, parameters.path));
-                  }
-
-                } else {
-                  vscode.window.showErrorMessage(t(`objectBrowser.searchSourceFile.noMembers`));
-                }
-
-              });
-
-            } catch (e) {
-              vscode.window.showErrorMessage(t(`objectBrowser.searchSourceFile.errorMessage`, e));
+          quickPick.onDidChangeValue(() => {
+            if (quickPick.value === ``) {
+              quickPick.items = listHeader.concat(list.map(term => ({ label: term }))).concat(clearListArray);
+            } else if (!list.includes(quickPick.value)) {
+              quickPick.items = [{ label: quickPick.value }].concat(listHeader)
+                .concat(list.map(term => ({ label: term })))
             }
-          }
+          })
+
+          quickPick.onDidAccept(async () => {
+            const searchTerm = quickPick.activeItems[0].label;
+            if (searchTerm) {
+              if (searchTerm === clearList) {
+                GlobalStorage.get().setPreviousSearchTerms([]);
+                list = [];
+                quickPick.items = [];
+                quickPick.placeholder = t(`objectBrowser.searchSourceFile.placeholder2`);
+                vscode.window.showInformationMessage(t(`clearedList`));
+                quickPick.show();
+              } else {
+                quickPick.hide();
+                list = list.filter(term => term !== searchTerm);
+                list.splice(0, 0, searchTerm);
+                GlobalStorage.get().setPreviousSearchTerms(list);
+                await doSearchInSourceFile(searchTerm, parameters.path, parameters.filter);
+              }
+            }
+          });
+          
+          quickPick.onDidHide(() => quickPick.dispose());
+          quickPick.show();
+
         } else {
-          vscode.window.showErrorMessage(t(`objectBrowser.searchSourceFile.errorMessage2`));
+          vscode.window.showErrorMessage(t(`objectBrowser.searchSourceFile.errorMessage`));
         }
       }
     }),
@@ -1131,5 +1087,93 @@ function storeMemberList(path: string, list: string[]) {
     const existingDirs = storage.getSourceList();
     existingDirs[path] = list;
     return storage.setSourceList(existingDirs);
+  }
+}
+
+async function doSearchInSourceFile(searchTerm: string, path: string, filter: ConnectionConfiguration.ObjectFilters | undefined) {
+  const content = getContent();
+  const pathParts = path.split(`/`);
+  try {
+    await vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: t(`objectBrowser.doSearchInSourceFile.title`),
+    }, async progress => {
+      progress.report({
+        message: t(`objectBrowser.doSearchInSourceFile.progressMessage`, path)
+      });
+
+      const members = await content.getMemberList(pathParts[0], pathParts[1], filter?.member);
+
+      if (members.length > 0) {
+        // NOTE: if more messages are added, lower the timeout interval
+        const timeoutInternal = 9000;
+        const searchMessages = [
+          t(`objectBrowser.doSearchInSourceFile.searchMessage1`, searchTerm, path),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage2`, members.length, searchTerm, path),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage3`, searchTerm),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage4`, searchTerm, path),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage5`),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage6`),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage7`),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage8`, members.length),
+          t(`objectBrowser.doSearchInSourceFile.searchMessage9`, searchTerm, path),
+        ];
+
+        let currentMessage = 0;
+        const messageTimeout = setInterval(() => {
+          if (currentMessage < searchMessages.length) {
+            progress.report({
+              message: searchMessages[currentMessage]
+            });
+            currentMessage++;
+          } else {
+            clearInterval(messageTimeout);
+          }
+        }, timeoutInternal);
+
+        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected);
+
+        // Filter search result by member type filter.
+        if (results.length > 0 && filter?.member) {
+          const patternExt = new RegExp(`^` + filter?.member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
+          results = results.filter(result => {
+            const resultPath = result.path.split(`/`);
+            const resultName = resultPath[resultPath.length - 1];
+            const member = members.find(member => member.name === resultName);
+            return (member && patternExt.test(member.extension));
+          })
+        }
+
+        if (results.length > 0) {
+          const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
+
+          // Format result to include member type.
+          results.forEach(result => {
+            const resultPath = result.path.split(`/`);
+            const resultName = resultPath[resultPath.length - 1];
+            result.path += `.${members.find(member => member.name === resultName)?.extension || ''}`;
+            if (objectNamesLower === true) {
+              result.path = result.path.toLowerCase();
+            }
+          });
+
+          results = results.sort((a, b) => {
+            return a.path.localeCompare(b.path);
+          });
+
+          setSearchResults(searchTerm, results);
+
+        } else {
+          vscode.window.showInformationMessage(t(`objectBrowser.doSearchInSourceFile.notFound`, searchTerm, path));
+        }
+
+      } else {
+        vscode.window.showErrorMessage(t(`objectBrowser.doSearchInSourceFile.noMembers`));
+      }
+
+    });
+
+  } catch (e) {
+    vscode.window.showErrorMessage(t(`objectBrowser.doSearchInSourceFile.errorMessage`, e));
   }
 }
