@@ -539,10 +539,7 @@ module.exports = class IFSBrowser {
 
           if (!searchPath) return;
 
-          // let searchTerm = await vscode.window.showInputBox({
-          //   prompt: t(`ifsBrowser.searchIFS.prompt2`, searchPath)
-          // });
-          let list = [...GlobalStorage.get().getPreviousSearchTerms() || []];
+          let list = [...GlobalStorage.get().getPreviousSearchTerms()];
           const listHeader = [
             { label: t(`ifsBrowser.searchIFS.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
           ];
@@ -721,12 +718,12 @@ module.exports = class IFSBrowser {
           message: t(`ifsBrowser.doSearchInStreamfiles.progressMessage`, searchTerm, searchPath)
         });
 
-        let results = await Search.searchIFS(getInstance(), searchPath, searchTerm);
+        let results = (await Search.searchIFS(getInstance(), searchPath, searchTerm))
+          .map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }))
+          .sort((a, b) => a.path.localeCompare(b.path));
 
         if (results.length > 0) {
-          results = results.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }));
-          setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
-
+          setSearchResults(searchTerm, results);
         } else {
           vscode.window.showInformationMessage(t(`ifsBrowser.doSearchInStreamfiles.noResults`, searchTerm, searchPath));
         }
