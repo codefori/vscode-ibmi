@@ -750,7 +750,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (pathParts[1] !== `*ALL`) {
           const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? t(`objectBrowser.searchSourceFile.aspText`, config.sourceASP) : ``);
 
-          let list = [...GlobalStorage.get().getPreviousSearchTerms()];
+          let list = GlobalStorage.get().getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [
             { label: t(`objectBrowser.searchSourceFile.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
           ];

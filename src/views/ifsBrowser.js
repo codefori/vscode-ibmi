@@ -539,7 +539,7 @@ module.exports = class IFSBrowser {
 
           if (!searchPath) return;
 
-          let list = [...GlobalStorage.get().getPreviousSearchTerms()];
+          let list = GlobalStorage.get().getPreviousSearchTerms();
           const listHeader = [
             { label: t(`ifsBrowser.searchIFS.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
           ];
