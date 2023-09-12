@@ -294,7 +294,7 @@ export namespace CompileTools {
 
           const command = replaceValues(chosenAction.command, variables);
 
-          const viewControl = config.postActionView || "none";
+          const viewControl = GlobalConfiguration.get<string>(`postActionView`) || "none";
           const outputBuffer: string[] = [];
           let actionName = chosenAction.name;
           let hasRun = false;

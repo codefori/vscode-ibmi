@@ -55,11 +55,6 @@ export class SettingsUI {
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
           .addCheckbox(`autoConvertIFSccsid`, `Support EBCDIC streamfiles`, `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`, config.autoConvertIFSccsid)
           .addHorizontalRule()
-          .addSelect(`postActionView`, `Action view control`, [
-            { selected: config.postActionView === `task`, value: `task`, description: `Show Action`, text: `Will show the Action being executed.`},
-            { selected: config.postActionView === `problems`, value: `problems`, description: `Show Problems`, text: `Will show the Problems view after the Action has finished executing.`},
-            { selected: config.postActionView === `none`, value: `none`, description: `None`, text: `Do nothing when the Action is submitted.`},
-          ], `Control how the UI will react when Actions are run.`)
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
 

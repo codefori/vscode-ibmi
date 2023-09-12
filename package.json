@@ -380,19 +380,19 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
-							},
-							"postActionView": {
-								"type": "string",
-								"default": "task",
-								"enum": [
-									"task",
-									"problems",
-									"none"
-								],
-								"description": "Determine which view should be shown when running Actions"
 							}
 						}
 					}
+				},
+				"code-for-ibmi.postActionView": {
+					"type": "string",
+					"default": "task",
+					"enum": [
+						"task",
+						"problems",
+						"none"
+					],
+					"description": "Determine which view should be shown when running Actions"
 				},
 				"code-for-ibmi.grepIgnoreDirs": {
 					"type": "array",
