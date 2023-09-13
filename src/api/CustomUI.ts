@@ -4,6 +4,10 @@ import vscode from 'vscode';
 //Webpack is returning this as a string
 const vscodeweb = require(`@bendera/vscode-webview-elements/dist/bundled`);
 
+type PanelOptions = {
+  fullWidth?: boolean
+};
+
 export interface Page<T> {
   panel: vscode.WebviewPanel
   data?: T
@@ -126,6 +130,7 @@ export class Section {
 const openedWebviews: Map<string, vscode.WebviewPanel> = new Map;
 
 export class CustomUI extends Section {
+  private options?: PanelOptions;
   /**
    * If no callback is provided, a Promise will be returned.
    * If the page is already opened, it grabs the focus and return no Promise (as it's alreay handled by the first call).
@@ -144,6 +149,11 @@ export class CustomUI extends Section {
     }
   }
 
+  setOptions(options: PanelOptions) {
+    this.options = options;
+    return this;
+  }
+
   private createPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
@@ -151,7 +161,8 @@ export class CustomUI extends Section {
       vscode.ViewColumn.One,
       {
         enableScripts: true,
-        retainContextWhenHidden: true
+        retainContextWhenHidden: true,
+        enableFindWidget: true
       }
     );
 
@@ -217,8 +228,8 @@ export class CustomUI extends Section {
         <style>
             @media only screen and (min-width: 750px) {
               #laforma {
-                padding-left: 15%;
-                padding-right: 15%;
+                padding-left: ${this.options?.fullWidth ? '0' : '15'}%;
+                padding-right: ${this.options?.fullWidth ? '0' : '15'}%;
               }
             }
 

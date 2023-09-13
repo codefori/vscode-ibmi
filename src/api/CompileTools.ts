@@ -1,6 +1,6 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, WorkspaceFolder, tasks, window } from 'vscode';
+import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks, window } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import { GlobalConfiguration } from './Configuration';
@@ -74,7 +74,7 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod) : Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -293,6 +293,12 @@ export namespace CompileTools {
           }
 
           const command = replaceValues(chosenAction.command, variables);
+
+          const viewControl = GlobalConfiguration.get<string>(`postActionView`) || "none";
+          const outputBuffer: string[] = [];
+          let actionName = chosenAction.name;
+          let hasRun = false;
+
           const exitCode = await new Promise<number>(resolve =>
             tasks.executeTask({
               isBackground: true,
@@ -302,7 +308,9 @@ export namespace CompileTools {
               source: 'IBM i',
               presentationOptions: {
                 showReuseMessage: true,
-                clear: GlobalConfiguration.get<boolean>(`clearOutputEveryTime`)
+                clear: GlobalConfiguration.get<boolean>(`clearOutputEveryTime`),
+                focus: false,
+                reveal: (viewControl === `task` ? TaskRevealKind.Always : TaskRevealKind.Never),
               },
               problemMatchers: [],
               runOptions: {},
@@ -311,6 +319,7 @@ export namespace CompileTools {
                 const writeEmitter = new vscode.EventEmitter<string>();
                 const closeEmitter = new vscode.EventEmitter<number>();
 
+                writeEmitter.event(s => outputBuffer.push(s));
                 closeEmitter.event(resolve);
 
                 const term: Pseudoterminal = {
@@ -318,6 +327,8 @@ export namespace CompileTools {
                   onDidClose: closeEmitter.event,
                   open: async (initialDimensions: vscode.TerminalDimensions | undefined) => {
                     let successful = false;
+                    let problemsFetched = false;
+
                     try {
                       const commandResult = await runCommand(instance, {
                         title: chosenAction.name,
@@ -329,6 +340,7 @@ export namespace CompileTools {
                       const useLocalEvfevent = fromWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
 
                       if (commandResult) {
+                        hasRun = true;
                         const isIleCommand = environment === `ile`;
 
                         const possibleObject = getObjectFromCommand(commandResult.command);
@@ -336,16 +348,8 @@ export namespace CompileTools {
                           Object.assign(evfeventInfo, possibleObject);
                         }
 
-                        const actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : chosenAction.name);
-
-                        if (commandResult.code === 0 || commandResult.code === null) {
-                          vscode.window.showInformationMessage(`Action ${actionName} was successful.`);
-                          successful = true;
-                        } else {
-                          vscode.window.showErrorMessage(
-                            `Action ${actionName} was not successful.`
-                          )
-                        }
+                        actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
+                        successful = (commandResult.code === 0 || commandResult.code === null);
 
                         writeEmitter.fire(NEWLINE);
 
@@ -357,6 +361,7 @@ export namespace CompileTools {
                           if (command.includes(`*EVENTF`)) {
                             writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                             refreshDiagnosticsFromServer(instance, evfeventInfo);
+                            problemsFetched = true;
                           } else {
                             writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                           }
@@ -426,6 +431,7 @@ export namespace CompileTools {
                               // Process locally downloaded evfevent files:
                               if (useLocalEvfevent) {
                                 refreshDiagnosticsFromLocal(instance, evfeventInfo);
+                                problemsFetched = true;
                               }
                             })
                             .catch(error => {
@@ -434,6 +440,10 @@ export namespace CompileTools {
                               closeEmitter.fire(1);
                             });
                         }
+                      }
+
+                      if (problemsFetched && viewControl === `problems`) {
+                        commands.executeCommand(`workbench.action.problems.focus`);
                       }
 
                     } catch (e) {
@@ -452,11 +462,27 @@ export namespace CompileTools {
             })
           );
 
-          return exitCode === 0;
+          const executionOK = (exitCode === 0);
+          if (hasRun) {            
+            const openOutputAction = "Open output"; //TODO: will be translated in the future
+            const openOutput = await (executionOK ?
+              vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
+              vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction));
+
+            if (openOutput) {
+              const now = new Date();
+              new CustomUI()
+                .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
+                .setOptions({ fullWidth: true })
+                .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+            }
+          }
+
+          return executionOK;
         }
-        else{
+        else {
           return false;
-        }        
+        }
       } else {
         //No compile commands
         vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);

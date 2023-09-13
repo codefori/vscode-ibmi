@@ -384,6 +384,16 @@
 						}
 					}
 				},
+				"code-for-ibmi.postActionView": {
+					"type": "string",
+					"default": "task",
+					"enum": [
+						"task",
+						"problems",
+						"none"
+					],
+					"description": "Determine which view should be shown when running Actions"
+				},
 				"code-for-ibmi.grepIgnoreDirs": {
 					"type": "array",
 					"items": {
