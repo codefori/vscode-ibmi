@@ -24,7 +24,7 @@ export namespace SplfSearch {
     content: string
   }
 
-  export async function searchUserSpooledFiles(instance: Instance, searchTerm: string, filter: string, splfName?: string): Promise<Result[]> {
+  export async function searchUserSpooledFiles(instance: Instance, searchTerm: string, filter: string, splfName?: string, searchWords?: string): Promise<Result[]> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -39,7 +39,7 @@ export namespace SplfSearch {
         const tmpobj = await tmpFile();
 
         const setccsid = connection.remoteFeatures.setccsid;
-        const objects = await content.getUserSpooledFileFilter(filter, { order: "date", ascending: false }, splfName);
+        const objects = await content.getUserSpooledFileFilter(filter, { order: "date", ascending: false }, splfName, searchWords);
         const workFileFormat = {
           user: objects[0].user,
           queue: objects[0].queue,
