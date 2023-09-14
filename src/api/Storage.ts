@@ -6,6 +6,7 @@ const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
 const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
+const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -95,7 +96,16 @@ export class GlobalStorage extends Storage {
 
   async deleteServerSettingsCache(name: string) {
     await this.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
-  }}
+  }
+
+  getPreviousSearchTerms() {
+    return this.get<string[]>(PREVIOUS_SEARCH_TERMS_KEY) || [];
+  }
+
+  async setPreviousSearchTerms(previousSearchTerms: string[]) {
+    await this.set(PREVIOUS_SEARCH_TERMS_KEY, previousSearchTerms);
+  }
+}
 
 export class ConnectionStorage extends Storage {
   private connectionName: string = "";

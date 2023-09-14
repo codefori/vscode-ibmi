@@ -1,8 +1,6 @@
-import { ExtensionContext, Position, Range, Selection, TextDocument, commands, window } from "vscode";
-import { instance } from "../../instantiate";
-import { GlobalConfiguration } from "../../api/Configuration";
-import { EndOfLine } from "vscode";
+import { EndOfLine, ExtensionContext, Position, Range, Selection, TextDocument, commands, window } from "vscode";
 import { CompileTools } from "../../api/CompileTools";
+import { instance } from "../../instantiate";
 
 export function initialise(context: ExtensionContext) {
   context.subscriptions.push(

@@ -6,6 +6,7 @@ const path = require(`path`);
 const { setSearchResults } = require(`../instantiate`);
 const { GlobalConfiguration, ConnectionConfiguration } = require(`../api/Configuration`);
 const { Search } = require(`../api/Search`);
+const { GlobalStorage } = require(`../api/Storage`);
 const { Tools } = require(`../api/Tools`);
 const { t } = require(`../locale`);
 
@@ -538,35 +539,49 @@ module.exports = class IFSBrowser {
 
           if (!searchPath) return;
 
-          let searchTerm = await vscode.window.showInputBox({
-            prompt: t(`ifsBrowser.searchIFS.prompt2`, searchPath)
-          });
+          let list = GlobalStorage.get().getPreviousSearchTerms();
+          const listHeader = [
+            { label: t(`ifsBrowser.searchIFS.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
+          ];
+          const clearList = t(`clearList`);
+          const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
-          if (searchTerm) {
-            try {
-              await vscode.window.withProgress({
-                location: vscode.ProgressLocation.Notification,
-                title: t(`ifsBrowser.searchIFS.title2`),
-              }, async progress => {
-                progress.report({
-                  message: t(`ifsBrowser.searchIFS.progressMessage`, searchTerm, searchPath)
-                });
+          const quickPick = vscode.window.createQuickPick();
+          quickPick.items = list.length > 0 ? listHeader.concat(list.map(term => ({ label: term }))).concat(clearListArray) : [];
+          quickPick.placeholder = list.length > 0 ? t(`ifsBrowser.searchIFS.placeholder`) : t(`ifsBrowser.searchIFS.placeholder2`);
+          quickPick.title = t(`ifsBrowser.searchIFS.title2`, searchPath);
 
-                let results = await Search.searchIFS(getInstance(), searchPath, searchTerm);
-
-                if (results.length > 0) {
-                  results = results.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }));
-                  setSearchResults(searchTerm, results.sort((a, b) => a.path.localeCompare(b.path)));
-
-                } else {
-                  vscode.window.showInformationMessage(t(`ifsBrowser.searchIFS.noResults`, searchTerm, searchPath));
-                }
-              });
-
-            } catch (e) {
-              vscode.window.showErrorMessage(t(`ifsBrowser.searchIFS.errorMessage`));
+          quickPick.onDidChangeValue(() => {
+            if (quickPick.value === ``) {
+              quickPick.items = listHeader.concat(list.map(term => ({ label: term }))).concat(clearListArray);
+            } else if (!list.includes(quickPick.value)) {
+              quickPick.items = [{ label: quickPick.value }].concat(listHeader)
+                .concat(list.map(term => ({ label: term })))
             }
-          }
+          })
+
+          quickPick.onDidAccept(async () => {
+            const searchTerm = quickPick.activeItems[0].label;
+            if (searchTerm) {
+              if (searchTerm === clearList) {
+                GlobalStorage.get().setPreviousSearchTerms([]);
+                list = [];
+                quickPick.items = [];
+                quickPick.placeholder = t(`ifsBrowser.searchIFS.placeholder2`);
+                vscode.window.showInformationMessage(t(`clearedList`));
+                quickPick.show();
+              } else {
+                quickPick.hide();
+                list = list.filter(term => term !== searchTerm);
+                list.splice(0, 0, searchTerm);
+                GlobalStorage.get().setPreviousSearchTerms(list);
+                await this.doSearchInStreamfiles(searchTerm, searchPath);
+              }
+            }
+          });
+          
+          quickPick.onDidHide(() => quickPick.dispose());
+          quickPick.show();
 
         } else {
           vscode.window.showErrorMessage(t(`ifsBrowser.searchIFS.noGrep`));
@@ -686,6 +701,37 @@ module.exports = class IFSBrowser {
     existingDirs[path] = list;
 
     return storage.setSourceList(existingDirs);
+  }
+
+  /**
+   *
+   * @param {string} searchTerm
+   * @param {string} searchPath
+   */
+  async doSearchInStreamfiles(searchTerm, searchPath) {
+    try {
+      await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: t(`ifsBrowser.doSearchInStreamfiles.title`),
+      }, async progress => {
+        progress.report({
+          message: t(`ifsBrowser.doSearchInStreamfiles.progressMessage`, searchTerm, searchPath)
+        });
+
+        let results = (await Search.searchIFS(getInstance(), searchPath, searchTerm))
+          .map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }))
+          .sort((a, b) => a.path.localeCompare(b.path));
+
+        if (results.length > 0) {
+          setSearchResults(searchTerm, results);
+        } else {
+          vscode.window.showInformationMessage(t(`ifsBrowser.doSearchInStreamfiles.noResults`, searchTerm, searchPath));
+        }
+      });
+
+    } catch (e) {
+      vscode.window.showErrorMessage(t(`ifsBrowser.doSearchInStreamfiles.errorMessage`));
+    }
   }
 }
 
