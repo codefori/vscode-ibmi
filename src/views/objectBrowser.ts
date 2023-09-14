@@ -6,10 +6,10 @@ import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configurati
 import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
+import { GlobalStorage } from '../api/Storage';
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { GlobalStorage } from '../api/Storage';
 import { BrowserItem, BrowserItemParameters, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
@@ -132,7 +132,7 @@ class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
 
 class CreateFilterItem extends BrowserItem {
   constructor() {
-    super(`${'objectBrowser.createFilter'}...`, { icon: "add" });
+    super(`${t('objectBrowser.createFilter')}...`, { icon: "add" });
     this.command = {
       command: `code-for-ibmi.maintainFilter`,
       title: `Create new filter`
