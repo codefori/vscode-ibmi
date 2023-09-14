@@ -56,61 +56,6 @@ export namespace Search {
     }
   }
 
-  export async function searchUserSpooledFiles(instance: Instance, searchTerm: string, filter: string, splfName?: string, readOnly?:boolean): Promise<Result[]> {
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
-    const content = instance.getContent();
-
-    if (connection && config && content) {
-      const objects = await content.getUserSpooledFileFilter(filter, { order: "date" ,ascending:false } ,splfName);
-      const searchSplfList = objects.map(o => ({
-        user: o.user,
-        queue: o.queue,
-        qjob: o.qualified_job_name,
-        name: o.name,
-        number: o.number
-      
-      })); 
-
-      const largeString = JSON.stringify(searchSplfList);
-      //SYSTOOLS.SPOOLED_FILE_DATA(JOB_NAME=>trim(QJOB),SPOOLED_FILE_NAME=>SFILE,SPOOLED_FILE_NUMBER=>SFILE_NUMBER,IGNORE_ERRORS=>'NO')
-      const sqlStatement = `with USER_SPOOLED_FILES (SFUSER,OUTQ,QJOB,SFILE,SFILE_NUMBER) as (
-        select "user","queue","qjob","name","number" from JSON_Table(
-        '${largeString}' 
-        ,'lax $'
-        COLUMNS( "user" char(10),"queue" char(10),"qjob" char(28),"name" char(10),"number" int 
-        )) as SPLF
-        )
-        ,ALL_USER_SPOOLED_FILE_DATA (SFUSER,OUTQ,QJOB,SFILE,SFILE_NUMBER,SPOOL_DATA,ORDINAL_POSITION) as (
-              select SFUSER,OUTQ,QJOB,SFILE,SFILE_NUMBER,SPOOLED_DATA,SD.ORDINAL_POSITION
-                from USER_SPOOLED_FILES
-                ,table (SYSTOOLS.SPOOLED_FILE_DATA(trim(QJOB),SFILE,SFILE_NUMBER,'NO')) SD )
-          select trim(SFUSER)||'/'||trim(OUTQ)||'/'||trim(SFILE)||'~'||trim(regexp_replace(QJOB,'(\\w*)\/(\\w*)\/(\\w*)','$3~$2~$1'))||'~'||trim(SFILE_NUMBER)||'.splf'||':'||char(ORDINAL_POSITION)||':'||varchar(trim(SPOOL_DATA),132) SEARCH_RESULT
-            from ALL_USER_SPOOLED_FILE_DATA AMD
-            where upper(SPOOL_DATA) like upper('%${sanitizeSearchTerm(searchTerm)}%')`;
-      const rows = await content.runSQL(sqlStatement);
-      var resultString = rows.map(function(elem){ return elem.SEARCH_RESULT; }).join("\n");
-      var result = {
-        code: 0,
-        stdout: `${resultString}`,
-        stderr: ``,
-        command: ``
-      } as CommandResult;
-      if (!result.stderr) {
-        // path: "/${user}/QEZJOBLOG/QPJOBLOG~D000D2034A~[USERPROFILE]~849412~1.splf" <- path should be like this
-        // NOTE: Path issue with part names with underscores in them.  Need a different job separator token or can we use more sub parts to the path??
-        return parseGrepOutput(result.stdout || '', readOnly,
-          path => connection.sysNameInLocal(path)); // TODO: add the scheme context of spooledfile_readonly: to path
-      }
-      else {
-        throw new Error(result.stderr);
-      }
-    }
-    else {
-      throw new Error("Please connect to an IBM i");
-    }
-  }
-
   export async function searchIFS(instance: Instance, path: string, searchTerm: string): Promise<Result[]> {
     const connection = instance.getConnection();
     if (connection) {
