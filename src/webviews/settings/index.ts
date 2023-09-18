@@ -1,9 +1,9 @@
 import vscode from "vscode";
+import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
-import { GlobalConfiguration, ConnectionConfiguration } from "../../api/Configuration";
-import { ConnectionData, Server } from '../../typings';
-import { instance } from "../../instantiate";
 import * as certificates from "../../api/debug/certificates";
+import { instance } from "../../instantiate";
+import { ConnectionData, Server } from '../../typings';
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -228,7 +228,7 @@ export class SettingsUI {
               .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
               .addParagraph(`Only provide either the password or a private key - not both.`)
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
-              .addFile(`privateKey`, `Private Key${connection.privateKey ? ` (current: ${connection.privateKey})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
+              .addFile(`privateKeyPath`, `Private Key${connection.privateKeyPath ? ` (current: ${connection.privateKeyPath})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
               .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
               .loadPage<any>(`Login Settings: ${name}`);
 
@@ -237,12 +237,12 @@ export class SettingsUI {
 
               const data = page.data;
               data.port = Number(data.port);
-              if (data.privateKey === ``) data.privateKey = connection.privateKey;
+              if (data.privateKeyPath === ``) data.privateKeyPath = connection.privateKeyPath;
 
-              if (data.password && !data.privateKey) {
+              if (data.password && !data.privateKeyPath) {
                 context.secrets.delete(`${name}_password`);
                 context.secrets.store(`${name}_password`, `${data.password}`);
-                data.privateKey = ``;
+                data.privateKeyPath = ``;
               };
 
               delete data.password;
