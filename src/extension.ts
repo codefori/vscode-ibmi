@@ -125,7 +125,6 @@ async function fixPrivateKeys(){
     if('privateKey' in connection && connection.privateKey){
       connection.privateKeyPath = connection.privateKey as string;
       connection.privateKey = undefined;
-      console.log(`Fixed private key for ${connection.name}`);
       update = true;
     }
   }
