@@ -1,10 +1,9 @@
 import { Ignore } from 'ignore';
-import { ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
+import { ProviderResult, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
 import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
 import { Tools } from "./api/Tools";
-import { ProviderResult } from './api/import/git';
 import { DeployTools } from "./api/local/deployTools";
 
 export interface CodeForIBMi {
