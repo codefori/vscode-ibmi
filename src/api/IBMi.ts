@@ -3,7 +3,6 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
-import { readFileSync } from "fs";
 import path from 'path';
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, StandardIO } from "../typings";
@@ -117,14 +116,7 @@ export default class IBMi {
     try {
       connectionObject.keepaliveInterval = 35000;
       
-      configVars.replaceAll(connectionObject);
-
-      // Make sure we're not passing any blank strings, as node_ssh will try to validate it
-      if (connectionObject.privateKey) {
-        connectionObject.privateKey = readFileSync(connectionObject.privateKey, {encoding: `utf-8`});
-      } else {
-        connectionObject.privateKey = null;
-      }      
+      configVars.replaceAll(connectionObject);   
 
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,

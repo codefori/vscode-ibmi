@@ -1,9 +1,9 @@
 import vscode from "vscode";
-import IBMi from "../../api/IBMi";
-import { CustomUI } from "../../api/CustomUI";
 import { GlobalConfiguration } from "../../api/Configuration";
-import { ConnectionData } from '../../typings';
+import { CustomUI } from "../../api/CustomUI";
+import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
+import { ConnectionData } from '../../typings';
 
 export class Login {
 
@@ -27,7 +27,7 @@ export class Login {
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
-      .addFile(`privateKey`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`)
+      .addFile(`privateKeyPath`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`)
       .addButtons(
         { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
@@ -54,7 +54,7 @@ export class Login {
               host: data.host,
               port: data.port,
               username: data.username,
-              privateKey: data.privateKey
+              privateKeyPath: data.privateKeyPath
             });
 
             if (data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
@@ -128,7 +128,7 @@ export class Login {
     const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
     let connectionConfig = existingConnections.find(item => item.name === name);
     if (connectionConfig) {
-      if (!connectionConfig.privateKey) {
+      if (!connectionConfig.privateKeyPath) {
         connectionConfig.password = await context.secrets.get(`${connectionConfig.name}_password`);
         if (!connectionConfig.password) {
           connectionConfig.password = await vscode.window.showInputBox({

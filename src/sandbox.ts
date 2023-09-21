@@ -53,8 +53,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                     name: `${user}-${host}`,
                     username: String(user),
                     password: String(pass),
-                    port,
-                    privateKey: null
+                    port
                   };
 
                   const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
@@ -154,8 +153,7 @@ export async function handleStartup() {
       name: `Sandbox-${username}`,
       username,
       password,
-      port: 22,
-      privateKey: null
+      port: 22
     };
 
     if (env.VSCODE_IBMI_SANDBOX) {

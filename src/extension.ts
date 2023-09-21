@@ -113,7 +113,25 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ]);
   });
 
+  await fixPrivateKeys();
+
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
+}
+
+async function fixPrivateKeys(){
+  const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
+  let update = false;
+  for(const connection of connections){
+    if('privateKey' in connection && connection.privateKey){
+      connection.privateKeyPath = connection.privateKey as string;
+      connection.privateKey = undefined;
+      update = true;
+    }
+  }
+
+  if(update){
+    await GlobalConfiguration.set(`connections`, connections);
+  }
 }
 
 // this method is called when your extension is deactivated
