@@ -25,16 +25,16 @@ jobs:
           npm install
           npm install -g vsce ovsx
       
-      - name: Bump version numbers
-        run: |
-          npm --no-git-tag-version version ${{ github.ref_name }}
-          cd types && npm --no-git-tag-version version ${{ github.ref_name }}
+      # - name: Bump version numbers
+      #   run: |
+      #     npm --no-git-tag-version version ${{ github.ref_name }}
+      #     cd types && npm --no-git-tag-version version ${{ github.ref_name }}
 
-      - name: Commit & push versions bump
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          branch: master
-          commit_message: Released version ${{ github.ref_name }}
+      # - name: Commit & push versions bump
+      #   uses: stefanzweifel/git-auto-commit-action@v4
+      #   with:
+      #     branch: master
+      #     commit_message: Released version ${{ github.ref_name }}
 
       - name: Publish to Marketplace
         run: vsce publish -p $PUBLISHER_TOKEN
