@@ -113,18 +113,34 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ]);
   });
 
-  await fixPrivateKeys();
+  await fixLoginSettings();
 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
 
-async function fixPrivateKeys(){
+async function fixLoginSettings(){
   const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
   let update = false;
   for(const connection of connections){
-    if('privateKey' in connection && connection[`privateKey`]){
-      connection.privateKeyPath = connection[`privateKey`] as string;
-      connection[`privateKey`] = undefined;
+    //privateKey was used to hold privateKeyPath 
+    if('privateKey' in connection){
+      const privateKey = connection["privateKey"] as string;
+      if(privateKey){
+        connection.privateKeyPath = privateKey;
+      }
+      delete connection["privateKey"];
+      update = true;
+    }
+
+    //An empty privateKeyPath will crash the connection
+    if(!connection.privateKeyPath?.trim()) {
+      connection.privateKeyPath = undefined;
+      update = true;
+    }
+    
+    //buttons were added by the login settings page
+    if(`buttons` in connection) {
+      delete connection["buttons"];
       update = true;
     }
   }

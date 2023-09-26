@@ -5,6 +5,11 @@ import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 
+type NewLoginSettings = ConnectionData & {  
+  savePassword: boolean  
+  buttons: 'saveExit' | 'connect'
+}
+
 export class Login {
 
   /**
@@ -20,10 +25,10 @@ export class Login {
     const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
 
     const page = await new CustomUI()
-      .addInput(`name`, `Connection Name`, undefined, {minlength: 1})
-      .addInput(`host`, `Host or IP Address`, undefined, {minlength: 1})
+      .addInput(`name`, `Connection Name`, undefined, { minlength: 1 })
+      .addInput(`host`, `Host or IP Address`, undefined, { minlength: 1 })
       .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-      .addInput(`username`, `Username`, undefined, {minlength: 1, maxlength: 10})
+      .addInput(`username`, `Username`, undefined, { minlength: 1, maxlength: 10 })
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
@@ -32,21 +37,21 @@ export class Login {
         { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
       )
-      .loadPage<any>(`IBM i Login`);
+      .loadPage<NewLoginSettings>(`IBM i Login`);
 
     if (page && page.data) {
       const data = page.data;
       page.panel.dispose();
 
       data.port = Number(data.port);
-
+      data.privateKeyPath = data.privateKeyPath?.trim() ? data.privateKeyPath : undefined;
       if (data.name) {
         const existingConnection = existingConnections.find(item => item.name === data.name);
 
         if (existingConnection) {
           vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
         } else {
-          let newConnection = (!existingConnections.some(item => item.name === data.name));
+          const newConnection = (!existingConnections.some(item => item.name === data.name));
           if (newConnection) {
             // New connection!
             existingConnections.push({
@@ -57,7 +62,9 @@ export class Login {
               privateKeyPath: data.privateKeyPath
             });
 
-            if (data.savePassword) context.secrets.store(`${data.name}_password`, `${data.password}`);
+            if (data.savePassword) {
+              context.secrets.store(`${data.name}_password`, `${data.password}`);
+            }
 
             await GlobalConfiguration.set(`connections`, existingConnections);
             vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
