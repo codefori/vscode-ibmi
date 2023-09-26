@@ -122,6 +122,7 @@ async function fixLoginSettings(){
   const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
   let update = false;
   for(const connection of connections){
+    //privateKey was used to hold privateKeyPath 
     if('privateKey' in connection){
       const privateKey = connection.privateKey as string;
       if(privateKey){
@@ -131,11 +132,13 @@ async function fixLoginSettings(){
       update = true;
     }
 
+    //An empty privateKeyPath will crash the connection
     if(!connection.privateKeyPath || !connection.privateKeyPath.trim()) {
       connection.privateKeyPath = undefined;
       update = true;
     }
     
+    //buttons were added by the login settings page
     if(`buttons` in connection) {
       connection.buttons = undefined;
       update = true;
