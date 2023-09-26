@@ -44,7 +44,7 @@ export class Login {
       page.panel.dispose();
 
       data.port = Number(data.port);
-
+      data.privateKeyPath = data.privateKeyPath?.trim() ? data.privateKeyPath : undefined;
       if (data.name) {
         const existingConnection = existingConnections.find(item => item.name === data.name);
 
@@ -59,7 +59,7 @@ export class Login {
               host: data.host,
               port: data.port,
               username: data.username,
-              privateKeyPath: data.privateKeyPath ? data.privateKeyPath : undefined
+              privateKeyPath: data.privateKeyPath
             });
 
             if (data.savePassword) {
