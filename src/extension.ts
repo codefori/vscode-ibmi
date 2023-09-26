@@ -113,18 +113,31 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     ]);
   });
 
-  await fixPrivateKeys();
+  await fixLoginSettings();
 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
 
-async function fixPrivateKeys(){
+async function fixLoginSettings(){
   const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
   let update = false;
   for(const connection of connections){
-    if('privateKey' in connection && connection[`privateKey`]){
-      connection.privateKeyPath = connection[`privateKey`] as string;
-      connection[`privateKey`] = undefined;
+    if('privateKey' in connection){
+      const privateKey = connection.privateKey as string;
+      if(privateKey){
+        connection.privateKeyPath = privateKey;
+      }
+      connection.privateKey = undefined;
+      update = true;
+    }
+
+    if(!connection.privateKeyPath || !connection.privateKeyPath.trim()) {
+      connection.privateKeyPath = undefined;
+      update = true;
+    }
+    
+    if(`buttons` in connection) {
+      connection.buttons = undefined;
       update = true;
     }
   }
