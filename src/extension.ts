@@ -133,7 +133,7 @@ async function fixLoginSettings(){
     }
 
     //An empty privateKeyPath will crash the connection
-    if(!connection.privateKeyPath || !connection.privateKeyPath.trim()) {
+    if(!connection.privateKeyPath?.trim()) {
       connection.privateKeyPath = undefined;
       update = true;
     }

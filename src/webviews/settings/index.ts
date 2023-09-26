@@ -18,6 +18,10 @@ const TERMINAL_TYPES = [
   { key: `IBM-5292-2`, text: `IBM-5292-2 (24x80 color)` },
 ];
 
+type LoginSettings = ConnectionData & {
+  buttons?: 'submitButton'
+}
+
 export class SettingsUI {
   static init(context: vscode.ExtensionContext) {
 
@@ -230,29 +234,33 @@ export class SettingsUI {
               .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
               .addFile(`privateKeyPath`, `Private Key${connection.privateKeyPath ? ` (current: ${connection.privateKeyPath})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
               .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
-              .loadPage<any>(`Login Settings: ${name}`);
+              .loadPage<LoginSettings>(`Login Settings: ${name}`);
 
             if (page && page.data) {
               page.panel.dispose();
 
               const data = page.data;
-              data.port = Number(data.port);
-              if (data.privateKeyPath === ``) data.privateKeyPath = connection.privateKeyPath;
+              if (!data.privateKeyPath?.trim()) {
+                if (connection.privateKeyPath?.trim()) {
+                  data.privateKeyPath = connection.privateKeyPath;
+                }
+                else {
+                  delete data.privateKeyPath;
+                }
+              }
 
               if (data.password && !data.privateKeyPath) {
                 context.secrets.delete(`${name}_password`);
                 context.secrets.store(`${name}_password`, `${data.password}`);
-                data.privateKeyPath = ``;
-              };
+                delete data.privateKeyPath;
+              }
 
+              //Fix values before assigning the data
+              data.port = Number(data.port);
               delete data.password;
+              delete data.buttons;
 
-              connection = {
-                ...connection,
-                ...data
-              };
-
-              connections[connectionIdx] = connection;
+              connections[connectionIdx] = Object.assign(connection, data);
               await GlobalConfiguration.set(`connections`, connections);
             }
           }
