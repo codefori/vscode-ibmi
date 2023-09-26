@@ -124,11 +124,11 @@ async function fixLoginSettings(){
   for(const connection of connections){
     //privateKey was used to hold privateKeyPath 
     if('privateKey' in connection){
-      const privateKey = connection.privateKey as string;
+      const privateKey = connection["privateKey"] as string;
       if(privateKey){
         connection.privateKeyPath = privateKey;
       }
-      connection.privateKey = undefined;
+      delete connection["privateKey"];
       update = true;
     }
 
@@ -140,7 +140,7 @@ async function fixLoginSettings(){
     
     //buttons were added by the login settings page
     if(`buttons` in connection) {
-      connection.buttons = undefined;
+      delete connection["buttons"];
       update = true;
     }
   }
