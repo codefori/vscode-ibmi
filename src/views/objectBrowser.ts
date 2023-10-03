@@ -935,7 +935,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           try {
             newPathOK = true;
             await connection.remoteCommand(
-              node.object.type === `LIB` ?
+              node.object.type.toLocaleLowerCase() === `*lib` ?
                 `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
                 `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
             );
