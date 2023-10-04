@@ -17,9 +17,9 @@ export class HelpView {
 
   public async getChildren(): Promise<HelpItem[]> {
     return [
-      new HelpOpenUrlItem(`book`, t(`helpView.getStarted`), `https://halcyon-tech.github.io/docs/#/`),
-      new HelpOpenUrlItem(`output`, t(`helpView.officialForum`), `https://github.com/halcyon-tech/vscode-ibmi/discussions`),
-      new HelpOpenUrlItem(`eye`, t(`helpView.reviewIssues`), `https://github.com/halcyon-tech/vscode-ibmi/issues/`),
+      new HelpOpenUrlItem(`book`, t(`helpView.getStarted`), `https://codefori.github.io/docs/#/`),
+      new HelpOpenUrlItem(`output`, t(`helpView.officialForum`), `https://github.com/codefori/vscode-ibmi/discussions`),
+      new HelpOpenUrlItem(`eye`, t(`helpView.reviewIssues`), `https://github.com/codefori/vscode-ibmi/issues/`),
       new HelpIssueItem(),
     ];
   }
@@ -89,7 +89,7 @@ async function openNewIssue() {
     issueUrl = issueUrl.substring(0, 8130);
   }
 
-  vscode.commands.executeCommand(`vscode.open`, `https://github.com/halcyon-tech/vscode-ibmi/issues/new?body=${issueUrl}`);
+  vscode.commands.executeCommand(`vscode.open`, `https://github.com/codefori/vscode-ibmi/issues/new?body=${issueUrl}`);
 }
 
 function getExtensions(active: boolean) {
