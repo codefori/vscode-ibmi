@@ -14,11 +14,11 @@
 	],
 	"author": {
 		"name": "Halcyon Tech Ltd",
-		"url": "https://github.com/halcyon-tech"
+		"url": "https://github.com/codefori"
 	},
 	"publisher": "halcyontechltd",
 	"repository": {
-		"url": "https://github.com/halcyon-tech/code-for-ibmi"
+		"url": "https://github.com/codefori/code-for-ibmi"
 	},
 	"license": "MIT",
 	"engines": {

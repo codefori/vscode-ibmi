@@ -190,7 +190,7 @@ export default class IBMi {
           }, `Read more`);
 
           if (chosen === `Read more`) {
-            vscode.commands.executeCommand(`vscode.open`, `https://halcyon-tech.github.io/docs/#/pages/tips/setup`);
+            vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
           }
           
           throw(`Shell config error, connection aborted.`);
@@ -485,7 +485,7 @@ export default class IBMi {
                     });
                   break;
                 case `Read more`:
-                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
                   break;
               }
             });
@@ -515,7 +515,7 @@ export default class IBMi {
                     });
                   break;
                 case `Read more`:
-                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/halcyon-tech/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
                   break;
               }
             });

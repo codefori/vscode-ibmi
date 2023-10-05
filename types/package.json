@@ -8,7 +8,7 @@
     "deploy": "npm publish --access public"
   },
   "repository": {
-    "url": "https://github.com/halcyon-tech/vscode-ibmi"
+    "url": "https://github.com/codefori/vscode-ibmi"
   },
   "author": "halcyontech",
   "license": "ISC"
