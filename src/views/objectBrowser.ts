@@ -417,7 +417,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       objectBrowser.autoRefresh();
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, async (item?: BrowserItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowser`, () => objectBrowser.refresh()),
+
+    vscode.commands.registerCommand(`code-for-ibmi.refreshObjectBrowserItem`, async (item: BrowserItem) => {
       objectBrowser.refresh(item);
     }),
 

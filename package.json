@@ -1376,6 +1376,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.refreshObjectBrowserItem",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Refresh",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.revealInObjectBrowser",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Reveal Object Browser Item",
@@ -1782,6 +1788,10 @@
 				{
 					"command": "code-for-ibmi.revealInObjectBrowser",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectBrowserItem",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2123,6 +2133,11 @@
 					"command": "code-for-ibmi.uploadAndReplaceMemberAsFile",
 					"when": "view == objectBrowser && viewItem == member",
 					"group": "3_memberTransfer@2"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectBrowserItem",
+					"when": "view == objectBrowser",
+					"group": "99_objectBrowserAction@1"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutDown",
