@@ -33,5 +33,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '👋  A new build is available for this PR based on ${{ github.event.pull_request.head.sha }}.\n * [Download here.](https://github.com/halcyon-tech/vscode-ibmi/actions/runs/${{ github.run_id }})\n* [Read more about how to test](https://github.com/halcyon-tech/vscode-ibmi/blob/master/.github/pr_testing_template.md)'
+              body: '👋  A new build is available for this PR based on ${{ github.event.pull_request.head.sha }}.\n * [Download here.](https://github.com/codefori/vscode-ibmi/actions/runs/${{ github.run_id }})\n* [Read more about how to test](https://github.com/codefori/vscode-ibmi/blob/master/.github/pr_testing_template.md)'
             })

@@ -1,6 +1,6 @@
 # Code for IBM i
 
-[GitHub star this repo 🌟](https://github.com/halcyon-tech/vscode-ibmi)
+[GitHub star this repo 🌟](https://github.com/codefori/vscode-ibmi)
 
 <img src="./icon.png" align="right">
 
@@ -8,17 +8,17 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 
 * [Install from Marketplace](https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi) 💻
 * [Watch some tutorials](https://www.youtube.com/playlist?list=PLNl31cqBafCp-ml8WqPeriHWLD1bkg7KL) 📺
-* [View our documentation](https://halcyon-tech.github.io/docs/#/) 📘
-* [See previous releases](https://github.com/halcyon-tech/vscode-ibmi/releases) 🔎
+* [View our documentation](https://codefori.github.io/docs/#/) 📘
+* [See previous releases](https://github.com/codefori/vscode-ibmi/releases) 🔎
 * Build from source (see below!) 🔨
-* [Use our IBM i API in your own extension](https://halcyon-tech.github.io/docs/#/pages/api/extending) 🛠
+* [Use our IBM i API in your own extension](https://codefori.github.io/docs/#/pages/api/extending) 🛠
 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/v/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
 ![https://marketplace.visualstudio.com/items?itemName=HalcyonTechLtd.code-for-ibmi](https://img.shields.io/visual-studio-marketplace/i/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
 ![](https://img.shields.io/visual-studio-marketplace/r/HalcyonTechLtd.code-for-ibmi?style=flat-square) 
-![](https://img.shields.io/github/contributors/halcyon-tech/vscode-ibmi?style=flat-square) 
-![](https://img.shields.io/github/issues-pr/halcyon-tech/vscode-ibmi?style=flat-square) 
-![https://github.com/halcyon-tech/vscode-ibmi/issues](https://img.shields.io/github/issues/halcyon-tech/vscode-ibmi?style=flat-square)
+![](https://img.shields.io/github/contributors/codefori/vscode-ibmi?style=flat-square) 
+![](https://img.shields.io/github/issues-pr/codefori/vscode-ibmi?style=flat-square) 
+![https://github.com/codefori/vscode-ibmi/issues](https://img.shields.io/github/issues/codefori/vscode-ibmi?style=flat-square)
 
 ---
 
@@ -33,8 +33,8 @@ Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code. Ed
 
 ### Contributors
 
-<a href="https://github.com/halcyon-tech/vscode-ibmi/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=halcyon-tech/vscode-ibmi" />
+<a href="https://github.com/codefori/vscode-ibmi/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=codefori/vscode-ibmi" />
 </a>
 
 (Made with [contrib.rocks](https://contrib.rocks)).
