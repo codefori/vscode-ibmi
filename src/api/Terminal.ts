@@ -73,10 +73,13 @@ export namespace Terminal {
 
   async function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
+    const paseWelcomeMessage = 'echo "Terminal started. Thanks for using Code for IBM i"';
 
     const channel = await connection.client.requestShell();
     channel.stdout.on(`data`, (data: any) => {
-      writeEmitter.fire(String(data))
+      if (data.toString().trim().indexOf(paseWelcomeMessage) === -1) {
+        writeEmitter.fire(String(data));
+      }
     });
 
     const emulatorTerminal = vscode.window.createTerminal({
@@ -146,7 +149,7 @@ export namespace Terminal {
         `\n`
       ].join(` `));
     } else {
-      channel.stdin.write(`echo "Terminal started. Thanks for using Code for IBM i"\n`);
+      channel.stdin.write(`${paseWelcomeMessage}\n`);
     }
 
     instance.onEvent('disconnected', () => emulatorTerminal.dispose());
