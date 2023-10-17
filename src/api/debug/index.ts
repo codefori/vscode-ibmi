@@ -18,6 +18,10 @@ const localCertContext = `code-for-ibmi:debug.local`;
 let connectionConfirmed = false;
 let temporaryPassword: string | undefined;
 
+export function isManaged() {
+  return process.env[`DEBUG_MANAGED`] === `true`;
+}
+
 export async function initialize(context: ExtensionContext) {
   const debugExtensionAvailable = () => {
     const debugclient = vscode.extensions.getExtension(debugExtensionId);
@@ -394,10 +398,14 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const updateProductionFiles = config?.debugUpdateProductionFiles;
   const enableDebugTracing = config?.debugEnableDebugTracing;
 
-  const secure = config?.debugIsSecure;
+  let secure = true;
 
-  if (secure) {
-    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
+  if (isManaged()) {
+    // If we're in a managed environment, only set secure if a cert is set
+    secure = process.env[`DEBUG_CA_PATH`] ? true : false;
+  } else {
+    secure = config?.debugIsSecure || false;
+    process.env[`DEBUG_CA_PATH`] = secure ? certificates.getLocalCertPath(connection!) : undefined;
   }
 
   const pathKey = options.library.trim() + `/` + options.object.trim();
