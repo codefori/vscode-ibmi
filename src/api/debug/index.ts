@@ -381,6 +381,8 @@ export async function initialize(context: ExtensionContext) {
       }
     }
   });
+
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());
 }
 
 interface DebugOptions {
