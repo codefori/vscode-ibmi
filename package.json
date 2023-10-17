@@ -855,13 +855,13 @@
 				"command": "code-for-ibmi.debug.setup.remote",
 				"title": "Setup Remote Certificates",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged == false"
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
 				"title": "Import Local Certificate",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged == false"
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
 				"command": "code-for-ibmi.debug.start",
