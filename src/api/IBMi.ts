@@ -649,7 +649,7 @@ export default class IBMi {
 
               if (this.config.enableSQL && this.qccsid === 65535) {
                 this.config.enableSQL = false;
-                vscode.window.showErrorMessage(`QCCSID is set to 65535. Disabling SQL support.`);
+                vscode.window.showErrorMessage(`QCCSID is set to 65535. Using fallback methods to access the IBM i file systems.`);
               }
 
               progress.report({
