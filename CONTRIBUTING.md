@@ -50,3 +50,4 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@edmundreinhardt](https://github.com/edmundreinhardt)
 * [@richardm90](https://github.com/richardm90)
 * [@ThePrez](https://github.com/ThePrez)
+* [@BoykaZhu](https://github.com/BoykaZhu)
