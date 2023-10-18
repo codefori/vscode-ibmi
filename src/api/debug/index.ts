@@ -11,6 +11,7 @@ import { instance } from "../../instantiate";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
+// These context values are used for walkthroughs only
 const ptfContext = `code-for-ibmi:debug.ptf`;
 const remoteCertContext = `code-for-ibmi:debug.remote`;
 const localCertContext = `code-for-ibmi:debug.local`;
@@ -45,9 +46,14 @@ export async function initialize(context: ExtensionContext) {
             startDebug(instance, debugOpts);
           }
         } else {
-          const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-          if (openTut === `Take me there`) {
-            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+          if (isManaged()) {
+            vscode.window.showInformationMessage(`Looks like the Debug Service is not setup on this IBM i server. Please contact your system administrator.`);
+            
+          } else {
+            const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+            if (openTut === `Take me there`) {
+              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+            }
           }
         }
       }
@@ -349,33 +355,35 @@ export async function initialize(context: ExtensionContext) {
     if (connection && content && connection?.remoteFeatures[`startDebugService.sh`]) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-      const remoteCertsExist = await certificates.checkRemoteExists(connection);
+      if (!isManaged()) {
+        const remoteCertsExist = await certificates.checkRemoteExists(connection);
 
-      if (remoteCertsExist) {
-        vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
+        if (remoteCertsExist) {
+          vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
-        if (connection.config!.debugIsSecure) {
-          const localCertsExists = await certificates.checkLocalExists(connection);
+          if (connection.config!.debugIsSecure) {
+            const localCertsExists = await certificates.checkLocalExists(connection);
 
-          if (localCertsExists) {
-            vscode.commands.executeCommand(`setContext`, localCertContext, true);
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            if (localCertsExists) {
+              vscode.commands.executeCommand(`setContext`, localCertContext, true);
+            } else {
+              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            }
           }
-        }
-      } else {
-        const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
-        if (existingDebugService) {
-          const openSettings = await vscode.window.showInformationMessage(`Looks like the Debug Service is already running, but couldn't find the certificates in the configuration location.`, `Open settings`);
-          if (openSettings === `Open settings`) {
-            // Open directory to the debugger tab
-            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
-          }
-
         } else {
-          const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-          if (openTut === `Take me there`) {
-            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+          const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
+          if (existingDebugService) {
+            const openSettings = await vscode.window.showInformationMessage(`Looks like the Debug Service is already running, but couldn't find the certificates in the configuration location.`, `Open settings`);
+            if (openSettings === `Open settings`) {
+              // Open directory to the debugger tab
+              vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
+            }
+
+          } else {
+            const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+            if (openTut === `Take me there`) {
+              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+            }
           }
         }
       }
