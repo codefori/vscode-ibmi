@@ -872,13 +872,13 @@
 				"command": "code-for-ibmi.debug.start",
 				"title": "Start Debug Service",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected"
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
 				"command": "code-for-ibmi.debug.stop",
 				"title": "Stop Debug Service",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected"
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
 				"command": "code-for-ibmi.debug.activeEditor",
