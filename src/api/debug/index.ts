@@ -415,7 +415,11 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     secure = process.env[`DEBUG_CA_PATH`] ? true : false;
   } else {
     secure = config?.debugIsSecure || false;
-    process.env[`DEBUG_CA_PATH`] = secure ? certificates.getLocalCertPath(connection!) : undefined;
+    if (secure) {
+      process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
+    } else {
+      delete process.env[`DEBUG_CA_PATH`];
+    }
   }
 
   const pathKey = options.library.trim() + `/` + options.object.trim();
