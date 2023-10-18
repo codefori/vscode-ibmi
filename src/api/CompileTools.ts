@@ -224,8 +224,15 @@ export namespace CompileTools {
 
                   if (fromWorkspace) {
                     baseDir = fromWorkspace.uri.path;
+                    
+                    if(process.platform === 'win32'){
+                      relativePath = path.win32.relative(baseDir, uri.path);
+                    }
+                    else{
+                      relativePath = path.posix.relative(baseDir, uri.path); 
+                    }
+                    relativePath = relativePath.split(path.sep).join(path.posix.sep);
 
-                    relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
                     variables.set(`&RELATIVEPATH`, relativePath);
 
                     // We need to make sure the remote path is posix
