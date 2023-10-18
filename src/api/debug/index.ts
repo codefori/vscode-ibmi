@@ -418,6 +418,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     if (secure) {
       process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
     } else {
+      // Environment variable must be deleted otherwise cert issues will happen
       delete process.env[`DEBUG_CA_PATH`];
     }
   }
