@@ -1,4 +1,4 @@
-import vscode from "vscode";
+import vscode, { commands } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
@@ -10,6 +10,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
   constructor(context: vscode.ExtensionContext) {
     context.subscriptions.push(
+      vscode.commands.registerCommand(`code-for-ibmi.userLibraryList.enable`, () => {
+        commands.executeCommand(`setContext`, `code-for-ibmi:libraryListDisabled`, false);
+      }),
+      
       vscode.commands.registerCommand(`code-for-ibmi.refreshLibraryListView`, async () => {
         this.refresh();
       }),
