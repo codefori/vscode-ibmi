@@ -1031,6 +1031,12 @@
 				"icon": "$(file-binary)"
 			},
 			{
+				"command": "code-for-ibmi.userLibraryList.enable",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Force Enable User Library List",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.addToLibraryList",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Add to Library List",
@@ -1574,6 +1580,12 @@
 					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled !== true"
 				},
 				{
+					"id": "libraryListViewDisabled",
+					"name": "User Library List",
+					"when": "code-for-ibmi:connected && code-for-ibmi:libraryListDisabled == true",
+					"visibility": "collapsed"
+				},
+				{
 					"id": "objectBrowser",
 					"name": "Object Browser",
 					"when": "code-for-ibmi:connected && code-for-ibmi:objectBrowserDisabled !== true"
@@ -1625,6 +1637,10 @@
 				}
 			],
 			"commandPalette": [
+				{
+					"command": "code-for-ibmi.userLibraryList.enable",
+					"when": "never"
+				},
 				{
 					"command": "code-for-ibmi.connectTo",
 					"when": "code-for-ibmi:hasPreviousConnection"
@@ -2320,6 +2336,10 @@
 			{
 				"view": "connectionBrowser",
 				"contents": "No connection found.\n[Connect to an IBM i](command:code-for-ibmi.connect)"
+			},
+			{
+				"view": "libraryListViewDisabled",
+				"contents": "The User Library List is currently disabled. This happens when another extension wants to manage the library list.\n[Force Enable](command:code-for-ibmi.userLibraryList.enable)"
 			}
 		]
 	},
