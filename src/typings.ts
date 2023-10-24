@@ -117,7 +117,7 @@ export interface IFSFile {
   name: string
   path: string
   size?: number
-  modified?: Date | string
+  modified?: Date
   owner?: string
 }
 
