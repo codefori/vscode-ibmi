@@ -42,7 +42,7 @@ class ObjectBrowserItem extends BrowserItem {
   }
 
   refresh(): void {
-    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`, this);
+    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowserItem`, this);
   }
 
   reveal(options?: FocusOptions) {
@@ -289,7 +289,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
       .concat(`${member.created ? `\n${t("created")}:\t${member.created.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`)
       .concat(`${member.changed ? `\n${t("changed")}:\t${member.changed.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`);
 
-    this.sortBy = parent.sortBy;
+    this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
     this.command = {
       command: `vscode.open`,
