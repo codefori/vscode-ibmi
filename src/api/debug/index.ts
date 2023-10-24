@@ -429,7 +429,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       "ignoreCertificateErrors": !secure,
       "library": options.library.toUpperCase(),
       "program": options.object.toUpperCase(),
-      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${config?.libraryList.join(` `)}) CURLIB(${config?.currentLibrary}) JOBQ(QSYSNOMAX)`,
+      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${config?.libraryList.join(` `)}) CURLIB(${config?.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
       "updateProductionFiles": updateProductionFiles,
       "trace": enableDebugTracing,
     };
