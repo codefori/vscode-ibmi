@@ -1180,6 +1180,18 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.refreshIFSBrowserItem",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Refresh IFS List item",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.revealInIFSBrowser",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Reveal IFS Browser Item",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.changeWorkingDirectory",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Working Directory",
@@ -1812,6 +1824,50 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.revealInIFSBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteIFS",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveIFS",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyIFS",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.downloadStreamfile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveIFSShortcutDown",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveIFSShortcutUp",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveIFSShortcutToTop",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveIFSShortcutToBottom",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.removeIFSShortcut",
 					"when": "never"
 				}
 			],
