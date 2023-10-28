@@ -11,12 +11,17 @@ import { instance } from "../../instantiate";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
+// These context values are used for walkthroughs only
 const ptfContext = `code-for-ibmi:debug.ptf`;
 const remoteCertContext = `code-for-ibmi:debug.remote`;
 const localCertContext = `code-for-ibmi:debug.local`;
 
 let connectionConfirmed = false;
 let temporaryPassword: string | undefined;
+
+export function isManaged() {
+  return process.env[`DEBUG_MANAGED`] === `true`;
+}
 
 export async function initialize(context: ExtensionContext) {
   const debugExtensionAvailable = () => {
@@ -41,9 +46,14 @@ export async function initialize(context: ExtensionContext) {
             startDebug(instance, debugOpts);
           }
         } else {
-          const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-          if (openTut === `Take me there`) {
-            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+          if (isManaged()) {
+            vscode.window.showInformationMessage(`Looks like the Debug Service is not setup on this IBM i server. Please contact your system administrator.`);
+            
+          } else {
+            const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+            if (openTut === `Take me there`) {
+              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+            }
           }
         }
       }
@@ -345,38 +355,42 @@ export async function initialize(context: ExtensionContext) {
     if (connection && content && connection?.remoteFeatures[`startDebugService.sh`]) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-      const remoteCertsExist = await certificates.checkRemoteExists(connection);
+      if (!isManaged()) {
+        const remoteCertsExist = await certificates.checkRemoteExists(connection);
 
-      if (remoteCertsExist) {
-        vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
+        if (remoteCertsExist) {
+          vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
-        if (connection.config!.debugIsSecure) {
-          const localCertsExists = await certificates.checkLocalExists(connection);
+          if (connection.config!.debugIsSecure) {
+            const localCertsExists = await certificates.checkLocalExists(connection);
 
-          if (localCertsExists) {
-            vscode.commands.executeCommand(`setContext`, localCertContext, true);
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            if (localCertsExists) {
+              vscode.commands.executeCommand(`setContext`, localCertContext, true);
+            } else {
+              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            }
           }
-        }
-      } else {
-        const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
-        if (existingDebugService) {
-          const openSettings = await vscode.window.showInformationMessage(`Looks like the Debug Service is already running, but couldn't find the certificates in the configuration location.`, `Open settings`);
-          if (openSettings === `Open settings`) {
-            // Open directory to the debugger tab
-            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
-          }
-
         } else {
-          const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-          if (openTut === `Take me there`) {
-            vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+          const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
+          if (existingDebugService) {
+            const openSettings = await vscode.window.showInformationMessage(`Looks like the Debug Service is already running, but couldn't find the certificates in the configuration location.`, `Open settings`);
+            if (openSettings === `Open settings`) {
+              // Open directory to the debugger tab
+              vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
+            }
+
+          } else {
+            const openTut = await vscode.window.showInformationMessage(`Looks like you have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
+            if (openTut === `Take me there`) {
+              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
+            }
           }
         }
       }
     }
   });
+
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());
 }
 
 interface DebugOptions {
@@ -394,10 +408,19 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const updateProductionFiles = config?.debugUpdateProductionFiles;
   const enableDebugTracing = config?.debugEnableDebugTracing;
 
-  const secure = config?.debugIsSecure;
+  let secure = true;
 
-  if (secure) {
-    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
+  if (isManaged()) {
+    // If we're in a managed environment, only set secure if a cert is set
+    secure = process.env[`DEBUG_CA_PATH`] ? true : false;
+  } else {
+    secure = config?.debugIsSecure || false;
+    if (secure) {
+      process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
+    } else {
+      // Environment variable must be deleted otherwise cert issues will happen
+      delete process.env[`DEBUG_CA_PATH`];
+    }
   }
 
   const pathKey = options.library.trim() + `/` + options.object.trim();
