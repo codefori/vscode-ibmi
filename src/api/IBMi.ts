@@ -5,8 +5,9 @@ import { ConnectionConfiguration } from "./Configuration";
 
 import path from 'path';
 import { instance } from "../instantiate";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, StandardIO } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
 import { CompileTools } from "./CompileTools";
+import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
@@ -339,10 +340,10 @@ export default class IBMi {
 
         //Next, we need to check the temp lib (where temp outfile data lives) exists
         try {
-          await this.remoteCommand(
-            `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
-            undefined,
-          );
+          await this.runCommand({
+            command: `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
+            noLibList: true
+          });
 
           tempLibrarySet = true;
 
@@ -357,10 +358,10 @@ export default class IBMi {
 
             case `CPD0032`: //Can't use CRTLIB
               try {
-                await this.remoteCommand(
-                  `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-                  undefined
-                );
+                await this.runCommand({
+                  command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+                  noLibList: true
+                });
 
                 //We're all good if no errors
                 tempLibrarySet = true;
@@ -419,9 +420,10 @@ export default class IBMi {
             message: `Clearing temporary data.`
           });
 
-          this.remoteCommand(
-            `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`
-          )
+          this.runCommand({
+            command: `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
+            noLibList: true,
+          })
             .then(result => {
               // All good!
             })
@@ -463,10 +465,10 @@ export default class IBMi {
           });
 
           try {
-            await this.remoteCommand(
-              `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-              undefined
-            );
+            await this.runCommand({
+              command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+              noLibList: true
+            });
 
             vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
               detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
@@ -474,9 +476,10 @@ export default class IBMi {
             }, `Delete`, `Read more`).then(choice => {
               switch (choice) {
                 case `Delete`:
-                  this.remoteCommand(
-                    `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
-                  )
+                  this.runCommand({
+                    command: `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+                    noLibList: true
+                  })
                     .then(() => {
                       vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
                     })
@@ -494,19 +497,20 @@ export default class IBMi {
           }
 
           try {
-            await this.remoteCommand(
-              `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-              undefined
-            );
+            await this.runCommand({
+              command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+              noLibList: true
+            });
 
             vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
               modal: false,
             }, `Delete`, `Read more`).then(choice => {
               switch (choice) {
                 case `Delete`:
-                  this.remoteCommand(
-                    `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
-                  )
+                  this.runCommand({
+                    command: `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+                    noLibList: true
+                  })
                     .then(() => {
                       vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
                     })
@@ -550,9 +554,9 @@ export default class IBMi {
                 message: `Checking installed components on host IBM i: ${feature.path}`
               });
 
-              const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
-              if (typeof call === `string`) {
-                const files = call.split(`\n`);
+              const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
+              if (call.stdout) {
+                const files = call.stdout.split(`\n`);
 
                 if (feature.specific) {
                   for (const name of feature.names)
@@ -584,19 +588,12 @@ export default class IBMi {
             //This is mostly a nice to have. We grab the ASP info so user's do
             //not have to provide the ASP in the settings.
             try {
-              statement = `SELECT * FROM QSYS2.ASP_INFO`;
-              output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 0, {
-                stdin: statement
+              const resultSet = await new IBMiContent(this).runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+              resultSet.forEach(row => {
+                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                  this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+                }
               });
-
-              if (typeof output === `string`) {
-                const rows = Tools.db2Parse(output);
-                rows.forEach((row: any) => {
-                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                    this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
-                  }
-                });
-              }
             } catch (e) {
               //Oh well
               progress.report({
@@ -846,19 +843,6 @@ export default class IBMi {
   }
 
   /**
-   * @deprecated Use runCommand instead
-   * @param {string} command 
-   * @param {string} [directory] If not passed, will use current home directory
-   */
-  remoteCommand(command: string, directory?: string) {
-    //execCommand does not crash..
-    // escape $ and "
-    command = command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
-
-    return this.paseCommand(`system "` + command + `"`, directory);
-  }
-
-  /**
    * - Send PASE/QSH/ILE commands simply
    * - Commands sent here end in the 'IBM i Output' channel
    * - When sending `ile` commands:
@@ -877,24 +861,6 @@ export default class IBMi {
       ...options,
       command: `/QOpenSys/usr/bin/qsh`
     });
-  }
-
-  /**
-   * @deprecated Use sendCommand instead
-   */
-  async paseCommand(command: string, directory = this.config?.homeDirectory, returnType = 0, standardIO: StandardIO = {}): Promise<String | CommandResult> {
-    const result = await this.sendCommand({
-      command,
-      directory,
-      ...standardIO
-    })
-
-    if (returnType === 0) {
-      if (result.code === 0 || result.code === null) return Promise.resolve(result.stdout);
-      else return Promise.reject(result.stderr);
-    } else {
-      return Promise.resolve(result);
-    }
   }
 
   /**

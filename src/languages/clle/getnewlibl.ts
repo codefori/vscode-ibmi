@@ -14,7 +14,11 @@ export async function initGetNewLibl(instance: Instance) {
     const tempSourcePath = connection.getTempRemote(`getnewlibl.sql`) || `/tmp/getnewlibl.sql`;
 
     content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary)).then(() => {
-      connection.remoteCommand(`RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`, `/`)
+      connection.runCommand({
+        command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
+        cwd: `/`,
+        noLibList: true
+      })
       .then(() => {
         connection.remoteFeatures[`GETNEWLIBL.PGM`] = `${config.tempLibrary}.GETNEWLIBL`;
       })
