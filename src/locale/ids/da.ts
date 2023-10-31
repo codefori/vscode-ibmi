@@ -209,7 +209,7 @@ export const da: Locale = {
   //Actions
   'actions.CURLIB': 'Aktuelle bibliotek (sættes i Library List)',
   'actions.USERNAME': `Brugernavn for forbindelsen`,
-  'actions.HOME': `Aktuelle mappe (sættes i IFS Browser)`,
+  'actions.WORKDIR': `Aktuel arbejdsmappe, kan ændres i IFS Browser`,
   'actions.HOST': `Host navn eller IP adresse fra den aktuelle forbindelse`,
   'actions.BUILDLIB': `Det samme som <code>&amp;CURLIB</code>`,
   'actions.LIBLC': `Liste af biblioteker adskilt af komma`,
@@ -219,7 +219,8 @@ export const da: Locale = {
   'actions.OPENMBR': `Navn på source member (<code>&amp;OPENMBRL</code> for små bogstaver)`,
   'actions.member.EXT': `Type af source member (<code>&amp;EXTL</code> for små bogstaver)`,
   'actions.FULLPATH': `Fulde sti på filen på fjernsystemet`,
-  'actions.RELATIVEPATH': `Relative sti for filen fra aktuelle mappe eller workspace`,
+  'actions.FILEDIR': `Katalog over filen på fjernsystemet`,
+  'actions.RELATIVEPATH': `Relativ sti til streamfilen fra arbejdsbiblioteket eller arbejdsområdet`,
   'actions.PARENT': `Navn på forrige mappe eller source fil`,
   'actions.BASENAME': `Navn på filen, inklusive filtypen`,
   'actions.streamfile.NAME': `Navn på filen (<code>&amp;NAMEL</code> for små bogstaver)`,

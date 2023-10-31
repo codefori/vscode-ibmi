@@ -209,7 +209,7 @@ export const fr: Locale = {
   //Actions
   'actions.CURLIB': 'Bibliothèque en cours, modifiable depuis la Liste des Bibliothèques',
   'actions.USERNAME': `Nom d'utilisateur de la connexion`,
-  'actions.HOME': `Home/répertoire de travail en cours, modifiable depuis l'Exporateur IFS`,
+  'actions.WORKDIR': `Répertoire de travail actuel, modifiable dans le navigateur IFS`,
   'actions.HOST': `Nom d'hôte ou adresse IP de la connexion`,
   'actions.BUILDLIB': `Voir <code>&amp;CURLIB</code>`,
   'actions.LIBLC': `Liste des bilbiothèques, séparée par des virgules`,
@@ -219,7 +219,8 @@ export const fr: Locale = {
   'actions.OPENMBR': `Nom du membre source (<code>&amp;OPENMBRL</code> pour le nom en minuscule)`,
   'actions.member.EXT': `Extension du membre source (<code>&amp;EXTL</code> pour le nom en minuscule)`,
   'actions.FULLPATH': `Chemin absolu du fichier sur le système distant`,
-  'actions.RELATIVEPATH': `Chemin relatif du fichier depuis le répertoire home ou de travail`,
+  'actions.FILEDIR': `Répertoire du fichier sur le système distant`,
+  'actions.RELATIVEPATH': `Chemin relatif du fichier de flux à partir du répertoire de travail ou de l'espace de travail`,
   'actions.PARENT': `Nom du répertoire parent du fichier`,
   'actions.BASENAME': `Nom du fichier avec son extension`,
   'actions.streamfile.NAME': `Nom du fichier (<code>&amp;NAMEL</code> pour le nom en minuscule)`,
