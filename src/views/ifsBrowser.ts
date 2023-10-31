@@ -29,7 +29,7 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   getShortCuts() {
-      return instance.getConfig()?.ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
+    return instance.getConfig()?.ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
   }
 
   getParent(item: BrowserItem) {
@@ -116,7 +116,7 @@ class IFSItem extends BrowserItem implements WithPath {
 class IFSFileItem extends IFSItem {
   constructor(file: IFSFile, readonly ifsParent: IFSDirectoryItem) {
     super(file, { parent: ifsParent });
-    
+
     this.contextValue = "streamfile";
     this.iconPath = vscode.ThemeIcon.File;
 
@@ -135,7 +135,7 @@ class IFSFileItem extends IFSItem {
 
 class IFSDirectoryItem extends IFSItem {
   constructor(file: IFSFile, parent?: IFSDirectoryItem) {
-    super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent})
+    super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
 
     this.contextValue = "directory";
     this.iconPath = vscode.ThemeIcon.Folder;
@@ -164,7 +164,7 @@ class IFSDirectoryItem extends IFSItem {
 class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
-    
+
     this.contextValue = "shortcut";
     this.iconPath = new vscode.ThemeIcon("folder-library");
   }
@@ -310,7 +310,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
         if (fullName) {
           try {
-            await connection.paseCommand(`mkdir ${Tools.escapePath(fullName)}`);
+            await connection.sendCommand({ command: `mkdir ${Tools.escapePath(fullName)}` });
 
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
@@ -336,7 +336,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           try {
             vscode.window.showInformationMessage(t(`ifsBrowser.createStreamfile.infoMessage`, fullName));
 
-            await connection.paseCommand(`echo "" > ${Tools.escapePath(fullName)}`);
+            await connection.sendCommand({ command: `echo "" > ${Tools.escapePath(fullName)}` });
 
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
 
@@ -413,7 +413,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
             if (deletionConfirmed) {
               try {
-                await connection.paseCommand(`rm -rf ${Tools.escapePath(node.path)}`)
+                await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(node.path)}` })
                 vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, node.path));
                 if (GlobalConfiguration.get(`autoRefresh`)) {
                   ifsBrowser.refresh(node.parent);
@@ -446,7 +446,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (target) {
           const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
           try {
-            await connection.paseCommand(`mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`);
+            await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
@@ -475,7 +475,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (target) {
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
           try {
-            await connection.paseCommand(`cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}`);
+            await connection.sendCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
