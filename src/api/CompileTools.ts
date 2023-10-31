@@ -61,7 +61,7 @@ export namespace CompileTools {
       variables.set(`{usrprf}`, connection.currentUser);
       variables.set(`&HOST`, connection.currentHost);
       variables.set(`{host}`, connection.currentHost);
-      variables.set(`&HOME`, config.homeDirectory);
+      variables.set(`&WORKDIR`, config.homeDirectory);
 
       const libraryList = buildLibraryList(librarySettings);
       variables.set(`&LIBLS`, libraryList.join(` `));
@@ -232,6 +232,7 @@ export namespace CompileTools {
                     fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
                     variables.set(`&FULLPATH`, fullPath);
                     variables.set(`{path}`, fullPath);
+                    variables.set(`&FILEDIR`, path.posix.parse(fullPath).dir);
 
                     try {
                       const gitApi = Tools.getGitAPI();
@@ -251,11 +252,12 @@ export namespace CompileTools {
                   break;
 
                 case `streamfile`:
-                  relativePath = path.posix.relative(config.homeDirectory, uri.fsPath).split(path.sep).join(path.posix.sep);
+                  relativePath = path.posix.relative(config.homeDirectory, uri.path).split(path.sep).join(path.posix.sep);
                   variables.set(`&RELATIVEPATH`, relativePath);
 
                   const fullName = uri.path;
                   variables.set(`&FULLPATH`, fullName);
+                  variables.set(`&FILEDIR`, path.parse(fullName).dir);
                   break;
               }
 
