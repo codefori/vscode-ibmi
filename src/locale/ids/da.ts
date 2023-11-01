@@ -258,5 +258,15 @@ export const da: Locale = {
   'actions.workAction.environment.qsh.description': `Afvikles som kommando i QSHELL`,
   'actions.workAction.environment.pase': `PASE`,
   'actions.workAction.environment.pase.description': `Afvikles som kommando i PASE`,
-  'actions.workAction.delete.confirm': `Er du sikker på du vil slette "{0}"?`
+  'actions.workAction.delete.confirm': `Er du sikker på du vil slette "{0}"?`,
+  'actions.workAction.refresh':'Refresh',
+  'actions.workAction.refresh.description':'The browser level to refresh after the action is done',
+  'actions.workAction.refresh.no':'No',
+  'actions.workAction.refresh.no.description':'No refresh',
+  'actions.workAction.refresh.parent':'Parent',
+  'actions.workAction.refresh.parent.description':'The parent container is refreshed',
+  'actions.workAction.refresh.filter':'Filter',
+  'actions.workAction.refresh.filter.description':'The parent filter is refreshed',
+  'actions.workAction.refresh.browser':'Browser',
+  'actions.workAction.refresh.browser.description':'The entire browser is refreshed'
 };
