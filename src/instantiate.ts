@@ -250,7 +250,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             }
           }
 
-          if (canRun && [`member`, `streamfile`, `file`].includes(uri.scheme)) {
+          if (canRun && [`member`, `streamfile`, `file`, `object`].includes(uri.scheme)) {
             return await CompileTools.runAction(instance, uri, action, method);
           }
         }
