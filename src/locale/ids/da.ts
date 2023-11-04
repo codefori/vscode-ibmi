@@ -263,10 +263,10 @@ export const da: Locale = {
   'actions.workAction.refresh.description':'Liste niveauet for opfriskning efter aktion er udført.',
   'actions.workAction.refresh.no':'Ingen',
   'actions.workAction.refresh.no.description':'Ingen opfriskning',
-  'actions.workAction.refresh.parent':'Gren',
-  'actions.workAction.refresh.parent.description':'Den aktuelle "gren" i listen bliver opfrisket',
+  'actions.workAction.refresh.parent':'Comtainer',
+  'actions.workAction.refresh.parent.description':'Den aktuelle container bliver opfrisket',
   'actions.workAction.refresh.filter':'Filter',
   'actions.workAction.refresh.filter.description':'Det aktuelle filter bliver opfrisket',
   'actions.workAction.refresh.browser':'Vindue',
-  'actions.workAction.refresh.browser.description':'Alle lister i vinduet bliver opfrisket'
+  'actions.workAction.refresh.browser.description':'Hele vinduet bliver opfrisket'
 };
