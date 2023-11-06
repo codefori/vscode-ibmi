@@ -516,6 +516,12 @@ export namespace CompileTools {
         if (curlib) ileSetup.currentLibrary = curlib;
       }
 
+      // Remove any duplicates fromr the library list
+      ileSetup.libraryList = ileSetup.libraryList
+        .filter((item, pos, self) => {
+          return self.indexOf(item) == pos;
+        })
+
       let commandString = replaceValues(
         options.command,
         getDefaultVariables(instance, ileSetup)
