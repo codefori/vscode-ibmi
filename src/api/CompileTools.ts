@@ -213,30 +213,16 @@ export namespace CompileTools {
               evfeventInfo.object = name.toUpperCase();
               evfeventInfo.extension = ext;
 
-              let relativePath;
-              let fullPath
 
               switch (chosenAction.type) {
                 case `file`:
                   variables.set(`&LOCALPATH`, uri.fsPath);
-
-                  let baseDir = config.homeDirectory;
-
                   if (fromWorkspace) {
-                    baseDir = fromWorkspace.uri.path;
-                    
-                    if(process.platform === 'win32'){
-                      relativePath = path.win32.relative(baseDir, uri.path);
-                    }
-                    else{
-                      relativePath = path.posix.relative(baseDir, uri.path); 
-                    }
-                    relativePath = relativePath.split(path.sep).join(path.posix.sep);
-
+                    const relativePath = path.relative(fromWorkspace.uri.path, uri.path).split(path.sep).join(path.posix.sep);
                     variables.set(`&RELATIVEPATH`, relativePath);
 
                     // We need to make sure the remote path is posix
-                    fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
+                    const fullPath = path.posix.join(config.homeDirectory, relativePath);
                     variables.set(`&FULLPATH`, fullPath);
                     variables.set(`{path}`, fullPath);
 
@@ -258,7 +244,7 @@ export namespace CompileTools {
                   break;
 
                 case `streamfile`:
-                  relativePath = path.posix.relative(config.homeDirectory, uri.fsPath).split(path.sep).join(path.posix.sep);
+                  const relativePath = path.posix.relative(config.homeDirectory, uri.path);
                   variables.set(`&RELATIVEPATH`, relativePath);
 
                   const fullName = uri.path;
