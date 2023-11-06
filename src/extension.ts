@@ -63,11 +63,15 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       new ProfilesView(context)
     ),
     commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData, reloadSettings = false): Promise<boolean> => {
+      async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<boolean> => {
         const existingConnection = instance.getConnection();
 
         if (existingConnection) {
           return false;
+        }
+
+        if (savePassword && connectionData.password) {
+          context.secrets.store(`${connectionData.name}_password`, `${connectionData.password}`);
         }
 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
