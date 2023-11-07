@@ -8,6 +8,7 @@ import * as certificates from "./certificates";
 import * as server from "./server";
 import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
+import { getEnvConfig } from "../local/env";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -70,7 +71,7 @@ export async function initialize(context: ExtensionContext) {
     }
   }
 
-  const getObjectFromUri = (uri: Uri) => {
+  const getObjectFromUri = async (uri: Uri) => {
     const connection = instance.getConnection();
 
     const configuration = instance.getConfig();
@@ -89,10 +90,22 @@ export async function initialize(context: ExtensionContext) {
           qualifiedPath.object = memberPath.name;
           break;
         case `streamfile`:
-        case `file`:
-          const parsedPath = path.parse(uri.path);
+          const streamfilePath = path.parse(uri.path);
           qualifiedPath.library = configuration.currentLibrary;
-          qualifiedPath.object = parsedPath.name;
+          qualifiedPath.object = streamfilePath.name;
+          break;
+        case `file`:
+          qualifiedPath.library = configuration.currentLibrary;
+          const workspace = vscode.workspace.getWorkspaceFolder(uri);
+          if (workspace) {
+            const env = await getEnvConfig(workspace);
+            if (env[`CURLIB`]) {
+              qualifiedPath.library = env[`CURLIB`]
+            }
+          }
+
+          const localPath = path.parse(uri.path);
+          qualifiedPath.object = localPath.name;
           break;
       }
 
@@ -163,7 +176,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
       const activeEditor = vscode.window.activeTextEditor;
       if (activeEditor) {
-        const qualifiedObject = getObjectFromUri(activeEditor.document.uri);
+        const qualifiedObject = await getObjectFromUri(activeEditor.document.uri);
 
         if (qualifiedObject.library && qualifiedObject.object) {
           startDebugging(qualifiedObject.library, qualifiedObject.object);
