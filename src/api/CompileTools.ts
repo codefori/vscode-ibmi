@@ -61,6 +61,7 @@ export namespace CompileTools {
       variables.set(`{usrprf}`, connection.currentUser);
       variables.set(`&HOST`, connection.currentHost);
       variables.set(`{host}`, connection.currentHost);
+      variables.set(`&HOME`, config.homeDirectory);
       variables.set(`&WORKDIR`, config.homeDirectory);
 
       const libraryList = buildLibraryList(librarySettings);
