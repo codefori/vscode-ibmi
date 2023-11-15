@@ -121,9 +121,9 @@ export default class IBMiContent {
     const client = this.ibmi.client;
 
     let retry = false;
+    let path = Tools.qualifyPath(library, sourceFile, member, asp);
+    const tempRmt = this.getTempRemote(path);
     while (true) {
-      const path = Tools.qualifyPath(library, sourceFile, member, asp);
-      const tempRmt = this.getTempRemote(path);
       try {
         await this.ibmi.remoteCommand(
           `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`, `.`
@@ -147,7 +147,7 @@ export default class IBMiContent {
             case "CPFA0A9":
               //The member may be located on SYSBAS
               if (asp) {
-                asp = undefined;
+                path = Tools.qualifyPath(library, sourceFile, member);
                 retry = true;
               }
               break;
@@ -155,7 +155,7 @@ export default class IBMiContent {
               throw e;
           }
         }
-        else{
+        else {
           throw e;
         }
       }
@@ -172,19 +172,39 @@ export default class IBMiContent {
     member = member.toUpperCase();
 
     const client = this.ibmi.client;
-    const path = Tools.qualifyPath(library, sourceFile, member, asp);
-    const tempRmt = this.getTempRemote(path);
     const tmpobj = await tmpFile();
 
+    let retry = false;
     try {
       await writeFileAsync(tmpobj, content, `utf8`);
-
+      let path = Tools.qualifyPath(library, sourceFile, member, asp);
+      const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
-      await this.ibmi.remoteCommand(
-        `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-      );
 
-      return true;
+      while (true) {
+        try {
+          await this.ibmi.remoteCommand(
+            `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          );
+          return true;
+        }
+        catch (e) {
+          if (!retry) {
+            const messageID = String(e).substring(0, 7);
+            switch (messageID) {
+              case "CPFA0A9":
+                //The member may be located on SYSBAS
+                if (asp) {
+                  path = Tools.qualifyPath(library, sourceFile, member);
+                  retry = true;
+                }
+                break;
+              default:
+                throw e;
+            }
+          }
+        }
+      }
     } catch (error) {
       console.log(`Failed uploading member: ` + error);
       return Promise.reject(error);
