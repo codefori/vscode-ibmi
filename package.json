@@ -2442,7 +2442,8 @@
 		"node-ssh": "^13.1.0",
 		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
-		"vscode-diff": "^2.0.2"
+		"vscode-diff": "^2.0.2",
+    "crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
