@@ -118,40 +118,48 @@ export default class IBMiContent {
     sourceFile = sourceFile.toUpperCase();
     member = member.toUpperCase();
 
-    const path = Tools.qualifyPath(library, sourceFile, member, asp);
-    const tempRmt = this.getTempRemote(path);
     const client = this.ibmi.client;
 
-    let retried = false;
-    let retry = 1;
-
-    while (retry > 0) {
-      retry--;
+    let retry = false;
+    while (true) {
+      const path = Tools.qualifyPath(library, sourceFile, member, asp);
+      const tempRmt = this.getTempRemote(path);
       try {
-        //If this command fails we need to try again after we delete the temp remote
         await this.ibmi.remoteCommand(
           `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`, `.`
         );
-      } catch (e) {
-        if (String(e).startsWith(`CPDA08A`)) {
-          if (!retried) {
-            await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
-            retry++;
-            retried = true;
-          } else {
-            throw e;
+
+        if (!localPath) {
+          localPath = await tmpFile();
+        }
+        await client.getFile(localPath, tempRmt);
+        return await readFileAsync(localPath, `utf8`);
+      }
+      catch (e) {
+        if (!retry) {
+          const messageID = String(e).substring(0, 7);
+          switch (messageID) {
+            case "CPDA08A":
+              //We need to try again after we delete the temp remote
+              const result = await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
+              retry = !result.code || result.code === 0;
+              break;
+            case "CPFA0A9":
+              //The member may be located on SYSBAS
+              if (asp) {
+                asp = undefined;
+                retry = true;
+              }
+              break;
+            default:
+              throw e;
           }
-        } else {
+        }
+        else{
           throw e;
         }
       }
     }
-
-    if (!localPath) {
-      localPath = await tmpFile();
-    }
-    await client.getFile(localPath, tempRmt);
-    return await readFileAsync(localPath, `utf8`);
   }
 
   /**
