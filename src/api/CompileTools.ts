@@ -246,9 +246,9 @@ export namespace CompileTools {
                         const branch = repo.state.HEAD?.name;
 
                         if (branch) {
+                          variables.set(`&BRANCHLIB`, getBranchLibraryName(branch));
                           variables.set(`&BRANCH`, branch);
                           variables.set(`{branch}`, branch);
-                          variables.set(`&BRANCHLIB`, getBranchLibraryName(branch));
                         }
                       }
                     } catch (e) {
