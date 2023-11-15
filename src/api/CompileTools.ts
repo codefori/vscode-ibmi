@@ -11,7 +11,7 @@ import { Tools } from './Tools';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
 import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';
-import { getEnvConfig } from './local/env';
+import { getBranchLibraryName, getEnvConfig } from './local/env';
 
 const NEWLINE = `\r\n`;
 
@@ -38,14 +38,20 @@ export namespace CompileTools {
     );
   }
 
-  function replaceValues(string: string, variables: Variables) {
-    variables.forEach((value, key) => {
+  function replaceValues(inputValue: string, variables: Variables, currentVar?: string) {
+    variables.forEach((value, varName) => {
       if (value) {
-        string = string.replace(new RegExp(key, `g`), value);
+        
+        // When replacing a value, let's check if this value has any variables in it too!
+        if (currentVar === undefined) {
+          value = replaceValues(value, variables, varName);
+        }
+
+        inputValue = inputValue.replace(new RegExp(varName, `g`), value);
       }
     });
 
-    return string;
+    return inputValue;
   }
 
   function getDefaultVariables(instance: Instance, librarySettings: ILELibrarySettings): Variables {
@@ -242,6 +248,7 @@ export namespace CompileTools {
                         if (branch) {
                           variables.set(`&BRANCH`, branch);
                           variables.set(`{branch}`, branch);
+                          variables.set(`&BRANCHLIB`, getBranchLibraryName(branch));
                         }
                       }
                     } catch (e) {
