@@ -72,9 +72,20 @@ export namespace DeployTools {
 
           methods.push({ method: "all" as DeploymentMethod, label: `All`, description: `Every file in the local workspace` });
 
-          method = (await vscode.window.showQuickPick(methods,
-            { placeHolder: `Select deployment method to ${remotePath}` }
-          ))?.method;
+          // check to see if user has set a default deploy method.
+          // the default deploy method must be an available option for this connection.
+          // if not available show list of quick pick options else skip quick pick and use default
+          let defaultDeploymentMethod = instance.getConfig()?.defaultDeploymentMethod as DeploymentMethod
+
+          if (methods.find((element) => element.method === defaultDeploymentMethod &&
+              defaultDeploymentMethod as String !== `` )) {
+            method = defaultDeploymentMethod
+          } else {
+
+            method = (await vscode.window.showQuickPick(methods,
+              { placeHolder: `Select deployment method to ${remotePath}` }
+            ))?.method;
+          }
         }
 
         if (method !== undefined) { //method can be 0 (ie. "all")
