@@ -280,7 +280,7 @@ export async function initialize(context: ExtensionContext) {
               if (remoteClientCertExists) {
                 await certificates.downloadClientCert(connection);
                 localCertsOk = true;
-                vscode.window.showInformationMessage(`Debug dertificate downloaded from the server.`);
+                vscode.window.showInformationMessage(`Debug certificate downloaded from the server.`);
 
               } else {
                 const doImport = await vscode.window.showInformationMessage(`Debug setup`, {
