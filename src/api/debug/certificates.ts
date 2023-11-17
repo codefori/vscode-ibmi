@@ -3,24 +3,23 @@ import {promises as fs} from "fs";
 import * as os from "os";
 import IBMi from "../IBMi";
 
-const pfxName = `debug_service.pfx`;
-const crtName = `debug_service.crt`;
+const serverCertName = `debug_service.pfx`;
+const clientCertName = `debug_service.crt`;
 
 function getRemoteCertDirectory(connection: IBMi) {
   return connection.config?.debugCertDirectory!;
 }
 
-export function getKeystorePath(connection: IBMi) {
-  return path.posix.join(getRemoteCertDirectory(connection), pfxName);
+export function getRemoteServerCertPath(connection: IBMi) {
+  return path.posix.join(getRemoteCertDirectory(connection), serverCertName);
 }
 
-export function getLocalCertPath(connection: IBMi) {
-  const host = connection.currentHost;
-  return path.join(os.homedir(), `${host}_${crtName}`);
+export function getRemoteClientCertPath(connection: IBMi) {
+  return path.posix.join(getRemoteCertDirectory(connection), clientCertName);
 }
 
-export async function checkRemoteExists(connection: IBMi) {
-  const pfxPath = getKeystorePath(connection);
+export async function remoteServerCertExists(connection: IBMi) {
+  const pfxPath = getRemoteServerCertPath(connection);
 
   const dirList = await connection.sendCommand({
     command: `ls -p ${pfxPath}`
@@ -31,6 +30,21 @@ export async function checkRemoteExists(connection: IBMi) {
   return list.includes(pfxPath);
 }
 
+export async function remoteClientCertExists(connection: IBMi) {
+  const crtPath = getRemoteClientCertPath(connection);
+
+  const dirList = await connection.sendCommand({
+    command: `ls -p ${crtPath}`
+  });
+
+  const list = dirList.stdout.split(`\n`);
+
+  return list.includes(crtPath);
+}
+
+/**
+ * Generate all certifcates on the server
+ */
 export async function setup(connection: IBMi) {
   const host = connection.currentHost;
   const commands = [
@@ -62,7 +76,19 @@ export async function setup(connection: IBMi) {
   }
 }
 
-export async function checkLocalExists(connection: IBMi) {
+export function downloadClientCert(connection: IBMi) {
+  const remotePath = getRemoteClientCertPath(connection);
+  const localPath = getLocalCertPath(connection);
+
+  return connection.downloadFile(localPath, remotePath);
+}
+
+export function getLocalCertPath(connection: IBMi) {
+  const host = connection.currentHost;
+  return path.join(os.homedir(), `${host}_${clientCertName}`);
+}
+
+export async function localClientCertExists(connection: IBMi) {
   try {
     await fs.stat(getLocalCertPath(connection));
     // TODO: if local exists, but it's out of date with the server? e.g. md5 is different for example
