@@ -388,7 +388,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node: IFSItem) => {
       const connection = instance.getConnection();
-      if (connection) {
+      const config = instance.getConfig();
+      if (connection && config) {
         if (node.path !== `/`) {
           let deletionConfirmed = false;
           const proceed = await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, node.path), t(`Yes`), t(`Cancel`)) === t(`Yes`);
@@ -413,7 +414,15 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
             if (deletionConfirmed) {
               try {
-                await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(node.path)}` })
+                if(config.homeDirectory === node.path){
+                  const echoHome = await connection.sendCommand({ command: `echo $HOME` });
+                  if(echoHome.code === 0){
+                    config.homeDirectory = echoHome.stdout.trim();
+                    await ConnectionConfiguration.update(config);                    
+                    vscode.window.showInformationMessage(t('ifsBrowser.deleteIFS.default.home.dir', node.path, config.homeDirectory));
+                  }
+                }
+                await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(node.path)}` })                
                 vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, node.path));
                 if (GlobalConfiguration.get(`autoRefresh`)) {
                   ifsBrowser.refresh(node.parent);
