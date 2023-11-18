@@ -524,10 +524,7 @@ export namespace CompileTools {
       }
 
       // Remove any duplicates fromr the library list
-      ileSetup.libraryList = ileSetup.libraryList
-        .filter((item, pos, self) => {
-          return self.indexOf(item) == pos;
-        })
+      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct); 
 
       let commandString = replaceValues(
         options.command,
