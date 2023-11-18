@@ -75,6 +75,7 @@ export const en: Locale = {
   'ifsBrowser.deleteIFS.infoMessage': `Deleted {0}.`,
   'ifsBrowser.deleteIFS.errorMessage': `Error deleting streamfile! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Deletion canceled.`,
+  'ifsBrowser.deleteIFS.default.home.dir':'{0} was the working directory; it is now {1}.',
   'ifsBrowser.moveIFS.prompt': `Name of new path`,
   'ifsBrowser.moveIFS.errorMessage': `Error renaming/moving {0}! {1}`,
   'ifsBrowser.moveIFS.renamed': `{0} was renamed to {1}.`,

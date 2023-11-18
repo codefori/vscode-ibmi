@@ -75,6 +75,7 @@ export const fr: Locale = {
   'ifsBrowser.deleteIFS.infoMessage': `{0} supprimé.`,
   'ifsBrowser.deleteIFS.errorMessage': `Erreur lors de la suppression du fichier! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Suppression annulée.`,
+  'ifsBrowser.deleteIFS.default.home.dir':'{0} était le répertoire de travail; c\'est désormais {1}.',
   'ifsBrowser.moveIFS.prompt': `Nouveau chemin`,
   'ifsBrowser.moveIFS.errorMessage': `Erreur lors du renommage/déplacement de {0}! {1}`,
   'ifsBrowser.moveIFS.renamed': `{0} a été renommé {1}.`,
