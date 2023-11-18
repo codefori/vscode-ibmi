@@ -74,6 +74,7 @@ export interface ConnectionData {
   port: number;
   username: string;
   password?: string;
+  privateKey?: string;
   privateKeyPath?: string;
   keepaliveInterval?: number;
 }
@@ -119,7 +120,7 @@ export interface IFSFile {
   name: string
   path: string
   size?: number
-  modified?: Date | string
+  modified?: Date
   owner?: string
 }
 

@@ -25,7 +25,7 @@ import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
 import { LibraryListProvider } from "./views/LibraryListView";
 import { ProfilesView } from "./views/ProfilesView";
 import { HelpView } from "./views/helpView";
-import IFSBrowser from "./views/ifsBrowser";
+import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
@@ -42,9 +42,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
   };
 
-  new IFSBrowser(context);
   initializeObjectBrowser(context)
-
+  initializeIFSBrowser(context);
+  
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `connectionBrowser`,
@@ -63,11 +63,15 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       new ProfilesView(context)
     ),
     commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData, reloadSettings = false): Promise<boolean> => {
+      async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<boolean> => {
         const existingConnection = instance.getConnection();
 
         if (existingConnection) {
           return false;
+        }
+
+        if (savePassword && connectionData.password) {
+          context.secrets.store(`${connectionData.name}_password`, `${connectionData.password}`);
         }
 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;

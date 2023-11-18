@@ -65,7 +65,7 @@ export const fr: Locale = {
   'ifsBrowser.createStreamfile.prompt': `Nom du nouveau fichier`,
   'ifsBrowser.createStreamfile.infoMessage': `Création du fichier {0}.`,
   'ifsBrowser.createStreamfile.errorMessage': `Erreur lors de la création du fichier! {0}`,
-  'ifsBrowser.uploadStreamfile.uploadedFiles': `Uploader des fichiers.`,
+  'ifsBrowser.uploadStreamfile.uploadedFiles': `Les fichiers ont été uploadés.`,
   'ifsBrowser.uploadStreamfile.errorMessage': `Erreur lors de l'upload des fichiers! {0}`,
   'ifsBrowser.uploadStreamfile.noFilesSelected': `Aucun fichier sélectionné.`,
   'ifsBrowser.deleteIFS.rootNotAllowed': `Impossible de supprimer la racine (/) depuis l'Explorateur IFS.`,
