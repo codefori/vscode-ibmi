@@ -516,7 +516,7 @@ export namespace CompileTools {
         if (curlib) ileSetup.currentLibrary = curlib;
       }
 
-      // Remove any duplicates fromr the library list
+      // Remove any duplicates from the library list
       ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct); 
 
       let commandString = replaceValues(
