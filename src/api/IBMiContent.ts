@@ -665,9 +665,9 @@ export default class IBMiContent {
     }
 
     if (fileListResult.code !== 0) {
-      //Filter out the error occurring when is stat is run on an empty directory
+      //Filter out the errors occurring when stat is run on a directory with no hidden or regular files
       const errors = fileListResult.stderr.split("\n")
-        .filter(e => !e.toLowerCase().includes("cannot stat '*'"))
+        .filter(e => !e.toLowerCase().includes("cannot stat '*'") && !e.toLowerCase().includes("cannot stat '.*'"))
         .filter(Tools.distinct);
 
       if (errors.length) {
