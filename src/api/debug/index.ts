@@ -285,7 +285,7 @@ export async function initialize(context: ExtensionContext) {
               } else {
                 const doImport = await vscode.window.showInformationMessage(`Debug setup`, {
                   modal: true,
-                  detail: `The client certificate is not setup on the server. Would you like to import a cetificate from your device?`
+                  detail: `The client certificate is not setup on the server. Would you like to import a certificate from your device?`
                 }, `Yes`, `No`);
 
                 if (doImport === `Yes`) {
