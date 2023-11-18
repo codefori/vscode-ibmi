@@ -124,7 +124,7 @@ class IFSFileItem extends IFSItem {
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open Streamfile`,
-      arguments: [file]
+      arguments: [this.path]
     };
   }
 
