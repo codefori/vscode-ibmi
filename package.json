@@ -560,6 +560,17 @@
 							"deployFirst": {
 								"type": "boolean",
 								"description": "If enabled and type is local, the deployment process will run before the Action."
+							},
+							"refresh": {
+								"type": "string",
+								"description": "What container level should be refreshed after the action is done.",
+								"default": "no",
+								"enum": [
+									"no",
+									"parent",
+									"filter",
+									"browser"
+								]								
 							}
 						}
 					},

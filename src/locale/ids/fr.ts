@@ -258,5 +258,15 @@ export const fr: Locale = {
   'actions.workAction.environment.qsh.description': `Exécution via QShell`,
   'actions.workAction.environment.pase': `PASE`,
   'actions.workAction.environment.pase.description': `Exécution via l'environnement PASE`,
-  'actions.workAction.delete.confirm': `Êtes-vous sûr de vouloir supprimer l'action "{0}"?`
+  'actions.workAction.delete.confirm': `Êtes-vous sûr de vouloir supprimer l'action "{0}"?`,
+  'actions.workAction.refresh':'Rafraîchissement',
+  'actions.workAction.refresh.description':'Le niveau du navigateur devant être rafraîchi une fois l\'action exécutée',
+  'actions.workAction.refresh.no':'Aucun',
+  'actions.workAction.refresh.no.description':'Pas de rafraîchissement',
+  'actions.workAction.refresh.parent':'Parent',
+  'actions.workAction.refresh.parent.description':'Le conteneur parent est rafraîchi',
+  'actions.workAction.refresh.filter':'Filtre',
+  'actions.workAction.refresh.filter.description':'Le filtre parent est rafraîchi',
+  'actions.workAction.refresh.browser':'Navigateur',
+  'actions.workAction.refresh.browser.description':'Le navigateur est entièrement rafraîchi'
 };

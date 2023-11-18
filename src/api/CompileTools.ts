@@ -2,7 +2,7 @@
 import path from 'path';
 import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks, window } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
-import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
+import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import IBMi from './IBMi';
@@ -80,7 +80,7 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod): Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?:BrowserItem): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -470,7 +470,36 @@ export namespace CompileTools {
           );
 
           const executionOK = (exitCode === 0);
-          if (hasRun) {            
+          if (hasRun) {
+            if(executionOK && browserItem){
+              switch(chosenAction.refresh){
+                case 'browser':
+                  if(chosenAction.type === 'streamfile'){
+                    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                  }
+                  else if(chosenAction.type !== 'file'){
+                    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                  }
+                  break;
+
+                case 'filter':
+                  //Filter is a top level item so it has no parent (like Batman)
+                  let filter : BrowserItem = browserItem;
+                  while(filter.parent){
+                    filter = filter.parent;
+                  }
+                  filter.refresh?.();
+                  break;
+
+                case 'parent':
+                  browserItem.parent?.refresh?.();
+                  break;
+
+                default:
+                  //No refresh
+              }
+            }
+            
             const openOutputAction = "Open output"; //TODO: will be translated in the future
             const openOutput = await (executionOK ?
               vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
@@ -482,7 +511,7 @@ export namespace CompileTools {
                 .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
                 .setOptions({ fullWidth: true })
                 .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
-            }
+            }           
           }
 
           return executionOK;

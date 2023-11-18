@@ -12,7 +12,7 @@ import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { Action, DeploymentMethod, QsysFsOptions } from "./typings";
+import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
@@ -209,15 +209,19 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | BrowserItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
       let uri;
+      let browserItem;
       if (target) {
         if ("fsPath" in target) {
           uri = target;
         }
         else {
           uri = target?.resourceUri;
+          if ("refresh" in target) {
+            browserItem = target;
+          }
         }
       }
 
@@ -250,8 +254,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             }
           }
 
-          if (canRun && [`member`, `streamfile`, `file`, `object`].includes(uri.scheme)) {
-            return await CompileTools.runAction(instance, uri, action, method);
+          if (canRun && [`member`, `streamfile`, `file`, 'object'].includes(uri.scheme)) {
+            return await CompileTools.runAction(instance, uri, action, method, browserItem);
           }
         }
         else {
