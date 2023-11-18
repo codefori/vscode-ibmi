@@ -75,7 +75,7 @@ export const da: Locale = {
   'ifsBrowser.deleteIFS.infoMessage': `Slettede {0}.`,
   'ifsBrowser.deleteIFS.errorMessage': `Fejl ved sletning af streamfile! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Sletning afbrudt.`,
-  'ifsBrowser.deleteIFS.default.home.dir':'{0} was the working directory; it is now {1}.',
+  'ifsBrowser.deleteIFS.default.home.dir':'{0} var den aktuelle mappe; det er nu {1}.',
   'ifsBrowser.moveIFS.prompt': `Nyt navn`,
   'ifsBrowser.moveIFS.errorMessage': `Fejl ved flytning/omdøbning af {0}! {1}`,
   'ifsBrowser.moveIFS.renamed': `{0} blev omdøbt til {1}.`,
