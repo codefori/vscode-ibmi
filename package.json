@@ -2199,7 +2199,7 @@
 				},
 				{
 					"command": "code-for-ibmi.copyMember",
-					"when": "view == objectBrowser && viewItem == member",
+					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
 					"group": "2_memberStuff@2"
 				},
 				{
