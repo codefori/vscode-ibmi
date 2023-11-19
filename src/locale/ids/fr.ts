@@ -269,5 +269,7 @@ export const fr: Locale = {
   'actions.workAction.refresh.filter':'Filtre',
   'actions.workAction.refresh.filter.description':'Le filtre parent est rafraîchi',
   'actions.workAction.refresh.browser':'Navigateur',
-  'actions.workAction.refresh.browser.description':'Le navigateur est entièrement rafraîchi'
+  'actions.workAction.refresh.browser.description':'Le navigateur est entièrement rafraîchi',
+  'actions.workAction.runOnProtected':'Exécuter en mode protégé/lecture seule',
+  'actions.workAction.runOnProtected.description':`Autorise l'exécution de cette action sur des cibles protégés ou en lecture seule`
 };

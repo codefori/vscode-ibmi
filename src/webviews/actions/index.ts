@@ -21,6 +21,7 @@ type ActionPage = {
   type: ActionType
   environment: ActionEnvironment
   refresh: ActionRefresh
+  runOnProtected: boolean
   buttons: "saveAction" | "deleteAction" | "cancelAction"
 }
 
@@ -237,7 +238,8 @@ export namespace ActionsUI {
             description: t('actions.workAction.refresh.browser'),
             text: t('actions.workAction.refresh.browser.description')
           }], t('actions.workAction.refresh.description')
-        )
+        )        
+        .addCheckbox("runOnProtected", t("actions.workAction.runOnProtected"), t("actions.workAction.runOnProtected.description"), currentAction.runOnProtected)
         .addHorizontalRule()
         .addButtons(
           { id: `saveAction`, label: t(`save`) },
@@ -274,7 +276,8 @@ export namespace ActionsUI {
                 environment: data.environment,
                 name: data.name,
                 command: data.command,
-                refresh: data.refresh
+                refresh: data.refresh,
+                runOnProtected: data.runOnProtected
               };
 
               if (id >= 0) {
