@@ -57,7 +57,7 @@ export namespace DeployTools {
         if (!method) {
           const methods = [];
           if (Deployment.getConnection().remoteFeatures.md5sum) {
-            //methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
+            methods.push({ method: "compare" as DeploymentMethod, label: `Compare`, description: `Synchronizes using MD5 hash comparison` });
           }
 
           const changes = Deployment.workspaceChanges.get(folder)?.size || 0;
@@ -72,12 +72,12 @@ export namespace DeployTools {
 
           methods.push({ method: "all" as DeploymentMethod, label: `All`, description: `Every file in the local workspace` });
 
-          let defaultDeploymentMethod = instance.getConfig()?.defaultDeploymentMethod as DeploymentMethod
+          const defaultDeploymentMethod = instance.getConfig()?.defaultDeploymentMethod as DeploymentMethod
 
           if (methods.find((element) => element.method === defaultDeploymentMethod)) { // default deploy method is usable
             method = defaultDeploymentMethod
           
-          } else if (defaultDeploymentMethod as string !== '' && defaultDeploymentMethod !== undefined) { // default deploy method is set but not usable.
+          } else if (defaultDeploymentMethod) { // default deploy method is set but not usable.
             vscode.window.showWarningMessage('Default deployment method is set but not usable in your environment.')
 
             method = (await vscode.window.showQuickPick(methods,
