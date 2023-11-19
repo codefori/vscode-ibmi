@@ -118,40 +118,48 @@ export default class IBMiContent {
     sourceFile = sourceFile.toUpperCase();
     member = member.toUpperCase();
 
-    const path = Tools.qualifyPath(library, sourceFile, member, asp);
-    const tempRmt = this.getTempRemote(path);
     const client = this.ibmi.client;
 
-    let retried = false;
-    let retry = 1;
-
-    while (retry > 0) {
-      retry--;
+    let retry = false;
+    let path = Tools.qualifyPath(library, sourceFile, member, asp);
+    const tempRmt = this.getTempRemote(path);
+    while (true) {
       try {
-        //If this command fails we need to try again after we delete the temp remote
         await this.ibmi.remoteCommand(
           `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`, `.`
         );
-      } catch (e) {
-        if (String(e).startsWith(`CPDA08A`)) {
-          if (!retried) {
-            await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
-            retry++;
-            retried = true;
-          } else {
-            throw e;
+
+        if (!localPath) {
+          localPath = await tmpFile();
+        }
+        await client.getFile(localPath, tempRmt);
+        return await readFileAsync(localPath, `utf8`);
+      }
+      catch (e) {
+        if (!retry) {
+          const messageID = String(e).substring(0, 7);
+          switch (messageID) {
+            case "CPDA08A":
+              //We need to try again after we delete the temp remote
+              const result = await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
+              retry = !result.code || result.code === 0;
+              break;
+            case "CPFA0A9":
+              //The member may be located on SYSBAS
+              if (asp) {
+                path = Tools.qualifyPath(library, sourceFile, member);
+                retry = true;
+              }
+              break;
+            default:
+              throw e;
           }
-        } else {
+        }
+        else {
           throw e;
         }
       }
     }
-
-    if (!localPath) {
-      localPath = await tmpFile();
-    }
-    await client.getFile(localPath, tempRmt);
-    return await readFileAsync(localPath, `utf8`);
   }
 
   /**
@@ -164,19 +172,39 @@ export default class IBMiContent {
     member = member.toUpperCase();
 
     const client = this.ibmi.client;
-    const path = Tools.qualifyPath(library, sourceFile, member, asp);
-    const tempRmt = this.getTempRemote(path);
     const tmpobj = await tmpFile();
 
+    let retry = false;
     try {
       await writeFileAsync(tmpobj, content, `utf8`);
-
+      let path = Tools.qualifyPath(library, sourceFile, member, asp);
+      const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
-      await this.ibmi.remoteCommand(
-        `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-      );
 
-      return true;
+      while (true) {
+        try {
+          await this.ibmi.remoteCommand(
+            `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          );
+          return true;
+        }
+        catch (e) {
+          if (!retry) {
+            const messageID = String(e).substring(0, 7);
+            switch (messageID) {
+              case "CPFA0A9":
+                //The member may be located on SYSBAS
+                if (asp) {
+                  path = Tools.qualifyPath(library, sourceFile, member);
+                  retry = true;
+                }
+                break;
+              default:
+                throw e;
+            }
+          }
+        }
+      }
     } catch (error) {
       console.log(`Failed uploading member: ` + error);
       return Promise.reject(error);
@@ -637,9 +665,9 @@ export default class IBMiContent {
     }
 
     if (fileListResult.code !== 0) {
-      //Filter out the error occurring when is stat is run on an empty directory
+      //Filter out the errors occurring when stat is run on a directory with no hidden or regular files
       const errors = fileListResult.stderr.split("\n")
-        .filter(e => !e.toLowerCase().includes("cannot stat '*'"))
+        .filter(e => !e.toLowerCase().includes("cannot stat '*'") && !e.toLowerCase().includes("cannot stat '.*'"))
         .filter(Tools.distinct);
 
       if (errors.length) {

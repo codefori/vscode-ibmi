@@ -6,7 +6,7 @@ import { GlobalConfiguration } from "../../api/Configuration";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
-import { Action, ActionEnvironment, ActionType } from "../../typings";
+import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typings";
 import { getVariablesInfo } from "./varinfo";
 
 type MainMenuPage = {
@@ -20,6 +20,7 @@ type ActionPage = {
   extensions: string
   type: ActionType
   environment: ActionEnvironment
+  refresh: ActionRefresh
   buttons: "saveAction" | "deleteAction" | "cancelAction"
 }
 
@@ -134,7 +135,8 @@ export namespace ActionsUI {
           ],
           environment: `ile`,
           name: ``,
-          command: ``
+          command: ``,
+          refresh: `no`
         }
         uiTitle = t('actions.workAction.create.title');
       }
@@ -210,6 +212,32 @@ export namespace ActionsUI {
             text: t('actions.workAction.environment.pase.description')
           }], t('actions.workAction.environment.description')
         )
+        .addSelect(`refresh`, t('actions.workAction.refresh'), [
+          {
+            selected: currentAction.refresh === `no`,
+            value: `no`,
+            description: t('actions.workAction.refresh.no'),
+            text: t('actions.workAction.refresh.no.description')
+          },
+          {
+            selected: currentAction.refresh === `parent`,
+            value: `parent`,
+            description: t('actions.workAction.refresh.parent'),
+            text: t('actions.workAction.refresh.parent.description')
+          },
+          {
+            selected: currentAction.refresh === `filter`,
+            value: `filter`,
+            description: t('actions.workAction.refresh.filter'),
+            text: t('actions.workAction.refresh.filter.description')
+          },
+          {
+            selected: currentAction.refresh === `browser`,
+            value: `browser`,
+            description: t('actions.workAction.refresh.browser'),
+            text: t('actions.workAction.refresh.browser.description')
+          }], t('actions.workAction.refresh.description')
+        )
         .addHorizontalRule()
         .addButtons(
           { id: `saveAction`, label: t(`save`) },
@@ -240,12 +268,13 @@ export namespace ActionsUI {
               // We don't want \r (Windows line endings)
               data.command = data.command.replace(new RegExp(`\\\r`, `g`), ``);
 
-              const newAction = {
+              const newAction : Action = {
                 type: data.type,
                 extensions: data.extensions.split(`,`).map(item => item.trim().toUpperCase()),
                 environment: data.environment,
                 name: data.name,
                 command: data.command,
+                refresh: data.refresh
               };
 
               if (id >= 0) {

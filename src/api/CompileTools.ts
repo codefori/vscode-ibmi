@@ -2,7 +2,7 @@
 import path from 'path';
 import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks, window } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
-import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
+import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import IBMi from './IBMi';
@@ -80,7 +80,7 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod): Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?:BrowserItem): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -219,23 +219,16 @@ export namespace CompileTools {
               evfeventInfo.object = name.toUpperCase();
               evfeventInfo.extension = ext;
 
-              let relativePath;
-              let fullPath
 
               switch (chosenAction.type) {
                 case `file`:
                   variables.set(`&LOCALPATH`, uri.fsPath);
-
-                  let baseDir = config.homeDirectory;
-
                   if (fromWorkspace) {
-                    baseDir = fromWorkspace.uri.path;
-
-                    relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
+                    const relativePath = path.relative(fromWorkspace.uri.path, uri.path).split(path.sep).join(path.posix.sep);
                     variables.set(`&RELATIVEPATH`, relativePath);
 
                     // We need to make sure the remote path is posix
-                    fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
+                    const fullPath = path.posix.join(config.homeDirectory, relativePath);
                     variables.set(`&FULLPATH`, fullPath);
                     variables.set(`{path}`, fullPath);
 
@@ -258,7 +251,7 @@ export namespace CompileTools {
                   break;
 
                 case `streamfile`:
-                  relativePath = path.posix.relative(config.homeDirectory, uri.fsPath).split(path.sep).join(path.posix.sep);
+                  const relativePath = path.posix.relative(config.homeDirectory, uri.path);
                   variables.set(`&RELATIVEPATH`, relativePath);
 
                   const fullName = uri.path;
@@ -470,7 +463,36 @@ export namespace CompileTools {
           );
 
           const executionOK = (exitCode === 0);
-          if (hasRun) {            
+          if (hasRun) {
+            if(executionOK && browserItem){
+              switch(chosenAction.refresh){
+                case 'browser':
+                  if(chosenAction.type === 'streamfile'){
+                    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                  }
+                  else if(chosenAction.type !== 'file'){
+                    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                  }
+                  break;
+
+                case 'filter':
+                  //Filter is a top level item so it has no parent (like Batman)
+                  let filter : BrowserItem = browserItem;
+                  while(filter.parent){
+                    filter = filter.parent;
+                  }
+                  filter.refresh?.();
+                  break;
+
+                case 'parent':
+                  browserItem.parent?.refresh?.();
+                  break;
+
+                default:
+                  //No refresh
+              }
+            }
+            
             const openOutputAction = "Open output"; //TODO: will be translated in the future
             const openOutput = await (executionOK ?
               vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
@@ -482,7 +504,7 @@ export namespace CompileTools {
                 .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
                 .setOptions({ fullWidth: true })
                 .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
-            }
+            }           
           }
 
           return executionOK;
@@ -522,6 +544,9 @@ export namespace CompileTools {
         if (libl) ileSetup.libraryList = libl.split(` `);
         if (curlib) ileSetup.currentLibrary = curlib;
       }
+
+      // Remove any duplicates from the library list
+      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct); 
 
       let commandString = replaceValues(
         options.command,
