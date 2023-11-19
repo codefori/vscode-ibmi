@@ -211,7 +211,7 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       ]
     },
     {
-      "name": "Build current with Source Orbit 🔨",
+      "name": "Build entire project with Source Orbit 🔨",
       "command": "so -bf make && /QOpenSys/pkgs/bin/gmake LIBL='&LIBLS' BIN_LIB=&CURLIB OPT=*EVENTF",
       "environment": "pase",
       "deployFirst": true,
