@@ -209,4 +209,15 @@ export namespace Tools {
   export function capitalize(text:string) {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
+
+  export function sanitizeLibraryNames(libraries: string[]): string[] {
+    //We have to reverse it because `liblist -a` adds the next item to the top always 
+    return libraries
+      .map(library => {
+        // Escape any $ signs
+        library.replace(/\$/g, `\\$`);
+        // Quote libraries starting with #
+        return library.startsWith(`#`) ? `"${library}"` : library;;
+      });
+  }
 }
