@@ -401,8 +401,8 @@ export default class IBMiContent {
 
     const result = await this.ibmi.sendQsh({
       command: [
-        `liblist -d ` + this.ibmi.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+        `liblist -d ` + Tools.sanitizeLibraryNames(this.ibmi.defaultUserLibraries).join(` `),
+        ...newLibl.map(lib => `liblist -a ` + Tools.sanitizeLibraryNames([lib]))
       ].join(`; `)
     });
 
