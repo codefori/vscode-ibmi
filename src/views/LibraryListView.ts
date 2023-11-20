@@ -3,6 +3,7 @@ import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configurati
 import { instance } from "../instantiate";
 import { t } from "../locale";
 import { Library as LibraryListEntry } from "../typings";
+import { Tools } from "../api/Tools";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -61,7 +62,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                 if (newLibrary !== currentLibrary) {
                   let newLibraryOK = true;
                   try {
-                    await connection.runCommand({ command: `CHGCURLIB ${newLibrary}` });
+                    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${newLibrary}` });
+                    if (commandResult?.code != 0) {
+                      throw(t(`LibraryListView.addToLibraryList.invalidLib`, newLibrary));
+                    }
                   } catch (e) {
                     vscode.window.showErrorMessage(String(e));
                     newLibraryOK = false;
