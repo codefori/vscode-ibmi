@@ -372,7 +372,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
         if (uploads.length) {
           try {
-            await connection.client.putFiles(uploads, { concurrency: 5 });
+            await connection.uploadFiles(uploads, { concurrency: 5 });
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
             }
@@ -563,21 +563,15 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem) => {
-      const client = instance.getConnection()?.client;
-      if (client) {
+      const ibmi = instance.getConnection();
+      if (ibmi) {
         //Get filename from path on server
         const remoteFilepath = path.join(os.homedir(), path.basename(node.path));
 
-        let localPath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(remoteFilepath) }))?.path;
+        const localPath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(remoteFilepath) }))?.path;
         if (localPath) {
-          if (process.platform === `win32`) {
-            //Issue with getFile not working propertly on Windows
-            //when there was a / at the start.
-            localPath = localPath[0] === `/` ? localPath.substring(1) : localPath;
-          }
-
           try {
-            await client.getFile(localPath, node.path);
+            await ibmi.downloadFile(localPath, node.path);
             vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.infoMessage`));
           } catch (e) {
             vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, t(String(node.contextValue)), e));

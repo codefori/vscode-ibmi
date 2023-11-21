@@ -6,11 +6,11 @@ import { EOL } from "os";
 import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
+import { CompileTools } from "../api/CompileTools";
 import { Tools } from "../api/Tools";
+import { DeployTools } from "../api/local/deployTools";
 import { instance } from "../instantiate";
 import { Action, DeploymentMethod } from "../typings";
-import { DeployTools } from "../api/local/deployTools";
-import { CompileTools } from "../api/CompileTools";
 
 type FileInfo = {
     md5: string
@@ -162,9 +162,11 @@ export const DeployToolsSuite: TestSuite = {
                 };
 
                 await CompileTools.runAction(instance, vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt"), action);
-
-                assert.ok(existsSync(vscode.Uri.joinPath(fakeProject.localPath!, `random`, `hello.txt`).fsPath));
-                assert.ok(existsSync(vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt").fsPath));
+                
+                const localRoot = vscode.workspace.getWorkspaceFolder(fakeProject.localPath!)?.uri;
+                assert.ok(localRoot, "No workspace folder");
+                assert.ok(existsSync(vscode.Uri.joinPath(localRoot, `random`, `random.txt`).fsPath));
+                assert.ok(existsSync(vscode.Uri.joinPath(localRoot, "hello.txt").fsPath));
             }
         },
     ],
