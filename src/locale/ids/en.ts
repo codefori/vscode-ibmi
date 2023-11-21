@@ -270,6 +270,6 @@ export const en: Locale = {
   'actions.workAction.refresh.filter.description':'The parent filter is refreshed',
   'actions.workAction.refresh.browser':'Browser',
   'actions.workAction.refresh.browser.description':'The entire browser is refreshed',
-  'actions.workAction.runOnProtected':'Run on protected/read-only',
-  'actions.workAction.runOnProtected.description':'Allows the execution of this Action on protected or read-only targets'
+  'actions.workAction.runOnProtected':'Run on protected/read only',
+  'actions.workAction.runOnProtected.description':'Allows the execution of this Action on protected or read only targets'
 };

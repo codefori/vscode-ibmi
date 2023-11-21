@@ -574,7 +574,7 @@
 							},
 							"runOnProtected": {
 								"type": "boolean",
-								"description": "If enabled, this Action will be allowed to run on protected/read-only targets."
+								"description": "If enabled, this Action will be allowed to run on protected/read only targets."
 							}
 						}
 					},
