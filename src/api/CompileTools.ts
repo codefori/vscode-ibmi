@@ -1,6 +1,6 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks, window } from 'vscode';
+import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import { GlobalConfiguration } from './Configuration';
@@ -86,17 +86,8 @@ export namespace CompileTools {
     const content = instance.getContent();
 
     const uriOptions = parseFSOptions(uri);
-
-    if (uriOptions.readonly) {
-      window.showWarningMessage(`Cannot run Actions against readonly objects.`);
-      return false;
-    }
-
-    if (config?.readOnlyMode) {
-      window.showWarningMessage(`Cannot run Actions while readonly mode is enabled in the connection settings.`);
-      return false;
-    }
-
+    const isProtected = uriOptions.readonly || config?.readOnlyMode;
+        
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
 
     if (connection && config && content) {
@@ -123,7 +114,7 @@ export namespace CompileTools {
         });
 
         // Then we get all the available Actions for the current context
-        availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
+        availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)) && (!isProtected || action.runOnProtected))
           .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
           .map(action => ({
             label: action.name,
