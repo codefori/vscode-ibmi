@@ -65,7 +65,7 @@ export const fr: Locale = {
   'ifsBrowser.createStreamfile.prompt': `Nom du nouveau fichier`,
   'ifsBrowser.createStreamfile.infoMessage': `Création du fichier {0}.`,
   'ifsBrowser.createStreamfile.errorMessage': `Erreur lors de la création du fichier! {0}`,
-  'ifsBrowser.uploadStreamfile.uploadedFiles': `Uploader des fichiers.`,
+  'ifsBrowser.uploadStreamfile.uploadedFiles': `Les fichiers ont été uploadés.`,
   'ifsBrowser.uploadStreamfile.errorMessage': `Erreur lors de l'upload des fichiers! {0}`,
   'ifsBrowser.uploadStreamfile.noFilesSelected': `Aucun fichier sélectionné.`,
   'ifsBrowser.deleteIFS.rootNotAllowed': `Impossible de supprimer la racine (/) depuis l'Explorateur IFS.`,
@@ -75,6 +75,7 @@ export const fr: Locale = {
   'ifsBrowser.deleteIFS.infoMessage': `{0} supprimé.`,
   'ifsBrowser.deleteIFS.errorMessage': `Erreur lors de la suppression du fichier! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Suppression annulée.`,
+  'ifsBrowser.deleteIFS.default.home.dir':'{0} était le répertoire de travail; c\'est désormais {1}.',
   'ifsBrowser.moveIFS.prompt': `Nouveau chemin`,
   'ifsBrowser.moveIFS.errorMessage': `Erreur lors du renommage/déplacement de {0}! {1}`,
   'ifsBrowser.moveIFS.renamed': `{0} a été renommé {1}.`,
@@ -258,5 +259,15 @@ export const fr: Locale = {
   'actions.workAction.environment.qsh.description': `Exécution via QShell`,
   'actions.workAction.environment.pase': `PASE`,
   'actions.workAction.environment.pase.description': `Exécution via l'environnement PASE`,
-  'actions.workAction.delete.confirm': `Êtes-vous sûr de vouloir supprimer l'action "{0}"?`
+  'actions.workAction.delete.confirm': `Êtes-vous sûr de vouloir supprimer l'action "{0}"?`,
+  'actions.workAction.refresh':'Rafraîchissement',
+  'actions.workAction.refresh.description':'Le niveau du navigateur devant être rafraîchi une fois l\'action exécutée',
+  'actions.workAction.refresh.no':'Aucun',
+  'actions.workAction.refresh.no.description':'Pas de rafraîchissement',
+  'actions.workAction.refresh.parent':'Parent',
+  'actions.workAction.refresh.parent.description':'Le conteneur parent est rafraîchi',
+  'actions.workAction.refresh.filter':'Filtre',
+  'actions.workAction.refresh.filter.description':'Le filtre parent est rafraîchi',
+  'actions.workAction.refresh.browser':'Navigateur',
+  'actions.workAction.refresh.browser.description':'Le navigateur est entièrement rafraîchi'
 };

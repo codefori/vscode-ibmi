@@ -75,6 +75,7 @@ export const en: Locale = {
   'ifsBrowser.deleteIFS.infoMessage': `Deleted {0}.`,
   'ifsBrowser.deleteIFS.errorMessage': `Error deleting streamfile! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Deletion canceled.`,
+  'ifsBrowser.deleteIFS.default.home.dir':'{0} was the working directory; it is now {1}.',
   'ifsBrowser.moveIFS.prompt': `Name of new path`,
   'ifsBrowser.moveIFS.errorMessage': `Error renaming/moving {0}! {1}`,
   'ifsBrowser.moveIFS.renamed': `{0} was renamed to {1}.`,
@@ -258,5 +259,15 @@ export const en: Locale = {
   'actions.workAction.environment.qsh.description': `Runs the command through QShell`,
   'actions.workAction.environment.pase': `PASE`,
   'actions.workAction.environment.pase.description': `Runs the command in the PASE environment`,
-  'actions.workAction.delete.confirm': `Are you sure you want to delete the action "{0}"?`
+  'actions.workAction.delete.confirm': `Are you sure you want to delete the action "{0}"?`,
+  'actions.workAction.refresh':'Refresh',
+  'actions.workAction.refresh.description':'The browser level to refresh after the action is done',
+  'actions.workAction.refresh.no':'No',
+  'actions.workAction.refresh.no.description':'No refresh',
+  'actions.workAction.refresh.parent':'Parent',
+  'actions.workAction.refresh.parent.description':'The parent container is refreshed',
+  'actions.workAction.refresh.filter':'Filter',
+  'actions.workAction.refresh.filter.description':'The parent filter is refreshed',
+  'actions.workAction.refresh.browser':'Browser',
+  'actions.workAction.refresh.browser.description':'The entire browser is refreshed'
 };

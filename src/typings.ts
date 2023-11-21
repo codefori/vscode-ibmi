@@ -54,6 +54,7 @@ export interface CommandResult {
 }
 
 export type ActionType = "member" | "streamfile" | "object" | "file";
+export type ActionRefresh = "no" | "parent" | "filter" | "browser";
 export type ActionEnvironment = "ile" | "qsh" | "pase";
 
 export interface Action {
@@ -64,6 +65,7 @@ export interface Action {
   extensions?: string[];
   deployFirst?: boolean;
   postDownload?: string[];
+  refresh?: ActionRefresh
 }
 
 export interface ConnectionData {
@@ -118,7 +120,7 @@ export interface IFSFile {
   name: string
   path: string
   size?: number
-  modified?: Date | string
+  modified?: Date
   owner?: string
 }
 
