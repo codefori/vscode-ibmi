@@ -41,7 +41,7 @@ export namespace CompileTools {
   function replaceValues(inputValue: string, variables: Variables, currentVar?: string) {
     variables.forEach((value, varName) => {
       if (value) {
-        
+
         // When replacing a value, let's check if this value has any variables in it too!
         if (currentVar === undefined) {
           value = replaceValues(value, variables, varName);
@@ -80,7 +80,7 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?:BrowserItem): Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -370,18 +370,32 @@ export namespace CompileTools {
 
                       if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
                         if (fromWorkspace) {
-                          const client = connection.client;
                           const remoteDir = config.homeDirectory;
-                          const localDir = fromWorkspace.uri.path;
+                          const localDir = fromWorkspace.uri;
 
-                          // First, we need to create or clear the relative directories in the workspace
-                          // in case they don't exist. For example, if the path is `.logs/joblog.json`
-                          // then we would need to create `.logs`.
-                          const downloadDirectories = chosenAction.postDownload.map(path.parse)
-                            .map(pathInfo => pathInfo.dir || pathInfo.base) //Get directories or files' parent directory
-                            .filter(Tools.distinct) //Remove duplicates
-                            .map(downloadDirectory => vscode.Uri.parse((path.posix.join(localDir, downloadDirectory)))); //Create local Uri path
+                          const postDownloads: { type: vscode.FileType, localPath: string, remotePath: string }[] = [];
+                          const downloadDirectories = new Set<vscode.Uri>();
+                          for (const download of chosenAction.postDownload) {
+                            const remotePath = path.posix.join(remoteDir, download);
+                            const localPath = vscode.Uri.joinPath(localDir, download).path;
 
+                            let type: vscode.FileType;
+                            if (await content.isDirectory(remotePath)) {
+                              downloadDirectories.add(vscode.Uri.joinPath(localDir, download));
+                              type = vscode.FileType.Directory;
+                            }
+                            else {
+                              const directory = path.parse(download).dir;
+                              if (directory) {
+                                downloadDirectories.add(vscode.Uri.joinPath(localDir, directory));
+                              }
+                              type = vscode.FileType.File;
+                            }
+
+                            postDownloads.push({ remotePath, localPath, type })
+                          }
+
+                          //Clear and create every local download directories
                           for (const downloadPath of downloadDirectories) {
                             try {
                               const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
@@ -391,7 +405,7 @@ export namespace CompileTools {
                                   throw new Error("Create directory");
                                 }
                               }
-                              else if (stat.type !== vscode.FileType.Directory) {
+                              else if (stat.type === vscode.FileType.Directory) {
                                 await vscode.workspace.fs.delete(downloadPath, { recursive: true });
                                 throw new Error("Create directory");
                               }
@@ -410,20 +424,17 @@ export namespace CompileTools {
                           }
 
                           // Then we download the files that is specified.
-                          const downloads = chosenAction.postDownload.map(
-                            async (downloadPath) => {
-                              const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
-                              const remotePath = path.posix.join(remoteDir, downloadPath);
-
-                              if (await content.isDirectory(remotePath)) {
-                                return client.getDirectory(localPath, remotePath);
+                          const downloads = postDownloads.map(
+                            async (postDownload) => {
+                              if (postDownload.type === vscode.FileType.Directory) {
+                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true });
                               } else {
-                                return client.getFile(localPath, remotePath);
+                                return connection.downloadFile(postDownload.localPath, postDownload.remotePath);
                               }
                             }
                           );
 
-                          Promise.all(downloads)
+                          await Promise.all(downloads)
                             .then(async result => {
                               // Done!
                               writeEmitter.fire(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
@@ -464,21 +475,21 @@ export namespace CompileTools {
 
           const executionOK = (exitCode === 0);
           if (hasRun) {
-            if(executionOK && browserItem){
-              switch(chosenAction.refresh){
+            if (executionOK && browserItem) {
+              switch (chosenAction.refresh) {
                 case 'browser':
-                  if(chosenAction.type === 'streamfile'){
+                  if (chosenAction.type === 'streamfile') {
                     vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
                   }
-                  else if(chosenAction.type !== 'file'){
+                  else if (chosenAction.type !== 'file') {
                     vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
                   }
                   break;
 
                 case 'filter':
                   //Filter is a top level item so it has no parent (like Batman)
-                  let filter : BrowserItem = browserItem;
-                  while(filter.parent){
+                  let filter: BrowserItem = browserItem;
+                  while (filter.parent) {
                     filter = filter.parent;
                   }
                   filter.refresh?.();
@@ -489,10 +500,10 @@ export namespace CompileTools {
                   break;
 
                 default:
-                  //No refresh
+                //No refresh
               }
             }
-            
+
             const openOutputAction = "Open output"; //TODO: will be translated in the future
             const uiPromise = executionOK ?
               vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
@@ -506,7 +517,7 @@ export namespace CompileTools {
                   .setOptions({ fullWidth: true })
                   .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
               }
-            })    
+            })
           }
 
           return executionOK;
@@ -548,7 +559,7 @@ export namespace CompileTools {
       }
 
       // Remove any duplicates from the library list
-      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct); 
+      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
       let commandString = replaceValues(
         options.command,
