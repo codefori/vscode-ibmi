@@ -270,6 +270,6 @@ export const da: Locale = {
   'actions.workAction.refresh.filter.description':'Det aktuelle filter bliver opfrisket',
   'actions.workAction.refresh.browser':'Vindue',
   'actions.workAction.refresh.browser.description':'Hele vinduet bliver opfrisket',
-  'actions.workAction.runOnProtected':'Run on protected/read only',
-  'actions.workAction.runOnProtected.description':'Allows the execution of this Action on protected or read only targets'
+  'actions.workAction.runOnProtected':'Må afvikles på sikret/skrive-beskyttet',
+  'actions.workAction.runOnProtected.description':'Tillader afvikling af denne aktion på sikrede eller skrive-beskyttede mål'
 };
