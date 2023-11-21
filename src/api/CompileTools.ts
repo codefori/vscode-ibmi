@@ -494,17 +494,19 @@ export namespace CompileTools {
             }
             
             const openOutputAction = "Open output"; //TODO: will be translated in the future
-            const openOutput = await (executionOK ?
+            const uiPromise = executionOK ?
               vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
-              vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction));
+              vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction);
 
-            if (openOutput) {
-              const now = new Date();
-              new CustomUI()
-                .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
-                .setOptions({ fullWidth: true })
-                .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
-            }           
+            uiPromise.then(openOutput => {
+              if (openOutput) {
+                const now = new Date();
+                new CustomUI()
+                  .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
+                  .setOptions({ fullWidth: true })
+                  .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+              }
+            })    
           }
 
           return executionOK;

@@ -10,6 +10,7 @@ import { DeployTools } from "../api/local/deployTools";
 import { getEnvConfig } from "../api/local/env";
 import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { Action } from "../typings";
+import { CompileTools } from "../api/CompileTools";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,
@@ -103,7 +104,7 @@ export const ActionSuite: TestSuite = {
 };
 
 async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: string) {
-  await vscode.commands.executeCommand(`code-for-ibmi.runAction`, uri, undefined, action, 'all');
+  await CompileTools.runAction(instance, uri, action, `all`);
 
   const content = instance.getContent();
   const helloWorldProgram = (await content?.getObjectList({ library: library, object: 'HELLO', types: ['*PGM'] }))![0];
