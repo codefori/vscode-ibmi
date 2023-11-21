@@ -3,7 +3,6 @@ import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configurati
 import { instance } from "../instantiate";
 import { t } from "../locale";
 import { Library as LibraryListEntry } from "../typings";
-import { Tools } from "../api/Tools";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
