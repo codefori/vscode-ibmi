@@ -8,8 +8,9 @@ import vscode from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
-import { DeploymentMethod } from "../typings";
+import { Action, DeploymentMethod } from "../typings";
 import { DeployTools } from "../api/local/deployTools";
+import { CompileTools } from "../api/CompileTools";
 
 type FileInfo = {
     md5: string
@@ -143,7 +144,29 @@ export const DeployToolsSuite: TestSuite = {
                 assert.strictEqual(changed, 2);
                 assert.strictEqual(deleted, 1);
             }
-        }
+        },
+        {
+            name: `postDownload test`, test: async () => {
+                const action: Action = {
+                    "name": "postDownload test",
+                    "command": "echo 'hello world' > hello.txt && mkdir -p random && echo 'random' > random/random.txt",
+                    "environment": "pase",
+                    "postDownload": [
+                        "hello.txt",
+                        "random/"
+                    ],
+                    "type": "file",
+                    "extensions": [
+                        "GLOBAL"
+                    ]
+                };
+
+                await CompileTools.runAction(instance, vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt"), action);
+
+                assert.ok(existsSync(vscode.Uri.joinPath(fakeProject.localPath!, `random`, `hello.txt`).fsPath));
+                assert.ok(existsSync(vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt").fsPath));
+            }
+        },
     ],
     after: async () => {
         if (fakeProject.localPath && existsSync(fakeProject.localPath.fsPath)) {
