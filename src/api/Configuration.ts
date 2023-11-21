@@ -1,5 +1,6 @@
 
 import * as vscode from 'vscode';
+import { DeploymentMethod } from '../typings';
 
 export type SourceDateMode = "edit" | "diff";
 
@@ -56,6 +57,7 @@ export namespace ConnectionConfiguration {
     debugEnableDebugTracing: boolean;
     readOnlyMode: boolean;
     quickConnect: boolean;
+    defaultDeploymentMethod: DeploymentMethod | '';
     [name: string]: any;
   }
 
@@ -132,7 +134,8 @@ export namespace ConnectionConfiguration {
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),
-      quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined)
+      quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
+      defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``
     }
   }
 
