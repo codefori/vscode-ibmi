@@ -77,14 +77,10 @@ export namespace DeployTools {
           if (methods.find((element) => element.method === defaultDeploymentMethod)) { // default deploy method is usable
             method = defaultDeploymentMethod
           
-          } else if (defaultDeploymentMethod) { // default deploy method is set but not usable.
-            vscode.window.showWarningMessage('Default deployment method is set but not usable in your environment.')
-
-            method = (await vscode.window.showQuickPick(methods,
-              { placeHolder: `Select deployment method to ${remotePath}` }
-            ))?.method;
-
-          } else { // no default deploy method is set  
+          } else { 
+            if (defaultDeploymentMethod as string !== '') {
+              vscode.window.showWarningMessage('Default deployment method is set but not usable in your environment.')
+            }
 
             method = (await vscode.window.showQuickPick(methods,
               { placeHolder: `Select deployment method to ${remotePath}` }
