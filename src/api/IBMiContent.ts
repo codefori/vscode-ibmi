@@ -679,8 +679,14 @@ export default class IBMiContent {
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
-    const command = `for f in ${files.map(file => `/QSYS.LIB/${file.library.toUpperCase()}.LIB/${file.name.toUpperCase()}.FILE/${member.toUpperCase()}.MBR`).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
+    // Escape names for shell
+    const pathList = files
+      .map(file => `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`)
+      .join(` `)
+      .replace(/([$\\])/g,'\\$1')
+      .toUpperCase();
 
+    const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
     const result = await this.ibmi.sendCommand({
       command,
     });
