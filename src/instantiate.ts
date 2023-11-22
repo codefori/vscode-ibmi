@@ -360,7 +360,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             quickPick.hide()
           } else {
             const selectionSplit = selection.split('/')
-            if (selectionSplit.length === 3) {
+            if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
               quickPick.hide()
             } else {
