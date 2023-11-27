@@ -762,9 +762,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`)}`,
-      `liblist -c ${config.currentLibrary.replace(/\$/g, `\\$`)}`,
-      `liblist -a ${buildLibraryList(config).join(` `).replace(/\$/g, `\\$`)}`
+      `liblist -d ${Tools.sanitizeLibraryNames(connection.defaultUserLibraries).join(` `)}`,
+      `liblist -c ${Tools.sanitizeLibraryNames([config.currentLibrary])}`,
+      `liblist -a ${Tools.sanitizeLibraryNames(buildLibraryList(config)).join(` `)}`
     ];
   }
 }

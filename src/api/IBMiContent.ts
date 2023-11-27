@@ -401,8 +401,8 @@ export default class IBMiContent {
 
     const result = await this.ibmi.sendQsh({
       command: [
-        `liblist -d ` + this.ibmi.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+        `liblist -d ` + Tools.sanitizeLibraryNames(this.ibmi.defaultUserLibraries).join(` `),
+        ...newLibl.map(lib => `liblist -a ` + Tools.sanitizeLibraryNames([lib]))
       ].join(`; `)
     });
 
@@ -410,7 +410,7 @@ export default class IBMiContent {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `));
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `) || line.includes(`ibrary ${Tools.sanitizeLibraryNames([lib])} `));
 
         // If there is an error about the library, remove it
         if (badLib) badLibs.push(badLib);
