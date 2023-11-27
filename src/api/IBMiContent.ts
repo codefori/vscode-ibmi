@@ -66,7 +66,6 @@ export default class IBMiContent {
   }
 
   async downloadStreamfile(remotePath: string, localPath?: string) {
-    const client = this.ibmi.client;
     const features = this.ibmi.remoteFeatures;
 
     if (this.config.autoConvertIFSccsid && features.attr && features.iconv) {
@@ -82,7 +81,7 @@ export default class IBMiContent {
     if (!localPath) {
       localPath = await tmpFile();
     }
-    await client.getFile(localPath, remotePath); //TODO: replace with downloadfile
+    await this.ibmi.downloadFile(localPath, remotePath);
     return readFileAsync(localPath, `utf8`);
   }
 
@@ -118,8 +117,6 @@ export default class IBMiContent {
     sourceFile = sourceFile.toUpperCase();
     member = member.toUpperCase();
 
-    const client = this.ibmi.client;
-
     let retry = false;
     let path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
@@ -132,7 +129,7 @@ export default class IBMiContent {
         if (!localPath) {
           localPath = await tmpFile();
         }
-        await client.getFile(localPath, tempRmt);
+        await this.ibmi.downloadFile(localPath, tempRmt);
         return await readFileAsync(localPath, `utf8`);
       }
       catch (e) {
