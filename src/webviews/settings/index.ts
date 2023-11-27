@@ -179,7 +179,7 @@ export class SettingsUI {
               .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
               .addInput(`debugCertDirectory`, `Certificate directory`, `This remote path is only used when starting the Debug Service and or for downloading an existing client certificate. This directory must be accessible to all users who wish to start the Debug Service (<code>debug_service.pfx</code>) or download an existing client certificate (<code>debug_service.crt</code>). Optionally, you can import one below.`, { default: config.debugCertDirectory });
 
-            const localCertExists = await certificates.checkLocalExists(connection);
+            const localCertExists = await certificates.localClientCertExists(connection);
 
             debuggerTab
               .addParagraph(`<b>${localCertExists ? `Client certificate for server has been imported.` : `No local client certificate exists. Debugging securely will not function correctly.`}</b>` + ` To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
