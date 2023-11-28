@@ -307,7 +307,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 FROM qsys2.SYSPARTITIONSTAT
                 WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
                   AND table_name = '${selectionSplit[1]}'
-                  AND SOURCE_TYPE IS NOT NULL
                   AND TABLE_PARTITION like '${filterText}%'
                 ORDER BY 1
                 LIMIT 30`);
