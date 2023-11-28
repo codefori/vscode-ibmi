@@ -224,7 +224,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
           let filterText = '';
 
-          const selectionSplit = quickPick.value.split('/');
+          const selectionSplit = quickPick.value.toUpperCase().split('/');
           let resultSet: Tools.DB2Row[] = [];
           let listDisplay: vscode.QuickPickItem[] = [];
 
@@ -234,7 +234,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               listFile = [];
               listMember = [];
 
-              filterText = quickPick.value.toUpperCase().substring(0, quickPick.value.indexOf(`*`));
+              filterText = selectionSplit[0].substring(0, selectionSplit[0].indexOf(`*`));
               listDisplay = listSchema.filter(schema => schema.label.startsWith(filterText));
   
               quickPick.items = [
@@ -257,7 +257,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               listMember = [];
               if (listFile.length === 0) {
 
-                filterText = selectionSplit[1].toUpperCase().substring(0, selectionSplit[1].indexOf(`*`));
+                filterText = selectionSplit[1].substring(0, selectionSplit[1].indexOf(`*`));
 
                 resultSet = await content!.runSQL(`SELECT 
                   ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
@@ -265,20 +265,20 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 FROM QSYS2.SYSTABLES 
                 WHERE TABLE_SCHEMA = '${selectionSplit[0]}' 
                   AND FILE_TYPE = 'S' 
-                  AND SYSTEM_TABLE_NAME like upper('${filterText}%') 
+                  AND SYSTEM_TABLE_NAME like '${filterText}%' 
                 ORDER BY 1`);
                 
                 if (listFile.length === 0 && resultSet.length > 0) {                        
                   resultSet.forEach(row => {
                     listFile.push({
-                      label: selectionSplit[0].toUpperCase() + '/' + String(row.SYSTEM_TABLE_NAME),
+                      label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
                       detail: String(row.TABLE_TEXT)
                     })
                   })
                 }
               }
 
-              listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0].toUpperCase() + '/' + filterText.toUpperCase()));
+              listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
 
               quickPick.items = [
                 {
@@ -299,7 +299,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               // Create cache
               if (listMember.length === 0) {
 
-                filterText = selectionSplit[2].toUpperCase().substring(0, selectionSplit[2].indexOf(`*`));
+                filterText = selectionSplit[2].substring(0, selectionSplit[2].indexOf(`*`));
                   
                 resultSet = await content!.runSQL(`SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
                   ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
@@ -308,21 +308,21 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
                   AND table_name = '${selectionSplit[1]}'
                   AND SOURCE_TYPE IS NOT NULL
-                  AND TABLE_PARTITION like upper('${filterText}%')
+                  AND TABLE_PARTITION like '${filterText}%'
                 ORDER BY 1
                 LIMIT 30`);
                 
                 if (listMember.length === 0 && resultSet.length > 0) {
                   resultSet.forEach(row => {
                     listMember.push({
-                      label: selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                      label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
                       detail: String(row.PARTITION_TEXT)
                     })
                   })
                 }               
               }
 
-              listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + filterText.toUpperCase()));
+              listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
 
               quickPick.items = [
                 {
