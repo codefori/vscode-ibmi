@@ -201,6 +201,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       // Create a cache for Schema if autosuggest enabled
       if (listSchema.length === 0 && config && config.enableSQL) {
+        quickPick.items = [
+          {
+            label: 'Initializing library cache',
+            alwaysShow: true,
+            description: 'Please wait..',
+          },
+        ]
+        quickPick.show();
+
         const resultSetLibrary = await content!.runSQL(`SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
           ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
         FROM QSYS2.SYSSCHEMAS 
@@ -214,7 +223,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             })
           })
         }
-      }          
+        quickPick.items = [
+          {
+              label: 'Files',
+              kind: vscode.QuickPickItemKind.Separator
+          },
+          ...listItems
+        ]
+      }
       
       quickPick.onDidChangeValue(async () => {
         // INJECT user values into proposed values
@@ -236,7 +252,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               filterText = selectionSplit[0].substring(0, selectionSplit[0].indexOf(`*`));
               listDisplay = listSchema.filter(schema => schema.label.startsWith(filterText));
-  
+
               quickPick.items = [
                 {
                   label: 'Libraries',
@@ -256,6 +272,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               // Create cache
               listMember = [];
               if (listFile.length === 0) {
+
+                quickPick.items = [
+                  {
+                    label: 'Searching',
+                    alwaysShow: true,
+                    description: 'Please wait..',
+                  },
+                ]
 
                 filterText = selectionSplit[1].substring(0, selectionSplit[1].indexOf(`*`));
 
@@ -299,6 +323,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               // Create cache
               if (listMember.length === 0) {
 
+                quickPick.items = [
+                  {
+                    label: 'Searching',
+                    alwaysShow: true,
+                    description: 'Please wait..',
+                  },
+                ]
+
                 filterText = selectionSplit[2].substring(0, selectionSplit[2].indexOf(`*`));
                   
                 resultSet = await content!.runSQL(`SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
@@ -318,7 +350,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                       detail: String(row.PARTITION_TEXT)
                     })
                   })
-                }               
+                }
               }
 
               listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
