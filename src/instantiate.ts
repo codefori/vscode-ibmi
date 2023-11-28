@@ -221,129 +221,126 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
 
         // autosuggest
-        if (config && config.enableSQL && (!quickPick.value.startsWith(`/`))) {
-          const asteriskIndex = quickPick.value.indexOf(`*`) ;
-          if (asteriskIndex >= 0 ) {
-            let filterText = '';
+        if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
+          let filterText = '';
 
-            const selectionSplit = quickPick.value.split('/');
-            let resultSet: Tools.DB2Row[] = [];
-            let listDisplay: vscode.QuickPickItem[] = [];
+          const selectionSplit = quickPick.value.split('/');
+          let resultSet: Tools.DB2Row[] = [];
+          let listDisplay: vscode.QuickPickItem[] = [];
 
-            switch (selectionSplit.length) {
-              case 1:
-                // Clear cache when bib change
-                listFile = [];
-                listMember = [];
+          switch (selectionSplit.length) {
+            case 1:
+              // Clear cache when bib change
+              listFile = [];
+              listMember = [];
 
-                filterText = quickPick.value.toUpperCase().substring(0, asteriskIndex);
-                listDisplay = listSchema.filter(schema => schema.label.startsWith(filterText));
-    
-                quickPick.items = [
-                  {
-                    label: 'Libraries',
+              filterText = quickPick.value.toUpperCase().substring(0, quickPick.value.indexOf(`*`));
+              listDisplay = listSchema.filter(schema => schema.label.startsWith(filterText));
+  
+              quickPick.items = [
+                {
+                  label: 'Libraries',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listDisplay,
+                {
+                    label: 'Files',
                     kind: vscode.QuickPickItemKind.Separator
-                  },
-                  ...listDisplay,
-                  {
-                      label: 'Files',
-                      kind: vscode.QuickPickItemKind.Separator
-                  },
-                  ...listItems
-                ]
+                },
+                ...listItems
+              ]
+              
+              break;
+
+            case 2:
+              // Create cache
+              listMember = [];
+              if (listFile.length === 0) {
+
+                filterText = selectionSplit[1].toUpperCase().substring(0, selectionSplit[1].indexOf(`*`));
+
+                resultSet = await content!.runSQL(`SELECT 
+                  ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
+                  ifnull(TABLE_TEXT, '') TABLE_TEXT 
+                FROM QSYS2.SYSTABLES 
+                WHERE TABLE_SCHEMA = '${selectionSplit[0]}' 
+                  AND FILE_TYPE = 'S' 
+                  AND SYSTEM_TABLE_NAME like upper('${filterText}%') 
+                ORDER BY 1`);
                 
-                break;
-
-              case 2:
-                // Create cache
-                listMember = [];
-                if (listFile.length === 0) {
-
-                  filterText = selectionSplit[1].toUpperCase().substring(0, selectionSplit[1].indexOf(`*`));
-
-                  resultSet = await content!.runSQL(`SELECT 
-                    ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
-                    ifnull(TABLE_TEXT, '') TABLE_TEXT 
-                  FROM QSYS2.SYSTABLES 
-                  WHERE TABLE_SCHEMA = '${selectionSplit[0]}' 
-                    AND FILE_TYPE = 'S' 
-                    AND SYSTEM_TABLE_NAME like upper('${filterText}%') 
-                  ORDER BY 1`);
-                  
-                  if (listFile.length === 0 && resultSet.length > 0) {                        
-                    resultSet.forEach(row => {
-                      listFile.push({
-                        label: selectionSplit[0].toUpperCase() + '/' + String(row.SYSTEM_TABLE_NAME),
-                        detail: String(row.TABLE_TEXT)
-                      })
+                if (listFile.length === 0 && resultSet.length > 0) {                        
+                  resultSet.forEach(row => {
+                    listFile.push({
+                      label: selectionSplit[0].toUpperCase() + '/' + String(row.SYSTEM_TABLE_NAME),
+                      detail: String(row.TABLE_TEXT)
                     })
-                  }
+                  })
                 }
+              }
 
-                listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0].toUpperCase() + '/' + filterText.toUpperCase()));
+              listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0].toUpperCase() + '/' + filterText.toUpperCase()));
 
-                quickPick.items = [
-                  {
-                    label: 'Source files',
-                    kind: vscode.QuickPickItemKind.Separator
-                  },
-                  ...listDisplay,
-                  {
-                    label: 'Files',
-                    kind: vscode.QuickPickItemKind.Separator
-                  },
-                  ...listItems
-                ]
+              quickPick.items = [
+                {
+                  label: 'Source files',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listDisplay,
+                {
+                  label: 'Files',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listItems
+              ]
 
-                break;
+              break;
 
-              case 3:
-                // Create cache
-                if (listMember.length === 0) {
+            case 3:
+              // Create cache
+              if (listMember.length === 0) {
 
-                  filterText = selectionSplit[2].toUpperCase().substring(0, selectionSplit[2].indexOf(`*`));
-                    
-                  resultSet = await content!.runSQL(`SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
-                    ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
-                    lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
-                  FROM qsys2.SYSPARTITIONSTAT
-                  WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
-                    AND table_name = '${selectionSplit[1]}'
-                    AND SOURCE_TYPE IS NOT NULL
-                    AND TABLE_PARTITION like upper('${filterText}%')
-                  ORDER BY 1
-                  LIMIT 30`);
+                filterText = selectionSplit[2].toUpperCase().substring(0, selectionSplit[2].indexOf(`*`));
                   
-                  if (listMember.length === 0 && resultSet.length > 0) {
-                    resultSet.forEach(row => {
-                      listMember.push({
-                        label: selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
-                        detail: String(row.PARTITION_TEXT)
-                      })
+                resultSet = await content!.runSQL(`SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
+                  ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
+                  lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
+                FROM qsys2.SYSPARTITIONSTAT
+                WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
+                  AND table_name = '${selectionSplit[1]}'
+                  AND SOURCE_TYPE IS NOT NULL
+                  AND TABLE_PARTITION like upper('${filterText}%')
+                ORDER BY 1
+                LIMIT 30`);
+                
+                if (listMember.length === 0 && resultSet.length > 0) {
+                  resultSet.forEach(row => {
+                    listMember.push({
+                      label: selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                      detail: String(row.PARTITION_TEXT)
                     })
-                  }               
-                }
+                  })
+                }               
+              }
 
-                listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + filterText.toUpperCase()));
+              listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0].toUpperCase() + '/' + selectionSplit[1].toUpperCase() + '/' + filterText.toUpperCase()));
 
-                quickPick.items = [
-                  {
-                    label: 'Members',
-                    kind: vscode.QuickPickItemKind.Separator
-                  },
-                  ...listDisplay,
-                  {
-                    label: 'Files',
-                    kind: vscode.QuickPickItemKind.Separator
-                  },
-                  ...listItems
-                ]
+              quickPick.items = [
+                {
+                  label: 'Members',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listDisplay,
+                {
+                  label: 'Files',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listItems
+              ]
 
-                break;
+              break;
 
-              default:
-                break;
-            }
+            default:
+              break;
           }
         }
       })
