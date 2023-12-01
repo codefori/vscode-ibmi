@@ -241,10 +241,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           const lastPart = selectionSplit[selectionSplit.length - 1];
           const filterText = lastPart.substring(0, lastPart.indexOf(`*`));
 
-          // If the user has provided a value, then we can increase the max items.
-          // Otherwise, we'll limit it to 30 to prevent the query from taking too long.
-          const maxItems = (filterText ? 10000 : 30);
-
           let resultSet: Tools.DB2Row[] = [];
 
           switch (selectionSplit.length) {
@@ -317,6 +313,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   description: 'Searching members..',
                 },
               ]
+              // If the user has provided a value, then we can increase the max items.
+              // Otherwise, we'll limit it to 30 to prevent the query from taking too long.
+              const maxItems = (filterText ? 10000 : 30);
 
               resultSet = await content!.runSQL(`
                   SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
@@ -327,7 +326,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                     AND table_name = '${selectionSplit[1]}'
                     ${filterText ? `AND TABLE_PARTITION like '${filterText}%'` : ``}
                   ORDER BY 1
-                  LIMIT ${filterText ? 10000 : 30}
+                  LIMIT ${maxItems}
                 `);
 
               const listMember = resultSet.map(row => ({
@@ -358,7 +357,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
           // We remove the asterisk from the value so that the user can continue typing
           quickPick.value = quickPick.value.substring(0, quickPick.value.indexOf(`*`));
-          
+
         } else {
 
           if (filteredItems.length > 0) {
