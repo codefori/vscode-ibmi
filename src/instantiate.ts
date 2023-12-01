@@ -182,9 +182,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const sources = storage!.getSourceList();
       const dirs = Object.keys(sources);
 
-      let schemaItems: vscode.QuickPickItem[] = [],
-          listFile: vscode.QuickPickItem[] = [],
-          listMember: vscode.QuickPickItem[] = [];
+      let schemaItems: vscode.QuickPickItem[] = [];
 
       dirs.forEach(dir => {
         sources[dir].forEach(source => {
@@ -210,49 +208,46 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
             FROM QSYS2.SYSSCHEMAS 
             ORDER BY 1`
-          ).then(resultSetLibrary => {
-            if (schemaItems.length === 0 && resultSetLibrary.length > 0) {                     
-              resultSetLibrary.forEach(row => {
-                schemaItems.push({
-                  label: String(row.SYSTEM_SCHEMA_NAME),
-                  detail: String(row.SCHEMA_TEXT)
-                })
-              })
-            }
+        ).then(resultSetLibrary => {
+          schemaItems = resultSetLibrary.map(row => ({
+            label: String(row.SYSTEM_SCHEMA_NAME),
+            detail: String(row.SCHEMA_TEXT)
+          }))
 
-            if (quickPick.value === ``) {
-              quickPick.items = [
-                {
-                    label: 'Files',
-                    kind: vscode.QuickPickItemKind.Separator
-                },
-                ...listItems
-              ]
-            }
-          });
-        
-        
+          if (quickPick.value === ``) {
+            quickPick.items = [
+              {
+                label: 'Files',
+                kind: vscode.QuickPickItemKind.Separator
+              },
+              ...listItems
+            ]
+          }
+        });
+
+
       }
-      
+
       quickPick.onDidChangeValue(async () => {
+
         // INJECT user values into proposed values
         if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
 
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
-          let filterText = '';
-
           const selectionSplit = quickPick.value.toUpperCase().split('/');
+          const lastPart = selectionSplit[selectionSplit.length - 1];
+          const filterText = lastPart.substring(0, lastPart.indexOf(`*`));
+
+          // If the user has provided a value, then we can increase the max items.
+          // Otherwise, we'll limit it to 30 to prevent the query from taking too long.
+          const maxItems = (filterText ? 10000 : 30);
+
           let resultSet: Tools.DB2Row[] = [];
           let listDisplay: vscode.QuickPickItem[] = [];
 
           switch (selectionSplit.length) {
             case 1:
-              // Clear cache when bib change
-              listFile = [];
-              listMember = [];
-
-              filterText = selectionSplit[0].substring(0, selectionSplit[0].indexOf(`*`));
               listDisplay = schemaItems.filter(schema => schema.label.startsWith(filterText));
 
               // Using `kind` didn't make any difference because it's sorted alphabetically on label
@@ -263,47 +258,37 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
                 ...listDisplay,
                 {
-                    label: 'Files',
-                    // kind: vscode.QuickPickItemKind.Separator
+                  label: 'Files',
+                  // kind: vscode.QuickPickItemKind.Separator
                 },
                 ...listItems
               ]
-              
+
               break;
 
             case 2:
               // Create cache
-              listMember = [];
-              if (listFile.length === 0) {
+              quickPick.items = [
+                {
+                  label: LOADING_LABEL,
+                  alwaysShow: true,
+                  description: 'Searching files..',
+                },
+              ]
 
-                quickPick.items = [
-                  {
-                    label: LOADING_LABEL,
-                    alwaysShow: true,
-                    description: 'Searching files..',
-                  },
-                ]
+              resultSet = await content!.runSQL(`SELECT 
+                ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
+                ifnull(TABLE_TEXT, '') TABLE_TEXT 
+              FROM QSYS2.SYSTABLES 
+              WHERE TABLE_SCHEMA = '${selectionSplit[0]}' 
+                AND FILE_TYPE = 'S' 
+                ${filterText ? `AND SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
+              ORDER BY 1`);
 
-                filterText = selectionSplit[1].substring(0, selectionSplit[1].indexOf(`*`));
-
-                resultSet = await content!.runSQL(`SELECT 
-                  ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
-                  ifnull(TABLE_TEXT, '') TABLE_TEXT 
-                FROM QSYS2.SYSTABLES 
-                WHERE TABLE_SCHEMA = '${selectionSplit[0]}' 
-                  AND FILE_TYPE = 'S' 
-                  ${filterText ? `AND SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
-                ORDER BY 1`);
-                
-                if (listFile.length === 0 && resultSet.length > 0) {                        
-                  resultSet.forEach(row => {
-                    listFile.push({
-                      label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
-                      detail: String(row.TABLE_TEXT)
-                    })
-                  })
-                }
-              }
+              const listFile: vscode.QuickPickItem[] = resultSet.map(row => ({
+                label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
+                detail: String(row.TABLE_TEXT)
+              }))
 
               listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
 
@@ -324,37 +309,30 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
             case 3:
               // Create cache
-              if (listMember.length === 0) {
+              quickPick.items = [
+                {
+                  label: LOADING_LABEL,
+                  alwaysShow: true,
+                  description: 'Searching members..',
+                },
+              ]
 
-                quickPick.items = [
-                  {
-                    label: LOADING_LABEL,
-                    alwaysShow: true,
-                    description: 'Searching members..',
-                  },
-                ]
+              resultSet = await content!.runSQL(`
+                  SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
+                    ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
+                    lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
+                  FROM qsys2.SYSPARTITIONSTAT
+                  WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
+                    AND table_name = '${selectionSplit[1]}'
+                    ${filterText ? `AND TABLE_PARTITION like '${filterText}%'` : ``}
+                  ORDER BY 1
+                  LIMIT ${filterText ? 10000 : 30}
+                `);
 
-                filterText = selectionSplit[2].substring(0, selectionSplit[2].indexOf(`*`));
-                  
-                resultSet = await content!.runSQL(`SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
-                  ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
-                  lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
-                FROM qsys2.SYSPARTITIONSTAT
-                WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
-                  AND table_name = '${selectionSplit[1]}'
-                  ${filterText ? `AND TABLE_PARTITION like '${filterText}%'` : ``}
-                ORDER BY 1
-                LIMIT 30`);
-                
-                if (listMember.length === 0 && resultSet.length > 0) {
-                  resultSet.forEach(row => {
-                    listMember.push({
-                      label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
-                      detail: String(row.PARTITION_TEXT)
-                    })
-                  })
-                }
-              }
+              const listMember = resultSet.map(row => ({
+                label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                detail: String(row.PARTITION_TEXT)
+              }))
 
               listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
 
@@ -379,7 +357,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         }
       })
 
-      quickPick.onDidAccept(() => { 
+      quickPick.onDidAccept(() => {
         const selection = quickPick.selectedItems[0].label;
         if (selection && selection !== LOADING_LABEL) {
           if (selection === `Clear list`) {
