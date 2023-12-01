@@ -255,15 +255,16 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               filterText = selectionSplit[0].substring(0, selectionSplit[0].indexOf(`*`));
               listDisplay = schemaItems.filter(schema => schema.label.startsWith(filterText));
 
+              // Using `kind` didn't make any difference because it's sorted alphabetically on label
               quickPick.items = [
                 {
                   label: 'Libraries',
-                  kind: vscode.QuickPickItemKind.Separator
+                  // kind: vscode.QuickPickItemKind.Separator
                 },
                 ...listDisplay,
                 {
                     label: 'Files',
-                    kind: vscode.QuickPickItemKind.Separator
+                    // kind: vscode.QuickPickItemKind.Separator
                 },
                 ...listItems
               ]
@@ -291,7 +292,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 FROM QSYS2.SYSTABLES 
                 WHERE TABLE_SCHEMA = '${selectionSplit[0]}' 
                   AND FILE_TYPE = 'S' 
-                  AND SYSTEM_TABLE_NAME like '${filterText}%' 
+                  ${filterText ? `AND SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
                 ORDER BY 1`);
                 
                 if (listFile.length === 0 && resultSet.length > 0) {                        
@@ -341,7 +342,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 FROM qsys2.SYSPARTITIONSTAT
                 WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
                   AND table_name = '${selectionSplit[1]}'
-                  AND TABLE_PARTITION like '${filterText}%'
+                  ${filterText ? `AND TABLE_PARTITION like '${filterText}%'` : ``}
                 ORDER BY 1
                 LIMIT 30`);
                 
