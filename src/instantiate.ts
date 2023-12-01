@@ -171,6 +171,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
+      const LOADING_LABEL = `Please wait`;
       const storage = instance.getStorage();
       const content = instance.getContent();
       const config = instance.getConfig();
@@ -181,7 +182,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const sources = storage!.getSourceList();
       const dirs = Object.keys(sources);
 
-      let listSchema: vscode.QuickPickItem[] = [],
+      let schemaItems: vscode.QuickPickItem[] = [],
           listFile: vscode.QuickPickItem[] = [],
           listMember: vscode.QuickPickItem[] = [];
 
@@ -197,39 +198,40 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = listItems;
+      quickPick.canSelectMany = false;
       quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (wildcard: '*') or /home/xx/file.txt)`;
 
-      // Create a cache for Schema if autosuggest enabled
-      if (listSchema.length === 0 && config && config.enableSQL) {
-        quickPick.items = [
-          {
-            label: 'Initializing library cache',
-            alwaysShow: true,
-            description: 'Please wait..',
-          },
-        ]
-        quickPick.show();
+      quickPick.show();
 
-        const resultSetLibrary = await content!.runSQL(`SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
-          ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
-        FROM QSYS2.SYSSCHEMAS 
-          ORDER BY 1 `);
+      // Create a cache for Schema if autosuggest enabled
+      if (schemaItems.length === 0 && config && config.enableSQL) {
+        content!.runSQL(`
+            SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
+            ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
+            FROM QSYS2.SYSSCHEMAS 
+            ORDER BY 1`
+          ).then(resultSetLibrary => {
+            if (schemaItems.length === 0 && resultSetLibrary.length > 0) {                     
+              resultSetLibrary.forEach(row => {
+                schemaItems.push({
+                  label: String(row.SYSTEM_SCHEMA_NAME),
+                  detail: String(row.SCHEMA_TEXT)
+                })
+              })
+            }
+
+            if (quickPick.value === ``) {
+              quickPick.items = [
+                {
+                    label: 'Files',
+                    kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listItems
+              ]
+            }
+          });
         
-        if (listSchema.length === 0 && resultSetLibrary.length > 0) {                     
-          resultSetLibrary.forEach(row => {
-            listSchema.push({
-              label: String(row.SYSTEM_SCHEMA_NAME),
-              detail: String(row.SCHEMA_TEXT)
-            })
-          })
-        }
-        quickPick.items = [
-          {
-              label: 'Files',
-              kind: vscode.QuickPickItemKind.Separator
-          },
-          ...listItems
-        ]
+        
       }
       
       quickPick.onDidChangeValue(async () => {
@@ -251,7 +253,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               listMember = [];
 
               filterText = selectionSplit[0].substring(0, selectionSplit[0].indexOf(`*`));
-              listDisplay = listSchema.filter(schema => schema.label.startsWith(filterText));
+              listDisplay = schemaItems.filter(schema => schema.label.startsWith(filterText));
 
               quickPick.items = [
                 {
@@ -275,9 +277,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
                 quickPick.items = [
                   {
-                    label: 'Searching',
+                    label: LOADING_LABEL,
                     alwaysShow: true,
-                    description: 'Please wait..',
+                    description: 'Searching files..',
                   },
                 ]
 
@@ -325,9 +327,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
                 quickPick.items = [
                   {
-                    label: 'Searching',
+                    label: LOADING_LABEL,
                     alwaysShow: true,
-                    description: 'Please wait..',
+                    description: 'Searching members..',
                   },
                 ]
 
@@ -378,7 +380,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       quickPick.onDidAccept(() => { 
         const selection = quickPick.selectedItems[0].label;
-        if (selection) {
+        if (selection && selection !== LOADING_LABEL) {
           if (selection === `Clear list`) {
             storage!.setSourceList({});
             vscode.window.showInformationMessage(`Cleared list.`);
