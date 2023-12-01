@@ -224,14 +224,16 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             ]
           }
         });
-
-
       }
+
+      let filteredItems: vscode.QuickPickItem[] = [];
 
       quickPick.onDidChangeValue(async () => {
 
         // INJECT user values into proposed values
-        if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+        if (!list.includes(quickPick.value.toUpperCase())) { 
+          quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+        }
 
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
@@ -244,22 +246,21 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           const maxItems = (filterText ? 10000 : 30);
 
           let resultSet: Tools.DB2Row[] = [];
-          let listDisplay: vscode.QuickPickItem[] = [];
 
           switch (selectionSplit.length) {
             case 1:
-              listDisplay = schemaItems.filter(schema => schema.label.startsWith(filterText));
+              filteredItems = schemaItems.filter(schema => schema.label.startsWith(filterText));
 
               // Using `kind` didn't make any difference because it's sorted alphabetically on label
               quickPick.items = [
                 {
                   label: 'Libraries',
-                  // kind: vscode.QuickPickItemKind.Separator
+                  kind: vscode.QuickPickItemKind.Separator
                 },
-                ...listDisplay,
+                ...filteredItems,
                 {
                   label: 'Files',
-                  // kind: vscode.QuickPickItemKind.Separator
+                  kind: vscode.QuickPickItemKind.Separator
                 },
                 ...listItems
               ]
@@ -290,14 +291,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 detail: String(row.TABLE_TEXT)
               }))
 
-              listDisplay = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
+              filteredItems = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
 
               quickPick.items = [
                 {
                   label: 'Source files',
                   kind: vscode.QuickPickItemKind.Separator
                 },
-                ...listDisplay,
+                ...filteredItems,
                 {
                   label: 'Files',
                   kind: vscode.QuickPickItemKind.Separator
@@ -334,14 +335,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 detail: String(row.PARTITION_TEXT)
               }))
 
-              listDisplay = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
+              filteredItems = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
 
               quickPick.items = [
                 {
                   label: 'Members',
                   kind: vscode.QuickPickItemKind.Separator
                 },
-                ...listDisplay,
+                ...filteredItems,
                 {
                   label: 'Files',
                   kind: vscode.QuickPickItemKind.Separator
@@ -353,6 +354,26 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
             default:
               break;
+          }
+
+          // We remove the asterisk from the value so that the user can continue typing
+          quickPick.value = quickPick.value.substring(0, quickPick.value.indexOf(`*`));
+          
+        } else {
+
+          if (filteredItems.length > 0) {
+            quickPick.items = [
+              {
+                label: 'Filter',
+                kind: vscode.QuickPickItemKind.Separator
+              },
+              ...filteredItems,
+              {
+                label: 'Cached',
+                kind: vscode.QuickPickItemKind.Separator
+              },
+              ...quickPick.items
+            ]
           }
         }
       })
@@ -375,8 +396,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
         }
       })
+
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
+
     }),
     vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | BrowserItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
