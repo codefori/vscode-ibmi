@@ -17,6 +17,7 @@ import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings"
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import IBMi from './api/IBMi';
 
 export let instance: Instance;
 
@@ -175,6 +176,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const storage = instance.getStorage();
       const content = instance.getContent();
       const config = instance.getConfig();
+      const connection = instance.getConnection();
 
       if (!storage && !content) return;
       let list: string[] = [];
@@ -277,7 +279,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
                 ifnull(TABLE_TEXT, '') TABLE_TEXT 
               FROM QSYS2.SYSTABLES 
-              WHERE TABLE_SCHEMA = '${selectionSplit[0]}' 
+              WHERE TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}' 
                 AND FILE_TYPE = 'S' 
                 ${filterText ? `AND SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
               ORDER BY 1`);
@@ -322,9 +324,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                     ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
                     lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
                   FROM qsys2.SYSPARTITIONSTAT
-                  WHERE TABLE_SCHEMA = '${selectionSplit[0]}'
-                    AND table_name = '${selectionSplit[1]}'
-                    ${filterText ? `AND TABLE_PARTITION like '${filterText}%'` : ``}
+                  WHERE TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
+                    AND table_name = '${connection!.sysNameInAmerican(selectionSplit[1])}'
+                    ${filterText ? `AND TABLE_PARTITION like '${connection!.sysNameInAmerican(filterText)}%'` : ``}
                   ORDER BY 1
                   LIMIT ${maxItems}
                 `);
