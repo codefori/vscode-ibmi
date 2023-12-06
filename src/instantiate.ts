@@ -199,7 +199,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = listItems;
       quickPick.canSelectMany = false;
-      quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (wildcard: '*') or /home/xx/file.txt)`;
+      quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (type '*' to search server) or /home/xx/file.txt)`;
 
       quickPick.show();
 
