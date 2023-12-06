@@ -233,9 +233,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidChangeValue(async () => {
 
         // INJECT user values into proposed values
-        if (!list.includes(quickPick.value.toUpperCase())) { 
-          quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
-        }
+        // if (!list.includes(quickPick.value.toUpperCase())) { 
+        //   quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+        // }
 
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
@@ -369,7 +369,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 label: 'Cached',
                 kind: vscode.QuickPickItemKind.Separator
               },
-              ...quickPick.items
+              ...listItems
             ]
           }
         }
