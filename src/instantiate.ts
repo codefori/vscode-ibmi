@@ -315,9 +315,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   description: 'Searching members..',
                 },
               ]
-              // If the user has provided a value, then we can increase the max items.
-              // Otherwise, we'll limit it to 30 to prevent the query from taking too long.
-              const maxItems = (filterText ? 10000 : 30);
 
               resultSet = await content!.runSQL(`
                   SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
@@ -328,7 +325,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                     AND table_name = '${connection!.sysNameInAmerican(selectionSplit[1])}'
                     ${filterText ? `AND TABLE_PARTITION like '${connection!.sysNameInAmerican(filterText)}%'` : ``}
                   ORDER BY 1
-                  LIMIT ${maxItems}
                 `);
 
               const listMember = resultSet.map(row => ({
