@@ -199,6 +199,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = listItems;
       quickPick.canSelectMany = false;
+      (quickPick as any).sortByLabel = false; // https://github.com/microsoft/vscode/issues/73904#issuecomment-680298036
       quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (type '*' to search server) or /home/xx/file.txt)`;
 
       quickPick.show();
