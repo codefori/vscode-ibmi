@@ -296,7 +296,7 @@ export default class IBMi {
           message: `Checking /QOpenSys/pkgs/bin in $PATH.`
         });
 
-        if (!(await this.sendCommand({ command: "echo $PATH" })).stdout?.includes("/QOpenSys/pkgs/bin")) {
+        if ((!quickConnect || !cachedServerSettings?.pathChecked) && !(await this.sendCommand({ command: "echo $PATH" })).stdout?.includes("/QOpenSys/pkgs/bin")) {
           const bashrcFile = `${defaultHomeDir}/.bashrc`;
           let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0
           if (await vscode.window.showWarningMessage(`/QOpenSys/pkgs/bin not found in $PATH`, {
@@ -871,7 +871,8 @@ export default class IBMi {
             local: this.variantChars.local,
           },
           badDataAreasChecked: true,
-          libraryListValidated: true
+          libraryListValidated: true,
+          pathChecked: true
         });
 
         return {
