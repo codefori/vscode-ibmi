@@ -232,12 +232,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       let filteredItems: vscode.QuickPickItem[] = [];
 
       quickPick.onDidChangeValue(async () => {
-
-        // INJECT user values into proposed values
-        // if (!list.includes(quickPick.value.toUpperCase())) { 
-        //   quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
-        // }
-
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
           const selectionSplit = quickPick.value.toUpperCase().split('/');
@@ -268,6 +262,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
             case 2:
               // Create cache
+              quickPick.busy = true;
               quickPick.items = [
                 {
                   label: LOADING_LABEL,
@@ -304,11 +299,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
                 ...listItems
               ]
+              quickPick.busy = false;
 
               break;
 
             case 3:
               // Create cache
+              quickPick.busy = true;
               quickPick.items = [
                 {
                   label: LOADING_LABEL,
@@ -347,6 +344,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
                 ...listItems
               ]
+              quickPick.busy = false;
 
               break;
 
