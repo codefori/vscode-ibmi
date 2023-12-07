@@ -454,7 +454,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.moveIFS.prompt`),
-          value: node.path
+          value: node.path,
+          valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
         });
 
         if (target) {
@@ -483,7 +484,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.copyIFS.prompt`),
-          value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path
+          value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path,
+          valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
         });
 
         if (target) {
