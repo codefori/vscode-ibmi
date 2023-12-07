@@ -303,9 +303,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
       if (connection && config) {
+        const value = `${node?.path || config.homeDirectory}/`;
+        const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.createDirectory.prompt`),
-          value: node?.path || config.homeDirectory
+          value: value,
+          valueSelection: [selectStart, selectStart]
         });
 
         if (fullName) {
@@ -327,9 +330,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const config = instance.getConfig();
       const connection = instance.getConnection();
       if (config && connection) {
+        const value = `${node?.path || config.homeDirectory}/`;
+        const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.createStreamfile.prompt`),
-          value: node?.path || config.homeDirectory
+          value: value,
+          valueSelection: [selectStart, selectStart]
         });
 
         if (fullName) {
