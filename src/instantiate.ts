@@ -177,6 +177,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const content = instance.getContent();
       const config = instance.getConfig();
       const connection = instance.getConnection();
+      let starRemoved: boolean = false;
 
       if (!storage && !content) return;
       let list: string[] = [];
@@ -220,7 +221,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           if (quickPick.value === ``) {
             quickPick.items = [
               {
-                label: 'Files',
+                label: 'Cached',
                 kind: vscode.QuickPickItemKind.Separator
               },
               ...listItems
@@ -252,7 +253,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
                 ...filteredItems,
                 {
-                  label: 'Files',
+                  label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
                 },
                 ...listItems
@@ -294,7 +295,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
                 ...filteredItems,
                 {
-                  label: 'Files',
+                  label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
                 },
                 ...listItems
@@ -339,7 +340,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
                 ...filteredItems,
                 {
-                  label: 'Files',
+                  label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
                 },
                 ...listItems
@@ -354,10 +355,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
           // We remove the asterisk from the value so that the user can continue typing
           quickPick.value = quickPick.value.substring(0, quickPick.value.indexOf(`*`));
+          starRemoved = true;
 
         } else {
 
-          if (filteredItems.length > 0) {
+          if (filteredItems.length > 0 && !starRemoved) {
             quickPick.items = [
               {
                 label: 'Filter',
@@ -371,6 +373,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               ...listItems
             ]
           }
+          starRemoved = false;
         }
       })
 
