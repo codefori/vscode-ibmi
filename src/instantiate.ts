@@ -214,7 +214,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         ).then(resultSetLibrary => {
           schemaItems = resultSetLibrary.map(row => ({
             label: String(row.SYSTEM_SCHEMA_NAME),
-            detail: String(row.SCHEMA_TEXT)
+            description: String(row.SCHEMA_TEXT)
           }))
 
           if (quickPick.value === ``) {
@@ -282,7 +282,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               const listFile: vscode.QuickPickItem[] = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
-                detail: String(row.TABLE_TEXT)
+                description: String(row.TABLE_TEXT)
               }))
 
               filteredItems = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
@@ -327,7 +327,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               const listMember = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
-                detail: String(row.PARTITION_TEXT)
+                description: String(row.PARTITION_TEXT)
               }))
 
               filteredItems = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
