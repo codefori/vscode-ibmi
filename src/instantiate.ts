@@ -173,6 +173,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
       const LOADING_LABEL = `Please wait`;
+      const clearList = `$(trash) Clear list`;
+      const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
       const storage = instance.getStorage();
       const content = instance.getContent();
       const config = instance.getConfig();
@@ -193,8 +195,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         });
       });
 
-      list.push(`Clear list`);
-
       const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }));
 
       const quickPick = vscode.window.createQuickPick();
@@ -203,7 +203,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           label: 'Cached',
           kind: vscode.QuickPickItemKind.Separator
         },
-        ...listItems
+        ...listItems,
+        ...clearListArray
       ];
       quickPick.canSelectMany = false;
       (quickPick as any).sortByLabel = false; // https://github.com/microsoft/vscode/issues/73904#issuecomment-680298036
@@ -235,7 +236,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               label: 'Cached',
               kind: vscode.QuickPickItemKind.Separator
             },
-            ...listItems
+            ...listItems,
+            ...clearListArray
           ];
           filteredItems = [];
         }
@@ -263,7 +265,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
                 },
-                ...listItems
+                ...listItems,
+                ...clearListArray
               ]
 
               break;
@@ -305,7 +308,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
                 },
-                ...listItems
+                ...listItems,
+                ...clearListArray
               ]
               quickPick.busy = false;
 
@@ -350,7 +354,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
                 },
-                ...listItems
+                ...listItems,
+                ...clearListArray
               ]
               quickPick.busy = false;
 
@@ -377,7 +382,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 label: 'Cached',
                 kind: vscode.QuickPickItemKind.Separator
               },
-              ...listItems
+              ...listItems,
+              ...clearListArray
             ]
           }
           starRemoved = false;
@@ -387,7 +393,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.onDidAccept(() => {
         const selection = quickPick.selectedItems[0].label;
         if (selection && selection !== LOADING_LABEL) {
-          if (selection === `Clear list`) {
+          if (selection === clearList) {
             storage!.setSourceList({});
             vscode.window.showInformationMessage(`Cleared list.`);
             quickPick.hide()
