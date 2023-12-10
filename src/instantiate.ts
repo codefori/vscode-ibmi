@@ -198,7 +198,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }));
 
       const quickPick = vscode.window.createQuickPick();
-      quickPick.items = listItems;
+      quickPick.items = [
+        {
+          label: 'Cached',
+          kind: vscode.QuickPickItemKind.Separator
+        },
+        ...listItems
+      ];
       quickPick.canSelectMany = false;
       (quickPick as any).sortByLabel = false; // https://github.com/microsoft/vscode/issues/73904#issuecomment-680298036
       quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (type '*' to search server) or /home/xx/file.txt)`;
@@ -217,22 +223,23 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             label: String(row.SYSTEM_SCHEMA_NAME),
             description: String(row.SCHEMA_TEXT)
           }))
-
-          if (quickPick.value === ``) {
-            quickPick.items = [
-              {
-                label: 'Cached',
-                kind: vscode.QuickPickItemKind.Separator
-              },
-              ...listItems
-            ]
-          }
         });
       }
 
       let filteredItems: vscode.QuickPickItem[] = [];
 
       quickPick.onDidChangeValue(async () => {
+        if (quickPick.value === ``) {
+          quickPick.items = [
+            {
+              label: 'Cached',
+              kind: vscode.QuickPickItemKind.Separator
+            },
+            ...listItems
+          ];
+          filteredItems = [];
+        }
+
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
           const selectionSplit = quickPick.value.toUpperCase().split('/');
