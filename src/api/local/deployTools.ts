@@ -45,7 +45,7 @@ export namespace DeployTools {
    * @param method if no method is provided, a prompt will be shown to pick the deployment method.
    * @returns the index of the deployed workspace or `undefined` if the deployment failed
    */
-  export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod): Promise<number | undefined> {
+  export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod): Promise<{remoteDirectory: string, workspaceId: number} | undefined> {
     const folder = await Deployment.getWorkspaceFolder(workspaceIndex);
     if (folder) {
       const storage = instance.getStorage();
@@ -89,13 +89,6 @@ export namespace DeployTools {
         }
 
         if (method !== undefined) { //method can be 0 (ie. "all")
-          const config = instance.getConfig();
-          if (remotePath.startsWith(`/`) && config && config.homeDirectory !== remotePath) {
-            config.homeDirectory = remotePath;
-            await ConnectionConfiguration.update(config);
-            vscode.window.showInformationMessage(`Home directory set to ${remotePath} for deployment.`);
-          }
-
           const parameters: DeploymentParameters = {
             workspaceFolder: folder,
             remotePath,
@@ -104,7 +97,10 @@ export namespace DeployTools {
 
           if (await deploy(parameters)) {
             instance.fire(`deploy`);
-            return folder.index;
+            return {
+              remoteDirectory: remotePath,
+              workspaceId: folder.index
+            };
           }
         }
       } else {
@@ -169,7 +165,7 @@ export namespace DeployTools {
         }
       })
       Deployment.deploymentLog.appendLine('');
-      Deployment.deploymentLog.appendLine(`Deployment finished`);
+      Deployment.deploymentLog.appendLine(`Deployment finished at ${new Date().toLocaleTimeString()}`);
       vscode.window.showInformationMessage(`Deployment finished.`);
       Deployment.workspaceChanges.get(parameters.workspaceFolder)?.clear();
       return true;

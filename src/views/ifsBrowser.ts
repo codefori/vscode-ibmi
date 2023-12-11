@@ -414,14 +414,6 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
             if (deletionConfirmed) {
               try {
-                if(config.homeDirectory === node.path){
-                  const echoHome = await connection.sendCommand({ command: `echo $HOME` });
-                  if(echoHome.code === 0){
-                    config.homeDirectory = echoHome.stdout.trim();
-                    await ConnectionConfiguration.update(config);                    
-                    vscode.window.showInformationMessage(t('ifsBrowser.deleteIFS.default.home.dir', node.path, config.homeDirectory));
-                  }
-                }
                 const removeResult = await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(node.path)}` })
                 if(removeResult.code === 0){
                   vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, node.path));
