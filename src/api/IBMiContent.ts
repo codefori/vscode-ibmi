@@ -8,6 +8,7 @@ import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, Qs
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
+import { r } from 'tar';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -149,11 +150,13 @@ export default class IBMiContent {
               }
               break;
             default:
-              throw e;
+              retry = false;
+              break;
           }
         }
-        else {
-          throw e;
+
+        if (!retry) {
+          throw e
         }
       }
     }
