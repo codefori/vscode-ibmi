@@ -52,3 +52,4 @@ Thanks so much to everyone [who has contributed](https://github.com/codefori/vsc
 * [@ThePrez](https://github.com/ThePrez)
 * [@BoykaZhu](https://github.com/BoykaZhu)
 * [@krka01](https://github.com/krka01)
+* [@william-xiang](https://github.com/william-xiang)
