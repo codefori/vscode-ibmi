@@ -12,7 +12,7 @@ import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, WithPath } from "../typings";
 
-const Protected_dirs = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
+const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
 
 class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
@@ -139,7 +139,7 @@ class IFSDirectoryItem extends IFSItem {
   constructor(file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
 
-    this.contextValue = `directory${ Protected_dirs.test(this.file.path) ? `_protected` : ``}`;
+    this.contextValue = `directory${PROTECTED_DIRS.test(this.file.path) ? `_protected` : ``}`;
     this.iconPath = vscode.ThemeIcon.Folder;
   }
 
@@ -167,7 +167,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
 
-    this.contextValue = `shortcut${ Protected_dirs.test(this.path) ? `_protected` : ``}`;
+    this.contextValue = `shortcut${ PROTECTED_DIRS.test(this.path) ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon("folder-library");
   }
 }
