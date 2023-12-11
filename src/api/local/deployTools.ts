@@ -1,12 +1,14 @@
 import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
-import vscode, { WorkspaceFolder } from 'vscode';
+import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
 import { LocalLanguageActions } from './LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
 import { ConnectionConfiguration } from '../Configuration';
 import { Tools } from '../Tools';
 import { Deployment } from './deployment';
+
+type ServerFileChanges = {uploads: Uri[], relativeRemoteDeletes: string[]};
 
 export namespace DeployTools {
   export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder) {
@@ -131,6 +133,8 @@ export namespace DeployTools {
 
           progress.report({ message: `gathering files ("${parameters.method}" method)...` });
           const files: vscode.Uri[] = [];
+          const deletes: string[] = [];
+
           switch (parameters.method) {
             case "unstaged":
               files.push(...await getDeployGitFiles(parameters, 'working'));
@@ -145,12 +149,19 @@ export namespace DeployTools {
               break;
 
             case "compare":
-              files.push(...await getDeployCompareFiles(parameters, progress));
+              const {uploads, relativeRemoteDeletes} = await getDeployCompareFiles(parameters, progress)
+              files.push(...uploads);
+              deletes.push(...relativeRemoteDeletes);
               break;
 
             case "all":
               files.push(...await getDeployAllFiles(parameters));
               break;
+          }
+
+          if (deletes.length) {
+            progress.report({ message: `Deleting ${deletes.length} file${deletes.length === 1 ? `` : `s`}...` });
+            await Deployment.deleteFiles(parameters, deletes);
           }
 
           if (files.length) {
@@ -234,12 +245,13 @@ export namespace DeployTools {
     }
   }
 
-  export async function getDeployCompareFiles(parameters: DeploymentParameters, progress?: vscode.Progress<{ message?: string }>): Promise<vscode.Uri[]> {
+  export async function getDeployCompareFiles(parameters: DeploymentParameters, progress?: vscode.Progress<{ message?: string }>): Promise<ServerFileChanges> {
     if (Deployment.getConnection().remoteFeatures.md5sum) {
       const isEmpty = (await Deployment.getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
       if (isEmpty) {
         Deployment.deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all'");
-        return await getDeployAllFiles(parameters);
+        const allFiles = await getDeployAllFiles(parameters);
+        return {uploads: allFiles, relativeRemoteDeletes: []};
       }
       else {
         Deployment.deploymentLog.appendLine("Starting MD5 synchronization transfer");
@@ -265,19 +277,18 @@ export namespace DeployTools {
           }
         }
 
-        const toDelete: string[] = remoteMD5.filter(remote => !localFiles.some(local => remote.path === local.path))
+        const toDelete: string[] = remoteMD5
+          .filter(remote => !localFiles.some(local => remote.path === local.path))
           .map(remote => remote.path);
-        if (toDelete.length) {
-          progress?.report({ message: `deleting ${toDelete.length} remote file(s)`, });
-          Deployment.deploymentLog.appendLine(`\nDeleted:\n\t${toDelete.join('\n\t')}\n`);
-          await Deployment.getConnection().sendCommand({ directory: parameters.remotePath, command: `rm -f ${toDelete.join(' ')}` });
-        }
 
         progress?.report({ message: `removing empty folders under ${parameters.remotePath}` });
         //PASE's find doesn't support the -empty flag so rmdir is run on every directory; not very clean, but it works
         await Deployment.getConnection().sendCommand({ command: "find . -depth -type d -exec rmdir {} + 2>/dev/null", directory: parameters.remotePath });
 
-        return uploads;
+        return {
+          uploads,
+          relativeRemoteDeletes: toDelete
+        };
       }
     }
     else {
