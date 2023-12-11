@@ -89,6 +89,7 @@ export interface Profile {
 }
 
 export interface QsysPath {
+  asp?: string,
   library: string,
   name: string,
 }

@@ -678,7 +678,14 @@ export default class IBMiContent {
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     // Escape names for shell
     const pathList = files
-      .map(file => `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`)
+      .map(file => {
+        const asp = file.asp || this.config.sourceASP;
+        if (asp && asp.length > 0) {
+          return [`/${asp}/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`, `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`].join(` `);
+        } else {
+          return `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`;
+        }
+      })
       .join(` `)
       .replace(/([$\\])/g,'\\$1')
       .toUpperCase();
