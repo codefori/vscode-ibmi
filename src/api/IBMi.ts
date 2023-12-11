@@ -23,7 +23,7 @@ let remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' 
   {
     path: `/QOpenSys/pkgs/bin/`,
     names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`]
-  },  
+  },
   {
     path: `/QSYS.LIB/`,
     // In the future, we may use a generic specific. 
@@ -115,8 +115,8 @@ export default class IBMi {
   async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
     try {
       connectionObject.keepaliveInterval = 35000;
-      
-      configVars.replaceAll(connectionObject);   
+
+      configVars.replaceAll(connectionObject);
 
       return await vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
@@ -182,8 +182,8 @@ export default class IBMi {
             detail: [
               `This extension can not work with the shell configured on ${this.currentConnectionName},`,
               `since the output from shell commands have additional content.`,
-              `This can be caused by running commands like "echo" or other`, 
-              `commands creating output in your shell start script.`, ``, 
+              `This can be caused by running commands like "echo" or other`,
+              `commands creating output in your shell start script.`, ``,
               `The connection to ${this.currentConnectionName} will be aborted.`
             ].join(`\n`),
             modal: true
@@ -192,8 +192,8 @@ export default class IBMi {
           if (chosen === `Read more`) {
             vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
           }
-          
-          throw(`Shell config error, connection aborted.`);
+
+          throw (`Shell config error, connection aborted.`);
         }
 
         // Register handlers after we might have to abort due to bad configuration.
@@ -773,18 +773,18 @@ export default class IBMi {
                 ...this.config.libraryList.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
               ].join(`; `)
             });
-        
+
             if (result.stderr) {
               const lines = result.stderr.split(`\n`);
-        
+
               lines.forEach(line => {
                 const badLib = this.config?.libraryList.find(lib => line.includes(`ibrary ${lib} `));
-        
+
                 // If there is an error about the library, store it
                 if (badLib) badLibs.push(badLib);
               });
             }
-        
+
             if (result && badLibs.length > 0) {
               validLibs = this.config.libraryList.filter(lib => !badLibs.includes(lib));
               const chosen = await vscode.window.showWarningMessage(`The following ${badLibs.length > 1 ? `libraries` : `library`} does not exist: ${badLibs.join(`,`)}. Remove ${badLibs.length > 1 ? `them` : `it`} from the library list?`, `Yes`, `No`);
@@ -1109,7 +1109,13 @@ export default class IBMi {
 
   fileToPath(file: string | vscode.Uri): string {
     if (typeof file === "string") {
-      return file;
+      if (process.platform === `win32` && file[0] === `/`) {
+        //Issue with getFile not working propertly on Windows
+        //when there was a / at the start.
+        return file.substring(1);
+      } else {
+        return file;
+      }
     }
     else {
       return file.fsPath;

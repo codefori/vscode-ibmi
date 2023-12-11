@@ -239,6 +239,16 @@ export const ContentSuite: TestSuite = {
       assert.strictEqual(badLibs?.includes(`QSYSINC`), false);
     }},
 
+    {name: `Test validateLibraryList (sanitized)`, test: async () => {
+      const content = instance.getContent();
+  
+      const badLibs = await content?.validateLibraryList([`##BEEPBOOP`,`$BEEP$BOOP`,`QSYSINC`]);
+
+      assert.strictEqual(badLibs?.includes(`##BEEPBOOP`), true);
+      assert.strictEqual(badLibs?.includes(`$BEEP$BOOP`), true);
+      assert.strictEqual(badLibs?.includes(`QSYSINC`), false);
+    }},
+
     {name: `Test getFileList`, test: async () => {
       const content = instance.getContent();
   

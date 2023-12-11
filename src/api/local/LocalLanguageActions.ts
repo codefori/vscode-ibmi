@@ -134,10 +134,20 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       "extensions": [
         `GLOBAL`
       ],
-      "name": `Create Service Program (CRTSRVPGM)`,
+      "name": `Create Service Program (CRTSRVPGM EXPORT(*ALL))`,
       "command": `CRTSRVPGM SRVPGM(&CURLIB/&NAME) EXPORT(*ALL) BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER)`,
       environment: `ile`
     },
+    {
+      "extensions": [
+        "BND",
+        "BINDER"
+      ],
+      "deployFirst": true,
+      "name": "Create Service Program (CRTSRVPGM with source)",
+      "command": "CRTSRVPGM SRVPGM(&CURLIB/&NAME) SRCSTMF('&RELATIVEPATH') BNDSRVPGM(*NONE) BNDDIR(*NONE) ACTGRP(*CALLER)",
+      "environment": "ile"
+    }
   ],
   "GNU Make": [
     {
@@ -184,6 +194,32 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       postDownload: [
         ".logs",
         ".evfevent"
+      ]
+    }
+  ],
+  "Source Orbit": [
+    {
+      "name": "Build current with Source Orbit 🔨",
+      "command": "so -bf make -s &RELATIVEPATH && /QOpenSys/pkgs/bin/gmake LIBL='&LIBLS' BIN_LIB=&CURLIB OPT=*EVENTF",
+      "environment": "pase",
+      "deployFirst": true,
+      "extensions": [
+        "GLOBAL"
+      ],
+      "postDownload": [
+        ".evfevent/"
+      ]
+    },
+    {
+      "name": "Build entire project with Source Orbit 🔨",
+      "command": "so -bf make && /QOpenSys/pkgs/bin/gmake LIBL='&LIBLS' BIN_LIB=&CURLIB OPT=*EVENTF",
+      "environment": "pase",
+      "deployFirst": true,
+      "extensions": [
+        "GLOBAL"
+      ],
+      "postDownload": [
+        ".evfevent/"
       ]
     }
   ]

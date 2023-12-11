@@ -65,7 +65,8 @@ export interface Action {
   extensions?: string[];
   deployFirst?: boolean;
   postDownload?: string[];
-  refresh?: ActionRefresh
+  refresh?: ActionRefresh;
+  runOnProtected?:boolean;  
 }
 
 export interface ConnectionData {

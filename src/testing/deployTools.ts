@@ -6,10 +6,11 @@ import { EOL } from "os";
 import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
+import { CompileTools } from "../api/CompileTools";
 import { Tools } from "../api/Tools";
-import { instance } from "../instantiate";
-import { DeploymentMethod } from "../typings";
 import { DeployTools } from "../api/local/deployTools";
+import { instance } from "../instantiate";
+import { Action, DeploymentMethod } from "../typings";
 
 type FileInfo = {
     md5: string
@@ -143,7 +144,31 @@ export const DeployToolsSuite: TestSuite = {
                 assert.strictEqual(changed, 2);
                 assert.strictEqual(deleted, 1);
             }
-        }
+        },
+        {
+            name: `postDownload test`, test: async () => {
+                const action: Action = {
+                    "name": "postDownload test",
+                    "command": "echo 'hello world' > hello.txt && mkdir -p random && echo 'random' > random/random.txt",
+                    "environment": "pase",
+                    "postDownload": [
+                        "hello.txt",
+                        "random/"
+                    ],
+                    "type": "file",
+                    "extensions": [
+                        "GLOBAL"
+                    ]
+                };
+
+                await CompileTools.runAction(instance, vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt"), action);
+                
+                const localRoot = vscode.workspace.getWorkspaceFolder(fakeProject.localPath!)?.uri;
+                assert.ok(localRoot, "No workspace folder");
+                assert.ok(existsSync(vscode.Uri.joinPath(localRoot, `random`, `random.txt`).fsPath));
+                assert.ok(existsSync(vscode.Uri.joinPath(localRoot, "hello.txt").fsPath));
+            }
+        },
     ],
     after: async () => {
         if (fakeProject.localPath && existsSync(fakeProject.localPath.fsPath)) {

@@ -66,7 +66,6 @@ export default class IBMiContent {
   }
 
   async downloadStreamfile(remotePath: string, localPath?: string) {
-    const client = this.ibmi.client;
     const features = this.ibmi.remoteFeatures;
 
     if (this.config.autoConvertIFSccsid && features.attr && features.iconv) {
@@ -82,7 +81,7 @@ export default class IBMiContent {
     if (!localPath) {
       localPath = await tmpFile();
     }
-    await client.getFile(localPath, remotePath); //TODO: replace with downloadfile
+    await this.ibmi.downloadFile(localPath, remotePath);
     return readFileAsync(localPath, `utf8`);
   }
 
@@ -118,8 +117,6 @@ export default class IBMiContent {
     sourceFile = sourceFile.toUpperCase();
     member = member.toUpperCase();
 
-    const client = this.ibmi.client;
-
     let retry = false;
     let path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
@@ -132,7 +129,7 @@ export default class IBMiContent {
         if (!localPath) {
           localPath = await tmpFile();
         }
-        await client.getFile(localPath, tempRmt);
+        await this.ibmi.downloadFile(localPath, tempRmt);
         return await readFileAsync(localPath, `utf8`);
       }
       catch (e) {
@@ -401,8 +398,8 @@ export default class IBMiContent {
 
     const result = await this.ibmi.sendQsh({
       command: [
-        `liblist -d ` + this.ibmi.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-        ...newLibl.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+        `liblist -d ` + Tools.sanitizeLibraryNames(this.ibmi.defaultUserLibraries).join(` `),
+        ...newLibl.map(lib => `liblist -a ` + Tools.sanitizeLibraryNames([lib]))
       ].join(`; `)
     });
 
@@ -410,7 +407,7 @@ export default class IBMiContent {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `));
+        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `) || line.includes(`ibrary ${Tools.sanitizeLibraryNames([lib])} `));
 
         // If there is an error about the library, remove it
         if (badLib) badLibs.push(badLib);
@@ -679,8 +676,14 @@ export default class IBMiContent {
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
-    const command = `for f in ${files.map(file => `/QSYS.LIB/${file.library.toUpperCase()}.LIB/${file.name.toUpperCase()}.FILE/${member.toUpperCase()}.MBR`).join(` `)}; do if [ -f $f ]; then echo $f; break; fi; done`;
+    // Escape names for shell
+    const pathList = files
+      .map(file => `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`)
+      .join(` `)
+      .replace(/([$\\])/g,'\\$1')
+      .toUpperCase();
 
+    const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
     const result = await this.ibmi.sendCommand({
       command,
     });

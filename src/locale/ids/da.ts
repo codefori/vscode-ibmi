@@ -236,7 +236,7 @@ export const da: Locale = {
   'actions.workAction.create.title': `Opret aktion`,
   'actions.workAction.edit.title': `Revider aktion "{0}"`,
   'actions.workAction.duplicate.title': `Kopier aktion "{0}"`,
-  'actions.workAction.name': `Action navn`,
+  'actions.workAction.name': `Aktionsnavn`,
   'actions.workAction.command': `Kommandoer`,
   'actions.workAction.command.description': `Nedenfor er de tilgængelige variable, baseret på objekt typen. Du kan angive forskellige kommandoer på hver linie. Hver kommando er "stateless" og afvikles i eget job.`,
   'actions.workAction.extensions': `Typer`,
@@ -264,10 +264,12 @@ export const da: Locale = {
   'actions.workAction.refresh.description':'Liste niveauet for opfriskning efter aktion er udført.',
   'actions.workAction.refresh.no':'Ingen',
   'actions.workAction.refresh.no.description':'Ingen opfriskning',
-  'actions.workAction.refresh.parent':'Comtainer',
+  'actions.workAction.refresh.parent':'Container',
   'actions.workAction.refresh.parent.description':'Den aktuelle container bliver opfrisket',
   'actions.workAction.refresh.filter':'Filter',
   'actions.workAction.refresh.filter.description':'Det aktuelle filter bliver opfrisket',
   'actions.workAction.refresh.browser':'Vindue',
-  'actions.workAction.refresh.browser.description':'Hele vinduet bliver opfrisket'
+  'actions.workAction.refresh.browser.description':'Hele vinduet bliver opfrisket',
+  'actions.workAction.runOnProtected':'Må afvikles på sikret/skrive-beskyttet',
+  'actions.workAction.runOnProtected.description':'Tillader afvikling af denne aktion på sikrede eller skrive-beskyttede mål'
 };
