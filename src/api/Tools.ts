@@ -209,4 +209,14 @@ export namespace Tools {
   export function capitalize(text:string) {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
+
+  export function sanitizeLibraryNames(libraries: string[]): string[] {
+    return libraries
+      .map(library => {
+        // Escape any $ signs
+        library = library.replace(/\$/g, `\\$`);
+        // Quote libraries starting with #
+        return library.startsWith(`#`) ? `"${library}"` : library;
+      });
+  }
 }

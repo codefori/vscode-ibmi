@@ -1,8 +1,8 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks, window } from 'vscode';
+import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
-import { Action, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
+import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import IBMi from './IBMi';
@@ -11,7 +11,7 @@ import { Tools } from './Tools';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
 import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';
-import { getEnvConfig } from './local/env';
+import { getBranchLibraryName, getEnvConfig } from './local/env';
 
 const NEWLINE = `\r\n`;
 
@@ -38,14 +38,20 @@ export namespace CompileTools {
     );
   }
 
-  function replaceValues(string: string, variables: Variables) {
-    variables.forEach((value, key) => {
+  function replaceValues(inputValue: string, variables: Variables, currentVar?: string) {
+    variables.forEach((value, varName) => {
       if (value) {
-        string = string.replace(new RegExp(key, `g`), value);
+
+        // When replacing a value, let's check if this value has any variables in it too!
+        if (currentVar === undefined) {
+          value = replaceValues(value, variables, varName);
+        }
+
+        inputValue = inputValue.replace(new RegExp(varName, `g`), value);
       }
     });
 
-    return string;
+    return inputValue;
   }
 
   function getDefaultVariables(instance: Instance, librarySettings: ILELibrarySettings): Variables {
@@ -75,24 +81,16 @@ export namespace CompileTools {
     return variables;
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod): Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
     const uriOptions = parseFSOptions(uri);
-
-    if (uriOptions.readonly) {
-      window.showWarningMessage(`Cannot run Actions against readonly objects.`);
-      return false;
-    }
-
-    if (config?.readOnlyMode) {
-      window.showWarningMessage(`Cannot run Actions while readonly mode is enabled in the connection settings.`);
-      return false;
-    }
-
+    const isProtected = uriOptions.readonly || config?.readOnlyMode;
+        
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    let remoteCwd = config?.homeDirectory || `.`;
 
     if (connection && config && content) {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
@@ -118,7 +116,7 @@ export namespace CompileTools {
         });
 
         // Then we get all the available Actions for the current context
-        availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)))
+        availableActions = allActions.filter(action => action.type === uri.scheme && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)) && (!isProtected || action.runOnProtected))
           .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
           .map(action => ({
             label: action.name,
@@ -134,9 +132,11 @@ export namespace CompileTools {
 
           let workspaceId: number | undefined = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
+
             const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
             if (deployResult !== undefined) {
-              workspaceId = deployResult;
+              workspaceId = deployResult.workspaceId;
+              remoteCwd = deployResult.remoteDirectory;
             } else {
               vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
               return false;
@@ -214,26 +214,20 @@ export namespace CompileTools {
               evfeventInfo.object = name.toUpperCase();
               evfeventInfo.extension = ext;
 
-              let relativePath;
-              let fullPath
 
               switch (chosenAction.type) {
                 case `file`:
                   variables.set(`&LOCALPATH`, uri.fsPath);
-
-                  let baseDir = config.homeDirectory;
-
                   if (fromWorkspace) {
-                    baseDir = fromWorkspace.uri.path;
-
-                    relativePath = path.posix.relative(baseDir, uri.path).split(path.sep).join(path.posix.sep);
+                    const relativePath = path.relative(fromWorkspace.uri.path, uri.path).split(path.sep).join(path.posix.sep);
                     variables.set(`&RELATIVEPATH`, relativePath);
 
                     // We need to make sure the remote path is posix
-                    fullPath = path.posix.join(config.homeDirectory, relativePath).split(path.sep).join(path.posix.sep);
+                    const fullPath = path.posix.join(remoteCwd, relativePath);
                     variables.set(`&FULLPATH`, fullPath);
                     variables.set(`{path}`, fullPath);
                     variables.set(`&FILEDIR`, path.posix.parse(fullPath).dir);
+                    variables.set(`&WORKDIR`, remoteCwd);
 
                     try {
                       const gitApi = Tools.getGitAPI();
@@ -242,6 +236,7 @@ export namespace CompileTools {
                         const branch = repo.state.HEAD?.name;
 
                         if (branch) {
+                          variables.set(`&BRANCHLIB`, getBranchLibraryName(branch));
                           variables.set(`&BRANCH`, branch);
                           variables.set(`{branch}`, branch);
                         }
@@ -253,7 +248,7 @@ export namespace CompileTools {
                   break;
 
                 case `streamfile`:
-                  relativePath = path.posix.relative(config.homeDirectory, uri.path).split(path.sep).join(path.posix.sep);
+                  const relativePath = path.posix.relative(remoteCwd, uri.path);
                   variables.set(`&RELATIVEPATH`, relativePath);
 
                   const fullName = uri.path;
@@ -333,10 +328,13 @@ export namespace CompileTools {
                     let problemsFetched = false;
 
                     try {
+                      writeEmitter.fire(`Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + NEWLINE);
+
                       const commandResult = await runCommand(instance, {
                         title: chosenAction.name,
                         environment,
                         command,
+                        cwd: remoteCwd,
                         env: Object.fromEntries(variables),
                       }, writeEmitter);
 
@@ -373,18 +371,32 @@ export namespace CompileTools {
 
                       if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
                         if (fromWorkspace) {
-                          const client = connection.client;
-                          const remoteDir = config.homeDirectory;
-                          const localDir = fromWorkspace.uri.path;
+                          const remoteDir = remoteCwd;
+                          const localDir = fromWorkspace.uri;
 
-                          // First, we need to create or clear the relative directories in the workspace
-                          // in case they don't exist. For example, if the path is `.logs/joblog.json`
-                          // then we would need to create `.logs`.
-                          const downloadDirectories = chosenAction.postDownload.map(path.parse)
-                            .map(pathInfo => pathInfo.dir || pathInfo.base) //Get directories or files' parent directory
-                            .filter(Tools.distinct) //Remove duplicates
-                            .map(downloadDirectory => vscode.Uri.parse((path.posix.join(localDir, downloadDirectory)))); //Create local Uri path
+                          const postDownloads: { type: vscode.FileType, localPath: string, remotePath: string }[] = [];
+                          const downloadDirectories = new Set<vscode.Uri>();
+                          for (const download of chosenAction.postDownload) {
+                            const remotePath = path.posix.join(remoteDir, download);
+                            const localPath = vscode.Uri.joinPath(localDir, download).path;
 
+                            let type: vscode.FileType;
+                            if (await content.isDirectory(remotePath)) {
+                              downloadDirectories.add(vscode.Uri.joinPath(localDir, download));
+                              type = vscode.FileType.Directory;
+                            }
+                            else {
+                              const directory = path.parse(download).dir;
+                              if (directory) {
+                                downloadDirectories.add(vscode.Uri.joinPath(localDir, directory));
+                              }
+                              type = vscode.FileType.File;
+                            }
+
+                            postDownloads.push({ remotePath, localPath, type })
+                          }
+
+                          //Clear and create every local download directories
                           for (const downloadPath of downloadDirectories) {
                             try {
                               const stat = await vscode.workspace.fs.stat(downloadPath); //Check if target exists
@@ -394,7 +406,7 @@ export namespace CompileTools {
                                   throw new Error("Create directory");
                                 }
                               }
-                              else if (stat.type !== vscode.FileType.Directory) {
+                              else if (stat.type === vscode.FileType.Directory) {
                                 await vscode.workspace.fs.delete(downloadPath, { recursive: true });
                                 throw new Error("Create directory");
                               }
@@ -413,20 +425,17 @@ export namespace CompileTools {
                           }
 
                           // Then we download the files that is specified.
-                          const downloads = chosenAction.postDownload.map(
-                            async (downloadPath) => {
-                              const localPath = vscode.Uri.parse(path.posix.join(localDir, downloadPath)).fsPath;
-                              const remotePath = path.posix.join(remoteDir, downloadPath);
-
-                              if (await content.isDirectory(remotePath)) {
-                                return client.getDirectory(localPath, remotePath);
+                          const downloads = postDownloads.map(
+                            async (postDownload) => {
+                              if (postDownload.type === vscode.FileType.Directory) {
+                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true });
                               } else {
-                                return client.getFile(localPath, remotePath);
+                                return connection.downloadFile(postDownload.localPath, postDownload.remotePath);
                               }
                             }
                           );
 
-                          Promise.all(downloads)
+                          await Promise.all(downloads)
                             .then(async result => {
                               // Done!
                               writeEmitter.fire(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
@@ -466,19 +475,50 @@ export namespace CompileTools {
           );
 
           const executionOK = (exitCode === 0);
-          if (hasRun) {            
-            const openOutputAction = "Open output"; //TODO: will be translated in the future
-            const openOutput = await (executionOK ?
-              vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
-              vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction));
+          if (hasRun) {
+            if (executionOK && browserItem) {
+              switch (chosenAction.refresh) {
+                case 'browser':
+                  if (chosenAction.type === 'streamfile') {
+                    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                  }
+                  else if (chosenAction.type !== 'file') {
+                    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                  }
+                  break;
 
-            if (openOutput) {
-              const now = new Date();
-              new CustomUI()
-                .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
-                .setOptions({ fullWidth: true })
-                .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+                case 'filter':
+                  //Filter is a top level item so it has no parent (like Batman)
+                  let filter: BrowserItem = browserItem;
+                  while (filter.parent) {
+                    filter = filter.parent;
+                  }
+                  filter.refresh?.();
+                  break;
+
+                case 'parent':
+                  browserItem.parent?.refresh?.();
+                  break;
+
+                default:
+                //No refresh
+              }
             }
+
+            const openOutputAction = "Open output"; //TODO: will be translated in the future
+            const uiPromise = executionOK ?
+              vscode.window.showInformationMessage(`Action ${actionName} was successful.`, openOutputAction) :
+              vscode.window.showErrorMessage(`Action ${actionName} was not successful.`, openOutputAction);
+
+            uiPromise.then(openOutput => {
+              if (openOutput) {
+                const now = new Date();
+                new CustomUI()
+                  .addParagraph(`<pre><code>${outputBuffer.join("")}</code></pre>`)
+                  .setOptions({ fullWidth: true })
+                  .loadPage(`${chosenAction.name} [${now.toLocaleString()}]`);
+              }
+            })
           }
 
           return executionOK;
@@ -506,18 +546,18 @@ export namespace CompileTools {
     if (config && connection) {
       const cwd = options.cwd;
 
-      let ileSetup: ILELibrarySettings = {
+      const ileSetup: ILELibrarySettings = {
         currentLibrary: config.currentLibrary,
         libraryList: config.libraryList,
       };
 
       if (options.env) {
-        const libl: string | undefined = options.env[`&LIBL`];
-        const curlib: string | undefined = options.env[`&CURLIB`];
-
-        if (libl) ileSetup.libraryList = libl.split(` `);
-        if (curlib) ileSetup.currentLibrary = curlib;
+        ileSetup.libraryList = options.env[`&LIBL`]?.split(` `) || ileSetup.libraryList;
+        ileSetup.currentLibrary = options.env[`&CURLIB`] || ileSetup.currentLibrary;
       }
+
+      // Remove any duplicates from the library list
+      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
       let commandString = replaceValues(
         options.command,
@@ -543,9 +583,12 @@ export namespace CompileTools {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
         if (writeEvent) {
-          if (options.environment === `ile`) {
+          if (options.environment === `ile` && !options.noLibList) {
             writeEvent.fire(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
             writeEvent.fire(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
+          }
+          if (options.cwd) {
+            writeEvent.fire(`Working directory: ` + options.cwd + NEWLINE);
           }
           writeEvent.fire(`Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
         }
@@ -590,7 +633,7 @@ export namespace CompileTools {
           case `qsh`:
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, ileSetup),
+                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands,
               ].join(` && `),
               directory: cwd,
@@ -603,7 +646,7 @@ export namespace CompileTools {
             // escape $ and # in commands
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, ileSetup),
+                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
                   `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`,
                 )
@@ -742,9 +785,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${connection.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`)}`,
-      `liblist -c ${config.currentLibrary.replace(/\$/g, `\\$`)}`,
-      `liblist -a ${buildLibraryList(config).join(` `).replace(/\$/g, `\\$`)}`
+      `liblist -d ${Tools.sanitizeLibraryNames(connection.defaultUserLibraries).join(` `)}`,
+      `liblist -c ${Tools.sanitizeLibraryNames([config.currentLibrary])}`,
+      `liblist -a ${Tools.sanitizeLibraryNames(buildLibraryList(config)).join(` `)}`
     ];
   }
 }

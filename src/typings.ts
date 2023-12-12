@@ -32,12 +32,17 @@ export interface StandardIO {
 /**
  * External interface for extensions to call `code-for-ibmi.runCommand`
  */
+export type ActionType = "member" | "streamfile" | "object" | "file";
+export type ActionRefresh = "no" | "parent" | "filter" | "browser";
+export type ActionEnvironment = "ile" | "qsh" | "pase";
+
 export interface RemoteCommand {
   title?: string;
   command: string;
-  environment?: "ile" | "qsh" | "pase";
+  environment?: ActionEnvironment;
   cwd?: string;
   env?: Record<string, string>;
+  noLibList? : boolean
 }
 
 export interface CommandData extends StandardIO {
@@ -53,9 +58,6 @@ export interface CommandResult {
   command?: string;
 }
 
-export type ActionType = "member" | "streamfile" | "object" | "file";
-export type ActionEnvironment = "ile" | "qsh" | "pase";
-
 export interface Action {
   name: string;
   command: string;
@@ -64,6 +66,8 @@ export interface Action {
   extensions?: string[];
   deployFirst?: boolean;
   postDownload?: string[];
+  refresh?: ActionRefresh;
+  runOnProtected?:boolean;  
 }
 
 export interface ConnectionData {
@@ -72,6 +76,7 @@ export interface ConnectionData {
   port: number;
   username: string;
   password?: string;
+  privateKey?: string;
   privateKeyPath?: string;
   keepaliveInterval?: number;
 }
@@ -117,7 +122,7 @@ export interface IFSFile {
   name: string
   path: string
   size?: number
-  modified?: Date | string
+  modified?: Date
   owner?: string
 }
 

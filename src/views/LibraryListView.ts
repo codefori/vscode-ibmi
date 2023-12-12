@@ -61,7 +61,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                 if (newLibrary !== currentLibrary) {
                   let newLibraryOK = true;
                   try {
-                    await connection.runCommand({ command: `CHGCURLIB ${newLibrary}` });
+                    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${newLibrary}` });
+                    if (commandResult?.code != 0) {
+                      throw(t(`LibraryListView.addToLibraryList.invalidLib`, newLibrary));
+                    }
                   } catch (e) {
                     vscode.window.showErrorMessage(String(e));
                     newLibraryOK = false;

@@ -1,3 +1,4 @@
+import { Tools } from './api/Tools';
 
 import path, { dirname } from 'path';
 import * as vscode from "vscode";
@@ -12,10 +13,11 @@ import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { Action, DeploymentMethod, QsysFsOptions } from "./typings";
+import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import IBMi from './api/IBMi';
 
 export let instance: Instance;
 
@@ -170,12 +172,22 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
+      const LOADING_LABEL = `Please wait`;
+      const clearList = `$(trash) Clear list`;
+      const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
       const storage = instance.getStorage();
-      if (!storage) return;
+      const content = instance.getContent();
+      const config = instance.getConfig();
+      const connection = instance.getConnection();
+      let starRemoved: boolean = false;
 
-      const sources = storage.getSourceList();
-      const dirs = Object.keys(sources);
+      if (!storage && !content) return;
       let list: string[] = [];
+
+      const sources = storage!.getSourceList();
+      const dirs = Object.keys(sources);
+
+      let schemaItems: vscode.QuickPickItem[] = [];
 
       dirs.forEach(dir => {
         sources[dir].forEach(source => {
@@ -183,41 +195,237 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         });
       });
 
-      list.push(`Clear list`);
+      const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }));
 
       const quickPick = vscode.window.createQuickPick();
-      quickPick.items = list.map(item => ({ label: item }));
-      quickPick.placeholder = `Enter file path (Format: LIB/SPF/NAME.ext or /home/xx/file.txt)`;
+      quickPick.items = [
+        {
+          label: 'Cached',
+          kind: vscode.QuickPickItemKind.Separator
+        },
+        ...listItems,
+        ...clearListArray
+      ];
+      quickPick.canSelectMany = false;
+      (quickPick as any).sortByLabel = false; // https://github.com/microsoft/vscode/issues/73904#issuecomment-680298036
+      quickPick.placeholder = `Enter file path (format: LIB/SPF/NAME.ext (type '*' to search server) or /home/xx/file.txt)`;
 
-      quickPick.onDidChangeValue(() => {
-        // INJECT user values into proposed values
-        if (!list.includes(quickPick.value.toUpperCase())) quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+      quickPick.show();
+
+      // Create a cache for Schema if autosuggest enabled
+      if (schemaItems.length === 0 && config && config.enableSQL) {
+        content!.runSQL(`
+            SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
+            ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
+            FROM QSYS2.SYSSCHEMAS 
+            ORDER BY 1`
+        ).then(resultSetLibrary => {
+          schemaItems = resultSetLibrary.map(row => ({
+            label: String(row.SYSTEM_SCHEMA_NAME),
+            description: String(row.SCHEMA_TEXT)
+          }))
+        });
+      }
+
+      let filteredItems: vscode.QuickPickItem[] = [];
+
+      quickPick.onDidChangeValue(async () => {
+        if (quickPick.value === ``) {
+          quickPick.items = [
+            {
+              label: 'Cached',
+              kind: vscode.QuickPickItemKind.Separator
+            },
+            ...listItems,
+            ...clearListArray
+          ];
+          filteredItems = [];
+        }
+
+        // autosuggest
+        if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
+          const selectionSplit = quickPick.value.toUpperCase().split('/');
+          const lastPart = selectionSplit[selectionSplit.length - 1];
+          const filterText = lastPart.substring(0, lastPart.indexOf(`*`));
+
+          let resultSet: Tools.DB2Row[] = [];
+
+          switch (selectionSplit.length) {
+            case 1:
+              filteredItems = schemaItems.filter(schema => schema.label.startsWith(filterText));
+
+              // Using `kind` didn't make any difference because it's sorted alphabetically on label
+              quickPick.items = [
+                {
+                  label: 'Libraries',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...filteredItems,
+                {
+                  label: 'Cached',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listItems,
+                ...clearListArray
+              ]
+
+              break;
+
+            case 2:
+              // Create cache
+              quickPick.busy = true;
+              quickPick.items = [
+                {
+                  label: LOADING_LABEL,
+                  alwaysShow: true,
+                  description: 'Searching files..',
+                },
+              ]
+
+              resultSet = await content!.runSQL(`SELECT 
+                ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
+                ifnull(TABLE_TEXT, '') TABLE_TEXT 
+              FROM QSYS2.SYSTABLES 
+              WHERE TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}' 
+                AND FILE_TYPE = 'S' 
+                ${filterText ? `AND SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
+              ORDER BY 1`);
+
+              const listFile: vscode.QuickPickItem[] = resultSet.map(row => ({
+                label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
+                description: String(row.TABLE_TEXT)
+              }))
+
+              filteredItems = listFile.filter(file => file.label.startsWith(selectionSplit[0] + '/' + filterText));
+
+              quickPick.items = [
+                {
+                  label: 'Source files',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...filteredItems,
+                {
+                  label: 'Cached',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listItems,
+                ...clearListArray
+              ]
+              quickPick.busy = false;
+
+              break;
+
+            case 3:
+              // Create cache
+              quickPick.busy = true;
+              quickPick.items = [
+                {
+                  label: LOADING_LABEL,
+                  alwaysShow: true,
+                  description: 'Searching members..',
+                },
+              ]
+
+              resultSet = await content!.runSQL(`
+                  SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
+                    ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
+                    lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
+                  FROM qsys2.SYSPARTITIONSTAT
+                  WHERE TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
+                    AND table_name = '${connection!.sysNameInAmerican(selectionSplit[1])}'
+                    ${filterText ? `AND TABLE_PARTITION like '${connection!.sysNameInAmerican(filterText)}%'` : ``}
+                  ORDER BY 1
+                `);
+
+              const listMember = resultSet.map(row => ({
+                label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                description: String(row.PARTITION_TEXT)
+              }))
+
+              filteredItems = listMember.filter(member => member.label.startsWith(selectionSplit[0] + '/' + selectionSplit[1] + '/' + filterText));
+
+              quickPick.items = [
+                {
+                  label: 'Members',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...filteredItems,
+                {
+                  label: 'Cached',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...listItems,
+                ...clearListArray
+              ]
+              quickPick.busy = false;
+
+              break;
+
+            default:
+              break;
+          }
+
+          // We remove the asterisk from the value so that the user can continue typing
+          quickPick.value = quickPick.value.substring(0, quickPick.value.indexOf(`*`));
+          starRemoved = true;
+
+        } else {
+
+          if (filteredItems.length > 0 && !starRemoved) {
+            quickPick.items = [
+              {
+                label: 'Filter',
+                kind: vscode.QuickPickItemKind.Separator
+              },
+              ...filteredItems,
+              {
+                label: 'Cached',
+                kind: vscode.QuickPickItemKind.Separator
+              },
+              ...listItems,
+              ...clearListArray
+            ]
+          }
+          starRemoved = false;
+        }
       })
 
       quickPick.onDidAccept(() => {
         const selection = quickPick.selectedItems[0].label;
-        if (selection) {
-          if (selection === `Clear list`) {
-            storage.setSourceList({});
+        if (selection && selection !== LOADING_LABEL) {
+          if (selection === clearList) {
+            storage!.setSourceList({});
             vscode.window.showInformationMessage(`Cleared list.`);
+            quickPick.hide()
           } else {
-            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
+            const selectionSplit = selection.split('/')
+            if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
+              quickPick.hide()
+            } else {
+              quickPick.value = selection.toUpperCase() + '/'
+            }
           }
         }
-        quickPick.hide()
       })
+
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
+
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | BrowserItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
       const editor = vscode.window.activeTextEditor;
       let uri;
+      let browserItem;
       if (target) {
         if ("fsPath" in target) {
           uri = target;
         }
         else {
           uri = target?.resourceUri;
+          if ("refresh" in target) {
+            browserItem = target;
+          }
         }
       }
 
@@ -250,8 +458,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             }
           }
 
-          if (canRun && [`member`, `streamfile`, `file`].includes(uri.scheme)) {
-            return await CompileTools.runAction(instance, uri, action, method);
+          if (canRun && [`member`, `streamfile`, `file`, 'object'].includes(uri.scheme)) {
+            return await CompileTools.runAction(instance, uri, action, method, browserItem);
           }
         }
         else {

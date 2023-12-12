@@ -89,8 +89,46 @@ export class SettingsUI {
               text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
             },
           ], `Determine which method should be used to track changes while editing source members.`)
+          .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [
+            {
+              selected: config.defaultDeploymentMethod === undefined || config.defaultDeploymentMethod === ``,
+              value: ``,
+              description: `No Default`,
+              text: `No default Deploy method`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `compare`,
+              value: `compare`,
+              description: `Compare`,
+              text: `Synchronizes using MD5 hash comparison`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `changed`,
+              value: `changed`,
+              description: `Changes`,
+              text: `Changes detected since last upload.`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `unstaged`,
+              value: `unstaged`,
+              description: `Working Changes`,
+              text: `Unstaged changes in Git`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `staged`,
+              value: `staged`,
+              description: `Staged Changes`,
+              text: `Staged changes in Git`,
+            },
+            {
+              selected: config.defaultDeploymentMethod === `all`,
+              value: `all`,
+              description: `All`,
+              text: `Every file in the local workspace`,
+            }
+          ], `Set your Default Deployment Method`)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
-          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode);
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode)
 
         const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
@@ -141,7 +179,7 @@ export class SettingsUI {
               .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
               .addInput(`debugCertDirectory`, `Certificate directory`, `This remote path is only used when starting the Debug Service and or for downloading an existing client certificate. This directory must be accessible to all users who wish to start the Debug Service (<code>debug_service.pfx</code>) or download an existing client certificate (<code>debug_service.crt</code>). Optionally, you can import one below.`, { default: config.debugCertDirectory });
 
-            const localCertExists = await certificates.checkLocalExists(connection);
+            const localCertExists = await certificates.localClientCertExists(connection);
 
             debuggerTab
               .addParagraph(`<b>${localCertExists ? `Client certificate for server has been imported.` : `No local client certificate exists. Debugging securely will not function correctly.`}</b>` + ` To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)

@@ -42,7 +42,8 @@ export type CachedServerSettings = {
   remoteFeaturesKeys: string | null;
   variantChars: { american: string, local: string };
   badDataAreasChecked: boolean | null,
-  libraryListValidated: boolean | null
+  libraryListValidated: boolean | null,
+  pathChecked?: boolean
 } | undefined;
 
 export class GlobalStorage extends Storage {

@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies & publishing tools
         run: |
           npm install
-          npm install -g vsce ovsx
+          npm install -g @vscode/vsce ovsx
       
       # - name: Bump version numbers
       #   run: |

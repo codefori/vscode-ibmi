@@ -1,9 +1,9 @@
-import util from "util";
 import fs from "fs";
 import tmp from "tmp";
+import util from "util";
+import { GlobalConfiguration } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
-import { GlobalConfiguration } from "../../api/Configuration";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -18,7 +18,7 @@ export class ExtendedIBMiContent {
   constructor(readonly sourceDateHandler: SourceDateHandler) {
 
   }
-  
+
   /**
    * Download the contents of a source member using SQL.
    * This option also stores the source dates internally.
@@ -58,7 +58,7 @@ export class ExtendedIBMiContent {
       else
         rows = await content.runSQL(
           `select srcdat, srcdta from ${aliasPath}`
-        );  
+        );
 
       if (rows.length === 0) {
         rows.push({
@@ -156,7 +156,7 @@ export class ExtendedIBMiContent {
             rows.push(
               `(${sequence}, ${sourceDates[i] ? sourceDates[i].padEnd(6, `0`) : `0`}, '${escapeString(sourceData[i])}')`,
             );
-          
+
         }
 
         //We assume the alias still exists....
@@ -183,10 +183,14 @@ export class ExtendedIBMiContent {
         await writeFileAsync(tmpobj, query.join(`\n`), `utf8`);
         await client.putFile(tmpobj, tempRmt);
 
-        if (setccsid) await connection.paseCommand(`${setccsid} 1208 ${tempRmt}`);
-        await connection.remoteCommand(
-          `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
-        );
+        if (setccsid) {
+          await connection.sendCommand({ command: `${setccsid} 1208 ${tempRmt}` });
+        }
+
+        await connection.runCommand({
+          command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
+          noLibList: true
+        });
 
         if (this.sourceDateHandler.sourceDateMode === `diff`) {
           this.sourceDateHandler.baseSource.set(alias, body);
