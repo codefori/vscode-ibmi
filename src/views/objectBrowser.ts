@@ -447,9 +447,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const member = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t(`objectBrowser.createMember.progressTitle`, fullPath) }, async (progress) => {
           try {
-            await connection.remoteCommand(
-              `ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`
-            )
+            await connection.runCommand({
+              command: `ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`,
+              noLibList: true
+            })
 
             if (GlobalConfiguration.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`vscode.open`, getMemberUri(member));
@@ -494,9 +495,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           try {
             let newMemberExists = true;
             try {
-              await connection.remoteCommand(
-                `CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
-              )
+              await connection.runCommand({
+                command: `CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
+                noLibList: true
+              })
             } catch (e) {
               if (String(e).includes(`CPF9815`)) {
                 newMemberExists = false;
@@ -506,18 +508,20 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             if (newMemberExists) {
               const result = await vscode.window.showInformationMessage(t(`objectBrowser.copyMember.overwrite`, memberPath.name), { modal: true }, t(`Yes`), t(`No`))
               if (result === t(`Yes`)) {
-                await connection.remoteCommand(
-                  `RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`,
-                )
+                await connection.runCommand({
+                  command: `RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`,
+                  noLibList: true
+                })
               } else {
                 throw t(`objectBrowser.copyMember.errorMessage2`, memberPath.name)
               }
             }
 
             try {
-              await connection.remoteCommand(
-                `CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
-              )
+              await connection.runCommand({
+                command: `CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
+                noLibList: true
+              })
             } catch (e) {
               // Ignore CPF2869 Empty member is not copied.
               if (!String(e).includes(`CPF2869`)) {
@@ -526,9 +530,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (oldMember.extension !== memberPath.extension) {
-              await connection.remoteCommand(
-                `CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`,
-              );
+              await connection.runCommand({
+                command: `CHGPFM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name}) SRCTYPE(${memberPath.extension.length > 0 ? memberPath.extension : `*NONE`})`,
+                noLibList: true
+              });
             }
 
             if (GlobalConfiguration.get(`autoOpenFile`)) {
@@ -566,9 +571,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const { library, file, name } = connection.parserMemberPath(node.path);
 
         try {
-          await connection.remoteCommand(
-            `RMVM FILE(${library}/${file}) MBR(${name})`,
-          );
+          await connection.runCommand({
+            command: `RMVM FILE(${library}/${file}) MBR(${name})`,
+            noLibList: true
+          });
 
           vscode.window.showInformationMessage(t(`objectBrowser.deleteMember.infoMessage`, node.path));
 
@@ -594,9 +600,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const connection = getConnection();
 
         try {
-          await connection.remoteCommand(
-            `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
-          );
+          await connection.runCommand({
+            command: `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
+            noLibList: true
+          });
 
           node.description = newText;
           objectBrowser.refresh(node);
@@ -633,14 +640,16 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           if (newMember) {
             try {
               if (oldMember.name !== newMember.name) {
-                await connection.remoteCommand(
-                  `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
-                );
+                await connection.runCommand({
+                  command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
+                  noLibList: true
+                });
               }
               if (oldMember.extension !== newMember.extension) {
-                await connection.remoteCommand(
-                  `CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
-                );
+                await connection.runCommand({
+                  command: `CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
+                  noLibList: true
+                });
               }
 
               objectBrowser.refresh(node.parent);
@@ -792,7 +801,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               }
             }
           });
-          
+
           quickPick.onDidHide(() => quickPick.dispose());
           quickPick.show();
 
@@ -816,9 +825,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const filters = config.objectFilters;
 
         try {
-          await connection.remoteCommand(
-            `CRTLIB LIB(${newLibrary})`
-          );
+          await connection.runCommand({
+            command: `CRTLIB LIB(${newLibrary})`,
+            noLibList: true
+          });
         } catch (e) {
           vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage`, newLibrary, e));
           return;
@@ -868,9 +878,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
           vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
 
-          await connection.remoteCommand(
-            `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`
-          );
+          await connection.runCommand({
+            command: `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`,
+            noLibList: true
+          });
 
           objectBrowser.refresh(node);
         } catch (e) {
@@ -897,9 +908,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
           try {
             newTextOK = true;
-            await connection.remoteCommand(
-              `CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`
-            );
+            await connection.runCommand({
+              command: `CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
+              noLibList: true
+            });
 
             node.object.text = newText;
             node.updateDescription();
@@ -936,11 +948,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
           try {
             newPathOK = true;
-            await connection.remoteCommand(
-              node.object.type.toLocaleLowerCase() === `*lib` ?
+            await connection.runCommand({
+              command: node.object.type.toLocaleLowerCase() === `*lib` ?
                 `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
-                `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`
-            );
+                `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`,
+              noLibList: true
+            });
 
             if (oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()) {
               objectBrowser.refresh(node.parent);
@@ -965,9 +978,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           , async (progress) => {
             try {
               // TODO: Progress message about deleting!
-              await connection.remoteCommand(
-                `DLTOBJ OBJ(${node.path}) OBJTYPE(${node.object.type})`,
-              );
+              await connection.runCommand({
+                command: `DLTOBJ OBJ(${node.path}) OBJTYPE(${node.object.type})`,
+                noLibList: true
+              });
 
               vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, node.path, node.object.type.toUpperCase()));
               objectBrowser.refresh(node.parent);
@@ -997,9 +1011,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.renameObject.progress", node.path, node.object.type.toUpperCase(), escapedObject) }
             , async (progress) => {
               try {
-                await connection.remoteCommand(
-                  `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`
-                );
+                await connection.runCommand({
+                  command: `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
+                  noLibList: true
+                });
 
                 vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedObject));
                 objectBrowser.refresh(node.parent);
@@ -1034,9 +1049,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.moveObject.progress", node.path, node.object.type.toUpperCase(), escapedLibrary) }
             , async (progress) => {
               try {
-                await connection.remoteCommand(
-                  `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`
-                );
+                await connection.runCommand({
+                  command: `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
+                  noLibList: true
+                });
 
                 if (!objectBrowser.autoRefresh(t(`objectBrowser.moveObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedLibrary))) {
                   vscode.window.showInformationMessage(t(`objectBrowser.moveObject.infoMessage2`, node.path, node.object.type.toUpperCase(), escapedLibrary));

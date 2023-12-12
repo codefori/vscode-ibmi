@@ -543,17 +543,14 @@ export namespace CompileTools {
     if (config && connection) {
       const cwd = options.cwd;
 
-      let ileSetup: ILELibrarySettings = {
+      const ileSetup: ILELibrarySettings = {
         currentLibrary: config.currentLibrary,
         libraryList: config.libraryList,
       };
 
       if (options.env) {
-        const libl: string | undefined = options.env[`&LIBL`];
-        const curlib: string | undefined = options.env[`&CURLIB`];
-
-        if (libl) ileSetup.libraryList = libl.split(` `);
-        if (curlib) ileSetup.currentLibrary = curlib;
+        ileSetup.libraryList = options.env[`&LIBL`]?.split(` `) || ileSetup.libraryList;
+        ileSetup.currentLibrary = options.env[`&CURLIB`] || ileSetup.currentLibrary;
       }
 
       // Remove any duplicates from the library list
@@ -583,7 +580,7 @@ export namespace CompileTools {
         const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
 
         if (writeEvent) {
-          if (options.environment === `ile`) {
+          if (options.environment === `ile` && !options.noLibList) {
             writeEvent.fire(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
             writeEvent.fire(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
           }
@@ -633,7 +630,7 @@ export namespace CompileTools {
           case `qsh`:
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, ileSetup),
+                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands,
               ].join(` && `),
               directory: cwd,
@@ -646,7 +643,7 @@ export namespace CompileTools {
             // escape $ and # in commands
             commandResult = await connection.sendQsh({
               command: [
-                ...buildLiblistCommands(connection, ileSetup),
+                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
                   `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`,
                 )
