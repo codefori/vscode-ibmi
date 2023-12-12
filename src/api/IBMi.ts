@@ -202,6 +202,10 @@ export default class IBMi {
         this.client.connection!.once(`end`, disconnected);
         this.client.connection!.once(`error`, disconnected);
 
+        if(!reconnecting){
+          instance.setConnection(this);
+        }
+
         progress.report({
           message: `Checking home directory.`
         });
@@ -794,8 +798,7 @@ export default class IBMi {
           }
         }
 
-        if (!reconnecting) {
-          instance.setConnection(this);
+        if (!reconnecting) {          
           vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
           await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
           instance.fire("connected");
