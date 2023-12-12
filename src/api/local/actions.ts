@@ -44,7 +44,7 @@ export async function getLocalActions(currentWorkspace: WorkspaceFolder) {
 export async function getEvfeventFiles(currentWorkspace: WorkspaceFolder) {
   if (currentWorkspace) {
     const relativeSearch = new RelativePattern(currentWorkspace, `**/.evfevent/*`);
-    const iprojectFiles = await workspace.findFiles(relativeSearch, null, 1);
+    const iprojectFiles = await workspace.findFiles(relativeSearch, null);
 
     return iprojectFiles;
   }
