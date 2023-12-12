@@ -744,8 +744,8 @@ export default class IBMi {
                   if(!currentPaths.includes("/QOpenSys/pkgs/bin")){
                     reason = "Your $PATH shell environment variable does not include /QOpenSys/pkgs/bin";
                   }
-                  else if (currentPaths.indexOf("/QOpenSys/pkgs/bin") > 0){
-                    reason = "/QOpenSys/pkgs/bin is not in first position in your $PATH shell environment variable";
+                  else if (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin") || currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")){
+                    reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
                   }
                   if (reason && await vscode.window.showWarningMessage(`/QOpenSys/pkgs/bin not found in $PATH`, {
                     modal: true,
