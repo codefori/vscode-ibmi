@@ -89,6 +89,7 @@ export namespace CompileTools {
     const isProtected = uriOptions.readonly || config?.readOnlyMode;
         
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    let remoteCwd = config?.homeDirectory || `.`;
 
     if (connection && config && content) {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
@@ -130,9 +131,11 @@ export namespace CompileTools {
 
           let workspaceId: number | undefined = undefined;
           if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
+
             const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
             if (deployResult !== undefined) {
-              workspaceId = deployResult;
+              workspaceId = deployResult.workspaceId;
+              remoteCwd = deployResult.remoteDirectory;
             } else {
               vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
               return false;
@@ -219,9 +222,10 @@ export namespace CompileTools {
                     variables.set(`&RELATIVEPATH`, relativePath);
 
                     // We need to make sure the remote path is posix
-                    const fullPath = path.posix.join(config.homeDirectory, relativePath);
+                    const fullPath = path.posix.join(remoteCwd, relativePath);
                     variables.set(`&FULLPATH`, fullPath);
                     variables.set(`{path}`, fullPath);
+                    variables.set(`&WORKDIR`, remoteCwd);
 
                     try {
                       const gitApi = Tools.getGitAPI();
@@ -242,7 +246,7 @@ export namespace CompileTools {
                   break;
 
                 case `streamfile`:
-                  const relativePath = path.posix.relative(config.homeDirectory, uri.path);
+                  const relativePath = path.posix.relative(remoteCwd, uri.path);
                   variables.set(`&RELATIVEPATH`, relativePath);
 
                   const fullName = uri.path;
@@ -321,10 +325,13 @@ export namespace CompileTools {
                     let problemsFetched = false;
 
                     try {
+                      writeEmitter.fire(`Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + NEWLINE);
+
                       const commandResult = await runCommand(instance, {
                         title: chosenAction.name,
                         environment,
                         command,
+                        cwd: remoteCwd,
                         env: Object.fromEntries(variables),
                       }, writeEmitter);
 
@@ -361,7 +368,7 @@ export namespace CompileTools {
 
                       if (chosenAction.type === `file` && chosenAction.postDownload?.length) {
                         if (fromWorkspace) {
-                          const remoteDir = config.homeDirectory;
+                          const remoteDir = remoteCwd;
                           const localDir = fromWorkspace.uri;
 
                           const postDownloads: { type: vscode.FileType, localPath: string, remotePath: string }[] = [];
@@ -579,6 +586,9 @@ export namespace CompileTools {
           if (options.environment === `ile`) {
             writeEvent.fire(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
             writeEvent.fire(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
+          }
+          if (options.cwd) {
+            writeEvent.fire(`Working directory: ` + options.cwd + NEWLINE);
           }
           writeEvent.fire(`Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
         }

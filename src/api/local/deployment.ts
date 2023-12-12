@@ -195,6 +195,13 @@ export namespace Deployment {
       });
   }
 
+  export async function deleteFiles(parameters: DeploymentParameters, toDelete: string[]) {
+    if (toDelete.length) {
+      Deployment.deploymentLog.appendLine(`\nDeleted:\n\t${toDelete.join('\n\t')}\n`);
+      await Deployment.getConnection().sendCommand({ directory: parameters.remotePath, command: `rm -f ${toDelete.join(' ')}` });
+    }
+  }
+
   export async function sendCompressed(parameters: DeploymentParameters, files: vscode.Uri[], progress: vscode.Progress<{ message?: string }>) {
     const connection = getConnection();
     const localTarball = tmp.fileSync({ postfix: ".tar" });
