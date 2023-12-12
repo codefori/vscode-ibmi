@@ -335,7 +335,9 @@ export namespace CompileTools {
                         env: Object.fromEntries(variables),
                       }, writeEmitter);
 
-                      const useLocalEvfevent = fromWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
+                      const useLocalEvfevent = 
+                        fromWorkspace && chosenAction.postDownload && 
+                        (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
 
                       if (commandResult) {
                         hasRun = true;
