@@ -149,11 +149,13 @@ export default class IBMiContent {
               }
               break;
             default:
-              throw e;
+              retry = false;
+              break;
           }
         }
-        else {
-          throw e;
+
+        if (!retry) {
+          throw e
         }
       }
     }
