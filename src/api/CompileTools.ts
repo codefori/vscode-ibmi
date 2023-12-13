@@ -130,15 +130,28 @@ export namespace CompileTools {
           const environment = chosenAction.environment || `ile`;
 
           let workspaceId: number | undefined = undefined;
-          if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
 
-            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
-            if (deployResult !== undefined) {
-              workspaceId = deployResult.workspaceId;
-              remoteCwd = deployResult.remoteDirectory;
+          // If we are running an Action for a local file, we need a deploy directory even if they are not
+          // deploying the file. This is because we need to know the relative path of the file to the deploy directory.
+          if (workspaceFolder && chosenAction.type === `file`) {
+            if (chosenAction.deployFirst) {
+              const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
+              if (deployResult !== undefined) {
+                workspaceId = deployResult.workspaceId;
+                remoteCwd = deployResult.remoteDirectory;
+              } else {
+                vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
+                return false;
+              }
             } else {
-              vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
-              return false;
+              workspaceId = workspaceFolder.index;
+              const deployPath = DeployTools.getRemoteDeployDirectory(workspaceFolder);
+              if (deployPath) {
+                remoteCwd = deployPath;
+              } else {
+                vscode.window.showWarningMessage(`No deploy directory setup for this workspace. Cancelling Action.`);
+                return false;
+              }
             }
           }
 
