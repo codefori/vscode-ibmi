@@ -12,6 +12,8 @@ import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, WithPath } from "../typings";
 
+const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
+
 class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
@@ -137,7 +139,7 @@ class IFSDirectoryItem extends IFSItem {
   constructor(file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
 
-    this.contextValue = "directory";
+    this.contextValue = `directory${PROTECTED_DIRS.test(this.file.path) ? `_protected` : ``}`;
     this.iconPath = vscode.ThemeIcon.Folder;
   }
 
@@ -165,7 +167,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
 
-    this.contextValue = "shortcut";
+    this.contextValue = `shortcut${ PROTECTED_DIRS.test(this.path) ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon("folder-library");
   }
 }
@@ -303,9 +305,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
       if (connection && config) {
+        const value = `${node?.path || config.homeDirectory}/`;
+        const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.createDirectory.prompt`),
-          value: node?.path || config.homeDirectory
+          value: value,
+          valueSelection: [selectStart, selectStart]
         });
 
         if (fullName) {
@@ -327,9 +332,12 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const config = instance.getConfig();
       const connection = instance.getConnection();
       if (config && connection) {
+        const value = `${node?.path || config.homeDirectory}/`;
+        const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.createStreamfile.prompt`),
-          value: node?.path || config.homeDirectory
+          value: value,
+          valueSelection: [selectStart, selectStart]
         });
 
         if (fullName) {
@@ -414,14 +422,6 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
             if (deletionConfirmed) {
               try {
-                if(config.homeDirectory === node.path){
-                  const echoHome = await connection.sendCommand({ command: `echo $HOME` });
-                  if(echoHome.code === 0){
-                    config.homeDirectory = echoHome.stdout.trim();
-                    await ConnectionConfiguration.update(config);                    
-                    vscode.window.showInformationMessage(t('ifsBrowser.deleteIFS.default.home.dir', node.path, config.homeDirectory));
-                  }
-                }
                 const removeResult = await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(node.path)}` })
                 if(removeResult.code === 0){
                   vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, node.path));
@@ -454,7 +454,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.moveIFS.prompt`),
-          value: node.path
+          value: node.path,
+          valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
         });
 
         if (target) {
@@ -483,7 +484,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
           prompt: t(`ifsBrowser.copyIFS.prompt`),
-          value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path
+          value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path,
+          valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
         });
 
         if (target) {

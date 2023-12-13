@@ -5,8 +5,9 @@ import { ConnectionConfiguration } from "./Configuration";
 
 import path from 'path';
 import { instance } from "../instantiate";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, StandardIO } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
 import { CompileTools } from "./CompileTools";
+import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
@@ -125,6 +126,7 @@ export default class IBMi {
         progress.report({
           message: `Connecting via SSH.`
         });
+        const delayedOperations: Function[] = [];
 
         await this.client.connect(connectionObject as node_ssh.Config);
 
@@ -201,6 +203,10 @@ export default class IBMi {
         this.client.connection!.once(`end`, disconnected);
         this.client.connection!.once(`error`, disconnected);
 
+        if(!reconnecting){
+          instance.setConnection(this);
+        }
+
         progress.report({
           message: `Checking home directory.`
         });
@@ -234,17 +240,17 @@ export default class IBMi {
             //       But, remember, but we only got here if 'cd $HOME' failed.
             //       Let's try to figure out why....
             if (0 !== (await this.sendCommand({ command: `test -d ${actualHomeDir}` })).code) {
-              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not a directory! Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not a directory! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
             }
             else if (0 !== (await this.sendCommand({ command: `test -w ${actualHomeDir}` })).code) {
-              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not writable! Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not writable! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
             }
             else if (0 !== (await this.sendCommand({ command: `test -x ${actualHomeDir}` })).code) {
-              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not usable due to permissions! Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not usable due to permissions! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
             }
             else {
               // not sure, but get your sys admin involved
-              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator`, { modal: !reconnecting });
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
             }
           }
           else if (reconnecting) {
@@ -254,7 +260,7 @@ export default class IBMi {
             modal: true,
             detail: `Your home directory (${actualHomeDir}) does not exist, so Code for IBM i may not function correctly. Would you like to create this directory now?`,
           }, `Yes`)) {
-            console.log(`creating home directory ${actualHomeDir}`);
+            this.appendOutput(`creating home directory ${actualHomeDir}`);
             let mkHomeCmd = `mkdir -p ${actualHomeDir} && chown ${connectionObject.username.toLowerCase()} ${actualHomeDir} && chmod 0755 ${actualHomeDir}`;
             let mkHomeResult = await this.sendCommand({ command: mkHomeCmd, directory: `.` });
             if (0 === mkHomeResult.code) {
@@ -263,7 +269,7 @@ export default class IBMi {
               let mkHomeErrs = mkHomeResult.stderr;
               // We still get 'Could not chdir to home directory' in stderr so we need to hackily gut that out, as well as the bashisms that are a side effect of our API
               mkHomeErrs = mkHomeErrs.substring(1 + mkHomeErrs.indexOf(`\n`)).replace(`bash: line 1: `, ``);
-              await vscode.window.showWarningMessage(`Error creating home directory (${actualHomeDir}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator`, { modal: true });
+              await vscode.window.showWarningMessage(`Error creating home directory (${actualHomeDir}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
             }
           }
         }
@@ -339,10 +345,10 @@ export default class IBMi {
 
         //Next, we need to check the temp lib (where temp outfile data lives) exists
         try {
-          await this.remoteCommand(
-            `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
-            undefined,
-          );
+          await this.runCommand({
+            command: `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
+            noLibList: true
+          });
 
           tempLibrarySet = true;
 
@@ -357,10 +363,10 @@ export default class IBMi {
 
             case `CPD0032`: //Can't use CRTLIB
               try {
-                await this.remoteCommand(
-                  `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-                  undefined
-                );
+                await this.runCommand({
+                  command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+                  noLibList: true
+                });
 
                 //We're all good if no errors
                 tempLibrarySet = true;
@@ -419,9 +425,10 @@ export default class IBMi {
             message: `Clearing temporary data.`
           });
 
-          this.remoteCommand(
-            `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`
-          )
+          this.runCommand({
+            command: `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
+            noLibList: true,
+          })
             .then(result => {
               // All good!
             })
@@ -463,10 +470,10 @@ export default class IBMi {
           });
 
           try {
-            await this.remoteCommand(
-              `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-              undefined
-            );
+            await this.runCommand({
+              command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+              noLibList: true
+            });
 
             vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
               detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
@@ -474,9 +481,10 @@ export default class IBMi {
             }, `Delete`, `Read more`).then(choice => {
               switch (choice) {
                 case `Delete`:
-                  this.remoteCommand(
-                    `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`
-                  )
+                  this.runCommand({
+                    command: `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+                    noLibList: true
+                  })
                     .then(() => {
                       vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
                     })
@@ -494,19 +502,20 @@ export default class IBMi {
           }
 
           try {
-            await this.remoteCommand(
-              `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-              undefined
-            );
+            await this.runCommand({
+              command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+              noLibList: true
+            });
 
             vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
               modal: false,
             }, `Delete`, `Read more`).then(choice => {
               switch (choice) {
                 case `Delete`:
-                  this.remoteCommand(
-                    `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`
-                  )
+                  this.runCommand({
+                    command: `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+                    noLibList: true
+                  })
                     .then(() => {
                       vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
                     })
@@ -550,9 +559,9 @@ export default class IBMi {
                 message: `Checking installed components on host IBM i: ${feature.path}`
               });
 
-              const call = await this.paseCommand(`ls -p ${feature.path}${feature.specific || ``}`);
-              if (typeof call === `string`) {
-                const files = call.split(`\n`);
+              const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
+              if (call.stdout) {
+                const files = call.stdout.split(`\n`);
 
                 if (feature.specific) {
                   for (const name of feature.names)
@@ -584,19 +593,12 @@ export default class IBMi {
             //This is mostly a nice to have. We grab the ASP info so user's do
             //not have to provide the ASP in the settings.
             try {
-              statement = `SELECT * FROM QSYS2.ASP_INFO`;
-              output = await this.paseCommand(`LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`, undefined, 0, {
-                stdin: statement
+              const resultSet = await new IBMiContent(this).runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+              resultSet.forEach(row => {
+                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                  this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+                }
               });
-
-              if (typeof output === `string`) {
-                const rows = Tools.db2Parse(output);
-                rows.forEach((row: any) => {
-                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                    this.aspInfo[row.ASP_NUMBER] = row.DEVICE_DESCRIPTION_NAME;
-                  }
-                });
-              }
             } catch (e) {
               //Oh well
               progress.report({
@@ -691,47 +693,115 @@ export default class IBMi {
           }
         }
 
-        // Check users default shell.
-        // give user option to set bash as default shell.
-        try {
-          // make sure chsh and bash is installed
-          if (this.remoteFeatures[`chsh`] &&
-            this.remoteFeatures[`bash`]) {
 
+        // give user option to set bash as default shell.
+        if (this.remoteFeatures[`bash`]) {
+          try {
+            //check users default shell
             const bashShellPath = '/QOpenSys/pkgs/bin/bash';
             const commandShellResult = await this.sendCommand({
               command: `echo $SHELL`
             });
 
             if (!commandShellResult.stderr) {
-              let userDefaultShell = commandShellResult.stdout.trim();
-              if (userDefaultShell !== bashShellPath) {
+              let usesBash = commandShellResult.stdout.trim() === bashShellPath;
+              if (!usesBash) {
+                // make sure chsh is installed
+                if (this.remoteFeatures[`chsh`]) {
+                  vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
+                    switch (choice) {
+                      case `Set shell to bash`:
+                        const commandSetBashResult = await this.sendCommand({
+                          command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+                        });
 
-                vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
-                  switch (choice) {
-                    case `Set shell to bash`:
-                      const commandSetBashResult = await this.sendCommand({
-                        command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
-                      });
+                        if (!commandSetBashResult.stderr) {
+                          vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+                          usesBash = true;
+                        } else {
+                          vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                        }
+                        break;
 
-                      if (!commandSetBashResult.stderr) {
-                        vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
-                      } else {
-                        vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
-                      }
-                      break;
+                      case `Read More`:
+                        vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                        break;
+                    }
+                  });
+                }
+              }
 
-                    case `Read More`:
-                      vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
-                      break;
-                  }
+              if (usesBash) {
+                //Ensure /QOpenSys/pkgs/bin is found in $PATH
+                progress.report({
+                  message: `Checking /QOpenSys/pkgs/bin in $PATH.`
                 });
+
+                if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
+                  const currentPaths = (await this.sendCommand({ command: "echo $PATH" })).stdout.split(":");
+                  const bashrcFile = `${defaultHomeDir}/.bashrc`;
+                  let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
+                  let reason;
+                  if(!currentPaths.includes("/QOpenSys/pkgs/bin")){
+                    reason = "Your $PATH shell environment variable does not include /QOpenSys/pkgs/bin";
+                  }
+                  else if (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin") || currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")){
+                    reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
+                  }
+                  if (reason && await vscode.window.showWarningMessage(`/QOpenSys/pkgs/bin not found in $PATH`, {
+                    modal: true,
+                    detail: `${reason}, so Code for IBM i may not function correctly. Would you like to ${bashrcExists ? "update" : "create"} ${bashrcFile} to fix this now?`,
+                  }, `Yes`)) {
+                    delayedOperations.push(async () => {
+                      this.appendOutput(`${bashrcExists ? "update" : "create"} ${bashrcFile}`);
+                      if (!bashrcExists) {
+                        const createBashrc = await this.sendCommand({ command: `echo "# Generated by Code for IBM i\nexport PATH=/QOpenSys/pkgs/bin:\\$PATH" >> ${bashrcFile} && chown ${connectionObject.username.toLowerCase()} ${bashrcFile} && chmod 755 ${bashrcFile}` });
+                        if (createBashrc.code !== 0) {
+                          await vscode.window.showWarningMessage(`Error creating ${bashrcFile}):\n${createBashrc.stderr}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
+                        }
+                      }
+                      else {
+                        try {
+                          const content = instance.getContent();
+                          if (content) {
+                            const bashrcContent = (await content.downloadStreamfile(bashrcFile)).split("\n");
+                            let replaced = false;
+                            bashrcContent.forEach((line, index) => {
+                              if (!replaced) {
+                                const pathRegex = /^((?:export )?PATH=)(.*)(?:)$/.exec(line);
+                                if (pathRegex) {
+                                  bashrcContent[index] = `${pathRegex[1]}/QOpenSys/pkgs/bin:${pathRegex[2]
+                                    .replace("/QOpenSys/pkgs/bin", "") //Removes /QOpenSys/pkgs/bin wherever it is
+                                    .replace("::", ":")}`; //Removes double : in case /QOpenSys/pkgs/bin wasn't at the end
+                                  replaced = true;
+                                }
+                              }
+                            });
+
+                            if (!replaced) {
+                              bashrcContent.push(
+                                "",
+                                "# Generated by Code for IBM i",
+                                "export PATH=/QOpenSys/pkgs/bin:$PATH"
+                              );
+                            }
+
+                            await content.writeStreamfile(bashrcFile, bashrcContent.join("\n"));
+                          }
+                        }
+                        catch (error) {
+                          await vscode.window.showWarningMessage(`Error modifying PATH in ${bashrcFile}):\n${error}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
+                        }
+                      }
+                    });
+                  }
+                }
               }
             }
+          } catch (e) {
+            // Oh well...trying to set default shell is not worth stopping for.
+            console.log(e);
           }
-        } catch (e) {
-          // Oh well...trying to set default shell is not worth stopping for.
-          console.log(e);
         }
 
         if (this.config.autoConvertIFSccsid) {
@@ -797,10 +867,10 @@ export default class IBMi {
           }
         }
 
-        if (!reconnecting) {
-          instance.setConnection(this);
+        if (!reconnecting) {          
           vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
           await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+          delayedOperations.forEach(func => func());
           instance.fire("connected");
         }
 
@@ -814,7 +884,8 @@ export default class IBMi {
             local: this.variantChars.local,
           },
           badDataAreasChecked: true,
-          libraryListValidated: true
+          libraryListValidated: true,
+          pathChecked: true
         });
 
         return {
@@ -846,19 +917,6 @@ export default class IBMi {
   }
 
   /**
-   * @deprecated Use runCommand instead
-   * @param {string} command 
-   * @param {string} [directory] If not passed, will use current home directory
-   */
-  remoteCommand(command: string, directory?: string) {
-    //execCommand does not crash..
-    // escape $ and "
-    command = command.replace(/\$/g, `\\$`).replace(/"/g, `\\"`);
-
-    return this.paseCommand(`system "` + command + `"`, directory);
-  }
-
-  /**
    * - Send PASE/QSH/ILE commands simply
    * - Commands sent here end in the 'IBM i Output' channel
    * - When sending `ile` commands:
@@ -877,24 +935,6 @@ export default class IBMi {
       ...options,
       command: `/QOpenSys/usr/bin/qsh`
     });
-  }
-
-  /**
-   * @deprecated Use sendCommand instead
-   */
-  async paseCommand(command: string, directory = this.config?.homeDirectory, returnType = 0, standardIO: StandardIO = {}): Promise<String | CommandResult> {
-    const result = await this.sendCommand({
-      command,
-      directory,
-      ...standardIO
-    })
-
-    if (returnType === 0) {
-      if (result.code === 0 || result.code === null) return Promise.resolve(result.stdout);
-      else return Promise.reject(result.stderr);
-    } else {
-      return Promise.resolve(result);
-    }
   }
 
   /**
