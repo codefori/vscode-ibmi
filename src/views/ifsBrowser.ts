@@ -1,7 +1,7 @@
 
 import os from "os";
 import path from "path";
-import vscode from "vscode";
+import vscode, { FileType } from "vscode";
 
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { SortOptions } from "../api/IBMiContent";
@@ -10,9 +10,12 @@ import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, WithPath } from "../typings";
+import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, WithPath } from "../typings";
 
 const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
+type DragNDropAction = "move" | "copy";
+type DragNDropBehavior = DragNDropAction | "ask";
+const getDragDropBehavior = () => GlobalConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
@@ -167,7 +170,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
 
-    this.contextValue = `shortcut${ PROTECTED_DIRS.test(this.path) ? `_protected` : ``}`;
+    this.contextValue = `shortcut${PROTECTED_DIRS.test(this.path) ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon("folder-library");
   }
 }
@@ -178,12 +181,82 @@ class ErrorItem extends BrowserItem {
   }
 }
 
+class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem> {
+  readonly dragMimeTypes = [IFS_BROWSER_MIMETYPE];
+  readonly dropMimeTypes = ["text/uri-list", IFS_BROWSER_MIMETYPE];
+
+  handleDrag(source: readonly IFSItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+    dataTransfer.set(IFS_BROWSER_MIMETYPE, new vscode.DataTransferItem(source));
+  }
+
+  async handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+    if (target) {
+      const toDirectory = (target.file.type === "streamfile" ? target.parent : target) as IFSDirectoryItem;
+      const ifsBrowserItems = dataTransfer.get(IFS_BROWSER_MIMETYPE);
+      if (ifsBrowserItems) {
+        this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
+      }
+      else {
+        const explorerItems = dataTransfer.get("text/uri-list");
+        if (explorerItems && explorerItems.value) {
+          //"text/uri-list" Mime type is a string with `toString()`ed Uris separated by `\r\n`.
+          const uris = (await explorerItems.asString()).split("\r\n").map(uri => vscode.Uri.parse(uri));
+          vscode.commands.executeCommand(`code-for-ibmi.uploadStreamfile`, toDirectory, uris);
+        }
+      }
+    }
+  }
+
+  private async moveOrCopyItems(ifsBrowserItems: IFSItem[], toDirectory: IFSDirectoryItem) {
+    const connection = instance.getConnection();
+    ifsBrowserItems = ifsBrowserItems.filter(item => item.parent !== toDirectory);
+    if (connection && ifsBrowserItems.length) {
+      const dndBehavior = getDragDropBehavior();
+      let action: DragNDropAction | undefined;
+      if (dndBehavior === "ask") {
+        const copy = t('ifsBrowser.uploadStreamfile.copy');
+        const move = t('ifsBrowser.uploadStreamfile.move');
+        const answer = await vscode.window.showInformationMessage(t('ifsBrowser.uploadStreamfile.ask', toDirectory.path), { modal: true }, copy, move);
+        if (answer) {
+          action = answer === copy ? "copy" : "move";
+        }
+      }
+      else {
+        action = dndBehavior;
+      }
+
+      if (action) {
+        let result;
+        switch (action) {
+          case "copy":
+            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => item.path).join(" ")} ${toDirectory.path}` });
+            break;
+
+          case "move":
+            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => item.path).join(" ")} ${toDirectory.path}` });
+            ifsBrowserItems.map(item => item.parent)
+              .filter(Tools.distinct)
+              .forEach(folder => folder?.refresh?.());
+            break;
+        }
+
+        if (result.code === 0) {
+          toDirectory.refresh();
+        } else {
+          vscode.window.showErrorMessage(t(`ifsBrowser.uploadStreamfile.${action}.failed`, toDirectory.path, result.stderr));
+        }
+      }
+    }
+  }
+}
+
 export function initializeIFSBrowser(context: vscode.ExtensionContext) {
   const ifsBrowser = new IFSBrowser();
   const ifsTreeViewer = vscode.window.createTreeView(
     `ifsBrowser`, {
     treeDataProvider: ifsBrowser,
-    showCollapseAll: true
+    showCollapseAll: true,
+    dragAndDropController: new IFSBrowserDragAndDrop()
   });
 
   instance.onEvent(`connected`, () => ifsBrowser.refresh());
@@ -359,36 +432,66 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node?: IFSDirectoryItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node: IFSDirectoryItem, files?: vscode.Uri[]) => {
       const connection = instance.getConnection();
       const config = instance.getConfig();
 
       if (config && connection) {
         const root = node?.path || config.homeDirectory;
 
-        const chosenFiles = await vscode.window.showOpenDialog({ defaultUri: vscode.Uri.file(os.homedir()), canSelectMany: true });
+        const chosenFiles = files || await vscode.window.showOpenDialog({
+          defaultUri: vscode.Uri.file(os.homedir()),
+          canSelectMany: true,
+          canSelectFolders: true,
+          canSelectFiles: true
+        });
 
-        const uploads: { local: string; remote: string; }[] = [];
+        const filesToUpload: { local: string; remote: string; }[] = [];
+        const directoriesToUpload: vscode.Uri[] = [];
         if (chosenFiles) {
-          chosenFiles.forEach(uri => {
-            uploads.push({
-              local: uri.fsPath,
-              remote: path.posix.join(root, path.basename(uri.fsPath))
-            })
-          });
+          for (const uri of chosenFiles) {
+            if ((await vscode.workspace.fs.stat(uri)).type === FileType.Directory) {
+              directoriesToUpload.push(uri);
+            }
+            else {
+              filesToUpload.push({
+                local: uri.fsPath,
+                remote: path.posix.join(root, path.basename(uri.fsPath))
+              })
+            }
+          }
         }
 
-        if (uploads.length) {
-          try {
-            await connection.uploadFiles(uploads, { concurrency: 5 });
-            if (GlobalConfiguration.get(`autoRefresh`)) {
-              ifsBrowser.refresh(node);
+        if (filesToUpload.length || directoriesToUpload.length) {
+          await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: t('ifsBrowser.uploadStreamfile.process.uploading'),
+            cancellable: false
+          }, async (progress) => {
+            try {
+              if (filesToUpload.length) {
+                progress.report({ message: t('ifsBrowser.uploadStreamfile.process.uploading.files', filesToUpload.length) });
+                await connection.uploadFiles(filesToUpload, { concurrency: 5 });
+              }
+
+              if (directoriesToUpload.length) {
+                for (const directory of directoriesToUpload) {
+                  const name = path.basename(directory.fsPath);
+                  progress.report({ message: t('ifsBrowser.uploadStreamfile.process.uploading.directory', name) })
+                  await connection.uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
+                }
+              }
+
+              if (GlobalConfiguration.get(`autoRefresh`)) {
+                ifsBrowser.refresh(node);
+              }
+              vscode.window.showInformationMessage(t(`ifsBrowser.uploadStreamfile.uploadedFiles`));
+            } catch (err) {
+              vscode.window.showErrorMessage(t(`ifsBrowser.uploadStreamfile.errorMessage`, err));
             }
-            vscode.window.showInformationMessage(t(`ifsBrowser.uploadStreamfile.uploadedFiles`));
-          } catch (err) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.uploadStreamfile.errorMessage`, err));
-          }
-        } else {
+          });
+        }
+        else {
           vscode.window.showInformationMessage(t(`ifsBrowser.uploadStreamfile.noFilesSelected`));
         }
       }
@@ -423,10 +526,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             if (deletionConfirmed) {
               try {
                 const removeResult = await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(node.path)}` })
-                if(removeResult.code === 0){
+                if (removeResult.code === 0) {
                   vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, node.path));
                 }
-                else{
+                else {
                   throw removeResult.stderr;
                 }
                 if (GlobalConfiguration.get(`autoRefresh`)) {

@@ -443,6 +443,21 @@
 					"default": true,
 					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
 				},
+				"code-for-ibmi.IfsBrowser.DragAndDropDefaultBehavior": {
+					"type": "string",
+					"default": "ask",
+					"enum": [
+						"ask",
+						"copy",
+						"move"
+					],
+					"enumDescriptions": [
+						"Show a modal choice dialog",
+						"Always copy",
+						"Always move"
+					],
+					"description": "The action to take when an item from the IFS Browser is dragged'n'dropped."
+				},
 				"code-for-ibmi.clearDiagnosticOnEdit": {
 					"type": "boolean",
 					"default": false,
