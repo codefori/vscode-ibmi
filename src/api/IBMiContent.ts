@@ -686,6 +686,7 @@ export default class IBMiContent {
           return `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`;
         }
       })
+      .map(file => Tools.escapePath(file))
       .join(` `)
       .replace(/([$\\])/g,'\\$1')
       .toUpperCase();
