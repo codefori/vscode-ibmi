@@ -681,14 +681,15 @@ export default class IBMiContent {
       .map(file => {
         const asp = file.asp || this.config.sourceASP;
         if (asp && asp.length > 0) {
-          return [`/${asp}/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`, `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`].join(` `);
+          return [
+            Tools.qualifyPath(file.library, file.name, member, asp, true), 
+            Tools.qualifyPath(file.library, file.name, member, undefined, true)
+          ].join(` `);
         } else {
-          return `/QSYS.LIB/${file.library}.LIB/${file.name}.FILE/${member}.MBR`;
+          return Tools.qualifyPath(file.library, file.name, member, undefined, true);
         }
       })
-      .map(file => Tools.escapePath(file))
       .join(` `)
-      .replace(/([$\\])/g,'\\$1')
       .toUpperCase();
 
     const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
