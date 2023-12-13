@@ -12,6 +12,7 @@ import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer
 import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from './local/env';
+import { getGitBranch } from './local/git';
 
 const NEWLINE = `\r\n`;
 
@@ -240,20 +241,11 @@ export namespace CompileTools {
                     variables.set(`{path}`, fullPath);
                     variables.set(`&WORKDIR`, remoteCwd);
 
-                    try {
-                      const gitApi = Tools.getGitAPI();
-                      if (gitApi && gitApi.repositories?.length) {
-                        const repo = gitApi.repositories[0];
-                        const branch = repo.state.HEAD?.name;
-
-                        if (branch) {
-                          variables.set(`&BRANCHLIB`, getBranchLibraryName(branch));
-                          variables.set(`&BRANCH`, branch);
-                          variables.set(`{branch}`, branch);
-                        }
-                      }
-                    } catch (e) {
-                      // writeEmitter.fire(`Error occurred while getting branch name: ${e}`);
+                    const branch = getGitBranch(fromWorkspace);
+                    if (branch) {
+                      variables.set(`&BRANCHLIB`, getBranchLibraryName(branch));
+                      variables.set(`&BRANCH`, branch);
+                      variables.set(`{branch}`, branch);
                     }
                   }
                   break;

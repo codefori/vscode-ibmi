@@ -17,7 +17,7 @@ import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings"
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import IBMi from './api/IBMi';
+import { setupGitEventHandler } from './api/local/git';
 
 export let instance: Instance;
 
@@ -103,7 +103,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       console.log(path);
       if (!options?.readonly && !path.startsWith('/')) {
         const [library, name] = path.split('/');
-        const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
+        const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, ["*UPD"]);
         if (!writable) {
           options = options || {};
           options.readonly = true;
@@ -599,6 +599,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   }
 
   clRunner.initialise(context);
+
+  // Register git events based on workspace folders
+	if (vscode.workspace.workspaceFolders) {
+    setupGitEventHandler(context, vscode.workspace.workspaceFolders as vscode.WorkspaceFolder[]);
+    vscode.workspace.onDidChangeWorkspaceFolders((e) => {
+			setupGitEventHandler(context, e.added as vscode.WorkspaceFolder[]);
+		})
+  }
+
 }
 
 function updateConnectedBar() {

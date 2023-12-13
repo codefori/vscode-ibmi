@@ -199,7 +199,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
       library: this.sourceFile.library,
       name: this.sourceFile.name,
       type: `*FILE`
-    }, `*UPD`);
+    }, [`*UPD`]);
 
     try {
       const lowerCased = objectNamesLower();
