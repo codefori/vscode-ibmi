@@ -10,7 +10,7 @@ import { DeployTools } from "../api/local/deployTools";
 import { getEnvConfig } from "../api/local/env";
 import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { Action } from "../typings";
-import { CompileTools } from "../api/CompileTools";
+import { CompileTools } from "../api/actions/CompileTools";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,

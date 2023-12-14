@@ -1,17 +1,17 @@
 
 import path from 'path';
 import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
-import { parseFSOptions } from '../filesystems/qsys/QSysFs';
-import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
-import { GlobalConfiguration } from './Configuration';
-import { CustomUI } from './CustomUI';
-import IBMi from './IBMi';
-import Instance from './Instance';
-import { Tools } from './Tools';
-import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
-import { getLocalActions } from './local/actions';
-import { DeployTools } from './local/deployTools';
-import { getBranchLibraryName, getEnvConfig } from './local/env';
+import { parseFSOptions } from '../../filesystems/qsys/QSysFs';
+import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../../typings';
+import { GlobalConfiguration } from '../Configuration';
+import { CustomUI } from '../CustomUI';
+import IBMi from '../IBMi';
+import Instance from '../Instance';
+import { Tools } from '../Tools';
+import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from '../errors/diagnostics';
+import { getLocalActions } from '../local/actions';
+import { DeployTools } from '../local/deployTools';
+import { getBranchLibraryName, getEnvConfig } from '../local/env';
 
 const NEWLINE = `\r\n`;
 
@@ -34,7 +34,7 @@ export namespace CompileTools {
 
   export function register(context: vscode.ExtensionContext) {
     context.subscriptions.push(
-      ...registerDiagnostics()
+      ...registerDiagnostics(),
     );
   }
 

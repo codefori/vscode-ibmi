@@ -1,13 +1,31 @@
 
-import vscode from 'vscode';
+import vscode, { ExtensionContext } from 'vscode';
 import { instance } from '../instantiate';
 import IBMi from './IBMi';
 import Instance from './Instance';
+import { dirname } from 'path';
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
     return value;
   }
+}
+
+export function connectTerminalCommands(context: ExtensionContext, instance: Instance) {
+  context.subscriptions.push(
+    vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
+      return Terminal.selectAndOpen(instance);
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
+      const content = instance.getContent();
+      if (content) {
+        const chosenPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
+        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
+        terminal?.sendText(`cd ${chosenPath}`);
+      }
+    }),
+  );
 }
 
 export namespace Terminal {

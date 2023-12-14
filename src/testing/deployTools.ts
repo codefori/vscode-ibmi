@@ -6,7 +6,7 @@ import { EOL } from "os";
 import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
-import { CompileTools } from "../api/CompileTools";
+import { CompileTools } from "../api/actions/CompileTools";
 import { Tools } from "../api/Tools";
 import { DeployTools } from "../api/local/deployTools";
 import { instance } from "../instantiate";

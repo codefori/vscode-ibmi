@@ -1,5 +1,5 @@
 import { EndOfLine, ExtensionContext, Position, Range, Selection, TextDocument, commands, window } from "vscode";
-import { CompileTools } from "../../api/CompileTools";
+import { CompileTools } from "../../api/actions/CompileTools";
 import { instance } from "../../instantiate";
 
 export function initialise(context: ExtensionContext) {

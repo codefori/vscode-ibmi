@@ -7,7 +7,7 @@ import { ExtensionContext, commands, window, workspace } from "vscode";
 import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 
-import { CompileTools } from "./api/CompileTools";
+import { CompileTools } from "./api/actions/CompileTools";
 import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";

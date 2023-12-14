@@ -1,10 +1,12 @@
 
+import * as path from "path";
 import * as vscode from "vscode";
 import Instance from "../Instance";
 import { parseErrors } from "./parser";
 import { FileError } from "../../typings";
 import { getEvfeventFiles } from "../local/actions";
 import { GlobalConfiguration } from "../Configuration";
+import { instance } from "../../instantiate";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -22,6 +24,78 @@ export function registerDiagnostics(): vscode.Disposable[] {
 
     vscode.commands.registerCommand(`code-for-ibmi.clearDiagnostics`, async () => {
       clearDiagnostics();
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.openErrors`, async (qualifiedObject?: string) => {
+      interface ObjectDetail {
+        asp?: string;
+        lib: string;
+        object: string;
+        ext?: string;
+      }
+
+      const detail: ObjectDetail = {
+        asp: undefined,
+        lib: ``,
+        object: ``,
+        ext: undefined
+      };
+
+      let inputPath: string | undefined
+
+      if (qualifiedObject) {
+        // Value passed in via parameter
+        inputPath = qualifiedObject;
+
+      } else {
+        // Value collected from user input
+
+        let initialPath = ``;
+        const editor = vscode.window.activeTextEditor;
+
+        if (editor) {
+          const config = instance.getConfig()!;
+          const uri = editor.document.uri;
+
+          if ([`member`, `streamfile`].includes(uri.scheme)) {
+
+            switch (uri.scheme) {
+              case `member`:
+                const memberPath = uri.path.split(`/`);
+                if (memberPath.length === 4) {
+                  detail.lib = memberPath[1];
+                } else if (memberPath.length === 5) {
+                  detail.asp = memberPath[1];
+                  detail.lib = memberPath[2];
+                }
+                break;
+              case `streamfile`:
+                detail.asp = (config.sourceASP && config.sourceASP.length > 0) ? config.sourceASP : undefined;
+                detail.lib = config.currentLibrary;
+                break;
+            }
+
+            const pathDetail = path.parse(editor.document.uri.path);
+            detail.object = pathDetail.name;
+            detail.ext = pathDetail.ext.substring(1);
+
+            initialPath = `${detail.lib}/${pathDetail.base}`;
+          }
+        }
+
+        inputPath = await vscode.window.showInputBox({
+          prompt: `Enter object path (LIB/OBJECT)`,
+          value: initialPath
+        });
+      }
+
+      if (inputPath) {
+        const [library, object] = inputPath.split(`/`);
+        if (library && object) {
+          const nameDetail = path.parse(object);
+          refreshDiagnosticsFromServer(instance, { library, object: nameDetail.name, extension: (nameDetail.ext.length > 1 ? nameDetail.ext.substring(1) : undefined) });
+        }
+      }
     }),
   ];
 

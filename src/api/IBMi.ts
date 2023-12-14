@@ -6,7 +6,7 @@ import { ConnectionConfiguration } from "./Configuration";
 import path from 'path';
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
-import { CompileTools } from "./CompileTools";
+import { CompileTools } from "./actions/CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';

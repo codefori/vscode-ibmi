@@ -9,7 +9,7 @@ import * as server from "./server";
 import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
 import { getEnvConfig } from "../local/env";
-import { ILELibrarySettings } from "../CompileTools";
+import { ILELibrarySettings } from "../actions/CompileTools";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
