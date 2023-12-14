@@ -43,12 +43,16 @@
 			{
 				"path": "./schemas/cl.code-snippets",
 				"language": "cl"
+			},
+			{
+				"path": "./schemas/local-variables.code-snippets",
+				"language": "json"
 			}
 		],
 		"jsonValidation": [
 			{
 				"fileMatch": [
-					"actions.json"
+					".vscode/actions.json"
 				],
 				"url": "./schemas/actions.json"
 			}
