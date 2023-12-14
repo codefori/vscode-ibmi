@@ -22,7 +22,8 @@ export interface ILELibrarySettings {
 }
 
 export namespace CompileTools {
-  type Variables = Map<string, string>
+  type Variables = Map<string, string>;
+  type VariableRecords = Record<string, string>;
 
   interface CommandObject {
     object: string
@@ -39,46 +40,43 @@ export namespace CompileTools {
     );
   }
 
-  function replaceValues(inputValue: string, variables: Variables, currentVar?: string) {
-    variables.forEach((value, varName) => {
-      if (value) {
-
-        // When replacing a value, let's check if this value has any variables in it too!
-        if (currentVar === undefined) {
-          value = replaceValues(value, variables, varName);
+  function expandVariables(variables: VariableRecords) {
+    for (const key in variables) {
+      for (const key2 in variables) {
+        if (key !== key2) { // Do not expand one self
+          variables[key] = variables[key].replace(new RegExp(key2, `g`), variables[key2]);
         }
-
-        inputValue = inputValue.replace(new RegExp(varName, `g`), value);
       }
-    });
+    }
+  }
+
+  function expandCommand(inputValue: string, variables: VariableRecords, currentVar?: string) {
+    for (const key in variables) {
+      if (variables[key]) {
+        inputValue = inputValue.replace(new RegExp(key, `g`), variables[key]);
+      }
+    };
 
     return inputValue;
   }
 
-  function getDefaultVariables(instance: Instance, librarySettings: ILELibrarySettings): Variables {
-    const variables: Variables = new Map;
-
+  function applyDefaultVariables(instance: Instance, variables: VariableRecords) {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (connection && config) {
-      variables.set(`&BUILDLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
-      variables.set(`&CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
-      variables.set(`\\*CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
-      variables.set(`&USERNAME`, connection.currentUser);
-      variables.set(`{usrprf}`, connection.currentUser);
-      variables.set(`&HOST`, connection.currentHost);
-      variables.set(`{host}`, connection.currentHost);
-      variables.set(`&HOME`, config.homeDirectory);
-
-      const libraryList = buildLibraryList(librarySettings);
-      variables.set(`&LIBLS`, libraryList.join(` `));
+      variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
+      if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
+      if (!variables[`\\*CURLIB`]) variables[`\\*CURLIB`] = config.currentLibrary;
+      variables[`&USERNAME`] = connection.currentUser;
+      variables[`{usrprf}`] = connection.currentUser;
+      variables[`&HOST`] = connection.currentHost;
+      variables[`{host}`] = connection.currentHost;
+      variables[`&HOME`] = config.homeDirectory;
 
       for (const variable of config.customVariables) {
-        variables.set(`&${variable.name.toUpperCase()}`, variable.value);
+        variables[`&${variable.name.toUpperCase()}`] = variable.value;
       }
     }
-
-    return variables;
   }
 
   export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
@@ -292,8 +290,6 @@ export namespace CompileTools {
               break;
           }
 
-          const command = replaceValues(chosenAction.command, variables);
-
           const viewControl = GlobalConfiguration.get<string>(`postActionView`) || "none";
           const outputBuffer: string[] = [];
           let actionName = chosenAction.name;
@@ -335,7 +331,7 @@ export namespace CompileTools {
                       const commandResult = await runCommand(instance, {
                         title: chosenAction.name,
                         environment,
-                        command,
+                        command: chosenAction.command,
                         cwd: remoteCwd,
                         env: Object.fromEntries(variables),
                       }, writeEmitter);
@@ -363,7 +359,7 @@ export namespace CompileTools {
 
                         }
                         else if (evfeventInfo.object && evfeventInfo.library) {
-                          if (command.includes(`*EVENTF`)) {
+                          if (chosenAction.command.includes(`*EVENTF`)) {
                             writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                             refreshDiagnosticsFromServer(instance, evfeventInfo);
                             problemsFetched = true;
@@ -549,23 +545,24 @@ export namespace CompileTools {
     const config = instance.getConfig();
     if (config && connection) {
       const cwd = options.cwd;
+      const variables = options.env || {};
+
+      applyDefaultVariables(instance, variables);
+      expandVariables(variables);
 
       const ileSetup: ILELibrarySettings = {
-        currentLibrary: config.currentLibrary,
-        libraryList: config.libraryList,
+        currentLibrary: variables[`&CURLIB`] || config.currentLibrary,
+        libraryList: variables[`&LIBL`]?.split(` `) || config.libraryList,
       };
-
-      if (options.env) {
-        ileSetup.libraryList = options.env[`&LIBL`]?.split(` `) || ileSetup.libraryList;
-        ileSetup.currentLibrary = options.env[`&CURLIB`] || ileSetup.currentLibrary;
-      }
-
       // Remove any duplicates from the library list
       ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
-      let commandString = replaceValues(
+      const libraryList = buildLibraryList(ileSetup);
+      variables[`&LIBLS`] = libraryList.join(` `);
+
+      let commandString = expandCommand(
         options.command,
-        getDefaultVariables(instance, ileSetup)
+        variables
       );
 
       if (commandString) {
@@ -612,15 +609,8 @@ export namespace CompileTools {
             // We build environment variables for the environment to be ready
             const paseVars: Variables = new Map;
 
-            // Get default variable
-            getDefaultVariables(instance, ileSetup).forEach((value: string, key: string) => {
-              if ((/^[A-Za-z\&]/i).test(key)) {
-                paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
-              }
-            });
-
             // Append any variables passed into the API
-            Object.entries(options.env || {}).forEach(([key, value]) => {
+            Object.entries(variables).forEach(([key, value]) => {
               if ((/^[A-Za-z\&]/i).test(key)) {
                 paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
               }
@@ -775,16 +765,7 @@ export namespace CompileTools {
 
   function buildLibraryList(config: ILELibrarySettings): string[] {
     //We have to reverse it because `liblist -a` adds the next item to the top always 
-    return config.libraryList
-      .map(library => {
-        //We use this for special variables in the libl
-        switch (library) {
-          case `&BUILDLIB`:
-          case `&CURLIB`:
-            return config.currentLibrary;
-          default: return library;
-        }
-      }).reverse();
+    return config.libraryList.reverse();
   }
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
