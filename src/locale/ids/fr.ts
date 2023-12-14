@@ -78,6 +78,7 @@ export const fr: Locale = {
   'ifsBrowser.uploadStreamfile.move.failed':'Échec du déplacement de la sélection vers {0}: {1}',
   'ifsBrowser.deleteIFS.rootNotAllowed': `Impossible de supprimer la racine (/) depuis l'Explorateur IFS.`,
   'ifsBrowser.deleteIFS.warningMessage': `Êtes-vous sûr de vouloir suprimer {0}?`,
+  'ifsBrowser.deleteIFS.multi.warningMessage': `Êtes-vous sûr de vouloir suprimer les {0} fichiers sélectionnés?`,
   'ifsBrowser.deleteIFS.deletionPrompt': `La suppression du répertoire est irréversible!\nEntrez \"{0}\" pour confirmer la suppression.`,
   'ifsBrowser.deleteIFS.deletionPrompt2': ` (Appuyer sur \'Escape\' pour annuler)`,
   'ifsBrowser.deleteIFS.infoMessage': `{0} supprimé.`,

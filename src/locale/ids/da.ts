@@ -78,6 +78,7 @@ export const da: Locale = {
   'ifsBrowser.uploadStreamfile.move.failed':'Failed to move selection to {0}: {1}',
   'ifsBrowser.deleteIFS.rootNotAllowed': `Ikke tilladt at slette root (/) fra IFS Browser.`,
   'ifsBrowser.deleteIFS.warningMessage': `Er du sikker på at du vil slette {0}?`,
+  'ifsBrowser.deleteIFS.multi.warningMessage': `Are you sure you want to delete the {0} selected files?`,
   'ifsBrowser.deleteIFS.deletionPrompt': `Når du har slettet mappen, kan den ikke retableres.\nVenligst tast \"{0}\" for at bekræfte sletning.`,
   'ifsBrowser.deleteIFS.deletionPrompt2': ` (Press \'Escape\' to cancel)`,
   'ifsBrowser.deleteIFS.infoMessage': `Slettede {0}.`,

@@ -78,6 +78,7 @@ export const en: Locale = {
   'ifsBrowser.uploadStreamfile.move.failed':'Failed to move selection to {0}: {1}',
   'ifsBrowser.deleteIFS.rootNotAllowed': `Unable to delete root (/) from the IFS Browser.`,
   'ifsBrowser.deleteIFS.warningMessage': `Are you sure you want to delete {0}?`,
+  'ifsBrowser.deleteIFS.multi.warningMessage': `Are you sure you want to delete the {0} selected files?`,
   'ifsBrowser.deleteIFS.deletionPrompt': `Once you delete the directory, it cannot be restored.\nPlease type \"{0}\" to confirm deletion.`,
   'ifsBrowser.deleteIFS.deletionPrompt2': ` (Press \'Escape\' to cancel)`,
   'ifsBrowser.deleteIFS.infoMessage': `Deleted {0}.`,

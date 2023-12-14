@@ -256,6 +256,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     `ifsBrowser`, {
     treeDataProvider: ifsBrowser,
     showCollapseAll: true,
+    canSelectMany: true,
     dragAndDropController: new IFSBrowserDragAndDrop()
   });
 
@@ -497,55 +498,62 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (node: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
       const connection = instance.getConnection();
       const config = instance.getConfig();
       if (connection && config) {
-        if (node.path !== `/`) {
+        items = items || [singleItem];
+        if (!items.find(n => n.path === '/')) {
           let deletionConfirmed = false;
-          const proceed = await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, node.path), t(`Yes`), t(`Cancel`)) === t(`Yes`);
+          const proceed = items.length > 1 ?
+            await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length), t(`Yes`), t(`Cancel`)) === t(`Yes`) :
+            await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path), t(`Yes`), t(`Cancel`)) === t(`Yes`);
           if (proceed) {
-            if ((GlobalConfiguration.get(`safeDeleteMode`)) && node.contextValue === `directory`) { //Check if path is directory
-              const dirName = path.basename(node.path)  //Get the name of the directory to be deleted
+            for (const item of items) {
+              if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.contextValue === `directory`) { //Check if path is directory
+                const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
 
-              const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
-              const input = await vscode.window.showInputBox({
-                placeHolder: dirName,
-                prompt: deletionPrompt,
-                validateInput: text => {
-                  return (text === dirName) ? null : deletionPrompt + t(`ifsBrowser.deleteIFS.deletionPrompt2`);
-                }
-              });
-              deletionConfirmed = (input === dirName);
-            }
-            else {
-              // If deleting a file rather than a directory, skip the name entry
-              deletionConfirmed = true;
-            }
+                const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
+                const input = await vscode.window.showInputBox({
+                  placeHolder: dirName,
+                  prompt: deletionPrompt,
+                  validateInput: text => {
+                    return (text === dirName) ? null : deletionPrompt + t(`ifsBrowser.deleteIFS.deletionPrompt2`);
+                  }
+                });
+                deletionConfirmed = (input === dirName);
+              }
+              else {
+                // If deleting a file rather than a directory, skip the name entry
+                deletionConfirmed = true;
+              }
 
-            if (deletionConfirmed) {
-              try {
-                const removeResult = await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(node.path)}` })
-                if (removeResult.code === 0) {
-                  vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, node.path));
+              if (deletionConfirmed) {
+                try {
+                  const removeResult = await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(item.path)}` })
+                  if (removeResult.code === 0) {
+                    vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, item.path));
+                  }
+                  else {
+                    throw removeResult.stderr;
+                  }                  
+                } catch (e) {
+                  vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
                 }
-                else {
-                  throw removeResult.stderr;
-                }
-                if (GlobalConfiguration.get(`autoRefresh`)) {
-                  ifsBrowser.refresh(node.parent);
-                }
-              } catch (e) {
-                vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
+              }
+              else {
+                vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.cancelled`));
               }
             }
-            else {
-              vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.cancelled`));
+            if (GlobalConfiguration.get(`autoRefresh`)) {
+              items.map(item => item.parent)
+                .filter(Tools.distinct)
+                .forEach(async parent => parent?.refresh?.());
             }
           }
-          else {
-            vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.rootNotAllowed`));
-          }
+        }
+        else {
+          vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.rootNotAllowed`));
         }
       }
     }),
