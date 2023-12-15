@@ -503,7 +503,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const config = instance.getConfig();
       if (connection && config) {
         items = items || [singleItem];
-        if (!items.find(n => n.path === '/')) {
+        if (!items.find(n => PROTECTED_DIRS.test(n.path))) {
           let deletionConfirmed = false;
           const proceed = items.length > 1 ?
             await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length), t(`Yes`), t(`Cancel`)) === t(`Yes`) :
@@ -553,7 +553,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           }
         }
         else {
-          vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.rootNotAllowed`));
+          vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => PROTECTED_DIRS.test(n.path)).map(n => n.path).join(`\n`)));
         }
       }
     }),
