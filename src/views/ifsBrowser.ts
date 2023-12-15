@@ -177,7 +177,8 @@ class IFSShortcutItem extends IFSDirectoryItem {
 
 class ErrorItem extends BrowserItem {
   constructor(error: Error) {
-    super(t(`ifsBrowser.getChildren.errorMessage`))
+    super(t("ifsBrowser.getChildren.errorMessage"))
+    this.description = error.message;
   }
 }
 
