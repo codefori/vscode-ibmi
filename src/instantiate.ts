@@ -401,8 +401,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (selection && selection !== LOADING_LABEL) {
           if (selection === clearList) {
             storage!.setSourceList({});
+            quickPick.items = clearListArray;
             vscode.window.showInformationMessage(`Cleared list.`);
-            quickPick.hide()
           } else {
             const selectionSplit = selection.split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
