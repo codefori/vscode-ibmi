@@ -79,25 +79,23 @@ export const ActionSuite: TestSuite = {
         const connection = instance.getConnection();
         const tempLib = config!.tempLibrary;
 
-        try {
-          await connection!.runCommand({ command: `DLTOBJ OBJ(${tempLib}/QRPGLESRC) OBJTYPE(*FILE)` });
-        } finally {
-          await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/QRPGLESRC) RCDLEN(112)` });
-          await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(HELLO) SRCTYPE(RPGLE)` });
-          await content!.uploadMemberContent(undefined, tempLib, 'QRPGLESRC', 'HELLO', helloWorldProject.files![0].content.join('\n'));
-          const action: Action = {
-            "name": "Create Bound RPG Program (CRTBNDRPG)",
-            "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)",
-            "type": "member",
-            "environment": "ile",
-            "extensions": [
-              "RPGLE",
-              "RPG"
-            ],
-          };
-          const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: 'HELLO', extension: 'RPGLE' })
-          await testHelloWorldProgram(uri, action, tempLib);
-        }
+        await connection!.runCommand({ command: `DLTOBJ OBJ(${tempLib}/QRPGLESRC) OBJTYPE(*FILE)` });
+
+        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/QRPGLESRC) RCDLEN(112)` });
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/QRPGLESRC) MBR(HELLO) SRCTYPE(RPGLE)` });
+        await content!.uploadMemberContent(undefined, tempLib, 'QRPGLESRC', 'HELLO', helloWorldProject.files![0].content.join('\n'));
+        const action: Action = {
+          "name": "Create Bound RPG Program (CRTBNDRPG)",
+          "command": "CRTBNDRPG PGM(&OPENLIB/&OPENMBR) SRCFILE(&OPENLIB/&OPENSPF) OPTION(*EVENTF) DBGVIEW(*SOURCE) TGTRLS(*CURRENT)",
+          "type": "member",
+          "environment": "ile",
+          "extensions": [
+            "RPGLE",
+            "RPG"
+          ],
+        };
+        const uri = getMemberUri({ library: tempLib, file: 'QRPGLESRC', name: 'HELLO', extension: 'RPGLE' })
+        await testHelloWorldProgram(uri, action, tempLib);
       }
     }
   ]

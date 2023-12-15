@@ -344,16 +344,16 @@ export default class IBMi {
         });
 
         //Next, we need to check the temp lib (where temp outfile data lives) exists
-        try {
-          await this.runCommand({
-            command: `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
-            noLibList: true
-          });
+        const createdTempLib = await this.runCommand({
+          command: `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
+          noLibList: true
+        });
 
+        if (createdTempLib.code === 0) {
           tempLibrarySet = true;
-
-        } catch (e: any) {
-          let [errorcode, errortext] = e.split(`:`);
+          
+        } else {
+          let [errorcode, errortext] = createdTempLib?.stderr.split(`:`);
 
           switch (errorcode) {
             case `CPF2158`: //Library X exists in ASP device ASP X.
@@ -362,15 +362,16 @@ export default class IBMi {
               break;
 
             case `CPD0032`: //Can't use CRTLIB
-              try {
-                await this.runCommand({
-                  command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-                  noLibList: true
-                });
+              const tempLibExists = await this.runCommand({
+                command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+                noLibList: true
+              });
 
+              if (tempLibExists?.code === 0) {
                 //We're all good if no errors
                 tempLibrarySet = true;
-              } catch (e) {
+
+              } else {
                 if (currentLibrary) {
                   if (currentLibrary.startsWith(`Q`)) {
                     //Temporary library not created. Some parts of the extension will not run without a temporary library.
@@ -387,7 +388,7 @@ export default class IBMi {
               break;
           }
 
-          console.log(e);
+          console.log(createdTempLib?.stderr);
         }
 
         progress.report({
@@ -431,18 +432,17 @@ export default class IBMi {
           })
             .then(result => {
               // All good!
-            })
-            .catch(e => {
-              // CPF2125: No objects deleted.
-              if (!e.startsWith(`CPF2125`)) {
-                // @ts-ignore We know the config exists.
-                vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
-                  if (choice === `View log`) {
-                    this.outputChannel!.show();
-                  }
-                });
+              if (result && result.stderr) {
+                if (!result.stderr.startsWith(`CPF2125`)) {
+                  // @ts-ignore We know the config exists.
+                  vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
+                    if (choice === `View log`) {
+                      this.outputChannel!.show();
+                    }
+                  });
+                }
               }
-            });
+            })
 
           this.sendCommand({
             command: `rm -f ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
@@ -469,12 +469,12 @@ export default class IBMi {
             message: `Checking for bad data areas.`
           });
 
-          try {
-            await this.runCommand({
-              command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-              noLibList: true
-            });
+          const QCPTOIMPF = await this.runCommand({
+            command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+            noLibList: true
+          });
 
+          if (QCPTOIMPF?.code === 0) {
             vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
               detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
               modal: true,
@@ -485,28 +485,27 @@ export default class IBMi {
                     command: `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
                     noLibList: true
                   })
-                    .then(() => {
-                      vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                    .then((result) => {
+                      if (result?.code === 0) {
+                        vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                      } else {
+                        vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                      }
                     })
-                    .catch(e => {
-                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
-                    });
                   break;
                 case `Read more`:
                   vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
                   break;
               }
             });
-          } catch (e) {
-            // It doesn't exist, we're all good.
           }
 
-          try {
-            await this.runCommand({
-              command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-              noLibList: true
-            });
+          const QCPFRMIMPF = await await this.runCommand({
+            command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+            noLibList: true
+          });
 
+          if (QCPFRMIMPF?.code === 0) {
             vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
               modal: false,
             }, `Delete`, `Read more`).then(choice => {
@@ -516,20 +515,19 @@ export default class IBMi {
                     command: `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
                     noLibList: true
                   })
-                    .then(() => {
-                      vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                    .then((result) => {
+                      if (result?.code === 0) {
+                        vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                      } else {
+                        vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                      }
                     })
-                    .catch(e => {
-                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
-                    });
                   break;
                 case `Read more`:
                   vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
                   break;
               }
             });
-          } catch (e) {
-            // It doesn't exist, we're all good.
           }
         }
 

@@ -121,21 +121,20 @@ export default class IBMiContent {
     let path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
     while (true) {
-      try {
-        await this.ibmi.runCommand({
-          command: `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
+      const copyResult = await this.ibmi.runCommand({
+        command: `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+        noLibList: true
+      });
 
+      if (copyResult.code === 0) {
         if (!localPath) {
           localPath = await tmpFile();
         }
         await this.ibmi.downloadFile(localPath, tempRmt);
         return await readFileAsync(localPath, `utf8`);
-      }
-      catch (e) {
+      } else {
         if (!retry) {
-          const messageID = String(e).substring(0, 7);
+          const messageID = String(copyResult.stdout).substring(0, 7);
           switch (messageID) {
             case "CPDA08A":
               //We need to try again after we delete the temp remote
@@ -156,7 +155,7 @@ export default class IBMiContent {
         }
 
         if (!retry) {
-          throw e
+          throw new Error(`Failed downloading member: ${copyResult.stderr}`);
         }
       }
     }
@@ -182,16 +181,16 @@ export default class IBMiContent {
       await client.putFile(tmpobj, tempRmt);
 
       while (true) {
-        try {
-          await this.ibmi.runCommand({
-            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-            noLibList: true
-          });
+        const copyResult = await this.ibmi.runCommand({
+          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          noLibList: true
+        });
+
+        if (copyResult.code === 0) {
           return true;
-        }
-        catch (e) {
+        } else {
           if (!retry) {
-            const messageID = String(e).substring(0, 7);
+            const messageID = String(copyResult.stderr).substring(0, 7);
             switch (messageID) {
               case "CPFA0A9":
                 //The member may be located on SYSBAS
@@ -201,7 +200,7 @@ export default class IBMiContent {
                 }
                 break;
               default:
-                throw e;
+                throw new Error(`Failed uploading member: ${copyResult.stderr}`);
             }
           }
         }
@@ -300,33 +299,38 @@ export default class IBMiContent {
 
     } else {
       const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
-      await this.ibmi.runCommand({
+      const copyResult = await this.ibmi.runCommand({
         command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
           `TOSTMF('${tempRmt}') ` +
           `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
         noLibList: true
       });
 
-      let result = await this.downloadStreamfile(tempRmt);
+      if (copyResult.code === 0) {
+        let result = await this.downloadStreamfile(tempRmt);
 
-      if (this.config.autoClearTempData) {
-        await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
-        if (deleteTable) {
-          await this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true });
+        if (this.config.autoClearTempData) {
+          Promise.allSettled([
+            this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` }),
+            deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
+          ]);
         }
-      }
 
-      return parse(result, {
-        columns: true,
-        skip_empty_lines: true,
-        cast: true,
-        onRecord(record) {
-          for (const key of Object.keys(record)) {
-            record[key] = record[key] === ` ` ? `` : record[key];
+        return parse(result, {
+          columns: true,
+          skip_empty_lines: true,
+          cast: true,
+          onRecord(record) {
+            for (const key of Object.keys(record)) {
+              record[key] = record[key] === ` ` ? `` : record[key];
+            }
+            return record;
           }
-          return record;
-        }
-      });
+        });
+
+      } else {
+        throw new Error(`Failed fetching table: ${copyResult.stderr}`);
+      }
     }
 
   }
