@@ -552,7 +552,7 @@ export namespace CompileTools {
   /**
    * Execute a command
    */
-  export async function runCommand(instance: Instance, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult | null> {
+  export async function runCommand(instance: Instance, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (config && connection) {
@@ -677,7 +677,12 @@ export namespace CompileTools {
       throw new Error("Please connect to an IBM i");
     }
 
-    return null;
+    return {
+      code: 1,
+      command: options.command,
+      stdout: ``,
+      stderr: `Command execution failed. (Internal)`,
+    };
   }
 
   /**

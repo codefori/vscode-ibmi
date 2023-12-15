@@ -187,10 +187,14 @@ export class ExtendedIBMiContent {
           await connection.sendCommand({ command: `${setccsid} 1208 ${tempRmt}` });
         }
 
-        await connection.runCommand({
+        const insertResult = await connection.runCommand({
           command: `QSYS/RUNSQLSTM SRCSTMF('${tempRmt}') COMMIT(*NONE) NAMING(*SQL)`,
           noLibList: true
         });
+
+        if (insertResult.code !== 0) {
+          throw new Error(`Failed to save member: ` + insertResult.stderr);
+        }
 
         if (this.sourceDateHandler.sourceDateMode === `diff`) {
           this.sourceDateHandler.baseSource.set(alias, body);

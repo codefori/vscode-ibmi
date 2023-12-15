@@ -10,7 +10,7 @@ import { GlobalStorage } from '../api/Storage';
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
+import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -446,20 +446,20 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const fullPath = toPath(fullName);
         const member = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t(`objectBrowser.createMember.progressTitle`, fullPath) }, async (progress) => {
-          try {
-            await connection.runCommand({
-              command: `ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`,
-              noLibList: true
-            })
+          const addResult = await connection.runCommand({
+            command: `ADDPFM FILE(${member.library}/${member.file}) MBR(${member.name}) SRCTYPE(${member.extension.length > 0 ? member.extension : `*NONE`})`,
+            noLibList: true
+          })
 
+          if (addResult.code === 0) {
             if (GlobalConfiguration.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`vscode.open`, getMemberUri(member));
             }
 
             objectBrowser.refresh(node);
-          }
-          catch (e) {
-            return e;
+
+          } else {
+            return addResult.stderr
           }
         });
 
@@ -493,17 +493,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const memberPath = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t(`objectBrowser.copyMember.progressTitle`, fullPath.toUpperCase()) }, async (progress) => {
           try {
-            let newMemberExists = true;
-            try {
-              await connection.runCommand({
-                command: `CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
-                noLibList: true
-              })
-            } catch (e) {
-              if (String(e).includes(`CPF9815`)) {
-                newMemberExists = false;
-              }
-            }
+            const checkResult = await connection.runCommand({
+              command: `CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
+              noLibList: true
+            })
+
+            const newMemberExists = checkResult.code === 0;
 
             if (newMemberExists) {
               const result = await vscode.window.showInformationMessage(t(`objectBrowser.copyMember.overwrite`, memberPath.name), { modal: true }, t(`Yes`), t(`No`))
@@ -517,16 +512,13 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               }
             }
 
-            try {
-              await connection.runCommand({
-                command: `CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
-                noLibList: true
-              })
-            } catch (e) {
-              // Ignore CPF2869 Empty member is not copied.
-              if (!String(e).includes(`CPF2869`)) {
-                throw (e)
-              }
+            const copyResult = await connection.runCommand({
+              command: `CPYSRCF FROMFILE(${oldMember.library}/${oldMember.file}) TOFILE(${memberPath.library}/${memberPath.file}) FROMMBR(${oldMember.name}) TOMBR(${memberPath.name}) MBROPT(*REPLACE)`,
+              noLibList: true
+            })
+
+            if (copyResult.stderr.includes(`CPF2869`)) {
+              throw (copyResult.stderr)
             }
 
             if (oldMember.extension !== memberPath.extension) {
@@ -570,17 +562,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const connection = getConnection();
         const { library, file, name } = connection.parserMemberPath(node.path);
 
-        try {
-          await connection.runCommand({
-            command: `RMVM FILE(${library}/${file}) MBR(${name})`,
-            noLibList: true
-          });
+        const removeResult = await connection.runCommand({
+          command: `RMVM FILE(${library}/${file}) MBR(${name})`,
+          noLibList: true
+        });
 
+        if (removeResult.code === 0) {
           vscode.window.showInformationMessage(t(`objectBrowser.deleteMember.infoMessage`, node.path));
 
           objectBrowser.refresh(node.parent);
-        } catch (e) {
-          vscode.window.showErrorMessage(t(`objectBrowser.deleteMember.errorMessage`, e));
+
+        } else {
+          vscode.window.showErrorMessage(t(`objectBrowser.deleteMember.errorMessage`, removeResult.stderr));
         }
 
         //Not sure how to remove the item from the list. Must refresh - but that might be slow?
@@ -599,17 +592,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const escapedText = newText.replace(/'/g, `''`);
         const connection = getConnection();
 
-        try {
-          await connection.runCommand({
-            command: `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
-            noLibList: true
-          });
+        const changeResult = await connection.runCommand({
+          command: `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
+          noLibList: true
+        });
 
+        if (changeResult.code === 0) {
           node.description = newText;
           objectBrowser.refresh(node);
-        } catch (e) {
-          vscode.window.showErrorMessage(t(`objectBrowser.updateMemberText.errorMessage`, e));
+        } else {
+          vscode.window.showErrorMessage(t(`objectBrowser.updateMemberText.errorMessage`, changeResult.stderr));
         }
+
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: ObjectBrowserMemberItem) => {
@@ -638,25 +632,32 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
 
           if (newMember) {
-            try {
-              if (oldMember.name !== newMember.name) {
-                await connection.runCommand({
-                  command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
-                  noLibList: true
-                });
-              }
-              if (oldMember.extension !== newMember.extension) {
-                await connection.runCommand({
-                  command: `CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
-                  noLibList: true
-                });
-              }
+            let commandResult: CommandResult;
 
-              objectBrowser.refresh(node.parent);
-            } catch (e) {
-              newNameOK = false;
-              vscode.window.showErrorMessage(t(`objectBrowser.renameMember.errorMessage`, e));
+            if (oldMember.name !== newMember.name) {
+              commandResult = await connection.runCommand({
+                command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
+                noLibList: true
+              });
+              
+              if (commandResult.code !== 0) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(t(`objectBrowser.renameMember.errorMessage`, commandResult.stderr));
+              }
             }
+            if (oldMember.extension !== newMember.extension) {
+              commandResult = await connection.runCommand({
+                command: `CHGPFM FILE(${library}/${sourceFile}) MBR(${newMember.name}) SRCTYPE(${newMember.extension.length > 0 ? newMember.extension : `*NONE`})`,
+                noLibList: true
+              });
+
+              if (commandResult.code !== 0) {
+                newNameOK = false;
+                vscode.window.showErrorMessage(t(`objectBrowser.renameMember.errorMessage`, commandResult.stderr));
+              }
+            }
+
+            objectBrowser.refresh(node.parent);
           }
         }
       } while (newBasename && !newNameOK)
@@ -824,14 +825,13 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         const filters = config.objectFilters;
 
-        try {
-          await connection.runCommand({
-            command: `CRTLIB LIB(${newLibrary})`,
-            noLibList: true
-          });
-        } catch (e) {
-          vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage`, newLibrary, e));
-          return;
+        const createResult = await connection.runCommand({
+          command: `CRTLIB LIB(${newLibrary})`,
+          noLibList: true
+        });
+
+        if (createResult.code !== 0) {
+          vscode.window.showErrorMessage(t(`objectBrowser.createLibrary.errorMessage`, newLibrary, createResult.stderr));
         }
 
         filters.push({
@@ -872,20 +872,19 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       if (fileName) {
         const connection = getConnection();
-        try {
-          const library = filter.library;
-          const uriPath = `${library}/${fileName.toUpperCase()}`
+        const library = filter.library;
+        const uriPath = `${library}/${fileName.toUpperCase()}`
 
-          vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
+        vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
+        const createResult = await connection.runCommand({
+          command: `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`,
+          noLibList: true
+        });
 
-          await connection.runCommand({
-            command: `CRTSRCPF FILE(${uriPath}) RCDLEN(112)`,
-            noLibList: true
-          });
-
+        if (createResult.code === 0) {
           objectBrowser.refresh(node);
-        } catch (e) {
-          vscode.window.showErrorMessage(t(`objectBrowser.createSourceFile.errorMessage`, e));
+        } else {
+          vscode.window.showErrorMessage(t(`objectBrowser.createSourceFile.errorMessage`, createResult.stderr));
         }
       }
     }),
@@ -906,19 +905,19 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           const escapedText = newText.replace(/'/g, `''`).replace(/`/g, `\\\``);
           const connection = getConnection();
 
-          try {
-            newTextOK = true;
-            await connection.runCommand({
-              command: `CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
-              noLibList: true
-            });
+          newTextOK = true;
+          const changeResult = await connection.runCommand({
+            command: `CHGOBJD OBJ(${node.path}) OBJTYPE(${node.object.type}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
+            noLibList: true
+          });
 
+          if (changeResult.code === 0) {
             node.object.text = newText;
             node.updateDescription();
             objectBrowser.refresh(node);
             vscode.window.showInformationMessage(t(`objectBrowser.changeObjectDesc.infoMessage`, node.path, node.object.type.toUpperCase()));
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`objectBrowser.changeObjectDesc.errorMessage2`, node.path, e));
+          } else {
+            vscode.window.showErrorMessage(t(`objectBrowser.changeObjectDesc.errorMessage2`, node.path, changeResult.stderr));
             newTextOK = false;
           }
         }
@@ -946,14 +945,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           const [newLibrary, newObject] = escapedPath.split(`/`);
           const connection = getConnection();
 
-          try {
-            newPathOK = true;
-            await connection.runCommand({
-              command: node.object.type.toLocaleLowerCase() === `*lib` ?
-                `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
-                `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`,
-              noLibList: true
-            });
+          newPathOK = true;
+          const commandRes = await connection.runCommand({
+            command: node.object.type.toLocaleLowerCase() === `*lib` ?
+              `CPYLIB FROMLIB(${oldObject}) TOLIB(${newObject})` :
+              `CRTDUPOBJ OBJ(${oldObject}) FROMLIB(${oldLibrary}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary}) NEWOBJ(${newObject})`,
+            noLibList: true
+          });
+
+          if (commandRes.code === 0) {
 
             if (oldLibrary.toLocaleLowerCase() === newLibrary.toLocaleLowerCase()) {
               objectBrowser.refresh(node.parent);
@@ -961,8 +961,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             else if (!objectBrowser.autoRefresh(t(`objectBrowser.copyObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedPath))) {
               vscode.window.showInformationMessage(t(`objectBrowser.copyObject.infoMessage2`, node.path, node.object.type.toUpperCase(), escapedPath));
             }
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`objectBrowser.copyObject.errorMessage4`, node.path, e));
+          } else {
+            vscode.window.showErrorMessage(t(`objectBrowser.copyObject.errorMessage4`, node.path, commandRes.stderr));
             newPathOK = false;
           }
         }
@@ -976,17 +976,17 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const connection = getConnection();
         await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.deleteObject.progress", node.path, node.object.type.toUpperCase()) }
           , async (progress) => {
-            try {
-              // TODO: Progress message about deleting!
-              await connection.runCommand({
-                command: `DLTOBJ OBJ(${node.path}) OBJTYPE(${node.object.type})`,
-                noLibList: true
-              });
+            // TODO: Progress message about deleting!
+            const deleteResult = await connection.runCommand({
+              command: `DLTOBJ OBJ(${node.path}) OBJTYPE(${node.object.type})`,
+              noLibList: true
+            });
 
+            if (deleteResult.code === 0) {
               vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, node.path, node.object.type.toUpperCase()));
               objectBrowser.refresh(node.parent);
-            } catch (e) {
-              vscode.window.showErrorMessage(t(`objectBrowser.deleteObject.errorMessage`, e));
+            } else {
+              vscode.window.showErrorMessage(t(`objectBrowser.deleteObject.errorMessage`, deleteResult.stderr));
             }
           }
         );
@@ -1010,19 +1010,19 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           const connection = getConnection();
           newObjectOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.renameObject.progress", node.path, node.object.type.toUpperCase(), escapedObject) }
             , async (progress) => {
-              try {
-                await connection.runCommand({
-                  command: `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
-                  noLibList: true
-                });
+              const renameResult = await connection.runCommand({
+                command: `RNMOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) NEWOBJ(${escapedObject})`,
+                noLibList: true
+              });
 
-                vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedObject));
-                objectBrowser.refresh(node.parent);
-                return true;
-              } catch (e) {
-                vscode.window.showErrorMessage(t(`objectBrowser.renameObject.errorMessage2`, node.path, e));
+              if (renameResult.code !== 0) {
+                vscode.window.showErrorMessage(t(`objectBrowser.renameObject.errorMessage2`, node.path, renameResult.stderr));
                 return false;
               }
+
+              vscode.window.showInformationMessage(t(`objectBrowser.renameObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedObject));
+              objectBrowser.refresh(node.parent);
+              return true;
             }
           );
         }
@@ -1048,20 +1048,20 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
           newLibraryOK = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.moveObject.progress", node.path, node.object.type.toUpperCase(), escapedLibrary) }
             , async (progress) => {
-              try {
-                await connection.runCommand({
-                  command: `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
-                  noLibList: true
-                });
-
-                if (!objectBrowser.autoRefresh(t(`objectBrowser.moveObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedLibrary))) {
-                  vscode.window.showInformationMessage(t(`objectBrowser.moveObject.infoMessage2`, node.path, node.object.type.toUpperCase(), escapedLibrary));
-                }
-                return true;
-              } catch (e) {
-                vscode.window.showErrorMessage(t(`objectBrowser.moveObject.errorMessage2`, node.path, e));
+              const moveResult = await connection.runCommand({
+                command: `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
+                noLibList: true
+              });
+              
+              if (moveResult.code !== 0) {
+                vscode.window.showErrorMessage(t(`objectBrowser.moveObject.errorMessage2`, node.path, moveResult.stderr));
                 return false;
               }
+
+              if (!objectBrowser.autoRefresh(t(`objectBrowser.moveObject.infoMessage`, node.path, node.object.type.toUpperCase(), escapedLibrary))) {
+                vscode.window.showInformationMessage(t(`objectBrowser.moveObject.infoMessage2`, node.path, node.object.type.toUpperCase(), escapedLibrary));
+              }
+              return true;
             });
         }
       } while (newLibrary && !newLibraryOK)
