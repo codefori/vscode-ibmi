@@ -240,6 +240,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             ...clearListArray
           ];
           filteredItems = [];
+        } else {
+          if (!starRemoved && !list.includes(quickPick.value.toUpperCase())) {
+            quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+          }
         }
 
         // autosuggest
@@ -386,8 +390,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               ...clearListArray
             ]
           }
-          starRemoved = false;
         }
+        starRemoved = false;
       })
 
       quickPick.onDidAccept(() => {
