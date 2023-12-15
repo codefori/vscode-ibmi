@@ -493,16 +493,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const memberPath = connection.parserMemberPath(fullPath);
         const error = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t(`objectBrowser.copyMember.progressTitle`, fullPath.toUpperCase()) }, async (progress) => {
           try {
-            let newMemberExists = true;
-
             const checkResult = await connection.runCommand({
               command: `CHKOBJ OBJ(${memberPath.library}/${memberPath.file}) OBJTYPE(*FILE) MBR(${memberPath.name})`,
               noLibList: true
             })
 
-            if (!checkResult.stdout.includes(`CPF9815`)) {
-              newMemberExists = false;
-            }
+            const newMemberExists = checkResult.code === 0;
 
             if (newMemberExists) {
               const result = await vscode.window.showInformationMessage(t(`objectBrowser.copyMember.overwrite`, memberPath.name), { modal: true }, t(`Yes`), t(`No`))
