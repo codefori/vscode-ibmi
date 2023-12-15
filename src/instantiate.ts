@@ -249,7 +249,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
           const selectionSplit = quickPick.value.toUpperCase().split('/');
           const lastPart = selectionSplit[selectionSplit.length - 1];
-          const filterText = lastPart.substring(0, lastPart.indexOf(`*`));
+          let filterText = lastPart.substring(0, lastPart.indexOf(`*`));
 
           let resultSet: Tools.DB2Row[] = [];
 
@@ -328,6 +328,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   description: 'Searching members..',
                 },
               ]
+
+              filterText = filterText.endsWith(`.`) ? filterText.substring(0, filterText.length - 1) : filterText;
 
               resultSet = await content!.runSQL(`
                   SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
