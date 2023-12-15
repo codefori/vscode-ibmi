@@ -334,7 +334,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               resultSet = await content!.runSQL(`
                   SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
                     ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
-                    lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
+                    ifnull(SOURCE_TYPE, '') SOURCE_TYPE
                   FROM qsys2.SYSPARTITIONSTAT
                   WHERE TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
                     AND table_name = '${connection!.sysNameInAmerican(selectionSplit[1])}'
