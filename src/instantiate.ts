@@ -17,7 +17,6 @@ import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings"
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import IBMi from './api/IBMi';
 
 export let instance: Instance;
 
@@ -394,8 +393,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         starRemoved = false;
       })
 
-      quickPick.onDidAccept(() => {
-        const selection = quickPick.selectedItems[0].label;
+      quickPick.onDidAccept(async () => {
+        let selection = quickPick.selectedItems[0].label;
         if (selection && selection !== LOADING_LABEL) {
           if (selection === clearList) {
             storage!.setSourceList({});
@@ -404,6 +403,33 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           } else {
             const selectionSplit = selection.split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
+              if (config && config.enableSQL && !selection.startsWith(`/`)) {
+                const lib = `${connection!.sysNameInAmerican(selectionSplit[0])}`;
+                const file = `${connection!.sysNameInAmerican(selectionSplit[1])}`;
+                const member = `${connection!.sysNameInAmerican(selectionSplit[2])}`;
+                let memberName, memberType = ``;
+                if (member.includes(`.`)) {
+                  memberName = member.slice(0, member.lastIndexOf(`.`));
+                  memberType = member.slice(member.lastIndexOf(`.`) + 1,);
+                } else {
+                  memberName = member;
+                };
+                const fullMember = await content!.runSQL(`
+                  select rtrim( cast( TABLE_PARTITION as char( 10 ) for bit data ) ) as MEMBER
+                       , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
+                    from QSYS2.SYSPARTITIONSTAT
+                   where ( TABLE_SCHEMA, TABLE_NAME, TABLE_PARTITION ) = ( '${lib}', '${file}', '${memberName}' )
+                   limit 1
+                  `).then((resultSet) => { return resultSet.length === 1 ? `${resultSet[0].MEMBER}.${resultSet[0].TYPE}` : `` });
+                if (!fullMember) {
+                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member} does not exist.`);
+                  return;
+                } else if (fullMember !== `${memberName}.${memberType}`) {
+                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${memberName} of type ${memberType} does not exist.`);
+                  return;
+                }
+                selection = `${lib}/${file}/${fullMember}`;
+              };
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
               quickPick.hide()
             } else {
