@@ -433,6 +433,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 }
                 selection = `${lib}/${file}/${fullMember}`;
               };
+              if (selection.startsWith(`/`)) {
+                const streamFile = await content!.streamfileResolve([selection.substring(1)], [`/`]);
+                if (!streamFile) {
+                  vscode.window.showWarningMessage(`${selection} does not exist or is not a file.`);
+                  return;
+                }
+                selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
+              }
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
               quickPick.hide()
             } else {
