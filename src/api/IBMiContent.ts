@@ -190,17 +190,16 @@ export default class IBMiContent {
           return true;
         } else {
           if (!retry) {
-            const messageID = String(copyResult.stderr).substring(0, 7);
-            switch (messageID) {
-              case "CPFA0A9":
-                //The member may be located on SYSBAS
-                if (asp) {
-                  path = Tools.qualifyPath(library, sourceFile, member);
-                  retry = true;
-                }
-                break;
-              default:
-                throw new Error(`Failed uploading member: ${copyResult.stderr}`);
+            const messages = Tools.parseMessages(copyResult.stderr);
+            if (messages.findId("CPFA0A9")) {
+              //The member may be located on SYSBAS
+              if (asp) {
+                path = Tools.qualifyPath(library, sourceFile, member);
+                retry = true;
+              }
+            }
+            else {
+              throw new Error(`Failed uploading member: ${copyResult.stderr}`);
             }
           }
         }
@@ -706,7 +705,7 @@ export default class IBMiContent {
         const asp = file.asp || this.config.sourceASP;
         if (asp && asp.length > 0) {
           return [
-            Tools.qualifyPath(file.library, file.name, member, asp, true), 
+            Tools.qualifyPath(file.library, file.name, member, asp, true),
             Tools.qualifyPath(file.library, file.name, member, undefined, true)
           ].join(` `);
         } else {
