@@ -7,6 +7,7 @@ import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
+import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
@@ -517,7 +518,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               noLibList: true
             })
 
-            if (copyResult.stderr.includes(`CPF2869`)) {
+            const messages = Tools.parseMessages(copyResult.stderr);
+            if (messages.findId(`CPF2869`)) {
               throw (copyResult.stderr)
             }
 

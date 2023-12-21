@@ -416,7 +416,8 @@ export default class IBMi {
             .then(result => {
               // All good!
               if (result && result.stderr) {
-                if (!result.stderr.startsWith(`CPF2125`)) {
+                const messages = Tools.parseMessages(result.stderr);
+                if (!messages.findId(`CPF2125`)) {
                   // @ts-ignore We know the config exists.
                   vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
                     if (choice === `View log`) {
