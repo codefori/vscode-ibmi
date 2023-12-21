@@ -2,6 +2,7 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
+import { IBMiMessage, IBMiMessages } from '../typings';
 import { API, GitExtension } from "./import/git";
 
 export namespace Tools {
@@ -167,7 +168,7 @@ export namespace Tools {
         return part
       }
     })
-    .join(path.posix.sep);
+      .join(path.posix.sep);
 
     return path.posix.join(correctedDir, pathInfo.base);
   }
@@ -210,7 +211,7 @@ export namespace Tools {
       .toLowerCase();
   }
 
-  export function capitalize(text:string) {
+  export function capitalize(text: string) {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
@@ -222,5 +223,16 @@ export namespace Tools {
         // Quote libraries starting with #
         return library.startsWith(`#`) ? `"${library}"` : library;
       });
+  }
+
+  export function parseMessages(output: string): IBMiMessages {
+    const messages = output.split("\n").map(line => ({
+      id: line.substring(0, line.indexOf(':')).trim(),
+      text: line.substring(line.indexOf(':') + 1).trim()
+    }) as IBMiMessage);
+    return {
+      messages,
+      findId: id => messages.find(m => m.id === id)
+    }
   }
 }
