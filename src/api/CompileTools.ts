@@ -660,7 +660,7 @@ export namespace CompileTools {
               command: [
                 ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; exit $?`}`,
+                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}" && exit $?`}`,
                 )
               ].join(` && `),
               directory: cwd,
