@@ -143,6 +143,32 @@ export const ConnectionSuite: TestSuite = {
       assert.strictEqual(result.stdout.includes(`Library List`), true);
     }},
 
+    {name: `Test runCommand (with error)`, test: async () => {
+      const connection = instance.getConnection();
+
+      // One day it'd be cool to test different locales/CCSIDs here
+      // const profileMatix = [{ccsid: 277, language: `DAN`, region: `DK`}];
+      // for (const setup of profileMatix) {
+        // const profileChange = await connection?.runCommand({
+        //   command: `CHGUSRPRF USRPRF(${connection.currentUser}) CCSID(${setup.ccsid}) LANGID(${setup.language}) CNTRYID(${setup.region})`,
+        //   noLibList: true
+        // });
+    
+        // console.log(profileChange);
+        // assert.strictEqual(profileChange?.code, 0);
+      // }
+
+      console.log((await connection?.runCommand({command: `DSPUSRPRF USRPRF(${connection.currentUser}) OUTPUT(*PRINT)`, noLibList: true}))?.stdout);
+
+      const result = await connection?.runCommand({
+        command: `CHKOBJ OBJ(QSYS/NOEXIST) OBJTYPE(*DTAARA)`,
+        noLibList: true
+      });
+  
+      assert.notStrictEqual(result?.code, 0);
+      assert.ok(result?.stderr);
+    }},
+
     {name: `Test runCommand (ILE, custom libl)`, test: async () => {
       const connection = instance.getConnection();
   
