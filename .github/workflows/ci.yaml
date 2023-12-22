@@ -35,6 +35,14 @@ jobs:
           npx @vscode/vsce publish --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.PUBLISHER_TOKEN }}
           npx ovsx publish --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.OPENVSX_TOKEN }}
 
+      - name: Attach vsix
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          asset_name: code-for-ibmi-${{ github.ref_name }}.vsix
+          file: code-for-ibmi-${{ github.ref_name }}.vsix
+
       - name: Generate typings
         run: npm run typings
 
