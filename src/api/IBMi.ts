@@ -484,7 +484,7 @@ export default class IBMi {
             });
           }
 
-          const QCPFRMIMPF = await await this.runCommand({
+          const QCPFRMIMPF = await this.runCommand({
             command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
             noLibList: true
           });
