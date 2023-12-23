@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.6.1",
+	"version": "2.6.2",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -38,7 +38,11 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
-		"taskDefinitions": [{"type": "ibmi"}],
+		"taskDefinitions": [
+			{
+				"type": "ibmi"
+			}
+		],
 		"snippets": [
 			{
 				"path": "./schemas/cl.code-snippets",
@@ -570,7 +574,7 @@
 									"parent",
 									"filter",
 									"browser"
-								]								
+								]
 							},
 							"runOnProtected": {
 								"type": "boolean",
@@ -2458,7 +2462,7 @@
 		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2",
-    "crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz"
+		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
