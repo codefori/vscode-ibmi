@@ -404,7 +404,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             quickPick.items = clearListArray;
             vscode.window.showInformationMessage(`Cleared list.`);
           } else {
-            const selectionSplit = selection.split('/')
+            const selectionSplit = selection.toUpperCase().split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
               if (config && config.enableSQL && !selection.startsWith(`/`)) {
                 const lib = `${connection!.sysNameInAmerican(selectionSplit[0])}`;
