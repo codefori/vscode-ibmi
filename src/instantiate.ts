@@ -409,29 +409,27 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               if (config && config.enableSQL && !selection.startsWith(`/`)) {
                 const lib = `${connection!.sysNameInAmerican(selectionSplit[0])}`;
                 const file = `${connection!.sysNameInAmerican(selectionSplit[1])}`;
-                const member = `${connection!.sysNameInAmerican(selectionSplit[2])}`;
-                let memberName, memberType = ``;
-                if (member.includes(`.`)) {
-                  memberName = member.slice(0, member.lastIndexOf(`.`));
-                  memberType = member.slice(member.lastIndexOf(`.`) + 1,);
-                } else {
-                  memberName = member;
-                };
+                const member = path.parse(`${connection!.sysNameInAmerican(selectionSplit[2])}`);
+                member.ext = member.ext.substring(1);
                 const fullMember = await content!.runSQL(`
                   select rtrim( cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) ) as MEMBER
                        , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
                     from QSYS2.SYSPARTITIONSTAT
-                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${memberName}' )
+                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${member.name}' )
                    limit 1
-                `).then((resultSet) => { return resultSet.length === 1 ? `${resultSet[0].MEMBER}.${resultSet[0].TYPE}` : `` });
+                `).then((resultSet) => { return resultSet.length !== 1 ? {} :
+                  { base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
+                    name: `${resultSet[0].MEMBER}`,
+                    ext: `${resultSet[0].TYPE}`,
+                  }});
                 if (!fullMember) {
-                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member} does not exist.`);
+                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.base} does not exist.`);
                   return;
-                } else if (fullMember !== `${memberName}.${memberType}`) {
-                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${memberName} of type ${memberType} does not exist.`);
+                } else if (fullMember.name !== member.name || (member.ext && fullMember.ext !== member.ext)) {
+                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.name} of type ${member.ext} does not exist.`);
                   return;
                 }
-                selection = `${lib}/${file}/${fullMember}`;
+                selection = `${lib}/${file}/${fullMember.base}`;
               };
               if (selection.startsWith(`/`)) {
                 const streamFile = await content!.streamfileResolve([selection.substring(1)], [`/`]);
