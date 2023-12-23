@@ -438,6 +438,10 @@ export default class IBMiContent {
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; }, sortOrder?: SortOrder): Promise<IBMiFile[]> {
     const library = filters.library.toUpperCase();
+    if(!await this.checkObject({ library: "QSYS", name: library, type: "*LIB"})){
+      throw new Error(`Library ${library} does not exist.`);
+    }
+    
     const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
 
@@ -557,7 +561,7 @@ export default class IBMiContent {
       results = await this.getTable(tempLib, TempName, TempName, true);
       if (results.length === 1 && String(results[0].MBNAME).trim() === ``) {
         return [];
-      }
+    }
 
       if (member || memberExt) {
         let pattern: RegExp | undefined, patternExt: RegExp | undefined;
