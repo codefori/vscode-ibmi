@@ -87,28 +87,29 @@ function setupBranchLibrary(currentBranch: string, content: IBMiContent, connect
         if (answer === `Yes`) {
           const escapedText = currentBranch.replace(/'/g, `''`);
           connection.runCommand({ command: `CRTLIB LIB(${newBranchLib}) TEXT('${escapedText}') TYPE(*TEST)`, noLibList: true })
-            .then(() => {
-              window.showInformationMessage(`Library ${newBranchLib} created. Use '&BRANCHLIB' as a reference to it.`, `Create filter`).then(answer => {
-                if (answer === `Create filter`) {
-                  filters.push({
-                    name: currentBranch,
-                    library: newBranchLib,
-                    object: `*ALL`,
-                    types: [`*ALL`],
-                    member: `*`,
-                    memberType: `*`,
-                    protected: false
-                  });
-
-                  config.objectFilters = filters;
-                  ConnectionConfiguration.update(config).then(() => {
-                    commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
-                  });
-                }
-              });
-            })
-            .catch(err => {
-              window.showErrorMessage(`Error creating library ${newBranchLib}: ${err.message}`);
+            .then((createResult) => {
+              if (createResult && createResult.code === 0) {
+                window.showInformationMessage(`Library ${newBranchLib} created. Use '&BRANCHLIB' as a reference to it.`, `Create filter`).then(answer => {
+                  if (answer === `Create filter`) {
+                    filters.push({
+                      name: currentBranch,
+                      library: newBranchLib,
+                      object: `*ALL`,
+                      types: [`*ALL`],
+                      member: `*`,
+                      memberType: `*`,
+                      protected: false
+                    });
+  
+                    config.objectFilters = filters;
+                    ConnectionConfiguration.update(config).then(() => {
+                      commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+                    });
+                  }
+                });
+              } else {
+                window.showErrorMessage(`Error creating library ${newBranchLib}: ${createResult ? createResult.stderr : `Unknown error`}`);
+              }
             });
         }
       });
