@@ -348,7 +348,6 @@ export default class IBMi {
           command: `CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
           noLibList: true
         });
-        console.log(createdTempLib?.stderr);
 
         if (createdTempLib.code === 0) {
           tempLibrarySet = true;
