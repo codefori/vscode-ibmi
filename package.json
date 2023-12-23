@@ -455,7 +455,7 @@
 				"code-for-ibmi.createLibraryOnBranchChange": {
 					"type": "boolean",
 					"default": false,
-					"description": "Used in conjuction with git. When the branch changes, prompt the user if they would like a new branch library for this branch."
+					"description": "Used in conjuction with git. When the branch changes, prompt the user if they would like a new branch library for this branch. The branch name, which is deterministic, always starts with 'VS', follow by 8 characters."
 				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
