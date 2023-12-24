@@ -602,10 +602,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
   // Register git events based on workspace folders
 	if (vscode.workspace.workspaceFolders) {
-    setupGitEventHandler(context, vscode.workspace.workspaceFolders as vscode.WorkspaceFolder[]);
-    vscode.workspace.onDidChangeWorkspaceFolders((e) => {
-			setupGitEventHandler(context, e.added as vscode.WorkspaceFolder[]);
-		})
+    setupGitEventHandler(context);
   }
 
 }

@@ -18,42 +18,40 @@ export function getGitBranch(workspaceFolder: WorkspaceFolder) {
   }
 }
 
-export function setupGitEventHandler(context: ExtensionContext, workspaceFolders: WorkspaceFolder[]) {
+export function setupGitEventHandler(context: ExtensionContext) {
   const gitApi = Tools.getGitAPI();
 
   if (gitApi) {
-    for (const workspaceFolder of workspaceFolders) {
-      const initRepo = gitApi.getRepository(workspaceFolder.uri);
-      if (initRepo) {
-        const workspaceUri = workspaceFolder.uri.toString();
+    gitApi.onDidOpenRepository((repo) => {
+      const workspaceUri = repo.rootUri.toString();
 
-        context.subscriptions.push(initRepo.state.onDidChange((_e) => {
-          if (GlobalConfiguration.get(`createLibraryOnBranchChange`)) {
-            const repo = gitApi.getRepository(workspaceFolder.uri);
-            if (repo) {
-              const head = repo.state.HEAD;
-              const connection = instance.getConnection();
-              if (head && head.name) {
-                const currentBranch = head.name;
+      const changeEvent = repo.state.onDidChange((_e) => {
+        if (GlobalConfiguration.get(`createLibraryOnBranchChange`)) {
+          if (repo) {
+            const head = repo.state.HEAD;
+            const connection = instance.getConnection();
+            if (head && head.name) {
+              const currentBranch = head.name;
 
-                if (currentBranch && currentBranch !== lastBranch[workspaceUri]) {
-                  if (connection) {
-                    const content = instance.getContent()!;
-                    const config = instance.getConfig()!;
+              if (currentBranch && currentBranch !== lastBranch[workspaceUri]) {
+                if (connection) {
+                  const content = instance.getContent()!;
+                  const config = instance.getConfig()!;
 
-                    if (currentBranch.includes(`/`)) {
-                      setupBranchLibrary(currentBranch, content, connection, config);
-                    }
+                  if (currentBranch.includes(`/`)) {
+                    setupBranchLibrary(currentBranch, content, connection, config);
                   }
                 }
-
-                lastBranch[workspaceUri] = currentBranch;
               }
+
+              lastBranch[workspaceUri] = currentBranch;
             }
           }
-        }));
-      }
-    }
+        }
+      });
+
+      context.subscriptions.push(changeEvent);
+    });
   }
 }
 
