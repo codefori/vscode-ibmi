@@ -1,13 +1,15 @@
 import vscode from "vscode";
-import { GlobalConfiguration } from "../../api/Configuration";
-import { CustomUI } from "../../api/CustomUI";
+import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 
-type NewLoginSettings = ConnectionData & {  
-  savePassword: boolean  
+type NewLoginSettings = ConnectionData & {
+  savePassword: boolean
   buttons: 'saveExit' | 'connect'
+  tempLibrary: string
+  tempDir: string
 }
 
 export class Login {
@@ -24,7 +26,7 @@ export class Login {
 
     const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
 
-    const page = await new CustomUI()
+    const connectionTab = new Section()
       .addInput(`name`, `Connection Name`, undefined, { minlength: 1 })
       .addInput(`host`, `Host or IP Address`, undefined, { minlength: 1 })
       .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
@@ -32,7 +34,17 @@ export class Login {
       .addParagraph(`Only provide either the password or a private key - not both.`)
       .addPassword(`password`, `Password`)
       .addCheckbox(`savePassword`, `Save Password`)
-      .addFile(`privateKeyPath`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`)
+      .addFile(`privateKeyPath`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`);
+
+    const tempTab = new Section()
+      .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
+      .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: '/tmp', minlength: 1 });
+
+    const page = await new CustomUI()
+      .addComplexTabs([
+        { label: `Connection`, fields: connectionTab.fields },
+        { label: `Temporary data`, fields: tempTab.fields }
+      ])
       .addButtons(
         { id: `connect`, label: `Connect`, requiresValidation: true },
         { id: `saveExit`, label: `Save & Exit` }
@@ -67,6 +79,11 @@ export class Login {
             }
 
             await GlobalConfiguration.set(`connections`, existingConnections);
+
+            const config = await ConnectionConfiguration.load(data.name)
+            config.tempLibrary = data.tempLibrary;
+            config.tempDir = data.tempDir;
+            ConnectionConfiguration.update(config);
             vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
           }
 

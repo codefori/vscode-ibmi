@@ -37,15 +37,16 @@ async function install() {
 
   const tempLib = config.tempLibrary;
 
-  try {
-    await connection.runCommand({ command: `CRTSRCPF ${tempLib}/QTOOLS`, noLibList: true })
-  } catch (e) {
-    //It may exist already so we just ignore the error
-  }
+  //It may exist already so we just ignore the error
+  await connection.runCommand({ command: `CRTSRCPF ${tempLib}/QTOOLS`, noLibList: true })
 
   await content.uploadMemberContent(undefined, tempLib, `QTOOLS`, `GENCMDXML`, gencmdxml.content.join(`\n`));
-  await connection.runCommand({
+  const createResult = await connection.runCommand({
     command: `CRTBNDCL PGM(${tempLib}/GENCMDXML) SRCFILE(${tempLib}/QTOOLS) DBGVIEW(*SOURCE) TEXT('vscode-ibmi xml generator for commands')`,
     noLibList: true
   });
+
+  if (createResult.code !== 0) {
+    throw new Error(`Failed to create GENCMDXML program.`);
+  }
 }

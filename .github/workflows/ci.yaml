@@ -8,41 +8,40 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    permissions:
-      # Give the default GITHUB_TOKEN write permission to commit and push the versions bump
-      contents: write
-
     steps:
-      - uses: actions/setup-node@v2
+      - name: Use Node.js 18
+        uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: 18
           registry-url: 'https://registry.npmjs.org'
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          ref: master
       
-      - name: Install dependencies & publishing tools
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Update version number
         run: |
-          npm install
-          npm install -g @vscode/vsce ovsx
-      
-      # - name: Bump version numbers
-      #   run: |
-      #     npm --no-git-tag-version version ${{ github.ref_name }}
-      #     cd types && npm --no-git-tag-version version ${{ github.ref_name }}
+          npm version --allow-same-version --no-git-tag-version ${{ github.ref_name }}
+          cd types && npm version --allow-same-version --no-git-tag-version ${{ github.ref_name }}
 
-      # - name: Commit & push versions bump
-      #   uses: stefanzweifel/git-auto-commit-action@v4
-      #   with:
-      #     branch: master
-      #     commit_message: Released version ${{ github.ref_name }}
-
-      - name: Publish to Marketplace
-        run: vsce publish -p $PUBLISHER_TOKEN
-        env:
-          PUBLISHER_TOKEN: ${{ secrets.PUBLISHER_TOKEN }}
+      - name: Package
+        run: npx @vscode/vsce package
           
-      - name: Publish to Open VSX
-        run: npx ovsx publish -p ${{ secrets.OPENVSX_TOKEN }}
+      - name: Publish
+        run: |
+          npx @vscode/vsce publish --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.PUBLISHER_TOKEN }}
+          npx ovsx publish --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.OPENVSX_TOKEN }}
+
+      - name: Attach vsix
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          asset_name: code-for-ibmi-${{ github.ref_name }}.vsix
+          file: code-for-ibmi-${{ github.ref_name }}.vsix
 
       - name: Generate typings
         run: npm run typings
@@ -54,3 +53,25 @@ jobs:
         run: cd types && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit changes and move release tag
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -a -m "Release ${{ github.ref_name }}"
+          git tag -f ${{ github.ref_name }}
+          git push --tags --force
+
+      - name: Bump version numbers for next cycle
+        run: |
+          npm version --no-git-tag-version prerelease --preid dev
+          cd types && npm version --no-git-tag-version prerelease --preid dev
+
+      - name: Read new version
+        id: new-version
+        uses: beaconbrigade/package-json-version@v0.3
+
+      - name: Commit version number change
+        run: |
+          git commit -a -m "Starting ${{ steps.new-version.outputs.version }} development"
+          git push
