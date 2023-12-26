@@ -238,6 +238,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
             ifsBrowserItems.map(item => item.parent)
               .filter(Tools.distinct)
               .forEach(folder => folder?.refresh?.());
+            toDirectory.reveal({ focus: true })
             break;
         }
 
