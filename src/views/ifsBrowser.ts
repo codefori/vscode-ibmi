@@ -210,7 +210,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
 
   private async moveOrCopyItems(ifsBrowserItems: IFSItem[], toDirectory: IFSDirectoryItem) {
     const connection = instance.getConnection();
-    ifsBrowserItems = ifsBrowserItems.filter(item => item.parent !== toDirectory);
+    ifsBrowserItems = ifsBrowserItems.filter(item => item !== toDirectory && item.parent !== toDirectory);
     if (connection && ifsBrowserItems.length) {
       const dndBehavior = getDragDropBehavior();
       let action: DragNDropAction | undefined;
