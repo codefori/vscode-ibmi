@@ -12,6 +12,8 @@ import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, WithPath } from "../typings";
 
+const URI_LIST_MIMETYPE = "text/uri-list";
+const URI_LIST_SEPARATOR = "\r\n";
 const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
 type DragNDropAction = "move" | "copy";
 type DragNDropBehavior = DragNDropAction | "ask";
@@ -183,11 +185,14 @@ class ErrorItem extends BrowserItem {
 }
 
 class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem> {
-  readonly dragMimeTypes = [IFS_BROWSER_MIMETYPE];
-  readonly dropMimeTypes = ["text/uri-list", IFS_BROWSER_MIMETYPE];
+  readonly dragMimeTypes = [URI_LIST_MIMETYPE, IFS_BROWSER_MIMETYPE];
+  readonly dropMimeTypes = [URI_LIST_MIMETYPE, IFS_BROWSER_MIMETYPE];
 
   handleDrag(source: readonly IFSItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
     dataTransfer.set(IFS_BROWSER_MIMETYPE, new vscode.DataTransferItem(source));
+    dataTransfer.set(URI_LIST_MIMETYPE, new vscode.DataTransferItem(source.filter(item => item.file.type === "streamfile")
+      .map(item => item.resourceUri)
+      .join(URI_LIST_SEPARATOR)));
   }
 
   async handleDrop(target: IFSItem | undefined, dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
@@ -198,10 +203,10 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
       }
       else {
-        const explorerItems = dataTransfer.get("text/uri-list");
+        const explorerItems = dataTransfer.get(URI_LIST_MIMETYPE);
         if (explorerItems && explorerItems.value) {
-          //"text/uri-list" Mime type is a string with `toString()`ed Uris separated by `\r\n`.
-          const uris = (await explorerItems.asString()).split("\r\n").map(uri => vscode.Uri.parse(uri));
+          //URI_LIST_MIMETYPE Mime type is a string with `toString()`ed Uris separated by `\r\n`.
+          const uris = (await explorerItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
           vscode.commands.executeCommand(`code-for-ibmi.uploadStreamfile`, toDirectory, uris);
         }
       }
@@ -538,7 +543,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                   }
                   else {
                     throw removeResult.stderr;
-                  }                  
+                  }
                 } catch (e) {
                   vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
                 }
