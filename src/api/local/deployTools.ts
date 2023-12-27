@@ -40,6 +40,12 @@ export namespace DeployTools {
     }
   }
 
+  export function getRemoteDeployDirectory(workspaceFolder: WorkspaceFolder): string|undefined {
+    const storage = instance.getStorage();
+    const existingPaths = storage?.getDeployment();
+    return existingPaths ? existingPaths[workspaceFolder.uri.fsPath] : undefined;
+  }
+
   /**
    * Deploy a workspace to a remote IFS location.
    * @param workspaceIndex if no index is provided, a prompt will be shown to pick one if there are multiple workspaces,
@@ -50,10 +56,7 @@ export namespace DeployTools {
   export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod): Promise<{remoteDirectory: string, workspaceId: number} | undefined> {
     const folder = await Deployment.getWorkspaceFolder(workspaceIndex);
     if (folder) {
-      const storage = instance.getStorage();
-
-      const existingPaths = storage?.getDeployment();
-      const remotePath = existingPaths ? existingPaths[folder.uri.fsPath] : '';
+      const remotePath = getRemoteDeployDirectory(folder);
 
       if (remotePath) {
         if (!method) {

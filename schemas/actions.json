@@ -65,7 +65,7 @@
             "$id": "#/actions/items/anyOf/0/properties/postDownload",
             "type": "array",
             "title": "Post Download",
-            "description": "Remote files/folders to download when the Action is complete.",
+            "description": "Remote files/folders to download when the Action is complete. Using `.evfevent` in combination with a build tool will populate the Problems view.",
             "default": [""],
             "items": {
               "type": "string",

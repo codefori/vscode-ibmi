@@ -19,11 +19,12 @@ export async function initGetNewLibl(instance: Instance) {
         cwd: `/`,
         noLibList: true
       })
-      .then(() => {
-        connection.remoteFeatures[`GETNEWLIBL.PGM`] = `${config.tempLibrary}.GETNEWLIBL`;
-      })
-      .catch(() => {
-        window.showWarningMessage(`Unable to install GETNEWLIBL. See Code for IBM i output for details.`);
+      .then((result) => {
+        if (result.code === 0) {
+          connection.remoteFeatures[`GETNEWLIBL.PGM`] = `${config.tempLibrary}.GETNEWLIBL`;
+        } else {
+          window.showWarningMessage(`Unable to install GETNEWLIBL. See Code for IBM i output for details.`);
+        }
       })
     })
   }

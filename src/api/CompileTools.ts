@@ -131,15 +131,28 @@ export namespace CompileTools {
           const environment = chosenAction.environment || `ile`;
 
           let workspaceId: number | undefined = undefined;
-          if (workspaceFolder && chosenAction.type === `file` && chosenAction.deployFirst) {
 
-            const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
-            if (deployResult !== undefined) {
-              workspaceId = deployResult.workspaceId;
-              remoteCwd = deployResult.remoteDirectory;
+          // If we are running an Action for a local file, we need a deploy directory even if they are not
+          // deploying the file. This is because we need to know the relative path of the file to the deploy directory.
+          if (workspaceFolder && chosenAction.type === `file`) {
+            if (chosenAction.deployFirst) {
+              const deployResult = await DeployTools.launchDeploy(workspaceFolder.index, method);
+              if (deployResult !== undefined) {
+                workspaceId = deployResult.workspaceId;
+                remoteCwd = deployResult.remoteDirectory;
+              } else {
+                vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
+                return false;
+              }
             } else {
-              vscode.window.showWarningMessage(`Action "${chosenAction.name}" was cancelled.`);
-              return false;
+              workspaceId = workspaceFolder.index;
+              const deployPath = DeployTools.getRemoteDeployDirectory(workspaceFolder);
+              if (deployPath) {
+                remoteCwd = deployPath;
+              } else {
+                vscode.window.showWarningMessage(`No deploy directory setup for this workspace. Cancelling Action.`);
+                return false;
+              }
             }
           }
 
@@ -338,7 +351,9 @@ export namespace CompileTools {
                         env: Object.fromEntries(variables),
                       }, writeEmitter);
 
-                      const useLocalEvfevent = fromWorkspace && chosenAction.postDownload && chosenAction.postDownload.includes(`.evfevent`);
+                      const useLocalEvfevent = 
+                        fromWorkspace && chosenAction.postDownload && 
+                        (chosenAction.postDownload.includes(`.evfevent`) || chosenAction.postDownload.includes(`.evfevent/`));
 
                       if (commandResult) {
                         hasRun = true;
@@ -540,7 +555,7 @@ export namespace CompileTools {
   /**
    * Execute a command
    */
-  export async function runCommand(instance: Instance, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult | null> {
+  export async function runCommand(instance: Instance, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (config && connection) {
@@ -648,7 +663,7 @@ export namespace CompileTools {
               command: [
                 ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"; if [[ $? -ne 0 ]]; then exit 1; fi`}`,
+                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"`}`,
                 )
               ].join(` && `),
               directory: cwd,
@@ -665,7 +680,12 @@ export namespace CompileTools {
       throw new Error("Please connect to an IBM i");
     }
 
-    return null;
+    return {
+      code: 1,
+      command: options.command,
+      stdout: ``,
+      stderr: `Command execution failed. (Internal)`,
+    };
   }
 
   /**
