@@ -65,7 +65,7 @@ export const da: Locale = {
   'ifsBrowser.createStreamfile.prompt': `Navn på ny streamfile`,
   'ifsBrowser.createStreamfile.infoMessage': `Opretter streamfile {0}.`,
   'ifsBrowser.createStreamfile.errorMessage': `Fejl ved oprettelse af ny streamfile! {0}`,
-  'ifsBrowser.uploadStreamfile.uploadedFiles': ``,
+  'ifsBrowser.uploadStreamfile.uploadedFiles': `Upload er udført.`,
   'ifsBrowser.uploadStreamfile.errorMessage': `Fejl ved upload af filer! {0}`,
   'ifsBrowser.uploadStreamfile.noFilesSelected': `Ingen filer er valgt til upload.`,
   'ifsBrowser.uploadStreamfile.process.uploading': `Upload`,
