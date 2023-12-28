@@ -2,7 +2,7 @@ import fs from "fs";
 import os from "os";
 import util from "util";
 import vscode from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
+import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
 import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
@@ -18,7 +18,8 @@ const writeFileAsync = util.promisify(fs.writeFile);
 const objectNamesLower = () => GlobalConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
 const objectSortOrder = () => GlobalConfiguration.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
 
-const correctCase = (value: string) => {;
+const correctCase = (value: string) => {
+  ;
   if (objectNamesLower()) {
     return value.toLocaleLowerCase();
   } else {
@@ -269,12 +270,12 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   readonly sortBy: (sort: SortOptions) => void;
 
   constructor(parent: ObjectBrowserSourcePhysicalFileItem, readonly member: IBMiMember, writable: boolean) {
-    const readOnly = parent.filter.protected || !writable;
-    super(parent.filter, correctCase(`${member.name}.${member.extension}`), { icon: readOnly ? `lock-small` : "", parent });
-    this.contextValue = `member${readOnly ? `_readonly` : ``}`;
+    const readonly = parent.filter.protected || !writable;
+    super(parent.filter, correctCase(`${member.name}.${member.extension}`), { icon: readonly ? `lock-small` : "", parent });
+    this.contextValue = `member${readonly ? `_readonly` : ``}`;
     this.description = member.text;
 
-    this.resourceUri = getMemberUri(member, readOnly ? { readonly: true } : undefined);
+    this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path;
     this.tooltip = `${this.path}`
       .concat(`${member.text ? `\n${t("text")}:\t\t${member.text}` : ``}`)
@@ -285,9 +286,9 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
     this.command = {
-      command: `vscode.open`,
+      command: "vscode.openWithDefaultMode",
       title: `Open Member`,
-      arguments: [this.resourceUri]
+      arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
   }
 }
@@ -633,7 +634,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
                 noLibList: true
               });
-              
+
               if (commandResult.code !== 0) {
                 newNameOK = false;
                 vscode.window.showErrorMessage(t(`objectBrowser.renameMember.errorMessage`, commandResult.stderr));
@@ -1046,7 +1047,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 command: `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
                 noLibList: true
               });
-              
+
               if (moveResult.code !== 0) {
                 vscode.window.showErrorMessage(t(`objectBrowser.moveObject.errorMessage2`, node.path, moveResult.stderr));
                 return false;

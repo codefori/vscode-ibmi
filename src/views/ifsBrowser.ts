@@ -127,11 +127,10 @@ class IFSFileItem extends IFSItem {
     this.contextValue = "streamfile";
     this.iconPath = vscode.ThemeIcon.File;
 
-    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
-    this.command = {
-      command: `code-for-ibmi.openEditable`,
+    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` }); this.command = {
+      command: "vscode.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [this.path]
+      arguments: [this]
     };
   }
 

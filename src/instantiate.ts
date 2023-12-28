@@ -3,7 +3,7 @@ import { Tools } from './api/Tools';
 import path, { dirname } from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
-import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
@@ -13,7 +13,7 @@ import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings";
+import { Action, BrowserItem, DeploymentMethod, MemberItem, QsysFsOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
@@ -417,11 +417,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                     from QSYS2.SYSPARTITIONSTAT
                    where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${member.name}' )
                    limit 1
-                `).then((resultSet) => { return resultSet.length !== 1 ? {} :
-                  { base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
-                    name: `${resultSet[0].MEMBER}`,
-                    ext: `${resultSet[0].TYPE}`,
-                  }});
+                `).then((resultSet) => {
+                  return resultSet.length !== 1 ? {} :
+                    {
+                      base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
+                      name: `${resultSet[0].MEMBER}`,
+                      ext: `${resultSet[0].TYPE}`,
+                    }
+                });
                 if (!fullMember) {
                   vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.base} does not exist.`);
                   return;
@@ -605,13 +608,22 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return value;
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
+    vscode.commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem) => {
+      return vscode.commands.executeCommand("vscode.openWithDefaultMode", item, "browse" as DefaultOpenMode);
+    }),
+
+    vscode.commands.registerCommand("code-for-ibmi.edit", (item: WithPath | MemberItem) => {
+      return vscode.commands.executeCommand("vscode.openWithDefaultMode", item, "edit" as DefaultOpenMode);
+    }),
+
+    vscode.commands.registerCommand("vscode.openWithDefaultMode", (item: WithPath | MemberItem, overrideMode?: DefaultOpenMode) => {
+      const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
       let uri;
-      if (node?.member) {
-        uri = getMemberUri(node?.member, { readonly: true });
+      if ("member" in item) {
+        uri = getMemberUri(item.member, { readonly });
       }
-      else if (node?.path) {
-        uri = getUriFromPath(node?.path, { readonly: true });
+      else {
+        uri = getUriFromPath(item.path, { readonly });
       }
 
       if (uri) {

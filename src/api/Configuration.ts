@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { DeploymentMethod } from '../typings';
 
 export type SourceDateMode = "edit" | "diff";
+export type DefaultOpenMode = "browse" | "edit";
 
 const getConfiguration = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
