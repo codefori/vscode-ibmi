@@ -1,10 +1,11 @@
 import vscode from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
+import { Tools } from "../../api/Tools";
+import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
-import { isManaged } from "../../api/debug";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -27,10 +28,7 @@ export class SettingsUI {
   static init(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (
-        /** @type {Server|undefined} */ server,
-        /** @type {string|undefined} */ tab,
-      ) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
 
@@ -128,7 +126,8 @@ export class SettingsUI {
             }
           ], `Set your Default Deployment Method`)
           .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
-          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode)
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode)
+          .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
         const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
@@ -230,7 +229,11 @@ export class SettingsUI {
                     if (data[key].trim() === ``) data[key] = null;
                     break;
                   case `hideCompileErrors`:
-                    data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
+                  case `protectedPaths`:
+                    data[key] = data[key].split(`,`)
+                      .map((item: string) => item.trim().toUpperCase())
+                      .filter((item: string) => item !== ``)
+                      .filter(Tools.distinct);
                     break;
                 }
 

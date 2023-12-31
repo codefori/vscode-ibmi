@@ -100,12 +100,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
       console.log(path);
-      if (!options?.readonly && !path.startsWith('/')) {
-        const [library, name] = path.split('/');
-        const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
-        if (!writable) {
-          options = options || {};
-          options.readonly = true;
+      options = options || {};
+      options.readonly = options.readonly || instance.getContent()?.isProtectedPath(path);
+      if (!options.readonly) {
+        if (path.startsWith('/')) {
+          options.readonly = !await instance.getContent()?.testStreamFile(path, "w");
+        }
+        else {
+          const [library, name] = path.split('/');
+          const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
+          if (!writable) {
+            options.readonly = true;
+          }
         }
       }
       const uri = getUriFromPath(path, options);
@@ -129,7 +135,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         return true;
       } catch (e) {
         console.log(e);
-
         return false;
       }
     }),
