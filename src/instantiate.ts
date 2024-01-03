@@ -129,6 +129,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           await vscode.commands.executeCommand(`vscode.open`, uri);
         }
 
+        // Add file to front of previous files list.
+        const storage = instance.getStorage();
+        const prevOpened = storage!.getPrevOpenedFiles();
+        storage!.setPrevOpenedFiles([path, ...prevOpened.filter((file) => file !== path)]);
+
         return true;
       } catch (e) {
         console.log(e);
@@ -441,7 +446,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
               }
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
-              storage!.setPrevOpenedFiles([selection].concat(prevOpened.filter((file) => file !== selection)));
               quickPick.hide()
             } else {
               quickPick.value = selection.toUpperCase() + '/'
