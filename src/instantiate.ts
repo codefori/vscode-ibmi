@@ -183,6 +183,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (!storage && !content) return;
       let list: string[] = [];
 
+      const prevOpened = storage!.getPrevOpenedFiles();
       const sources = storage!.getSourceList();
       const dirs = Object.keys(sources);
 
@@ -194,10 +195,16 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         });
       });
 
+      const prevItems: vscode.QuickPickItem[] = prevOpened.map(item => ({ label: item }));
       const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }));
 
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = [
+        {
+          label: 'Previous',
+          kind: vscode.QuickPickItemKind.Separator
+        },
+        ...prevItems,
         {
           label: 'Cached',
           kind: vscode.QuickPickItemKind.Separator
@@ -232,6 +239,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (quickPick.value === ``) {
           quickPick.items = [
             {
+              label: 'Previous',
+              kind: vscode.QuickPickItemKind.Separator
+            },
+            ...prevItems,
+                {
               label: 'Cached',
               kind: vscode.QuickPickItemKind.Separator
             },
@@ -264,6 +276,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   kind: vscode.QuickPickItemKind.Separator
                 },
                 ...filteredItems,
+                {
+                  label: 'Previous',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...prevItems,
                 {
                   label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
@@ -308,6 +325,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   kind: vscode.QuickPickItemKind.Separator
                 },
                 ...filteredItems,
+                {
+                  label: 'Previous',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...prevItems,
                 {
                   label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
@@ -357,6 +379,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
                 ...filteredItems,
                 {
+                  label: 'Previous',
+                  kind: vscode.QuickPickItemKind.Separator
+                },
+                ...prevItems,
+                {
                   label: 'Cached',
                   kind: vscode.QuickPickItemKind.Separator
                 },
@@ -384,6 +411,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 kind: vscode.QuickPickItemKind.Separator
               },
               ...filteredItems,
+              {
+                label: 'Previous',
+                kind: vscode.QuickPickItemKind.Separator
+              },
+              ...prevItems,
               {
                 label: 'Cached',
                 kind: vscode.QuickPickItemKind.Separator
@@ -440,6 +472,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
               }
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
+              storage!.setPrevOpenedFiles([selection].concat(prevOpened.filter((file) => file !== selection)));
               quickPick.hide()
             } else {
               quickPick.value = selection.toUpperCase() + '/'
