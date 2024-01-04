@@ -229,10 +229,17 @@ export class SettingsUI {
                     if (data[key].trim() === ``) data[key] = null;
                     break;
                   case `hideCompileErrors`:
-                    data[key] = split(data[key], true);
+                    data[key] = String(data[key]).split(`,`)
+                      .map(item => item.toUpperCase().trim())
+                      .filter(item => item !== ``)
+                      .filter(Tools.distinct);
                     break;
                   case `protectedPaths`:
-                    data[key] = split(data[key], false);
+                    data[key] = String(data[key]).split(`,`)
+                      .map(item => item.trim())
+                      .map(item => item.startsWith('/') ? item : item.toUpperCase())
+                      .filter(item => item !== ``)
+                      .filter(Tools.distinct);
                     break;
                 }
 
@@ -259,7 +266,7 @@ export class SettingsUI {
                       }
                     });
                 }
-                else if (reloadBrowsers){
+                else if (reloadBrowsers) {
                   vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
                   vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
                 }
@@ -320,12 +327,4 @@ export class SettingsUI {
       })
     )
   }
-}
-
-function split(value: string, uppercase: boolean) {
-  return value.split(`,`)
-    .map(item => item.trim())
-    .map(item => uppercase ? item.toUpperCase() : item)
-    .filter(item => item !== ``)
-    .filter(Tools.distinct);
 }
