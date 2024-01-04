@@ -114,24 +114,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
         }
       }
+
       const uri = getUriFromPath(path, options);
       try {
-        if (line) {
-          // If a line is provided, we have to do a specific open
-          let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-          const editor = await vscode.window.showTextDocument(doc, { preview: false });
-
-          if (editor) {
-            const selectedLine = editor.document.lineAt(line);
-            editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
-            editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
-          }
-
-        } else {
-          // Otherwise, do a generic open
-          await vscode.commands.executeCommand(`vscode.open`, uri);
-        }
-
+        const selection = line ? new vscode.Range(line, 0, line, 1000) : undefined;
+        await vscode.commands.executeCommand(`vscode.openWith`, uri, 'default', { selection } as vscode.TextDocumentShowOptions);
         return true;
       } catch (e) {
         console.log(e);
