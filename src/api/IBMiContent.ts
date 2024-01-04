@@ -858,7 +858,7 @@ export default class IBMiContent {
     }
     else { //QSYS path
       const [library] = path.split('/');
-      return this.config.protectedPaths.includes(library);
+      return this.config.protectedPaths.includes(library.toLocaleUpperCase());
     }
   }
 }
