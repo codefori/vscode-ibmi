@@ -240,7 +240,7 @@ export class SettingsUI {
                 }
               }
 
-              if (restartFields.some(item => data[item] !== config[item])) {
+              if (restartFields.some(item => data[item] && data[item] !== config[item])) {
                 restart = true;
               }
 
