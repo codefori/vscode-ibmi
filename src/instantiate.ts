@@ -8,7 +8,7 @@ import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
-import { QSysFS, getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
@@ -600,26 +600,16 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem) => {
-      return vscode.commands.executeCommand("vscode.openWithDefaultMode", item, "browse" as DefaultOpenMode);
+      return vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "browse" as DefaultOpenMode);
     }),
 
     vscode.commands.registerCommand("code-for-ibmi.edit", (item: WithPath | MemberItem) => {
-      return vscode.commands.executeCommand("vscode.openWithDefaultMode", item, "edit" as DefaultOpenMode);
+      return vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "edit" as DefaultOpenMode);
     }),
 
-    vscode.commands.registerCommand("vscode.openWithDefaultMode", (item: WithPath | MemberItem, overrideMode?: DefaultOpenMode) => {
+    vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode) => {
       const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
-      let uri;
-      if ("member" in item) {
-        uri = getMemberUri(item.member, { readonly });
-      }
-      else {
-        uri = getUriFromPath(item.path, { readonly });
-      }
-
-      if (uri) {
-        return vscode.commands.executeCommand(`vscode.open`, uri);
-      }
+      vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
     })
   );
 

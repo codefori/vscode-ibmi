@@ -276,7 +276,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.description = member.text;
 
     this.resourceUri = getMemberUri(member, { readonly });
-    this.path = this.resourceUri.path;
+    this.path = this.resourceUri.path.substring(1);
     this.tooltip = `${this.path}`
       .concat(`${member.text ? `\n${t("text")}:\t\t${member.text}` : ``}`)
       .concat(`${member.lines != undefined ? `\n${t("lines")}:\t${member.lines}` : ``}`)
@@ -286,7 +286,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
     this.command = {
-      command: "vscode.openWithDefaultMode",
+      command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Member`,
       arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
@@ -447,7 +447,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
           if (addResult.code === 0) {
             if (GlobalConfiguration.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`vscode.open`, getMemberUri(member));
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
             objectBrowser.refresh(node);
@@ -524,7 +524,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (GlobalConfiguration.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`vscode.open`, getMemberUri(memberPath));
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, memberPath);
             }
 
             if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
