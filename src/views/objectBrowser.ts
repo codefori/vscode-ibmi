@@ -46,6 +46,10 @@ const objectIcons = {
   '': `circle-large-outline`
 }
 
+function isProtected(filter: ConnectionConfiguration.ObjectFilters){
+  return filter.protected || getContent().isProtectedPath(filter.library);
+}
+
 class ObjectBrowserItem extends BrowserItem {
   constructor(readonly filter: ConnectionConfiguration.ObjectFilters, label: string, params?: BrowserItemParameters) {
     super(label, params);
@@ -57,7 +61,7 @@ class ObjectBrowserItem extends BrowserItem {
 
   reveal(options?: FocusOptions) {
     return vscode.commands.executeCommand<void>(`code-for-ibmi.revealInObjectBrowser`, this, options);
-  }
+  } 
 }
 
 class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -156,8 +160,8 @@ class CreateFilterItem extends BrowserItem {
 
 class ObjectBrowserFilterItem extends ObjectBrowserItem {
   constructor(filter: ConnectionConfiguration.ObjectFilters) {
-    super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
-    this.contextValue = `filter${filter.protected ? `_readonly` : ``}`;
+    super(filter, filter.name, { icon: isProtected(filter) ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
+    this.contextValue = `filter${isProtected(filter) ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
   }
 
@@ -176,7 +180,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
   constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiFile) {
     super(parent.filter, correctCase(sourceFile.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
-    this.contextValue = `SPF${this.filter.protected ? `_readonly` : ``}`;
+    this.contextValue = `SPF${isProtected(this.filter) ? `_readonly` : ``}`;
     this.description = sourceFile.text;
 
     this.path = [sourceFile.library, sourceFile.name].join(`/`);
@@ -245,7 +249,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
 
-    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${this.filter.protected ? `_readonly` : ``}`;
+    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -270,7 +274,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   readonly sortBy: (sort: SortOptions) => void;
 
   constructor(parent: ObjectBrowserSourcePhysicalFileItem, readonly member: IBMiMember, writable: boolean) {
-    const readonly = parent.filter.protected || !writable;
+    const readonly = isProtected(parent.filter) || !writable;
     super(parent.filter, correctCase(`${member.name}.${member.extension}`), { icon: readonly ? `lock-small` : "", parent });
     this.contextValue = `member${readonly ? `_readonly` : ``}`;
     this.description = member.text;
@@ -1144,7 +1148,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           }
         }, timeoutInternal);
 
-        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected);
+        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter ? isProtected(filter) : false);
 
         // Filter search result by member type filter.
         if (results.length > 0 && filter?.member) {

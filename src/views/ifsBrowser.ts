@@ -19,6 +19,10 @@ type DragNDropAction = "move" | "copy";
 type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => GlobalConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
+function isProtected(path: string) {
+  return PROTECTED_DIRS.test(path) || instance.getContent()?.isProtectedPath(path);
+}
+
 class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private readonly emitter = new vscode.EventEmitter<BrowserItem | BrowserItem[] | undefined | null | void>();
   readonly onDidChangeTreeData = this.emitter.event;
@@ -142,9 +146,9 @@ class IFSFileItem extends IFSItem {
 class IFSDirectoryItem extends IFSItem {
   constructor(file: IFSFile, parent?: IFSDirectoryItem) {
     super(file, { state: vscode.TreeItemCollapsibleState.Collapsed, parent })
-
-    this.contextValue = `directory${PROTECTED_DIRS.test(this.file.path) ? `_protected` : ``}`;
-    this.iconPath = vscode.ThemeIcon.Folder;
+    const protectedDir = isProtected(this.file.path);
+    this.contextValue = `directory${protectedDir ? `_protected` : ``}`;
+    this.iconPath = protectedDir ? new vscode.ThemeIcon("lock-small") : vscode.ThemeIcon.Folder;
   }
 
   async getChildren(): Promise<BrowserItem[]> {
@@ -171,8 +175,9 @@ class IFSShortcutItem extends IFSDirectoryItem {
   constructor(readonly shortcut: string) {
     super({ name: shortcut, path: shortcut, type: "directory" })
 
-    this.contextValue = `shortcut${PROTECTED_DIRS.test(this.path) ? `_protected` : ``}`;
-    this.iconPath = new vscode.ThemeIcon("folder-library");
+    const protectedDir = isProtected(this.file.path);
+    this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
+    this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
   }
 }
 
@@ -509,7 +514,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const config = instance.getConfig();
       if (connection && config) {
         items = items || [singleItem];
-        if (!items.find(n => PROTECTED_DIRS.test(n.path))) {
+        if (!items.find(n => isProtected(n.path))) {
           let deletionConfirmed = false;
           const proceed = items.length > 1 ?
             await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length), t(`Yes`), t(`Cancel`)) === t(`Yes`) :
@@ -559,7 +564,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           }
         }
         else {
-          vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => PROTECTED_DIRS.test(n.path)).map(n => n.path).join(`\n`)));
+          vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
         }
       }
     }),
