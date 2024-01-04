@@ -243,19 +243,26 @@ export class SettingsUI {
               }
 
               if (restartFields.some(item => data[item] !== config[item])) {
-                restart = true;
+                restart = false;
               }
+              const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
 
               Object.assign(config, data);
               await instance.setConfig(config);
 
-              if (connection && restart) {
-                vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-                  .then(async (value) => {
-                    if (value === `Reload`) {
-                      await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                    }
-                  });
+              if (connection) {
+                if (restart) {
+                  vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                    .then(async (value) => {
+                      if (value === `Reload`) {
+                        await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                      }
+                    });
+                }
+                else if (reloadBrowsers){
+                  vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                  vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                }
               }
             }
           }
