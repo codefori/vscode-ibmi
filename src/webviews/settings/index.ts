@@ -229,11 +229,10 @@ export class SettingsUI {
                     if (data[key].trim() === ``) data[key] = null;
                     break;
                   case `hideCompileErrors`:
+                    data[key] = split(data[key], true);
+                    break;
                   case `protectedPaths`:
-                    data[key] = data[key].split(`,`)
-                      .map((item: string) => item.trim().toUpperCase())
-                      .filter((item: string) => item !== ``)
-                      .filter(Tools.distinct);
+                    data[key] = split(data[key], false);
                     break;
                 }
 
@@ -313,8 +312,13 @@ export class SettingsUI {
         }
       })
     )
-
-
   }
+}
 
+function split(value: string, uppercase: boolean) {
+  return value.split(`,`)
+    .map(item => item.trim())
+    .map(item => uppercase ? item.toUpperCase() : item)
+    .filter(item => item !== ``)
+    .filter(Tools.distinct);
 }
