@@ -1,8 +1,7 @@
-import vscode from "vscode";
-import { TreeDataProvider } from "vscode";
 import path from 'path';
+import vscode, { TreeDataProvider } from "vscode";
 import { Search } from "../api/Search";
-import { QsysFsOptions } from "../typings";
+import { OpenEditableOptions } from "../typings";
 
 export class SearchView implements TreeDataProvider<any> {
   private _term = ``;
@@ -76,7 +75,7 @@ class HitSource extends vscode.TreeItem {
     this.tooltip = result.path;
   }
 
-  async getChildren() : Promise<LineHit[]> {
+  async getChildren(): Promise<LineHit[]> {
     return this.result.lines.map(line => new LineHit(this.term, this._path, line, this._readonly));
   }
 }
@@ -87,14 +86,19 @@ class LineHit extends vscode.TreeItem {
 
     const upperContent = line.content.trim().toUpperCase();
     const upperTerm = term.toUpperCase();
+    const openOptions: OpenEditableOptions = { readonly };
     let index = 0;
 
     // Calculate the highlights
     if (term.length > 0) {
+      const positionLine = line.number - 1;
       while (index >= 0) {
         index = upperContent.indexOf(upperTerm, index);
         if (index >= 0) {
           highlights.push([index, index + term.length]);
+          if (!openOptions.position) {
+            openOptions.position = new vscode.Range(positionLine, index, positionLine, index + term.length)
+          }
           index += term.length;
         }
       }
@@ -113,7 +117,7 @@ class LineHit extends vscode.TreeItem {
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open`,
-      arguments: [this.path, line.number - 1, (readonly ? {readonly: true} : undefined)]
+      arguments: [this.path, openOptions]
     };
   }
 }

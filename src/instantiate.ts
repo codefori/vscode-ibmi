@@ -13,7 +13,7 @@ import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { Action, BrowserItem, DeploymentMethod, MemberItem, QsysFsOptions, WithPath } from "./typings";
+import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
@@ -98,7 +98,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       `searchView`,
       searchViewContext
     ),
-    vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
+    vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
       console.log(path);
       options = options || {};
       options.readonly = options.readonly || instance.getContent()?.isProtectedPath(path);
@@ -117,8 +117,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       const uri = getUriFromPath(path, options);
       try {
-        const selection = line ? new vscode.Range(line, 0, line, 1000) : undefined;
-        await vscode.commands.executeCommand(`vscode.openWith`, uri, 'default', { selection } as vscode.TextDocumentShowOptions);
+        await vscode.commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as vscode.TextDocumentShowOptions);
         return true;
       } catch (e) {
         console.log(e);
@@ -434,8 +433,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 }
                 selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
               }
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
-              quickPick.hide()
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, { readonly });
+              quickPick.hide();
             } else {
               quickPick.value = selection.toUpperCase() + '/'
             }
