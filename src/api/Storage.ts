@@ -7,7 +7,7 @@ const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
 const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
-const PREVIOUSLY_OPENED_FILES_KEY = `prevOpenedFiles`;
+const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -177,10 +177,10 @@ export class ConnectionStorage extends Storage {
     return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
   }
 
-  getPrevOpenedFiles() {
-    return this.get<string[]>(PREVIOUSLY_OPENED_FILES_KEY) || [];
+  getRecentlyOpenedFiles() {
+    return this.get<string[]>(RECENTLY_OPENED_FILES_KEY) || [];
   }
 
-  async setPrevOpenedFiles(prevOpenedFiles: string[]) {
-    await this.set(PREVIOUSLY_OPENED_FILES_KEY, prevOpenedFiles);
+  async setRecentlyOpenedFiles(recentlyOpenedFiles: string[]) {
+    await this.set(RECENTLY_OPENED_FILES_KEY, recentlyOpenedFiles);
   }}
