@@ -17,6 +17,7 @@ If you want to help but you're unsure what to work on, here are two easy places 
 
 Thanks so much to everyone [who has contributed](https://github.com/codefori/vscode-ibmi/graphs/contributors).
 
+* [@krethan](https://github.com/krethan)
 * [@connorholyday](https://github.com/connorholyday)
 * [@worksofliam](https://github.com/worksofliam)
 * [@alanseiden](https://github.com/alanseiden)
