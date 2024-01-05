@@ -130,9 +130,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         }
 
         // Add file to front of recently opened files list.
+        const recentLimit = GlobalConfiguration.get(`recentlyOpenedFilesLimit`) as number;
         const storage = instance.getStorage();
-        const recent = storage!.getRecentlyOpenedFiles();
-        storage!.setRecentlyOpenedFiles([path, ...recent.filter((file) => file !== path)]);
+        if (recentLimit) {
+          const recent = storage!.getRecentlyOpenedFiles();
+          storage!.setRecentlyOpenedFiles([path, ...recent.filter((file) => file !== path).slice(0, recentLimit - 1)]);
+        } else {
+          storage!.clearRecentlyOpenedFiles();
+        }
 
         return true;
       } catch (e) {
@@ -189,7 +194,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (!storage && !content) return;
       let list: string[] = [];
 
+      // Get recently opened files - cut if limit has been reduced.
+      const recentLimit = GlobalConfiguration.get(`recentlyOpenedFilesLimit`) as number;
       const recent = storage!.getRecentlyOpenedFiles();
+      if (recent.length > recentLimit) {
+        recent.splice(recentLimit);
+        storage!.setRecentlyOpenedFiles(recent);
+      }
+
       const sources = storage!.getSourceList();
       const dirs = Object.keys(sources);
 
@@ -389,7 +401,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         if (selection && selection !== LOADING_LABEL) {
           if (selection === CLEAR_RECENT) {
             recentItems.length = 0;
-            storage!.setRecentlyOpenedFiles([]);
+            storage!.clearRecentlyOpenedFiles();
             quickPick.items = await createQuickPickItemsList(
               `Filter`,
               filteredItems,

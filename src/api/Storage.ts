@@ -183,4 +183,9 @@ export class ConnectionStorage extends Storage {
 
   async setRecentlyOpenedFiles(recentlyOpenedFiles: string[]) {
     await this.set(RECENTLY_OPENED_FILES_KEY, recentlyOpenedFiles);
-  }}
+  }
+
+  async clearRecentlyOpenedFiles() {
+    await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
+  }
+}
