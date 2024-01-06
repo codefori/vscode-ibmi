@@ -7,6 +7,7 @@ const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
 const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
+const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -174,5 +175,17 @@ export class ConnectionStorage extends Storage {
   getWorkspaceDeployPath(workspaceFolder : vscode.WorkspaceFolder){
     const deployDirs = this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
     return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
+  }
+
+  getRecentlyOpenedFiles() {
+    return this.get<string[]>(RECENTLY_OPENED_FILES_KEY) || [];
+  }
+
+  async setRecentlyOpenedFiles(recentlyOpenedFiles: string[]) {
+    await this.set(RECENTLY_OPENED_FILES_KEY, recentlyOpenedFiles);
+  }
+
+  async clearRecentlyOpenedFiles() {
+    await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
   }
 }

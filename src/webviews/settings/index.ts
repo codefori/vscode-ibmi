@@ -249,9 +249,10 @@ export class SettingsUI {
                 }
               }
 
-              if (restartFields.some(item => data[item] !== config[item])) {
-                restart = false;
+              if (restartFields.some(item => data[item] && data[item] !== config[item])) {
+                restart = true;
               }
+                
               const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
 
               Object.assign(config, data);
