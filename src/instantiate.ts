@@ -17,7 +17,6 @@ import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings"
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import IBMi from './api/IBMi';
 
 export let instance: Instance;
 
@@ -215,10 +214,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       // Create a cache for Schema if autosuggest enabled
       if (schemaItems.length === 0 && config && config.enableSQL) {
         content!.runSQL(`
-            SELECT cast(SYSTEM_SCHEMA_NAME as char(10) for bit data) SYSTEM_SCHEMA_NAME, 
-            ifnull(cast(SCHEMA_TEXT as char(50) for bit data), '') SCHEMA_TEXT 
-            FROM QSYS2.SYSSCHEMAS 
-            ORDER BY 1`
+          select cast( SYSTEM_SCHEMA_NAME as char( 10 ) for bit data ) as SYSTEM_SCHEMA_NAME
+               , ifnull( cast( SCHEMA_TEXT as char( 50 ) for bit data ), '' ) as SCHEMA_TEXT 
+            from QSYS2.SYSSCHEMAS 
+           order by 1`
         ).then(resultSetLibrary => {
           schemaItems = resultSetLibrary.map(row => ({
             label: String(row.SYSTEM_SCHEMA_NAME),
@@ -240,13 +239,17 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             ...clearListArray
           ];
           filteredItems = [];
+        } else {
+          if (!starRemoved && !list.includes(quickPick.value.toUpperCase())) {
+            quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+          }
         }
 
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
           const selectionSplit = quickPick.value.toUpperCase().split('/');
           const lastPart = selectionSplit[selectionSplit.length - 1];
-          const filterText = lastPart.substring(0, lastPart.indexOf(`*`));
+          let filterText = lastPart.substring(0, lastPart.indexOf(`*`));
 
           let resultSet: Tools.DB2Row[] = [];
 
@@ -282,14 +285,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
               ]
 
-              resultSet = await content!.runSQL(`SELECT 
-                ifnull(cast(system_table_name as char(10) for bit data), '') AS SYSTEM_TABLE_NAME, 
-                ifnull(TABLE_TEXT, '') TABLE_TEXT 
-              FROM QSYS2.SYSTABLES 
-              WHERE TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}' 
-                AND FILE_TYPE = 'S' 
-                ${filterText ? `AND SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
-              ORDER BY 1`);
+              resultSet = await content!.runSQL(`
+                select ifnull( cast( SYSTEM_TABLE_NAME as char( 10 ) for bit data ), '' ) as SYSTEM_TABLE_NAME
+                     , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT 
+                  from QSYS2.SYSTABLES 
+                 where SYSTEM_TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}' 
+                       and FILE_TYPE = 'S' 
+                  ${filterText ? `and SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
+                 order by 1
+              `);
 
               const listFile: vscode.QuickPickItem[] = resultSet.map(row => ({
                 label: selectionSplit[0] + '/' + String(row.SYSTEM_TABLE_NAME),
@@ -326,19 +330,21 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 },
               ]
 
+              filterText = filterText.endsWith(`.`) ? filterText.substring(0, filterText.length - 1) : filterText;
+
               resultSet = await content!.runSQL(`
-                  SELECT cast(TABLE_PARTITION as char(10) for bit data) TABLE_PARTITION, 
-                    ifnull(PARTITION_TEXT, '') PARTITION_TEXT, 
-                    lower(ifnull(SOURCE_TYPE, '')) SOURCE_TYPE
-                  FROM qsys2.SYSPARTITIONSTAT
-                  WHERE TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
-                    AND table_name = '${connection!.sysNameInAmerican(selectionSplit[1])}'
-                    ${filterText ? `AND TABLE_PARTITION like '${connection!.sysNameInAmerican(filterText)}%'` : ``}
-                  ORDER BY 1
-                `);
+                select cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) as SYSTEM_TABLE_MEMBER
+                     , ifnull( PARTITION_TEXT, '' ) as PARTITION_TEXT
+                     , ifnull( SOURCE_TYPE, '' ) as SOURCE_TYPE
+                  from QSYS2.SYSPARTITIONSTAT
+                 where SYSTEM_TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
+                       and SYSTEM_TABLE_NAME = '${connection!.sysNameInAmerican(selectionSplit[1])}'
+                  ${filterText ? `and SYSTEM_TABLE_MEMBER like '${connection!.sysNameInAmerican(filterText)}%'` : ``}
+                 order by 1
+              `);
 
               const listMember = resultSet.map(row => ({
-                label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.TABLE_PARTITION) + '.' + String(row.SOURCE_TYPE),
+                label: selectionSplit[0] + '/' + selectionSplit[1] + '/' + String(row.SYSTEM_TABLE_MEMBER) + '.' + String(row.SOURCE_TYPE),
                 description: String(row.PARTITION_TEXT)
               }))
 
@@ -386,20 +392,53 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               ...clearListArray
             ]
           }
-          starRemoved = false;
         }
+        starRemoved = false;
       })
 
-      quickPick.onDidAccept(() => {
-        const selection = quickPick.selectedItems[0].label;
+      quickPick.onDidAccept(async () => {
+        let selection = quickPick.selectedItems[0].label;
         if (selection && selection !== LOADING_LABEL) {
           if (selection === clearList) {
             storage!.setSourceList({});
+            quickPick.items = clearListArray;
             vscode.window.showInformationMessage(`Cleared list.`);
-            quickPick.hide()
           } else {
-            const selectionSplit = selection.split('/')
+            const selectionSplit = selection.toUpperCase().split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
+              if (config && config.enableSQL && !selection.startsWith(`/`)) {
+                const lib = `${connection!.sysNameInAmerican(selectionSplit[0])}`;
+                const file = `${connection!.sysNameInAmerican(selectionSplit[1])}`;
+                const member = path.parse(`${connection!.sysNameInAmerican(selectionSplit[2])}`);
+                member.ext = member.ext.substring(1);
+                const fullMember = await content!.runSQL(`
+                  select rtrim( cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) ) as MEMBER
+                       , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
+                    from QSYS2.SYSPARTITIONSTAT
+                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${member.name}' )
+                   limit 1
+                `).then((resultSet) => { return resultSet.length !== 1 ? {} :
+                  { base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
+                    name: `${resultSet[0].MEMBER}`,
+                    ext: `${resultSet[0].TYPE}`,
+                  }});
+                if (!fullMember) {
+                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.base} does not exist.`);
+                  return;
+                } else if (fullMember.name !== member.name || (member.ext && fullMember.ext !== member.ext)) {
+                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.name} of type ${member.ext} does not exist.`);
+                  return;
+                }
+                selection = `${lib}/${file}/${fullMember.base}`;
+              };
+              if (selection.startsWith(`/`)) {
+                const streamFile = await content!.streamfileResolve([selection.substring(1)], [`/`]);
+                if (!streamFile) {
+                  vscode.window.showWarningMessage(`${selection} does not exist or is not a file.`);
+                  return;
+                }
+                selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
+              }
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
               quickPick.hide()
             } else {

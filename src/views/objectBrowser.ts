@@ -7,6 +7,7 @@ import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
+import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
@@ -16,6 +17,14 @@ import { editFilter } from "../webviews/filters";
 const writeFileAsync = util.promisify(fs.writeFile);
 const objectNamesLower = () => GlobalConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
 const objectSortOrder = () => GlobalConfiguration.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+
+const correctCase = (value: string) => {;
+  if (objectNamesLower()) {
+    return value.toLocaleLowerCase();
+  } else {
+    return value;
+  }
+}
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons = {
@@ -152,15 +161,8 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem {
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
-    const lowerCased = objectNamesLower();
     return (await getContent().getObjectList(this.filter, objectSortOrder()))
       .map(object => {
-        if (lowerCased === true) {
-          object.name = object.name.toLocaleLowerCase();
-          object.type = object.type.toLocaleLowerCase();
-          object.attribute = object.attribute?.toLocaleLowerCase().trim();
-        }
-
         return object.attribute?.toLocaleUpperCase() === `*PHY` ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
       });
   }
@@ -171,7 +173,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
   readonly path: string;
 
   constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiFile) {
-    super(parent.filter, sourceFile.name, { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
+    super(parent.filter, correctCase(sourceFile.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
     this.contextValue = `SPF${this.filter.protected ? `_readonly` : ``}`;
     this.description = sourceFile.text;
@@ -202,16 +204,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
     }, `*UPD`);
 
     try {
-      const lowerCased = objectNamesLower();
-      const members = (await content.getMemberList(this.sourceFile.library, this.sourceFile.name, this.filter.member, this.filter.memberType, this.sort))
-        .map(member => {
-          if (lowerCased === true) {
-            member.file = member.file.toLocaleLowerCase();
-            member.name = member.name.toLocaleLowerCase();
-            member.extension = member.extension.toLocaleLowerCase();
-          }
-          return member;
-        });
+      const members = await content.getMemberList(this.sourceFile.library, this.sourceFile.name, this.filter.member, this.filter.memberType, this.sort);
 
       await storeMemberList(this.path, members.map(member => `${member.name}.${member.extension}`));
 
@@ -246,7 +239,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     const icon = Object.entries(objectIcons).find(([key]) => key === type.toUpperCase())?.[1] || objectIcons[``];
-    super(parent.filter, `${object.name}.${type}`, { icon, parent });
+    super(parent.filter, correctCase(`${object.name}.${type}`), { icon, parent });
 
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
@@ -277,7 +270,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
   constructor(parent: ObjectBrowserSourcePhysicalFileItem, readonly member: IBMiMember, writable: boolean) {
     const readOnly = parent.filter.protected || !writable;
-    super(parent.filter, `${member.name}.${member.extension}`, { icon: readOnly ? `lock-small` : "", parent });
+    super(parent.filter, correctCase(`${member.name}.${member.extension}`), { icon: readOnly ? `lock-small` : "", parent });
     this.contextValue = `member${readOnly ? `_readonly` : ``}`;
     this.description = member.text;
 
@@ -517,7 +510,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               noLibList: true
             })
 
-            if (copyResult.stderr.includes(`CPF2869`)) {
+            const messages = Tools.parseMessages(copyResult.stderr);
+            if (messages.findId(`CPF2869`)) {
               throw (copyResult.stderr)
             }
 

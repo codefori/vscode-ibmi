@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.6.1",
+	"version": "2.6.3-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -38,7 +38,11 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
-		"taskDefinitions": [{"type": "ibmi"}],
+		"taskDefinitions": [
+			{
+				"type": "ibmi"
+			}
+		],
 		"snippets": [
 			{
 				"path": "./schemas/cl.code-snippets",
@@ -443,6 +447,21 @@
 					"default": true,
 					"description": "If enabled, objects will be sorted by object name. If disabled, objects will be sorted by object type (MI object type)."
 				},
+				"code-for-ibmi.IfsBrowser.DragAndDropDefaultBehavior": {
+					"type": "string",
+					"default": "ask",
+					"enum": [
+						"ask",
+						"copy",
+						"move"
+					],
+					"enumDescriptions": [
+						"Show a modal choice dialog",
+						"Always copy",
+						"Always move"
+					],
+					"description": "The action to take when an item from the IFS Browser is dragged'n'dropped."
+				},
 				"code-for-ibmi.clearDiagnosticOnEdit": {
 					"type": "boolean",
 					"default": false,
@@ -570,7 +589,7 @@
 									"parent",
 									"filter",
 									"browser"
-								]								
+								]
 							},
 							"runOnProtected": {
 								"type": "boolean",
@@ -2233,22 +2252,22 @@
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutDown",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutUp",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.browse",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
 					"group": "0_browse@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
 					"group": "1_workspace@1"
 				},
 				{
@@ -2258,112 +2277,112 @@
 				},
 				{
 					"command": "code-for-ibmi.moveIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.copyIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
 					"group": "2_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
 					"group": "2_ifsStuff@2"
 				},
 				{
 					"submenu": "code-for-ibmi.sortIFSFiles",
-					"when": "view == ifsBrowser",
+					"when": "view == ifsBrowser && !listMultiSelection",
 					"group": "5_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.searchIFS",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
 					"group": "3_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.addIFSShortcut",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
 					"group": "3_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.changeWorkingDirectory",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
 					"group": "3_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "2_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.searchIFS",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "3_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.removeIFSShortcut",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "3_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.changeWorkingDirectory",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "3_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.ifs.copyPath",
-					"when": "view == ifsBrowser",
+					"when": "view == ifsBrowser && !listMultiSelection",
 					"group": "4_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.openTerminalHere",
-					"when": "view == ifsBrowser",
+					"when": "view == ifsBrowser && !listMultiSelection",
 					"group": "4_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutToTop",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "5_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.moveIFSShortcutToBottom",
-					"when": "view == ifsBrowser && viewItem =~ /^shortcut.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "5_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
-					"when": "view == ifsBrowser && viewItem == streamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
 					"group": "3_ifsTransfer@1"
 				},
 				{
 					"command": "code-for-ibmi.uploadStreamfile",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
 					"group": "3_ifsTransfer@2"
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == ifsBrowser && viewItem =~ /^directory.*$/ && workspaceFolderCount >= 1",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/ && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{
 					"command": "code-for-ibmi.uploadStreamfile",
-					"when": "view == ifsBrowser && viewItem == shortcut",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem == shortcut",
 					"group": "3_ifsTransfer@2"
 				},
 				{
 					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == ifsBrowser && viewItem == shortcut && workspaceFolderCount >= 1",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem == shortcut && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
 				},
 				{
@@ -2458,7 +2477,7 @@
 		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2",
-    "crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz"
+		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",

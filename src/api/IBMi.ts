@@ -203,7 +203,7 @@ export default class IBMi {
         this.client.connection!.once(`end`, disconnected);
         this.client.connection!.once(`error`, disconnected);
 
-        if(!reconnecting){
+        if (!reconnecting) {
           instance.setConnection(this);
         }
 
@@ -345,50 +345,32 @@ export default class IBMi {
 
         //Next, we need to check the temp lib (where temp outfile data lives) exists
         const createdTempLib = await this.runCommand({
-          command: `CRTLIB LIB(` + this.config.tempLibrary + `) TEXT('Code for i temporary objects. May be cleared.')`,
+          command: `CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
           noLibList: true
         });
 
         if (createdTempLib.code === 0) {
           tempLibrarySet = true;
-          
         } else {
-          let [errorcode, errortext] = createdTempLib?.stderr.split(`:`);
-
-          switch (errorcode) {
-            case `CPF2158`: //Library X exists in ASP device ASP X.
-            case `CPF2111`: //Already exists, hopefully ok :)
-              tempLibrarySet = true;
-              break;
-
-            case `CPD0032`: //Can't use CRTLIB
-              const tempLibExists = await this.runCommand({
-                command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-                noLibList: true
-              });
-
-              if (tempLibExists?.code === 0) {
-                //We're all good if no errors
-                tempLibrarySet = true;
-
-              } else {
-                if (currentLibrary) {
-                  if (currentLibrary.startsWith(`Q`)) {
-                    //Temporary library not created. Some parts of the extension will not run without a temporary library.
-                  } else {
-                    this.config.tempLibrary = currentLibrary;
-
-                    //Using ${currentLibrary} as the temporary library for temporary data.
-                    this.config.tempLibrary = currentLibrary;
-
-                    tempLibrarySet = true;
-                  }
-                }
-              }
-              break;
+          const messages = Tools.parseMessages(createdTempLib.stderr);
+          if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)            
+            tempLibrarySet = true;
           }
+          else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
+            const tempLibExists = await this.runCommand({
+              command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+              noLibList: true
+            });
 
-          console.log(createdTempLib?.stderr);
+            if (tempLibExists.code === 0) {
+              //We're all good if no errors
+              tempLibrarySet = true;
+            } else if (currentLibrary && !currentLibrary.startsWith(`Q`)) {
+              //Using ${currentLibrary} as the temporary library for temporary data.
+              this.config.tempLibrary = currentLibrary;
+              tempLibrarySet = true;
+            }
+          }
         }
 
         progress.report({
@@ -433,7 +415,8 @@ export default class IBMi {
             .then(result => {
               // All good!
               if (result && result.stderr) {
-                if (!result.stderr.startsWith(`CPF2125`)) {
+                const messages = Tools.parseMessages(result.stderr);
+                if (!messages.findId(`CPF2125`)) {
                   // @ts-ignore We know the config exists.
                   vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
                     if (choice === `View log`) {
@@ -500,7 +483,7 @@ export default class IBMi {
             });
           }
 
-          const QCPFRMIMPF = await await this.runCommand({
+          const QCPFRMIMPF = await this.runCommand({
             command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
             noLibList: true
           });
@@ -740,10 +723,10 @@ export default class IBMi {
                   const bashrcFile = `${defaultHomeDir}/.bashrc`;
                   let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
                   let reason;
-                  if(!currentPaths.includes("/QOpenSys/pkgs/bin")){
+                  if (!currentPaths.includes("/QOpenSys/pkgs/bin")) {
                     reason = "Your $PATH shell environment variable does not include /QOpenSys/pkgs/bin";
                   }
-                  else if (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin") || currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")){
+                  else if (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin") || currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")) {
                     reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
                   }
                   if (reason && await vscode.window.showWarningMessage(`/QOpenSys/pkgs/bin not found in $PATH`, {
@@ -865,7 +848,7 @@ export default class IBMi {
           }
         }
 
-        if (!reconnecting) {          
+        if (!reconnecting) {
           vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
           await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
           delayedOperations.forEach(func => func());
@@ -1031,12 +1014,12 @@ export default class IBMi {
    */
   getTempRemote(key: string) {
     if (this.tempRemoteFiles[key] !== undefined) {
-      console.log(`Using existing temp: ` + this.tempRemoteFiles[key]);
+      console.log(`Using existing temp: ${this.tempRemoteFiles[key]}`);
       return this.tempRemoteFiles[key];
     } else
       if (this.config) {
         let value = path.posix.join(this.config.tempDir, `vscodetemp-${Tools.makeid()}`);
-        console.log(`Using new temp: ` + value);
+        console.log(`Using new temp: ${value}`);
         this.tempRemoteFiles[key] = value;
         return value;
       }
