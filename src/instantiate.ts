@@ -3,17 +3,17 @@ import { Tools } from './api/Tools';
 import path, { dirname } from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
-import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
-import { QSysFS, getMemberUri, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { Action, BrowserItem, DeploymentMethod, QsysFsOptions } from "./typings";
+import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
@@ -101,36 +101,29 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       `searchView`,
       searchViewContext
     ),
-    vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, line?: number, options?: QsysFsOptions) => {
+    vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
       console.log(path);
-      if (!options?.readonly && !path.startsWith('/')) {
-        const [library, name] = path.split('/');
-        const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
-        if (!writable) {
-          options = options || {};
-          options.readonly = true;
+      options = options || {};
+      options.readonly = options.readonly || instance.getContent()?.isProtectedPath(path);
+      if (!options.readonly) {
+        if (path.startsWith('/')) {
+          options.readonly = !await instance.getContent()?.testStreamFile(path, "w");
+        }
+        else {
+          const [library, name] = path.split('/');
+          const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
+          if (!writable) {
+            options.readonly = true;
+          }
         }
       }
+
       const uri = getUriFromPath(path, options);
       try {
-        if (line) {
-          // If a line is provided, we have to do a specific open
-          let doc = await vscode.workspace.openTextDocument(uri); // calls back into the provider
-          const editor = await vscode.window.showTextDocument(doc, { preview: false });
-
-          if (editor) {
-            const selectedLine = editor.document.lineAt(line);
-            editor.selection = new vscode.Selection(line, selectedLine.firstNonWhitespaceCharacterIndex, line, 100);
-            editor.revealRange(selectedLine.range, vscode.TextEditorRevealType.InCenter);
-          }
-
-        } else {
-          // Otherwise, do a generic open
-          await vscode.commands.executeCommand(`vscode.open`, uri);
-        }
+        await vscode.commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as vscode.TextDocumentShowOptions);
 
         // Add file to front of recently opened files list.
-        const recentLimit = GlobalConfiguration.get(`recentlyOpenedFilesLimit`) as number;
+        const recentLimit = GlobalConfiguration.get<number>(`recentlyOpenedFilesLimit`);
         const storage = instance.getStorage();
         if (recentLimit) {
           const recent = storage!.getRecentlyOpenedFiles();
@@ -142,7 +135,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         return true;
       } catch (e) {
         console.log(e);
-
         return false;
       }
     }),
@@ -435,11 +427,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                     from QSYS2.SYSPARTITIONSTAT
                    where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${member.name}' )
                    limit 1
-                `).then((resultSet) => { return resultSet.length !== 1 ? {} :
-                  { base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
-                    name: `${resultSet[0].MEMBER}`,
-                    ext: `${resultSet[0].TYPE}`,
-                  }});
+                `).then((resultSet) => {
+                  return resultSet.length !== 1 ? {} :
+                    {
+                      base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
+                      name: `${resultSet[0].MEMBER}`,
+                      ext: `${resultSet[0].TYPE}`,
+                    }
+                });
                 if (!fullMember) {
                   vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.base} does not exist.`);
                   return;
@@ -457,8 +452,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 }
                 selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
               }
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, 0, { readonly });
-              quickPick.hide()
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, { readonly });
+              quickPick.hide();
             } else {
               quickPick.value = selection.toUpperCase() + '/'
             }
@@ -623,18 +618,17 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return value;
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.browse", (node: any) => { //any for now, typed later after TS conversion of browsers
-      let uri;
-      if (node?.member) {
-        uri = getMemberUri(node?.member, { readonly: true });
-      }
-      else if (node?.path) {
-        uri = getUriFromPath(node?.path, { readonly: true });
-      }
+    vscode.commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem) => {
+      return vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "browse" as DefaultOpenMode);
+    }),
 
-      if (uri) {
-        return vscode.commands.executeCommand(`vscode.open`, uri);
-      }
+    vscode.commands.registerCommand("code-for-ibmi.edit", (item: WithPath | MemberItem) => {
+      return vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "edit" as DefaultOpenMode);
+    }),
+
+    vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode) => {
+      const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
+      vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
     })
   );
 

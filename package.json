@@ -427,6 +427,15 @@
 					"default": true,
 					"description": "If enabled, will clear the IBM i Output before an Action is run."
 				},
+				"code-for-ibmi.defaultOpenMode": {
+					"type": "string",
+					"default": "edit",
+					"enum": [
+						"browse",
+						"edit"						
+					],
+					"description": "The action to take when clicking on a source member or stream file to open it."
+				},
 				"code-for-ibmi.autoOpenFile": {
 					"type": "boolean",
 					"default": true,
@@ -1564,6 +1573,12 @@
 				"title": "Browse",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.edit",
+				"title": "Edit",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1685,6 +1700,14 @@
 			{
 				"id": "code-for-ibmi.sortMembers",
 				"label": "Sort by"
+			},
+			{
+				"id": "code-for-ibmi.openIFSFile",
+				"label": "Open"
+			},
+			{
+				"id": "code-for-ibmi.openMember",
+				"label": "Open"
 			}
 		],
 		"menus": {
@@ -1702,6 +1725,23 @@
 				},
 				{
 					"command": "code-for-ibmi.sortMembersByDate"
+				}
+			],
+			"code-for-ibmi.openIFSFile": [
+				{
+					"command": "code-for-ibmi.browse"
+				},
+				{
+					"command": "code-for-ibmi.edit"
+				}
+			],
+			"code-for-ibmi.openMember": [
+				{
+					"command": "code-for-ibmi.browse"
+				},
+				{
+					"command": "code-for-ibmi.edit",
+					"when": "viewItem == member"
 				}
 			],
 			"commandPalette": [
@@ -1791,6 +1831,10 @@
 				},
 				{
 					"command": "code-for-ibmi.browse",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.edit",
 					"when": "never"
 				},
 				{
@@ -2218,9 +2262,9 @@
 					"group": "5_sourceFileStuff@1"
 				},
 				{
-					"command": "code-for-ibmi.browse",
+					"submenu": "code-for-ibmi.openMember",
 					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
-					"group": "0_browse@1"
+					"group": "0_open@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
@@ -2278,9 +2322,9 @@
 					"group": "inline"
 				},
 				{
-					"command": "code-for-ibmi.browse",
+					"submenu": "code-for-ibmi.openIFSFile",
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
-					"group": "0_browse@1"
+					"group": "0_open@1"
 				},
 				{
 					"command": "code-for-ibmi.runAction",
