@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.6.3-dev.0",
+	"version": "2.6.3",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -432,7 +432,7 @@
 					"default": "edit",
 					"enum": [
 						"browse",
-						"edit"						
+						"edit"
 					],
 					"description": "The action to take when clicking on a source member or stream file to open it."
 				},
@@ -476,23 +476,23 @@
 					"default": false,
 					"description": "When lines with ILE diagnostics are edited, the diagnostic will be removed. Requires reload/restart if changed."
 				},
-        "code-for-ibmi.recentlyOpenedFilesLimit": {
-          "type": "integer",
-          "default": 10,
-          "description": "Number of files to keep in recently opened files list.",
-          "enum": [
-            0,
-            10,
-            20,
-            30
-          ],
-          "enumDescriptions": [
-            "Do not keep any recently opened files",
-            "Keep the 10 most recently opened files",
-            "Keep the 20 most recently opened files",
-            "Keep the 30 most recently opened files"
-          ]
-        },
+				"code-for-ibmi.recentlyOpenedFilesLimit": {
+					"type": "integer",
+					"default": 10,
+					"description": "Number of files to keep in recently opened files list.",
+					"enum": [
+						0,
+						10,
+						20,
+						30
+					],
+					"enumDescriptions": [
+						"Do not keep any recently opened files",
+						"Keep the 10 most recently opened files",
+						"Keep the 20 most recently opened files",
+						"Keep the 30 most recently opened files"
+					]
+				},
 				"code-for-ibmi.safeDeleteMode": {
 					"type": "boolean",
 					"default": false,
