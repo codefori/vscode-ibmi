@@ -32,8 +32,8 @@ jobs:
           
       - name: Publish
         run: |
-          npx @vscode/vsce publish --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.PUBLISHER_TOKEN }}
-          npx ovsx publish --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.OPENVSX_TOKEN }}
+          npx @vscode/vsce publish --skip-duplicate --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.PUBLISHER_TOKEN }}
+          npx ovsx publish --skip-duplicate --packagePath code-for-ibmi-${{ github.ref_name }}.vsix --pat ${{ secrets.OPENVSX_TOKEN }}
 
       - name: Attach vsix
         uses: svenstaro/upload-release-action@v2
