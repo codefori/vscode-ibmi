@@ -849,7 +849,7 @@ export default class IBMiContent {
   }
 
   async testStreamFile(path: string, right: "r" | "w" | "x") {
-    return (await this.ibmi.sendCommand({ command: `test -${right} ${path}` })).code === 0;
+    return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
   }
 
   isProtectedPath(path: string) {
