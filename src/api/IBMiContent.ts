@@ -8,6 +8,7 @@ import { CommandResult, IBMiError, IBMiFile, IBMiMember, IBMiObject, IFSFile, Qs
 import { ConnectionConfiguration } from './Configuration';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
+import { window } from 'vscode';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -187,6 +188,10 @@ export default class IBMiContent {
         });
 
         if (copyResult.code === 0) {
+          const messages = Tools.parseMessages(copyResult.stderr);
+            if (messages.findId("CPIA083")) {
+              window.showWarningMessage( `${library}/${sourceFile}(${member}) was saved with truncated records!`);
+            }
           return true;
         } else {
           if (!retry) {
