@@ -303,6 +303,7 @@ export class SettingsUI {
               if (!data.privateKeyPath?.trim()) {
                 if (connection.privateKeyPath?.trim()) {
                   data.privateKeyPath = connection.privateKeyPath;
+                  context.secrets.delete(`${name}_password`);
                 }
                 else {
                   delete data.privateKeyPath;
