@@ -110,8 +110,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           options.readonly = !await instance.getContent()?.testStreamFile(path, "w");
         }
         else {
-          const [library, name] = path.split('/');
-          const writable = await instance.getContent()?.checkObject({ library, name, type: '*FILE' }, "*UPD");
+          const qsysObject = Tools.parseQSysPath(path);
+          const writable = await instance.getContent()?.checkObject({ library: qsysObject.library, name: qsysObject.name, type: '*FILE' }, "*UPD");
           if (!writable) {
             options.readonly = true;
           }
@@ -707,19 +707,19 @@ async function createQuickPickItemsList(
   labelFiltered: string = ``, filtered: vscode.QuickPickItem[] = [],
   labelRecent: string = ``, recent: vscode.QuickPickItem[] = [],
   labelCached: string = ``, cached: vscode.QuickPickItem[] = [],
-  ) {
-    const clearRecentArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: CLEAR_RECENT }];
-    const clearCachedArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: CLEAR_CACHED }];
+) {
+  const clearRecentArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: CLEAR_RECENT }];
+  const clearCachedArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: CLEAR_CACHED }];
 
-    const returnedList: vscode.QuickPickItem[] = [
-      { label: labelFiltered, kind: vscode.QuickPickItemKind.Separator },
-      ...filtered,
-      { label: labelRecent, kind: vscode.QuickPickItemKind.Separator },
-      ...recent,
-      ...(recent.length != 0 ? clearRecentArray : []),
-      { label: labelCached, kind: vscode.QuickPickItemKind.Separator },
-      ...cached,
-      ...(cached.length != 0 ? clearCachedArray : [])
-    ];
-    return returnedList;
+  const returnedList: vscode.QuickPickItem[] = [
+    { label: labelFiltered, kind: vscode.QuickPickItemKind.Separator },
+    ...filtered,
+    { label: labelRecent, kind: vscode.QuickPickItemKind.Separator },
+    ...recent,
+    ...(recent.length != 0 ? clearRecentArray : []),
+    { label: labelCached, kind: vscode.QuickPickItemKind.Separator },
+    ...cached,
+    ...(cached.length != 0 ? clearCachedArray : [])
+  ];
+  return returnedList;
 }

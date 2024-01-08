@@ -2,7 +2,7 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
-import { IBMiMessage, IBMiMessages } from '../typings';
+import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
 
 export namespace Tools {
@@ -233,6 +233,23 @@ export namespace Tools {
     return {
       messages,
       findId: id => messages.find(m => m.id === id)
+    }
+  }
+
+  export function parseQSysPath(path: string) : QsysPath{
+    const parts = path.split('/');
+    if(parts.length > 3){
+      return {
+        asp: parts[0],
+        library: parts[1],
+        name: parts[2]
+      }
+    }
+    else{
+      return {
+        library: parts[0],
+        name: parts[1]
+      }
     }
   }
 }
