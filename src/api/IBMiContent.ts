@@ -189,9 +189,9 @@ export default class IBMiContent {
 
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
-            if (messages.findId("CPIA083")) {
-              window.showWarningMessage( `${library}/${sourceFile}(${member}) was saved with truncated records!`);
-            }
+          if (messages.findId("CPIA083")) {
+            window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+          }
           return true;
         } else {
           if (!retry) {
