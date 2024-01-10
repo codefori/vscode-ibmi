@@ -147,9 +147,11 @@ export namespace ConnectionConfiguration {
   }
 
   export async function update(parameters: Parameters) {
-    let connections = getConnectionSettings();
-    connections.filter(conn => conn.name === parameters.name).forEach(conn => Object.assign(conn, parameters));
-    await updateAll(connections);
+    if(parameters?.name) {
+      const connections = getConnectionSettings();
+      connections.filter(conn => conn.name === parameters.name).forEach(conn => Object.assign(conn, parameters));
+      await updateAll(connections);
+    }
   }
 
   /**
