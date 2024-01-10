@@ -75,7 +75,7 @@ export class Login {
             });
 
             if (data.savePassword) {
-              context.secrets.store(`${data.name}_password`, `${data.password}`);
+              await context.secrets.store(`${data.name}_password`, `${data.password}`);
             }
 
             await GlobalConfiguration.set(`connections`, existingConnections);
