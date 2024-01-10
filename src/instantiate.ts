@@ -614,8 +614,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         return newValue;
       }
 
-      const value = context.secrets.get(connectionKey);
-      return value;
+      return await context.secrets.get(connectionKey);
     }),
 
     vscode.commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem) => {

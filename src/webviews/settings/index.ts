@@ -303,6 +303,7 @@ export class SettingsUI {
               if (!data.privateKeyPath?.trim()) {
                 if (connection.privateKeyPath?.trim()) {
                   data.privateKeyPath = connection.privateKeyPath;
+                  await context.secrets.delete(`${name}_password`);
                 }
                 else {
                   delete data.privateKeyPath;
@@ -310,8 +311,8 @@ export class SettingsUI {
               }
 
               if (data.password && !data.privateKeyPath) {
-                context.secrets.delete(`${name}_password`);
-                context.secrets.store(`${name}_password`, `${data.password}`);
+                await context.secrets.delete(`${name}_password`);
+                await context.secrets.store(`${name}_password`, `${data.password}`);
                 delete data.privateKeyPath;
               }
 

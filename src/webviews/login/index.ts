@@ -75,7 +75,7 @@ export class Login {
             });
 
             if (data.savePassword) {
-              context.secrets.store(`${data.name}_password`, `${data.password}`);
+              await context.secrets.store(`${data.name}_password`, `${data.password}`);
             }
 
             await GlobalConfiguration.set(`connections`, existingConnections);
@@ -152,7 +152,12 @@ export class Login {
     const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
     let connectionConfig = existingConnections.find(item => item.name === name);
     if (connectionConfig) {
-      if (!connectionConfig.privateKeyPath) {
+      if (connectionConfig.privateKeyPath) {
+        // If connecting with a private key, remove the password
+        await context.secrets.delete(`${connectionConfig.name}_password`);
+
+      } else {
+        // Assume connection with a password, but prompt if we don't have one
         connectionConfig.password = await context.secrets.get(`${connectionConfig.name}_password`);
         if (!connectionConfig.password) {
           connectionConfig.password = await vscode.window.showInputBox({
