@@ -99,6 +99,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
 }
 
 export async function handleEvfeventLines(lines: string[], instance: Instance, evfeventInfo: EvfEventInfo) {
+  const connection = instance.getConnection();
   const config = instance.getConfig();
   const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
@@ -141,7 +142,22 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
 
         if (workspaceFolder && storage) {
           const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceFolder);
-          const relativeCompilePath = file.toLowerCase().replace(workspaceDeployPath, '');
+          const deployPathIndex = file.toLowerCase().indexOf(workspaceDeployPath.toLowerCase());
+        
+          let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : file);
+
+          if (connection) {
+            // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
+            const aspNames = Object.values(connection.aspInfo);
+            for (const aspName of aspNames) {
+              const aspRoot = `/${aspName}`;
+              if (relativeCompilePath.startsWith(aspRoot)) {
+                relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
+                break;
+              }
+            }
+          }
+
           const diagnosticTargetFile = vscode.Uri.joinPath(workspaceFolder.uri, relativeCompilePath);
 
           if (diagnosticTargetFile !== undefined) {

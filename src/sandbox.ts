@@ -74,8 +74,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                             password: undefined, // Removes the password from the object
                           });
 
-                          context.secrets.store(`${host}_password`, pass);
-
+                          await context.secrets.store(`${host}_password`, pass);
                           await GlobalConfiguration.set(`connections`, existingConnections);
                         }
                       }

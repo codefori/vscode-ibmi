@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { DeploymentMethod } from '../typings';
 
 export type SourceDateMode = "edit" | "diff";
+export type DefaultOpenMode = "browse" | "edit";
 
 const getConfiguration = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
@@ -58,6 +59,7 @@ export namespace ConnectionConfiguration {
     readOnlyMode: boolean;
     quickConnect: boolean;
     defaultDeploymentMethod: DeploymentMethod | '';
+    protectedPaths: string[];
     [name: string]: any;
   }
 
@@ -135,7 +137,8 @@ export namespace ConnectionConfiguration {
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
-      defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``
+      defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
+      protectedPaths: (parameters.protectedPaths || [])
     }
   }
 
@@ -144,9 +147,11 @@ export namespace ConnectionConfiguration {
   }
 
   export async function update(parameters: Parameters) {
-    let connections = getConnectionSettings();
-    connections.filter(conn => conn.name === parameters.name).forEach(conn => Object.assign(conn, parameters));
-    await updateAll(connections);
+    if(parameters?.name) {
+      const connections = getConnectionSettings();
+      connections.filter(conn => conn.name === parameters.name).forEach(conn => Object.assign(conn, parameters));
+      await updateAll(connections);
+    }
   }
 
   /**
