@@ -447,9 +447,11 @@ export default class IBMiContent {
       throw new Error(`Library ${library} does not exist.`);
     }
 
-    const objects = filters.object?.split(',')      
+    let hasEndsWith = false;
+    const objects = filters.object?.split(',')
       .map(pattern => {
         if (pattern.startsWith('*')) {
+          hasEndsWith = true;
           return (name: string) => name.endsWith(pattern.substring(1));
         }
         else if (pattern.endsWith('*')) {
@@ -460,7 +462,8 @@ export default class IBMiContent {
         }
       })
       || [];
-    const filterNames = objects.length > 1 ? (file: IBMiFile) => objects.some(test => test(file.name)) : undefined;
+
+    const filterNames = objects.length && (objects.length > 1 || hasEndsWith) ? (file: IBMiFile) => objects.some(test => test(file.name)) : undefined;
 
     const object = filters.object && !filterNames && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`;
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
