@@ -447,7 +447,24 @@ export default class IBMiContent {
       throw new Error(`Library ${library} does not exist.`);
     }
 
-    const object = (filters.object && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`);
+    const objects = filters.object?.split(',')
+      .map(o => o.trim().toLocaleUpperCase())
+      .filter(Tools.distinct)
+      .map(pattern => {
+        if (pattern.startsWith('*')) {
+          return (name: string) => name.endsWith(pattern.substring(1));
+        }
+        else if (pattern.endsWith('*')) {
+          return (name: string) => name.startsWith(pattern.substring(0, pattern.length - 1));
+        }
+        else {
+          return (name: string) => name === pattern;
+        }
+      })
+      || [];
+    const filterNames = objects.length > 1 ? (file: IBMiFile) => objects.some(test => test(file.name)) : undefined;
+
+    const object = filters.object && !filterNames && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`;
     const sourceFilesOnly = (filters.types && filters.types.includes(`*SRCPF`));
 
     const tempLib = this.config.tempLibrary;
@@ -473,6 +490,7 @@ export default class IBMiContent {
           text: String(object.PHTXT),
           count: Number(object.PHNOMB),
         } as IBMiFile))
+        .filter(object => !filterNames || filterNames(object))
         .sort((a, b) => a.library.localeCompare(b.library) || a.name.localeCompare(b.name));
     } else {
       const objectTypes = (filters.types && filters.types.length ? filters.types.map(type => type.toUpperCase()).join(` `) : `*ALL`);
@@ -494,6 +512,7 @@ export default class IBMiContent {
         attribute: String(object.ODOBAT),
         text: String(object.ODOBTX)
       } as IBMiFile))
+        .filter(object => !filterNames || filterNames(object))
         .sort((a, b) => {
           if (a.library.localeCompare(b.library) != 0) {
             return a.library.localeCompare(b.library)
