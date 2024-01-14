@@ -1,5 +1,6 @@
 import { ConnectionConfiguration } from "../../api/Configuration";
 import { CustomUI } from "../../api/CustomUI";
+import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 
 export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters, copy = false) {
@@ -64,6 +65,12 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
             data[key] = String(data[key]).split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
             break;
           case `object`:
+            data[key] = (String(data[key].trim()) || `*`)
+              .split(',')
+              .map(o => o.trim().toLocaleUpperCase())
+              .filter(Tools.distinct)
+              .join(",");
+            break;
           case `member`:
           case `memberType`:
             data[key] = String(data[key].trim()) || `*`;

@@ -447,9 +447,7 @@ export default class IBMiContent {
       throw new Error(`Library ${library} does not exist.`);
     }
 
-    const objects = filters.object?.split(',')
-      .map(o => o.trim().toLocaleUpperCase())
-      .filter(Tools.distinct)
+    const objects = filters.object?.split(',')      
       .map(pattern => {
         if (pattern.startsWith('*')) {
           return (name: string) => name.endsWith(pattern.substring(1));
