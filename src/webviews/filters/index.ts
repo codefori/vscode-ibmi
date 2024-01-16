@@ -42,7 +42,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
     const page = await new CustomUI()
       .addInput(`name`, `Filter name`, `The filter name should be unique.`, { default: filter.name })
       .addInput(`library`, `Library`, `Library name. Cannot be generic name with an asterisk.`, { default: filter.library })
-      .addInput(`object`, `Objects`, `Object names. Comma-separated list of object names. Name can starts or ends with an asterisk (i.e. select names that <code>end with</code> or <code>start with</code>). Examples: <code>*</code>, <code>Q*</code> or <code>*SRC</code>.`, { default: filter.object })
+      .addInput(`object`, `Objects`, `Object names. Comma-separated list of object names. Can be multi-generic values. Examples: <code>*</code>, <code>Q*</code> or <code>*CL*SRC*</code>. A single `*` will return all objects.`, { default: filter.object })
       .addInput(`types`, `Object type filter`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
       .addInput(`member`, `Member`, `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`, { default: filter.member })
       .addInput(`memberType`, `Member type`, `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`, { default: filter.memberType || `*` })
