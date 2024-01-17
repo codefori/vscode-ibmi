@@ -12,6 +12,7 @@ import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer
 import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from './local/env';
+import { getGitBranch } from './local/git';
 
 const NEWLINE = `\r\n`;
 
@@ -21,7 +22,7 @@ export interface ILELibrarySettings {
 }
 
 export namespace CompileTools {
-  type Variables = Map<string, string>
+  type Variable = Record<string, string>;
 
   interface CommandObject {
     object: string
@@ -38,46 +39,43 @@ export namespace CompileTools {
     );
   }
 
-  function replaceValues(inputValue: string, variables: Variables, currentVar?: string) {
-    variables.forEach((value, varName) => {
-      if (value) {
-
-        // When replacing a value, let's check if this value has any variables in it too!
-        if (currentVar === undefined) {
-          value = replaceValues(value, variables, varName);
+  function expandVariables(variables: Variable) {
+    for (const key in variables) {
+      for (const key2 in variables) {
+        if (key !== key2) { // Do not expand one self
+          variables[key] = variables[key].replace(new RegExp(key2, `g`), variables[key2]);
         }
-
-        inputValue = inputValue.replace(new RegExp(varName, `g`), value);
       }
-    });
+    }
+  }
+
+  function expandCommand(inputValue: string, variables: Variable, currentVar?: string) {
+    for (const key in variables) {
+      if (variables[key]) {
+        inputValue = inputValue.replace(new RegExp(key, `g`), variables[key]);
+      }
+    };
 
     return inputValue;
   }
 
-  function getDefaultVariables(instance: Instance, librarySettings: ILELibrarySettings): Variables {
-    const variables: Variables = new Map;
-
+  function applyDefaultVariables(instance: Instance, variables: Variable) {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (connection && config) {
-      variables.set(`&BUILDLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
-      variables.set(`&CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
-      variables.set(`\\*CURLIB`, librarySettings ? librarySettings.currentLibrary : config.currentLibrary);
-      variables.set(`&USERNAME`, connection.currentUser);
-      variables.set(`{usrprf}`, connection.currentUser);
-      variables.set(`&HOST`, connection.currentHost);
-      variables.set(`{host}`, connection.currentHost);
-      variables.set(`&HOME`, config.homeDirectory);
-
-      const libraryList = buildLibraryList(librarySettings);
-      variables.set(`&LIBLS`, libraryList.join(` `));
+      variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
+      if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
+      if (!variables[`\\*CURLIB`]) variables[`\\*CURLIB`] = config.currentLibrary;
+      variables[`&USERNAME`] = connection.currentUser;
+      variables[`{usrprf}`] = connection.currentUser;
+      variables[`&HOST`] = connection.currentHost;
+      variables[`{host}`] = connection.currentHost;
+      variables[`&HOME`] = config.homeDirectory;
 
       for (const variable of config.customVariables) {
-        variables.set(`&${variable.name.toUpperCase()}`, variable.value);
+        variables[`&${variable.name.toUpperCase()}`] = variable.value;
       }
     }
-
-    return variables;
   }
 
   export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
@@ -161,7 +159,7 @@ export namespace CompileTools {
             fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
           }
 
-          const variables: Variables = new Map;
+          const variables: Variable = {};
           const evfeventInfo: EvfEventInfo = {
             object: '',
             library: '',
@@ -171,7 +169,7 @@ export namespace CompileTools {
 
           if (workspaceFolder) {
             const envFileVars = await getEnvConfig(workspaceFolder);
-            Object.entries(envFileVars).forEach(([key, value]) => variables.set(`&${key}`, value));
+            Object.entries(envFileVars).forEach(([key, value]) => variables[`&${key}`] = value);
           }
 
           switch (chosenAction.type) {
@@ -182,17 +180,17 @@ export namespace CompileTools {
               evfeventInfo.extension = memberDetail.extension;
               evfeventInfo.asp = memberDetail.asp;
 
-              variables.set(`&OPENLIBL`, memberDetail.library.toLowerCase());
-              variables.set(`&OPENLIB`, memberDetail.library);
+              variables[`&OPENLIBL`] =  memberDetail.library.toLowerCase();
+              variables[`&OPENLIB`] =  memberDetail.library;
 
-              variables.set(`&OPENSPFL`, memberDetail.file.toLowerCase());
-              variables.set(`&OPENSPF`, memberDetail.file);
+              variables[`&OPENSPFL`] =  memberDetail.file.toLowerCase();
+              variables[`&OPENSPF`] =  memberDetail.file;
 
-              variables.set(`&OPENMBRL`, memberDetail.name.toLowerCase());
-              variables.set(`&OPENMBR`, memberDetail.name);
+              variables[`&OPENMBRL`] =  memberDetail.name.toLowerCase();
+              variables[`&OPENMBR`] =  memberDetail.name;
 
-              variables.set(`&EXTL`, memberDetail.extension.toLowerCase());
-              variables.set(`&EXT`, memberDetail.extension);
+              variables[`&EXTL`] =  memberDetail.extension.toLowerCase();
+              variables[`&EXT`] =  memberDetail.extension;
               break;
 
             case `file`:
@@ -215,8 +213,8 @@ export namespace CompileTools {
                 name = name.substring(0, name.indexOf(`-`));
               }
 
-              if (variables.has(`&CURLIB`)) {
-                evfeventInfo.library = variables.get(`&CURLIB`)!;
+              if (variables[`&CURLIB`]) {
+                evfeventInfo.library = variables[`&CURLIB`];
 
               } else {
                 evfeventInfo.library = config.currentLibrary;
@@ -229,54 +227,45 @@ export namespace CompileTools {
 
               switch (chosenAction.type) {
                 case `file`:
-                  variables.set(`&LOCALPATH`, uri.fsPath);
+                  variables[`&LOCALPATH`] = uri.fsPath;
                   if (fromWorkspace) {
                     const relativePath = path.relative(fromWorkspace.uri.path, uri.path).split(path.sep).join(path.posix.sep);
-                    variables.set(`&RELATIVEPATH`, relativePath);
+                    variables[`&RELATIVEPATH`] =  relativePath;
 
                     // We need to make sure the remote path is posix
                     const fullPath = path.posix.join(remoteCwd, relativePath);
-                    variables.set(`&FULLPATH`, fullPath);
-                    variables.set(`{path}`, fullPath);
-                    variables.set(`&WORKDIR`, remoteCwd);
+                    variables[`&FULLPATH`] =  fullPath;
+                    variables[`{path}`] = fullPath;
+                    variables[`&WORKDIR`] = remoteCwd;
 
-                    try {
-                      const gitApi = Tools.getGitAPI();
-                      if (gitApi && gitApi.repositories?.length) {
-                        const repo = gitApi.repositories[0];
-                        const branch = repo.state.HEAD?.name;
-
-                        if (branch) {
-                          variables.set(`&BRANCHLIB`, getBranchLibraryName(branch));
-                          variables.set(`&BRANCH`, branch);
-                          variables.set(`{branch}`, branch);
-                        }
-                      }
-                    } catch (e) {
-                      // writeEmitter.fire(`Error occurred while getting branch name: ${e}`);
+                    const branch = getGitBranch(fromWorkspace);
+                    if (branch) {
+                      variables[`&BRANCHLIB`] = getBranchLibraryName(branch);
+                      variables[`&BRANCH`] =  branch;
+                      variables[`{branch}`] = branch;
                     }
                   }
                   break;
 
                 case `streamfile`:
                   const relativePath = path.posix.relative(remoteCwd, uri.path);
-                  variables.set(`&RELATIVEPATH`, relativePath);
+                  variables[`&RELATIVEPATH`] =  relativePath;
 
                   const fullName = uri.path;
-                  variables.set(`&FULLPATH`, fullName);
+                  variables[`&FULLPATH`] =  fullName;
                   break;
               }
 
-              variables.set(`&PARENT`, parent);
+              variables[`&PARENT`] =  parent;
 
-              variables.set(`&BASENAME`, basename);
-              variables.set(`{filename}`, basename);
+              variables[`&BASENAME`] =  basename;
+              variables[`{filename}`] = basename;
 
-              variables.set(`&NAMEL`, name.toLowerCase());
-              variables.set(`&NAME`, name);
+              variables[`&NAMEL`] =  name.toLowerCase();
+              variables[`&NAME`] =  name;
 
-              variables.set(`&EXTL`, extension.toLowerCase());
-              variables.set(`&EXT`, extension);
+              variables[`&EXTL`] =  extension.toLowerCase();
+              variables[`&EXT`] =  extension;
               break;
 
             case `object`:
@@ -286,21 +275,19 @@ export namespace CompileTools {
               evfeventInfo.library = library;
               evfeventInfo.object = object;
 
-              variables.set(`&LIBRARYL`, library.toLowerCase());
-              variables.set(`&LIBRARY`, library);
+              variables[`&LIBRARYL`] =  library.toLowerCase();
+              variables[`&LIBRARY`] =  library;
 
-              variables.set(`&NAMEL`, object.toLowerCase());
-              variables.set(`&NAME`, object);
+              variables[`&NAMEL`] =  object.toLowerCase();
+              variables[`&NAME`] =  object;
 
-              variables.set(`&TYPEL`, extension.toLowerCase());
-              variables.set(`&TYPE`, extension);
+              variables[`&TYPEL`] =  extension.toLowerCase();
+              variables[`&TYPE`] =  extension;
 
-              variables.set(`&EXTL`, extension.toLowerCase());
-              variables.set(`&EXT`, extension);
+              variables[`&EXTL`] =  extension.toLowerCase();
+              variables[`&EXT`] =  extension;
               break;
           }
-
-          const command = replaceValues(chosenAction.command, variables);
 
           const viewControl = GlobalConfiguration.get<string>(`postActionView`) || "none";
           const outputBuffer: string[] = [];
@@ -343,9 +330,9 @@ export namespace CompileTools {
                       const commandResult = await runCommand(instance, {
                         title: chosenAction.name,
                         environment,
-                        command,
+                        command: chosenAction.command,
                         cwd: remoteCwd,
-                        env: Object.fromEntries(variables),
+                        env: variables,
                       }, writeEmitter);
 
                       const useLocalEvfevent = 
@@ -371,7 +358,7 @@ export namespace CompileTools {
 
                         }
                         else if (evfeventInfo.object && evfeventInfo.library) {
-                          if (command.includes(`*EVENTF`)) {
+                          if (chosenAction.command.includes(`*EVENTF`)) {
                             writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                             refreshDiagnosticsFromServer(instance, evfeventInfo);
                             problemsFetched = true;
@@ -557,23 +544,24 @@ export namespace CompileTools {
     const config = instance.getConfig();
     if (config && connection) {
       const cwd = options.cwd;
+      const variables = options.env || {};
+
+      applyDefaultVariables(instance, variables);
+      expandVariables(variables);
 
       const ileSetup: ILELibrarySettings = {
-        currentLibrary: config.currentLibrary,
-        libraryList: config.libraryList,
+        currentLibrary: variables[`&CURLIB`] || config.currentLibrary,
+        libraryList: variables[`&LIBL`]?.split(` `) || config.libraryList,
       };
-
-      if (options.env) {
-        ileSetup.libraryList = options.env[`&LIBL`]?.split(` `) || ileSetup.libraryList;
-        ileSetup.currentLibrary = options.env[`&CURLIB`] || ileSetup.currentLibrary;
-      }
-
       // Remove any duplicates from the library list
       ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
 
-      let commandString = replaceValues(
+      const libraryList = buildLibraryList(ileSetup);
+      variables[`&LIBLS`] = libraryList.join(` `);
+
+      let commandString = expandCommand(
         options.command,
-        getDefaultVariables(instance, ileSetup)
+        variables
       );
 
       if (commandString) {
@@ -618,26 +606,19 @@ export namespace CompileTools {
         switch (options.environment) {
           case `pase`:
             // We build environment variables for the environment to be ready
-            const paseVars: Variables = new Map;
-
-            // Get default variable
-            getDefaultVariables(instance, ileSetup).forEach((value: string, key: string) => {
-              if ((/^[A-Za-z\&]/i).test(key)) {
-                paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
-              }
-            });
+            const paseVars: Variable = {};
 
             // Append any variables passed into the API
-            Object.entries(options.env || {}).forEach(([key, value]) => {
+            Object.entries(variables).forEach(([key, value]) => {
               if ((/^[A-Za-z\&]/i).test(key)) {
-                paseVars.set(key.startsWith('&') ? key.substring(1) : key, value);
+                paseVars[key.startsWith('&') ? key.substring(1) : key] = value;
               }
             });
 
             commandResult = await connection.sendCommand({
               command: commands.join(` && `),
               directory: cwd,
-              env: Object.fromEntries(paseVars),
+              env: paseVars,
               ...callbacks
             });
             break;
@@ -788,16 +769,7 @@ export namespace CompileTools {
 
   function buildLibraryList(config: ILELibrarySettings): string[] {
     //We have to reverse it because `liblist -a` adds the next item to the top always 
-    return config.libraryList
-      .map(library => {
-        //We use this for special variables in the libl
-        switch (library) {
-          case `&BUILDLIB`:
-          case `&CURLIB`:
-            return config.currentLibrary;
-          default: return library;
-        }
-      }).reverse();
+    return config.libraryList.reverse();
   }
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {

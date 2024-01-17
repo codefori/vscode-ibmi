@@ -1,0 +1,110 @@
+{
+  "&CURLIB": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&CURLIB",
+    "body": "&CURLIB",
+    "description": "Current library"
+  },
+  "&BUILDLIB": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&BUILDLIB",
+    "body": "&BUILDLIB",
+    "description": "Build library. This is always the same as &CURLIB"
+  },
+  "&USERNAME": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&USERNAME",
+    "body": "&USERNAME",
+    "description": "Username being used for the connection"
+  },
+  "&HOST": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&HOST",
+    "body": "&HOST",
+    "description": "Hostname (or IP) being used for the connection"
+  },
+  "&HOME": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&HOME",
+    "body": "&HOME",
+    "description": "Working directory of the user"
+  },
+  "&LIBLS": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&LIBLS",
+    "body": "&LIBLS",
+    "description": "Library list, space delimited"
+  },
+  "&LOCALPATH": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&LOCALPATH",
+    "body": "&LOCALPATH",
+    "description": "Full local path of the file the Action is running against"
+  },
+  "&RELATIVEPATH": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&RELATIVEPATH",
+    "body": "&RELATIVEPATH",
+    "description": "Relative path of the file the Action is running against"
+  },
+  "&FULLPATH": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&FULLPATH",
+    "body": "&FULLPATH",
+    "description": "Full remote path of the file the Action is running against"
+  },
+  "&WORKDIR": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&WORKDIR",
+    "body": "&WORKDIR",
+    "description": "Working directory of the user. Typically the deployment directory"
+  },
+  "&BRANCHLIB": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&BRANCHLIB",
+    "body": "&BRANCHLIB",
+    "description": "Branch library. This is based on the current branch"
+  },
+  "&BRANCH": {
+    "scope": {
+      "language": "json",
+      "path": ".vscode/actions.json"
+    },
+    "prefix": "&BRANCH",
+    "body": "&BRANCH",
+    "description": "Current branch inside of Git"
+  }
+}

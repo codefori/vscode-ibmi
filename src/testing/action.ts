@@ -53,6 +53,17 @@ export const ActionSuite: TestSuite = {
   },
   tests: [
     {
+      name: `Variable expansion test`, test: async () => {
+        const result = await CompileTools.runCommand(instance, {
+          command: 'echo "&CURLIB &MYTEXT"',
+          env: { '&MYTEXT': `&BRANCHLIB &BRANCH`, '&BRANCHLIB': 'MYLIB', '&BRANCH': 'my/lib' },
+          environment: `pase`
+        });
+
+        assert.strictEqual(result?.stdout, `${currentLibrary} MYLIB my/lib`);
+      }
+    },
+    {
       name: `Create RPGLE Program (from local, custom action)`, test: async () => {
         const action = LocalLanguageActions['RPGLE'][0];
         action.type = 'file';

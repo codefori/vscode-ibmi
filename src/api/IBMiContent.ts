@@ -846,7 +846,7 @@ export default class IBMiContent {
     })).code === 0;
   }
 
-  async checkObject(object: { library: string, name: string, type: string }, ...authorities: Authority[]) {
+  async checkObject(object: { library: string, name: string, type: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
       command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`,
       noLibList: true
