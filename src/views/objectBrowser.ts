@@ -206,7 +206,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
       library: this.sourceFile.library,
       name: this.sourceFile.name,
       type: `*FILE`
-    }, `*UPD`);
+    }, [`*UPD`]);
 
     try {
       const members = await content.getMemberList(this.sourceFile.library, this.sourceFile.name, this.filter.member, this.filter.memberType, this.sort);
