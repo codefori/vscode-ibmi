@@ -18,7 +18,7 @@
 	},
 	"publisher": "halcyontechltd",
 	"repository": {
-		"url": "https://github.com/codefori/code-for-ibmi"
+		"url": "https://github.com/codefori/vscode-ibmi"
 	},
 	"license": "MIT",
 	"engines": {
