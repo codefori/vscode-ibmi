@@ -124,17 +124,19 @@ export namespace CompileTools {
           }));
       }
 
-      const pseudoExtensions = [`clle`, `dtaara`];
-      if (pseudoExtensions.includes(extension.toLowerCase())) {
-        availableActions.push({
-          label: `Run as psuedo source`,
-          action: {
-            name: `Run as psuedo source`,
-            type: `psuedo`,
-            command: '',
-            environment: 'ile'
-          }
-        })
+      if (!isProtected) {
+        const pseudoExtensions = [`clle`, `dtaara`];
+        if (pseudoExtensions.includes(extension.toLowerCase())) {
+          availableActions.push({
+            label: `Run as psuedo source`,
+            action: {
+              name: `Run as psuedo source`,
+              type: `psuedo`,
+              command: '',
+              environment: 'ile'
+            }
+          })
+        }
       }
 
       if (customAction || availableActions.length) {
@@ -822,7 +824,7 @@ export namespace CompileTools {
           const variables = getDefaultVariables(instance, ileSetup);
           const commandString = replaceValues(command.content, variables);
 
-          progress.report({ message: `Executing ${commandString}` });
+          progress.report({ message: commandString });
           const commandResult = await runCommand(instance, {
             title: `Psuedo source`,
             environment: `ile`,
@@ -836,7 +838,7 @@ export namespace CompileTools {
           if (command.range) {
             diags.push({
               success: commandResult.code === 0,
-              message: commandResult.stderr,
+              message: commandResult.stderr || `No output.`,
               range: new Range(command.range.start, 0, command.range.end, document.lineAt(command.range.end).range.end.character)
             })
           }
