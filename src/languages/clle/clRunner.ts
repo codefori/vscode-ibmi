@@ -98,7 +98,8 @@ function getCommandString(selection: Selection, document: TextDocument): Documen
 function removePlusJoins(lines: string[]) {
   for (let i = 0; i < lines.length; i++) {
     lines[i] = lines[i].trim();
-    if (lines[i].endsWith(`+`)) lines[i] = lines[i].substring(0, lines[i].length - 1);
+    if (lines[i].startsWith(`/*`)) lines[i] = ``;
+    else if (lines[i].endsWith(`+`)) lines[i] = lines[i].substring(0, lines[i].length - 1);
   }
 
   return lines;
