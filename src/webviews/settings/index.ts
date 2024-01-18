@@ -60,6 +60,7 @@ export class SettingsUI {
           .addHorizontalRule()
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
+          .addInput(`psuedoSourceExtensions`, `Psuedo source extensions`, `A comma delimited list of file extensions that should be treated as psuedo sources. A psuedo source is a file containing CL commands which are executed as part of the Action.`, { default: config.psuedoSourceExtensions.join(`, `) });
 
         const tempDataTab = new Section();
         tempDataTab
@@ -238,6 +239,12 @@ export class SettingsUI {
                     data[key] = String(data[key]).split(`,`)
                       .map(item => item.trim())
                       .map(item => item.startsWith('/') ? item : item.toUpperCase())
+                      .filter(item => item !== ``)
+                      .filter(Tools.distinct);
+                    break;
+                  case `psuedoSourceExtensions`:
+                    data[key] = String(data[key]).split(`,`)
+                      .map(item => item.toUpperCase().trim())
                       .filter(item => item !== ``)
                       .filter(Tools.distinct);
                     break;

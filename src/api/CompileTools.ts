@@ -115,7 +115,7 @@ export namespace CompileTools {
           };
         });
 
-        const pseudoExtensions = [`CLLE`, `DTAARA`];
+        const pseudoExtensions = config.psuedoSourceExtensions.map(ext => ext.toUpperCase());
         allActions.push({
           name: `⚒️ Run as psuedo source`,
           type: `psuedo`,
