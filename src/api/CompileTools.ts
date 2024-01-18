@@ -1,6 +1,6 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
+import vscode, { CustomExecution, EventEmitter, Pseudoterminal, Range, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
 import { GlobalConfiguration } from './Configuration';
@@ -8,10 +8,11 @@ import { CustomUI } from './CustomUI';
 import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
-import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
+import { EvfEventInfo, PseudoDiagnostic, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics, setDiagnosticsFromPseudo } from './errors/diagnostics';
 import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from './local/env';
+import { getCommandStrings } from '../languages/clle/clRunner';
 
 const NEWLINE = `\r\n`;
 
@@ -123,6 +124,19 @@ export namespace CompileTools {
           }));
       }
 
+      const pseudoExtensions = [`clle`, `dtaara`];
+      if (pseudoExtensions.includes(extension.toLowerCase())) {
+        availableActions.push({
+          label: `Run as psuedo source`,
+          action: {
+            name: `Run as psuedo source`,
+            type: `psuedo`,
+            command: '',
+            environment: 'ile'
+          }
+        })
+      }
+
       if (customAction || availableActions.length) {
         const chosenAction = customAction || ((availableActions.length === 1) ? availableActions[0] : await vscode.window.showQuickPick(availableActions))?.action;
         if (chosenAction) {
@@ -159,6 +173,11 @@ export namespace CompileTools {
 
           if (chosenAction.type === `file` && vscode.workspace.workspaceFolders) {
             fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
+          }
+
+          if (chosenAction.type === `psuedo`) {
+            const pseudoResult = await runAsPsuedoSource(instance, uri);
+            return pseudoResult || false;
           }
 
           const variables: Variables = new Map;
@@ -763,6 +782,73 @@ export namespace CompileTools {
     }
 
     return command;
+  }
+
+  export async function runAsPsuedoSource(instance: Instance, uri: vscode.Uri) {
+    const connection = instance.getConnection();
+    const config = instance.getConfig();
+    if (config && connection) {
+      const ileSetup: ILELibrarySettings = {
+        currentLibrary: config.currentLibrary,
+        libraryList: config.libraryList,
+      };
+
+      const document = await vscode.workspace.openTextDocument(uri);
+      const commands = getCommandStrings(document);
+
+      const result = await vscode.window.withProgress({
+        title: `Executing psuedo source`, 
+        location: vscode.ProgressLocation.Notification,
+        cancellable: true
+      }, async (progress, token) => {
+        token.onCancellationRequested(() => {
+          vscode.window.showInformationMessage(`Psuedo source execution cancelled.`);
+        });
+
+        let overallSuccess = true;
+        let diags: PseudoDiagnostic[] = [];
+
+        const percentIncrease = Math.round((1 / commands.length) * 100);
+
+        for (let i = 0; i < commands.length; i++) {
+          const command = commands[i];
+
+          if (token.isCancellationRequested) {
+            break;
+          }
+
+          progress.report({message: `Executing command ${(i+1)} of ${commands.length}`, increment: percentIncrease})
+
+          const variables = getDefaultVariables(instance, ileSetup);
+          const commandString = replaceValues(command.content, variables);
+
+          progress.report({ message: `Executing ${commandString}` });
+          const commandResult = await runCommand(instance, {
+            title: `Psuedo source`,
+            environment: `ile`,
+            command: commandString,
+          });
+
+          if (commandResult.code !== 0) {
+            overallSuccess = false;
+          }
+
+          if (command.range) {
+            diags.push({
+              success: commandResult.code === 0,
+              message: commandResult.stderr,
+              range: new Range(command.range.start, 0, command.range.end, document.lineAt(command.range.end).range.end.character)
+            })
+          }
+
+          setDiagnosticsFromPseudo(instance, uri, diags);
+        }
+
+        return overallSuccess;
+      });
+
+      return result;
+    }
   }
 
   function getObjectFromCommand(baseCommand?: string): CommandObject | undefined {

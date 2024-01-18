@@ -35,7 +35,35 @@ export function initialise(context: ExtensionContext) {
   )
 }
 
-function getCommandString(selection: Selection, document: TextDocument): {content: string, range?: {start: number, end: number}} {
+interface LineRange {
+  start: number;
+  end: number;
+}
+
+interface DocumentCommand {
+  content: string;
+  range?: LineRange;
+}
+
+export function getCommandStrings(document: TextDocument): DocumentCommand[] {
+  let list: DocumentCommand[] = [];
+
+  let nextLine = new Position(0, 0);
+
+  while (nextLine.line < document.lineCount) {
+    const currentCommand = getCommandString(new Selection(nextLine, nextLine), document);
+    if (currentCommand.content) list.push(currentCommand);
+    if (currentCommand.range) {
+      nextLine = new Position(currentCommand.range.end + 1, 0);
+    } else {
+      break;
+    }
+  }
+
+  return list;
+}
+
+function getCommandString(selection: Selection, document: TextDocument): DocumentCommand {
   if (selection.isEmpty) {
     let line = selection.start.line;
 

@@ -61,6 +61,23 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
   }
 }
 
+export interface PseudoDiagnostic {
+  success: boolean,
+  message: string,
+  range: vscode.Range
+}
+
+export async function setDiagnosticsFromPseudo(instance: Instance, uri: vscode.Uri, diags: PseudoDiagnostic[]) {
+  const diagnostics: vscode.Diagnostic[] = [];
+
+  for (const error of diags) {
+    const diagnostic = new vscode.Diagnostic(error.range, error.message, error.success ? vscode.DiagnosticSeverity.Information : vscode.DiagnosticSeverity.Error);
+    diagnostics.push(diagnostic);
+  }
+
+  ileDiagnostics.set(uri, diagnostics);
+}
+
 export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo) {
   const content = instance.getContent();
 
