@@ -60,7 +60,7 @@ export namespace ConnectionConfiguration {
     quickConnect: boolean;
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
-    psuedoSourceExtensions: string[];
+    pseudoSourceExtensions: string[];
     [name: string]: any;
   }
 
@@ -140,7 +140,7 @@ export namespace ConnectionConfiguration {
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
       protectedPaths: (parameters.protectedPaths || []),
-      psuedoSourceExtensions: (parameters.psuedoSourceExtensions || [`DTAARA`, `MSGF`, `BNDDIR`]),
+      pseudoSourceExtensions: (parameters.pseudoSourceExtensions || [`DTAARA`, `MSGF`, `BNDDIR`]),
     }
   }
 

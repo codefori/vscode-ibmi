@@ -32,7 +32,7 @@ export interface StandardIO {
 /**
  * External interface for extensions to call `code-for-ibmi.runCommand`
  */
-export type ActionType = "member" | "streamfile" | "object" | "file" | "psuedo";
+export type ActionType = "member" | "streamfile" | "object" | "file" | "pseudo";
 export type ActionRefresh = "no" | "parent" | "filter" | "browser";
 export type ActionEnvironment = "ile" | "qsh" | "pase";
 

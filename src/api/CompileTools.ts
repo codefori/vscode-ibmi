@@ -115,10 +115,10 @@ export namespace CompileTools {
           };
         });
 
-        const pseudoExtensions = config.psuedoSourceExtensions.map(ext => ext.toUpperCase());
+        const pseudoExtensions = config.pseudoSourceExtensions.map(ext => ext.toUpperCase());
         allActions.push({
-          name: `⚒️ Run as psuedo source`,
-          type: `psuedo`,
+          name: `⚒️ Run as pseudo source`,
+          type: `pseudo`,
           command: '',
           environment: 'ile',
           extensions: pseudoExtensions,
@@ -126,7 +126,7 @@ export namespace CompileTools {
         })
 
         // Then we get all the available Actions for the current context
-        availableActions = allActions.filter(action => (action.type === uri.scheme || action.type === `psuedo`) && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)) && (!isProtected || action.runOnProtected))
+        availableActions = allActions.filter(action => (action.type === uri.scheme || action.type === `pseudo`) && (!action.extensions || action.extensions.includes(extension) || action.extensions.includes(fragment) || action.extensions.includes(`GLOBAL`)) && (!isProtected || action.runOnProtected))
           .sort((a, b) => (actionUsed.get(b.name) || 0) - (actionUsed.get(a.name) || 0))
           .map(action => ({
             label: action.name,
@@ -172,8 +172,8 @@ export namespace CompileTools {
             fromWorkspace = vscode.workspace.workspaceFolders[workspaceId || 0];
           }
 
-          if (chosenAction.type === `psuedo`) {
-            const pseudoResult = await runAsPsuedoSource(instance, uri);
+          if (chosenAction.type === `pseudo`) {
+            const pseudoResult = await runAsPseudoSource(instance, uri);
             return pseudoResult || false;
           }
 
@@ -781,7 +781,7 @@ export namespace CompileTools {
     return command;
   }
 
-  export async function runAsPsuedoSource(instance: Instance, uri: vscode.Uri) {
+  export async function runAsPseudoSource(instance: Instance, uri: vscode.Uri) {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (config && connection) {
@@ -794,12 +794,12 @@ export namespace CompileTools {
       const commands = getCommandStrings(document);
 
       const result = await vscode.window.withProgress({
-        title: `Executing psuedo source`, 
+        title: `Executing pseudo source`, 
         location: vscode.ProgressLocation.Notification,
         cancellable: true
       }, async (progress, token) => {
         token.onCancellationRequested(() => {
-          vscode.window.showInformationMessage(`Psuedo source execution cancelled.`);
+          vscode.window.showInformationMessage(`Pseudo source execution cancelled.`);
         });
 
         let overallSuccess = true;
@@ -821,7 +821,7 @@ export namespace CompileTools {
 
           progress.report({ message: commandString });
           const commandResult = await runCommand(instance, {
-            title: `Psuedo source`,
+            title: `Pseudo source`,
             environment: `ile`,
             command: commandString,
           });
