@@ -282,9 +282,9 @@ export default class IBMiContent {
 
   /**
    * Download the contents of a table.
-   * @param library 
-   * @param file 
-   * @param member Will default to file provided 
+   * @param library
+   * @param file
+   * @param member Will default to file provided
    * @param deleteTable Will delete the table after download
    */
   async getTable(library: string, file: string, member: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
@@ -404,7 +404,7 @@ export default class IBMiContent {
       `;
       results = await this.runSQL(statement);
     } else {
-      results = await this.getQTempTable([`CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST)`], "LIBLIST");
+      results = await this.getQTempTable([`CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST)')`], "LIBLIST");
       if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
         return [];
       }
@@ -479,9 +479,9 @@ export default class IBMiContent {
   }
 
   /**
-   * @param filters 
+   * @param filters
    * @param sortOrder
-   * @returns an array of IBMiFile 
+   * @returns an array of IBMiFile
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const library = filters.library.toUpperCase();
@@ -568,9 +568,9 @@ export default class IBMiContent {
   }
 
   /**
-   * 
+   *
    * @param filter: the criterias used to list the members
-   * @returns 
+   * @returns
    */
   async getMemberList(filter: { library: string, sourceFile: string, members?: string, extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
@@ -579,7 +579,7 @@ export default class IBMiContent {
 
     const memberFilter = parseFilter(filter.members, filter.filterType);
     const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ?  filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
-    
+
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
     const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ?  filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
 
@@ -640,7 +640,7 @@ export default class IBMiContent {
 
   /**
    * Get list of items in a path
-   * @param remotePath 
+   * @param remotePath
    * @return an array of IFSFile
    */
   async getFileList(remotePath: string, sort: SortOptions = { order: "name" }, onListError?: (errors: string[]) => void): Promise<IFSFile[]> {
@@ -850,7 +850,7 @@ export default class IBMiContent {
 
   /**
    * Return `true` if `remotePath` denotes a directory
-   * 
+   *
    * @param remotePath: a remote IFS path
    */
   async isDirectory(remotePath: string) {
@@ -874,7 +874,7 @@ export default class IBMiContent {
     if (path.startsWith('/')) { //IFS path
       return this.config.protectedPaths.some(p => path.startsWith(p));
     }
-    else { //QSYS path      
+    else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);
       return this.config.protectedPaths.includes(qsysObject.library.toLocaleUpperCase());
     }
