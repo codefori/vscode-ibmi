@@ -98,11 +98,9 @@ export interface QsysPath {
 export interface IBMiObject extends QsysPath {
   type: string,
   text: string,
-  attribute?: string
-}
-
-export interface IBMiFile extends IBMiObject {
-  count?: number
+  sourceFile?: boolean
+  attribute?: string,
+  memberCount?: number
 }
 
 export interface IBMiMember {
@@ -186,7 +184,7 @@ export interface ObjectItem extends FilteredItem, WithPath {
 }
 
 export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
-  sourceFile: IBMiFile
+  sourceFile: IBMiObject
 }
 
 export interface MemberItem extends FilteredItem, WithPath {

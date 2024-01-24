@@ -14,7 +14,8 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
       if (copy) {
         filter = {
           name: `${filter.name} - copy`,
-          library: filter.library,
+          filterType: 'simple',
+          library: filter.library,          
           object: filter.object,
           types: [...filter.types],
           member: filter.member,
@@ -28,6 +29,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
       // Otherwise, set the default values
       filter = {
         name: `Filter ${objectFilters.length + 1}`,
+        filterType: 'simple',
         library: `QGPL`,
         object: `*`,
         types: [`*SRCPF`],
@@ -41,11 +43,15 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
 
     const page = await new CustomUI()
       .addInput(`name`, `Filter name`, `The filter name should be unique.`, { default: filter.name })
-      .addInput(`library`, `Library`, `Library name. Cannot be generic name with an asterisk.`, { default: filter.library })
-      .addInput(`object`, `Objects`, `Object names. Comma-separated list of object names. Can be multi-generic values. Examples: <code>*</code>, <code>Q*</code> or <code>*CL*SRC*</code>. A single `*` will return all objects.`, { default: filter.object })
-      .addInput(`types`, `Object type filter`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
-      .addInput(`member`, `Member`, `Member name. Can be multi-generic value. Examples: <code>*CL</code> or <code>CL*ABC*</code>. A single <code>*</code> will return all members.`, { default: filter.member })
-      .addInput(`memberType`, `Member type`, `Member type. Can be multi-generic value. Examples: <code>RPG*</code> or <code>SQL*LE</code>. A single <code>*</code> will return all member types.`, { default: filter.memberType || `*` })
+      .addSelect(`filterType`, `Filtering type`, [
+        { value: 'simple', description: 'Simple', text: `A comma-separated list of multi-generic values. Examples: *, Q* or *CL*SRC*. A single *, *ALL or blank will return everything.`, selected: filter.filterType === "simple" },
+        { value: 'regex', description: 'Regex', text: `Use a single RegEx for filtering.`, selected: filter.filterType === "regex" }
+      ], `Select the filtering strategy to apply for filtering names. <br/>Checkout <a href="https://regex101.com">https://regex101.com</a> to get started with RegExs.`)
+      .addInput(`library`, `Libraries`, `Library names filter.`, { default: filter.library })
+      .addInput(`object`, `Objects`, `Object names filter.`, { default: filter.object })
+      .addInput(`types`, `Object types`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
+      .addInput(`member`, `Members`, `Member names filter.`, { default: filter.member })
+      .addInput(`memberType`, `Member type`, `Member types filter.`, { default: filter.memberType })
       .addCheckbox(`protected`, `Protected`, `Make this filter protected, preventing modifications and source members from being saved.`, filter.protected)
       .addButtons({ id: `save`, label: `Save settings` })
       .loadPage<any>(`Filter: ${newFilter ? `New` : filter.name}`);
@@ -59,6 +65,8 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
         //In case we need to play with the data
         switch (key) {
           case `name`:
+          case `filterType`:
+          case `library`:
             data[key] = String(data[key]).trim();
             break;
           case `types`:
@@ -71,6 +79,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
               .filter(Tools.distinct)
               .join(",");
             break;
+          case `member`:
           case `member`:
           case `memberType`:
             data[key] = String(data[key].trim()) || `*`;
