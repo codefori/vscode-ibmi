@@ -13,7 +13,7 @@ export const ContentSuite: TestSuite = {
     {
       name: `Test memberResolve`, test: async () => {
         const content = instance.getContent();
-        
+
         const member = await content?.memberResolve(`MATH`, [
           { library: `QSYSINC`, name: `MIH` }, // Doesn't exist here
           { library: `QSYSINC`, name: `H` } // Does exist
@@ -29,37 +29,41 @@ export const ContentSuite: TestSuite = {
         });
       }
     },
-      
 
-    {name: `Test memberResolve (with invalid ASP)`, test: async () => {
-      const content = instance.getContent();
-  
-      const member = await content?.memberResolve(`MATH`, [
-        {library: `QSYSINC`, name: `MIH`}, // Doesn't exist here
-        {library: `QSYSINC`, name: `H`, asp: `myasp`} // Does exist, but not in the ASP
-      ]);
-  
-      assert.deepStrictEqual(member, {
-        asp: undefined,
-        library: `QSYSINC`,
-        file: `H`,
-        name: `MATH`,
-        extension: `MBR`,
-        basename: `MATH.MBR`
-      });
-    }},
 
-    {name: `Test memberResolve with bad name`, test: async () => {
-      const content = instance.getContent();
-  
-      const member = await content?.memberResolve(`BOOOP`, [
-        {library: `QSYSINC`, name: `MIH`}, // Doesn't exist here
-        {library: `NOEXIST`, name: `SUP`}, // Doesn't exist here
-        {library: `QSYSINC`, name: `H`} // Doesn't exist here
-      ]);
-  
-      assert.deepStrictEqual(member, undefined);
-    }},
+    {
+      name: `Test memberResolve (with invalid ASP)`, test: async () => {
+        const content = instance.getContent();
+
+        const member = await content?.memberResolve(`MATH`, [
+          { library: `QSYSINC`, name: `MIH` }, // Doesn't exist here
+          { library: `QSYSINC`, name: `H`, asp: `myasp` } // Does exist, but not in the ASP
+        ]);
+
+        assert.deepStrictEqual(member, {
+          asp: undefined,
+          library: `QSYSINC`,
+          file: `H`,
+          name: `MATH`,
+          extension: `MBR`,
+          basename: `MATH.MBR`
+        });
+      }
+    },
+
+    {
+      name: `Test memberResolve with bad name`, test: async () => {
+        const content = instance.getContent();
+
+        const member = await content?.memberResolve(`BOOOP`, [
+          { library: `QSYSINC`, name: `MIH` }, // Doesn't exist here
+          { library: `NOEXIST`, name: `SUP` }, // Doesn't exist here
+          { library: `QSYSINC`, name: `H` } // Doesn't exist here
+        ]);
+
+        assert.deepStrictEqual(member, undefined);
+      }
+    },
 
     {
       name: `Test memberResolve with bad name`, test: async () => {
@@ -396,7 +400,6 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(containsNonFiles, false);
       }
     },
-
     {
       name: `Test getObjectList (source files only, named filter)`, test: async () => {
         const content = instance.getContent();
@@ -409,16 +412,46 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(objects[0].text, `DATA BASE FILE FOR C INCLUDES FOR MI`);
       }
     },
+    {
+      name: `getLibraries (simple filters)`, test: async () => {
+        const content = instance.getContent();
 
+        const qsysLibraries = await content?.getLibraries({ library: "QSYS*" })
+        assert.notStrictEqual(qsysLibraries?.length, 0);
+        assert.strictEqual(qsysLibraries?.every(l => l.name.startsWith("QSYS")), true);
+
+        const includeSYSLibraries = await content?.getLibraries({ library: "*SYS*" });
+        assert.notStrictEqual(includeSYSLibraries?.length, 0);
+        assert.strictEqual(includeSYSLibraries?.every(l => l.name.includes("SYS")), true);
+      }
+    },
+    {
+      name: `getLibraries (regexp filters)`, test: async () => {
+        const content = instance.getContent();
+
+        const qsysLibraries = await content?.getLibraries({ library: "^.*SYS[^0-9]*$", filterType: "regex" })
+        assert.notStrictEqual(qsysLibraries?.length, 0);
+        assert.strictEqual(qsysLibraries?.every(l => /^.*SYS[^0-9]*$/.test(l.name)), true);
+      }
+    },
+    {
+      name: `getObjectList (advanced filtering)`, test: async () => {
+        const content = instance.getContent();
+        const objects = await content?.getObjectList({ library: `QSYSINC`, object:"L*OU*" });
+
+        assert.notStrictEqual(objects?.length, 0);
+        assert.strictEqual(objects?.map(o => o.name).every(n => n.startsWith("L") && n.includes("OU")), true);
+      }
+    },
     {
       name: `getMemberList (SQL, no filter)`, test: async () => {
         const content = instance.getContent();
 
-        let members = await content?.getMemberList(`qsysinc`, `mih`, `*inxen`);
+        let members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: `*inxen` });
 
         assert.strictEqual(members?.length, 3);
 
-        members = await content?.getMemberList(`qsysinc`, `mih`);
+        members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
 
         const actbpgm = members?.find(mbr => mbr.name === `ACTBPGM`);
 
@@ -438,13 +471,11 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
 
         // First we fetch the members in SQL mode
-        const membersA = await content?.getMemberList(`qsysinc`, `mih`);
-
+        const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
         config!.enableSQL = false;
 
         // Then we fetch the members without SQL
-        const membersB = await content?.getMemberList(`qsysinc`, `mih`);
-
+        const membersB = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
         // Reset the config
         config!.enableSQL = true;
 
@@ -460,17 +491,30 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
 
         // First we fetch the members in SQL mode
-        const membersA = await content?.getMemberList(`qsysinc`, `mih`, `C*`);
+        const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
 
         config!.enableSQL = false;
 
         // Then we fetch the members without SQL
-        const membersB = await content?.getMemberList(`qsysinc`, `mih`, `C*`);
+        const membersB = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
 
         // Reset the config
         config!.enableSQL = true;
 
         assert.deepStrictEqual(membersA, membersB);
+      }
+    },
+    {
+      name: `getMemberList (advanced filtering)`, test: async () => {
+        const content = instance.getContent();
+
+        const members = await content?.getMemberList({ library: `QSYSINC`, sourceFile: `QRPGLESRC`, members: 'SYS*,I*,*EX' });
+        assert.notStrictEqual(members?.length, 0)
+        assert.strictEqual(members!.map(m => m.name).every(n => n.startsWith('SYS') || n.startsWith('I') || n.endsWith('EX')), true);
+
+        const membersRegex = await content?.getMemberList({ library: `QSYSINC`, sourceFile: `QRPGLESRC`, members: '^QSY(?!RTV).*$', filterType: "regex" });
+        assert.notStrictEqual(membersRegex?.length, 0);
+        assert.strictEqual(membersRegex!.map(m => m.name).every(n => n.startsWith('QSY') && !n.includes('RTV')), true);
       }
     },
   ]

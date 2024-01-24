@@ -1,21 +1,17 @@
 import { env } from "process";
 import vscode from "vscode";
 import { instance } from "../instantiate";
-import { ConnectionSuite } from "./connection";
 import { ContentSuite } from "./content";
-import { DeployToolsSuite } from "./deployTools";
-import { ILEErrorSuite } from "./ileErrors";
 import { TestSuitesTreeProvider } from "./testCasesTree";
-import { ToolsSuite } from "./tools";
-import { ActionSuite } from "./action";
 
 const suites: TestSuite[] = [
-  ActionSuite,
-  ConnectionSuite,
+  //ActionSuite,
+  //ConnectionSuite,
   ContentSuite,
-  DeployToolsSuite,
-  ToolsSuite,
-  ILEErrorSuite
+  //DeployToolsSuite,
+  //ToolsSuite,
+  //ILEErrorSuite,
+  //FilterSuite
 ]
 
 export type TestSuite = {
