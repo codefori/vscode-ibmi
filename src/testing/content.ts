@@ -437,7 +437,7 @@ export const ContentSuite: TestSuite = {
     {
       name: `getObjectList (advanced filtering)`, test: async () => {
         const content = instance.getContent();
-        const objects = await content?.getObjectList({ library: `QSYSINC`, object:"L*OU*" });
+        const objects = await content?.getObjectList({ library: `QSYSINC`, object: "L*OU*" });
 
         assert.notStrictEqual(objects?.length, 0);
         assert.strictEqual(objects?.map(o => o.name).every(n => n.startsWith("L") && n.includes("OU")), true);
@@ -517,5 +517,51 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(membersRegex!.map(m => m.name).every(n => n.startsWith('QSY') && !n.includes('RTV')), true);
       }
     },
+    {
+      name: `Test getQtempTable`, test: async () => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+
+        const queries = [
+          `CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYSINC/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPOBJD)')`,
+          `Create Table QTEMP.OBJECTS As (
+          Select ODLBNM as LIBRARY, 
+            ODOBNM as NAME,
+            ODOBAT as ATTRIBUTE,
+            ODOBTP as TYPE,
+            Coalesce(ODOBTX, '') as TEXT
+          From QTEMP.DSPOBJD
+        ) With Data`
+        ];
+
+        const sqlEnabled = config?.enableSQL;
+        if(sqlEnabled){
+          config.enableSQL = false;          
+        }
+
+        const nosqlContent = await content?.getQTempTable(queries, "OBJECTS");
+        const objects = nosqlContent?.map(row => ({
+          library: row.LIBRARY,
+          name: row.NAME,
+          attribute: row.ATTRIBUTE,
+          type: row.TYPE,
+          text: row.TEXT,
+        }));
+
+        assert.notStrictEqual(objects?.length, 0);
+        assert.strictEqual(objects?.every(obj => obj.library === "QSYSINC"), true);
+        
+        const qrpglesrc = objects.find(obj => obj.name === "QRPGLESRC");
+        assert.notStrictEqual(qrpglesrc, undefined);
+        assert.strictEqual(qrpglesrc?.attribute === "PF", true);
+        assert.strictEqual(qrpglesrc?.type === "*FILE", true);
+
+        if(sqlEnabled){
+          config.enableSQL = true;
+          const sqlContent = await content?.getQTempTable(queries, "OBJECTS");
+          assert.deepStrictEqual(nosqlContent, sqlContent);
+        }
+      }
+    }
   ]
 };
