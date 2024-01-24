@@ -49,7 +49,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
       ], `Select the filtering strategy to apply for filtering names. <br/>Checkout <a href="https://regex101.com">https://regex101.com</a> to get started with RegExs.`)
       .addInput(`library`, `Libraries`, `Library names filter.`, { default: filter.library })
       .addInput(`object`, `Objects`, `Object names filter.`, { default: filter.object })
-      .addInput(`types`, `Object types`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM, *SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
+      .addInput(`types`, `Object types`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM</code>, <code>*SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
       .addInput(`member`, `Members`, `Member names filter.`, { default: filter.member })
       .addInput(`memberType`, `Member type`, `Member types filter.`, { default: filter.memberType })
       .addCheckbox(`protected`, `Protected`, `Make this filter protected, preventing modifications and source members from being saved.`, filter.protected)
