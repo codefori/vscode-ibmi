@@ -16,6 +16,8 @@ export interface MemberParts extends IBMiMember {
   basename: string
 }
 
+const SERVER_SETTINGS_PATH = `/.vscode/connections.json`;
+
 let remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
@@ -1017,9 +1019,9 @@ export default class IBMi {
   async loadServerSettings() {
     const content = instance.getContent();
 
-    const exists = await content?.testStreamFile(`/.vscode/settings.json`, `r`);
+    const exists = await content?.testStreamFile(SERVER_SETTINGS_PATH, `r`);
     if (exists) {
-      const settings = await content?.downloadStreamfile(`/.vscode/settings.json`);
+      const settings = await content?.downloadStreamfile(SERVER_SETTINGS_PATH);
       if (settings) {
         try {
           // Ready in the new settings
