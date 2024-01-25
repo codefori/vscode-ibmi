@@ -61,7 +61,8 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
       const data = page.data;
 
       for (const key in data) {
-
+        const useRegexFilters = data.filterType === "regex";
+        
         //In case we need to play with the data
         switch (key) {
           case `name`:
@@ -75,7 +76,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
           case `object`:
             data[key] = (String(data[key].trim()) || `*`)
               .split(',')
-              .map(o => o.trim().toLocaleUpperCase())
+              .map(o => useRegexFilters ? o : o.toLocaleUpperCase())
               .filter(Tools.distinct)
               .join(",");
             break;
