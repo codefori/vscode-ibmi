@@ -14,7 +14,7 @@ export function parseFilter(filterString?: string, type?: FilterType): Filter {
   if (filterString) {
     switch (type) {
       case 'regex':
-        if (!/^\^?\.\*\$?$/.test(filterString) && escapeStringRegexp(filterString).indexOf("\\") > -1) { //regexp must not be relevant: not '.*' and an actual regexp (nothing escaped when escaping -> not a regexp)
+        if (!/^\^?\.?\*\$?$/.test(filterString) && escapeStringRegexp(filterString).indexOf("\\") > -1) { //regexp must not be relevant: not '.*' and an actual regexp (nothing escaped when escaping -> not a regexp)
           predicates.push(toRegexp(filterString));
         }
         break;
