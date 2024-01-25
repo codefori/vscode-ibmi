@@ -49,9 +49,10 @@ export class Section {
     return this;
   }
 
-  addCheckbox(id: string, label: string, description?: string, checked?: boolean) {
+  addCheckbox(id: string, label: string, description?: string, checked?: boolean, readonly: boolean = false) {
     const checkbox = new Field('checkbox', id, label, description);
     checkbox.default = checked ? 'checked' : '';
+    checkbox.readonly = readonly;
     this.addField(checkbox);
     return this;
   }
@@ -99,9 +100,10 @@ export class Section {
     return this;
   }
 
-  addSelect(id: string, label: string, items: SelectItem[], description?: string) {
+  addSelect(id: string, label: string, items: SelectItem[], description?: string, readonly = false) {
     const select = new Field('select', id, label, description);
     select.items = items;
+    select.readonly = readonly;
     this.addField(select);
     return this;
   }
