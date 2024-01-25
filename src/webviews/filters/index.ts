@@ -46,7 +46,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
       .addSelect(`filterType`, `Filtering type`, [
         { value: 'simple', description: 'Simple', text: `A comma-separated list of multi-generic values. Examples: *, Q* or *CL*SRC*. A single *, *ALL or blank will return everything.`, selected: filter.filterType === "simple" },
         { value: 'regex', description: 'Regex', text: `Use a single RegEx for filtering.`, selected: filter.filterType === "regex" }
-      ], `Select the filtering strategy to apply for filtering names. <br/>Checkout <a href="https://regex101.com">https://regex101.com</a> to get started with RegExs.`)
+      ], `Select the filtering strategy to apply for filtering names (not object types).<br/>Checkout <a href="https://regex101.com">https://regex101.com</a> to get started with RegExs.`)
       .addInput(`library`, `Libraries`, `Library names filter.`, { default: filter.library })
       .addInput(`object`, `Objects`, `Object names filter.`, { default: filter.object })
       .addInput(`types`, `Object types`, `A comma delimited list of object types. For example <code>*ALL</code>, or <code>*PGM</code>, <code>*SRVPGM</code>. <code>*SRCPF</code> is a special type which will return only source files.`, { default: filter.types.join(`, `) })
