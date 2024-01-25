@@ -489,7 +489,7 @@ export default class IBMiContent {
       throw new Error(`Library ${library} does not exist.`);
     }
 
-    const singleEntry = singleGenericName(filters.object);
+    const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`;
 
@@ -631,7 +631,7 @@ export default class IBMiContent {
         changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
       } as IBMiMember))
       .filter(member => memberFilter.test(member.name))
-      .filter(member => memberExtensionFilter.test(member.name));
+      .filter(member => memberExtensionFilter.test(member.extension));
     }
     else{
       return [];
