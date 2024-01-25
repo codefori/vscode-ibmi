@@ -160,6 +160,10 @@ export default class IBMi {
           };
         };
 
+        if (!reconnecting) {
+          instance.setConnection(this);
+        }
+
         progress.report({
           message: `Loading configuration.`
         });
@@ -208,10 +212,6 @@ export default class IBMi {
         this.client.connection!.once(`timeout`, disconnected);
         this.client.connection!.once(`end`, disconnected);
         this.client.connection!.once(`error`, disconnected);
-
-        if (!reconnecting) {
-          instance.setConnection(this);
-        }
 
         progress.report({
           message: `Checking home directory.`
@@ -1017,7 +1017,7 @@ export default class IBMi {
   async loadServerSettings() {
     const content = instance.getContent();
 
-    const exists = content?.testStreamFile(`/.vscode/settings.json`, `r`);
+    const exists = await content?.testStreamFile(`/.vscode/settings.json`, `r`);
     if (exists) {
       const settings = await content?.downloadStreamfile(`/.vscode/settings.json`);
       if (settings) {
@@ -1043,6 +1043,8 @@ export default class IBMi {
       } else {
         this.appendOutput(`Failed to load server settings.\n`);
       }
+    } else {
+      this.appendOutput(`Server settings not found.\n`);
     }
   }
 
