@@ -58,6 +58,7 @@ export namespace ConnectionConfiguration {
     debugEnableDebugTracing: boolean;
     readOnlyMode: boolean;
     quickConnect: boolean;
+    usesBash: boolean;
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
     [name: string]: any;
@@ -137,6 +138,7 @@ export namespace ConnectionConfiguration {
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
+      usesBash: (parameters.usesBash === undefined),
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
       protectedPaths: (parameters.protectedPaths || [])
     }

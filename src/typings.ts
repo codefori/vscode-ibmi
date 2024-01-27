@@ -118,6 +118,10 @@ export interface IBMiMember {
   changed?: Date
 }
 
+export interface MemberParts extends IBMiMember {
+  basename: string
+}
+
 export interface IFSFile {
   type: "directory" | "streamfile"
   name: string

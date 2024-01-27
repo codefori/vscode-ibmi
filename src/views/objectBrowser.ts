@@ -3,7 +3,6 @@ import os from "os";
 import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
-import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
@@ -11,7 +10,7 @@ import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
+import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, MemberParts, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
 const writeFileAsync = util.promisify(fs.writeFile);
