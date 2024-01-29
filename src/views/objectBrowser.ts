@@ -3,6 +3,7 @@ import os from "os";
 import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
+import { parseFilter } from "../api/Filter";
 import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
@@ -11,7 +12,7 @@ import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
+import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -46,7 +47,7 @@ const objectIcons = {
   '': `circle-large-outline`
 }
 
-function isProtected(filter: ConnectionConfiguration.ObjectFilters){
+function isProtected(filter: ConnectionConfiguration.ObjectFilters) {
   return filter.protected || getContent().isProtectedPath(filter.library);
 }
 
@@ -61,7 +62,7 @@ class ObjectBrowserItem extends BrowserItem {
 
   reveal(options?: FocusOptions) {
     return vscode.commands.executeCommand<void>(`code-for-ibmi.revealInObjectBrowser`, this, options);
-  } 
+  }
 }
 
 class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -166,10 +167,16 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem {
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
-    return (await getContent().getObjectList(this.filter, objectSortOrder()))
-      .map(object => {
-        return object.attribute?.toLocaleUpperCase() === `*PHY` ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
-      });
+    const libraryFilter = parseFilter(this.filter.library);
+    if (libraryFilter.noFilter) {
+      return await listObjects(this);
+    }
+    else {
+      return (await getContent().getLibraries(this.filter))
+        .map(object => {
+          return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
+        });
+    }
   }
 }
 
@@ -177,7 +184,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
   readonly sort: SortOptions = { order: "name", ascending: true };
   readonly path: string;
 
-  constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiFile) {
+  constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiObject) {
     super(parent.filter, correctCase(sourceFile.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
     this.contextValue = `SPF${isProtected(this.filter) ? `_readonly` : ``}`;
@@ -209,7 +216,14 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
     }, [`*UPD`]);
 
     try {
-      const members = await content.getMemberList(this.sourceFile.library, this.sourceFile.name, this.filter.member, this.filter.memberType, this.sort);
+      const members = await content.getMemberList({
+        library: this.sourceFile.library,
+        sourceFile: this.sourceFile.name,
+        members: this.filter.member,
+        extensions: this.filter.memberType,
+        filterType: this.filter.filterType,
+        sort: this.sort
+      });
 
       await storeMemberList(this.path, members.map(member => `${member.name}.${member.extension}`));
 
@@ -244,7 +258,8 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     const icon = Object.entries(objectIcons).find(([key]) => key === type.toUpperCase())?.[1] || objectIcons[``];
-    super(parent.filter, correctCase(`${object.name}.${type}`), { icon, parent });
+    const isLibrary = type === 'LIB';
+    super(parent.filter, correctCase(`${object.name}.${type}`), { icon, parent, state: isLibrary ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None });
 
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
@@ -257,15 +272,23 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
       fragment: object.attribute
     });
 
-    this.command = {
-      command: `vscode.open`,
-      title: `Open`,
-      arguments: [this.resourceUri]
-    };
+    if (!isLibrary) {
+      this.command = {
+        command: `vscode.open`,
+        title: `Open`,
+        arguments: [this.resourceUri]
+      };
+    }
   }
 
   updateDescription() {
     this.description = this.object.text.trim() + (this.object.attribute ? ` (${this.object.attribute})` : ``);
+  }
+
+  async getChildren() {
+    const objectFilter = Object.assign({}, this.filter);
+    objectFilter.library = this.object.name;
+    return await listObjects(this, objectFilter);
   }
 }
 
@@ -346,13 +369,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (regex && parsedFilter) {
           const filter = {
             name: `Filter ${objectFilters.length + 1}`,
+            filterType: 'simple',
             library: `QSYS`,
             object: `${parsedFilter.lib}*`,
             types: [`*LIB`],
             member: `*`,
             memberType: `*`,
             protected: false
-          }
+          } as ConnectionConfiguration.ObjectFilters;
           objectFilters.push(filter);
         } else {
           regex = FILTER_REGEX.exec(newFilter.toUpperCase());
@@ -360,13 +384,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           if (regex && parsedFilter) {
             const filter = {
               name: `Filter ${objectFilters.length + 1}`,
+              filterType: 'simple',
               library: parsedFilter.lib || `QGPL`,
               object: parsedFilter.obj || `*`,
               types: [parsedFilter.objType || `*SRCPF`],
               member: parsedFilter.mbr || `*`,
               memberType: parsedFilter.mbrType || `*`,
               protected: false
-            }
+            } as ConnectionConfiguration.ObjectFilters;
             objectFilters.push(filter);
           }
         }
@@ -835,6 +860,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         filters.push({
           name: newLibrary,
+          filterType: 'simple',
           library: newLibrary,
           object: `*ALL`,
           types: [`*ALL`],
@@ -1119,8 +1145,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
         message: t(`objectBrowser.doSearchInSourceFile.progressMessage`, path)
       });
 
-      const members = await content.getMemberList(pathParts[0], pathParts[1], filter?.member);
-
+      const members = await content.getMemberList({ library: pathParts[0], sourceFile: pathParts[1], members: filter?.member });
       if (members.length > 0) {
         // NOTE: if more messages are added, lower the timeout interval
         const timeoutInternal = 9000;
@@ -1193,4 +1218,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
   } catch (e) {
     vscode.window.showErrorMessage(t(`objectBrowser.doSearchInSourceFile.errorMessage`, e));
   }
+}
+
+async function listObjects(item: ObjectBrowserFilterItem, filter?: ConnectionConfiguration.ObjectFilters) {
+  return (await getContent().getObjectList(filter || item.filter, objectSortOrder()))
+    .map(object => {
+      return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(item, object) : new ObjectBrowserObjectItem(item, object);
+    });
 }

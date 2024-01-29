@@ -33,7 +33,16 @@ export namespace Tools {
     let figuredLengths = false;
     let iiErrorMessage = false;
 
-    let data = output.split(`\n`);
+    const data = output.split(`\n`).filter(line => {
+      const trimmed = line.trim();
+      return trimmed !== `DB2>` &&
+        !trimmed.startsWith(`DB20`) && // Notice messages
+        trimmed !== `?>`;
+    });
+
+    if(!data[data.length-1]){
+      data.pop();
+    }
 
     let headers: DB2Headers[];
 
@@ -45,9 +54,6 @@ export namespace Tools {
       const trimmed = line.trim();
       if (trimmed.length === 0 && iiErrorMessage) iiErrorMessage = false;
       if (trimmed.length === 0 || index === data.length - 1) return;
-      if (trimmed === `DB2>`) return;
-      if (trimmed.startsWith(`DB20`)) return; // Notice messages
-      if (trimmed === `?>`) return;
 
       if (trimmed === `**** CLI ERROR *****`) {
         iiErrorMessage = true;

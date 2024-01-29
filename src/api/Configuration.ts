@@ -1,6 +1,7 @@
 
 import * as vscode from 'vscode';
 import { DeploymentMethod } from '../typings';
+import { FilterType } from './Filter';
 
 export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";
@@ -61,11 +62,12 @@ export namespace ConnectionConfiguration {
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
     [name: string]: any;
-  }
+  }  
 
   export interface ObjectFilters {
     name: string
-    library: string
+    filterType: FilterType
+    library: string    
     object: string
     types: string[]
     member: string
