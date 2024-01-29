@@ -520,7 +520,6 @@ export const ContentSuite: TestSuite = {
     {
       name: `Test getQtempTable`, test: async () => {
         const content = instance.getContent();
-        const config = instance.getConfig();
 
         const queries = [
           `CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYSINC/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPOBJD)')`,
@@ -534,10 +533,6 @@ export const ContentSuite: TestSuite = {
         ) With Data`
         ];
 
-        const sqlEnabled = config?.enableSQL;
-        if(sqlEnabled){
-          config.enableSQL = false;          
-        }
 
         const nosqlContent = await content?.getQTempTable(queries, "OBJECTS");
         const objects = nosqlContent?.map(row => ({
@@ -555,12 +550,6 @@ export const ContentSuite: TestSuite = {
         assert.notStrictEqual(qrpglesrc, undefined);
         assert.strictEqual(qrpglesrc?.attribute === "PF", true);
         assert.strictEqual(qrpglesrc?.type === "*FILE", true);
-
-        if(sqlEnabled){
-          config.enableSQL = true;
-          const sqlContent = await content?.getQTempTable(queries, "OBJECTS");
-          assert.deepStrictEqual(nosqlContent, sqlContent);
-        }
       }
     }
   ]

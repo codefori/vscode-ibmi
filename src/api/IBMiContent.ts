@@ -347,14 +347,8 @@ export default class IBMiContent {
    * @returns : the table's content
    */
   async getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    let temporaryFile: string | undefined;
-    if (this.config.enableSQL) {
-      prepareQueries.push(`Select * From QTEMP.${table}`);
-    }
-    else {
-      temporaryFile = this.getTempRemote(table);
-      prepareQueries.push(`CALL QSYS2.QCMDEXC('QSYS/CPYTOIMPF FROMFILE(QTEMP/${table}) TOSTMF(''${temporaryFile}'') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM('','') DECPNT(*PERIOD)')`);
-    }
+    let temporaryFile: string | undefined;    
+    prepareQueries.push(`Select * From QTEMP.${table}`);    
 
     try {
       const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
