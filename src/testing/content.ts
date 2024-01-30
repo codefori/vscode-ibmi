@@ -550,7 +550,31 @@ export const ContentSuite: TestSuite = {
         assert.notStrictEqual(qrpglesrc, undefined);
         assert.strictEqual(qrpglesrc?.attribute === "PF", true);
         assert.strictEqual(qrpglesrc?.type === "*FILE", true);
+      },
+    },
+    {
+      name: `Check object (file)`, test: async () => {
+        const content = instance.getContent();
+
+        const exists = await content?.checkObject({ library: `QSYSINC`, name: `MIH`, type: `*FILE` });
+        assert.ok(exists);
       }
-    }
+    },
+    {
+      name: `Check object (no exist)`, test: async () => {
+        const content = instance.getContent();
+
+        const exists = await content?.checkObject({ library: `QSYSINC`, name: `BOOOP`, type: `*FILE` });
+        assert.strictEqual(exists, false);
+      }
+    },
+    {
+      name: `Check object (source member)`, test: async () => {
+        const content = instance.getContent();
+
+        const exists = await content?.checkObject({ library: `QSYSINC`, name: `H`, type: `*FILE`, member: `MATH` });
+        assert.ok(exists);
+      }
+    },
   ]
 };
