@@ -853,9 +853,14 @@ export default class IBMiContent {
     })).code === 0;
   }
 
-  async checkObject(object: { library: string, name: string, type: string }, authorities: Authority[] = [`*NONE`]) {
+  async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`,
+      command: IBMiContent.toCl(`CHKOBJ`, {
+        obj: `${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}`,
+        objtype: object.type.toLocaleUpperCase(),
+        aut: authorities.join(" "),
+        mbr: object.member
+      }),
       noLibList: true
     })).code === 0;
   }
@@ -872,5 +877,36 @@ export default class IBMiContent {
       const qsysObject = Tools.parseQSysPath(path);
       return this.config.protectedPaths.includes(qsysObject.library.toLocaleUpperCase());
     }
+  }
+
+  /**
+   * 
+   * @param command Optionally qualified CL command
+   * @param parameters A key/value object of parameters
+   * @returns Formatted CL string
+   */
+  static toCl(command: string, parameters: {[parameter: string]: string|number|undefined}) {
+    let cl = command;
+
+    for (const [key, value] of Object.entries(parameters)) {
+      let parmValue;
+
+      if (value) {
+        if (typeof value === 'string') {
+          if (value === value.toLocaleUpperCase()) {
+            parmValue = value;
+          } else {
+            parmValue = value.replace(/'/g, `''`);
+            parmValue = `'${parmValue}'`;
+          }
+        } else {
+          parmValue = String(value);
+        }
+
+        cl += ` ${key.toUpperCase()}(${parmValue})`;
+      }
+    }
+
+    return cl;
   }
 }
