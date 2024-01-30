@@ -104,13 +104,13 @@ export default class IBMi {
         await this.client.connect(connectionObject as node_ssh.Config);
 
         //Check settings
-        let checkSettings = new IBMiSettings(this,progress,connectionObject,delayedOperations,reconnecting);
-        
+        let checkSettings = new IBMiSettings(this, progress, connectionObject, delayedOperations, reconnecting);
+
         //Check Shell output
-        try{
+        try {
           checkSettings.CheckShellOutput();
         }
-        catch(error) {
+        catch (error) {
           throw error;
         }
 
@@ -168,7 +168,7 @@ export default class IBMi {
 
         //Checking temporary library configuration
         checkSettings.checkTempLibConfig();
-        
+
         //Checking temporary directory configuration
         checkSettings.checkTempDirectoryConfig();
 
@@ -223,11 +223,11 @@ export default class IBMi {
         // give user option to set bash as default shell.
         if (this.remoteFeatures[`bash`]) {
           checkSettings.checkBash();
-          if(this.config?.usesBash) {
-              if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
-                //Ensure /QOpenSys/pkgs/bin is found in $PATH
-                checkSettings.checkOpenSrcPath();
-              }
+          if (this.config?.usesBash) {
+            if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
+              //Ensure /QOpenSys/pkgs/bin is found in $PATH
+              checkSettings.checkOpenSrcPath();
+            }
           }
         }
 
