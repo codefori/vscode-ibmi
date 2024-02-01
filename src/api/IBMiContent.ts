@@ -67,7 +67,12 @@ export default class IBMiContent {
     }
   }
 
-  async downloadStreamfile(remotePath: string, localPath?: string) {
+  /**
+   * 
+   * @param remotePath Remote IFS path
+   * @param localPath Local path to download file to
+   */
+  async downloadStreamfileRaw(remotePath: string, localPath?: string) {
     const features = this.ibmi.remoteFeatures;
 
     if (this.config.autoConvertIFSccsid && features.attr && features.iconv) {
@@ -83,11 +88,26 @@ export default class IBMiContent {
     if (!localPath) {
       localPath = await tmpFile();
     }
+
     await this.ibmi.downloadFile(localPath, remotePath);
-    return readFileAsync(localPath, `utf8`);
+    const raw = await readFileAsync(localPath);
+    return raw;
   }
 
-  async writeStreamfile(originalPath: any, content: any) {
+  /**
+   * @deprecated Use downloadStreamfileRaw instead
+   */
+  async downloadStreamfile(remotePath: string, localPath?: string) {
+    const raw = await this.downloadStreamfileRaw(remotePath, localPath);
+    return raw.toString(`utf8`);
+  }
+
+  /**
+   * @param originalPath 
+   * @param content Raw content
+   * @param encoding Optional encoding to write.
+   */
+  async writeStreamfileRaw(originalPath: string, content: Uint8Array, encoding?: string) {
     const client = this.ibmi.client;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
@@ -98,7 +118,7 @@ export default class IBMiContent {
       ccsid = await this.getNotUTF8CCSID(features.attr, originalPath);
     }
 
-    await writeFileAsync(tmpobj, content, `utf8`);
+    await writeFileAsync(tmpobj, content, encoding);
 
     if (ccsid && features.iconv) {
       // Upload our file to the same temp file, then write convert it back to the original ccsid
@@ -108,6 +128,15 @@ export default class IBMiContent {
     } else {
       return client.putFile(tmpobj, originalPath);
     }
+  }
+
+  /**
+   * Write utf8 content to a streamfile
+   * @deprecated Use writeStreamfileRaw instead
+   */
+  async writeStreamfile(originalPath: string, content: string) {
+    const buffer = Buffer.from(content, `utf8`);
+    return this.writeStreamfileRaw(originalPath, buffer);
   }
 
   /**
