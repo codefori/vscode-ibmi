@@ -874,7 +874,7 @@ export default class IBMi {
         };
       });
 
-    } catch (e) {
+    } catch (e: any) {
 
       if (this.client.isConnected()) {
         this.client.dispose();
@@ -887,9 +887,20 @@ export default class IBMi {
         return this.connect(connectionObject, true);
       }
 
+      let error = e;
+      if (e.code === "ENOTFOUND") {
+        error = `Host is unreachable. Check the connection's hostname/IP address.`;
+      }
+      else if (e.code === "ECONNREFUSED") {
+        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+      }
+      else if (e.level === "client-authentication") {
+        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+      }
+
       return {
         success: false,
-        error: e
+        error
       };
     }
     finally {
