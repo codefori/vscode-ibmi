@@ -13,8 +13,8 @@ export class IFSFS implements vscode.FileSystemProvider {
   async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
     const contentApi = instance.getContent();
     if (contentApi) {
-      const fileContent = await contentApi.downloadStreamfile(uri.path);
-      return new Uint8Array(Buffer.from(fileContent, `utf8`));
+      const fileContent = await contentApi.downloadStreamfileRaw(uri.path);
+      return fileContent;
     }
     else {
       if (retrying) {
@@ -40,7 +40,7 @@ export class IFSFS implements vscode.FileSystemProvider {
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
     const contentApi = instance.getContent();
     if (contentApi) {
-      contentApi.writeStreamfile(uri.path, content);
+      contentApi.writeStreamfileRaw(uri.path, content);
     }
     else {
       throw new Error("Not connected to IBM i");
