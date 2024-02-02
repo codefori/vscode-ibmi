@@ -885,13 +885,13 @@ export default class IBMiContent {
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string
    */
-  static toCl(command: string, parameters: {[parameter: string]: string|number|undefined}) {
+  static toCl(command: string, parameters: {[parameter: string]: string|number|undefined}) {    
     let cl = command;
 
     for (const [key, value] of Object.entries(parameters)) {
       let parmValue;
 
-      if (value) {
+      if (value !== undefined) {
         if (typeof value === 'string') {
           if (value === value.toLocaleUpperCase()) {
             parmValue = value;
