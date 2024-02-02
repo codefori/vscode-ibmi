@@ -2456,11 +2456,6 @@
 					"group": "3_ifsTransfer@3"
 				},
 				{
-					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == objectBrowser && viewItem == filter && workspaceFolderCount >= 1",
-					"group": "3_ifsTransfer@3"
-				},
-				{
 					"command": "code-for-ibmi.changeObjectDesc",
 					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@1"
@@ -2546,7 +2541,8 @@
 		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2",
-		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz"
+		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
+		"escape-string-regexp": "^5.0.0"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
