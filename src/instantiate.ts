@@ -423,6 +423,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 const member = path.parse(`${connection!.sysNameInAmerican(selectionSplit[2])}`);
                 member.ext = member.ext.substring(1);
 
+                if (member.ext.trim() === ``) {
+                  vscode.window.showErrorMessage(`${selection} does not include a member extension.`);
+                  return;
+                }
+
                 const fullMember = {
                   base: member.base,
                   name: member.name,
