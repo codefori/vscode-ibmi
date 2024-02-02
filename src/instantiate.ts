@@ -422,27 +422,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 const file = `${connection!.sysNameInAmerican(selectionSplit[1])}`;
                 const member = path.parse(`${connection!.sysNameInAmerican(selectionSplit[2])}`);
                 member.ext = member.ext.substring(1);
-                const fullMember = await content!.runSQL(`
-                  select rtrim( cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) ) as MEMBER
-                       , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
-                    from QSYS2.SYSPARTITIONSTAT
-                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${member.name}' )
-                   limit 1
-                `).then((resultSet) => {
-                  return resultSet.length !== 1 ? {} :
-                    {
-                      base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
-                      name: `${resultSet[0].MEMBER}`,
-                      ext: `${resultSet[0].TYPE}`,
-                    }
-                });
-                if (!fullMember) {
-                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.base} does not exist.`);
-                  return;
-                } else if (fullMember.name !== member.name || (member.ext && fullMember.ext !== member.ext)) {
-                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.name} of type ${member.ext} does not exist.`);
-                  return;
+
+                const fullMember = {
+                  base: member.base,
+                  name: member.name,
+                  ext: member.ext
                 }
+
                 selection = `${lib}/${file}/${fullMember.base}`;
               };
               if (selection.startsWith(`/`)) {
