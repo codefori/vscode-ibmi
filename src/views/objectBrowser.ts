@@ -2,7 +2,8 @@ import fs from "fs";
 import os from "os";
 import util from "util";
 import vscode from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
+import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
+import { parseFilter } from "../api/Filter";
 import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
@@ -11,12 +12,21 @@ import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
+import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
 const writeFileAsync = util.promisify(fs.writeFile);
 const objectNamesLower = () => GlobalConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
 const objectSortOrder = () => GlobalConfiguration.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+
+const correctCase = (value: string) => {
+  ;
+  if (objectNamesLower()) {
+    return value.toLocaleLowerCase();
+  } else {
+    return value;
+  }
+}
 
 //https://code.visualstudio.com/api/references/icons-in-labels
 const objectIcons = {
@@ -35,6 +45,10 @@ const objectIcons = {
   'SRVPGM': `file-submodule`,
   'USRSPC': `chrome-maximize`,
   '': `circle-large-outline`
+}
+
+function isProtected(filter: ConnectionConfiguration.ObjectFilters) {
+  return filter.protected || getContent().isProtectedPath(filter.library);
 }
 
 class ObjectBrowserItem extends BrowserItem {
@@ -147,23 +161,22 @@ class CreateFilterItem extends BrowserItem {
 
 class ObjectBrowserFilterItem extends ObjectBrowserItem {
   constructor(filter: ConnectionConfiguration.ObjectFilters) {
-    super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
-    this.contextValue = `filter${filter.protected ? `_readonly` : ``}`;
+    super(filter, filter.name, { icon: isProtected(filter) ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
+    this.contextValue = `filter${isProtected(filter) ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
-    const lowerCased = objectNamesLower();
-    return (await getContent().getObjectList(this.filter, objectSortOrder()))
-      .map(object => {
-        if (lowerCased === true) {
-          object.name = object.name.toLocaleLowerCase();
-          object.type = object.type.toLocaleLowerCase();
-          object.attribute = object.attribute?.toLocaleLowerCase().trim();
-        }
-
-        return object.attribute?.toLocaleUpperCase() === `*PHY` ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
-      });
+    const libraryFilter = parseFilter(this.filter.library);
+    if (libraryFilter.noFilter) {
+      return await listObjects(this);
+    }
+    else {
+      return (await getContent().getLibraries(this.filter))
+        .map(object => {
+          return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
+        });
+    }
   }
 }
 
@@ -171,10 +184,10 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
   readonly sort: SortOptions = { order: "name", ascending: true };
   readonly path: string;
 
-  constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiFile) {
-    super(parent.filter, sourceFile.name, { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
+  constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiObject) {
+    super(parent.filter, correctCase(sourceFile.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
-    this.contextValue = `SPF${this.filter.protected ? `_readonly` : ``}`;
+    this.contextValue = `SPF${isProtected(this.filter) ? `_readonly` : ``}`;
     this.description = sourceFile.text;
 
     this.path = [sourceFile.library, sourceFile.name].join(`/`);
@@ -200,19 +213,17 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
       library: this.sourceFile.library,
       name: this.sourceFile.name,
       type: `*FILE`
-    }, `*UPD`);
+    }, [`*UPD`]);
 
     try {
-      const lowerCased = objectNamesLower();
-      const members = (await content.getMemberList(this.sourceFile.library, this.sourceFile.name, this.filter.member, this.filter.memberType, this.sort))
-        .map(member => {
-          if (lowerCased === true) {
-            member.file = member.file.toLocaleLowerCase();
-            member.name = member.name.toLocaleLowerCase();
-            member.extension = member.extension.toLocaleLowerCase();
-          }
-          return member;
-        });
+      const members = await content.getMemberList({
+        library: this.sourceFile.library,
+        sourceFile: this.sourceFile.name,
+        members: this.filter.member,
+        extensions: this.filter.memberType,
+        filterType: this.filter.filterType,
+        sort: this.sort
+      });
 
       await storeMemberList(this.path, members.map(member => `${member.name}.${member.extension}`));
 
@@ -247,12 +258,13 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     const icon = Object.entries(objectIcons).find(([key]) => key === type.toUpperCase())?.[1] || objectIcons[``];
-    super(parent.filter, `${object.name}.${type}`, { icon, parent });
+    const isLibrary = type === 'LIB';
+    super(parent.filter, correctCase(`${object.name}.${type}`), { icon, parent, state: isLibrary ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None });
 
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
 
-    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${this.filter.protected ? `_readonly` : ``}`;
+    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -260,15 +272,23 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
       fragment: object.attribute
     });
 
-    this.command = {
-      command: `vscode.open`,
-      title: `Open`,
-      arguments: [this.resourceUri]
-    };
+    if (!isLibrary) {
+      this.command = {
+        command: `vscode.open`,
+        title: `Open`,
+        arguments: [this.resourceUri]
+      };
+    }
   }
 
   updateDescription() {
     this.description = this.object.text.trim() + (this.object.attribute ? ` (${this.object.attribute})` : ``);
+  }
+
+  async getChildren() {
+    const objectFilter = Object.assign({}, this.filter);
+    objectFilter.library = this.object.name;
+    return await listObjects(this, objectFilter);
   }
 }
 
@@ -277,13 +297,13 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   readonly sortBy: (sort: SortOptions) => void;
 
   constructor(parent: ObjectBrowserSourcePhysicalFileItem, readonly member: IBMiMember, writable: boolean) {
-    const readOnly = parent.filter.protected || !writable;
-    super(parent.filter, `${member.name}.${member.extension}`, { icon: readOnly ? `lock-small` : "", parent });
-    this.contextValue = `member${readOnly ? `_readonly` : ``}`;
+    const readonly = isProtected(parent.filter) || !writable;
+    super(parent.filter, correctCase(`${member.name}.${member.extension}`), { icon: readonly ? `lock-small` : "", parent });
+    this.contextValue = `member${readonly ? `_readonly` : ``}`;
     this.description = member.text;
 
-    this.resourceUri = getMemberUri(member, readOnly ? { readonly: true } : undefined);
-    this.path = this.resourceUri.path;
+    this.resourceUri = getMemberUri(member, { readonly });
+    this.path = this.resourceUri.path.substring(1);
     this.tooltip = `${this.path}`
       .concat(`${member.text ? `\n${t("text")}:\t\t${member.text}` : ``}`)
       .concat(`${member.lines != undefined ? `\n${t("lines")}:\t${member.lines}` : ``}`)
@@ -293,9 +313,9 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
     this.command = {
-      command: `vscode.open`,
+      command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Member`,
-      arguments: [this.resourceUri]
+      arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
   }
 }
@@ -349,13 +369,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (regex && parsedFilter) {
           const filter = {
             name: `Filter ${objectFilters.length + 1}`,
+            filterType: 'simple',
             library: `QSYS`,
             object: `${parsedFilter.lib}*`,
             types: [`*LIB`],
             member: `*`,
             memberType: `*`,
             protected: false
-          }
+          } as ConnectionConfiguration.ObjectFilters;
           objectFilters.push(filter);
         } else {
           regex = FILTER_REGEX.exec(newFilter.toUpperCase());
@@ -363,13 +384,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           if (regex && parsedFilter) {
             const filter = {
               name: `Filter ${objectFilters.length + 1}`,
+              filterType: 'simple',
               library: parsedFilter.lib || `QGPL`,
               object: parsedFilter.obj || `*`,
               types: [parsedFilter.objType || `*SRCPF`],
               member: parsedFilter.mbr || `*`,
               memberType: parsedFilter.mbrType || `*`,
               protected: false
-            }
+            } as ConnectionConfiguration.ObjectFilters;
             objectFilters.push(filter);
           }
         }
@@ -454,7 +476,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
           if (addResult.code === 0) {
             if (GlobalConfiguration.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`vscode.open`, getMemberUri(member));
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
             objectBrowser.refresh(node);
@@ -531,7 +553,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (GlobalConfiguration.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`vscode.open`, getMemberUri(memberPath));
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, memberPath);
             }
 
             if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
@@ -641,7 +663,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 command: `RNMM FILE(${library}/${sourceFile}) MBR(${oldMember.name}) NEWMBR(${newMember.name})`,
                 noLibList: true
               });
-              
+
               if (commandResult.code !== 0) {
                 newNameOK = false;
                 vscode.window.showErrorMessage(t(`objectBrowser.renameMember.errorMessage`, commandResult.stderr));
@@ -838,6 +860,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         filters.push({
           name: newLibrary,
+          filterType: 'simple',
           library: newLibrary,
           object: `*ALL`,
           types: [`*ALL`],
@@ -1054,7 +1077,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 command: `MOVOBJ OBJ(${node.path}) OBJTYPE(${node.object.type}) TOLIB(${newLibrary})`,
                 noLibList: true
               });
-              
+
               if (moveResult.code !== 0) {
                 vscode.window.showErrorMessage(t(`objectBrowser.moveObject.errorMessage2`, node.path, moveResult.stderr));
                 return false;
@@ -1122,8 +1145,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
         message: t(`objectBrowser.doSearchInSourceFile.progressMessage`, path)
       });
 
-      const members = await content.getMemberList(pathParts[0], pathParts[1], filter?.member);
-
+      const members = await content.getMemberList({ library: pathParts[0], sourceFile: pathParts[1], members: filter?.member });
       if (members.length > 0) {
         // NOTE: if more messages are added, lower the timeout interval
         const timeoutInternal = 9000;
@@ -1151,7 +1173,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           }
         }, timeoutInternal);
 
-        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected);
+        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter ? isProtected(filter) : false);
 
         // Filter search result by member type filter.
         if (results.length > 0 && filter?.member) {
@@ -1196,4 +1218,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
   } catch (e) {
     vscode.window.showErrorMessage(t(`objectBrowser.doSearchInSourceFile.errorMessage`, e));
   }
+}
+
+async function listObjects(item: ObjectBrowserFilterItem, filter?: ConnectionConfiguration.ObjectFilters) {
+  return (await getContent().getObjectList(filter || item.filter, objectSortOrder()))
+    .map(object => {
+      return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(item, object) : new ObjectBrowserObjectItem(item, object);
+    });
 }

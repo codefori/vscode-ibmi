@@ -96,7 +96,7 @@ export class ObjectBrowserProvider {
               GlobalStorage.get().deleteServerSettingsCache(server.name);
 
               // Then remove the password
-              context.secrets.delete(`${server.name}_password`);
+              await context.secrets.delete(`${server.name}_password`);
 
               this.refresh();
             }

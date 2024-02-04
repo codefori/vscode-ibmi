@@ -1,5 +1,5 @@
 import { Ignore } from 'ignore';
-import { ProviderResult, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
+import { ProviderResult, Range, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
 import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
@@ -98,11 +98,9 @@ export interface QsysPath {
 export interface IBMiObject extends QsysPath {
   type: string,
   text: string,
-  attribute?: string
-}
-
-export interface IBMiFile extends IBMiObject {
-  count?: number
+  sourceFile?: boolean
+  attribute?: string,
+  memberCount?: number
 }
 
 export interface IBMiMember {
@@ -186,7 +184,7 @@ export interface ObjectItem extends FilteredItem, WithPath {
 }
 
 export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
-  sourceFile: IBMiFile
+  sourceFile: IBMiObject
 }
 
 export interface MemberItem extends FilteredItem, WithPath {
@@ -195,10 +193,13 @@ export interface MemberItem extends FilteredItem, WithPath {
 
 export type IBMiMessage = {
   id: string
-  text: string  
+  text: string
 }
 
 export type IBMiMessages = {
   messages: IBMiMessage[]
-  findId(id:string) : IBMiMessage | undefined
+  findId(id: string): IBMiMessage | undefined
 }
+export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
+
+export type OpenEditableOptions = QsysFsOptions & { position?: Range };

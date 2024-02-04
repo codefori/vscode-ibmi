@@ -2,7 +2,7 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
-import { IBMiMessage, IBMiMessages } from '../typings';
+import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
 
 export namespace Tools {
@@ -33,7 +33,16 @@ export namespace Tools {
     let figuredLengths = false;
     let iiErrorMessage = false;
 
-    let data = output.split(`\n`);
+    const data = output.split(`\n`).filter(line => {
+      const trimmed = line.trim();
+      return trimmed !== `DB2>` &&
+        !trimmed.startsWith(`DB20`) && // Notice messages
+        trimmed !== `?>`;
+    });
+
+    if(!data[data.length-1]){
+      data.pop();
+    }
 
     let headers: DB2Headers[];
 
@@ -45,9 +54,6 @@ export namespace Tools {
       const trimmed = line.trim();
       if (trimmed.length === 0 && iiErrorMessage) iiErrorMessage = false;
       if (trimmed.length === 0 || index === data.length - 1) return;
-      if (trimmed === `DB2>`) return;
-      if (trimmed.startsWith(`DB20`)) return; // Notice messages
-      if (trimmed === `?>`) return;
 
       if (trimmed === `**** CLI ERROR *****`) {
         iiErrorMessage = true;
@@ -233,6 +239,23 @@ export namespace Tools {
     return {
       messages,
       findId: id => messages.find(m => m.id === id)
+    }
+  }
+
+  export function parseQSysPath(path: string) : QsysPath{
+    const parts = path.split('/');
+    if(parts.length > 3){
+      return {
+        asp: parts[0],
+        library: parts[1],
+        name: parts[2]
+      }
+    }
+    else{
+      return {
+        library: parts[0],
+        name: parts[1]
+      }
     }
   }
 }

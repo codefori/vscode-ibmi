@@ -1,10 +1,11 @@
 import vscode from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
+import { Tools } from "../../api/Tools";
+import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
-import { isManaged } from "../../api/debug";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -27,10 +28,7 @@ export class SettingsUI {
   static init(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (
-        /** @type {Server|undefined} */ server,
-        /** @type {string|undefined} */ tab,
-      ) => {
+      vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
 
@@ -74,6 +72,7 @@ export class SettingsUI {
         sourceTab
           .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
+          .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addSelect(`sourceDateMode`, `Source date tracking mode`, [
             {
@@ -89,6 +88,8 @@ export class SettingsUI {
               text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
             },
           ], `Determine which method should be used to track changes while editing source members.`)
+          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
+          .addHorizontalRule()
           .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [
             {
               selected: config.defaultDeploymentMethod === undefined || config.defaultDeploymentMethod === ``,
@@ -126,9 +127,10 @@ export class SettingsUI {
               description: `All`,
               text: `Every file in the local workspace`,
             }
-          ], `Set your Default Deployment Method`)
-          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter)
-          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, saving will be disabled for source members and IFS files.`, config.readOnlyMode)
+          ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`)
+          .addHorizontalRule()
+          .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode)
+          .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `) });
 
         const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
@@ -230,7 +232,17 @@ export class SettingsUI {
                     if (data[key].trim() === ``) data[key] = null;
                     break;
                   case `hideCompileErrors`:
-                    data[key] = data[key].split(`,`).map((item: string) => item.trim().toUpperCase()).filter((item: string) => item !== ``);
+                    data[key] = String(data[key]).split(`,`)
+                      .map(item => item.toUpperCase().trim())
+                      .filter(item => item !== ``)
+                      .filter(Tools.distinct);
+                    break;
+                  case `protectedPaths`:
+                    data[key] = String(data[key]).split(`,`)
+                      .map(item => item.trim())
+                      .map(item => item.startsWith('/') ? item : item.toUpperCase())
+                      .filter(item => item !== ``)
+                      .filter(Tools.distinct);
                     break;
                 }
 
@@ -240,20 +252,28 @@ export class SettingsUI {
                 }
               }
 
-              if (restartFields.some(item => data[item] !== config[item])) {
+              if (restartFields.some(item => data[item] && data[item] !== config[item])) {
                 restart = true;
               }
+                
+              const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
 
               Object.assign(config, data);
               await instance.setConfig(config);
 
-              if (connection && restart) {
-                vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-                  .then(async (value) => {
-                    if (value === `Reload`) {
-                      await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                    }
-                  });
+              if (connection) {
+                if (restart) {
+                  vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                    .then(async (value) => {
+                      if (value === `Reload`) {
+                        await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                      }
+                    });
+                }
+                else if (reloadBrowsers) {
+                  vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                  vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                }
               }
             }
           }
@@ -286,6 +306,7 @@ export class SettingsUI {
               if (!data.privateKeyPath?.trim()) {
                 if (connection.privateKeyPath?.trim()) {
                   data.privateKeyPath = connection.privateKeyPath;
+                  await context.secrets.delete(`${name}_password`);
                 }
                 else {
                   delete data.privateKeyPath;
@@ -293,8 +314,8 @@ export class SettingsUI {
               }
 
               if (data.password && !data.privateKeyPath) {
-                context.secrets.delete(`${name}_password`);
-                context.secrets.store(`${name}_password`, `${data.password}`);
+                await context.secrets.delete(`${name}_password`);
+                await context.secrets.store(`${name}_password`, `${data.password}`);
                 delete data.privateKeyPath;
               }
 
@@ -310,8 +331,5 @@ export class SettingsUI {
         }
       })
     )
-
-
   }
-
 }

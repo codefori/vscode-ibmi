@@ -74,8 +74,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                             password: undefined, // Removes the password from the object
                           });
 
-                          context.secrets.store(`${host}_password`, pass);
-
+                          await context.secrets.store(`${host}_password`, pass);
                           await GlobalConfiguration.set(`connections`, existingConnections);
                         }
                       }
@@ -188,6 +187,7 @@ async function initialSetup(username: string) {
       config.objectFilters.push(
         {
           name: "Sandbox Sources",
+          filterType: 'simple',
           library: username,
           object: "*",
           types: [
@@ -199,6 +199,7 @@ async function initialSetup(username: string) {
         },
         {
           name: "Sandbox Object Filters",
+          filterType: 'simple',
           library: username,
           object: "*",
           types: [
