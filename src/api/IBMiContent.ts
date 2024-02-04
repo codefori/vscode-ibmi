@@ -589,7 +589,7 @@ export default class IBMiContent {
           rtrim(cast(a.system_table_name as char(10) for bit data)) AS SOURCE_FILE,
           rtrim(cast(b.system_table_member as char(10) for bit data)) as NAME,
           coalesce(rtrim(cast(b.source_type as varchar(10) for bit data)), '') as TYPE,
-          coalesce(rtrim(b.partition_text), '') as TEXT,
+          coalesce(rtrim(varchar(b.partition_text)), '') as TEXT,
           b.NUMBER_ROWS as LINES,
           extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
           extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
