@@ -37,6 +37,7 @@ export namespace Tools {
       const trimmed = line.trim();
       return trimmed !== `DB2>` &&
         !trimmed.startsWith(`DB20`) && // Notice messages
+        !/COMMAND .+ COMPLETED WITH EXIT STATUS \d+/.test(trimmed) && // @CL command execution output
         trimmed !== `?>`;
     });
 

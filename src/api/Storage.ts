@@ -45,6 +45,7 @@ export type CachedServerSettings = {
   badDataAreasChecked: boolean | null,
   libraryListValidated: boolean | null,
   pathChecked?: boolean
+  defaultCCSID: number | null;
 } | undefined;
 
 export class GlobalStorage extends Storage {

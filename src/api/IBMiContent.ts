@@ -25,8 +25,8 @@ export type SortOptions = {
 }
 
 export default class IBMiContent {
-
-  constructor(readonly ibmi: IBMi) { }
+  private chgJobCCSID: string | undefined = undefined;
+  constructor(readonly ibmi: IBMi) {}
 
   private get config(): ConnectionConfiguration.Parameters {
     if (!this.ibmi.config) {
@@ -225,6 +225,9 @@ export default class IBMiContent {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
 
     if (QZDFMDB2) {
+      if(this.chgJobCCSID === undefined){
+        this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
+      }
       // Well, the fun part about db2 is that it always writes to standard out.
       // It does not write to standard error at all.
 
@@ -235,7 +238,7 @@ export default class IBMiContent {
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: statement,
+        stdin: `${this.chgJobCCSID}${statement}`
       })
 
       if (output.stdout) {
@@ -347,8 +350,8 @@ export default class IBMiContent {
    * @returns : the table's content
    */
   async getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    let temporaryFile: string | undefined;    
-    prepareQueries.push(`Select * From QTEMP.${table}`);    
+    let temporaryFile: string | undefined;
+    prepareQueries.push(`Select * From QTEMP.${table}`);
 
     try {
       const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
@@ -469,7 +472,7 @@ export default class IBMiContent {
   }
 
   async getLibraries(filters: { library: string; filterType?: FilterType }) {
-    return this.getObjectList({ library: "QSYS", object: filters.library, types: ["*LIB"], filterType:filters.filterType });
+    return this.getObjectList({ library: "QSYS", object: filters.library, types: ["*LIB"], filterType: filters.filterType });
   }
 
   /**
@@ -572,10 +575,10 @@ export default class IBMiContent {
     const sourceFile = filter.sourceFile.toUpperCase();
 
     const memberFilter = parseFilter(filter.members, filter.filterType);
-    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ?  filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
-    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ?  filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
 
     const statement =
       `With MEMBERS As (
@@ -610,7 +613,7 @@ export default class IBMiContent {
       results = await this.getQTempTable([`Create Table QTEMP.MEMBERSLST As (${statement}) With DATA`], "MEMBERSLST");
     }
 
-    if(results.length){
+    if (results.length) {
       const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
       return results.map(result => ({
         asp,
@@ -624,10 +627,10 @@ export default class IBMiContent {
         created: new Date(result.CREATED ? Number(result.CREATED) : 0),
         changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
       } as IBMiMember))
-      .filter(member => memberFilter.test(member.name))
-      .filter(member => memberExtensionFilter.test(member.extension));
+        .filter(member => memberFilter.test(member.name))
+        .filter(member => memberExtensionFilter.test(member.extension));
     }
-    else{
+    else {
       return [];
     }
   }
@@ -885,7 +888,7 @@ export default class IBMiContent {
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string
    */
-  static toCl(command: string, parameters: {[parameter: string]: string|number|undefined}) {    
+  static toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
     let cl = command;
 
     for (const [key, value] of Object.entries(parameters)) {
