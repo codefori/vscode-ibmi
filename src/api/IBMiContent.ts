@@ -217,28 +217,24 @@ export default class IBMiContent {
   }
 
   /**
-   * Run an SQL statement
-   * @param statement
+   * Run SQL statements.
+   * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
+   * If a statement starts with @, it will be run as a CL command.
+   * 
+   * @param statements
    * @returns a Result set
    */
-  async runSQL(statement: string): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
 
     if (QZDFMDB2) {
       if (this.chgJobCCSID === undefined) {
         this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
-      }
-      // Well, the fun part about db2 is that it always writes to standard out.
-      // It does not write to standard error at all.
-
-      // if comments present in sql statement, sql string needs to be checked
-      if (statement.search(`--`) > -1) {
-        statement = this.fixCommentsInSQLString(statement);
-      }
+      }      
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: `${this.chgJobCCSID}${statement}`
+        stdin: Tools.fixQZDFMDB2Statement(`${this.chgJobCCSID}${statements}`)
       })
 
       if (output.stdout) {
@@ -474,11 +470,11 @@ export default class IBMiContent {
     const queries: string[] = [];
 
     if (!sourceFilesOnly) {
-      queries.push(`CALL QSYS2.QCMDEXC('DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)')`);
+      queries.push(`@DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)`);
     }
 
     if (withSourceFiles) {
-      queries.push(`CALL QSYS2.QCMDEXC('DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)')`);
+      queries.push(`@DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)`);
     }
 
     let createOBJLIST;
@@ -760,34 +756,6 @@ export default class IBMiContent {
     }
 
     return undefined;
-  }
-
-  /**
-   * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
-   * Required to work with QZDFMDB2.
-   * @param inSql; sql statement
-   * @returns correctly formattted sql string containing comments
-   */
-  private fixCommentsInSQLString(inSql: string): string {
-    const newLine: string = `\n`;
-    let parsedSql: string = ``;
-
-    inSql.split(newLine)
-      .forEach(item => {
-        let goodLine = item + newLine;
-
-        const pos = item.search(`--`);
-        if (pos > 0) {
-          goodLine = item.slice(0, pos) +
-            newLine +
-            item.slice(pos) +
-            newLine;
-        }
-        parsedSql += goodLine;
-
-      });
-
-    return parsedSql;
   }
 
   /**
