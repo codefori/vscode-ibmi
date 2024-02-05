@@ -260,7 +260,14 @@ export namespace Tools {
     }
   }
 
-  export function fixQZDFMDB2Statement(statement: string) {
+  /**
+   * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
+   * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
+   * - Makes sure each comment (`--`) starts on a new line
+   * @param statement the statement to fix
+   * @returns statement compatible with QZDFMDB2
+   */
+  export function fixSQL(statement: string) {
     return statement.split("\n").map(line => {
       if (line.startsWith('@')) {
         //- Escape all '

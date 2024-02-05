@@ -234,7 +234,7 @@ export default class IBMiContent {
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: Tools.fixQZDFMDB2Statement(`${this.chgJobCCSID}${statements}`)
+        stdin: Tools.fixSQL(`${this.chgJobCCSID}${statements}`)
       })
 
       if (output.stdout) {
