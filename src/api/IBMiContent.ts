@@ -26,7 +26,7 @@ export type SortOptions = {
 
 export default class IBMiContent {
   private chgJobCCSID: string | undefined = undefined;
-  constructor(readonly ibmi: IBMi) {}
+  constructor(readonly ibmi: IBMi) { }
 
   private get config(): ConnectionConfiguration.Parameters {
     if (!this.ibmi.config) {
@@ -225,7 +225,7 @@ export default class IBMiContent {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
 
     if (QZDFMDB2) {
-      if(this.chgJobCCSID === undefined){
+      if (this.chgJobCCSID === undefined) {
         this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
       }
       // Well, the fun part about db2 is that it always writes to standard out.
@@ -350,34 +350,9 @@ export default class IBMiContent {
    * @returns : the table's content
    */
   async getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    let temporaryFile: string | undefined;
     prepareQueries.push(`Select * From QTEMP.${table}`);
-
-    try {
-      const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
-      const result = await this.runSQL(fullQuery);
-      if (temporaryFile) {
-        return parse(await this.downloadStreamfile(temporaryFile), {
-          columns: true,
-          skip_empty_lines: true,
-          cast: true,
-          onRecord(record) {
-            for (const key of Object.keys(record)) {
-              record[key] = record[key] === ` ` ? `` : record[key];
-            }
-            return record;
-          }
-        });
-      }
-      else {
-        return result;
-      }
-    }
-    finally {
-      if (this.config.autoClearTempData && temporaryFile) {
-        await this.ibmi.sendCommand({ command: `rm -f ${temporaryFile}` });
-      }
-    }
+    const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
+    return await this.runSQL(fullQuery);
   }
 
   /**
@@ -605,14 +580,7 @@ export default class IBMiContent {
         ${singleMemberExtension ? `And TYPE Like '${singleMemberExtension}'` : ''}
       Order By ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
-    let results: Tools.DB2Row[];
-    if (this.config.enableSQL) {
-      results = await this.runSQL(statement);
-    }
-    else {
-      results = await this.getQTempTable([`Create Table QTEMP.MEMBERSLST As (${statement}) With DATA`], "MEMBERSLST");
-    }
-
+    const results = await this.runSQL(statement);
     if (results.length) {
       const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
       return results.map(result => ({
