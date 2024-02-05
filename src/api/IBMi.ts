@@ -676,6 +676,9 @@ export default class IBMi {
           }
         }
 
+        if((this.qccsid < 1 || this.qccsid === 65535)){
+          this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.defaultCCSID}\n`);
+        }
 
         // give user option to set bash as default shell.
         if (this.remoteFeatures[`bash`]) {
