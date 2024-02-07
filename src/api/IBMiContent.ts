@@ -357,9 +357,6 @@ export default class IBMiContent {
    * @returns an array of libraries as IBMiObject
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
-    const config = this.ibmi.config;
-    const tempLib = this.config.tempLibrary;
-    const TempName = Tools.makeid();
     let results: Tools.DB2Row[];
 
     if (this.config.enableSQL) {
