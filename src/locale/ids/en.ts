@@ -222,7 +222,7 @@ export const en: Locale = {
   //Actions
   'actions.CURLIB': 'Current library, changeable in Library List',
   'actions.USERNAME': `Username for connection`,
-  'actions.HOME': `Current home/working directory, changable in IFS Browser`,
+  'actions.WORKDIR': `Current working directory, changeable in IFS Browser`,
   'actions.HOST': `Hostname or IP address from the current connection`,
   'actions.BUILDLIB': `The same as <code>&amp;CURLIB</code>`,
   'actions.LIBLC': `Library list delimited by comma`,
@@ -232,7 +232,8 @@ export const en: Locale = {
   'actions.OPENMBR': `Name of the source member (<code>&amp;OPENMBRL</code> for lowercase)`,
   'actions.member.EXT': `Extension of the source member (<code>&amp;EXTL</code> for lowercase)`,
   'actions.FULLPATH': `Full path of the file on the remote system`,
-  'actions.RELATIVEPATH': `Relative path of the streamfile from the home directory or workspace`,
+  'actions.FILEDIR': `Directory of the file on the remote system`,
+  'actions.RELATIVEPATH': `Relative path of the streamfile from the working directory or workspace`,
   'actions.PARENT': `Name of the parent directory or source file`,
   'actions.BASENAME': `Name of the file, including the extension`,
   'actions.streamfile.NAME': `Name of the file (<code>&amp;NAMEL</code> for lowercase)`,
