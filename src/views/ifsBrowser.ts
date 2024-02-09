@@ -451,12 +451,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (config && connection) {
         const root = node?.path || config.homeDirectory;
 
-        const chosenFiles = files || await vscode.window.showOpenDialog({
-          defaultUri: vscode.Uri.file(os.homedir()),
-          canSelectMany: true,
-          canSelectFolders: true,
-          canSelectFiles: true
-        });
+        const chosenFiles = files || await showOpenDialog();
 
         const filesToUpload: { local: string; remote: string; }[] = [];
         const directoriesToUpload: vscode.Uri[] = [];
@@ -747,5 +742,22 @@ async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
 
   } catch (e) {
     vscode.window.showErrorMessage(t(`ifsBrowser.doSearchInStreamfiles.errorMessage`));
+  }
+}
+
+async function showOpenDialog() {
+  const openType = (await vscode.window.showQuickPick([t("ifsBrowser.uploadStreamfile.select.type.folders"), t("ifsBrowser.uploadStreamfile.select.type.files")], { title: t("ifsBrowser.uploadStreamfile.select.type.title") }));
+  if (openType) {
+    return vscode.window.showOpenDialog({
+      defaultUri: vscode.Uri.file(os.homedir()),
+      canSelectMany: true,
+      ...openType === t("ifsBrowser.uploadStreamfile.select.type.folders") ? {
+        canSelectFolders: true,
+        canSelectFiles: false
+      } : {
+        canSelectFolders: false,
+        canSelectFiles: true
+      }
+    })
   }
 }
