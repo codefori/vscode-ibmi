@@ -265,8 +265,8 @@ export namespace Tools {
  * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
  */
 export function findExistingDocumentUri(uri: vscode.Uri) {
-  const bathUriString = uriStringWithoutFragment(uri).toLowerCase();
-  const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri).toLowerCase() === bathUriString);
+  const bathUriString = uriStringWithoutFragment(uri);
+  const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === bathUriString);
   if (possibleDoc) {
     return possibleDoc.uri;
   }
@@ -274,7 +274,11 @@ export function findExistingDocumentUri(uri: vscode.Uri) {
   return uri;
 }
 
+/**
+ * We convert member to lowercase as members are case insensitive.
+ */
 function uriStringWithoutFragment(uri: vscode.Uri) {
   // To lowercase because the URI path is case-insensitive
-  return uri.scheme + `:` + uri.path;
+  const baseUri = uri.scheme + `:` + uri.path;
+  return (uri.scheme === `member` ? baseUri.toLowerCase() : baseUri);
 }
