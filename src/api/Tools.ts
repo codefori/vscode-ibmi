@@ -259,3 +259,22 @@ export namespace Tools {
     }
   }
 }
+
+/**
+ * We do this to find previously opened files with the same path, but different case OR readonly flags.
+ * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
+ */
+export function findExistingDocumentUri(uri: vscode.Uri) {
+  const bathUriString = uriStringWithoutFragment(uri).toLowerCase();
+  const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri).toLowerCase() === bathUriString);
+  if (possibleDoc) {
+    return possibleDoc.uri;
+  }
+
+  return uri;
+}
+
+function uriStringWithoutFragment(uri: vscode.Uri) {
+  // To lowercase because the URI path is case-insensitive
+  return uri.scheme + `:` + uri.path;
+}
