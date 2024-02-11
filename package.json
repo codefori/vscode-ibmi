@@ -1593,6 +1593,12 @@
 				"title": "Edit",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.ifs.toggleShowHiddenFiles",
+				"title": "Toggle hidden files",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -1637,6 +1643,12 @@
 				"key": "ctrl+r",
 				"mac": "cmd+r",
 				"when": "editorLangId == cl"
+			},
+			{
+				"command": "code-for-ibmi.ifs.toggleShowHiddenFiles",
+				"key": "ctrl+h",
+				"mac": "cmd+h",
+        "when": "!editorFocus || editorReadonly"
 			}
 		],
 		"viewsContainers": {
@@ -1978,7 +1990,11 @@
 				{
 					"command": "code-for-ibmi.removeIFSShortcut",
 					"when": "never"
-				}
+				},
+        {
+          "command": "code-for-ibmi.ifs.toggleShowHiddenFiles",
+          "when": "code-for-ibmi:connected && view == ifsBrowser"
+        }
 			],
 			"view/title": [
 				{

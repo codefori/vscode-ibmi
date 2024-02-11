@@ -1,4 +1,3 @@
-
 import os from "os";
 import path from "path";
 import vscode, { FileType } from "vscode";
@@ -714,6 +713,15 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
   )
 }
+
+vscode.commands.registerCommand(`code-for-ibmi.ifs.toggleShowHiddenFiles`, async function () {
+  const config = instance.getConfig();
+  if (config) {
+    config.showHiddenFiles = !config.showHiddenFiles;
+    await ConnectionConfiguration.update(config);
+    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+  }
+});
 
 function handleFileListErrors(errors: string[]) {
   errors.forEach(error => vscode.window.showErrorMessage(error));
