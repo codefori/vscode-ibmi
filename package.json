@@ -369,6 +369,11 @@
 								"default": false,
 								"description": "Show description of libraries in User Library List (recommended to also enable SQL)."
 							},
+							"showHiddenFiles": {
+								"type": "boolean",
+								"default": true,
+								"description": "Show hidden files and directories in IFS browser."
+							},
 							"debugPort": {
 								"type": "string",
 								"default": "8005",
