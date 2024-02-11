@@ -1463,7 +1463,7 @@
 			{
 				"command": "code-for-ibmi.refreshObjectBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh Object Browser",
+				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
