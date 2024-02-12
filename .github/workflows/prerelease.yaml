@@ -1,10 +1,7 @@
-on:
-  pull_request:
-    types:
-      - closed
+on: workflow_dispatch
 
 jobs:
-  if_merged:
+  publish_prerelease:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
