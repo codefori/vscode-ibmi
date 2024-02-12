@@ -2,7 +2,6 @@ on: workflow_dispatch
 
 jobs:
   publish_prerelease:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
