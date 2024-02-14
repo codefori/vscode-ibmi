@@ -1782,6 +1782,22 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.refreshConnections",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameConnection",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortConnections",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
