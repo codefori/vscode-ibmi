@@ -2,7 +2,7 @@ import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
-import { CachedServerSettings, GlobalStorage } from '../api/Storage';
+import { GlobalStorage } from '../api/Storage';
 import { instance } from '../instantiate';
 import { t } from "../locale";
 import { Login } from '../webviews/login';
