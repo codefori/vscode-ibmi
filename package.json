@@ -1801,6 +1801,10 @@
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
+        {
+          "command": "code-for-ibmi.showAdditionalSettings",
+					"when": "code-for-ibmi:connected"
+        },
 				{
 					"command": "code-for-ibmi.selectForCompare",
 					"when": "code-for-ibmi:connected"
