@@ -169,7 +169,7 @@ export default class IBMiContent {
           switch (messageID) {
             case "CPDA08A":
               //We need to try again after we delete the temp remote
-              const result = await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
+              const result = await this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` });
               retry = !result.code || result.code === 0;
               break;
             case "CPFA0A9":
@@ -344,7 +344,7 @@ export default class IBMiContent {
 
         if (this.config.autoClearTempData) {
           Promise.allSettled([
-            this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` }),
+            this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
             deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
           ]);
         }

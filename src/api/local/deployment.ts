@@ -198,7 +198,7 @@ export namespace Deployment {
   export async function deleteFiles(parameters: DeploymentParameters, toDelete: string[]) {
     if (toDelete.length) {
       Deployment.deploymentLog.appendLine(`\nDeleted:\n\t${toDelete.join('\n\t')}\n`);
-      await Deployment.getConnection().sendCommand({ directory: parameters.remotePath, command: `rm -f ${toDelete.join(' ')}` });
+      await Deployment.getConnection().sendCommand({ directory: parameters.remotePath, command: `rm -rf ${toDelete.join(' ')}` });
     }
   }
 

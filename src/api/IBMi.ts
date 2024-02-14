@@ -429,7 +429,7 @@ export default class IBMi {
             })
 
           this.sendCommand({
-            command: `rm -f ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
+            command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
           })
             .then(result => {
               // All good!
