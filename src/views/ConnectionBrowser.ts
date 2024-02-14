@@ -2,7 +2,7 @@ import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
-import { GlobalStorage } from '../api/Storage';
+import { CachedServerSettings, GlobalStorage } from '../api/Storage';
 import { instance } from '../instantiate';
 import { t } from "../locale";
 import { Login } from '../webviews/login';
@@ -73,6 +73,54 @@ export class ObjectBrowserProvider {
 
       vscode.commands.registerCommand(`code-for-ibmi.refreshConnections`, () => {
         this.refresh();
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.renameConnection`, async (server: Server) => {
+        if (!this._attemptingConnection && server) {
+          const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+          const newName = await vscode.window.showInputBox({
+            prompt: t(`connectionBrowser.renameConnection.prompt`, server.name),
+            value: server.name,
+            validateInput: newName => {
+              if (newName === server.name) {
+                return t(`connectionBrowser.renameConnection.invalid.input`);
+              } else if (existingConnections.findIndex(item => item.name === newName) !== -1) {
+                return t(`connectionBrowser.renameConnection.alreadyExists`, newName);
+              }
+            }
+          });
+
+          if (newName) {
+            let index;
+            // First rename the connection details
+            const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+            index = connections.findIndex(connection => connection.name === server.name);
+            connections[index].name = newName;
+            await GlobalConfiguration.set(`connections`, connections);
+
+            // Then rename the connection settings
+            const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
+            index = connectionSettings.findIndex(connection => connection.name === server.name);
+            connectionSettings[index].name = newName;
+            await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
+
+            // Then rename the cached connection settings
+            const cachedConnectionSettings = GlobalStorage.get().getServerSettingsCache(server.name);
+            if(cachedConnectionSettings) {
+              GlobalStorage.get().setServerSettingsCache(newName, cachedConnectionSettings);
+              GlobalStorage.get().deleteServerSettingsCache(server.name);
+            }
+
+            // Then rename the password key
+            const secret = await context.secrets.get(`${server.name}_password`);
+            if (secret) {
+              await context.secrets.store(`${newName}_password`, secret);
+              await context.secrets.delete(`${server.name}_password`);
+            }
+
+            this.refresh();
+          }
+        }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.sortConnections`, async () => {

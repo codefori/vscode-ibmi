@@ -1015,6 +1015,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.renameConnection",
+				"title": "Rename Connection",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete Connection",
 				"category": "IBM i"
@@ -2132,9 +2137,14 @@
 			],
 			"view/item/context": [
 				{
-					"command": "code-for-ibmi.deleteConnection",
+					"command": "code-for-ibmi.renameConnection",
 					"when": "view == connectionBrowser && viewItem == server",
 					"group": "2_delete@1"
+				},
+				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "2_delete@2"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
