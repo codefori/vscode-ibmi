@@ -591,5 +591,15 @@ export const ContentSuite: TestSuite = {
         assert.ok(exists);
       }
     },
+    {
+      name: `Test @clCommand + select statement`, test: async () => {
+        const content = instance.getContent()!;
+        
+        const [result] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+        
+        assert.deepStrictEqual(result.OBJNAME, "UNITTEST");
+        assert.deepStrictEqual(result.OBJTEXT, "Code for i test");
+      }
+    },
   ]
 };
