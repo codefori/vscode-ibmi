@@ -37,10 +37,11 @@ export namespace Tools {
       const trimmed = line.trim();
       return trimmed !== `DB2>` &&
         !trimmed.startsWith(`DB20`) && // Notice messages
+        !/COMMAND .+ COMPLETED WITH EXIT STATUS \d+/.test(trimmed) && // @CL command execution output
         trimmed !== `?>`;
     });
 
-    if(!data[data.length-1]){
+    if (!data[data.length - 1]) {
       data.pop();
     }
 
@@ -242,20 +243,42 @@ export namespace Tools {
     }
   }
 
-  export function parseQSysPath(path: string) : QsysPath{
+  export function parseQSysPath(path: string): QsysPath {
     const parts = path.split('/');
-    if(parts.length > 3){
+    if (parts.length > 3) {
       return {
         asp: parts[0],
         library: parts[1],
         name: parts[2]
       }
     }
-    else{
+    else {
       return {
         library: parts[0],
         name: parts[1]
       }
     }
+  }
+
+  /**
+   * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
+   * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
+   * - Makes sure each comment (`--`) starts on a new line
+   * @param statement the statement to fix
+   * @returns statement compatible with QZDFMDB2
+   */
+  export function fixSQL(statement: string) {
+    return statement.split("\n").map(line => {
+      if (line.startsWith('@')) {
+        //- Escape all '
+        //- Remove any trailing ;
+        //- Put the command in a Call QSYS2.QCMDEXC statement
+        line = `Call QSYS2.QCMDEXC('${line.substring(1, line.endsWith(";") ? line.length - 1 : undefined).replaceAll("'", "''")}');`;
+      }
+
+      //Make each comment start on a new line
+      return line.replaceAll("--", "\n--");
+    }
+    ).join("\n");
   }
 }

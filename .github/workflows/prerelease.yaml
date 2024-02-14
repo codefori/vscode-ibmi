@@ -1,0 +1,51 @@
+on: workflow_dispatch
+
+jobs:
+  publish_prerelease:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Use Node.js 20
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: actions/checkout@v3
+        with:
+          ref: master
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Update version number for prelease
+        run: |
+          npm version --no-git-tag-version patch
+          cd types && npm version --no-git-tag-version patch
+
+      - name: get-npm-version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Package
+        run: npx @vscode/vsce package --pre-release
+          
+      - name: Publish
+        run: |
+          npx @vscode/vsce publish --skip-duplicate --packagePath code-for-ibmi-${{ steps.package-version.outputs.current-version}}.vsix --pat ${{ secrets.PUBLISHER_TOKEN }}
+          npx ovsx publish --skip-duplicate --packagePath code-for-ibmi-${{ steps.package-version.outputs.current-version}}.vsix --pat ${{ secrets.OPENVSX_TOKEN }}
+      
+      - name: Bump version number for next dev cycle
+        run: |
+          npm version --no-git-tag-version prerelease --preid dev
+          cd types && npm version --no-git-tag-version prerelease --preid dev
+      - name: get-npm-version
+        id: devcycle-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+
+      - name: Commit version bump
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git commit --allow-empty -a -m "Pre-release ${{ steps.devcycle-version.outputs.current-version}}"
+          git push

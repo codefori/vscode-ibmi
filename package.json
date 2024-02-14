@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.6.6-dev.0",
+	"version": "2.6.7-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1249,20 +1249,20 @@
 			{
 				"command": "code-for-ibmi.refreshIFSBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh IFS List",
+				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "code-for-ibmi.refreshIFSBrowserItem",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh IFS List item",
+				"title": "Refresh List item",
 				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.revealInIFSBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Reveal IFS Browser Item",
+				"title": "Reveal Browser Item",
 				"category": "IBM i"
 			},
 			{
@@ -1275,7 +1275,7 @@
 			{
 				"command": "code-for-ibmi.deleteIFS",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Delete Object",
+				"title": "Delete",
 				"category": "IBM i"
 			},
 			{
@@ -1287,7 +1287,7 @@
 			{
 				"command": "code-for-ibmi.moveIFS",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Rename or Move Object",
+				"title": "Rename/Move",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
@@ -1301,21 +1301,21 @@
 			{
 				"command": "code-for-ibmi.searchIFS",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Search Directory",
+				"title": "Search",
 				"category": "IBM i",
 				"icon": "$(search)"
 			},
 			{
 				"command": "code-for-ibmi.createDirectory",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create Directory",
+				"title": "New Directory",
 				"category": "IBM i",
 				"icon": "$(new-folder)"
 			},
 			{
 				"command": "code-for-ibmi.createStreamfile",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create Streamfile",
+				"title": "New File",
 				"category": "IBM i",
 				"icon": "$(new-file)"
 			},
@@ -1349,49 +1349,49 @@
 			{
 				"command": "code-for-ibmi.addIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Add IFS Shortcut",
+				"title": "Add Shortcut",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
 			{
 				"command": "code-for-ibmi.removeIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Remove IFS Shortcut",
+				"title": "Remove Shortcut",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
 			{
 				"command": "code-for-ibmi.sortIFSShortcuts",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Sort IFS Shortcuts",
+				"title": "Sort Shortcuts",
 				"category": "IBM i",
 				"icon": "$(list-ordered)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutDown",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move IFS Shortcut Down",
+				"title": "Move Shortcut Down",
 				"category": "IBM i",
 				"icon": "$(arrow-down)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutUp",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move IFS Shortcut Up",
+				"title": "Move Shortcut Up",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutToTop",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move IFS Shortcut to Top",
+				"title": "Move Shortcut to Top",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutToBottom",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move IFS Shortcut to Bottom",
+				"title": "Move Shortcut to Bottom",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
@@ -1468,7 +1468,7 @@
 			{
 				"command": "code-for-ibmi.refreshObjectBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh Object Browser",
+				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -1574,7 +1574,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openTerminalHere",
-				"title": "Open terminal here",
+				"title": "Open Terminal Here",
 				"category": "IBM i"
 			},
 			{
@@ -2362,19 +2362,9 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.deleteIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
-					"group": "2_ifsStuff@4"
-				},
-				{
-					"command": "code-for-ibmi.moveIFS",
-					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
-					"group": "2_ifsStuff@2"
-				},
-				{
-					"command": "code-for-ibmi.copyIFS",
-					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
-					"group": "2_ifsStuff@2"
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
@@ -2382,14 +2372,24 @@
 					"group": "2_ifsStuff@2"
 				},
 				{
+					"command": "code-for-ibmi.copyIFS",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@3"
+				},
+				{
+					"command": "code-for-ibmi.moveIFS",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@4"
+				},
+				{
+					"command": "code-for-ibmi.deleteIFS",
+					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@5"
+				},
+				{
 					"submenu": "code-for-ibmi.sortIFSFiles",
 					"when": "view == ifsBrowser && !listMultiSelection",
 					"group": "5_ifsStuff@1"
-				},
-				{
-					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
-					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.searchIFS",
@@ -2407,14 +2407,14 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
-					"command": "code-for-ibmi.createDirectory",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
-					"group": "2_ifsStuff@2"
-				},
-				{
 					"command": "code-for-ibmi.createStreamfile",
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.createDirectory",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"group": "2_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.searchIFS",
