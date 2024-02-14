@@ -999,6 +999,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.sortConnections",
+				"title": "Sort Connections",
+				"category": "IBM i",
+				"icon": "$(list-ordered)"
+			},
+			{
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"title": "Connection Settings",
 				"category": "IBM i"
@@ -1982,13 +1988,18 @@
 					"when": "view == connectionBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshConnections",
+					"command": "code-for-ibmi.sortConnections",
 					"group": "navigation@2",
 					"when": "view == connectionBrowser"
 				},
 				{
-					"command": "code-for-ibmi.connectToPrevious",
+					"command": "code-for-ibmi.refreshConnections",
 					"group": "navigation@3",
+					"when": "view == connectionBrowser"
+				},
+				{
+					"command": "code-for-ibmi.connectToPrevious",
+					"group": "navigation@4",
 					"when": "view == connectionBrowser && code-for-ibmi:hasPreviousConnection"
 				},
 				{
