@@ -280,5 +280,6 @@ export function findExistingDocumentUri(uri: vscode.Uri) {
 function uriStringWithoutFragment(uri: vscode.Uri) {
   // To lowercase because the URI path is case-insensitive
   const baseUri = uri.scheme + `:` + uri.path;
-  return (uri.scheme === `member` ? baseUri.toLowerCase() : baseUri);
+  const isCaseSensitive = (uri.scheme === `streamfile` && uri.path.startsWith(`/QOpenSys/`));
+  return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
 }
