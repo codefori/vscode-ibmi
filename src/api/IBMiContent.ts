@@ -315,7 +315,7 @@ export default class IBMiContent {
    * @param member Will default to file provided
    * @param deleteTable Will delete the table after download
    */
-  async getTable(library: string, file: string, member: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
+  async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
     if (file === member && this.config.enableSQL) {
