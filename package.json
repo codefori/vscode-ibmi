@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.6.7-dev.0",
+	"version": "2.7.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -368,6 +368,11 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Show description of libraries in User Library List (recommended to also enable SQL)."
+							},
+							"showHiddenFiles": {
+								"type": "boolean",
+								"default": true,
+								"description": "Show hidden files and directories in IFS browser."
 							},
 							"debugPort": {
 								"type": "string",
@@ -1255,20 +1260,20 @@
 			{
 				"command": "code-for-ibmi.refreshIFSBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh",
+				"title": "Refresh IFS List",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "code-for-ibmi.refreshIFSBrowserItem",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh List item",
+				"title": "Refresh IFS List item",
 				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.revealInIFSBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Reveal Browser Item",
+				"title": "Reveal IFS Browser Item",
 				"category": "IBM i"
 			},
 			{
@@ -1281,7 +1286,7 @@
 			{
 				"command": "code-for-ibmi.deleteIFS",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Delete",
+				"title": "Delete Object",
 				"category": "IBM i"
 			},
 			{
@@ -1293,7 +1298,7 @@
 			{
 				"command": "code-for-ibmi.moveIFS",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Rename/Move",
+				"title": "Rename or Move Object",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
@@ -1307,21 +1312,21 @@
 			{
 				"command": "code-for-ibmi.searchIFS",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Search",
+				"title": "Search Directory",
 				"category": "IBM i",
 				"icon": "$(search)"
 			},
 			{
 				"command": "code-for-ibmi.createDirectory",
 				"enablement": "code-for-ibmi:connected",
-				"title": "New Directory",
+				"title": "Create Directory",
 				"category": "IBM i",
 				"icon": "$(new-folder)"
 			},
 			{
 				"command": "code-for-ibmi.createStreamfile",
 				"enablement": "code-for-ibmi:connected",
-				"title": "New File",
+				"title": "Create Streamfile",
 				"category": "IBM i",
 				"icon": "$(new-file)"
 			},
@@ -1355,49 +1360,49 @@
 			{
 				"command": "code-for-ibmi.addIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Add Shortcut",
+				"title": "Add IFS Shortcut",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
 			{
 				"command": "code-for-ibmi.removeIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Remove Shortcut",
+				"title": "Remove IFS Shortcut",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
 			{
 				"command": "code-for-ibmi.sortIFSShortcuts",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Sort Shortcuts",
+				"title": "Sort IFS Shortcuts",
 				"category": "IBM i",
 				"icon": "$(list-ordered)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutDown",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut Down",
+				"title": "Move IFS Shortcut Down",
 				"category": "IBM i",
 				"icon": "$(arrow-down)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutUp",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut Up",
+				"title": "Move IFS Shortcut Up",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutToTop",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut to Top",
+				"title": "Move IFS Shortcut to Top",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutToBottom",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut to Bottom",
+				"title": "Move IFS Shortcut to Bottom",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
@@ -1474,7 +1479,7 @@
 			{
 				"command": "code-for-ibmi.refreshObjectBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh",
+				"title": "Refresh Object Browser",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -1580,7 +1585,7 @@
 			},
 			{
 				"command": "code-for-ibmi.openTerminalHere",
-				"title": "Open Terminal Here",
+				"title": "Open terminal here",
 				"category": "IBM i"
 			},
 			{
@@ -1599,6 +1604,13 @@
 				"title": "Edit",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.ifs.toggleShowHiddenFiles",
+				"title": "Toggle hidden files",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"icon": "$(shield)"
 			}
 		],
 		"keybindings": [
@@ -2093,7 +2105,7 @@
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.removeIFSShortcut",
+					"command": "code-for-ibmi.ifs.toggleShowHiddenFiles",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
@@ -2382,9 +2394,19 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
-					"group": "2_ifsStuff@1"
+					"command": "code-for-ibmi.deleteIFS",
+					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@4"
+				},
+				{
+					"command": "code-for-ibmi.moveIFS",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.copyIFS",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@2"
 				},
 				{
 					"command": "code-for-ibmi.createDirectory",
@@ -2392,24 +2414,14 @@
 					"group": "2_ifsStuff@2"
 				},
 				{
-					"command": "code-for-ibmi.copyIFS",
-					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
-					"group": "2_ifsStuff@3"
-				},
-				{
-					"command": "code-for-ibmi.moveIFS",
-					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
-					"group": "2_ifsStuff@4"
-				},
-				{
-					"command": "code-for-ibmi.deleteIFS",
-					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
-					"group": "2_ifsStuff@5"
-				},
-				{
 					"submenu": "code-for-ibmi.sortIFSFiles",
 					"when": "view == ifsBrowser && !listMultiSelection",
 					"group": "5_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.searchIFS",
@@ -2427,14 +2439,14 @@
 					"group": "3_ifsStuff@3"
 				},
 				{
-					"command": "code-for-ibmi.createStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
-					"group": "2_ifsStuff@1"
-				},
-				{
 					"command": "code-for-ibmi.createDirectory",
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
 					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"group": "2_ifsStuff@1"
 				},
 				{
 					"command": "code-for-ibmi.searchIFS",
@@ -2552,7 +2564,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2021 --moduleResolution node"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
