@@ -268,11 +268,7 @@ export namespace Tools {
   export function findExistingDocumentUri(uri: vscode.Uri) {
     const baseUriString = uriStringWithoutFragment(uri);
     const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === baseUriString);
-    if (possibleDoc) {
-      return possibleDoc.uri;
-    }
-
-    return uri;
+    return possibleDoc?.uri || uri;
   }
 
   /**
