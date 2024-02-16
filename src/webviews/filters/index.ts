@@ -66,22 +66,21 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
         //In case we need to play with the data
         switch (key) {
           case `name`:
-          case `filterType`:
-          case `library`:
+          case `filterType`:          
             data[key] = String(data[key]).trim();
             break;
           case `types`:
             data[key] = String(data[key]).split(`,`).map(item => item.trim().toUpperCase()).filter(item => item !== ``);
             break;
+          case `library`:
           case `object`:
             data[key] = (String(data[key].trim()) || `*`)
               .split(',')
-              .map(o => useRegexFilters ? o : o.toLocaleUpperCase())
+              .map(o => useRegexFilters ? o : o.toLocaleUpperCase().trim())
               .filter(Tools.distinct)
               .join(",");
             break;
-          case `member`:
-          case `member`:
+          case `member`:          
           case `memberType`:
             data[key] = String(data[key].trim()) || `*`;
             break;
