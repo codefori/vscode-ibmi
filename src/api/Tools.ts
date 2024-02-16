@@ -282,7 +282,7 @@ export namespace Tools {
     // To lowercase because the URI path is case-insensitive
     const baseUri = uri.scheme + `:` + uri.path;
     const isCaseSensitive = (uri.scheme === `streamfile` && uri.path.startsWith(`/QOpenSys/`));
-    return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
+    const isCaseSensitive = (uri.scheme === `streamfile` && /^\/QOpenSys\//i.test(uri.path));
   }
 
   /**
