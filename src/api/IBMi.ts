@@ -109,32 +109,6 @@ export default class IBMi {
         //Check settings
         let checkSettings = new ConnectionSettings(this);
 
-        // Check shell output for additional user text - this will confuse Code...
-        progress.report({
-          message: `Checking shell output.`
-        });
-
-        try {
-          checkSettings.CheckShellOutput();
-        }
-        catch (error) {
-          const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
-            detail: [
-              `This extension can not work with the shell configured on ${connectionObject.name},`,
-              `since the output from shell commands have additional content.`,
-              `This can be caused by running commands like "echo" or other`,
-              `commands creating output in your shell start script.`, ``,
-              `The connection to ${connectionObject.name} will be aborted.`
-            ].join(`\n`),
-            modal: true
-          }, `Read more`);
-
-          if (chosen === `Read more`) {
-            vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
-          }
-          throw (`Shell config error, connection aborted.`);
-        }
-
         this.currentConnectionName = connectionObject.name;
         this.currentHost = connectionObject.host;
         this.currentPort = connectionObject.port;
@@ -171,6 +145,32 @@ export default class IBMi {
         const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
         // Reload server settings?
         const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
+
+        // Check shell output for additional user text - this will confuse Code...
+        progress.report({
+          message: `Checking shell output.`
+        });
+
+        try {
+          checkSettings.CheckShellOutput();
+        }
+        catch (error) {
+          const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
+            detail: [
+              `This extension can not work with the shell configured on ${connectionObject.name},`,
+              `since the output from shell commands have additional content.`,
+              `This can be caused by running commands like "echo" or other`,
+              `commands creating output in your shell start script.`, ``,
+              `The connection to ${connectionObject.name} will be aborted.`
+            ].join(`\n`),
+            modal: true
+          }, `Read more`);
+
+          if (chosen === `Read more`) {
+            vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
+          }
+          throw (`Shell config error, connection aborted.`);
+        }
 
         // Register handlers after we might have to abort due to bad configuration.
         this.client.connection!.once(`timeout`, disconnected);
@@ -245,20 +245,20 @@ export default class IBMi {
           progress.report({
             message: `Clearing temporary data.`
           });
-          try{
+          try {
             checkSettings.clearTempDataSys(); //Clear temporary data in SYS filesystem
           }
-          catch(error: any) {
+          catch (error: any) {
             vscode.window.showErrorMessage(error.message, `View log`).then(async choice => {
               if (choice === `View log`) {
                 this.outputChannel!.show();
               }
             });
           }
-          try{
+          try {
             checkSettings.clearTempDataIFS(); //Clear temporary data in IFS
           }
-          catch(error:any) {
+          catch (error: any) {
             vscode.window.showErrorMessage(error.message, `View log`).then(async choice => {
               if (choice === `View log`) {
                 this.outputChannel!.show();
@@ -272,8 +272,8 @@ export default class IBMi {
           progress.report({
             message: `Checking for bad data areas.`
           });
-          //checkSettings.checkBadDataAreas();
-          if(await checkSettings.checkQCPTOIMPF()){
+          
+          if (await checkSettings.checkQCPTOIMPF()) {
             vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
               detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
               modal: true,
@@ -292,32 +292,32 @@ export default class IBMi {
                   vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
                   break;
               }
-            });   
+            });
           }
 
-          if(await checkSettings.checkQCPFRMIMPF) {
-              vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
-                modal: false,
-              }, `Delete`, `Read more`).then(choice => {
-                switch (choice) {
-                  case `Delete`:
-                    checkSettings.deleteQCPFRMIMPF().then((result) => {
-                      if (result?.code === 0) {
-                        vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
-                      } else {
-                        vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
-                      }
-                    });
-                    break;
-                  case `Read more`:
-                    vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
-                    break;
-                }
-              });
-            
-        
+          if (await checkSettings.checkQCPFRMIMPF) {
+            vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
+              modal: false,
+            }, `Delete`, `Read more`).then(choice => {
+              switch (choice) {
+                case `Delete`:
+                  checkSettings.deleteQCPFRMIMPF().then((result) => {
+                    if (result?.code === 0) {
+                      vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                    } else {
+                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                    }
+                  });
+                  break;
+                case `Read more`:
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  break;
+              }
+            });
+
+
           }
-          
+
         }
 
         // Check for installed components?
@@ -431,7 +431,7 @@ export default class IBMi {
             }
           }
 
-          if(this.config?.usesBash){
+          if (this.config?.usesBash) {
             if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
               //Ensure /QOpenSys/pkgs/bin is found in $PATH
               progress.report({
@@ -462,7 +462,7 @@ export default class IBMi {
                 });
               }
             }
-          
+
           }
         }
 
