@@ -126,7 +126,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (existingUri) {
         const existingOptions = parseFSOptions(existingUri);
         if (existingOptions.readonly !== options.readonly) {
-          vscode.window.showWarningMessage(`The file is already open in another mode.`);
+          vscode.window.showWarningMessage(`The file is already opened in another mode.`);
           vscode.window.showTextDocument(existingUri);
           return false;
         }
