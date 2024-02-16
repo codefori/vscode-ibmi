@@ -259,50 +259,51 @@ export namespace Tools {
       }
     }
   }
-}
 
-/**
- * We do this to find previously opened files with the same path, but different case OR readonly flags.
- * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
- */
-export function findExistingDocumentUri(uri: vscode.Uri) {
-  const bathUriString = uriStringWithoutFragment(uri);
-  const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === bathUriString);
-  if (possibleDoc) {
-    return possibleDoc.uri;
-  }
 
-  return uri;
-}
-
-/**
- * We convert member to lowercase as members are case insensitive.
- */
-function uriStringWithoutFragment(uri: vscode.Uri) {
-  // To lowercase because the URI path is case-insensitive
-  const baseUri = uri.scheme + `:` + uri.path;
-  const isCaseSensitive = (uri.scheme === `streamfile` && uri.path.startsWith(`/QOpenSys/`));
-  return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
-}
-
-/**
- * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
- * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
- * - Makes sure each comment (`--`) starts on a new line
- * @param statement the statement to fix
- * @returns statement compatible with QZDFMDB2
- */
-export function fixSQL(statement: string) {
-  return statement.split("\n").map(line => {
-    if (line.startsWith('@')) {
-      //- Escape all '
-      //- Remove any trailing ;
-      //- Put the command in a Call QSYS2.QCMDEXC statement
-      line = `Call QSYS2.QCMDEXC('${line.substring(1, line.endsWith(";") ? line.length - 1 : undefined).replaceAll("'", "''")}');`;
+  /**
+   * We do this to find previously opened files with the same path, but different case OR readonly flags.
+   * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
+   */
+  export function findExistingDocumentUri(uri: vscode.Uri) {
+    const bathUriString = uriStringWithoutFragment(uri);
+    const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === bathUriString);
+    if (possibleDoc) {
+      return possibleDoc.uri;
     }
 
-    //Make each comment start on a new line
-    return line.replaceAll("--", "\n--");
+    return uri;
   }
-  ).join("\n");
+
+  /**
+   * We convert member to lowercase as members are case insensitive.
+   */
+  function uriStringWithoutFragment(uri: vscode.Uri) {
+    // To lowercase because the URI path is case-insensitive
+    const baseUri = uri.scheme + `:` + uri.path;
+    const isCaseSensitive = (uri.scheme === `streamfile` && uri.path.startsWith(`/QOpenSys/`));
+    return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
+  }
+
+  /**
+   * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
+   * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
+   * - Makes sure each comment (`--`) starts on a new line
+   * @param statement the statement to fix
+   * @returns statement compatible with QZDFMDB2
+   */
+  export function fixSQL(statement: string) {
+    return statement.split("\n").map(line => {
+      if (line.startsWith('@')) {
+        //- Escape all '
+        //- Remove any trailing ;
+        //- Put the command in a Call QSYS2.QCMDEXC statement
+        line = `Call QSYS2.QCMDEXC('${line.substring(1, line.endsWith(";") ? line.length - 1 : undefined).replaceAll("'", "''")}');`;
+      }
+
+      //Make each comment start on a new line
+      return line.replaceAll("--", "\n--");
+    }
+    ).join("\n");
+  }
 }

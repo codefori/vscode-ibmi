@@ -1,4 +1,4 @@
-import { Tools, findExistingDocumentUri } from './api/Tools';
+import { Tools } from './api/Tools';
 
 import path, { dirname } from 'path';
 import * as vscode from "vscode";
@@ -121,7 +121,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       const uri = getUriFromPath(path, options);
 
-      const existingUri = findExistingDocumentUri(uri);
+      const existingUri = Tools.findExistingDocumentUri(uri);
 
       if (existingUri) {
         const existingOptions = parseFSOptions(existingUri);
