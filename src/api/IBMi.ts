@@ -12,6 +12,8 @@ import { Tools } from './Tools';
 import ConnectionSettings from './ConnectionSettings';
 import * as configVars from './configVars';
 
+const CCSID_SYSVAL = -2;
+
 export default class IBMi {
   client: node_ssh.NodeSSH;
   currentHost: string;
