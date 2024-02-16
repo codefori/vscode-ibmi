@@ -91,34 +91,43 @@ export class ObjectBrowserProvider {
           });
 
           if (newName) {
-            let index;
-            // First rename the connection details
-            const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-            index = connections.findIndex(connection => connection.name === server.name);
-            connections[index].name = newName;
-            await GlobalConfiguration.set(`connections`, connections);
+            try {
+              let index;
+              // First rename the connection details
+              const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+              index = connections.findIndex(connection => connection.name === server.name);
+              if (index === -1) throw(t(`connectionBrowser.renameConnection.noConnectionFound`, server.name));
+              connections[index].name = newName;
 
-            // Then rename the connection settings
-            const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
-            index = connectionSettings.findIndex(connection => connection.name === server.name);
-            connectionSettings[index].name = newName;
-            await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
+              // Then rename the connection settings
+              const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
+              index = connectionSettings.findIndex(connection => connection.name === server.name);
+              if (index === -1) throw(t(`connectionBrowser.renameConnection.noConnParmsFound`, server.name));
+              connectionSettings[index].name = newName;
 
-            // Then rename the cached connection settings
-            const cachedConnectionSettings = GlobalStorage.get().getServerSettingsCache(server.name);
-            if(cachedConnectionSettings) {
+              // Then get the cached connection settings
+              const cachedConnectionSettings = GlobalStorage.get().getServerSettingsCache(server.name);
+
+              // Then get the password key
+              const secret = await context.secrets.get(`${server.name}_password`);
+
+              // No errors - update the settings.
+              await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
+              await GlobalConfiguration.set(`connections`, connections);
+              if(cachedConnectionSettings) {
               GlobalStorage.get().setServerSettingsCache(newName, cachedConnectionSettings);
               GlobalStorage.get().deleteServerSettingsCache(server.name);
-            }
+              }
+              if (secret) {
+                await context.secrets.store(`${newName}_password`, secret);
+                await context.secrets.delete(`${server.name}_password`);
+              }
 
-            // Then rename the password key
-            const secret = await context.secrets.get(`${server.name}_password`);
-            if (secret) {
-              await context.secrets.store(`${newName}_password`, secret);
-              await context.secrets.delete(`${server.name}_password`);
+              this.refresh();
+            } catch (e: any) {
+              vscode.window.showErrorMessage(
+                t(`connectionBrowser.renameConnection.error`, server.name, e.message || String(e)));
             }
-
-            this.refresh();
           }
         }
       }),
