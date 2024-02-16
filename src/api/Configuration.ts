@@ -61,6 +61,7 @@ export namespace ConnectionConfiguration {
     quickConnect: boolean;
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
+    showHiddenFiles: boolean;
     [name: string]: any;
   }  
 
@@ -140,7 +141,8 @@ export namespace ConnectionConfiguration {
       readOnlyMode: (parameters.readOnlyMode === true),
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
-      protectedPaths: (parameters.protectedPaths || [])
+      protectedPaths: (parameters.protectedPaths || []),
+      showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
     }
   }
 
