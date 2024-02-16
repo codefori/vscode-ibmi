@@ -260,6 +260,27 @@ export namespace Tools {
     }
   }
 
+
+  /**
+   * We do this to find previously opened files with the same path, but different case OR readonly flags.
+   * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
+   */
+  export function findExistingDocumentUri(uri: vscode.Uri) {
+    const baseUriString = uriStringWithoutFragment(uri);
+    const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === baseUriString);
+    return possibleDoc?.uri || uri;
+  }
+
+  /**
+   * We convert member to lowercase as members are case insensitive.
+   */
+  function uriStringWithoutFragment(uri: vscode.Uri) {
+    // To lowercase because the URI path is case-insensitive
+    const baseUri = uri.scheme + `:` + uri.path;
+    const isCaseSensitive = (uri.scheme === `streamfile` && /^\/QOpenSys\//i.test(uri.path));
+    return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
+  }
+
   /**
    * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
    * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls

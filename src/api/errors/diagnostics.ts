@@ -5,6 +5,7 @@ import { parseErrors } from "./parser";
 import { FileError } from "../../typings";
 import { getEvfeventFiles } from "../local/actions";
 import { GlobalConfiguration } from "../Configuration";
+import { Tools } from "../Tools";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -168,9 +169,9 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
         }
       } else {
         if (file.startsWith(`/`))
-          ileDiagnostics.set(vscode.Uri.from({ scheme: `streamfile`, path: file }), diagnostics);
+          ileDiagnostics.set(Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
         else {
-          const memberUri = vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` });
+          const memberUri = Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
           ileDiagnostics.set(memberUri, diagnostics);
         }
       }
