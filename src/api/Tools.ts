@@ -277,7 +277,6 @@ export namespace Tools {
   function uriStringWithoutFragment(uri: vscode.Uri) {
     // To lowercase because the URI path is case-insensitive
     const baseUri = uri.scheme + `:` + uri.path;
-    const isCaseSensitive = (uri.scheme === `streamfile` && uri.path.startsWith(`/QOpenSys/`));
     const isCaseSensitive = (uri.scheme === `streamfile` && /^\/QOpenSys\//i.test(uri.path));
   }
 
