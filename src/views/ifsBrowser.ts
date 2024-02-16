@@ -157,16 +157,13 @@ class IFSDirectoryItem extends IFSItem {
 
   async getChildren(): Promise<BrowserItem[]> {
     const content = instance.getContent();
-    const showHidden = instance.getConfig()?.showHiddenFiles;
     if (content) {
       try {
+        const showHidden = instance.getConfig()?.showHiddenFiles;
+        const filterIFSFile = (file:IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
-        const directories = objects
-          .filter(o => o.type === `directory`)
-          .filter(o => showHidden || !o.name.startsWith(`.`) || alwaysShow(o.name));
-        const streamFiles = objects
-          .filter(o => o.type === `streamfile`)
-          .filter(o => showHidden || !o.name.startsWith(`.`) || alwaysShow(o.name));
+        const directories = objects.filter(f => filterIFSFile(f, "directory"));
+        const streamFiles = objects.filter(f => filterIFSFile(f, "streamfile"));
         await storeIFSList(this.path, streamFiles.map(o => o.name));
         return [...directories.map(directory => new IFSDirectoryItem(directory, this)),
         ...streamFiles.map(file => new IFSFileItem(file, this))];
