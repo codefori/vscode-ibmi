@@ -22,7 +22,8 @@ export default class IBMi {
   defaultUserLibraries: string[];
   outputChannel?: vscode.OutputChannel;
   aspInfo: { [id: number]: string };
-  qccsid: number | null;
+  qccsid: number;
+  defaultCCSID: number;
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
   lastErrors: object[];
@@ -46,8 +47,8 @@ export default class IBMi {
      * the root of the IFS, thus why we store it.
      */
     this.aspInfo = {};
-
-    this.qccsid = null;
+    this.qccsid = CCSID_SYSVAL;
+    this.defaultCCSID = 0;
 
     this.remoteFeatures = {
       git: undefined,
@@ -338,8 +339,20 @@ export default class IBMi {
         }
 
         if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
-          let statement;
-          let output;
+          //Temporary function to run SQL
+          const runSQL = async (statement: string) => {
+            const output = await this.sendCommand({
+              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+              stdin: statement
+            });
+
+            if (output.code === 0) {
+              return Tools.db2Parse(output.stdout);
+            }
+            else {
+              throw new Error(output.stdout);
+            }
+          };
 
           // Check for ASP information?
           if (quickConnect === true && cachedServerSettings?.aspInfo) {
@@ -360,9 +373,10 @@ export default class IBMi {
           }
 
           // Fetch conversion values?
-          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars) {
+          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.defaultCCSID) {
             this.qccsid = cachedServerSettings.qccsid;
             this.variantChars = cachedServerSettings.variantChars;
+            this.defaultCCSID = cachedServerSettings.defaultCCSID;
           } else {
             progress.report({
               message: `Fetching conversion values.`
@@ -382,7 +396,6 @@ export default class IBMi {
           }
         } else {
           // Disable it if it's not found
-
           if (this.config.enableSQL) {
             progress.report({
               message: `SQL program not installed. Disabling SQL.`
@@ -512,7 +525,8 @@ export default class IBMi {
           },
           badDataAreasChecked: true,
           libraryListValidated: true,
-          pathChecked: true
+          pathChecked: true,
+          defaultCCSID: this.defaultCCSID
         });
 
         return {
@@ -520,7 +534,7 @@ export default class IBMi {
         };
       });
 
-    } catch (e) {
+    } catch (e: any) {
 
       if (this.client.isConnected()) {
         this.client.dispose();
@@ -533,9 +547,20 @@ export default class IBMi {
         return this.connect(connectionObject, true);
       }
 
+      let error = e;
+      if (e.code === "ENOTFOUND") {
+        error = `Host is unreachable. Check the connection's hostname/IP address.`;
+      }
+      else if (e.code === "ECONNREFUSED") {
+        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+      }
+      else if (e.level === "client-authentication") {
+        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+      }
+
       return {
         success: false,
-        error: e
+        error
       };
     }
     finally {

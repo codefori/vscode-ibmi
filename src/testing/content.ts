@@ -3,13 +3,14 @@ import tmp from 'tmp';
 import util from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
+import IBMiContent from "../api/IBMiContent";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
-  tests: [
+  tests: [        
     {
       name: `Test memberResolve`, test: async () => {
         const content = instance.getContent();
@@ -550,7 +551,55 @@ export const ContentSuite: TestSuite = {
         assert.notStrictEqual(qrpglesrc, undefined);
         assert.strictEqual(qrpglesrc?.attribute === "PF", true);
         assert.strictEqual(qrpglesrc?.type === "*FILE", true);
+      },
+    },
+    {
+      name: `To CL`, test: async () => {
+        const command = IBMiContent.toCl("TEST", {
+          ZERO: 0,
+          NONE:'*NONE',
+          EMPTY: `''`,
+          OBJNAME: `OBJECT`,
+          OBJCHAR: `ObJect`,
+          IFSPATH: `/hello/world`
+        });
+
+        assert.strictEqual(command, "TEST ZERO(0) NONE(*NONE) EMPTY('') OBJNAME(OBJECT) OBJCHAR('ObJect') IFSPATH('/hello/world')");
       }
-    }
+    },
+    {
+      name: `Check object (file)`, test: async () => {
+        const content = instance.getContent();
+
+        const exists = await content?.checkObject({ library: `QSYSINC`, name: `MIH`, type: `*FILE` });
+        assert.ok(exists);
+      }
+    },
+    {
+      name: `Check object (no exist)`, test: async () => {
+        const content = instance.getContent();
+
+        const exists = await content?.checkObject({ library: `QSYSINC`, name: `BOOOP`, type: `*FILE` });
+        assert.strictEqual(exists, false);
+      }
+    },
+    {
+      name: `Check object (source member)`, test: async () => {
+        const content = instance.getContent();
+
+        const exists = await content?.checkObject({ library: `QSYSINC`, name: `H`, type: `*FILE`, member: `MATH` });
+        assert.ok(exists);
+      }
+    },
+    {
+      name: `Test @clCommand + select statement`, test: async () => {
+        const content = instance.getContent()!;
+        
+        const [result] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+        
+        assert.deepStrictEqual(result.OBJNAME, "UNITTEST");
+        assert.deepStrictEqual(result.OBJTEXT, "Code for i test");
+      }
+    },
   ]
 };

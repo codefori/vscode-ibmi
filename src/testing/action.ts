@@ -150,7 +150,9 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
     name: 'HELLO',
     type: '*PGM',
     text: '',
-    attribute: 'RPGLE'
+    attribute: 'RPGLE',
+    sourceFile: false,
+    memberCount: undefined,
   });
 
   const connection = instance.getConnection();

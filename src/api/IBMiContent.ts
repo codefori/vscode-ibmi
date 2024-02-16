@@ -25,7 +25,7 @@ export type SortOptions = {
 }
 
 export default class IBMiContent {
-
+  private chgJobCCSID: string | undefined = undefined;
   constructor(readonly ibmi: IBMi) { }
 
   private get config(): ConnectionConfiguration.Parameters {
@@ -67,7 +67,12 @@ export default class IBMiContent {
     }
   }
 
-  async downloadStreamfile(remotePath: string, localPath?: string) {
+  /**
+   * 
+   * @param remotePath Remote IFS path
+   * @param localPath Local path to download file to
+   */
+  async downloadStreamfileRaw(remotePath: string, localPath?: string) {
     const features = this.ibmi.remoteFeatures;
 
     if (this.config.autoConvertIFSccsid && features.attr && features.iconv) {
@@ -83,11 +88,26 @@ export default class IBMiContent {
     if (!localPath) {
       localPath = await tmpFile();
     }
+
     await this.ibmi.downloadFile(localPath, remotePath);
-    return readFileAsync(localPath, `utf8`);
+    const raw = await readFileAsync(localPath);
+    return raw;
   }
 
-  async writeStreamfile(originalPath: any, content: any) {
+  /**
+   * @deprecated Use downloadStreamfileRaw instead
+   */
+  async downloadStreamfile(remotePath: string, localPath?: string) {
+    const raw = await this.downloadStreamfileRaw(remotePath, localPath);
+    return raw.toString(`utf8`);
+  }
+
+  /**
+   * @param originalPath 
+   * @param content Raw content
+   * @param encoding Optional encoding to write.
+   */
+  async writeStreamfileRaw(originalPath: string, content: Uint8Array, encoding?: string) {
     const client = this.ibmi.client;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
@@ -98,7 +118,7 @@ export default class IBMiContent {
       ccsid = await this.getNotUTF8CCSID(features.attr, originalPath);
     }
 
-    await writeFileAsync(tmpobj, content, `utf8`);
+    await writeFileAsync(tmpobj, content, encoding);
 
     if (ccsid && features.iconv) {
       // Upload our file to the same temp file, then write convert it back to the original ccsid
@@ -108,6 +128,15 @@ export default class IBMiContent {
     } else {
       return client.putFile(tmpobj, originalPath);
     }
+  }
+
+  /**
+   * Write utf8 content to a streamfile
+   * @deprecated Use writeStreamfileRaw instead
+   */
+  async writeStreamfile(originalPath: string, content: string) {
+    const buffer = Buffer.from(content, `utf8`);
+    return this.writeStreamfileRaw(originalPath, buffer);
   }
 
   /**
@@ -140,7 +169,7 @@ export default class IBMiContent {
           switch (messageID) {
             case "CPDA08A":
               //We need to try again after we delete the temp remote
-              const result = await this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` });
+              const result = await this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` });
               retry = !result.code || result.code === 0;
               break;
             case "CPFA0A9":
@@ -217,25 +246,24 @@ export default class IBMiContent {
   }
 
   /**
-   * Run an SQL statement
-   * @param statement
+   * Run SQL statements.
+   * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
+   * If a statement starts with @, it will be run as a CL command.
+   * 
+   * @param statements
    * @returns a Result set
    */
-  async runSQL(statement: string): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
 
     if (QZDFMDB2) {
-      // Well, the fun part about db2 is that it always writes to standard out.
-      // It does not write to standard error at all.
-
-      // if comments present in sql statement, sql string needs to be checked
-      if (statement.search(`--`) > -1) {
-        statement = this.fixCommentsInSQLString(statement);
-      }
+      if (this.chgJobCCSID === undefined) {
+        this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
+      }      
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: statement,
+        stdin: Tools.fixSQL(`${this.chgJobCCSID}${statements}`)
       })
 
       if (output.stdout) {
@@ -287,7 +315,7 @@ export default class IBMiContent {
    * @param member Will default to file provided
    * @param deleteTable Will delete the table after download
    */
-  async getTable(library: string, file: string, member: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
+  async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
     if (file === member && this.config.enableSQL) {
@@ -316,7 +344,7 @@ export default class IBMiContent {
 
         if (this.config.autoClearTempData) {
           Promise.allSettled([
-            this.ibmi.sendCommand({ command: `rm -f ${tempRmt}`, directory: `.` }),
+            this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
             deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
           ]);
         }
@@ -347,34 +375,9 @@ export default class IBMiContent {
    * @returns : the table's content
    */
   async getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    let temporaryFile: string | undefined;    
-    prepareQueries.push(`Select * From QTEMP.${table}`);    
-
-    try {
-      const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
-      const result = await this.runSQL(fullQuery);
-      if (temporaryFile) {
-        return parse(await this.downloadStreamfile(temporaryFile), {
-          columns: true,
-          skip_empty_lines: true,
-          cast: true,
-          onRecord(record) {
-            for (const key of Object.keys(record)) {
-              record[key] = record[key] === ` ` ? `` : record[key];
-            }
-            return record;
-          }
-        });
-      }
-      else {
-        return result;
-      }
-    }
-    finally {
-      if (this.config.autoClearTempData && temporaryFile) {
-        await this.ibmi.sendCommand({ command: `rm -f ${temporaryFile}` });
-      }
-    }
+    prepareQueries.push(`Select * From QTEMP.${table}`);
+    const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
+    return await this.runSQL(fullQuery);
   }
 
   /**
@@ -383,9 +386,6 @@ export default class IBMiContent {
    * @returns an array of libraries as IBMiObject
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
-    const config = this.ibmi.config;
-    const tempLib = this.config.tempLibrary;
-    const TempName = Tools.makeid();
     let results: Tools.DB2Row[];
 
     if (this.config.enableSQL) {
@@ -469,7 +469,7 @@ export default class IBMiContent {
   }
 
   async getLibraries(filters: { library: string; filterType?: FilterType }) {
-    return this.getObjectList({ library: "QSYS", object: filters.library, types: ["*LIB"], filterType:filters.filterType });
+    return this.getObjectList({ library: "QSYS", object: filters.library, types: ["*LIB"], filterType: filters.filterType });
   }
 
   /**
@@ -496,11 +496,11 @@ export default class IBMiContent {
     const queries: string[] = [];
 
     if (!sourceFilesOnly) {
-      queries.push(`CALL QSYS2.QCMDEXC('DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)')`);
+      queries.push(`@DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)`);
     }
 
     if (withSourceFiles) {
-      queries.push(`CALL QSYS2.QCMDEXC('DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)')`);
+      queries.push(`@DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)`);
     }
 
     let createOBJLIST;
@@ -572,10 +572,10 @@ export default class IBMiContent {
     const sourceFile = filter.sourceFile.toUpperCase();
 
     const memberFilter = parseFilter(filter.members, filter.filterType);
-    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ?  filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
-    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ?  filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
 
     const statement =
       `With MEMBERS As (
@@ -586,7 +586,7 @@ export default class IBMiContent {
           rtrim(cast(a.system_table_name as char(10) for bit data)) AS SOURCE_FILE,
           rtrim(cast(b.system_table_member as char(10) for bit data)) as NAME,
           coalesce(rtrim(cast(b.source_type as varchar(10) for bit data)), '') as TYPE,
-          coalesce(rtrim(b.partition_text), '') as TEXT,
+          coalesce(rtrim(varchar(b.partition_text)), '') as TEXT,
           b.NUMBER_ROWS as LINES,
           extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
           extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
@@ -602,15 +602,8 @@ export default class IBMiContent {
         ${singleMemberExtension ? `And TYPE Like '${singleMemberExtension}'` : ''}
       Order By ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
-    let results: Tools.DB2Row[];
-    if (this.config.enableSQL) {
-      results = await this.runSQL(statement);
-    }
-    else {
-      results = await this.getQTempTable([`Create Table QTEMP.MEMBERSLST As (${statement}) With DATA`], "MEMBERSLST");
-    }
-
-    if(results.length){
+    const results = await this.runSQL(statement);
+    if (results.length) {
       const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
       return results.map(result => ({
         asp,
@@ -624,10 +617,10 @@ export default class IBMiContent {
         created: new Date(result.CREATED ? Number(result.CREATED) : 0),
         changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
       } as IBMiMember))
-      .filter(member => memberFilter.test(member.name))
-      .filter(member => memberExtensionFilter.test(member.extension));
+        .filter(member => memberFilter.test(member.name))
+        .filter(member => memberExtensionFilter.test(member.extension));
     }
-    else{
+    else {
       return [];
     }
   }
@@ -792,34 +785,6 @@ export default class IBMiContent {
   }
 
   /**
-   * Fix Comments in an SQL string so that the comments always start at position 0 of the line.
-   * Required to work with QZDFMDB2.
-   * @param inSql; sql statement
-   * @returns correctly formattted sql string containing comments
-   */
-  private fixCommentsInSQLString(inSql: string): string {
-    const newLine: string = `\n`;
-    let parsedSql: string = ``;
-
-    inSql.split(newLine)
-      .forEach(item => {
-        let goodLine = item + newLine;
-
-        const pos = item.search(`--`);
-        if (pos > 0) {
-          goodLine = item.slice(0, pos) +
-            newLine +
-            item.slice(pos) +
-            newLine;
-        }
-        parsedSql += goodLine;
-
-      });
-
-    return parsedSql;
-  }
-
-  /**
    * @param errorsString; several lines of `code:text`...
    * @returns errors
    */
@@ -853,9 +818,14 @@ export default class IBMiContent {
     })).code === 0;
   }
 
-  async checkObject(object: { library: string, name: string, type: string }, authorities: Authority[] = [`*NONE`]) {
+  async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: `CHKOBJ OBJ(${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}) OBJTYPE(${object.type.toLocaleUpperCase()}) AUT(${authorities.join(" ")})`,
+      command: IBMiContent.toCl(`CHKOBJ`, {
+        obj: `${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}`,
+        objtype: object.type.toLocaleUpperCase(),
+        aut: authorities.join(" "),
+        mbr: object.member
+      }),
       noLibList: true
     })).code === 0;
   }
@@ -872,5 +842,36 @@ export default class IBMiContent {
       const qsysObject = Tools.parseQSysPath(path);
       return this.config.protectedPaths.includes(qsysObject.library.toLocaleUpperCase());
     }
+  }
+
+  /**
+   * 
+   * @param command Optionally qualified CL command
+   * @param parameters A key/value object of parameters
+   * @returns Formatted CL string
+   */
+  static toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
+    let cl = command;
+
+    for (const [key, value] of Object.entries(parameters)) {
+      let parmValue;
+
+      if (value !== undefined) {
+        if (typeof value === 'string') {
+          if (value === value.toLocaleUpperCase()) {
+            parmValue = value;
+          } else {
+            parmValue = value.replace(/'/g, `''`);
+            parmValue = `'${parmValue}'`;
+          }
+        } else {
+          parmValue = String(value);
+        }
+
+        cl += ` ${key.toUpperCase()}(${parmValue})`;
+      }
+    }
+
+    return cl;
   }
 }

@@ -15,7 +15,7 @@ type VariableInfoList = {
 const generic: () => VariableInfo[] = () => [
   { name: `&amp;CURLIB`, text: t(`actions.CURLIB`) },
   { name: `&amp;USERNAME`, text: t("actions.USERNAME")},
-  { name: `&amp;HOME`, text: t("actions.HOME")},
+  { name: `&amp;WORKDIR`, text: t("actions.WORKDIR")},
   { name: `&amp;HOST`, text: t("actions.HOST")},
   { name: `&amp;BUILDLIB`, text: t("actions.BUILDLIB")},
   { name: `&amp;LIBLC`, text: t("actions.LIBLC")},
@@ -33,6 +33,7 @@ export function getVariablesInfo(): VariableInfoList {
     ],
     streamFile: [
       { name: `&amp;FULLPATH`, text: t("actions.FULLPATH")},
+      { name: `&amp;FILEDIR`, text: t("actions.FILEDIR")},
       { name: `&amp;RELATIVEPATH`, text: t("actions.RELATIVEPATH")},
       { name: `&amp;PARENT`, text: t("actions.PARENT")},
       { name: `&amp;BASENAME`, text: t("actions.BASENAME")},
