@@ -204,6 +204,15 @@ export type IBMiMessages = {
   messages: IBMiMessage[]
   findId(id: string): IBMiMessage | undefined
 }
+
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
+
+export type RemoteFeature = {
+  path: string;
+  specific?: string;
+  names: string[];
+}
+
+export type RemoteApps = RemoteFeature[];
