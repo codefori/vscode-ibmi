@@ -40,6 +40,14 @@ export const FilterSuite: TestSuite = {
       }
     },
     {
+      name: `Multiple simples with whitespaces`, test: async () => {
+        const filter = parseFilter(" SQL*,*CMD  ,  *USR*  ", 'simple');
+        const filtered = QSYSINCS.filter(t => filter.test(t));
+        assert.strictEqual(filtered.length, 20);
+        assert.strictEqual(filtered.filter(t => t.startsWith("SQL") || t.endsWith("CMD") || t.includes("USR")).length, filtered.length);
+      }
+    },
+    {
       name: `RegExp`, test: async () => {
         const filter = parseFilter("^[^E].*CHG.*$", 'regex');
         const filtered = QSYSINCS.filter(t => filter.test(t));
