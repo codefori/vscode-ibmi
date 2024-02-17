@@ -115,8 +115,8 @@ export class ObjectBrowserProvider {
               await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
               await GlobalConfiguration.set(`connections`, connections);
               if(cachedConnectionSettings) {
-              GlobalStorage.get().setServerSettingsCache(newName, cachedConnectionSettings);
-              GlobalStorage.get().deleteServerSettingsCache(server.name);
+                GlobalStorage.get().setServerSettingsCache(newName, cachedConnectionSettings);
+                GlobalStorage.get().deleteServerSettingsCache(server.name);
               }
               if (secret) {
                 await context.secrets.store(`${newName}_password`, secret);
