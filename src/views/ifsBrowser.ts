@@ -101,9 +101,9 @@ class IFSItem extends BrowserItem implements WithPath {
     super(file.name, parameters);
     this.path = file.path;
     this.tooltip = `${this.path}`
-      .concat(`${file.size !== undefined ? `\n` + t(`Size`) + `:\t\t${file.size}` : ``}`)
-      .concat(`${file.modified ? `\n` + t(`Modified`) + `:\t${new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`)
-      .concat(`${file.owner ? `\n` + t(`Owner`) + `:\t${file.owner.toUpperCase()}` : ``}`);
+      .concat(`${file.size !== undefined ? `\n` + t(`ifsBrowser.file.tooltip.size`, file.size) : ``}`)
+      .concat(`${file.modified ? `\n` + t(`ifsBrowser.file.tooltip.modified`, new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `)) : ``}`)
+      .concat(`${file.owner ? `\n` + t(`ifsBrowser.file.tooltip.owner`, file.owner.toUpperCase()) : ``}`);
   }
 
   sortBy(sort: SortOptions) {

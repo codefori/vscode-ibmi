@@ -191,6 +191,11 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
     this.description = sourceFile.text;
 
     this.path = [sourceFile.library, sourceFile.name].join(`/`);
+    this.tooltip = `${this.path}`
+      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.text`, sourceFile.text)}`)
+      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.members`, sourceFile.memberCount)}`)
+      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.length`, sourceFile.sourceLength)}`)
+      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.CCSID`, sourceFile.CCSID)}`)
   }
 
   sortBy(sort: SortOptions) {
@@ -305,10 +310,10 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
     this.tooltip = `${this.path}`
-      .concat(`${member.text ? `\n${t("text")}:\t\t${member.text}` : ``}`)
-      .concat(`${member.lines != undefined ? `\n${t("lines")}:\t${member.lines}` : ``}`)
-      .concat(`${member.created ? `\n${t("created")}:\t${member.created.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`)
-      .concat(`${member.changed ? `\n${t("changed")}:\t${member.changed.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`);
+      .concat(`${member.text ? `\n${t(`objectBrowser.member.tooltip.text`, member.text)}` : ``}`)
+      .concat(`${member.lines != undefined ? `\n${t(`objectBrowser.member.tooltip.lines`, member.lines)}` : ``}`)
+      .concat(`${member.created ? `\n${t(`objectBrowser.member.tooltip.created`, member.created.toISOString().slice(0, 19).replace(`T`, ` `))}` : ``}`)
+      .concat(`${member.changed ? `\n${t(`objectBrowser.member.tooltip.changed`, member.changed.toISOString().slice(0, 19).replace(`T`, ` `))}` : ``}`);
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 

@@ -101,6 +101,8 @@ export interface IBMiObject extends QsysPath {
   sourceFile?: boolean
   attribute?: string,
   memberCount?: number
+  sourceLength?: number
+  CCSID?: number
 }
 
 export interface IBMiMember {
