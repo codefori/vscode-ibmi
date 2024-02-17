@@ -133,7 +133,7 @@ export class ObjectBrowserProvider {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.sortConnections`, async () => {
-        let connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+        const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
         connections.sort((conn1, conn2) => conn1.name.localeCompare(conn2.name));
         await GlobalConfiguration.set(`connections`, connections);
         this.refresh();
