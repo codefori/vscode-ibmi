@@ -1004,6 +1004,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.sortConnections",
+				"title": "Sort Connections",
+				"category": "IBM i",
+				"icon": "$(list-ordered)"
+			},
+			{
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"title": "Connection Settings",
 				"category": "IBM i"
@@ -1011,6 +1017,11 @@
 			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login Settings",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.renameConnection",
+				"title": "Rename Connection",
 				"category": "IBM i"
 			},
 			{
@@ -1783,9 +1794,29 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.refreshConnections",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameConnection",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortConnections",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
+        {
+          "command": "code-for-ibmi.showAdditionalSettings",
+					"when": "code-for-ibmi:connected"
+        },
 				{
 					"command": "code-for-ibmi.selectForCompare",
 					"when": "code-for-ibmi:connected"
@@ -1994,13 +2025,18 @@
 					"when": "view == connectionBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshConnections",
+					"command": "code-for-ibmi.sortConnections",
 					"group": "navigation@2",
 					"when": "view == connectionBrowser"
 				},
 				{
-					"command": "code-for-ibmi.connectToPrevious",
+					"command": "code-for-ibmi.refreshConnections",
 					"group": "navigation@3",
+					"when": "view == connectionBrowser"
+				},
+				{
+					"command": "code-for-ibmi.connectToPrevious",
+					"group": "navigation@4",
 					"when": "view == connectionBrowser && code-for-ibmi:hasPreviousConnection"
 				},
 				{
@@ -2133,9 +2169,14 @@
 			],
 			"view/item/context": [
 				{
-					"command": "code-for-ibmi.deleteConnection",
+					"command": "code-for-ibmi.renameConnection",
 					"when": "view == connectionBrowser && viewItem == server",
 					"group": "2_delete@1"
+				},
+				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "2_delete@2"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",

@@ -1,5 +1,6 @@
 import vscode from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { GlobalStorage } from '../../api/Storage';
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
@@ -256,11 +257,14 @@ export class SettingsUI {
               if (restartFields.some(item => data[item] && data[item] !== config[item])) {
                 restart = true;
               }
-                
-              const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",") || config.showHiddenFiles !== data.showHiddenFiles;
+
+              const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
+              const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
 
               Object.assign(config, data);
               await instance.setConfig(config);
+              if (removeCachedSettings)
+                GlobalStorage.get().deleteServerSettingsCache(config.name);
 
               if (connection) {
                 if (restart) {
