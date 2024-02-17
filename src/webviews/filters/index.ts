@@ -76,7 +76,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
           case `object`:
             data[key] = (String(data[key].trim()) || `*`)
               .split(',')
-              .map(o => useRegexFilters ? o : o.toLocaleUpperCase().trim())
+              .map(o => useRegexFilters ? o : o.toLocaleUpperCase())
               .filter(Tools.distinct)
               .join(",");
             break;
