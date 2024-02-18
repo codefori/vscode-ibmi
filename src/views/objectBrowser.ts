@@ -187,13 +187,13 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
   readonly sort: SortOptions = { order: "name", ascending: true };
   readonly path: string;
 
-  constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiObject) {
-    super(parent.filter, correctCase(sourceFile.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
+  constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
+    super(parent.filter, correctCase(object.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
     this.contextValue = `SPF${isProtected(this.filter) ? `_readonly` : ``}`;
-    this.description = sourceFile.text;
+    this.updateDescription();
 
-    this.path = [sourceFile.library, sourceFile.name].join(`/`);
+    this.path = [object.library, object.name].join(`/`);
     this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
       text: sourceFile.text,
       members: sourceFile.memberCount,
@@ -211,24 +211,31 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
     else {
       this.sort.ascending = !this.sort.ascending
     }
-    this.description = `${this.sourceFile.text ? `${this.sourceFile.text} ` : ``}(sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
+    this.updateDescription(true);
+    this.description = `${this.object.text ? `${this.object.text} ` : ``}(sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`;
     this.reveal({ expand: true });
     this.refresh();
+  }
+
+  updateDescription(includeOrder?: boolean) {
+    this.description = this.object.text ? `${this.object.text} ` : ``;
+    if (includeOrder)
+      this.description = this.description.concat(` (sort: ${this.sort.order} ${this.sort.ascending ? `🔼` : `🔽`})`);
   }
 
   async getChildren(): Promise<BrowserItem[] | undefined> {
     const content = getContent();
 
     const writable = await content.checkObject({
-      library: this.sourceFile.library,
-      name: this.sourceFile.name,
+      library: this.object.library,
+      name: this.object.name,
       type: `*FILE`
     }, [`*UPD`]);
 
     try {
       const members = await content.getMemberList({
-        library: this.sourceFile.library,
-        sourceFile: this.sourceFile.name,
+        library: this.object.library,
+        sourceFile: this.object.name,
         members: this.filter.member,
         extensions: this.filter.memberType,
         filterType: this.filter.filterType,
@@ -940,7 +947,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.changeObjectDesc`, async (node: ObjectBrowserObjectItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.changeObjectDesc`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
       let newText = node.object.text;
       let newTextOK;
       do {
@@ -975,7 +982,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       } while (newText && !newTextOK)
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.copyObject`, async (node: ObjectBrowserObjectItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.copyObject`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
       let newPath = node.path;
       let newPathOK;
       do {
@@ -1020,7 +1027,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       } while (newPath && !newPathOK)
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.deleteObject`, async (node: ObjectBrowserObjectItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.deleteObject`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
       let result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteObject.warningMessage`, node.path, node.object.type.toUpperCase()), t(`Yes`), t(`Cancel`));
 
       if (result === t(`Yes`)) {

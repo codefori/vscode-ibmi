@@ -2510,27 +2510,27 @@
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@1"
 				},
 				{
 					"command": "code-for-ibmi.copyObject",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@2"
 				},
 				{
 					"command": "code-for-ibmi.deleteObject",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@3"
 				},
 				{
 					"command": "code-for-ibmi.renameObject",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@4"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && viewItem =~ /^object(?!.lib)/",
+					"when": "view == objectBrowser && (viewItem =~ /^object(?!.lib)/ || viewItem == SPF)",
 					"group": "1_objActions@5"
 				},
 				{
@@ -2540,7 +2540,7 @@
 				},
 				{
 					"command": "code-for-ibmi.runAction",
-					"when": "view == objectBrowser && viewItem =~ /^object/",
+					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_workspace@1"
 				}
 			]
