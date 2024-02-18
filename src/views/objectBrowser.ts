@@ -541,7 +541,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             })
 
             const messages = Tools.parseMessages(copyResult.stderr);
-            if (messages.findId(`CPF2869`)) {
+            if (messages.length && !messages.findId(`CPF2869`)) {
               throw (copyResult.stderr)
             }
 
