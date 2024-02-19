@@ -187,6 +187,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
+    this.tooltip = ``;
   }
 }
 

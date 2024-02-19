@@ -164,6 +164,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem {
     super(filter, filter.name, { icon: isProtected(filter) ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `filter${isProtected(filter) ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
+    this.tooltip = ``;
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
@@ -273,6 +274,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     this.updateDescription();
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
+    this.tooltip = ``;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
