@@ -191,11 +191,14 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
     this.description = sourceFile.text;
 
     this.path = [sourceFile.library, sourceFile.name].join(`/`);
-    this.tooltip = `${this.path}`
-      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.text`, sourceFile.text)}`)
-      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.members`, sourceFile.memberCount)}`)
-      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.length`, sourceFile.sourceLength)}`)
-      .concat(`\n${t(`objectBrowser.sourceFile.tooltip.CCSID`, sourceFile.CCSID)}`)
+    this.tooltip = new vscode.MarkdownString(t(`objectBrowser.sourceFile.tooltip.begin`)
+      .concat(t(`objectBrowser.sourceFile.tooltip.path`, this.path))
+      .concat(t(`objectBrowser.sourceFile.tooltip.text`, sourceFile.text))
+      .concat(t(`objectBrowser.sourceFile.tooltip.members`, sourceFile.memberCount))
+      .concat(t(`objectBrowser.sourceFile.tooltip.length`, sourceFile.sourceLength))
+      .concat(t(`objectBrowser.sourceFile.tooltip.CCSID`, sourceFile.CCSID))
+      .concat(t(`objectBrowser.sourceFile.tooltip.end`)));
+    this.tooltip.supportHtml = true;
   }
 
   sortBy(sort: SortOptions) {
@@ -309,11 +312,14 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
-    this.tooltip = `${this.path}`
-      .concat(`${member.text ? `\n${t(`objectBrowser.member.tooltip.text`, member.text)}` : ``}`)
+    this.tooltip = new vscode.MarkdownString(t(`objectBrowser.member.tooltip.begin`)
+      .concat(t(`objectBrowser.member.tooltip.path`, this.path))
+      .concat(`${member.text ? `${t(`objectBrowser.member.tooltip.text`, member.text)}` : ``}`)
       .concat(`${member.lines != undefined ? `\n${t(`objectBrowser.member.tooltip.lines`, member.lines)}` : ``}`)
       .concat(`${member.created ? `\n${t(`objectBrowser.member.tooltip.created`, member.created.toISOString().slice(0, 19).replace(`T`, ` `))}` : ``}`)
-      .concat(`${member.changed ? `\n${t(`objectBrowser.member.tooltip.changed`, member.changed.toISOString().slice(0, 19).replace(`T`, ` `))}` : ``}`);
+      .concat(`${member.changed ? `\n${t(`objectBrowser.member.tooltip.changed`, member.changed.toISOString().slice(0, 19).replace(`T`, ` `))}` : ``}`)
+      .concat(t(`objectBrowser.member.tooltip.end`)));
+    this.tooltip.supportHtml = true;
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
