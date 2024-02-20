@@ -116,6 +116,8 @@ export const en: Locale = {
   'ifsBrowser.doSearchInStreamfiles.progressMessage': `'{0}' in {1}.`,
   'ifsBrowser.doSearchInStreamfiles.noResults': `No results found searching for '{0}' in {1}.`,
   'ifsBrowser.doSearchInStreamfiles.errorMessage': `Error searching streamfiles.`,
+  'ifsBrowser.copyToStreamfile.infoMessage': `{0} member(s) copied to streamfile(s) in {1}.`,
+  'ifsBrowser.copyToStreamfile.failed': `Error copying member(s) to {0}: {1}`,
   // LibraryListView:
   'LibraryListView.changeCurrentLibrary.currentlyActive': `Currently active`,
   'LibraryListView.changeCurrentLibrary.recentlyUsed': `Recently used`,

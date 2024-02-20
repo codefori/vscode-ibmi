@@ -116,6 +116,8 @@ export const fr: Locale = {
   'ifsBrowser.doSearchInStreamfiles.progressMessage': `'{0}' dans {1}.`,
   'ifsBrowser.doSearchInStreamfiles.noResults': `Aucun résultat trouvé pour '{0}' dans {1}.`,
   'ifsBrowser.doSearchInStreamfiles.errorMessage': `Erreur lors de la recherche de fichiers.`,
+  'ifsBrowser.copyToStreamfile.infoMessage': `{0} member(s) copied to streamfile(s) in {1}.`,
+  'ifsBrowser.copyToStreamfile.failed': `Error copying member(s) to {0}: {1}`,
   // LibraryListView:
   'LibraryListView.changeCurrentLibrary.currentlyActive': `Active`,
   'LibraryListView.changeCurrentLibrary.recentlyUsed': `Utilisé récemment`,

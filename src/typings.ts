@@ -200,6 +200,7 @@ export type IBMiMessages = {
   messages: IBMiMessage[]
   findId(id: string): IBMiMessage | undefined
 }
+export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser";
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
