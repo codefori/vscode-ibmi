@@ -192,13 +192,12 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
     this.description = sourceFile.text;
 
     this.path = [sourceFile.library, sourceFile.name].join(`/`);
-    this.tooltip = new vscode.MarkdownString(t(`objectBrowser.sourceFile.tooltip.begin`)
-      .concat(t(`objectBrowser.sourceFile.tooltip.path`, this.path))
-      .concat(t(`objectBrowser.sourceFile.tooltip.text`, sourceFile.text))
-      .concat(t(`objectBrowser.sourceFile.tooltip.members`, sourceFile.memberCount))
-      .concat(t(`objectBrowser.sourceFile.tooltip.length`, sourceFile.sourceLength))
-      .concat(t(`objectBrowser.sourceFile.tooltip.CCSID`, sourceFile.CCSID))
-      .concat(t(`objectBrowser.sourceFile.tooltip.end`)));
+    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+      text: sourceFile.text,
+      members: sourceFile.memberCount,
+      length: sourceFile.sourceLength,
+      CCSID: sourceFile.CCSID
+    }));
     this.tooltip.supportHtml = true;
   }
 
@@ -314,13 +313,12 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
-    this.tooltip = new vscode.MarkdownString(t(`objectBrowser.member.tooltip.begin`)
-      .concat(t(`objectBrowser.member.tooltip.path`, this.path))
-      .concat(`${member.text ? `${t(`objectBrowser.member.tooltip.text`, member.text)}` : ``}`)
-      .concat(`${member.lines != undefined ? `\n${t(`objectBrowser.member.tooltip.lines`, member.lines)}` : ``}`)
-      .concat(`${member.created ? `\n${t(`objectBrowser.member.tooltip.created`, member.created.toISOString().slice(0, 19).replace(`T`, ` `))}` : ``}`)
-      .concat(`${member.changed ? `\n${t(`objectBrowser.member.tooltip.changed`, member.changed.toISOString().slice(0, 19).replace(`T`, ` `))}` : ``}`)
-      .concat(t(`objectBrowser.member.tooltip.end`)));
+    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+      text: member.text,
+      lines: member.lines,
+      created: member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+      changed: member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
+    }));
     this.tooltip.supportHtml = true;
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
