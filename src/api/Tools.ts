@@ -239,8 +239,7 @@ export namespace Tools {
     }) as IBMiMessage);
     return {
       messages,
-      findId: id => messages.find(m => m.id === id),
-      length: messages.length
+      findId: id => messages.find(m => m.id === id)
     }
   }
 
