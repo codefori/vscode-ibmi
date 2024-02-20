@@ -36,7 +36,7 @@ export default class ConnectionSettings {
   async checkHomeDirectory(): Promise<{homeDir: string, homeExists: boolean, homeChanged: boolean}> {
     
     let homeDir; //Home Directory name
-    let homeExists; //Home directory exists will be true otherwise false
+    let homeExists = false; //Home directory exists will be true otherwise false
     let homeChanged = false; //Home directory exists and value changed
  
     const homeResult = await this.connection.sendCommand({
@@ -53,7 +53,10 @@ export default class ConnectionSettings {
     //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
     //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
     const isHomeUsable = (0 == homeResult.code);
-    if (!isHomeUsable) {
+    if (isHomeUsable) {
+      homeExists = true;
+    }
+    else {
       // Let's try to provide more valuable information to the user about why their home directory
       // is bad and maybe even provide the opportunity to create the home directory
       // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
@@ -78,10 +81,7 @@ export default class ConnectionSettings {
       }
       else homeExists = false;
     }
-    else {
-      throw homeResult.stderr;
-    }
-
+    
     if (this.connection.config) {
 
       // Check to see if we need to store a new value for the home directory
