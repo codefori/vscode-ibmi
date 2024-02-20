@@ -8,7 +8,7 @@ import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
-import { QSysFS, getUriFromPath } from "./filesystems/qsys/QSysFs";
+import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
@@ -120,6 +120,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
 
       const uri = getUriFromPath(path, options);
+
+      const existingUri = Tools.findExistingDocumentUri(uri);
+
+      if (existingUri) {
+        const existingOptions = parseFSOptions(existingUri);
+        if (existingOptions.readonly !== options.readonly) {
+          vscode.window.showWarningMessage(`The file is already opened in another mode.`);
+          vscode.window.showTextDocument(existingUri);
+          return false;
+        }
+      }
+
       try {
         await vscode.commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as vscode.TextDocumentShowOptions);
 

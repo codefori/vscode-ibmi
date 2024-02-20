@@ -1,5 +1,6 @@
 import vscode from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { GlobalStorage } from '../../api/Storage';
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
@@ -56,6 +57,7 @@ export class SettingsUI {
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
           .addCheckbox(`enableSQL`, `Enable SQL`, `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID system value is set to 65535, it is recommended that SQL is disabled. When disabled, will use import files where possible.`, config.enableSQL)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
+          .addCheckbox(`showHiddenFiles`, `Show hidden files and directories in IFS browser.`, `When disabled, hidden files and directories (i.e. names starting with '.') will not be shown in the IFS browser, except for special config files.`, config.showHiddenFiles)
           .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts)
           .addCheckbox(`autoConvertIFSccsid`, `Support EBCDIC streamfiles`, `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`, config.autoConvertIFSccsid)
           .addHorizontalRule()
@@ -255,11 +257,14 @@ export class SettingsUI {
               if (restartFields.some(item => data[item] && data[item] !== config[item])) {
                 restart = true;
               }
-                
+
               const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
+              const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
 
               Object.assign(config, data);
               await instance.setConfig(config);
+              if (removeCachedSettings)
+                GlobalStorage.get().deleteServerSettingsCache(config.name);
 
               if (connection) {
                 if (restart) {

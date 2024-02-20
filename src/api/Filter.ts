@@ -19,7 +19,7 @@ export function parseFilter(filterString?: string, type?: FilterType): Filter {
         }
         break;
       default:
-        const filters = filterString.split(',');
+        const filters = filterString.split(',').map(f => f.trim());
         if (!filters.some(filter => /^\*(?:ALL)?$/.test(filter)) && (filters.length > 1 || filters[0].includes('*'))) { //*, *ALL or a single value with no '*' is not a filter
           predicates.push(...filters
             .map(filter => escapeStringRegexp(filter))

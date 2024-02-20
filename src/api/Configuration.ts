@@ -62,6 +62,7 @@ export namespace ConnectionConfiguration {
     usesBash: boolean;
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
+    showHiddenFiles: boolean;
     [name: string]: any;
   }  
 
@@ -142,7 +143,8 @@ export namespace ConnectionConfiguration {
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
       usesBash: (parameters.usesBash === undefined),
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
-      protectedPaths: (parameters.protectedPaths || [])
+      protectedPaths: (parameters.protectedPaths || []),
+      showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
     }
   }
 

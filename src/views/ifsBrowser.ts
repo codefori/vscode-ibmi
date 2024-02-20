@@ -1,4 +1,3 @@
-
 import os from "os";
 import path from "path";
 import vscode, { FileType } from "vscode";
@@ -15,12 +14,17 @@ import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";
 const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
+const ALWAYS_SHOW_FILES = /^(\.gitignore|\.vscode)$/i;
 type DragNDropAction = "move" | "copy";
 type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => GlobalConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
   return PROTECTED_DIRS.test(path) || instance.getContent()?.isProtectedPath(path);
+}
+
+function alwaysShow(name: string) {
+  return ALWAYS_SHOW_FILES.test(name);
 }
 
 class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -155,9 +159,11 @@ class IFSDirectoryItem extends IFSItem {
     const content = instance.getContent();
     if (content) {
       try {
+        const showHidden = instance.getConfig()?.showHiddenFiles;
+        const filterIFSFile = (file:IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
-        const directories = objects.filter(o => o.type === `directory`);
-        const streamFiles = objects.filter(o => o.type === `streamfile`);
+        const directories = objects.filter(f => filterIFSFile(f, "directory"));
+        const streamFiles = objects.filter(f => filterIFSFile(f, "streamfile"));
         await storeIFSList(this.path, streamFiles.map(o => o.name));
         return [...directories.map(directory => new IFSDirectoryItem(directory, this)),
         ...streamFiles.map(file => new IFSFileItem(file, this))];
@@ -704,6 +710,15 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
   )
 }
+
+vscode.commands.registerCommand(`code-for-ibmi.ifs.toggleShowHiddenFiles`, async function () {
+  const config = instance.getConfig();
+  if (config) {
+    config.showHiddenFiles = !config.showHiddenFiles;
+    await ConnectionConfiguration.update(config);
+    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+  }
+});
 
 function handleFileListErrors(errors: string[]) {
   errors.forEach(error => vscode.window.showErrorMessage(error));
