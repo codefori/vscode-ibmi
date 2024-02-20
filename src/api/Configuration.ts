@@ -57,6 +57,7 @@ export namespace ConnectionConfiguration {
     debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
     debugEnableDebugTracing: boolean;
+    debugJobQueue: string;
     readOnlyMode: boolean;
     quickConnect: boolean;
     usesBash: boolean;
@@ -139,6 +140,7 @@ export namespace ConnectionConfiguration {
       debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
+      debugJobQueue: (parameters.debugJobQueue || "QSYSNOMAX"),
       readOnlyMode: (parameters.readOnlyMode === true),
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
       usesBash: (parameters.usesBash === undefined),
