@@ -506,35 +506,39 @@ export default class IBMiContent {
     let createOBJLIST;
     if (sourceFilesOnly) {
       //DSPFD only
-      createOBJLIST = `Select PHFILE as NAME, ` +
-        `'*FILE' As TYPE, ` +
-        `PHFILA As ATTRIBUTE, ` +
-        `PHTXT As TEXT, ` +
-        `1 As IS_SOURCE, ` +
-        `PHNOMB As NB_MBR ` +
-        `From QTEMP.CODE4IFD Where PHDTAT = 'S'`;
+      createOBJLIST =`select PHFILE as NAME, ` +
+        `'*FILE' as TYPE, ` +
+        `PHFILA as ATTRIBUTE, ` +
+        `PHTXT as TEXT, ` +
+        `1 as IS_SOURCE, ` +
+        `PHNOMB as NB_MBR, ` +
+        'PHMXRL as SOURCE_LENGTH, ' +
+        'PHCSID as CCSID ' +
+        `from QTEMP.CODE4IFD where PHDTAT = 'S'`;
     } else if (!withSourceFiles) {
       //DSPOBJD only
-      createOBJLIST = `Select ODOBNM as NAME, ` +
-        `ODOBTP As TYPE, ` +
-        `ODOBAT As ATTRIBUTE, ` +
-        `ODOBTX As TEXT, ` +
-        `0 As IS_SOURCE ` +
-        `From QTEMP.CODE4IOBJD`;
+      createOBJLIST = `select ODOBNM as NAME, ` +
+        `ODOBTP as TYPE, ` +
+        `ODOBAT as ATTRIBUTE, ` +
+        `ODOBTX as TEXT, ` +
+        `0 as IS_SOURCE ` +
+        `from QTEMP.CODE4IOBJD`;
     }
     else {
       //Both DSPOBJD and DSPFD
-      createOBJLIST = `Select ODOBNM as NAME, ` +
-        `ODOBTP As TYPE, ` +
-        `ODOBAT As ATTRIBUTE, ` +
-        `ODOBTX As TEXT, ` +
-        `Case When PHDTAT = 'S' Then 1 Else 0 End As IS_SOURCE, ` +
-        `PHNOMB As NB_MBR ` +
-        `From QTEMP.CODE4IOBJD  ` +
-        `Left Join QTEMP.CODE4IFD On PHFILE = ODOBNM And PHDTAT = 'S'`;
+      createOBJLIST = `select ODOBNM as NAME, ` +
+        `ODOBTP as TYPE, ` +
+        `ODOBAT as ATTRIBUTE, ` +
+        `ODOBTX as TEXT, ` +
+        `Case When PHDTAT = 'S' Then 1 Else 0 End as IS_SOURCE, ` +
+        `PHNOMB as NB_MBR, ` +
+        'PHMXRL as SOURCE_LENGTH, ' +
+        'PHCSID as CCSID ' +
+        `from QTEMP.CODE4IOBJD  ` +
+        `left join QTEMP.CODE4IFD on PHFILE = ODOBNM And PHDTAT = 'S'`;
     }
 
-    queries.push(`Create Table QTEMP.OBJLIST As (${createOBJLIST}) With DATA`);
+    queries.push(`create table QTEMP.OBJLIST as (${createOBJLIST}) with data`);
 
     const objects = (await this.getQTempTable(queries, "OBJLIST"));
     return objects.map(object => ({
@@ -544,7 +548,9 @@ export default class IBMiContent {
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT),
       memberCount: object.NB_MBR !== undefined ? Number(object.NB_MBR) : undefined,
-      sourceFile: Boolean(object.IS_SOURCE)
+      sourceFile: Boolean(object.IS_SOURCE),
+      sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+      CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined
     } as IBMiObject))
       .filter(object => !typeFilter || typeFilter(object.type))
       .filter(object => nameFilter.test(object.name))

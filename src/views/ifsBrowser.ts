@@ -100,11 +100,13 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip = `${this.path}`
-      .concat(`${file.size !== undefined ? `\n` + t(`Size`) + `:\t\t${file.size}` : ``}`)
-      .concat(`${file.modified ? `\n` + t(`Modified`) + `:\t${new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`)
-      .concat(`${file.owner ? `\n` + t(`Owner`) + `:\t${file.owner.toUpperCase()}` : ``}`);
-  }
+    this.tooltip =  new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+      size: file.size,
+      modified: file.modified ? new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
+      owner: file.owner ? file.owner.toUpperCase() : ``
+    }));
+    this.tooltip.supportHtml = true;
+    }
 
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
@@ -184,6 +186,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
     const protectedDir = isProtected(this.file.path);
     this.contextValue = `shortcut${protectedDir ? `_protected` : ``}`;
     this.iconPath = new vscode.ThemeIcon(protectedDir ? "lock-small" : "folder-library");
+    this.tooltip = ``;
   }
 }
 

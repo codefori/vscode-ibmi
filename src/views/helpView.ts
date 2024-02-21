@@ -31,6 +31,7 @@ class HelpItem extends vscode.TreeItem {
 
     this.contextValue = `helpItem`;
     this.iconPath = new vscode.ThemeIcon(icon);
+    this.tooltip = ``;
   }
 }
 
