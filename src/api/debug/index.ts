@@ -461,6 +461,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;
   const enableDebugTracing = config?.debugEnableDebugTracing;
+  const jobQueue = config?.debugJobQueue;
 
   let secure = true;
 
@@ -506,7 +507,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       "ignoreCertificateErrors": !secure,
       "library": options.library.toUpperCase(),
       "program": options.object.toUpperCase(),
-      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
+      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(${jobQueue}) MSGQ(*USRPRF)`,
       "updateProductionFiles": updateProductionFiles,
       "trace": enableDebugTracing,
     };

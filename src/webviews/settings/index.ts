@@ -173,8 +173,11 @@ export class SettingsUI {
         const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab
-            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-            .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
+            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` });
+          debuggerTab
+          .addHorizontalRule()
+          .addInput(`debugJobQueue`, `Debug Job Queue`, `Default job queue is <code>QSYSNOMAX</code>. Tells what queue to submit job for debugging.`, { default: config.debugJobQueue, minlength: 1, maxlength: 10});
+          debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {
