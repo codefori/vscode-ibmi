@@ -68,7 +68,7 @@ export default class IBMiContent {
   }
 
   /**
-   * 
+   *
    * @param remotePath Remote IFS path
    * @param localPath Local path to download file to
    */
@@ -103,7 +103,7 @@ export default class IBMiContent {
   }
 
   /**
-   * @param originalPath 
+   * @param originalPath
    * @param content Raw content
    * @param encoding Optional encoding to write.
    */
@@ -249,7 +249,7 @@ export default class IBMiContent {
    * Run SQL statements.
    * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
    * If a statement starts with @, it will be run as a CL command.
-   * 
+   *
    * @param statements
    * @returns a Result set
    */
@@ -259,7 +259,7 @@ export default class IBMiContent {
     if (QZDFMDB2) {
       if (this.chgJobCCSID === undefined) {
         this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
-      }      
+      }
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
@@ -632,6 +632,45 @@ export default class IBMiContent {
   }
 
   /**
+   *
+   * @param filter: the criterias used to list the members
+   * @returns
+   */
+  async getMemberInfo(library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
+    if (this.ibmi.remoteFeatures[`GETMBRINFO.SQL`]) {
+      const tempLib = this.config.tempLibrary;
+      const statement = `select * from table(${tempLib}.GETMBRINFO('${library}', '${sourceFile}', '${member}'))`;
+
+      let results: Tools.DB2Row[] = [];
+      if (this.config.enableSQL) {
+        try {
+          results = await this.runSQL(statement);
+        } catch (e) {}; // Ignore errors, will return undefined.
+      }
+      else {
+        results = await this.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      }
+
+      if (results.length === 1 && results[0].ISSOURCE === 'Y') {
+        const result = results[0];
+        const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
+        return {
+          library: result.LIBRARY,
+          file: result.FILE,
+          name: result.MEMBER,
+          extension: result.EXTENSION,
+          text: result.DESCRIPTION,
+          created: new Date(result.CREATED ? Number(result.CREATED) : 0),
+          changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+        } as IBMiMember
+      }
+      else {
+        return undefined;
+      }
+    }
+  }
+
+  /**
    * Get list of items in a path
    * @param remotePath
    * @return an array of IFSFile
@@ -851,7 +890,7 @@ export default class IBMiContent {
   }
 
   /**
-   * 
+   *
    * @param command Optionally qualified CL command
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string
