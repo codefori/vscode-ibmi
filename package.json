@@ -1136,7 +1136,7 @@
 			{
 				"command": "code-for-ibmi.refreshLibraryListView",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh Library List View",
+				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -1199,7 +1199,7 @@
 			{
 				"command": "code-for-ibmi.refreshMemberBrowser",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh All Member Lists",
+				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
@@ -1267,7 +1267,7 @@
 			{
 				"command": "code-for-ibmi.refreshIFSBrowserItem",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh List item",
+				"title": "Refresh",
 				"category": "IBM i"
 			},
 			{
@@ -1547,7 +1547,7 @@
 			{
 				"command": "code-for-ibmi.closeSearchView",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Close Search View",
+				"title": "Close",
 				"category": "IBM i",
 				"icon": "$(close)"
 			},
