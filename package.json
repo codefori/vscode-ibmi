@@ -999,13 +999,13 @@
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
-				"title": "Refresh Connections",
+				"title": "Refresh",
 				"category": "IBM i",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "code-for-ibmi.sortConnections",
-				"title": "Sort Connections",
+				"title": "Sort",
 				"category": "IBM i",
 				"icon": "$(list-ordered)"
 			},
@@ -1021,18 +1021,18 @@
 			},
 			{
 				"command": "code-for-ibmi.renameConnection",
-				"title": "Rename Connection",
+				"title": "Rename",
 				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
-				"title": "Delete Connection",
+				"title": "Delete",
 				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.disconnect",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Disconnect From Current Connection",
+				"title": "Disconnect",
 				"category": "IBM i"
 			},
 			{
