@@ -12,7 +12,7 @@ import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, SourcePhysicalFileItem } from "../typings";
+import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem } from "../typings";
 import { editFilter } from "../webviews/filters";
 
 const URI_LIST_SEPARATOR = "\r\n";
@@ -183,7 +183,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem {
   }
 }
 
-class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements SourcePhysicalFileItem {
+class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements ObjectItem {
   readonly sort: SortOptions = { order: "name", ascending: true };
   readonly path: string;
 
@@ -769,7 +769,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node?: SourcePhysicalFileItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.searchSourceFile`, async (node?: ObjectItem) => {
       const parameters = {
         path: node?.path || ``,
         filter: node?.filter

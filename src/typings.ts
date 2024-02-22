@@ -185,10 +185,6 @@ export interface ObjectItem extends FilteredItem, WithPath {
   object: IBMiObject
 }
 
-export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
-  object: IBMiObject
-}
-
 export interface MemberItem extends FilteredItem, WithPath {
   member: IBMiMember
 }
