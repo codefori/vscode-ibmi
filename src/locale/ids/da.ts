@@ -119,6 +119,8 @@ export const da: Locale = {
   'ifsBrowser.doSearchInStreamfiles.progressMessage': `'{0}' i {1}.`,
   'ifsBrowser.doSearchInStreamfiles.noResults': `Ingen resultater blev fundet ved søgning efter '{0}' i {1}.`,
   'ifsBrowser.doSearchInStreamfiles.errorMessage': `Fejl ved søgning i filer.`,
+  'ifsBrowser.copyToStreamfile.infoMessage': `{0} member(s) kopieret til streamfile(s) i {1}.`,
+  'ifsBrowser.copyToStreamfile.failed': `Fejl ved kopiering af member(s) til {0}: {1}`,
   // LibraryListView:
   'LibraryListView.changeCurrentLibrary.currentlyActive': `Nuværende`,
   'LibraryListView.changeCurrentLibrary.recentlyUsed': `Tidligere`,
