@@ -188,6 +188,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
   readonly path: string;
 
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
+    const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     super(parent.filter, correctCase(object.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
     this.contextValue = `SPF${isProtected(this.filter) ? `_readonly` : ``}`;
@@ -195,12 +196,17 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
 
     this.path = [object.library, object.name].join(`/`);
     this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      text: sourceFile.text,
-      members: sourceFile.memberCount,
-      length: sourceFile.sourceLength,
-      CCSID: sourceFile.CCSID
+      text: object.text,
+      members: object.memberCount,
+      length: object.sourceLength,
+      CCSID: object.CCSID
     }));
     this.tooltip.supportHtml = true;
+
+    this.resourceUri = vscode.Uri.from({
+      scheme: `object`,
+      path: `/${object.library}/${object.name}.${type}`,
+    });
   }
 
   sortBy(sort: SortOptions) {
