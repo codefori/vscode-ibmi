@@ -2,6 +2,7 @@ import { window } from "vscode";
 import { instance } from "../../instantiate";
 
 import * as gencmdxml from "./gencmdxml";
+import { GlobalStorage } from "../../api/Storage";
 
 export async function init() {
   const clComponentsInstalled = checkRequirements();
@@ -46,7 +47,10 @@ async function install() {
     noLibList: true
   });
 
-  if (createResult.code !== 0) {
+  if (createResult.code === 0) {
+    connection.remoteFeatures[`GENCMDXML.PGM`] = `GENCMDXML`;
+    await GlobalStorage.get().setServerSettingsCacheSpecific(connection.currentConnectionName, { remoteFeatures: connection.remoteFeatures });
+  } else {
     throw new Error(`Failed to create GENCMDXML program.`);
   }
 }
