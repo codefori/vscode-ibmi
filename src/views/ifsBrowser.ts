@@ -214,7 +214,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
       } else if (objectBrowserItems) {
           const memberUris = (await objectBrowserItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
-          this.CopyMembers(memberUris, toDirectory)
+          this.copyMembers(memberUris, toDirectory)
       }
       else {
         const explorerItems = dataTransfer.get(URI_LIST_MIMETYPE);
@@ -270,7 +270,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
     }
   }
 
-  private async CopyMembers(memberUris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
+  private async copyMembers(memberUris: vscode.Uri[], toDirectory: IFSDirectoryItem) {
     const connection = instance.getConnection();
     if (connection && memberUris && memberUris.length) {
       try {
