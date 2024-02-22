@@ -151,7 +151,7 @@ export const fr: Locale = {
   'objectBrowser.deleteMember.warningMessage': `Êtes-vous sûr de vouloir supprimer {0}?`,
   'objectBrowser.deleteMember.infoMessage': `Membre {0} supprimé.`,
   'objectBrowser.deleteMember.errorMessage': `Erreur lors de la suppression du membre! {0}`,
-  'objectBrowser.updateMemberText.prompt': `Mise à jour du texte de {0}`,
+  'objectBrowser.updateMemberText.prompt': `Changer la description du membre {0}, *BLANK pour effacer la description`,
   'objectBrowser.updateMemberText.errorMessage': `Erreur lors de la mise à jour du texte du membre! {0}`,
   'objectBrowser.renameMember.prompt': `Renommer {0}`,
   'objectBrowser.renameMember.errorMessage': `Erreur lors du renommage du membre! {0}`,
