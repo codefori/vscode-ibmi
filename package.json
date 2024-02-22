@@ -1512,35 +1512,35 @@
 			{
 				"command": "code-for-ibmi.changeObjectDesc",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Change Object Description",
+				"title": "Change Description",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
 				"command": "code-for-ibmi.copyObject",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Copy Object",
+				"title": "Copy",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
 				"command": "code-for-ibmi.deleteObject",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Delete Object",
+				"title": "Delete",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
 				"command": "code-for-ibmi.renameObject",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Rename Object",
+				"title": "Rename",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
 				"command": "code-for-ibmi.moveObject",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Object",
+				"title": "Move",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
@@ -2521,17 +2521,17 @@
 				{
 					"command": "code-for-ibmi.deleteObject",
 					"when": "view == objectBrowser && viewItem =~ /^object/",
-					"group": "1_objActions@3"
+					"group": "1_objActions@5"
 				},
 				{
 					"command": "code-for-ibmi.renameObject",
 					"when": "view == objectBrowser && viewItem =~ /^object/",
-					"group": "1_objActions@4"
+					"group": "1_objActions@3"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
 					"when": "view == objectBrowser && viewItem =~ /^object(?!.lib)/",
-					"group": "1_objActions@5"
+					"group": "1_objActions@4"
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
