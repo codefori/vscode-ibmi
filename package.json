@@ -1150,14 +1150,14 @@
 			{
 				"command": "code-for-ibmi.moveLibraryUp",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Library Up",
+				"title": "Move Up",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveLibraryDown",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Library Down",
+				"title": "Move Down",
 				"category": "IBM i",
 				"icon": "$(arrow-down)"
 			},
@@ -1381,28 +1381,28 @@
 			{
 				"command": "code-for-ibmi.moveIFSShortcutDown",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut Down",
+				"title": "Move Down",
 				"category": "IBM i",
 				"icon": "$(arrow-down)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutUp",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut Up",
+				"title": "Move Up",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutToTop",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut to Top",
+				"title": "Move to Top",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveIFSShortcutToBottom",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Shortcut to Bottom",
+				"title": "Move to Bottom",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
