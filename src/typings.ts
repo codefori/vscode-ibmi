@@ -98,11 +98,11 @@ export interface QsysPath {
 export interface IBMiObject extends QsysPath {
   type: string,
   text: string,
-  attribute?: string
-}
-
-export interface IBMiFile extends IBMiObject {
-  count?: number
+  sourceFile?: boolean
+  attribute?: string,
+  memberCount?: number
+  sourceLength?: number
+  CCSID?: number
 }
 
 export interface IBMiMember {
@@ -186,7 +186,7 @@ export interface ObjectItem extends FilteredItem, WithPath {
 }
 
 export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
-  sourceFile: IBMiFile
+  sourceFile: IBMiObject
 }
 
 export interface MemberItem extends FilteredItem, WithPath {
@@ -202,6 +202,7 @@ export type IBMiMessages = {
   messages: IBMiMessage[]
   findId(id: string): IBMiMessage | undefined
 }
+export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser";
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };

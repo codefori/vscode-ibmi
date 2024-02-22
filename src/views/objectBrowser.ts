@@ -3,6 +3,7 @@ import os from "os";
 import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
+import { parseFilter } from "../api/Filter";
 import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
@@ -11,8 +12,10 @@ import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiFile, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
+import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, SourcePhysicalFileItem } from "../typings";
 import { editFilter } from "../webviews/filters";
+
+const URI_LIST_SEPARATOR = "\r\n";
 
 const writeFileAsync = util.promisify(fs.writeFile);
 const objectNamesLower = () => GlobalConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
@@ -46,7 +49,7 @@ const objectIcons = {
   '': `circle-large-outline`
 }
 
-function isProtected(filter: ConnectionConfiguration.ObjectFilters){
+function isProtected(filter: ConnectionConfiguration.ObjectFilters) {
   return filter.protected || getContent().isProtectedPath(filter.library);
 }
 
@@ -61,7 +64,7 @@ class ObjectBrowserItem extends BrowserItem {
 
   reveal(options?: FocusOptions) {
     return vscode.commands.executeCommand<void>(`code-for-ibmi.revealInObjectBrowser`, this, options);
-  } 
+  }
 }
 
 class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -163,13 +166,20 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem {
     super(filter, filter.name, { icon: isProtected(filter) ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.contextValue = `filter${isProtected(filter) ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
+    this.tooltip = ``;
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
-    return (await getContent().getObjectList(this.filter, objectSortOrder()))
-      .map(object => {
-        return object.attribute?.toLocaleUpperCase() === `*PHY` ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
-      });
+    const libraryFilter = parseFilter(this.filter.library);
+    if (libraryFilter.noFilter) {
+      return await listObjects(this);
+    }
+    else {
+      return (await getContent().getLibraries(this.filter))
+        .map(object => {
+          return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(this, object) : new ObjectBrowserObjectItem(this, object);
+        });
+    }
   }
 }
 
@@ -177,13 +187,20 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
   readonly sort: SortOptions = { order: "name", ascending: true };
   readonly path: string;
 
-  constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiFile) {
+  constructor(parent: ObjectBrowserFilterItem, readonly sourceFile: IBMiObject) {
     super(parent.filter, correctCase(sourceFile.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
     this.contextValue = `SPF${isProtected(this.filter) ? `_readonly` : ``}`;
     this.description = sourceFile.text;
 
     this.path = [sourceFile.library, sourceFile.name].join(`/`);
+    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+      text: sourceFile.text,
+      members: sourceFile.memberCount,
+      length: sourceFile.sourceLength,
+      CCSID: sourceFile.CCSID
+    }));
+    this.tooltip.supportHtml = true;
   }
 
   sortBy(sort: SortOptions) {
@@ -209,7 +226,14 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements S
     }, [`*UPD`]);
 
     try {
-      const members = await content.getMemberList(this.sourceFile.library, this.sourceFile.name, this.filter.member, this.filter.memberType, this.sort);
+      const members = await content.getMemberList({
+        library: this.sourceFile.library,
+        sourceFile: this.sourceFile.name,
+        members: this.filter.member,
+        extensions: this.filter.memberType,
+        filterType: this.filter.filterType,
+        sort: this.sort
+      });
 
       await storeMemberList(this.path, members.map(member => `${member.name}.${member.extension}`));
 
@@ -244,12 +268,14 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
   constructor(parent: ObjectBrowserFilterItem, readonly object: IBMiObject) {
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     const icon = Object.entries(objectIcons).find(([key]) => key === type.toUpperCase())?.[1] || objectIcons[``];
-    super(parent.filter, correctCase(`${object.name}.${type}`), { icon, parent });
+    const isLibrary = type === 'LIB';
+    super(parent.filter, correctCase(`${object.name}.${type}`), { icon, parent, state: isLibrary ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None });
 
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
+    this.tooltip = ``;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -257,15 +283,23 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
       fragment: object.attribute
     });
 
-    this.command = {
-      command: `vscode.open`,
-      title: `Open`,
-      arguments: [this.resourceUri]
-    };
+    if (!isLibrary) {
+      this.command = {
+        command: `vscode.open`,
+        title: `Open`,
+        arguments: [this.resourceUri]
+      };
+    }
   }
 
   updateDescription() {
     this.description = this.object.text.trim() + (this.object.attribute ? ` (${this.object.attribute})` : ``);
+  }
+
+  async getChildren() {
+    const objectFilter = Object.assign({}, this.filter);
+    objectFilter.library = this.object.name;
+    return await listObjects(this, objectFilter);
   }
 }
 
@@ -281,11 +315,13 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
-    this.tooltip = `${this.path}`
-      .concat(`${member.text ? `\n${t("text")}:\t\t${member.text}` : ``}`)
-      .concat(`${member.lines != undefined ? `\n${t("lines")}:\t${member.lines}` : ``}`)
-      .concat(`${member.created ? `\n${t("created")}:\t${member.created.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`)
-      .concat(`${member.changed ? `\n${t("changed")}:\t${member.changed.toISOString().slice(0, 19).replace(`T`, ` `)}` : ``}`);
+    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+      text: member.text,
+      lines: member.lines,
+      created: member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+      changed: member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
+    }));
+    this.tooltip.supportHtml = true;
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
@@ -297,12 +333,25 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   }
 }
 
+class ObjectBrowserMemberItemDragAndDrop implements vscode.TreeDragAndDropController<ObjectBrowserMemberItem> {
+  readonly dragMimeTypes = [OBJECT_BROWSER_MIMETYPE];
+  readonly dropMimeTypes = [];
+
+  handleDrag(source: readonly ObjectBrowserMemberItem[], dataTransfer: vscode.DataTransfer, token: vscode.CancellationToken) {
+    dataTransfer.set(OBJECT_BROWSER_MIMETYPE, new vscode.DataTransferItem(source.filter(item => item.resourceUri?.scheme === `member`)
+    .map(item => item.resourceUri)
+    .join(URI_LIST_SEPARATOR)));
+  }
+}
+
 export function initializeObjectBrowser(context: vscode.ExtensionContext) {
   const objectBrowser = new ObjectBrowser();
   const objectTreeViewer = vscode.window.createTreeView(
     `objectBrowser`, {
     treeDataProvider: objectBrowser,
-    showCollapseAll: true
+    showCollapseAll: true,
+    canSelectMany: true,
+    dragAndDropController: new ObjectBrowserMemberItemDragAndDrop()
   });
 
   instance.onEvent(`connected`, () => objectBrowser.refresh());
@@ -346,13 +395,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (regex && parsedFilter) {
           const filter = {
             name: `Filter ${objectFilters.length + 1}`,
+            filterType: 'simple',
             library: `QSYS`,
             object: `${parsedFilter.lib}*`,
             types: [`*LIB`],
             member: `*`,
             memberType: `*`,
             protected: false
-          }
+          } as ConnectionConfiguration.ObjectFilters;
           objectFilters.push(filter);
         } else {
           regex = FILTER_REGEX.exec(newFilter.toUpperCase());
@@ -360,13 +410,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           if (regex && parsedFilter) {
             const filter = {
               name: `Filter ${objectFilters.length + 1}`,
+              filterType: 'simple',
               library: parsedFilter.lib || `QGPL`,
               object: parsedFilter.obj || `*`,
               types: [parsedFilter.objType || `*SRCPF`],
               member: parsedFilter.mbr || `*`,
               memberType: parsedFilter.mbrType || `*`,
               protected: false
-            }
+            } as ConnectionConfiguration.ObjectFilters;
             objectFilters.push(filter);
           }
         }
@@ -515,8 +566,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               noLibList: true
             })
 
-            const messages = Tools.parseMessages(copyResult.stderr);
-            if (messages.findId(`CPF2869`)) {
+            const copyMessages = Tools.parseMessages(copyResult.stderr);
+            if (copyMessages.messages.length && !copyMessages.findId(`CPF2869`)) {
               throw (copyResult.stderr)
             }
 
@@ -835,6 +886,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         filters.push({
           name: newLibrary,
+          filterType: 'simple',
           library: newLibrary,
           object: `*ALL`,
           types: [`*ALL`],
@@ -1119,8 +1171,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
         message: t(`objectBrowser.doSearchInSourceFile.progressMessage`, path)
       });
 
-      const members = await content.getMemberList(pathParts[0], pathParts[1], filter?.member);
-
+      const members = await content.getMemberList({ library: pathParts[0], sourceFile: pathParts[1], members: filter?.member });
       if (members.length > 0) {
         // NOTE: if more messages are added, lower the timeout interval
         const timeoutInternal = 9000;
@@ -1193,4 +1244,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
   } catch (e) {
     vscode.window.showErrorMessage(t(`objectBrowser.doSearchInSourceFile.errorMessage`, e));
   }
+}
+
+async function listObjects(item: ObjectBrowserFilterItem, filter?: ConnectionConfiguration.ObjectFilters) {
+  return (await getContent().getObjectList(filter || item.filter, objectSortOrder()))
+    .map(object => {
+      return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(item, object) : new ObjectBrowserObjectItem(item, object);
+    });
 }

@@ -1,5 +1,6 @@
 import vscode from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { GlobalStorage } from '../../api/Storage';
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
@@ -58,6 +59,8 @@ export class SettingsUI {
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect, alreadyManaged.includes(`quickConnect`))
           .addCheckbox(`enableSQL`, `Enable SQL`, `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID system value is set to 65535, it is recommended that SQL is disabled. When disabled, will use import files where possible.`, config.enableSQL, alreadyManaged.includes(`enableSQL`))
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList, alreadyManaged.includes(`showDescInLibList`))
+          .addCheckbox(`showHiddenFiles`, `Show hidden files and directories in IFS browser.`, `When disabled, hidden files and directories (i.e. names starting with '.') will not be shown in the IFS browser, except for special config files.`, config.showHiddenFiles, alreadyManaged.includes(`showHiddenFiles`))
+          .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts, alreadyManaged.includes(`autoSortIFSShortcuts`))
           .addCheckbox(`autoConvertIFSccsid`, `Support EBCDIC streamfiles`, `Enable converting EBCDIC to UTF-8 when opening streamfiles. When disabled, assumes all streamfiles are in UTF8. When enabled, will open streamfiles regardless of encoding. May slow down open and save operations.<br><br>You can find supported CCSIDs with <code>/usr/bin/iconv -l</code>`, config.autoConvertIFSccsid, alreadyManaged.includes(`autoConvertIFSccsid`))
           .addHorizontalRule()
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction, alreadyManaged.includes(`autoSaveBeforeAction`))
@@ -65,15 +68,15 @@ export class SettingsUI {
 
         const tempDataTab = new Section();
         tempDataTab
-          .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10, readonly: alreadyManaged.includes(`tempLibrary`)})
-          .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1, readonly: alreadyManaged.includes(`tempDir`)})
+          .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10, readonly: alreadyManaged.includes(`tempLibrary`) })
+          .addInput(`tempDir`, `Temporary IFS directory`, `Directory that will be used to write temporary files to. User must be authorized to create new files in this directory.`, { default: config.tempDir, minlength: 1, readonly: alreadyManaged.includes(`tempDir`) })
           .addCheckbox(`autoClearTempData`, `Clear temporary data automatically`, `Automatically clear temporary data in the chosen temporary library when it's done with and on startup. Deletes all <code>*FILE</code> objects that start with <code>O_</code> in the chosen temporary library.`, config.autoClearTempData, alreadyManaged.includes(`autoClearTempData`))
-          .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts, alreadyManaged.includes(`autoSortIFSShortcuts`));
 
         const sourceTab = new Section();
         sourceTab
           .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP, readonly: alreadyManaged.includes(`sourceASP`)})
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5, readonly: alreadyManaged.includes(`sourceFileCCSID`)})
+          .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates, alreadyManaged.includes(`enableSourceDates`))
           .addSelect(`sourceDateMode`, `Source date tracking mode`, [
             {
@@ -89,6 +92,8 @@ export class SettingsUI {
               text: `Track changes using the diff mechanism. Before the document is saved, it is compared to the original state to determine the changed lines. (Test enhancement)`,
             },
           ], `Determine which method should be used to track changes while editing source members.`, alreadyManaged.includes(`sourceDateMode`))
+          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter, alreadyManaged.includes(`sourceDateGutter`))
+          .addHorizontalRule()
           .addSelect(`defaultDeploymentMethod`, `Default Deployment Method`, [
             {
               selected: config.defaultDeploymentMethod === undefined || config.defaultDeploymentMethod === ``,
@@ -126,10 +131,10 @@ export class SettingsUI {
               description: `All`,
               text: `Every file in the local workspace`,
             }
-          ], `Set your Default Deployment Method`, alreadyManaged.includes(`defaultDeploymentMethod`))
-          .addCheckbox(`sourceDateGutter`, `Source Dates in Gutter`, `When enabled, source dates will be displayed in the gutter.`, config.sourceDateGutter, alreadyManaged.includes(`sourceDateGutter`))
+          ], `Set your Default Deployment Method. This is used when deploying from the local workspace to the server.`, alreadyManaged.includes(`defaultDeploymentMethod`))
+          .addHorizontalRule()
           .addCheckbox(`readOnlyMode`, `Read only mode`, `When enabled, source members and IFS files will always be opened in read-only mode.`, config.readOnlyMode, alreadyManaged.includes(`readOnlyMode`))
-          .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `), readonly: alreadyManaged.includes(`protectedPaths`)});
+          .addInput(`protectedPaths`, `Protected paths`, `A comma separated list of libraries and/or IFS directories whose members will always be opened in read-only mode. (Example: <code>QGPL, /home/QSECOFR, MYLIB, /QIBM</code>)`, { default: config.protectedPaths.join(`, `), readonly: alreadyManaged.includes(`protectedPaths`) });
 
         const terminalsTab = new Section();
         if (connection && connection.remoteFeatures.tn5250) {
@@ -254,11 +259,14 @@ export class SettingsUI {
               if (restartFields.some(item => data[item] && data[item] !== config[item])) {
                 restart = true;
               }
-                
+
               const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
+              const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
 
               Object.assign(config, data);
               await instance.setConfig(config);
+              if (removeCachedSettings)
+                GlobalStorage.get().deleteServerSettingsCache(config.name);
 
               if (connection) {
                 if (restart) {

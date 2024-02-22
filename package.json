@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.6.6-dev.0",
+	"version": "2.7.2-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -368,6 +368,11 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Show description of libraries in User Library List (recommended to also enable SQL)."
+							},
+							"showHiddenFiles": {
+								"type": "boolean",
+								"default": true,
+								"description": "Show hidden files and directories in IFS browser."
 							},
 							"debugPort": {
 								"type": "string",
@@ -999,6 +1004,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "code-for-ibmi.sortConnections",
+				"title": "Sort Connections",
+				"category": "IBM i",
+				"icon": "$(list-ordered)"
+			},
+			{
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"title": "Connection Settings",
 				"category": "IBM i"
@@ -1006,6 +1017,11 @@
 			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login Settings",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.renameConnection",
+				"title": "Rename Connection",
 				"category": "IBM i"
 			},
 			{
@@ -1588,6 +1604,13 @@
 				"title": "Edit",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.ifs.toggleShowHiddenFiles",
+				"title": "Toggle hidden files",
+				"enablement": "code-for-ibmi:connected",
+				"category": "IBM i",
+				"icon": "$(shield)"
 			}
 		],
 		"keybindings": [
@@ -1771,9 +1794,29 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.refreshConnections",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.renameConnection",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortConnections",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
+        {
+          "command": "code-for-ibmi.showAdditionalSettings",
+					"when": "code-for-ibmi:connected"
+        },
 				{
 					"command": "code-for-ibmi.selectForCompare",
 					"when": "code-for-ibmi:connected"
@@ -1982,13 +2025,18 @@
 					"when": "view == connectionBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshConnections",
+					"command": "code-for-ibmi.sortConnections",
 					"group": "navigation@2",
 					"when": "view == connectionBrowser"
 				},
 				{
-					"command": "code-for-ibmi.connectToPrevious",
+					"command": "code-for-ibmi.refreshConnections",
 					"group": "navigation@3",
+					"when": "view == connectionBrowser"
+				},
+				{
+					"command": "code-for-ibmi.connectToPrevious",
+					"group": "navigation@4",
 					"when": "view == connectionBrowser && code-for-ibmi:hasPreviousConnection"
 				},
 				{
@@ -2057,7 +2105,7 @@
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.removeIFSShortcut",
+					"command": "code-for-ibmi.ifs.toggleShowHiddenFiles",
 					"group": "navigation",
 					"when": "view == ifsBrowser"
 				},
@@ -2121,9 +2169,14 @@
 			],
 			"view/item/context": [
 				{
-					"command": "code-for-ibmi.deleteConnection",
+					"command": "code-for-ibmi.renameConnection",
 					"when": "view == connectionBrowser && viewItem == server",
 					"group": "2_delete@1"
+				},
+				{
+					"command": "code-for-ibmi.deleteConnection",
+					"when": "view == connectionBrowser && viewItem == server",
+					"group": "2_delete@2"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
@@ -2456,11 +2509,6 @@
 					"group": "3_ifsTransfer@3"
 				},
 				{
-					"command": "code-for-ibmi.setDeployLocation",
-					"when": "view == objectBrowser && viewItem == filter && workspaceFolderCount >= 1",
-					"group": "3_ifsTransfer@3"
-				},
-				{
 					"command": "code-for-ibmi.changeObjectDesc",
 					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@1"
@@ -2516,7 +2564,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2021 --moduleResolution node"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",
@@ -2546,7 +2594,8 @@
 		"tar": "^6.1.13",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2",
-		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz"
+		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
+		"escape-string-regexp": "^5.0.0"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",

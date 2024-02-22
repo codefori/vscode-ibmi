@@ -4,6 +4,7 @@ import path from "path";
 import vscode from "vscode";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
+import { t } from "../locale";
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -33,7 +34,17 @@ export namespace Tools {
     let figuredLengths = false;
     let iiErrorMessage = false;
 
-    let data = output.split(`\n`);
+    const data = output.split(`\n`).filter(line => {
+      const trimmed = line.trim();
+      return trimmed !== `DB2>` &&
+        !trimmed.startsWith(`DB20`) && // Notice messages
+        !/COMMAND .+ COMPLETED WITH EXIT STATUS \d+/.test(trimmed) && // @CL command execution output
+        trimmed !== `?>`;
+    });
+
+    if (!data[data.length - 1]) {
+      data.pop();
+    }
 
     let headers: DB2Headers[];
 
@@ -45,9 +56,6 @@ export namespace Tools {
       const trimmed = line.trim();
       if (trimmed.length === 0 && iiErrorMessage) iiErrorMessage = false;
       if (trimmed.length === 0 || index === data.length - 1) return;
-      if (trimmed === `DB2>`) return;
-      if (trimmed.startsWith(`DB20`)) return; // Notice messages
-      if (trimmed === `?>`) return;
 
       if (trimmed === `**** CLI ERROR *****`) {
         iiErrorMessage = true;
@@ -236,20 +244,70 @@ export namespace Tools {
     }
   }
 
-  export function parseQSysPath(path: string) : QsysPath{
+  export function parseQSysPath(path: string): QsysPath {
     const parts = path.split('/');
-    if(parts.length > 3){
+    if (parts.length > 3) {
       return {
         asp: parts[0],
         library: parts[1],
         name: parts[2]
       }
     }
-    else{
+    else {
       return {
         library: parts[0],
         name: parts[1]
       }
     }
   }
+
+
+  /**
+   * We do this to find previously opened files with the same path, but different case OR readonly flags.
+   * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
+   */
+  export function findExistingDocumentUri(uri: vscode.Uri) {
+    const baseUriString = uriStringWithoutFragment(uri);
+    const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === baseUriString);
+    return possibleDoc?.uri || uri;
+  }
+
+  /**
+   * We convert member to lowercase as members are case insensitive.
+   */
+  function uriStringWithoutFragment(uri: vscode.Uri) {
+    // To lowercase because the URI path is case-insensitive
+    const baseUri = uri.scheme + `:` + uri.path;
+    const isCaseSensitive = (uri.scheme === `streamfile` && /^\/QOpenSys\//i.test(uri.path));
+    return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
+  }
+
+  /**
+   * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
+   * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
+   * - Makes sure each comment (`--`) starts on a new line
+   * @param statement the statement to fix
+   * @returns statement compatible with QZDFMDB2
+   */
+  export function fixSQL(statement: string) {
+    return statement.split("\n").map(line => {
+      if (line.startsWith('@')) {
+        //- Escape all '
+        //- Remove any trailing ;
+        //- Put the command in a Call QSYS2.QCMDEXC statement
+        line = `Call QSYS2.QCMDEXC('${line.substring(1, line.endsWith(";") ? line.length - 1 : undefined).replaceAll("'", "''")}');`;
+      }
+
+      //Make each comment start on a new line
+      return line.replaceAll("--", "\n--");
+    }
+    ).join("\n");
+  }
+
+  export function generateTooltipHtmlTable(header:string, rows: Record<string, any>){
+    return `<table>`
+      .concat(`${header ? `<thead>${header}</thead>` : ``}`)
+      .concat(`${Object.entries(rows).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
+      .concat(`</table>`);
+    }
 }

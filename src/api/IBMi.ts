@@ -7,7 +7,6 @@ import path from 'path';
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
 import { CompileTools } from "./CompileTools";
-import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
@@ -15,10 +14,11 @@ import * as configVars from './configVars';
 export interface MemberParts extends IBMiMember {
   basename: string
 }
+const CCSID_SYSVAL = -2;
 
 const SERVER_SETTINGS_PATH = `/.vscode/connections.json`;
 
-let remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
+const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
     names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`]
@@ -52,7 +52,8 @@ export default class IBMi {
   defaultUserLibraries: string[];
   outputChannel?: vscode.OutputChannel;
   aspInfo: { [id: number]: string };
-  qccsid: number | null;
+  qccsid: number;
+  defaultCCSID: number;
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
   lastErrors: object[];
@@ -78,8 +79,8 @@ export default class IBMi {
      * the root of the IFS, thus why we store it.
      */
     this.aspInfo = {};
-
-    this.qccsid = null;
+    this.qccsid = CCSID_SYSVAL;
+    this.defaultCCSID = 0;
 
     this.remoteFeatures = {
       git: undefined,
@@ -436,7 +437,7 @@ export default class IBMi {
             })
 
           this.sendCommand({
-            command: `rm -f ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
+            command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
           })
             .then(result => {
               // All good!
@@ -568,8 +569,20 @@ export default class IBMi {
         }
 
         if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
-          let statement;
-          let output;
+          //Temporary function to run SQL
+          const runSQL = async (statement: string) => {
+            const output = await this.sendCommand({
+              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+              stdin: statement
+            });
+
+            if (output.code === 0) {
+              return Tools.db2Parse(output.stdout);
+            }
+            else {
+              throw new Error(output.stdout);
+            }
+          };
 
           // Check for ASP information?
           if (quickConnect === true && cachedServerSettings?.aspInfo) {
@@ -582,7 +595,7 @@ export default class IBMi {
             //This is mostly a nice to have. We grab the ASP info so user's do
             //not have to provide the ASP in the settings.
             try {
-              const resultSet = await new IBMiContent(this).runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+              const resultSet = await runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
               resultSet.forEach(row => {
                 if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
                   this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
@@ -597,9 +610,10 @@ export default class IBMi {
           }
 
           // Fetch conversion values?
-          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars) {
+          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.defaultCCSID) {
             this.qccsid = cachedServerSettings.qccsid;
             this.variantChars = cachedServerSettings.variantChars;
+            this.defaultCCSID = cachedServerSettings.defaultCCSID;
           } else {
             progress.report({
               message: `Fetching conversion values.`
@@ -607,34 +621,32 @@ export default class IBMi {
 
             // Next, we're going to see if we can get the CCSID from the user or the system.
             // Some things don't work without it!!!
-            try {
-              const CCSID_SYSVAL = -2;
-              statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`;
-              output = await this.sendCommand({
-                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                stdin: statement
-              });
+            try {              
+              const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+              if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+                this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
+              }
 
-              if (output.stdout) {
-                const [row] = Tools.db2Parse(output.stdout);
-                if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
-                  this.qccsid = row.CHARACTER_CODE_SET_ID;
+              if (!this.qccsid || this.qccsid === CCSID_SYSVAL) {
+                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
                 }
               }
 
-              if (this.qccsid === undefined || this.qccsid === CCSID_SYSVAL) {
-                statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
-                output = await this.sendCommand({
-                  command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                  stdin: statement
-                });
+              try {
+                const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+                this.defaultCCSID = Number(activeJob.DEFAULT_CCSID);
+              }
+              catch (error) {
+                const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
+                  .stdout
+                  .split("\n")
+                  .filter(line => line.includes("DFTCCSID"));
 
-                if (output.stdout) {
-                  const rows = Tools.db2Parse(output.stdout);
-                  const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
-                  if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
-                    this.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
-                  }
+                const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
+                if (defaultCCSCID && !isNaN(defaultCCSCID)) {
+                  this.defaultCCSID = defaultCCSCID;
                 }
               }
 
@@ -647,24 +659,15 @@ export default class IBMi {
                 message: `Fetching local encoding values.`
               });
 
-              statement = `with VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+              const [variants] = await runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
                 + `  values ( cast( x'7B' as varchar(1) )`
                 + `         , cast( x'7C' as varchar(1) )`
                 + `         , cast( x'5B' as varchar(1) ) )`
                 + `)`
-                + `select HASH concat AT concat DOLLARSIGN as LOCAL`
-                + `  from VARIANTS; `;
-              output = await this.sendCommand({
-                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                stdin: statement
-              });
-              if (output.stdout) {
-                const [row] = Tools.db2Parse(output.stdout);
-                if (row && row.LOCAL !== `null` && typeof row.LOCAL === 'string') {
-                  this.variantChars.local = row.LOCAL;
-                }
-              } else {
-                throw new Error(`There was an error running the SQL statement.`);
+                + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+
+              if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+                this.variantChars.local = variants.LOCAL;
               }
             } catch (e) {
               // Oh well!
@@ -673,7 +676,6 @@ export default class IBMi {
           }
         } else {
           // Disable it if it's not found
-
           if (this.config.enableSQL) {
             progress.report({
               message: `SQL program not installed. Disabling SQL.`
@@ -682,6 +684,9 @@ export default class IBMi {
           }
         }
 
+        if((this.qccsid < 1 || this.qccsid === 65535)){
+          this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.defaultCCSID}\n`);
+        }
 
         // give user option to set bash as default shell.
         if (this.remoteFeatures[`bash`]) {
@@ -874,7 +879,8 @@ export default class IBMi {
           },
           badDataAreasChecked: true,
           libraryListValidated: true,
-          pathChecked: true
+          pathChecked: true,
+          defaultCCSID: this.defaultCCSID
         });
 
         return {
@@ -882,7 +888,7 @@ export default class IBMi {
         };
       });
 
-    } catch (e) {
+    } catch (e: any) {
 
       if (this.client.isConnected()) {
         this.client.dispose();
@@ -895,9 +901,20 @@ export default class IBMi {
         return this.connect(connectionObject, true);
       }
 
+      let error = e;
+      if (e.code === "ENOTFOUND") {
+        error = `Host is unreachable. Check the connection's hostname/IP address.`;
+      }
+      else if (e.code === "ECONNREFUSED") {
+        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+      }
+      else if (e.level === "client-authentication") {
+        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+      }
+
       return {
         success: false,
-        error: e
+        error
       };
     }
     finally {

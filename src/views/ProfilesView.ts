@@ -118,7 +118,7 @@ export class ProfilesView {
         const storage = instance.getStorage();
         if (commandProfile && config && storage) {
           const storedProfile = config.commandProfiles.find(profile => profile.name === commandProfile.profile);
-          
+
           if (storedProfile) {
             try {
               const newSettings = await content?.getLibraryListFromCommand(storedProfile.command);
@@ -181,7 +181,7 @@ export class ProfilesView {
           })
         }
       })
-      
+
     )
   }
 
@@ -270,6 +270,7 @@ class ProfileItem extends vscode.TreeItem implements Profile {
     this.contextValue = `profile`;
     this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `layers`);
     this.description = active ? `Active` : ``;
+    this.tooltip = ``;
 
     this.profile = name;
   }
@@ -283,6 +284,7 @@ class CommandProfileItem extends vscode.TreeItem implements Profile {
     this.contextValue = `commandProfile`;
     this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `console`);
     this.description = active ? `Active` : ``;
+    this.tooltip = ``;
 
     this.profile = name;
   }
@@ -295,6 +297,7 @@ class ResetProfileItem extends vscode.TreeItem implements Profile {
 
     this.contextValue = `resetProfile`;
     this.iconPath = new vscode.ThemeIcon(`debug-restart`);
+    this.tooltip = ``;
 
     this.profile = `Default`;
   }

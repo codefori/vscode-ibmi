@@ -6,9 +6,12 @@ jobs:
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.labels.*.name, 'build')
     steps:
-      - uses: actions/setup-node@v2
+      - name: Use Node.js 20
+        uses: actions/setup-node@v3
         with:
-          node-version: '16'
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          
       - uses: actions/checkout@v2
         with:
           fetch-depth: 1
@@ -35,3 +38,6 @@ jobs:
               repo: context.repo.repo,
               body: '👋  A new build is available for this PR based on ${{ github.event.pull_request.head.sha }}.\n * [Download here.](https://github.com/codefori/vscode-ibmi/actions/runs/${{ github.run_id }})\n* [Read more about how to test](https://github.com/codefori/vscode-ibmi/blob/master/.github/pr_testing_template.md)'
             })
+
+      - name: Build types
+        run: npm run typings

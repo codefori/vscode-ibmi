@@ -1,6 +1,7 @@
 
 import * as vscode from 'vscode';
 import { DeploymentMethod } from '../typings';
+import { FilterType } from './Filter';
 
 export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";
@@ -60,12 +61,14 @@ export namespace ConnectionConfiguration {
     quickConnect: boolean;
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
+    showHiddenFiles: boolean;
     [name: string]: any;
-  }
+  }  
 
   export interface ObjectFilters {
     name: string
-    library: string
+    filterType: FilterType
+    library: string    
     object: string
     types: string[]
     member: string
@@ -138,7 +141,8 @@ export namespace ConnectionConfiguration {
       readOnlyMode: (parameters.readOnlyMode === true),
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
-      protectedPaths: (parameters.protectedPaths || [])
+      protectedPaths: (parameters.protectedPaths || []),
+      showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
     }
   }
 

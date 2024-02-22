@@ -75,6 +75,70 @@ export class ObjectBrowserProvider {
         this.refresh();
       }),
 
+      vscode.commands.registerCommand(`code-for-ibmi.renameConnection`, async (server: Server) => {
+        if (!this._attemptingConnection && server) {
+          const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+          const newName = await vscode.window.showInputBox({
+            prompt: t(`connectionBrowser.renameConnection.prompt`, server.name),
+            value: server.name,
+            validateInput: newName => {
+              if (newName === server.name) {
+                return t(`connectionBrowser.renameConnection.invalid.input`);
+              } else if (existingConnections.findIndex(item => item.name === newName) !== -1) {
+                return t(`connectionBrowser.renameConnection.alreadyExists`, newName);
+              }
+            }
+          });
+
+          if (newName) {
+            try {
+              let index;
+              // First rename the connection details
+              const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+              index = connections.findIndex(connection => connection.name === server.name);
+              if (index === -1) throw(t(`connectionBrowser.renameConnection.noConnectionFound`, server.name));
+              connections[index].name = newName;
+
+              // Then rename the connection settings
+              const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
+              index = connectionSettings.findIndex(connection => connection.name === server.name);
+              if (index === -1) throw(t(`connectionBrowser.renameConnection.noConnParmsFound`, server.name));
+              connectionSettings[index].name = newName;
+
+              // Then get the cached connection settings
+              const cachedConnectionSettings = GlobalStorage.get().getServerSettingsCache(server.name);
+
+              // Then get the password key
+              const secret = await context.secrets.get(`${server.name}_password`);
+
+              // No errors - update the settings.
+              await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
+              await GlobalConfiguration.set(`connections`, connections);
+              if(cachedConnectionSettings) {
+                GlobalStorage.get().setServerSettingsCache(newName, cachedConnectionSettings);
+                GlobalStorage.get().deleteServerSettingsCache(server.name);
+              }
+              if (secret) {
+                await context.secrets.store(`${newName}_password`, secret);
+                await context.secrets.delete(`${server.name}_password`);
+              }
+
+              this.refresh();
+            } catch (e: any) {
+              vscode.window.showErrorMessage(
+                t(`connectionBrowser.renameConnection.error`, server.name, e.message || String(e)));
+            }
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.sortConnections`, async () => {
+        const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+        connections.sort((conn1, conn2) => conn1.name.localeCompare(conn2.name));
+        await GlobalConfiguration.set(`connections`, connections);
+        this.refresh();
+      }),
+
       vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (server: Server) => {
         if (!this._attemptingConnection && server) {
           vscode.window.showWarningMessage(

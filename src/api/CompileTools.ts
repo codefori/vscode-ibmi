@@ -71,6 +71,7 @@ export namespace CompileTools {
       variables[`&HOST`] = connection.currentHost;
       variables[`{host}`] = connection.currentHost;
       variables[`&HOME`] = config.homeDirectory;
+      variables[`&WORKDIR`] = config.homeDirectory;
 
       for (const variable of config.customVariables) {
         variables[`&${variable.name.toUpperCase()}`] = variable.value;
@@ -237,6 +238,7 @@ export namespace CompileTools {
                     variables[`&FULLPATH`] =  fullPath;
                     variables[`{path}`] = fullPath;
                     variables[`&WORKDIR`] = remoteCwd;
+                    variables[`&FILEDIR`] =  path.posix.parse(fullPath).dir;
 
                     const branch = getGitBranch(fromWorkspace);
                     if (branch) {
@@ -253,6 +255,7 @@ export namespace CompileTools {
 
                   const fullName = uri.path;
                   variables[`&FULLPATH`] =  fullName;
+                  variables[`&FILEDIR`] =  path.parse(fullName).dir;
                   break;
               }
 
