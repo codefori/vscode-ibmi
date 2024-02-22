@@ -1423,49 +1423,49 @@
 			{
 				"command": "code-for-ibmi.copyFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Copy Filter",
+				"title": "Copy",
 				"category": "IBM i",
 				"icon": "$(copy)"
 			},
 			{
 				"command": "code-for-ibmi.maintainFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Maintain Filter",
+				"title": "Change",
 				"category": "IBM i",
 				"icon": "$(filter)"
 			},
 			{
 				"command": "code-for-ibmi.deleteFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Delete Filter",
+				"title": "Delete",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
 			{
 				"command": "code-for-ibmi.moveFilterUp",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Filter Up",
+				"title": "Move Up",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveFilterDown",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Filter Down",
+				"title": "Move Down",
 				"category": "IBM i",
 				"icon": "$(arrow-down)"
 			},
 			{
 				"command": "code-for-ibmi.moveFilterToTop",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Filter to Top",
+				"title": "Move to Top",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
 			{
 				"command": "code-for-ibmi.moveFilterToBottom",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Move Filter to Bottom",
+				"title": "Move to Bottom",
 				"category": "IBM i",
 				"icon": "$(arrow-up)"
 			},
