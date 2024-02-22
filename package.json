@@ -1213,35 +1213,35 @@
 			{
 				"command": "code-for-ibmi.createMember",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create Member",
+				"title": "New Member",
 				"category": "IBM i",
 				"icon": "$(new-file)"
 			},
 			{
 				"command": "code-for-ibmi.copyMember",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Copy Member",
+				"title": "Copy",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
 			{
 				"command": "code-for-ibmi.deleteMember",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Delete Member",
+				"title": "Delete",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
 				"command": "code-for-ibmi.updateMemberText",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Update Member Text",
+				"title": "Change Description",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
 			{
 				"command": "code-for-ibmi.renameMember",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Rename Member",
+				"title": "Rename",
 				"category": "IBM i",
 				"icon": "$(files)"
 			},
