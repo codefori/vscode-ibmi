@@ -1360,14 +1360,14 @@
 			{
 				"command": "code-for-ibmi.addIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Add Shortcut",
+				"title": "New Shortcut",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
 			{
 				"command": "code-for-ibmi.removeIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Remove Shortcut",
+				"title": "Remove",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
