@@ -1409,14 +1409,14 @@
 			{
 				"command": "code-for-ibmi.createFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create Filter",
+				"title": "New Filter",
 				"category": "IBM i",
 				"icon": "$(filter)"
 			},
 			{
 				"command": "code-for-ibmi.createQuickFilter",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create Quick Filter",
+				"title": "New Quick Filter",
 				"category": "IBM i",
 				"icon": "$(symbol-text)"
 			},
@@ -1498,14 +1498,14 @@
 			{
 				"command": "code-for-ibmi.createSourceFile",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create Source File",
+				"title": "New Source File",
 				"category": "IBM i",
 				"icon": "$(new-file)"
 			},
 			{
 				"command": "code-for-ibmi.createLibrary",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Create Library",
+				"title": "New Library",
 				"category": "IBM i",
 				"icon": "$(file-directory-create)"
 			},
