@@ -16,7 +16,7 @@ export interface MemberParts extends IBMiMember {
 }
 const CCSID_SYSVAL = -2;
 
-const SERVER_SETTINGS_PATH = `/.vscode/connections.json`;
+const SERVER_SETTINGS_PATH = `/etc/code4i/settings.json`;
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
