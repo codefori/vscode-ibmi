@@ -69,7 +69,7 @@ export async function refreshDiagnosticsFromServer(instance: Instance, evfeventI
     const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => String(row.EVFEVENT));
 
-    if (GlobalConfiguration.get(`clearAllErrorsAfterBuild`)) {
+    if (GlobalConfiguration.get(`clearErrorsBeforeBuild`)) {
       // Clear all errors if the user has this setting enabled
       clearDiagnostics();
     }
@@ -86,7 +86,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
     if (evfeventFiles) {
       const filesContent = await Promise.all(evfeventFiles.map(uri => vscode.workspace.fs.readFile(uri)));
 
-      if (GlobalConfiguration.get(`clearAllErrorsAfterBuild`)) {
+      if (GlobalConfiguration.get(`clearErrorsBeforeBuild`)) {
         // Clear all errors if the user has this setting enabled
         clearDiagnostics();
       }
