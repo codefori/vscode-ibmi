@@ -31,8 +31,8 @@ export const fr: Locale = {
   'modified': 'Modifié',
   'owner': 'Propriétaire',
   'type': 'Type',
-  'attribute': 'Attribute',
-  'created_by': 'Created by',
+  'attribute': 'Attribut',
+  'created_by': 'Créé par',
   // Sandbox:
   'sandbox.input.user.title': `Nom d'utilisateur`,
   'sandbox.input.user.prompt': `Entrez le nom d'utilisateur pour {0}`,
