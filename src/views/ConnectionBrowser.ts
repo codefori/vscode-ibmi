@@ -136,7 +136,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       connectionBrowser.refresh();
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (single: Server, servers?: Server[]) => {
+    vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (single?: Server, servers?: Server[]) => {
       const toBeDeleted: Server[] = [];
       if (servers) {
         toBeDeleted.push(...servers);
