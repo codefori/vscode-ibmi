@@ -275,7 +275,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     this.updateDescription();
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
-    this.tooltip = ``;
+    this.tooltip = new vscode.MarkdownString(``);
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
