@@ -407,6 +407,11 @@
 					],
 					"description": "Determine which view should be shown when running Actions"
 				},
+				"code-for-ibmi.clearAllErrorsAfterBuild": {
+					"type": "boolean",
+					"default": true,
+					"description": "When true, existing errors will be replaced with errors from the latest build. When false, errors will be appended to the existing list."
+				},
 				"code-for-ibmi.grepIgnoreDirs": {
 					"type": "array",
 					"items": {

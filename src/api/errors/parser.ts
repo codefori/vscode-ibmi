@@ -8,7 +8,7 @@ class EvfEventFileReader implements ISequentialFileReader {
   constructor(lines: string[]) {
     this.lines = lines;
   }
-
+f
   readNextLine(): string | undefined {
     const line = this.lines[this.index];
     if (line) {
