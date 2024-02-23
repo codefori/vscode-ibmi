@@ -103,6 +103,11 @@ export interface IBMiObject extends QsysPath {
   memberCount?: number
   sourceLength?: number
   CCSID?: number
+  size?: number
+  created?: Date
+  changed?: Date
+  created_by?: string
+  owner?: string
 }
 
 export interface IBMiMember {

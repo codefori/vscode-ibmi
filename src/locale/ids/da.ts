@@ -30,6 +30,9 @@ export const da: Locale = {
   'size': 'Størrelse',
   'modified': 'Ændret',
   'owner': 'Ejer',
+  'type': 'Type',
+  'attribute': 'Attribut',
+  'created_by': 'Oprettet af',
   // Sandbox:
   'sandbox.input.user.title': `Bruger for server`,
   'sandbox.input.user.prompt': `Indtast brugernavn for {0}`,
