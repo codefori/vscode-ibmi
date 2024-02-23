@@ -288,7 +288,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     this.updateDescription();
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
-    this.tooltip = ``;
+    this.tooltip = new vscode.MarkdownString(``);
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -656,12 +656,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const connection = getConnection();
 
         const changeResult = await connection.runCommand({
-          command: `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT('${escapedText}')`,
+          command: `CHGPFM FILE(${library}/${file}) MBR(${name}) TEXT(${newText.toUpperCase() !== `*BLANK` ? `'${escapedText}'` : `*BLANK`})`,
           noLibList: true
         });
 
         if (changeResult.code === 0) {
-          node.description = newText;
+          node.description = newText.toUpperCase() !== `*BLANK` ? newText : ``;
           objectBrowser.refresh(node);
         } else {
           vscode.window.showErrorMessage(t(`objectBrowser.updateMemberText.errorMessage`, changeResult.stderr));

@@ -430,7 +430,7 @@ export namespace CompileTools {
                           const downloads = postDownloads.map(
                             async (postDownload) => {
                               if (postDownload.type === vscode.FileType.Directory) {
-                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true });
+                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
                               } else {
                                 return connection.downloadFile(postDownload.localPath, postDownload.remotePath);
                               }

@@ -153,7 +153,7 @@ export const da: Locale = {
   'objectBrowser.deleteMember.warningMessage': `Er du sikker på at du vil slette member {0}?`,
   'objectBrowser.deleteMember.infoMessage': `Slettede member {0}.`,
   'objectBrowser.deleteMember.errorMessage': `Fejl ved sletning af member! {0}`,
-  'objectBrowser.updateMemberText.prompt': `Opdater beskrivelse af member {0}`,
+  'objectBrowser.updateMemberText.prompt': `Opdater beskrivelse af member {0}, *BLANK for ingen beskrivelse`,
   'objectBrowser.updateMemberText.errorMessage': `Fejl ved ændring af member beskrivelse! {0}`,
   'objectBrowser.renameMember.prompt': `Omdøb member {0}`,
   'objectBrowser.renameMember.errorMessage': `Fejl ved omdøbning af member! {0}`,
