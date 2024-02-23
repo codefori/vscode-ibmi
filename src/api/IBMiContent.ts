@@ -68,7 +68,7 @@ export default class IBMiContent {
   }
 
   /**
-   * 
+   *
    * @param remotePath Remote IFS path
    * @param localPath Local path to download file to
    */
@@ -103,7 +103,7 @@ export default class IBMiContent {
   }
 
   /**
-   * @param originalPath 
+   * @param originalPath
    * @param content Raw content
    * @param encoding Optional encoding to write.
    */
@@ -249,7 +249,7 @@ export default class IBMiContent {
    * Run SQL statements.
    * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
    * If a statement starts with @, it will be run as a CL command.
-   * 
+   *
    * @param statements
    * @returns a Result set
    */
@@ -259,7 +259,7 @@ export default class IBMiContent {
     if (QZDFMDB2) {
       if (this.chgJobCCSID === undefined) {
         this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
-      }      
+      }
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
@@ -491,7 +491,7 @@ export default class IBMiContent {
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
 
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
-    const withSourceFiles = ['*ALL', '*SRCPF'].includes(type);
+    const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     const queries: string[] = [];
 
@@ -851,7 +851,7 @@ export default class IBMiContent {
   }
 
   /**
-   * 
+   *
    * @param command Optionally qualified CL command
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string
