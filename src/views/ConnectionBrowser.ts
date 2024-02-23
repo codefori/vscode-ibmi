@@ -136,7 +136,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       connectionBrowser.refresh();
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, (single?: Server, servers?: Server[]) => {
+    vscode.commands.registerCommand(`code-for-ibmi.deleteConnection`, async (single?: Server, servers?: Server[]) => {
       const toBeDeleted: Server[] = [];
       if (servers) {
         toBeDeleted.push(...servers);
@@ -151,13 +151,8 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       if (!connectionBrowser.attemptingConnection && toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? t(`connectionBrowser.deleteConnection.warning`, toBeDeleted[0].name) : t(`connectionBrowser.deleteConnection.multiple.warning`);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(server => `- ${server.name}`).join("\n");
-        vscode.window.showWarningMessage(
-          message,
-          { modal: true, detail },
-          t(`Yes`)
-        ).then(async (value) => {
-          if (value) {
-            for await (const server of toBeDeleted) {
+        if(await vscode.window.showWarningMessage( message, { modal: true, detail }, t(`Yes`))){
+            for (const server of toBeDeleted) {
               // First remove the connection details
               const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
               const newConnections = connections.filter(connection => connection.name !== server.name);
@@ -176,8 +171,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             }
 
             connectionBrowser.refresh();
-          }
-        });
+          }        
       }
     })
   );

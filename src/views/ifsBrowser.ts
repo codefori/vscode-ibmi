@@ -9,7 +9,7 @@ import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
+import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";
@@ -555,10 +555,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (items && items.length) {
           if (!items.find(n => isProtected(n.path))) {
             let deletionConfirmed = false;
-            const proceed = items.length > 1 ?
-              await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length, items.map(i => `- ${i.path}`).join("\n")), { modal: true }, t(`Yes`), t(`Cancel`)) === t(`Yes`) :
-              await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path), { modal: true }, t(`Yes`), t(`Cancel`)) === t(`Yes`);
-            if (proceed) {
+            const message = items.length === 1 ? t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path) : t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length);
+            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+            if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
               for (const item of items) {
                 if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.contextValue === `directory`) { //Check if path is directory
                   const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
