@@ -65,6 +65,8 @@ class ObjectBrowserItem extends BrowserItem {
   reveal(options?: FocusOptions) {
     return vscode.commands.executeCommand<void>(`code-for-ibmi.revealInObjectBrowser`, this, options);
   }
+
+  delete?(): Promise<void>;
 }
 
 class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -181,6 +183,22 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem {
         });
     }
   }
+
+  async delete() {
+    const config = getConfig();
+    const filter = this.filter;
+    vscode.window.showWarningMessage(t(`objectBrowser.deleteFilter.infoMessage`, filter.name), { modal: true }, t(`Yes`), t(`No`)).then(async (value) => {
+      if (value === t(`Yes`)) {
+        const index = config.objectFilters.findIndex(f => f.name === filter.name);
+
+        if (index > -1) {
+          config.objectFilters.splice(index, 1);
+          await ConnectionConfiguration.update(config);
+          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+        }
+      }
+    });
+  }
 }
 
 class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements ObjectItem {
@@ -273,6 +291,12 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
       }
     }
   }
+
+  async delete() {
+    if (await deleteObject(this.path, this.object)) {
+      this.parent?.refresh?.();
+    }
+  }
 }
 
 class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
@@ -314,6 +338,12 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     objectFilter.library = this.object.name;
     return await listObjects(this, objectFilter);
   }
+
+  async delete() {
+    if (await deleteObject(this.path, this.object)) {
+      this.parent?.refresh?.();
+    }
+  }
 }
 
 class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
@@ -343,6 +373,26 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
       title: `Open Member`,
       arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
+  }
+
+  async delete() {
+    const result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteMember.warningMessage`, this.path), { modal: true }, t(`Yes`), t(`Cancel`));
+    if (result === t(`Yes`)) {
+      const connection = getConnection();
+      const { library, file, name } = connection.parserMemberPath(this.path);
+
+      const removeResult = await connection.runCommand({
+        command: `RMVM FILE(${library}/${file}) MBR(${name})`,
+        noLibList: true
+      });
+
+      if (removeResult.code === 0) {
+        vscode.window.showInformationMessage(t(`objectBrowser.deleteMember.infoMessage`, this.path));
+        this.parent?.refresh?.();
+      } else {
+        vscode.window.showErrorMessage(t(`objectBrowser.deleteMember.errorMessage`, removeResult.stderr));
+      }
+    }
   }
 }
 
@@ -452,19 +502,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.deleteFilter`, async (node: FilteredItem) => {
-      const config = getConfig();
-      const filter = node.filter;
-      vscode.window.showInformationMessage(t(`objectBrowser.deleteFilter.infoMessage`, filter.name), t(`Yes`), t(`No`)).then(async (value) => {
-        if (value === t(`Yes`)) {
-          const index = config.objectFilters.findIndex(f => f.name === filter.name);
 
-          if (index > -1) {
-            config.objectFilters.splice(index, 1);
-            await ConnectionConfiguration.update(config);
-            objectBrowser.refresh();
-          }
-        }
-      });
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveFilterUp`, (node: ObjectBrowserFilterItem) => objectBrowser.moveFilterInList(node, `UP`)),
@@ -616,30 +654,6 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             vscode.commands.executeCommand(`code-for-ibmi.copyMember`, node, fullPath);
           }
         }
-      }
-    }),
-    vscode.commands.registerCommand(`code-for-ibmi.deleteMember`, async (node: ObjectBrowserMemberItem) => {
-      let result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteMember.warningMessage`, node.path), t(`Yes`), t(`Cancel`));
-
-      if (result === t(`Yes`)) {
-        const connection = getConnection();
-        const { library, file, name } = connection.parserMemberPath(node.path);
-
-        const removeResult = await connection.runCommand({
-          command: `RMVM FILE(${library}/${file}) MBR(${name})`,
-          noLibList: true
-        });
-
-        if (removeResult.code === 0) {
-          vscode.window.showInformationMessage(t(`objectBrowser.deleteMember.infoMessage`, node.path));
-
-          objectBrowser.refresh(node.parent);
-
-        } else {
-          vscode.window.showErrorMessage(t(`objectBrowser.deleteMember.errorMessage`, removeResult.stderr));
-        }
-
-        //Not sure how to remove the item from the list. Must refresh - but that might be slow?
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.updateMemberText`, async (node: ObjectBrowserMemberItem) => {
@@ -1033,30 +1047,6 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       } while (newPath && !newPathOK)
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.deleteObject`, async (node: ObjectBrowserObjectItem | ObjectBrowserSourcePhysicalFileItem) => {
-      let result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteObject.warningMessage`, node.path, node.object.type.toUpperCase()), t(`Yes`), t(`Cancel`));
-
-      if (result === t(`Yes`)) {
-        const connection = getConnection();
-        await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.deleteObject.progress", node.path, node.object.type.toUpperCase()) }
-          , async (progress) => {
-            // TODO: Progress message about deleting!
-            const deleteResult = await connection.runCommand({
-              command: `DLTOBJ OBJ(${node.path}) OBJTYPE(${node.object.type})`,
-              noLibList: true
-            });
-
-            if (deleteResult.code === 0) {
-              vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, node.path, node.object.type.toUpperCase()));
-              objectBrowser.refresh(node.parent);
-            } else {
-              vscode.window.showErrorMessage(t(`objectBrowser.deleteObject.errorMessage`, deleteResult.stderr));
-            }
-          }
-        );
-      }
-    }),
-
     vscode.commands.registerCommand(`code-for-ibmi.renameObject`, async (node: ObjectBrowserObjectItem) => {
       let [, newObject] = node.path.split(`/`);
       let newObjectOK;
@@ -1129,6 +1119,16 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             });
         }
       } while (newLibrary && !newLibraryOK)
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.objectBrowser.delete", async (node?: ObjectBrowserItem) => {
+      if (!node && objectTreeViewer.selection.length) {
+        const item = objectTreeViewer.selection.at(0);
+        if (item instanceof ObjectBrowserItem) {
+          node = item;
+        }
+      }
+
+      node?.delete?.();
     })
   );
 }
@@ -1264,4 +1264,30 @@ async function listObjects(item: ObjectBrowserFilterItem, filter?: ConnectionCon
     .map(object => {
       return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(item, object) : new ObjectBrowserObjectItem(item, object);
     });
+}
+
+async function deleteObject(path: string, object: IBMiObject) {
+  const result = await vscode.window.showWarningMessage(t(`objectBrowser.deleteObject.warningMessage`, path, object.type.toUpperCase()), { modal: true }, t(`Yes`), t(`Cancel`));
+
+  if (result === t(`Yes`)) {
+    const connection = getConnection();
+    await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: t("objectBrowser.deleteObject.progress", path, object.type.toUpperCase()) }
+      , async () => {
+        // TODO: Progress message about deleting!
+        const deleteResult = await connection.runCommand({
+          command: `DLTOBJ OBJ(${path}) OBJTYPE(${object.type})`,
+          noLibList: true
+        });
+
+        if (deleteResult.code === 0) {
+          vscode.window.showInformationMessage(t(`objectBrowser.deleteObject.infoMessage`, path, object.type.toUpperCase()));
+          return true;
+        } else {
+          vscode.window.showErrorMessage(t(`objectBrowser.deleteObject.errorMessage`, deleteResult.stderr));
+        }
+      }
+    );
+  }
+
+  return false;
 }
