@@ -49,10 +49,6 @@ const objectIcons = {
   '': `circle-large-outline`
 }
 
-function isProtected(filter: ConnectionConfiguration.ObjectFilters) {
-  return filter.protected || getContent().isProtectedPath(filter.library);
-}
-
 abstract class ObjectBrowserItem extends BrowserItem {
   constructor(readonly filter: ConnectionConfiguration.ObjectFilters, label: string, params?: BrowserItemParameters) {
     super(label, params);
@@ -68,6 +64,7 @@ abstract class ObjectBrowserItem extends BrowserItem {
 
   abstract toString(): string;
   abstract delete(): Promise<boolean>;
+  abstract isProtected(): boolean;
 }
 
 class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
@@ -166,10 +163,14 @@ class CreateFilterItem extends BrowserItem {
 
 class ObjectBrowserFilterItem extends ObjectBrowserItem {
   constructor(filter: ConnectionConfiguration.ObjectFilters) {
-    super(filter, filter.name, { icon: isProtected(filter) ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
-    this.contextValue = `filter${isProtected(filter) ? `_readonly` : ``}`;
+    super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
+    this.contextValue = `filter${this.isProtected() ? `_readonly` : ``}`;
     this.description = `${filter.library}/${filter.object}/${filter.member}.${filter.memberType || `*`} (${filter.types.join(`, `)})`;
     this.tooltip = ``;
+  }
+
+  isProtected(): boolean {
+    return this.filter.protected;
   }
 
   async getChildren(): Promise<ObjectBrowserItem[]> {
@@ -197,9 +198,9 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem {
     if (index > -1) {
       config.objectFilters.splice(index, 1);
       await ConnectionConfiguration.update(config);
-      
+
     }
-    
+
     return true;
   }
 }
@@ -212,7 +213,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
     const type = object.type.startsWith(`*`) ? object.type.substring(1) : object.type;
     super(parent.filter, correctCase(object.name), { parent, icon: `file-directory`, state: vscode.TreeItemCollapsibleState.Collapsed });
 
-    this.contextValue = `SPF${isProtected(this.filter) ? `_readonly` : ``}`;
+    this.contextValue = `SPF${this.isProtected() ? `_readonly` : ``}`;
     this.updateDescription();
 
     this.path = [object.library, object.name].join(`/`);
@@ -228,6 +229,10 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
       scheme: `object`,
       path: `/${object.library}/${object.name}.${type}`,
     });
+  }
+
+  isProtected(): boolean {
+    return this.filter.protected || getContent().isProtectedPath(this.object.library);
   }
 
   sortBy(sort: SortOptions) {
@@ -316,7 +321,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
 
-    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
+    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${this.isProtected() ? `_readonly` : ``}`;
     this.tooltip = new vscode.MarkdownString(``);
 
     this.resourceUri = vscode.Uri.from({
@@ -332,6 +337,10 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
         arguments: [this.resourceUri]
       };
     }
+  }
+
+  isProtected(): boolean {
+    return this.filter.protected || getContent().isProtectedPath(this.object.library);
   }
 
   updateDescription() {
@@ -356,9 +365,9 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
 class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   readonly path: string;
   readonly sortBy: (sort: SortOptions) => void;
-
+  readonly readonly: boolean;
   constructor(parent: ObjectBrowserSourcePhysicalFileItem, readonly member: IBMiMember, writable: boolean) {
-    const readonly = isProtected(parent.filter) || !writable;
+    const readonly = !writable || parent.isProtected();
     super(parent.filter, correctCase(`${member.name}.${member.extension}`), { icon: readonly ? `lock-small` : "", parent });
     this.contextValue = `member${readonly ? `_readonly` : ``}`;
     this.description = member.text;
@@ -380,6 +389,12 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
       title: `Open Member`,
       arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
+
+    this.readonly = readonly;
+  }
+
+  isProtected(): boolean {
+    return this.readonly;
   }
 
   toString(): string {
@@ -1124,22 +1139,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       } while (newLibrary && !newLibraryOK)
     }),
     vscode.commands.registerCommand("code-for-ibmi.objectBrowser.delete", async (node?: ObjectBrowserItem, nodes?: ObjectBrowserItem[]) => {
-      const toBeDeleted: ObjectBrowserItem[] = [];
+      const candidates: ObjectBrowserItem[] = [];
       if (nodes) {
-        toBeDeleted.push(...nodes);
+        candidates.push(...nodes);
       }
       else if (node) {
-        toBeDeleted.push(node);
+        candidates.push(node);
       }
       else {
-        for (const item of objectTreeViewer.selection) {
-          if (item instanceof ObjectBrowserItem) {
-            toBeDeleted.push(item);
-            item.label
-          }
-        }
+        candidates.push(...objectTreeViewer.selection.filter(i => i instanceof ObjectBrowserItem) as ObjectBrowserItem[]);
       }
 
+      const toBeDeleted = candidates.filter(item => !item.isProtected());
       if (toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? t('objectBrowser.delete.confirm', toBeDeleted[0].toString()) : t('objectBrowser.delete.multiple.confirm');
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(item => `- ${item.toString()}`).join("\n");
@@ -1147,39 +1158,39 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           const increment = Math.round(100 / toBeDeleted.length);
           const toRefresh = new Set<BrowserItem>();
           let refreshBrowser = false;
-          await vscode.window.withProgress({ title: t("objectBrowser.delete.progress"), location: vscode.ProgressLocation.Notification }, async (task) => {            
+          await vscode.window.withProgress({ title: t("objectBrowser.delete.progress"), location: vscode.ProgressLocation.Notification }, async (task) => {
             for (const item of toBeDeleted) {
               task.report({ message: item.toString(), increment });
               await item.delete();
-              
-              if(!item.parent){
+
+              if (!item.parent) {
                 //No parent (a filter): the whole browser needs to be refreshed
                 refreshBrowser = true;
                 toRefresh.clear();
               }
 
-              if(!refreshBrowser && item.parent){
+              if (!refreshBrowser && item.parent) {
                 //Refresh the element's parent unless its own parent must be refreshed
-                let parent : BrowserItem | undefined = item.parent;
+                let parent: BrowserItem | undefined = item.parent;
                 let found = false
-                while(!found && parent){
+                while (!found && parent) {
                   found = toRefresh.has(parent);
                   parent = parent.parent
                 }
 
-                if(!found){
+                if (!found) {
                   toRefresh.add(item.parent);
                 }
               }
-            }            
+            }
           });
 
-          if(refreshBrowser){
+          if (refreshBrowser) {
             vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
           }
-          else{
+          else {
             toRefresh.forEach(item => item.refresh?.());
-          }          
+          }
         }
       }
     })
@@ -1265,7 +1276,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           }
         }, timeoutInternal);
 
-        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter ? isProtected(filter) : false);
+        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected || content.isProtectedPath(pathParts[0]));
 
         // Filter search result by member type filter.
         if (results.length > 0 && filter?.member) {
