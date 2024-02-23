@@ -30,6 +30,9 @@ export const en: Locale = {
   'size': 'Size',
   'modified': 'Modified',
   'owner': 'Owner',
+  'type': 'Type',
+  'attribute': 'Attribute',
+  'created_by': 'Created by',
   // Sandbox:
   'sandbox.input.user.title': `User for server`,
   'sandbox.input.user.prompt': `Enter username for {0}`,
