@@ -55,7 +55,7 @@ export const da: Locale = {
   'connectionBrowser.renameConnection.noConnParmsFound': `Ingen parametre til forbindelsen '{0}' blev fundet`,
   'connectionBrowser.renameConnection.error': `Fejl ved omdøbning af forbindelsen '{0}'! {1}`,
   'connectionBrowser.deleteConnection.warning': `Er du sikker på at du vil slette forbindelsen '{0}'?`,
-  'connectionBrowser.deleteConnection.multiple.warning': `Er du sikker på at du vil disse forbindelser?`,
+  'connectionBrowser.deleteConnection.multiple.warning': `Er du sikker på at du vil slette disse forbindelser?`,
   'connectionBrowser.ServerItem.tooltip': ` (forrige forbindelse)`,
   'connectionBrowser.ServerItem.title': `Forbind`,
   // helpView:
@@ -141,9 +141,9 @@ export const da: Locale = {
   'LibraryListView.cleanupLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `Bibliotekslisten blev valideret uden fejl.`,
   // objectBrowser:
-  'objectBrowser.delete.confirm':'Are you sure you want to delete {0}?',
-  'objectBrowser.delete.multiple.confirm':'Are you sure you want to delete the selected elements?',
-  'objectBrowser.delete.progress':'Deleting',
+  'objectBrowser.delete.confirm':'Er du sikker på at du vil slette {0}?',
+  'objectBrowser.delete.multiple.confirm':'Er du sikker på at du vil slette de valgte elementer?',
+  'objectBrowser.delete.progress':'Sletter',
   'objectBrowser.createMember.prompt': `Navn på nyt member (member.ext)`,
   'objectBrowser.createMember.progressTitle': `Opretter member {0}...`,
   'objectBrowser.createMember.errorMessage': `Fejl ved oprettelse af member {0}: {1}`,
