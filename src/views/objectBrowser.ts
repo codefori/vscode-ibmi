@@ -321,8 +321,18 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
 
-    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${this.isProtected() ? `_readonly` : ``}`;
-    this.tooltip = new vscode.MarkdownString(``);
+    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
+    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+      type: object.type,
+      attribute: object.attribute,
+      text: object.text,
+      size: object.size,
+      created: object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+      changed: object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
+      created_by: object.created_by,
+      owner: object.owner,
+    }));
+    this.tooltip.supportHtml = true;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -636,7 +646,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             })
 
             const copyMessages = Tools.parseMessages(copyResult.stderr);
-            if (copyMessages.messages.length && !copyMessages.findId(`CPF2869`)) {
+            if (copyResult.code !== 0 && copyMessages.messages.length && !(copyMessages.findId(`CPF2869`) && copyMessages.findId(`CPF2817`))) {
               throw (copyResult.stderr)
             }
 

@@ -475,7 +475,7 @@ export default class IBMiContent {
   /**
    * @param filters
    * @param sortOrder
-   * @returns an array of IBMiFile
+   * @returns an array of IBMiObject
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const library = filters.library.toUpperCase();
@@ -521,7 +521,18 @@ export default class IBMiContent {
         `ODOBTP as TYPE, ` +
         `ODOBAT as ATTRIBUTE, ` +
         `ODOBTX as TEXT, ` +
-        `0 as IS_SOURCE ` +
+        `0 as IS_SOURCE, ` +
+        `ODOBSZ as SIZE, ` +
+        `ODCCEN, ` +
+        `ODCDAT, ` +
+        `ODCTIM, ` +
+        `ODLCEN, ` +
+        `ODLDAT, ` +
+        `ODLTIM, ` +
+        `ODOBOW as OWNER, ` +
+        `ODCRTU as CREATED_BY, ` +
+        `ODSIZU as SIZE_IN_UNITS, ` +
+        `ODBPUN as BYTES_PER_UNIT ` +
         `from QTEMP.CODE4IOBJD`;
     }
     else {
@@ -533,7 +544,18 @@ export default class IBMiContent {
         `Case When PHDTAT = 'S' Then 1 Else 0 End as IS_SOURCE, ` +
         `PHNOMB as NB_MBR, ` +
         'PHMXRL as SOURCE_LENGTH, ' +
-        'PHCSID as CCSID ' +
+        'PHCSID as CCSID, ' +
+        `ODOBSZ as SIZE, ` +
+        `ODCCEN, ` +
+        `ODCDAT, ` +
+        `ODCTIM, ` +
+        `ODLCEN, ` +
+        `ODLDAT, ` +
+        `ODLTIM, ` +
+        `ODOBOW as OWNER, ` +
+        `ODCRTU as CREATED_BY, ` +
+        `ODSIZU as SIZE_IN_UNITS, ` +
+        `ODBPUN as BYTES_PER_UNIT ` +
         `from QTEMP.CODE4IOBJD  ` +
         `left join QTEMP.CODE4IFD on PHFILE = ODOBNM And PHDTAT = 'S'`;
     }
@@ -550,7 +572,12 @@ export default class IBMiContent {
       memberCount: object.NB_MBR !== undefined ? Number(object.NB_MBR) : undefined,
       sourceFile: Boolean(object.IS_SOURCE),
       sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
-      CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined
+      CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined,
+      size: Number(object.SIZE) !== 9999999999 ? Number(object.SIZE) : Number(object.SIZE_IN_UNITS) * Number(object.BYTES_PER_UNIT),
+      created: this.getDspObjDdDate(String(object.ODCCEN), String(object.ODCDAT), String(object.ODCTIM)),
+      changed: this.getDspObjDdDate(String(object.ODLCEN), String(object.ODLDAT), String(object.ODLTIM)),
+      created_by: object.CREATED_BY,
+      owner: object.OWNER,
     } as IBMiObject))
       .filter(object => !typeFilter || typeFilter(object.type))
       .filter(object => nameFilter.test(object.name))
@@ -806,8 +833,9 @@ export default class IBMiContent {
    * @param timeString: string in HHMMSS
    * @returns date
    */
-  getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
+  getDspObjDdDate(century: string = `0`, MMDDYY: string = `010101`, HHMMSS: string = `000000`): Date {
     let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
+    let YYMMDD: string = MMDDYY.slice(4,).concat(MMDDYY.slice(0, 4));
     let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
     return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
