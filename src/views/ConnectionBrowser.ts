@@ -149,29 +149,29 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       }
 
       if (!connectionBrowser.attemptingConnection && toBeDeleted.length) {
-        const message = toBeDeleted.length === 1 ? t(`connectionBrowser.deleteConnection.warning`, toBeDeleted[0].name) : t(`connectionBrowser.deleteConnection.multiple.warning`);
+        const message = toBeDeleted.length === 1 ? t(`connectionBrowser.deleteConnection.warning`, toBeDeleted[0].name) : t(`connectionBrowser.deleteConnection.multiple.warning`, toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(server => `- ${server.name}`).join("\n");
-        if(await vscode.window.showWarningMessage( message, { modal: true, detail }, t(`Yes`))){
-            for (const server of toBeDeleted) {
-              // First remove the connection details
-              const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-              const newConnections = connections.filter(connection => connection.name !== server.name);
-              await GlobalConfiguration.set(`connections`, newConnections);
+        if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
+          for (const server of toBeDeleted) {
+            // First remove the connection details
+            const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+            const newConnections = connections.filter(connection => connection.name !== server.name);
+            await GlobalConfiguration.set(`connections`, newConnections);
 
-              // Also remove the connection settings
-              const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
-              const newConnectionSettings = connectionSettings.filter(connection => connection.name !== server.name);
-              await GlobalConfiguration.set(`connectionSettings`, newConnectionSettings);
+            // Also remove the connection settings
+            const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
+            const newConnectionSettings = connectionSettings.filter(connection => connection.name !== server.name);
+            await GlobalConfiguration.set(`connectionSettings`, newConnectionSettings);
 
-              // Also remove the cached connection settings
-              GlobalStorage.get().deleteServerSettingsCache(server.name);
+            // Also remove the cached connection settings
+            GlobalStorage.get().deleteServerSettingsCache(server.name);
 
-              // Then remove the password
-              await context.secrets.delete(`${server.name}_password`);
-            }
+            // Then remove the password
+            await context.secrets.delete(`${server.name}_password`);
+          }
 
-            connectionBrowser.refresh();
-          }        
+          connectionBrowser.refresh();
+        }
       }
     })
   );

@@ -55,7 +55,7 @@ export const en: Locale = {
   'connectionBrowser.renameConnection.noConnParmsFound': `No parameters for connection '{0}' was found`,
   'connectionBrowser.renameConnection.error': `Error renaming connection '{0}'! {1}`,
   'connectionBrowser.deleteConnection.warning': `Are you sure you want to delete the connection '{0}'?`,
-  'connectionBrowser.deleteConnection.multiple.warning': `Are you sure you want to delete these connections?`,
+  'connectionBrowser.deleteConnection.multiple.warning': `Are you sure you want to delete these {0} connections?`,
   'connectionBrowser.ServerItem.tooltip': ` (previous connection)`,
   'connectionBrowser.ServerItem.title': `Connect`,
   // helpView:
@@ -142,7 +142,7 @@ export const en: Locale = {
   'LibraryListView.cleanupLibraryList.validated': `Library list were validated without any errors.`,
   // objectBrowser:
   'objectBrowser.delete.confirm':'Are you sure you want to delete {0}?',
-  'objectBrowser.delete.multiple.confirm':'Are you sure you want to delete the selected elements?',
+  'objectBrowser.delete.multiple.confirm':'Are you sure you want to delete these {0} elements?',
   'objectBrowser.delete.progress':'Deleting',
   'objectBrowser.createMember.prompt': `Name of new source member (member.ext)`,
   'objectBrowser.createMember.progressTitle': `Creating member {0}...`,
