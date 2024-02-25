@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.7.3-dev.0",
+	"version": "2.7.4-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -2393,26 +2393,26 @@
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
 					"group": "1_workspace@1"
 				},
-        {
-          "command": "code-for-ibmi.createStreamfile",
-          "when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
-          "group": "2_ifsStuff@1"
-        },
-        {
-          "command": "code-for-ibmi.createDirectory",
-          "when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
-          "group": "2_ifsStuff@2"
-        },
-        {
-          "command": "code-for-ibmi.copyIFS",
-          "when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
-          "group": "2_ifsStuff@3"
-        },
-        {
-          "command": "code-for-ibmi.moveIFS",
-          "when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
-          "group": "2_ifsStuff@4"
-        },
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"group": "2_ifsStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.createDirectory",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
+					"group": "2_ifsStuff@2"
+				},
+				{
+					"command": "code-for-ibmi.copyIFS",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@3"
+				},
+				{
+					"command": "code-for-ibmi.moveIFS",
+					"when": "view == ifsBrowser && !listMultiSelection && !(viewItem =~ /^.*_protected$/)",
+					"group": "2_ifsStuff@4"
+				},
 				{
 					"command": "code-for-ibmi.deleteIFS",
 					"when": "view == ifsBrowser && !(viewItem =~ /^.*_protected$/)",
@@ -2438,11 +2438,11 @@
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
 					"group": "3_ifsStuff@3"
 				},
-        {
-          "command": "code-for-ibmi.createStreamfile",
-          "when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
-          "group": "2_ifsStuff@1"
-        },
+				{
+					"command": "code-for-ibmi.createStreamfile",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
+					"group": "2_ifsStuff@1"
+				},
 				{
 					"command": "code-for-ibmi.createDirectory",
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^shortcut.*$/",
@@ -2520,7 +2520,6 @@
 				},
 				{
 					"command": "code-for-ibmi.deleteObject",
-
 					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@5"
 				},
@@ -2533,7 +2532,6 @@
 					"command": "code-for-ibmi.moveObject",
 					"when": "view == objectBrowser && (viewItem =~ /^object(?!.lib)/ || viewItem == SPF)",
 					"group": "1_objActions@4"
-
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
