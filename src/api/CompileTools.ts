@@ -772,7 +772,7 @@ export namespace CompileTools {
 
   function buildLibraryList(config: ILELibrarySettings): string[] {
     //We have to reverse it because `liblist -a` adds the next item to the top always 
-    return config.libraryList.reverse();
+    return config.libraryList.slice(0).reverse();
   }
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
