@@ -216,6 +216,18 @@ export namespace SEUColors {
     }
   };
 
+  const colorMap = new Map();
+  Object.entries(ColorDefinitions).forEach(c => {
+    const colorName = c[0];
+    const colorCode = c[1].bytes.join(','); // convert to string for use as Map key
+    console.log(colorCode);
+    colorMap.set(colorCode, colorName);
+  });
+
+  export function getColorDef(bytesToCheck: Buffer) {
+    return colorMap.get(bytesToCheck.join(','));
+  }
+
   export function forEach(cb: (name: string, color: Color) => void) {
     Object.entries(ColorDefinitions).forEach(c => cb(c[0], c[1]));
   }
