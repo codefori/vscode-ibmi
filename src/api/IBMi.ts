@@ -3,6 +3,8 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
+import { existsSync } from "fs";
+import os from "os";
 import path from 'path';
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
@@ -613,7 +615,7 @@ export default class IBMi {
 
             // Next, we're going to see if we can get the CCSID from the user or the system.
             // Some things don't work without it!!!
-            try {              
+            try {
               const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
               if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
                 this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
@@ -676,7 +678,7 @@ export default class IBMi {
           }
         }
 
-        if((this.qccsid < 1 || this.qccsid === 65535)){
+        if ((this.qccsid < 1 || this.qccsid === 65535)) {
           this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.defaultCCSID}\n`);
         }
 
@@ -1143,6 +1145,22 @@ export default class IBMi {
 
   async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
+  }
+
+  getLastDownloadLocation() {
+    if(this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))){
+      return this.config.lastDownloadLocation;
+    }
+    else{
+      return os.homedir();
+    }    
+  }
+
+  async setLastDownloadLocation(location: string) {
+    if (this.config && location && location !== this.config.lastDownloadLocation) {
+      this.config.lastDownloadLocation = location;
+      await ConnectionConfiguration.update(this.config);
+    }
   }
 
   fileToPath(file: string | vscode.Uri): string {

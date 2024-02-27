@@ -1,6 +1,5 @@
 import Crypto from 'crypto';
 import { readFileSync } from "fs";
-import os from "os";
 import path from "path";
 import vscode from "vscode";
 import { t } from "../locale";
@@ -8,8 +7,6 @@ import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
 
 export namespace Tools {
-  let lastDownloadLocation = os.homedir();
-
   export class SqlError extends Error {
     public sqlstate: string = "0";
     constructor(message: string) {
@@ -312,14 +309,6 @@ export namespace Tools {
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
       .concat(`${Object.entries(rows).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
       .concat(`</table>`);
-  }
-
-  export function setLastDownloadLocation(path:string){
-    lastDownloadLocation = path;
-  }
-
-  export function getLastDownloadLocation(){
-    return lastDownloadLocation;
   }
 
   export function fixWindowsPath(path:string){

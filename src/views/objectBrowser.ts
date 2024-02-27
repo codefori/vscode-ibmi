@@ -797,9 +797,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
-      const localFilepath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(Tools.getLastDownloadLocation(), basename)) }))?.path;
+      const localFilepath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), basename)) }))?.path;
       if (localFilepath) {
-        Tools.setLastDownloadLocation(dirname(localFilepath));
+        await connection.setLastDownloadLocation(dirname(localFilepath));
         try {
           await writeFileAsync(Tools.fixWindowsPath(localFilepath), memberContent, `utf8`);
           vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
