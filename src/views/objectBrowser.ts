@@ -1165,7 +1165,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const message = toBeDeleted.length === 1 ? t('objectBrowser.delete.confirm', toBeDeleted[0].toString()) : t('objectBrowser.delete.multiple.confirm', toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : Tools.listAndTruncate(toBeDeleted.map(item => item.toString()), 10);
         if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
-          const increment = Math.round(100 / toBeDeleted.length);
+          const increment = 100 / toBeDeleted.length;
           const toRefresh = new Set<BrowserItem>();
           let refreshBrowser = false;
           await vscode.window.withProgress({ title: t("objectBrowser.delete.progress"), location: vscode.ProgressLocation.Notification }, async (task) => {
