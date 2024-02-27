@@ -47,19 +47,7 @@ export namespace SEUColorProvider {
         // Helper function: record a segment of a member line that should be hidden
         function addSegmentToHide(lineIndex:number, startIndex:number, endIndex:number) {
           hiddenDecorations.push({
-            range: new vscode.Range(lineIndex, startIndex, lineIndex, endIndex),
-            renderOptions: {
-              before: {
-                contentText: Buffer.from([156]).toString(),
-                width: `0`,
-                textDecoration: `; opacity: 0;`
-              },
-              after: {
-                contentText: Buffer.from([152]).toString(),
-                width: `0`,
-                textDecoration: `; opacity: 0;`
-              },
-            }
+            range: new vscode.Range(lineIndex, startIndex, lineIndex, endIndex)
           });
         }
 
@@ -77,14 +65,14 @@ export namespace SEUColorProvider {
 
           // Character index and definition of the previously found color sequence
           let prevColorSeqCharIndex = 0;
-          let prevColorSeqDef = null;
+          let prevColorSeqDefinition = undefined;
 
           // Check the line byte-by-byte
           for (let byteIndex = 0; byteIndex < lineBytes.byteLength; ++byteIndex) {
             const nextByte = lineBytes[byteIndex];
-            // If the current byte is NOT 194 (0xC2), only check the current byte.
-            // Otherwise, check both the current byte and the following byte
-            let bytesToCheck = [nextByte];
+            // If the next byte is NOT 194 (0xC2), only check that byte.
+            // Otherwise, check both the next byte and the following byte.
+            const bytesToCheck = [nextByte];
             if(nextByte === 194)
               bytesToCheck.push(lineBytes[byteIndex+1]);
             // Find the color sequence, if any, indicated by the checked byte(s)
@@ -99,15 +87,15 @@ export namespace SEUColorProvider {
               addSegmentToHide(lineIndex, charIndex, charIndex + seqCharLength);
               // If a color sequence was found earlier in the line,
               // mark this as the end of the line segment to be colored according to that seuqnece
-              if(prevColorSeqDef)
-                addSegmentToColor(lineIndex, prevColorSeqCharIndex, charIndex, prevColorSeqDef);
+              if(prevColorSeqDefinition)
+                addSegmentToColor(lineIndex, prevColorSeqCharIndex, charIndex, prevColorSeqDefinition);
               prevColorSeqCharIndex = charIndex + seqCharLength;
-              prevColorSeqDef = colorDef;
+              prevColorSeqDefinition = colorDef;
             }
           }
           // For the last color sequence on the line, color all characters until the end of the line
-          if(prevColorSeqDef)
-            addSegmentToColor(lineIndex, prevColorSeqCharIndex, line.text.length, prevColorSeqDef);
+          if(prevColorSeqDefinition)
+            addSegmentToColor(lineIndex, prevColorSeqCharIndex, line.text.length, prevColorSeqDefinition);
         }
 
         // Finally, set the decorations
