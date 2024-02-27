@@ -35,6 +35,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   await loadAllofExtension(context);
+
   const checkLastConnections = () => {
     const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
     const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
