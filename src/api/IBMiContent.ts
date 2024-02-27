@@ -398,7 +398,7 @@ export default class IBMiContent {
       `;
       results = await this.runSQL(statement);
     } else {
-      results = await this.getQTempTable([`CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST)')`], "LIBLIST");
+      results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
       if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
         return [];
       }
@@ -506,7 +506,7 @@ export default class IBMiContent {
     let createOBJLIST;
     if (sourceFilesOnly) {
       //DSPFD only
-      createOBJLIST =`select PHFILE as NAME, ` +
+      createOBJLIST = `select PHFILE as NAME, ` +
         `'*FILE' as TYPE, ` +
         `PHFILA as ATTRIBUTE, ` +
         `PHTXT as TEXT, ` +
