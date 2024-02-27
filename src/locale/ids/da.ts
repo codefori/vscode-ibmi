@@ -33,7 +33,6 @@ export const da: Locale = {
   'type': 'Type',
   'attribute': 'Attribut',
   'created_by': 'Oprettet af',
-  'and.x.more':'Og {0} mere...',
   // Sandbox:
   'sandbox.input.user.title': `Bruger for server`,
   'sandbox.input.user.prompt': `Indtast brugernavn for {0}`,
