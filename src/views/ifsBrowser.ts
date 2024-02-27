@@ -1,5 +1,5 @@
 import os from "os";
-import path from "path";
+import path, { dirname } from "path";
 import vscode, { FileType } from "vscode";
 
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
@@ -736,7 +736,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const remoteFilepath = path.join(Tools.getLastDownloadLocation(), path.basename(node.path));
         const localPath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(remoteFilepath) }))?.path;
         if (localPath) {
-          Tools.setLastDownloadLocation(localPath);
+          Tools.setLastDownloadLocation(dirname(localPath));
           try {
             await ibmi.downloadFile(localPath, node.path);
             vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.infoMessage`));

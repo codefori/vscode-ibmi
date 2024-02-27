@@ -1,7 +1,7 @@
 import Crypto from 'crypto';
-import { readFileSync, statSync } from "fs";
+import { readFileSync } from "fs";
 import os from "os";
-import path, { dirname } from "path";
+import path from "path";
 import vscode from "vscode";
 import { t } from "../locale";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
@@ -315,13 +315,7 @@ export namespace Tools {
   }
 
   export function setLastDownloadLocation(path:string){
-    path = fixWindowsPath(path);
-    if(statSync(path).isDirectory()){
-      lastDownloadLocation = path;
-    }
-    else{
-      lastDownloadLocation = dirname(path);
-    }
+    lastDownloadLocation = path;
   }
 
   export function getLastDownloadLocation(){

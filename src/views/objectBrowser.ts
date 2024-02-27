@@ -1,6 +1,6 @@
 import fs from "fs";
 import os from "os";
-import path from "path";
+import path, { dirname } from "path";
 import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
@@ -799,7 +799,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       const localFilepath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(Tools.getLastDownloadLocation(), basename)) }))?.path;
       if (localFilepath) {
-        Tools.setLastDownloadLocation(localFilepath);
+        Tools.setLastDownloadLocation(dirname(localFilepath));
         try {
           await writeFileAsync(Tools.fixWindowsPath(localFilepath), memberContent, `utf8`);
           vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
