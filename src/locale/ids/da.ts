@@ -97,7 +97,7 @@ export const da: Locale = {
   'ifsBrowser.deleteIFS.multi.warningMessage': `Er du sikker på at du vil slette de {0} valgte filer?`,
   'ifsBrowser.deleteIFS.deletionPrompt': `Når du har slettet mappen, kan den ikke retableres.\nVenligst tast \"{0}\" for at bekræfte sletning.`,
   'ifsBrowser.deleteIFS.deletionPrompt2': ` (Tryk \'Escape\' for at afbryde)`,
-  'ifsBrowser.deleteIFS.progress': `Deleting {0} element(s)...`,
+  'ifsBrowser.deleteIFS.progress': `Sletning af {0} element(er)...`,
   'ifsBrowser.deleteIFS.errorMessage': `Fejl ved sletning af streamfile! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Sletning afbrudt.`,
   'ifsBrowser.deleteIFS.default.home.dir':'{0} var den aktuelle mappe; det er nu {1}.',
