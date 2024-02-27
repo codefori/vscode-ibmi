@@ -3,7 +3,6 @@ import vscode from 'vscode';
 import { SEUColors } from './SEUColors';
 
 const hidden = vscode.window.createTextEditorDecorationType({
-  //letterSpacing: `-1em`,
   opacity: `0`,
   rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
 });
