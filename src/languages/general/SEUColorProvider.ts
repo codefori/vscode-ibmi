@@ -3,8 +3,9 @@ import vscode from 'vscode';
 import { SEUColors } from './SEUColors';
 
 const hidden = vscode.window.createTextEditorDecorationType({
-  letterSpacing: `-1em`,
+  //letterSpacing: `-1em`,
   opacity: `0`,
+  rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
 });
 
 export namespace SEUColorProvider {
@@ -48,8 +49,15 @@ export namespace SEUColorProvider {
           hiddenDecorations.push({
             range: new vscode.Range(lineIndex, startIndex, lineIndex, endIndex),
             renderOptions: {
+              before: {
+                contentText: Buffer.from([156]).toString(),
+                width: `0`,
+                textDecoration: `; opacity: 0;`
+              },
               after: {
-                contentText: ` `
+                contentText: Buffer.from([152]).toString(),
+                width: `0`,
+                textDecoration: `; opacity: 0;`
               },
             }
           });
@@ -87,7 +95,6 @@ export namespace SEUColorProvider {
               // sequence appears.
               const charIndex = lineBytes.slice(0,byteIndex).toString().length;
               const seqCharLength = Buffer.from(bytesToCheck).toString().length;
-              console.log(lineBytes.slice(0, byteIndex).toString().length - lineBytes.slice(0, byteIndex).length);
 
               addSegmentToHide(lineIndex, charIndex, charIndex + seqCharLength);
               // If a color sequence was found earlier in the line,
