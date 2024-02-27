@@ -1147,13 +1147,7 @@ export default class IBMi {
 
   fileToPath(file: string | vscode.Uri): string {
     if (typeof file === "string") {
-      if (process.platform === `win32` && file[0] === `/`) {
-        //Issue with getFile not working propertly on Windows
-        //when there was a / at the start.
-        return file.substring(1);
-      } else {
-        return file;
-      }
+      return Tools.fixWindowsPath(file);
     }
     else {
       return file.fsPath;

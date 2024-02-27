@@ -1,5 +1,6 @@
 import fs from "fs";
 import os from "os";
+import path from "path";
 import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
@@ -796,20 +797,11 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
 
-      let localFilepath = await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(os.homedir() + `/` + basename) });
-
+      const localFilepath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(Tools.getLastDownloadLocation(), basename)) }))?.path;
       if (localFilepath) {
-        let localPath = localFilepath.path;
-        if (process.platform === `win32`) {
-          //Issue with getFile not working properly on Windows
-          //when there is a / at the start.
-          if (localPath[0] === `/`) {
-            localPath = localPath.substring(1);
-          }
-        }
-
+        Tools.setLastDownloadLocation(localFilepath);
         try {
-          await writeFileAsync(localPath, memberContent, `utf8`);
+          await writeFileAsync(Tools.fixWindowsPath(localFilepath), memberContent, `utf8`);
           vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
         } catch (e) {
           vscode.window.showErrorMessage(t(`objectBrowser.downloadMemberContent.errorMessage`, e));
