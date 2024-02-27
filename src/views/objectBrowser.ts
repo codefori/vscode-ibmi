@@ -408,7 +408,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   }
 
   toString(): string {
-    return `${this.path} (${this.member.extension})`;
+    return this.path;
   }
 
   async delete() {
