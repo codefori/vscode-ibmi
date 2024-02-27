@@ -97,7 +97,7 @@ export const fr: Locale = {
   'ifsBrowser.deleteIFS.multi.warningMessage': `Êtes-vous sûr de vouloir suprimer les {0} fichiers sélectionnés?`,
   'ifsBrowser.deleteIFS.deletionPrompt': `La suppression du répertoire est irréversible!\nEntrez \"{0}\" pour confirmer la suppression.`,
   'ifsBrowser.deleteIFS.deletionPrompt2': ` (Appuyer sur \'Escape\' pour annuler)`,
-  'ifsBrowser.deleteIFS.infoMessage': `{0} supprimé.`,
+  'ifsBrowser.deleteIFS.progress': `Suppression de {0} élément(s)...`,
   'ifsBrowser.deleteIFS.errorMessage': `Erreur lors de la suppression du fichier! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Suppression annulée.`,
   'ifsBrowser.deleteIFS.default.home.dir':'{0} était le répertoire de travail; c\'est désormais {1}.',

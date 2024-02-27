@@ -97,7 +97,7 @@ export const en: Locale = {
   'ifsBrowser.deleteIFS.multi.warningMessage': `Are you sure you want to delete the {0} selected files?`,
   'ifsBrowser.deleteIFS.deletionPrompt': `Once you delete the directory, it cannot be restored.\nPlease type \"{0}\" to confirm deletion.`,
   'ifsBrowser.deleteIFS.deletionPrompt2': ` (Press \'Escape\' to cancel)`,
-  'ifsBrowser.deleteIFS.infoMessage': `Deleted {0}.`,
+  'ifsBrowser.deleteIFS.progress': `Deleting {0} element(s)...`,
   'ifsBrowser.deleteIFS.errorMessage': `Error deleting streamfile! {0}`,
   'ifsBrowser.deleteIFS.cancelled': `Deletion canceled.`,
   'ifsBrowser.deleteIFS.default.home.dir':'{0} was the working directory; it is now {1}.',
