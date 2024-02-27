@@ -33,6 +33,7 @@ export const en: Locale = {
   'type': 'Type',
   'attribute': 'Attribute',
   'created_by': 'Created by',
+  'and.x.more':'And {0} more...',
   // Sandbox:
   'sandbox.input.user.title': `User for server`,
   'sandbox.input.user.prompt': `Enter username for {0}`,

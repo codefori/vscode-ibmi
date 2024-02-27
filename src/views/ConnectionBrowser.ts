@@ -3,6 +3,7 @@ import { ConnectionData, Server } from '../typings';
 
 import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
 import { GlobalStorage } from '../api/Storage';
+import { Tools } from '../api/Tools';
 import { instance } from '../instantiate';
 import { t } from "../locale";
 import { Login } from '../webviews/login';
@@ -150,7 +151,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 
       if (!connectionBrowser.attemptingConnection && toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? t(`connectionBrowser.deleteConnection.warning`, toBeDeleted[0].name) : t(`connectionBrowser.deleteConnection.multiple.warning`, toBeDeleted.length);
-        const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(server => `- ${server.name}`).join("\n");
+        const detail = toBeDeleted.length === 1 ? undefined : Tools.listAndTruncate(toBeDeleted.map(server => server.name), 10);
         if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
           for (const server of toBeDeleted) {
             // First remove the connection details

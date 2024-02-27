@@ -557,7 +557,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           if (!items.find(n => isProtected(n.path))) {
             let deletionConfirmed = false;
             const message = items.length === 1 ? t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path) : t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length);
-            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+            const detail = items.length === 1 ? undefined : Tools.listAndTruncate(items.map(item => item.path), 10);
             if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
               const toBeDeleted: string[] = [];
               for (const item of items) {
