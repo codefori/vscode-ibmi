@@ -321,7 +321,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem {
     this.path = [object.library, object.name].join(`/`);
     this.updateDescription();
 
-    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isProtected(this.filter) ? `_readonly` : ``}`;
+    this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${this.isProtected() ? `_readonly` : ``}`;
     this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
       type: object.type,
       attribute: object.attribute,
