@@ -9,7 +9,7 @@ import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
+import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";
@@ -100,13 +100,13 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip =  new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
       size: file.size,
       modified: file.modified ? new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
       owner: file.owner ? file.owner.toUpperCase() : ``
     }));
     this.tooltip.supportHtml = true;
-    }
+  }
 
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
@@ -162,7 +162,7 @@ class IFSDirectoryItem extends IFSItem {
     if (content) {
       try {
         const showHidden = instance.getConfig()?.showHiddenFiles;
-        const filterIFSFile = (file:IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
+        const filterIFSFile = (file: IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
         const directories = objects.filter(f => filterIFSFile(f, "directory"));
         const streamFiles = objects.filter(f => filterIFSFile(f, "streamfile"));
@@ -216,8 +216,8 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
       if (ifsBrowserItems) {
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
       } else if (objectBrowserItems) {
-          const memberUris = (await objectBrowserItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
-          this.copyMembers(memberUris, toDirectory)
+        const memberUris = (await objectBrowserItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
+        this.copyMembers(memberUris, toDirectory)
       }
       else {
         const explorerItems = dataTransfer.get(URI_LIST_MIMETYPE);
@@ -286,7 +286,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
             noLibList: true
           });
           if (result.code !== 0) {
-            throw(t(`ifsBrowser.copyToStreamfile.failed`, toDirectory.path, result!.stderr));
+            throw (t(`ifsBrowser.copyToStreamfile.failed`, toDirectory.path, result!.stderr));
           }
         };
 
@@ -546,58 +546,68 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
       if (connection && config) {
-        items = items || [singleItem];
-        if (!items.find(n => isProtected(n.path))) {
-          let deletionConfirmed = false;
-          const proceed = items.length > 1 ?
-            await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length), t(`Yes`), t(`Cancel`)) === t(`Yes`) :
-            await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path), t(`Yes`), t(`Cancel`)) === t(`Yes`);
-          if (proceed) {
-            for (const item of items) {
-              if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.contextValue === `directory`) { //Check if path is directory
-                const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
-
-                const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
-                const input = await vscode.window.showInputBox({
-                  placeHolder: dirName,
-                  prompt: deletionPrompt,
-                  validateInput: text => {
-                    return (text === dirName) ? null : deletionPrompt + t(`ifsBrowser.deleteIFS.deletionPrompt2`);
-                  }
-                });
-                deletionConfirmed = (input === dirName);
-              }
-              else {
-                // If deleting a file rather than a directory, skip the name entry
-                deletionConfirmed = true;
-              }
-
-              if (deletionConfirmed) {
-                try {
-                  const removeResult = await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(item.path)}` })
-                  if (removeResult.code === 0) {
-                    vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, item.path));
-                  }
-                  else {
-                    throw removeResult.stderr;
-                  }
-                } catch (e) {
-                  vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
-                }
-              }
-              else {
-                vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.cancelled`));
-              }
-            }
-            if (GlobalConfiguration.get(`autoRefresh`)) {
-              items.map(item => item.parent)
-                .filter(Tools.distinct)
-                .forEach(async parent => parent?.refresh?.());
-            }
-          }
+        if (items || singleItem) {
+          items = (items || [singleItem]).filter(reduceIFSPath);
         }
         else {
-          vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
+          items = (ifsTreeViewer.selection.filter(selected => selected instanceof IFSItem) as IFSItem[]).filter(reduceIFSPath);
+        }
+
+        if (items && items.length) {
+          if (!items.find(n => isProtected(n.path))) {
+            let deletionConfirmed = false;
+            const message = items.length === 1 ? t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path) : t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length);
+            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+            if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
+              const toBeDeleted: string[] = [];
+              for (const item of items) {
+                if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
+                  const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
+
+                  const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
+                  const input = await vscode.window.showInputBox({
+                    placeHolder: dirName,
+                    prompt: deletionPrompt,
+                    validateInput: text => {
+                      return (text === dirName) ? null : deletionPrompt + t(`ifsBrowser.deleteIFS.deletionPrompt2`);
+                    }
+                  });
+                  deletionConfirmed = (input === dirName);
+                }
+                else {
+                  // If deleting a file rather than a directory, skip the name entry
+                  // Do not delete a file if one of its parent directory is going to be deleted
+                  deletionConfirmed = true;
+                }
+
+                if (deletionConfirmed) {
+                  toBeDeleted.push(item.path);
+                }
+              }
+
+              try {
+                const removeResult = await vscode.window.withProgress({ title: t('ifsBrowser.deleteIFS.progress', toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
+                  return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
+                });
+                if (removeResult.code !== 0) {
+                  throw removeResult.stderr;
+                }
+                if (GlobalConfiguration.get(`autoRefresh`)) {
+                  items.map(item => item.parent)
+                    .filter(Tools.distinct)
+                    .forEach(async parent => parent?.refresh?.());
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
+              }
+            }
+            else {
+              vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.cancelled`));
+            }
+          }
+          else {
+            vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
+          }
         }
       }
     }),
@@ -806,5 +816,19 @@ async function showOpenDialog() {
         canSelectFiles: true
       }
     })
+  }
+}
+
+/**
+ * Filters the content of an IFSItem array to keep only:
+ * - Folders
+ * - Files whose parent folders are not in the array
+ */
+function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
+  if (item.file.type === "directory") {
+    return true;
+  }
+  else {
+    return !array.filter(i => i.file.type === "directory").some(folder => item.file.path.startsWith(folder.file.path));
   }
 }

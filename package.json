@@ -1230,13 +1230,6 @@
 				"icon": "$(files)"
 			},
 			{
-				"command": "code-for-ibmi.deleteMember",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Delete...",
-				"category": "IBM i",
-				"icon": "$(symbol-file)"
-			},
-			{
 				"command": "code-for-ibmi.updateMemberText",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Description...",
@@ -1440,7 +1433,7 @@
 				"icon": "$(filter)"
 			},
 			{
-				"command": "code-for-ibmi.deleteFilter",
+				"command": "code-for-ibmi.objectBrowser.delete",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Delete...",
 				"category": "IBM i",
@@ -1525,13 +1518,6 @@
 				"command": "code-for-ibmi.copyObject",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Copy...",
-				"category": "IBM i",
-				"icon": "$(symbol-file)"
-			},
-			{
-				"command": "code-for-ibmi.deleteObject",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Delete...",
 				"category": "IBM i",
 				"icon": "$(symbol-file)"
 			},
@@ -1660,6 +1646,21 @@
 				"key": "ctrl+r",
 				"mac": "cmd+r",
 				"when": "editorLangId == cl"
+			},
+			{
+				"command": "code-for-ibmi.deleteConnection",
+				"key": "delete",
+				"when": "focusedView === connectionBrowser && listHasSelectionOrFocus"
+			},
+			{
+				"command": "code-for-ibmi.deleteIFS",
+				"key": "delete",
+				"when": "focusedView === ifsBrowser && listHasSelectionOrFocus"
+			},
+			{
+				"command": "code-for-ibmi.objectBrowser.delete",
+				"key": "delete",
+				"when": "focusedView === objectBrowser && listHasSelectionOrFocus"
 			}
 		],
 		"viewsContainers": {
@@ -1915,19 +1916,11 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.deleteFilter",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.createMember",
 					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.copyMember",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.deleteMember",
 					"when": "never"
 				},
 				{
@@ -1956,10 +1949,6 @@
 				},
 				{
 					"command": "code-for-ibmi.copyObject",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.deleteObject",
 					"when": "never"
 				},
 				{
@@ -2175,7 +2164,7 @@
 			"view/item/context": [
 				{
 					"command": "code-for-ibmi.renameConnection",
-					"when": "view == connectionBrowser && viewItem == server",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "2_delete@1"
 				},
 				{
@@ -2185,22 +2174,22 @@
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
-					"when": "view == connectionBrowser && viewItem == server",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "1_manage@1"
 				},
 				{
 					"command": "code-for-ibmi.showLoginSettings",
-					"when": "view == connectionBrowser && viewItem == server",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "1_manage@2"
 				},
 				{
 					"command": "code-for-ibmi.connectTo",
-					"when": "view == connectionBrowser && viewItem == server",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.connectToAndReload",
-					"when": "view == connectionBrowser && viewItem == server",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "3_connect@1"
 				},
 				{
@@ -2279,7 +2268,7 @@
 					"group": "4_filters@2"
 				},
 				{
-					"command": "code-for-ibmi.deleteFilter",
+					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
 					"group": "4_filters@3"
 				},
@@ -2324,9 +2313,14 @@
 					"group": "4_sourceFileStuff@1"
 				},
 				{
+					"command": "code-for-ibmi.objectBrowser.delete",
+					"when": "view == objectBrowser && viewItem == SPF",
+					"group": "5_sourceFileStuff@1"
+				},
+				{
 					"submenu": "code-for-ibmi.sortMembers",
 					"when": "view == objectBrowser && (viewItem =~ /^SPF/ || viewItem =~ /^member/)",
-					"group": "5_sourceFileStuff@1"
+					"group": "6_sourceFileStuff@1"
 				},
 				{
 					"submenu": "code-for-ibmi.openMember",
@@ -2354,7 +2348,7 @@
 					"group": "2_memberStuff@2"
 				},
 				{
-					"command": "code-for-ibmi.deleteMember",
+					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "view == objectBrowser && viewItem == member",
 					"group": "2_memberStuff@4"
 				},
@@ -2524,18 +2518,18 @@
 					"group": "1_objActions@2"
 				},
 				{
-					"command": "code-for-ibmi.deleteObject",
-					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
+					"command": "code-for-ibmi.objectBrowser.delete",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@5"
 				},
 				{
 					"command": "code-for-ibmi.renameObject",
-					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
+					"when": "view == objectBrowser && viewItem =~ /^object/",
 					"group": "1_objActions@3"
 				},
 				{
 					"command": "code-for-ibmi.moveObject",
-					"when": "view == objectBrowser && (viewItem =~ /^object(?!.lib)/ || viewItem == SPF)",
+					"when": "view == objectBrowser && viewItem =~ /^object(?!.lib)/",
 					"group": "1_objActions@4"
 				},
 				{
