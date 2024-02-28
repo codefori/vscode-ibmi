@@ -640,10 +640,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     // TODO: should this be a connection API instead in the IBMi class?
     // Opinion: no because it has UI elements to it
-    vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string) => {
+    vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
       if (extensionId) {
+        // We need to do some verification to make sure the callerExtension is a real extension
         const extension = vscode.extensions.getExtension(extensionId);
-        if (extension && extension.isActive) {
+        const isValid = (extension && extension.isActive);
+        if (isValid) {
+
           const connection = instance.getConnection();
           if (connection) {
 
@@ -653,33 +656,65 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               throw new Error(`Password request denied.`);
             }
 
-            const storage = instance.getStorage()!;
-            let isAuthed = storage.extensionIsAuthorised(extensionId);
+            const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
+            const storedPassword = await context.secrets.get(connectionKey);
 
-            if (!isAuthed) {
-              const result = await vscode.window.showWarningMessage(`Password request`, {
-                modal: true,
-                detail: `The extension "${extensionId}" is requesting to access your password.`
-              }, `Allow`);
+            if (storedPassword) {
 
-              if (result === `Allow`) {
-                await storage.authorizeExtension(extensionId);
-                isAuthed = true;
+              const storage = instance.getStorage()!;
+              let isAuthed = storage.extensionIsAuthorised(extensionId);
+
+              if (!isAuthed) {
+                const displayName = extension.packageJSON.displayName || extensionId;
+                const detail = `The ${displayName} extension is requesting access to your password. ${reason ? `\n\nReason: ${reason}` : `The extension did not provide a reason for password access.`}`;
+                let done = false;
+                let asModal = true;
+
+                let options: string[] = [`Allow`];
+
+                if (asModal) {
+                  options.push(`View on Marketplace`);
+                } else {
+                  options.push(`Deny`);
+                }
+
+                while (!done) {
+                  const result = await vscode.window.showWarningMessage(`Password request`, {
+                    modal: asModal,
+                    detail,
+                  }, ...options);
+
+                  switch (result) {
+                    case `Allow`:
+                      await storage.authorizeExtension(extensionId);
+                      isAuthed = true;
+                      done = true;
+                      break;
+
+                    case `View on Marketplace`:
+                      vscode.commands.executeCommand('extension.open', extensionId);
+                      break;
+
+                    case `Deny`:
+                      done = true;
+                      break;
+                  }
+                }
               }
-            }
 
-            if (isAuthed) {
-              const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
-              return await context.secrets.get(connectionKey);
-            } else {
-              passwordAttempts[extensionId]++;
-              return undefined;
+              if (isAuthed) {
+                return storedPassword;
+              } else {
+                passwordAttempts[extensionId]++;
+              }
             }
 
           } else {
             throw new Error(`Not connected to an IBM i.`);
           }
         }
+
+        return undefined;
       }
     }),
 
