@@ -1,7 +1,8 @@
 import os from "os";
-import path, { dirname } from "path";
-import vscode, { FileType } from "vscode";
+import path, { dirname, extname } from "path";
+import vscode, { FileType, window } from "vscode";
 
+import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
@@ -729,20 +730,68 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem, nodes?: IFSItem[]) => {
       const ibmi = instance.getConnection();
       if (ibmi) {
-        //Get filename from path on server
-        const remoteFilepath = path.join(ibmi.getLastDownloadLocation(), path.basename(node.path));
-        const localPath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(remoteFilepath) }))?.path;
-        if (localPath) {
-          await ibmi.setLastDownloadLocation(dirname(localPath));
-          try {
-            await ibmi.downloadFile(localPath, node.path);
-            vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.infoMessage`));
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, t(String(node.contextValue)), e));
-          }
+        const items = (nodes || [node]).filter(reduceIFSPath);
+        const saveIntoDirectory = items.length > 1 || items[0].file.type === "directory";
+        let downloadLocation: string | undefined;
+        if (saveIntoDirectory) {
+          downloadLocation = (await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            canSelectFiles: false,
+            canSelectFolders: true,
+            defaultUri: vscode.Uri.file(ibmi.getLastDownloadLocation())
+          }))?.[0]?.path;
+        }
+        else {
+          const remoteFilepath = path.join(ibmi.getLastDownloadLocation(), path.basename(node.path));
+          downloadLocation = (await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(remoteFilepath),
+            filters: { 'Streamfile': [extname(node.path) || '*'] }
+          }))?.path;
+        }
+
+        if (downloadLocation) {
+          await ibmi.setLastDownloadLocation(saveIntoDirectory ? downloadLocation : dirname(downloadLocation));
+          const increment = 100 / items.length;
+          window.withProgress({ title: t('ifsBrowser.downloadStreamfile.downloading'), location: vscode.ProgressLocation.Notification }, async (task) => {
+            try {
+              for (const item of items) {
+                const targetPath = item.path;
+                task.report({ message: targetPath, increment });
+                if (saveIntoDirectory) {                  
+                  const target = path.join(Tools.fixWindowsPath(downloadLocation!), path.basename(targetPath));
+                  if (item.file.type === "directory") {
+                    let proceed = !existsSync(target);
+                    if (!proceed) {
+                      if (await vscode.window.showWarningMessage(t('ifsBrowser.downloadStreamfile.overwrite', target), { modal: true }, t("Yes"))) {
+                        rmdirSync(target, { recursive: true });
+                        proceed = true;
+                      }
+                    }
+
+                    if (proceed) {
+                      mkdirSync(target, { recursive: true });
+                      await ibmi.downloadDirectory(target, targetPath, { concurrency: 5 });
+                    }
+                  }
+                  else {
+                    if (!existsSync(target) || await vscode.window.showWarningMessage(t('ifsBrowser.downloadStreamfile.overwrite', target), { modal: true }, t("Yes"))) {
+                      await ibmi.downloadFile(target, targetPath);
+                    }
+                  }
+                }
+                else{
+                  await ibmi.downloadFile(downloadLocation!, targetPath);
+                }
+              }
+              vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.complete`));
+            }
+            catch (e) {
+              vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, e));
+            }
+          });
         }
       }
     }),
@@ -820,15 +869,8 @@ async function showOpenDialog() {
 }
 
 /**
- * Filters the content of an IFSItem array to keep only:
- * - Folders
- * - Files whose parent folders are not in the array
+ * Filters the content of an IFSItem array to keep only items whose parent are not in the array
  */
-function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
-  if (item.file.type === "directory") {
-    return true;
-  }
-  else {
-    return !array.filter(i => i.file.type === "directory").some(folder => item.file.path.startsWith(folder.file.path));
-  }
+function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {  
+    return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(folder.file.path));
 }
