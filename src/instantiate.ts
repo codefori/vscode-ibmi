@@ -21,6 +21,8 @@ import { setupGitEventHandler } from './api/local/git';
 
 export let instance: Instance;
 
+let passwordAttempts: {[ext: string]: number} = {}
+
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
 
@@ -621,6 +623,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
+      if (key === `password`) {
+        throw new Error(`Cannot work with password through this API.`);
+      }
+
       const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
       if (newValue) {
         await context.secrets.store(connectionKey, newValue);
@@ -628,6 +634,51 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
 
       return await context.secrets.get(connectionKey);
+    }),
+
+    // TODO: should this be a connection API instead in the IBMi class?
+    // Opinion: no because it has UI elements to it
+    vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string) => {
+      if (extensionId) {
+        const extension = vscode.extensions.getExtension(extensionId);
+        if (extension && extension.isActive) {
+          const connection = instance.getConnection();
+          if (connection) {
+
+            // Some logic to stop spam from extensions.
+            passwordAttempts[extensionId] = passwordAttempts[extensionId] || 0;
+            if (passwordAttempts[extensionId] > 1) {
+              throw new Error(`Password request denied.`);
+            }
+
+            const storage = instance.getStorage()!;
+            let isAuthed = storage.extensionIsAuthorized(extensionId);
+
+            if (!isAuthed) {
+              const result = await vscode.window.showWarningMessage(`Password request`, {
+                modal: true,
+                detail: `The extension "${extensionId}" is requesting to access your password.`
+              }, `Allow`);
+
+              if (result === `Allow`) {
+                await storage.authorizeExtension(extensionId);
+                isAuthed = true;
+              }
+            }
+
+            if (isAuthed) {
+              const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
+              return await context.secrets.get(connectionKey);
+            } else {
+              passwordAttempts[extensionId]++;
+              return undefined;
+            }
+
+          } else {
+            throw new Error(`Not connected to an IBM i.`);
+          }
+        }
+      }
     }),
 
     vscode.commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem) => {
@@ -664,7 +715,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   clRunner.initialise(context);
 
   // Register git events based on workspace folders
-	if (vscode.workspace.workspaceFolders) {
+  if (vscode.workspace.workspaceFolders) {
     setupGitEventHandler(context);
   }
 

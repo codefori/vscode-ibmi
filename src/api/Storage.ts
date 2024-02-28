@@ -8,6 +8,7 @@ const DEBUG_KEY = `debug`;
 const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
+const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
@@ -195,5 +196,18 @@ export class ConnectionStorage extends Storage {
 
   async clearRecentlyOpenedFiles() {
     await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
+  }
+
+  async authorizeExtension(extension: string) {
+    const extensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
+    if (!extensions.includes(extension)) {
+      extensions.push(extension);
+      await this.set(AUTHORISED_EXTENSIONS_KEY, extensions);
+    }
+  }
+
+  extensionIsAuthorized(extension: string) {
+    const extensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
+    return extensions.includes(extension);
   }
 }
