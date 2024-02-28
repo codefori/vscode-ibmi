@@ -624,6 +624,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
       if (key === `password`) {
+        // TODO: consider forwarding to the other command instead of throwing an error
         throw new Error(`Cannot work with password through this API.`);
       }
 
@@ -666,23 +667,27 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               if (!isAuthed) {
                 const displayName = extension.packageJSON.displayName || extensionId;
-                const detail = `The ${displayName} extension is requesting access to your password. ${reason ? `\n\nReason: ${reason}` : `The extension did not provide a reason for password access.`}`;
+                const detail = `The ${displayName} extension is requesting access to your password for this connection. ${reason ? `\n\nReason: ${reason}` : `The extension did not provide a reason for password access.`}`;
                 let done = false;
                 let asModal = true;
 
-                let options: string[] = [`Allow`];
-
-                if (asModal) {
-                  options.push(`View on Marketplace`);
-                } else {
-                  options.push(`Deny`);
-                }
-
                 while (!done) {
-                  const result = await vscode.window.showWarningMessage(`Password request`, {
-                    modal: asModal,
-                    detail,
-                  }, ...options);
+                  let options: string[] = [`Allow`];
+
+                  if (asModal) {
+                    options.push(`View on Marketplace`);
+                  } else {
+                    options.push(`Deny`);
+                  }
+                  
+                  const result = await vscode.window.showWarningMessage(
+                    asModal ? `Password Request` : detail, 
+                    {
+                      modal: asModal,
+                      detail,
+                    }, 
+                    ...options
+                  );
 
                   switch (result) {
                     case `Allow`:
@@ -693,9 +698,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
                     case `View on Marketplace`:
                       vscode.commands.executeCommand('extension.open', extensionId);
+                      asModal = false;
                       break;
 
-                    case `Deny`:
+                    default:
                       done = true;
                       break;
                   }

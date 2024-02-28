@@ -32,10 +32,9 @@ export class SettingsUI {
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
+        const passwordAuthorisedExtensions: string[] = instance.getStorage()?.authorizedExtensions() || [];
 
         let config: ConnectionConfiguration.Parameters;
-
-        let passwordAuthorisedExtensions: string[] = [];
 
         if (connectionSettings && server) {
           config = await ConnectionConfiguration.load(server.name);
@@ -45,7 +44,6 @@ export class SettingsUI {
           if (connection && config) {
             // Reload config to initialize any new config parameters.
             config = await ConnectionConfiguration.load(config.name);
-            passwordAuthorisedExtensions = instance.getStorage()?.authorizedExtensions() || [];
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
