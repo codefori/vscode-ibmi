@@ -2,9 +2,9 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
+import { t } from "../locale";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
-import { t } from "../locale";
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -304,10 +304,20 @@ export namespace Tools {
     ).join("\n");
   }
 
-  export function generateTooltipHtmlTable(header:string, rows: Record<string, any>){
+  export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {
     return `<table>`
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
       .concat(`${Object.entries(rows).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
       .concat(`</table>`);
+  }
+
+  export function fixWindowsPath(path:string){
+    if (process.platform === `win32` && path[0] === `/`) {
+      //Issue with getFile not working propertly on Windows
+      //when there was a / at the start.
+      return path.substring(1);
+    } else {
+      return path;
     }
+  }
 }
