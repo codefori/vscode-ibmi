@@ -206,8 +206,18 @@ export class ConnectionStorage extends Storage {
     }
   }
 
-  extensionIsAuthorized(extension: string) {
+  extensionIsAuthorised(extension: string) {
     const extensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
     return extensions.includes(extension);
+  }
+
+  authorizedExtensions() {
+    return this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
+  }
+
+  removeAuthorizedExtension(extensions: string[]) {
+    const authorizedExtensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
+    const newExtensions = authorizedExtensions.filter(ext => !extensions.includes(ext));
+    return this.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
   }
 }

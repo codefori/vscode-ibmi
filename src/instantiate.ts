@@ -627,6 +627,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         throw new Error(`Cannot work with password through this API.`);
       }
 
+      console.log(`code-for-ibmi.secret command is deprecated and will be removed.`)
+
       const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
       if (newValue) {
         await context.secrets.store(connectionKey, newValue);
@@ -652,7 +654,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             }
 
             const storage = instance.getStorage()!;
-            let isAuthed = storage.extensionIsAuthorized(extensionId);
+            let isAuthed = storage.extensionIsAuthorised(extensionId);
 
             if (!isAuthed) {
               const result = await vscode.window.showWarningMessage(`Password request`, {
