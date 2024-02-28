@@ -35,6 +35,8 @@ export class SettingsUI {
 
         let config: ConnectionConfiguration.Parameters;
 
+        let passwordAuthorisedExtensions: string[] = [];
+
         if (connectionSettings && server) {
           config = await ConnectionConfiguration.load(server.name);
 
@@ -43,6 +45,7 @@ export class SettingsUI {
           if (connection && config) {
             // Reload config to initialize any new config parameters.
             config = await ConnectionConfiguration.load(config.name);
+            passwordAuthorisedExtensions = instance.getStorage()?.authorizedExtensions() || [];
           } else {
             vscode.window.showErrorMessage(`No connection is active.`);
             return;
@@ -201,9 +204,20 @@ export class SettingsUI {
           { label: `Terminals`, fields: terminalsTab.fields },
           { label: `Debugger`, fields: debuggerTab.fields },
           { label: `Temporary Data`, fields: tempDataTab.fields },
-        ].filter(tab => tab !== undefined) as ComplexTab[];
+        ];
 
         const ui = new CustomUI();
+
+        if (passwordAuthorisedExtensions.length > 0) {
+          const passwordAuthTab = new Section();
+
+          passwordAuthTab
+            .addParagraph(`The following extensions are authorized to use the password for this connection.`)
+            .addParagraph(`<ul>✅ <code>${passwordAuthorisedExtensions.map(ext => `<li>${ext}</li>`).join(``)}</code></ul>`)
+            .addButtons({ id: `clearAllowedExts`, label: `Clear list` })
+
+          tabs.push({ label: `Extension Auth`, fields: passwordAuthTab.fields });
+        }
 
         const defaultTab = tabs.findIndex(t => t.label === tab);
 
@@ -220,66 +234,74 @@ export class SettingsUI {
             const data = page.data;
             const button = data.buttons;
 
-            if (button === `import`) {
-              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
-
-            } else {
-
-              const data = page.data;
-              for (const key in data) {
-
-                //In case we need to play with the data
-                switch (key) {
-                  case `sourceASP`:
-                    if (data[key].trim() === ``) data[key] = null;
-                    break;
-                  case `hideCompileErrors`:
-                    data[key] = String(data[key]).split(`,`)
-                      .map(item => item.toUpperCase().trim())
-                      .filter(item => item !== ``)
-                      .filter(Tools.distinct);
-                    break;
-                  case `protectedPaths`:
-                    data[key] = String(data[key]).split(`,`)
-                      .map(item => item.trim())
-                      .map(item => item.startsWith('/') ? item : item.toUpperCase())
-                      .filter(item => item !== ``)
-                      .filter(Tools.distinct);
-                    break;
+            switch (button) {
+              case `import`:
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                break;
+              
+              case `clearAllowedExts`:
+                if (instance.getStorage()) {
+                  instance.getStorage()?.removeAuthorizedExtension(instance.getStorage()?.authorizedExtensions()!);
                 }
+                break;
 
-                //Refresh connection browser if not connected
-                if (!instance.getConnection()) {
-                  vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+              default:
+                const data = page.data;
+                for (const key in data) {
+  
+                  //In case we need to play with the data
+                  switch (key) {
+                    case `sourceASP`:
+                      if (data[key].trim() === ``) data[key] = null;
+                      break;
+                    case `hideCompileErrors`:
+                      data[key] = String(data[key]).split(`,`)
+                        .map(item => item.toUpperCase().trim())
+                        .filter(item => item !== ``)
+                        .filter(Tools.distinct);
+                      break;
+                    case `protectedPaths`:
+                      data[key] = String(data[key]).split(`,`)
+                        .map(item => item.trim())
+                        .map(item => item.startsWith('/') ? item : item.toUpperCase())
+                        .filter(item => item !== ``)
+                        .filter(Tools.distinct);
+                      break;
+                  }
+  
+                  //Refresh connection browser if not connected
+                  if (!instance.getConnection()) {
+                    vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+                  }
                 }
-              }
-
-              if (restartFields.some(item => data[item] && data[item] !== config[item])) {
-                restart = true;
-              }
-
-              const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
-              const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
-
-              Object.assign(config, data);
-              await instance.setConfig(config);
-              if (removeCachedSettings)
-                GlobalStorage.get().deleteServerSettingsCache(config.name);
-
-              if (connection) {
-                if (restart) {
-                  vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-                    .then(async (value) => {
-                      if (value === `Reload`) {
-                        await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                      }
-                    });
+  
+                if (restartFields.some(item => data[item] && data[item] !== config[item])) {
+                  restart = true;
                 }
-                else if (reloadBrowsers) {
-                  vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
-                  vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+  
+                const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
+                const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
+  
+                Object.assign(config, data);
+                await instance.setConfig(config);
+                if (removeCachedSettings)
+                  GlobalStorage.get().deleteServerSettingsCache(config.name);
+  
+                if (connection) {
+                  if (restart) {
+                    vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                      .then(async (value) => {
+                        if (value === `Reload`) {
+                          await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                        }
+                      });
+                  }
+                  else if (reloadBrowsers) {
+                    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                  }
                 }
-              }
+                break;
             }
           }
         }

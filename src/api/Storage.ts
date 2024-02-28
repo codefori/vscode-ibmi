@@ -211,7 +211,7 @@ export class ConnectionStorage extends Storage {
     return extensions.includes(extension);
   }
 
-  authorizedExtensions() {
+  authorizedExtensions(): string[] {
     return this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
   }
 
