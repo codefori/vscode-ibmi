@@ -622,28 +622,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
-      if (key === `password`) {
-        // TODO: consider forwarding to the other command instead of throwing an error
-        throw new Error(`Cannot work with password through this API.`);
-      }
-
-      console.log(`code-for-ibmi.secret command is deprecated and will be removed.`)
-
-      const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
-      if (newValue) {
-        await context.secrets.store(connectionKey, newValue);
-        return newValue;
-      }
-
-      return await context.secrets.get(connectionKey);
-    }),
-
-    // TODO: should this be a connection API instead in the IBMi class?
-    // Opinion: no because it has UI elements to it
     vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
       if (extensionId) {
-        // We need to do some verification to make sure the callerExtension is a real extension
         const extension = vscode.extensions.getExtension(extensionId);
         const isValid = (extension && extension.isActive);
         if (isValid) {
