@@ -60,6 +60,10 @@ async function getExtFileConent(host: string, connection: IBMi) {
   return extFileContent;
 }
 
+function getLegacyCertPath() {
+  return path.posix.join(LEGACY_CERT_DIRECTORY, serverCertName);
+}
+
 export function getRemoteServerCertPath(connection: IBMi) {
   return path.posix.join(getRemoteCertDirectory(connection), serverCertName);
 }
@@ -68,8 +72,8 @@ export function getRemoteClientCertPath(connection: IBMi) {
   return path.posix.join(getRemoteCertDirectory(connection), clientCertName);
 }
 
-export async function remoteServerCertExists(connection: IBMi) {
-  const pfxPath = getRemoteServerCertPath(connection);
+export async function remoteServerCertExists(connection: IBMi, legacy = false) {
+  const pfxPath = legacy ? getLegacyCertPath() : getRemoteServerCertPath(connection);
 
   const dirList = await connection.sendCommand({
     command: `ls -p ${pfxPath}`
