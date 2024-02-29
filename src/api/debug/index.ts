@@ -10,6 +10,7 @@ import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
 import { getEnvConfig } from "../local/env";
 import { ILELibrarySettings } from "../CompileTools";
+import { ConnectionConfiguration } from "../Configuration";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -405,6 +406,47 @@ export async function initialize(context: ExtensionContext) {
           vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with secure debugging. Please use a hostname in the Login Settings instead.`);
         }
 
+        const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
+
+        // We need to migrate away from using the old legacy directory to a new one if
+        // the user has the old directory configured but isn't running the server
+        const usingLegacyCertPath = (certificates.getRemoteCertDirectory(connection) === certificates.LEGACY_CERT_DIRECTORY);
+
+        if (usingLegacyCertPath) {
+          let changeCertDirConfig = false;
+          if (existingDebugService) {
+            // The server is running and they still have the legacy path configured. Do certs exist inside of the legacy path?
+            const legacyCertsExist = await certificates.remoteServerCertExists(connection);
+
+            // If the legacy certs do exist, it might be using them!
+
+            // If not...
+            if (!legacyCertsExist) {
+              // The server is running but the certs don't exist in the legacy path. 
+              // Let's change their default path from the legacy path to the new default path!
+              changeCertDirConfig = true;
+            }
+
+          } else {
+            // The server isn't running. Let's change their default path from the legacy path
+            // to the new default path! And even.. let's try and delete the old certs directory!
+            changeCertDirConfig = true;
+
+            // To be safe, let's try to delete the old directory.
+            // We don't care if it fails really.
+            await connection.sendCommand({
+              command: `rm -rf ${certificates.LEGACY_CERT_DIRECTORY}`,
+            })
+          }
+
+          if (changeCertDirConfig) {
+            await ConnectionConfiguration.update({
+              ...connection.config!,
+              debugCertDirectory: certificates.DEFAULT_CERT_DIRECTORY
+            })
+          }
+        }
+
         const remoteCertsExist = await certificates.remoteServerCertExists(connection);
 
         if (remoteCertsExist) {
@@ -420,8 +462,6 @@ export async function initialize(context: ExtensionContext) {
             }
           }
         } else {
-          const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
-          
           const openTut = await vscode.window.showInformationMessage(`${
             existingDebugService ? 
             `Looks like the Debug Service was started by an external service. This may impact your VS Code experience.` : 
