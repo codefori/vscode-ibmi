@@ -113,11 +113,9 @@ export async function setup(connection: IBMi) {
   }
 
   const commands = [
-    `openssl genrsa -out debug_service_ca.key 2048`,
-    `openssl req -x509 -new -nodes -key debug_service_ca.key -sha256 -days 1825 -out debug_service_ca.pem -subj '/CN=${host}'`,
     `openssl genrsa -out debug_service.key 2048`,
     `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${host}'`,
-    `openssl x509 -req -in debug_service.csr -CA debug_service_ca.pem -CAkey debug_service_ca.key -CAcreateserial -out debug_service.crt -days 1095 -sha256 -sha256 -req -extfile <(printf "${extFileContent}")`,
+    `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -sha256 -req -extfile <(printf "${extFileContent}")`,
     `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`
   ];
 
