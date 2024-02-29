@@ -10,7 +10,6 @@ import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
 import { getEnvConfig } from "../local/env";
 import { ILELibrarySettings } from "../CompileTools";
-import { ConnectionConfiguration } from "../Configuration";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -408,58 +407,7 @@ export async function initialize(context: ExtensionContext) {
 
         const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
 
-        // We need to migrate away from using the old legacy directory to a new one if
-        // the user has the old directory configured but isn't running the server
-        const usingLegacyCertPath = (certificates.getRemoteCertDirectory(connection) === certificates.LEGACY_CERT_DIRECTORY);
-        const certsExistAtConfig = await certificates.remoteServerCertExists(connection);
-
-        let changeCertDirConfig: string|undefined;
-
-        if (usingLegacyCertPath) {
-          if (existingDebugService) {
-            // The server is running and they still have the legacy path configured. Do certs exist inside of the legacy path?
-
-            // If the legacy certs do exist, it might be using them!
-
-            // If not...
-            if (!certsExistAtConfig) {
-              // The server is running but the certs don't exist in the legacy path. 
-              // Let's change their default path from the legacy path to the new default path!
-              changeCertDirConfig = certificates.DEFAULT_CERT_DIRECTORY;
-            }
-
-          } else {
-            // The server isn't running. Let's change their default path from the legacy path
-            // to the new default path! And even.. let's try and delete the old certs directory!
-            changeCertDirConfig = certificates.DEFAULT_CERT_DIRECTORY;
-
-            // To be safe, let's try to delete the old directory.
-            // We don't care if it fails really.
-            await connection.sendCommand({
-              command: `rm -rf ${certificates.LEGACY_CERT_DIRECTORY}`,
-            })
-          }
-        } else {
-          // If the config isn't using the legacy path, we should check if the legacy certificates exist
-
-          if (existingDebugService) {
-            if (!certsExistAtConfig) {
-              // The server is running but the certs don't exist in the new path, let's
-              // check if they exist at the legacy path and switch back to that
-              const legacyCertsExist = await certificates.remoteServerCertExists(connection, true);
-              if (legacyCertsExist) {
-                changeCertDirConfig = certificates.LEGACY_CERT_DIRECTORY;
-              }
-            }
-          }
-        }
-
-        if (changeCertDirConfig) {
-          await ConnectionConfiguration.update({
-            ...connection.config!,
-            debugCertDirectory: changeCertDirConfig
-          })
-        }
+        await certificates.legacyCertificateChecks(connection, existingDebugService);
 
         const remoteCertsExist = await certificates.remoteServerCertExists(connection);
 
