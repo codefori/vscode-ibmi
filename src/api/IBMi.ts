@@ -16,7 +16,9 @@ import * as configVars from './configVars';
 export interface MemberParts extends IBMiMember {
   basename: string
 }
+
 const CCSID_SYSVAL = -2;
+const bashShellPath = '/QOpenSys/pkgs/bin/bash';
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
@@ -58,6 +60,7 @@ export default class IBMi {
   variantChars: { american: string, local: string };
   lastErrors: object[];
   config?: ConnectionConfiguration.Parameters;
+  shell?: string;
 
   commandsExecuted: number = 0;
 
@@ -447,6 +450,14 @@ export default class IBMi {
             });
         }
 
+        const commandShellResult = await this.sendCommand({
+          command: `echo $SHELL`
+        });
+
+        if (commandShellResult.code === 0) {
+          this.shell = commandShellResult.stdout.trim();
+        }
+
         // Check for bad data areas?
         if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
           // Do nothing, bad data areas are already checked.
@@ -686,13 +697,9 @@ export default class IBMi {
         if (this.remoteFeatures[`bash`]) {
           try {
             //check users default shell
-            const bashShellPath = '/QOpenSys/pkgs/bin/bash';
-            const commandShellResult = await this.sendCommand({
-              command: `echo $SHELL`
-            });
 
             if (!commandShellResult.stderr) {
-              let usesBash = commandShellResult.stdout.trim() === bashShellPath;
+              let usesBash = this.shell === bashShellPath;
               if (!usesBash) {
                 // make sure chsh is installed
                 if (this.remoteFeatures[`chsh`]) {
@@ -914,6 +921,10 @@ export default class IBMi {
     finally {
       ConnectionConfiguration.update(this.config!);
     }
+  }
+
+  usingBash() {
+    return this.shell === bashShellPath;
   }
 
   /**

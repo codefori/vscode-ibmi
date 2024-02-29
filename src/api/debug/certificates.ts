@@ -104,6 +104,14 @@ export async function setup(connection: IBMi) {
   const host = connection.currentHost;
   const extFileContent = await getExtFileConent(host, connection);
 
+  if (!connection.usingBash()) {
+    if (connection.remoteFeatures[`bash`]) {
+      throw new Error(`Bash is installed on the IBM i, but it is not your default shell. Please switch to bash to setup the debug service.`);
+    } else {
+      throw new Error(`The debug service setup requires bash to be installed on the IBM i. Please install bash and try again.`);
+    }
+  }
+
   const commands = [
     `openssl genrsa -out debug_service_ca.key 2048`,
     `openssl req -x509 -new -nodes -key debug_service_ca.key -sha256 -days 1825 -out debug_service_ca.pem -subj '/CN=${host}'`,
