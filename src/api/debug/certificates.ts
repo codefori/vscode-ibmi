@@ -8,6 +8,9 @@ import {window} from "vscode";
 const serverCertName = `debug_service.pfx`;
 const clientCertName = `debug_service.crt`;
 
+export const LEGACY_CERT_DIRECTORY = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
+export const DEFAULT_CERT_DIRECTORY = `/QIBM/UserData/IBMiDebugService/certs`;
+
 function getRemoteCertDirectory(connection: IBMi) {
   return connection.config?.debugCertDirectory!;
 }
