@@ -2484,7 +2484,7 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadStreamfile",
-					"when": "view == ifsBrowser && !listMultiSelection && viewItem == streamfile",
+					"when": "view == ifsBrowser && viewItem =~ /^directory.*|streamfile$/",
 					"group": "3_ifsTransfer@1"
 				},
 				{
