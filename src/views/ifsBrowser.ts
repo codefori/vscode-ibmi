@@ -777,7 +777,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                     }
                   }
                   else {
-                    if (!existsSync(target) || await vscode.window.showWarningMessage(t('ifsBrowser.downloadStreamfile.overwrite', target), { modal: true }, t("Yes"))) {
+                    if (!existsSync(target) || await vscode.window.showWarningMessage(t('ask.overwrite', target), { modal: true }, t("Yes"))) {
                       await ibmi.downloadFile(target, targetPath);
                     }
                   }
