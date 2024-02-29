@@ -211,7 +211,7 @@ export class SettingsUI {
 
           passwordAuthTab
             .addParagraph(`The following extensions are authorized to use the password for this connection.`)
-            .addParagraph(`<ul>✅ <code>${passwordAuthorisedExtensions.map(ext => `<li>${ext}</li>`).join(``)}</code></ul>`)
+            .addParagraph(`<ul>${passwordAuthorisedExtensions.map(ext => `<li>✅ <code>${ext}</code></li>`).join(``)}</ul>`)
             .addButtons({ id: `clearAllowedExts`, label: `Clear list` })
 
           tabs.push({ label: `Extension Auth`, fields: passwordAuthTab.fields });
