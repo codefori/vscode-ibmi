@@ -873,7 +873,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               task.report({ message: t('objectBrowser.downloadMemberContent.download.cpytostmf'), increment: 33 })
               const copyToStreamFiles = toBeDownloaded
                 .filter(member => member.copy)
-                .map(member => `@CPYTOSTMF FROMMBR('${member.path}') TOSTMF('${directory}/${member.name}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID});`)
+                .map(member => `@CPYTOSTMF FROMMBR('${member.path}') TOSTMF('${directory}/${member.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID}) ENDLINFMT(*LF);`)
                 .join("\n");
               await contentApi.runSQL(copyToStreamFiles);
 
