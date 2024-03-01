@@ -3,6 +3,8 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
+import { existsSync } from "fs";
+import os from "os";
 import path from 'path';
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, MemberParts, RemoteCommand } from '../typings';
@@ -384,11 +386,41 @@ export default class IBMi {
               message: `Fetching conversion values.`
             });
 
-            await connSettings.checkCCSID();
-            if (this.config?.enableSQL && this.qccsid === 65535) {
-              this.config.enableSQL = false;
-              vscode.window.showErrorMessage(`QCCSID is set to 65535. Using fallback methods to access the IBM i file systems.`);
-            }
+            // Next, we're going to see if we can get the CCSID from the user or the system.
+            // Some things don't work without it!!!
+            try {
+              const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+              if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+                this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
+              }
+
+              if (!this.qccsid || this.qccsid === CCSID_SYSVAL) {
+                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
+                }
+              }
+
+              try {
+                const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+                this.defaultCCSID = Number(activeJob.DEFAULT_CCSID);
+              }
+              catch (error) {
+                const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
+                  .stdout
+                  .split("\n")
+                  .filter(line => line.includes("DFTCCSID"));
+
+                const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
+                if (defaultCCSCID && !isNaN(defaultCCSCID)) {
+                  this.defaultCCSID = defaultCCSCID;
+                }
+              }
+
+              if (this.config.enableSQL && this.qccsid === 65535) {
+                this.config.enableSQL = false;
+                vscode.window.showErrorMessage(`QCCSID is set to 65535. Using fallback methods to access the IBM i file systems.`);
+              }
 
             progress.report({
               message: `Fetching local encoding values.`
@@ -404,6 +436,10 @@ export default class IBMi {
             });
             this.config.enableSQL = false;
           }
+        }
+
+        if ((this.qccsid < 1 || this.qccsid === 65535)) {
+          this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.defaultCCSID}\n`);
         }
 
         // give user option to set bash as default shell.
@@ -801,15 +837,25 @@ export default class IBMi {
     await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
+  getLastDownloadLocation() {
+    if(this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))){
+      return this.config.lastDownloadLocation;
+    }
+    else{
+      return os.homedir();
+    }    
+  }
+
+  async setLastDownloadLocation(location: string) {
+    if (this.config && location && location !== this.config.lastDownloadLocation) {
+      this.config.lastDownloadLocation = location;
+      await ConnectionConfiguration.update(this.config);
+    }
+  }
+
   fileToPath(file: string | vscode.Uri): string {
     if (typeof file === "string") {
-      if (process.platform === `win32` && file[0] === `/`) {
-        //Issue with getFile not working propertly on Windows
-        //when there was a / at the start.
-        return file.substring(1);
-      } else {
-        return file;
-      }
+      return Tools.fixWindowsPath(file);
     }
     else {
       return file.fsPath;

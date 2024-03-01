@@ -171,11 +171,18 @@ export const ConnectionSuite: TestSuite = {
 
     {name: `Test runCommand (ILE, custom libl)`, test: async () => {
       const connection = instance.getConnection();
+      const config = instance.getConfig();
+
+      const ogLibl = config!.libraryList.slice(0);
+  
+      config!.libraryList = [`QTEMP`];
   
       const resultA = await connection?.runCommand({
         command: `DSPLIBL`,
         environment: `ile`
       });
+
+      config!.libraryList = ogLibl;
   
       assert.strictEqual(resultA?.code, 0);
       assert.strictEqual(resultA.stdout.includes(`QSYSINC     CUR`), false);
@@ -193,6 +200,50 @@ export const ConnectionSuite: TestSuite = {
       assert.strictEqual(resultB?.code, 0);
       assert.strictEqual(resultB.stdout.includes(`QSYSINC     CUR`), true);
       assert.strictEqual(resultB.stdout.includes(`QSYSINC     USR`), true);
+    }},
+
+    {name: `Test runCommand (ILE, libl order from variable)`, test: async () => {
+      const connection = instance.getConnection();
+  
+      const result = await connection?.runCommand({
+        command: `DSPLIBL`,
+        environment: `ile`,
+        env: {
+          '&LIBL': `QTEMP QSYSINC`,
+        }
+      });
+
+      assert.strictEqual(result?.code, 0);
+
+      const qsysincIndex = result.stdout.indexOf(`QSYSINC     USR`);
+      const qtempIndex = result.stdout.indexOf(`QTEMP       USR`);
+  
+      // Test that QSYSINC is before QSYS2
+      assert.ok(qtempIndex < qsysincIndex);
+    }},
+
+    {name: `Test runCommand (ILE, libl order from config)`, test: async () => {
+      const connection = instance.getConnection();
+      const config = instance.getConfig();
+
+      const ogLibl = config!.libraryList.slice(0);
+  
+      config!.libraryList = [`QTEMP`, `QSYSINC`];
+
+      const result = await connection?.runCommand({
+        command: `DSPLIBL`,
+        environment: `ile`,
+      });
+
+      config!.libraryList = ogLibl;
+
+      assert.strictEqual(result?.code, 0);
+
+      const qsysincIndex = result.stdout.indexOf(`QSYSINC     USR`);
+      const qtempIndex = result.stdout.indexOf(`QTEMP       USR`);
+  
+      // Test that QSYSINC is before QSYS2
+      assert.ok(qtempIndex < qsysincIndex);
     }},
   ]
 };

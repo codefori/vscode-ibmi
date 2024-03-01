@@ -13,7 +13,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       vscode.commands.registerCommand(`code-for-ibmi.userLibraryList.enable`, () => {
         commands.executeCommand(`setContext`, `code-for-ibmi:libraryListDisabled`, false);
       }),
-      
+
       vscode.commands.registerCommand(`code-for-ibmi.refreshLibraryListView`, async () => {
         this.refresh();
       }),
@@ -248,7 +248,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           if (badLibs.length > 0) {
             libraryList = libraryList.filter(lib => !badLibs.includes(lib));
             vscode.window.showWarningMessage(t(`LibraryListView.cleanupLibraryList.removedLibs`, badLibs.join(`, `)));
-            config.libraryList = libraryList;            
+            config.libraryList = libraryList;
             await this.updateConfig(config);
           } else {
             vscode.window.showInformationMessage(t(`LibraryListView.cleanupLibraryList.validated`));
@@ -304,5 +304,6 @@ class LibraryListNode extends vscode.TreeItem implements LibraryListEntry {
 
     this.contextValue = context;
     this.description = (context === `currentLibrary` ? `${t(`currentLibrary`)} ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
+    this.tooltip = ``;
   }
 }

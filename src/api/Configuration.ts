@@ -1,4 +1,4 @@
-
+import os from "os";
 import * as vscode from 'vscode';
 import { DeploymentMethod } from '../typings';
 import { FilterType } from './Filter';
@@ -63,6 +63,7 @@ export namespace ConnectionConfiguration {
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
     showHiddenFiles: boolean;
+    lastDownloadLocation:string;
     [name: string]: any;
   }  
 
@@ -145,6 +146,7 @@ export namespace ConnectionConfiguration {
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
       protectedPaths: (parameters.protectedPaths || []),
       showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
+      lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir())
     }
   }
 
