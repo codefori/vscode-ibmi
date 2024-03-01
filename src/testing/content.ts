@@ -595,10 +595,18 @@ export const ContentSuite: TestSuite = {
       name: `Test @clCommand + select statement`, test: async () => {
         const content = instance.getContent()!;
         
-        const [result] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+        const [resultA] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
         
-        assert.deepStrictEqual(result.OBJNAME, "UNITTEST");
-        assert.deepStrictEqual(result.OBJTEXT, "Code for i test");
+        assert.deepStrictEqual(resultA.OBJNAME, "UNITTEST");
+        assert.deepStrictEqual(resultA.OBJTEXT, "Code for i test");
+        
+        const [resultB] = await content.runStatements([
+          `@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test')`,
+          `Select * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF'`
+        ]);
+        
+        assert.deepStrictEqual(resultB.OBJNAME, "UNITTEST");
+        assert.deepStrictEqual(resultB.OBJTEXT, "Code for i test");
       }
     },
   ]
