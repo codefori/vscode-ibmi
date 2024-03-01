@@ -1,6 +1,6 @@
 import fs, { existsSync } from "fs";
 import os from "os";
-import path, { dirname } from "path";
+import path, { basename, dirname } from "path";
 import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
@@ -817,19 +817,24 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
       else {
         downloadLocation = (await vscode.window.showSaveDialog({
-          defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), path.basename(node.path))),
-          filters: { 'Source member': [path.extname(node.path) || '*'] }
+          defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), members[0].name)),
+          filters: { 'Source member': [members[0].extension || '*'] }
         }))?.path;
       }
 
       if (downloadLocation) {
-        await connection.setLastDownloadLocation(saveIntoDirectory ? downloadLocation : dirname(downloadLocation));
-
         //Remove double entries and map to { path, copy } object
         const toBeDownloaded = members
           .filter((member, index, list) => list.findIndex(m => m.library === member.library && m.file === member.file && m.name === member.name) === index)
           .sort((m1, m2) => m1.name.localeCompare(m2.name))
           .map(member => ({ path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
+
+        if (!saveIntoDirectory) {
+          toBeDownloaded[0].name = basename(downloadLocation);
+          downloadLocation = dirname(downloadLocation);
+        }
+
+        await connection.setLastDownloadLocation(downloadLocation);
 
         //Ask what do to with existing files in the target directory
         if (saveIntoDirectory) {
@@ -845,7 +850,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
                 item.copy = false;
               }
               else if (!overwriteAll) {
-                const answer = await vscode.window.showWarningMessage(t('ask.overwrite', item.name), { modal: true }, overwriteLabel, overwriteAllLabel, t('skip'), skipAllLabel);
+                const answer = await vscode.window.showWarningMessage(t('ask.overwrite', item.name), { modal: true }, t('skip'), skipAllLabel, overwriteLabel, overwriteAllLabel);
                 if (answer) {
                   overwriteAll ||= (answer === overwriteAllLabel);
                   skipAll ||= (answer === skipAllLabel);
