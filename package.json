@@ -2359,7 +2359,7 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
-					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^(member|SPF).*$/",
 					"group": "3_memberTransfer@1"
 				},
 				{

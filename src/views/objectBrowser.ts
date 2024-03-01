@@ -1,6 +1,6 @@
-import fs from "fs";
+import fs, { existsSync } from "fs";
 import os from "os";
-import path, { dirname } from "path";
+import path, { basename, dirname } from "path";
 import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
@@ -789,23 +789,102 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node: MemberItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node: BrowserItem, nodes?: BrowserItem[]) => {
       const contentApi = getContent();
       const connection = getConnection();
+      const config = getConfig();
 
-      const { asp, library, file, name: member, basename } = connection.parserMemberPath(node.path);
-
-      const memberContent = await contentApi.downloadMemberContent(asp, library, file, member);
-
-      const localFilepath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), basename)) }))?.path;
-      if (localFilepath) {
-        await connection.setLastDownloadLocation(dirname(localFilepath));
-        try {
-          await writeFileAsync(Tools.fixWindowsPath(localFilepath), memberContent, `utf8`);
-          vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
-        } catch (e) {
-          vscode.window.showErrorMessage(t(`objectBrowser.downloadMemberContent.errorMessage`, e));
+      //Gather all the members
+      const members: IBMiMember[] = [];
+      for (const item of (nodes || [node])) {
+        if (item instanceof ObjectBrowserSourcePhysicalFileItem) {
+          members.push(...await contentApi.getMemberList({ library: item.object.library, sourceFile: item.object.name }));
         }
+        else if(item instanceof ObjectBrowserMemberItem) {
+          members.push(item.member);
+        }
+      }
+
+      const saveIntoDirectory = members.length > 1;
+      let downloadLocation: string | undefined;
+      if (saveIntoDirectory) {
+        downloadLocation = (await vscode.window.showOpenDialog({
+          canSelectMany: false,
+          canSelectFiles: false,
+          canSelectFolders: true,
+          defaultUri: vscode.Uri.file(connection.getLastDownloadLocation())
+        }))?.[0]?.path;
+      }
+      else {
+        downloadLocation = (await vscode.window.showSaveDialog({
+          defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), members[0].name)),
+          filters: { 'Source member': [members[0].extension || '*'] }
+        }))?.path;
+      }
+
+      if (downloadLocation) {
+        //Remove double entries and map to { path, copy } object
+        const toBeDownloaded = members
+          .filter((member, index, list) => list.findIndex(m => m.library === member.library && m.file === member.file && m.name === member.name) === index)
+          .sort((m1, m2) => m1.name.localeCompare(m2.name))
+          .map(member => ({ path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
+
+        if (!saveIntoDirectory) {
+          toBeDownloaded[0].name = basename(downloadLocation);
+          downloadLocation = dirname(downloadLocation);
+        }
+
+        await connection.setLastDownloadLocation(downloadLocation);
+
+        //Ask what do to with existing files in the target directory
+        if (saveIntoDirectory) {
+          let overwriteAll = false;
+          let skipAll = false;
+          const overwriteLabel = t('overwrite');
+          const overwriteAllLabel = t('overwrite_all');
+          const skipAllLabel = t('skip_all');
+          for (const item of toBeDownloaded) {
+            const target = path.join(Tools.fixWindowsPath(downloadLocation), item.name);
+            if (existsSync(target)) {
+              if (skipAll) {
+                item.copy = false;
+              }
+              else if (!overwriteAll) {
+                const answer = await vscode.window.showWarningMessage(t('ask.overwrite', item.name), { modal: true }, t('skip'), skipAllLabel, overwriteLabel, overwriteAllLabel);
+                if (answer) {
+                  overwriteAll ||= (answer === overwriteAllLabel);
+                  skipAll ||= (answer === skipAllLabel);
+                  item.copy = !skipAll && (overwriteAll || answer === overwriteLabel);
+                }
+                else {
+                  //Abort!
+                  vscode.window.showInformationMessage(t('objectBrowser.downloadMemberContent.cancel'));
+                  return;
+                }
+              }
+            }
+          }
+        }
+
+        //Download members
+        vscode.window.withProgress({ title: t('objectBrowser.downloadMemberContent.download.progress', toBeDownloaded.filter(m => m.copy).length), location: vscode.ProgressLocation.Notification }, async (task) => {
+          try {
+            await connection.withTempDirectory(async directory => {
+              task.report({ message: t('objectBrowser.downloadMemberContent.download.cpytostmf'), increment: 33 })
+              const copyToStreamFiles = toBeDownloaded
+                .filter(member => member.copy)
+                .map(member => `@CPYTOSTMF FROMMBR('${member.path}') TOSTMF('${directory}/${member.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID}) ENDLINFMT(*LF);`)
+                .join("\n");
+              await contentApi.runSQL(copyToStreamFiles);
+
+              task.report({ message: t('objectBrowser.downloadMemberContent.download.streamfiles'), increment: 33 })
+              await connection.downloadDirectory(downloadLocation!, directory);
+              vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
+            });
+          } catch (e) {
+            vscode.window.showErrorMessage(t(`objectBrowser.downloadMemberContent.errorMessage`, e));
+          }
+        });
       }
     }),
 
