@@ -2354,12 +2354,12 @@
 				},
 				{
 					"command": "code-for-ibmi.addToLibraryList",
-					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /^(filter|object.lib).*/",
+					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /library/",
 					"group": "2_library@1"
 				},
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",
-					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /^(filter|object.lib).*/",
+					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /library/",
 					"group": "2_library@2"
 				},
 				{
@@ -2559,7 +2559,7 @@
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
-					"when": "view == objectBrowser && viewItem == filter",
+					"when": "view == objectBrowser && viewItem =~ /library/",
 					"group": "1_LibActions@1"
 				},
 				{

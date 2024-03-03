@@ -2,7 +2,7 @@ import vscode, { commands } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
-import { FilteredItem, Library as LibraryListEntry, WithPath } from "../typings";
+import { FilteredItem, WithLibrary, WithPath } from "../typings";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -175,7 +175,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           if (config) {
             let libraryList = config.libraryList;
 
-            let index = libraryList.findIndex(file => file.toUpperCase() === node.path)
+            let index = libraryList.findIndex(file => file.toUpperCase() === node.library)
             if (index >= 0) {
               const removedLib = libraryList[index];
               libraryList.splice(index, 1);
@@ -195,7 +195,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           if (config) {
             const libraryList = config.libraryList;
 
-            const index = libraryList.findIndex(file => file.toUpperCase() === node.path);
+            const index = libraryList.findIndex(file => file.toUpperCase() === node.library);
             if (index >= 0 && (index - 1) >= 0) {
               const library = libraryList[index];
               libraryList.splice(index, 1);
@@ -214,7 +214,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           const config = instance.getConfig();
           if (config) {
             const libraryList = config.libraryList;
-            const index = libraryList.findIndex(file => file.toUpperCase() === node.path);
+            const index = libraryList.findIndex(file => file.toUpperCase() === node.library);
             if (index >= 0 && (index + 1) >= 0) {
               const library = libraryList[index];
               libraryList.splice(index, 1);
@@ -245,17 +245,18 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.setCurrentLibrary`, async (node: WithPath | FilteredItem) => {
-        const connection = instance.getConnection();
-        const content = instance.getContent();
-        const config = instance.getConfig();
-        const storage = instance.getStorage();
-        if (connection && config && content && storage) {
-          const target = "path" in node ? node.path : node.filter.library;
-          const library = target.includes('/') ? target.split('/').at(-1)! : target;
-          if (await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
-            await changeCurrentLibrary(library);
-            this.refresh();
+      vscode.commands.registerCommand(`code-for-ibmi.setCurrentLibrary`, async (node: WithLibrary) => {
+        const library = node.library;
+        if (library) {
+          const connection = instance.getConnection();
+          const content = instance.getContent();
+          const config = instance.getConfig();
+          const storage = instance.getStorage();
+          if (connection && config && content && storage) {
+            if (await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
+              await changeCurrentLibrary(library);
+              this.refresh();
+            }
           }
         }
       })
@@ -302,9 +303,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
   }
 }
 
-class LibraryListNode extends vscode.TreeItem implements LibraryListEntry {
-  constructor(readonly path: string, text: string = ``, attribute: string = ``, context: 'currentLibrary' | 'library' = `library`) {
-    super(path, vscode.TreeItemCollapsibleState.None);
+class LibraryListNode extends vscode.TreeItem implements WithLibrary {
+  constructor(readonly library: string, text: string = ``, attribute: string = ``, context: 'currentLibrary' | 'library' = `library`) {
+    super(library, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = context;
     this.description = (context === `currentLibrary` ? `${t(`currentLibrary`)} ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
