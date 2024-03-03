@@ -2,7 +2,7 @@ import vscode, { commands } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
-import { FilteredItem, WithLibrary, WithPath } from "../typings";
+import { WithLibrary } from "../typings";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -113,58 +113,46 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: string | WithPath | FilteredItem) => {
+      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList.prompt`, async () => {
+        vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: await vscode.window.showInputBox({ prompt: t(`LibraryListView.addToLibraryList.prompt`) }) });
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: WithLibrary) => {
         const content = instance.getContent();
         const config = instance.getConfig();
+        const addingLib = newLibrary.library.toUpperCase();
         if (content && config) {
-          let addingLib;
+          if (addingLib.length > 10) {
+            vscode.window.showErrorMessage(t(`LibraryListView.addToLibraryList.tooLong`));
+            return;
+          }
+
           let libraryList = [...config.libraryList];
 
-          if (!newLibrary) {
-            addingLib = await vscode.window.showInputBox({
-              prompt: t(`LibraryListView.addToLibraryList.prompt`)
-            });
-          } else if (typeof newLibrary === "string") {
-            addingLib = newLibrary;
-          }
-          else {
-            const target = "path" in newLibrary ? newLibrary.path : newLibrary.filter.library;
-            addingLib = target.includes('/') ? target.split('/').at(-1)! : target;
+          if (libraryList.includes(addingLib)) {
+            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.alreadyInList`, addingLib));
+            return;
           }
 
-          if (addingLib) {
-            if (addingLib.length > 10) {
-              vscode.window.showErrorMessage(t(`LibraryListView.addToLibraryList.tooLong`));
-              return;
-            }
+          let badLibs = await content.validateLibraryList([addingLib]);
 
-            addingLib = addingLib.toUpperCase();
-
-            if (libraryList.includes(addingLib)) {
-              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.alreadyInList`, addingLib));
-              return;
-            }
-
-            let badLibs = await content.validateLibraryList([addingLib]);
-
-            if (badLibs.length > 0) {
-              libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.invalidLib`, badLibs.join(`, `)));
-            } else {
-              libraryList.push(addingLib);
-              vscode.window.showInformationMessage(t(`LibraryListView.addToLibraryList.addedLib`, addingLib));
-            }
-
-            badLibs = await content.validateLibraryList(libraryList);
-
-            if (badLibs.length > 0) {
-              libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
-            }
-
-            config.libraryList = libraryList;
-            await this.updateConfig(config);
+          if (badLibs.length > 0) {
+            libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.invalidLib`, badLibs.join(`, `)));
+          } else {
+            libraryList.push(addingLib);
+            vscode.window.showInformationMessage(t(`LibraryListView.addToLibraryList.addedLib`, addingLib));
           }
+
+          badLibs = await content.validateLibraryList(libraryList);
+
+          if (badLibs.length > 0) {
+            libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
+          }
+
+          config.libraryList = libraryList;
+          await this.updateConfig(config);
         }
       }),
 

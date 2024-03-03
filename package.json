@@ -1138,9 +1138,16 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.addToLibraryList",
+				"command": "code-for-ibmi.addToLibraryList.prompt",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Add to Library List...",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.addToLibraryList",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Add to Library List",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
@@ -2049,7 +2056,7 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.addToLibraryList",
+					"command": "code-for-ibmi.addToLibraryList.prompt",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},

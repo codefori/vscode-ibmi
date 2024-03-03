@@ -1032,7 +1032,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           .then(async result => {
             switch (result) {
               case t(`Yes`):
-                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, newLibrary);
+                await vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: newLibrary });
                 if (autoRefresh) {
                   vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
                 }
