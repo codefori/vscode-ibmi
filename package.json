@@ -2027,6 +2027,15 @@
 				{
 					"command": "code-for-ibmi.setCurrentLibrary",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.addToLibraryList",
+					"when": "never"
+				}
+				,
+				{
+					"command": "code-for-ibmi.addToLibraryList.prompt",
+					"when": "!code-for-ibmi:libraryListDisabled"
 				}
 			],
 			"view/title": [
