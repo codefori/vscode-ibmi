@@ -149,6 +149,7 @@ export const fr: Locale = {
   'LibraryListView.removeFromLibraryList.removedLib': `La bibliohtèque {0} a été retirée de la liste des bibliothèques.`,
   'LibraryListView.cleanupLibraryList.removedLibs': `Les bibliothèques suivantes ont été retirées de la liste des bibliothèques mise à jour car elles sont invalides: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `La liste des bibliothèques a été validée avec succès.`,
+  'LibraryListView.setCurrentLibrary.failed':'La bibliothèque {0} ne peut pas devenir la bibliothèque en cours: {1}',
   // objectBrowser:
   'objectBrowser.delete.confirm':'Êtes-vous sûr de vouloir supprimer {0}?',
   'objectBrowser.delete.multiple.confirm':'Êtes-vous sûr de vouloir supprimer les {0} éléments sélectionnés?',

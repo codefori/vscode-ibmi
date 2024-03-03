@@ -2,7 +2,7 @@ import vscode, { commands } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
-import { Library as LibraryListEntry } from "../typings";
+import { FilteredItem, Library as LibraryListEntry, WithPath } from "../typings";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -59,24 +59,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                 quickPick.show();
               } else {
                 if (newLibrary !== currentLibrary) {
-                  let newLibraryOK = true;
-                  try {
-                    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${newLibrary}` });
-                    if (commandResult?.code != 0) {
-                      throw(t(`LibraryListView.addToLibraryList.invalidLib`, newLibrary));
-                    }
-                  } catch (e) {
-                    vscode.window.showErrorMessage(String(e));
-                    newLibraryOK = false;
-                  }
-                  if (newLibraryOK) {
+                  if (await changeCurrentLibrary(newLibrary)) {
+                    this.refresh();
                     quickPick.hide();
-                    config.currentLibrary = newLibrary;
-                    vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.changedCurrent`, newLibrary));
-                    prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
-                    prevCurLibs.splice(0, 0, currentLibrary);
-                    await storage.setPreviousCurLibs(prevCurLibs);
-                    await this.updateConfig(config);
                   }
                 } else {
                   quickPick.hide();
@@ -128,19 +113,23 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = ``) => {
+      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: string | WithPath | FilteredItem) => {
         const content = instance.getContent();
         const config = instance.getConfig();
         if (content && config) {
           let addingLib;
           let libraryList = [...config.libraryList];
 
-          if (typeof newLibrary !== `string` || newLibrary == ``) {
+          if (!newLibrary) {
             addingLib = await vscode.window.showInputBox({
               prompt: t(`LibraryListView.addToLibraryList.prompt`)
             });
-          } else {
+          } else if (typeof newLibrary === "string") {
             addingLib = newLibrary;
+          }
+          else {
+            const target = "path" in newLibrary ? newLibrary.path : newLibrary.filter.library;
+            addingLib = target.includes('/') ? target.split('/').at(-1)! : target;
           }
 
           if (addingLib) {
@@ -255,11 +244,26 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           }
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.setCurrentLibrary`, async (node: WithPath | FilteredItem) => {
+        const connection = instance.getConnection();
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const storage = instance.getStorage();
+        if (connection && config && content && storage) {
+          const target = "path" in node ? node.path : node.filter.library;
+          const library = target.includes('/') ? target.split('/').at(-1)! : target;
+          if (await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
+            await changeCurrentLibrary(library);
+            this.refresh();
+          }
+        }
+      })
     )
     instance.onEvent(`connected`, () => this.refresh());
   }
 
-  private async updateConfig(config: ConnectionConfiguration.Parameters){
+  private async updateConfig(config: ConnectionConfiguration.Parameters) {
     await ConnectionConfiguration.update(config);
     if (GlobalConfiguration.get(`autoRefresh`)) {
       this.refresh();
@@ -305,5 +309,28 @@ class LibraryListNode extends vscode.TreeItem implements LibraryListEntry {
     this.contextValue = context;
     this.description = (context === `currentLibrary` ? `${t(`currentLibrary`)} ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
     this.tooltip = ``;
+  }
+}
+
+async function changeCurrentLibrary(library: string) {
+  const connection = instance.getConnection();
+  const config = instance.getConfig();
+  const storage = instance.getStorage();
+  if (connection && config && storage) {
+    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${library}` });
+    if (commandResult.code === 0) {
+      const currentLibrary = config.currentLibrary.toUpperCase();
+      config.currentLibrary = library;
+      vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.changedCurrent`, library));
+      storage.getPreviousCurLibs();
+      const previousCurLibs = storage.getPreviousCurLibs().filter(lib => lib !== library);
+      previousCurLibs.splice(0, 0, currentLibrary);
+      await storage.setPreviousCurLibs(previousCurLibs);
+      await ConnectionConfiguration.update(config);
+      return true;
+    } else {
+      vscode.window.showErrorMessage(t(`LibraryListView.setCurrentLibrary.failed`, library, commandResult.stderr));
+      return false;
+    }
   }
 }

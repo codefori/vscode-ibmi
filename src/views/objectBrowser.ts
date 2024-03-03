@@ -1,7 +1,6 @@
 import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
-import util from "util";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
 import { parseFilter } from "../api/Filter";
@@ -18,7 +17,6 @@ import { editFilter } from "../webviews/filters";
 
 const URI_LIST_SEPARATOR = "\r\n";
 
-const writeFileAsync = util.promisify(fs.writeFile);
 const objectNamesLower = () => GlobalConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
 const objectSortOrder = () => GlobalConfiguration.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
 
