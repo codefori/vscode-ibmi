@@ -1107,7 +1107,7 @@
 			{
 				"command": "code-for-ibmi.setCurrentLibrary",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Set as current library",
+				"title": "Set as Current Library",
 				"category": "IBM i"				
 			},
 			{
