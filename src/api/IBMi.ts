@@ -388,7 +388,6 @@ export default class IBMi {
 
             // Next, we're going to see if we can get the CCSID from the user or the system.
             // Some things don't work without it!!!
-            try {
               const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
               if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
                 this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
