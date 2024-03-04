@@ -1108,7 +1108,7 @@
 				"command": "code-for-ibmi.setCurrentLibrary",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Set as Current Library",
-				"category": "IBM i"				
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.changeUserLibraryList",
@@ -2031,8 +2031,7 @@
 				{
 					"command": "code-for-ibmi.addToLibraryList",
 					"when": "never"
-				}
-				,
+				},
 				{
 					"command": "code-for-ibmi.addToLibraryList.prompt",
 					"when": "!code-for-ibmi:libraryListDisabled"

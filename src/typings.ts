@@ -158,7 +158,7 @@ export interface WithPath {
 }
 
 export interface WithLibrary {
-  library:string
+  library: string
 }
 
 export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean | number }
