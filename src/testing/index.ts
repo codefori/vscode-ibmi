@@ -37,11 +37,18 @@ export interface TestCase {
   duration?: number
 }
 
+const testingEnabled = env.testing === `true`;
+const testIndividually = env.individual === `true`;
+
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
-  if (env.testing === `true`) {
+  if (testingEnabled) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
-    instance.onEvent(`connected`, runTests);
+    
+    if (!testIndividually) {
+      instance.onEvent(`connected`, runTests);
+    }
+
     instance.onEvent(`disconnected`, resetTests);
     testSuitesTreeProvider = new TestSuitesTreeProvider(suites);
     context.subscriptions.push(
