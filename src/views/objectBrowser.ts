@@ -1,7 +1,7 @@
 import fs from "fs";
 import os from "os";
 import util from "util";
-import vscode from "vscode";
+import vscode, { Uri } from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
 import { parseFilter } from "../api/Filter";
 import { MemberParts } from "../api/IBMi";
@@ -9,7 +9,7 @@ import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
 import { Tools } from "../api/Tools";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
+import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, ObjectItem, SourcePhysicalFileItem } from "../typings";
@@ -318,6 +318,24 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
       arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
   }
+}
+
+// For a given member's path or uri, find an open tab (if any)
+// where that member is being edited.
+// Assume that the member is not open in more than one tab.
+function findMemberTab(member: vscode.Uri | string): vscode.Tab | undefined {
+  let memberTab: vscode.Tab | undefined;
+  const memberPath = ((member instanceof Uri) ? member.path : member).toLowerCase();
+  for (const group of vscode.window.tabGroups.all) {
+    memberTab = group.tabs.find(tab =>
+      (tab.input instanceof vscode.TabInputText)
+      && (tab.input.uri.scheme === `member`)
+      && (tab.input.uri.path.toLowerCase() === memberPath)
+    );
+    if(memberTab)
+      break;
+  }
+  return memberTab;
 }
 
 export function initializeObjectBrowser(context: vscode.ExtensionContext) {
@@ -633,11 +651,24 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: ObjectBrowserMemberItem) => {
       const connection = getConnection();
       const oldMember = connection.parserMemberPath(node.path);
+      const oldUri = node.resourceUri as vscode.Uri;
       const library = oldMember.library;
       const sourceFile = oldMember.file;
       let newBasename: string | undefined = oldMember.basename;
       let newMember: MemberParts | undefined;
+      let newMemberPath: string | undefined;
       let newNameOK;
+
+      // Check if the member is currently open in an editor tab.
+      const oldMemberTab = findMemberTab(oldUri);
+      // If the member is currently open in an editor tab, and 
+      // the member has unsaved changes, then prevent the renaming.
+      // (This is because of uhhh something)
+      // If the member is currently being edited, forbid the rename operation.
+      if(oldMemberTab && oldMemberTab.isDirty) {
+        vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", "The member has unsaved changes."));
+        return;
+      }
 
       do {
         newBasename = await vscode.window.showInputBox({
@@ -648,8 +679,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         if (newBasename) {
           newNameOK = true;
+          newMemberPath = library + `/` + sourceFile + `/` + newBasename;
           try {
-            newMember = connection.parserMemberPath(library + `/` + sourceFile + `/` + newBasename);
+            newMember = connection.parserMemberPath(newMemberPath);
           } catch (e: any) {
             newNameOK = false;
             vscode.window.showErrorMessage(e);
@@ -685,6 +717,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
         }
       } while (newBasename && !newNameOK)
+
+      // If the member was open in an editor tab, refresh that tab.
+      // (Evidently the VS Code API does not allow us to modify an
+      // open tab to change its label or its uri, so we have to close
+      // the existing tab and then open a new one at the updated uri.
+      if (oldMemberTab && newNameOK && newMemberPath) {
+        vscode.window.tabGroups.close(oldMemberTab);
+        vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node: MemberItem) => {
