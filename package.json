@@ -1105,6 +1105,12 @@
 				"icon": "$(root-folder)"
 			},
 			{
+				"command": "code-for-ibmi.setCurrentLibrary",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Set as Current Library",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.changeUserLibraryList",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Library List...",
@@ -1132,9 +1138,16 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.addToLibraryList",
+				"command": "code-for-ibmi.addToLibraryList.prompt",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Add to Library List...",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.addToLibraryList",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Add to Library List",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
@@ -2010,6 +2023,18 @@
 				{
 					"command": "code-for-ibmi.removeIFSShortcut",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.setCurrentLibrary",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.addToLibraryList",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.addToLibraryList.prompt",
+					"when": "!code-for-ibmi:libraryListDisabled"
 				}
 			],
 			"view/title": [
@@ -2039,7 +2064,7 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.addToLibraryList",
+					"command": "code-for-ibmi.addToLibraryList.prompt",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
@@ -2233,9 +2258,14 @@
 					"group": "libraryChangeCurrent@1"
 				},
 				{
+					"command": "code-for-ibmi.setCurrentLibrary",
+					"when": "view == libraryListView && viewItem == library",
+					"group": "01libraryActions@01"
+				},
+				{
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "view == libraryListView && viewItem == library",
-					"group": "libraryRemove@1"
+					"group": "02libraryActions@01"
 				},
 				{
 					"command": "code-for-ibmi.saveConnectionProfile",
@@ -2336,6 +2366,16 @@
 					"command": "code-for-ibmi.debug.program",
 					"when": "view == objectBrowser && !inDebugMode && viewItem =~ /^object.pgm.*/",
 					"group": "2_debug@1"
+				},
+				{
+					"command": "code-for-ibmi.addToLibraryList",
+					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /library/",
+					"group": "2_library@1"
+				},
+				{
+					"command": "code-for-ibmi.setCurrentLibrary",
+					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /library/",
+					"group": "2_library@2"
 				},
 				{
 					"command": "code-for-ibmi.updateMemberText",
@@ -2534,7 +2574,7 @@
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
-					"when": "view == objectBrowser && viewItem == filter",
+					"when": "view == objectBrowser && viewItem =~ /library/",
 					"group": "1_LibActions@1"
 				},
 				{

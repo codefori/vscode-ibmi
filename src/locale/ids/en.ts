@@ -149,6 +149,7 @@ export const en: Locale = {
   'LibraryListView.removeFromLibraryList.removedLib': `Library {0} was removed from the library list.`,
   'LibraryListView.cleanupLibraryList.removedLibs': `The following libraries were removed from the updated library list as they are invalid: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `Library list were validated without any errors.`,
+  'LibraryListView.setCurrentLibrary.failed':'Failed to set {0} as current library: {1}',
   // objectBrowser:
   'objectBrowser.delete.confirm':'Are you sure you want to delete {0}?',
   'objectBrowser.delete.multiple.confirm':'Are you sure you want to delete these {0} elements?',

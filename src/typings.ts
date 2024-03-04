@@ -157,7 +157,9 @@ export interface WithPath {
   path: string
 }
 
-export interface Library extends WithPath { }
+export interface WithLibrary {
+  library: string
+}
 
 export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean | number }
 

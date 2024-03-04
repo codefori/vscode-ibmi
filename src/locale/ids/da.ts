@@ -149,6 +149,7 @@ export const da: Locale = {
   'LibraryListView.removeFromLibraryList.removedLib': `Bibliotek {0} blev fjernet fra bibliotekslisten.`,
   'LibraryListView.cleanupLibraryList.removedLibs': `De følgende biblioteker blev fjernet fra den opdaterede biblioteksliste, da de ikke er gyldige: {0}`,
   'LibraryListView.cleanupLibraryList.validated': `Bibliotekslisten blev valideret uden fejl.`,
+  'LibraryListView.setCurrentLibrary.failed':'Fejl ved skift til {0} som aktuelt bibliotek: {1}',
   // objectBrowser:
   'objectBrowser.delete.confirm':'Er du sikker på at du vil slette {0}?',
   'objectBrowser.delete.multiple.confirm':'Er du sikker på at du vil slette de {0} valgte elementer?',
