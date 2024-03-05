@@ -320,24 +320,6 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
   }
 }
 
-// For a given member's path or uri, find an open tab (if any)
-// where that member is being edited.
-// Assume that the member is not open in more than one tab.
-function findMemberTab(member: vscode.Uri | string): vscode.Tab | undefined {
-  let memberTab: vscode.Tab | undefined;
-  const memberPath = ((member instanceof Uri) ? member.path : member).toLowerCase();
-  for (const group of vscode.window.tabGroups.all) {
-    memberTab = group.tabs.find(tab =>
-      (tab.input instanceof vscode.TabInputText)
-      && (tab.input.uri.scheme === `member`)
-      && (tab.input.uri.path.toLowerCase() === memberPath)
-    );
-    if(memberTab)
-      break;
-  }
-  return memberTab;
-}
-
 export function initializeObjectBrowser(context: vscode.ExtensionContext) {
   const objectBrowser = new ObjectBrowser();
   const objectTreeViewer = vscode.window.createTreeView(
@@ -660,7 +642,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       let newNameOK;
 
       // Check if the member is currently open in an editor tab.
-      const oldMemberTab = findMemberTab(oldUri);
+      const oldMemberTab = Tools.findMemberTab(oldUri);
 
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.

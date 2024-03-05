@@ -282,6 +282,26 @@ export namespace Tools {
   }
 
   /**
+   * For a given member's path or uri, find an open tab (if any)
+   * where that member is being edited.
+   * Assume that the member is not open in more than one tab.
+  */
+  export function findMemberTab(member: vscode.Uri | string): vscode.Tab | undefined {
+    let memberTab: vscode.Tab | undefined;
+    const memberPath = ((member instanceof vscode.Uri) ? member.path : member).toLowerCase();
+    for (const group of vscode.window.tabGroups.all) {
+      memberTab = group.tabs.find(tab =>
+        (tab.input instanceof vscode.TabInputText)
+        && (tab.input.uri.scheme === `member`)
+        && (tab.input.uri.path.toLowerCase() === memberPath)
+      );
+      if (memberTab)
+        break;
+    }
+    return memberTab;
+  }
+
+  /**
    * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
    * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
    * - Makes sure each comment (`--`) starts on a new line
