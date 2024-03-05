@@ -308,20 +308,24 @@ export class SettingsUI {
               page.panel.dispose();
 
               const data = page.data;
-              if (!data.privateKeyPath?.trim()) {
-                if (connection.privateKeyPath?.trim()) {
-                  data.privateKeyPath = connection.privateKeyPath;
-                  await context.secrets.delete(`${name}_password`);
-                }
-                else {
-                  delete data.privateKeyPath;
-                }
-              }
 
-              if (data.password && !data.privateKeyPath) {
-                await context.secrets.delete(`${name}_password`);
+              if (data.password) {
+                // New password was entered, so store the password
+                // and remove the private key path from the data
                 await context.secrets.store(`${name}_password`, `${data.password}`);
-                delete data.privateKeyPath;
+                data.privateKeyPath = undefined;
+
+                vscode.window.showInformationMessage(`Password updated and will be used for ${name}.`);
+
+              } else {
+                // If no password was entered, but a keypath exists
+                // then remove the password from the data and
+                // use the keypath instead
+                if (data.privateKeyPath?.trim()) {
+                  await context.secrets.delete(`${name}_password`);
+
+                  vscode.window.showInformationMessage(`Private key updated and will be used for ${name}.`);
+                }
               }
 
               //Fix values before assigning the data
