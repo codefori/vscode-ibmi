@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.8.1-dev.0",
+	"version": "2.8.2-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -2036,87 +2036,86 @@
 					"command": "code-for-ibmi.addToLibraryList.prompt",
 					"when": "!code-for-ibmi:libraryListDisabled"
 				},
-        {
-          "command": "code-for-ibmi.showLoginSettings",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.connect",
-          "when": "!code-for-ibmi:connected"
-        },
-        {
-          "command": "code-for-ibmi.collapseSearchView",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.closeSearchView",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.removeFromLibraryList",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.debug.program",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.copyFilter",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.objectBrowser.delete",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.maintainFilter",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.sortFilters",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.moveFilterUp",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.moveFilterDown",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.sortIFSShortcuts",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.uploadStreamfile",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.moveLibraryUp",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.moveLibraryDown",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.refreshLibraryListView",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.refreshMemberBrowser",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.refreshIFSBrowserItem",
-          "when": "never"
-        },
-        {
-          "command": "code-for-ibmi.refreshObjectBrowser",
-          "when": "never"
-        }
-
+				{
+					"command": "code-for-ibmi.showLoginSettings",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.connect",
+					"when": "!code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.collapseSearchView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.closeSearchView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.removeFromLibraryList",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.program",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.objectBrowser.delete",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.maintainFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortFilters",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterUp",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterDown",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortIFSShortcuts",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.uploadStreamfile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveLibraryUp",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveLibraryDown",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshLibraryListView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshMemberBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowserItem",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectBrowser",
+					"when": "never"
+				}
 			],
 			"view/title": [
 				{
