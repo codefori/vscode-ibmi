@@ -7,6 +7,7 @@ import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
+import { t } from "../../locale";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -295,14 +296,14 @@ export class SettingsUI {
             let connection = connections[connectionIdx];
 
             const page = await new CustomUI()
-              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host, minlength: 1 })
-              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-              .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
-              .addParagraph(`Only provide either the password or a private key - not both.`)
-              .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
-              .addFile(`privateKeyPath`, `Private Key${connection.privateKeyPath ? ` (current: ${connection.privateKeyPath})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
-              .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
-              .loadPage<LoginSettings>(`Login Settings: ${name}`);
+              .addInput(`host`, t(`login.host`), undefined, { default: connection.host, minlength: 1 })
+              .addInput(`port`, t(`login.port`), undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`username`, t(`username`), undefined, { default: connection.username, minlength: 1 })
+              .addParagraph(t(`login.authDecision`))
+              .addPassword(`password`, t(`password`), t(`login.password.label`))
+              .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (current: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
+              .addButtons({ id: `submitButton`, label: t(`save`), requiresValidation: true })
+              .loadPage<LoginSettings>(t(`login.title.edit`, name));
 
             if (page && page.data) {
               page.panel.dispose();
@@ -315,7 +316,7 @@ export class SettingsUI {
                 await context.secrets.store(`${name}_password`, `${data.password}`);
                 data.privateKeyPath = undefined;
 
-                vscode.window.showInformationMessage(`Password updated and will be used for ${name}.`);
+                vscode.window.showInformationMessage(t(`login.password.updated`, name));
 
               } else {
                 // If no password was entered, but a keypath exists
@@ -324,7 +325,7 @@ export class SettingsUI {
                 if (data.privateKeyPath?.trim()) {
                   await context.secrets.delete(`${name}_password`);
 
-                  vscode.window.showInformationMessage(`Private key updated and will be used for ${name}.`);
+                  vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
                 }
               }
 

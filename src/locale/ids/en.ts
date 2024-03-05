@@ -38,6 +38,10 @@ export const en: Locale = {
   'ask.overwrite':'{0} already exists.\nDo you want to replace it?',
   'skip':'Skip',
   'skip_all':'Skip all',
+  'password': 'Password',
+  'privateKey': 'Private Key',
+  'username': 'Username',
+  
   // Sandbox:
   'sandbox.input.user.title': `User for server`,
   'sandbox.input.user.prompt': `Enter username for {0}`,
@@ -66,6 +70,20 @@ export const en: Locale = {
   'connectionBrowser.deleteConnection.multiple.warning': `Are you sure you want to delete these {0} connections?`,
   'connectionBrowser.ServerItem.tooltip': ` (previous connection)`,
   'connectionBrowser.ServerItem.title': `Connect`,
+
+  // Login page:
+  'login.title.create': `Connect to IBM i`,
+  'login.title.edit': `Login Settings: {0}`,
+  'login.host': `Host or IP Address`,
+  'login.port': `Port (SSH)`,
+  'login.authDecision': `Only provide either the password or a private key - not both.`,
+  'login.password.label': 'Only provide a password if you want to update an existing one or set a new one.',
+  'login.password.updated': `Password updated and will be used for {0}.`,
+  'login.savePassword': `Save Password`,
+  'login.privateKey.label': `Only provide a private key if you want to update from the existing one or set one.`,
+  'login.privateKey.support': 'OpenSSH, RFC4716, or PPK formats are supported.',
+  'login.privateKey.updated': `Private key updated and will be used for {0}.`,
+
   // helpView:
   'helpView.getStarted': `Get started`,
   'helpView.officialForum': `Open official Forum`,
