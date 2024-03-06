@@ -860,4 +860,25 @@ export default class IBMi {
       return file.fsPath;
     }
   }
+
+  /**
+   * Creates a temporary directory and pass it on to a `process` function.
+   * The directory is guaranteed to be empty when created and deleted after the `process` is done.
+   * @param process the process that will run on the empty directory
+   */
+  async withTempDirectory(process: (directory: string) => Promise<void>) {
+    const tempDirectory = `${this.config?.tempDir || '/tmp'}/code4itemp${Tools.makeid(20)}`;
+    const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
+    if (prepareDirectory.code === 0) {
+      try {
+        await process(tempDirectory);
+      }
+      finally {
+        await this.sendCommand({ command: `rm -rf ${tempDirectory}` });
+      }
+    }
+    else {
+      throw new Error(`Failed to create temporary directory ${tempDirectory}: ${prepareDirectory.stderr}`);
+    }
+  }
 }

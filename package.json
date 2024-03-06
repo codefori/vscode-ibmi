@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.7.6-dev.0",
+	"version": "2.8.2-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1105,6 +1105,12 @@
 				"icon": "$(root-folder)"
 			},
 			{
+				"command": "code-for-ibmi.setCurrentLibrary",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Set as Current Library",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.changeUserLibraryList",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Library List...",
@@ -1132,9 +1138,16 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.addToLibraryList",
+				"command": "code-for-ibmi.addToLibraryList.prompt",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Add to Library List...",
+				"category": "IBM i",
+				"icon": "$(add)"
+			},
+			{
+				"command": "code-for-ibmi.addToLibraryList",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Add to Library List",
 				"category": "IBM i",
 				"icon": "$(add)"
 			},
@@ -1825,7 +1838,7 @@
 				},
 				{
 					"command": "code-for-ibmi.selectForCompare",
-					"when": "code-for-ibmi:connected"
+					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.compareWithSelected",
@@ -2010,6 +2023,98 @@
 				{
 					"command": "code-for-ibmi.removeIFSShortcut",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.setCurrentLibrary",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.addToLibraryList",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.addToLibraryList.prompt",
+					"when": "!code-for-ibmi:libraryListDisabled"
+				},
+				{
+					"command": "code-for-ibmi.showLoginSettings",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.connect",
+					"when": "!code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.collapseSearchView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.closeSearchView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.removeFromLibraryList",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.program",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.copyFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.objectBrowser.delete",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.maintainFilter",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortFilters",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterUp",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveFilterDown",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.sortIFSShortcuts",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.uploadStreamfile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveLibraryUp",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.moveLibraryDown",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshLibraryListView",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshMemberBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowserItem",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.refreshObjectBrowser",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2039,7 +2144,7 @@
 					"when": "view == libraryListView"
 				},
 				{
-					"command": "code-for-ibmi.addToLibraryList",
+					"command": "code-for-ibmi.addToLibraryList.prompt",
 					"group": "navigation",
 					"when": "view == libraryListView"
 				},
@@ -2233,9 +2338,14 @@
 					"group": "libraryChangeCurrent@1"
 				},
 				{
+					"command": "code-for-ibmi.setCurrentLibrary",
+					"when": "view == libraryListView && viewItem == library",
+					"group": "01libraryActions@01"
+				},
+				{
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "view == libraryListView && viewItem == library",
-					"group": "libraryRemove@1"
+					"group": "02libraryActions@01"
 				},
 				{
 					"command": "code-for-ibmi.saveConnectionProfile",
@@ -2338,6 +2448,16 @@
 					"group": "2_debug@1"
 				},
 				{
+					"command": "code-for-ibmi.addToLibraryList",
+					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /library/",
+					"group": "2_library@1"
+				},
+				{
+					"command": "code-for-ibmi.setCurrentLibrary",
+					"when": "!code-for-ibmi:libraryListDisabled && view == objectBrowser && viewItem =~ /library/",
+					"group": "2_library@2"
+				},
+				{
 					"command": "code-for-ibmi.updateMemberText",
 					"when": "view == objectBrowser && viewItem == member",
 					"group": "2_memberStuff@1"
@@ -2359,7 +2479,7 @@
 				},
 				{
 					"command": "code-for-ibmi.downloadMemberAsFile",
-					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
+					"when": "view == objectBrowser && viewItem =~ /^(member|SPF).*$/",
 					"group": "3_memberTransfer@1"
 				},
 				{
@@ -2534,7 +2654,7 @@
 				},
 				{
 					"command": "code-for-ibmi.createSourceFile",
-					"when": "view == objectBrowser && viewItem == filter",
+					"when": "view == objectBrowser && viewItem =~ /library/",
 					"group": "1_LibActions@1"
 				},
 				{
