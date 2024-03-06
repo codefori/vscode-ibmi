@@ -45,10 +45,6 @@
 		],
 		"snippets": [
 			{
-				"path": "./schemas/cl.code-snippets",
-				"language": "cl"
-			},
-			{
 				"path": "./schemas/local-variables.code-snippets",
 				"language": "json"
 			}
