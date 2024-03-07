@@ -25,22 +25,29 @@ function getMyJavaHome(javaVersion: string) {
   }
 }
 
-async function getDebugServiceDetails(content: IBMiContent): Promise<DebugServiceDetails> {
+let debugServiceDetails: DebugServiceDetails | undefined;
+export async function getDebugServiceDetails(content: IBMiContent): Promise<DebugServiceDetails> {
+  if (debugServiceDetails) {
+    return debugServiceDetails;
+  }
+
+  debugServiceDetails = {
+    version: `1.0.0`,
+    java: `8`
+  };
+
   const detailExists = await content.testStreamFile(path.posix.join(directory, detailFile), "r");
   if (detailExists) {
     const fileContents = await content.downloadStreamfile(path.posix.join(directory, detailFile));
     try {
-      return JSON.parse(fileContents);
+      debugServiceDetails = JSON.parse(fileContents);
     } catch (e) {
       // Something very very bad has happened
       console.log(e);
     }
   }
 
-  return {
-    version: `1.0.0`,
-    java: `8`
-  }
+  return debugServiceDetails!;
 }
 
 export async function startup(instance: Instance){

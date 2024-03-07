@@ -421,12 +421,11 @@ export async function initialize(context: ExtensionContext) {
           }
         } else {
           const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
-          
-          const openTut = await vscode.window.showInformationMessage(`${
-            existingDebugService ? 
-            `Looks like the Debug Service was started by an external service. This may impact your VS Code experience.` : 
-            `Looks like you have the debug PTF but don't have it configured.`
-          } Do you want to see the Walkthrough to set it up?`, `Take me there`);
+
+          const openTut = await vscode.window.showInformationMessage(`${existingDebugService ?
+              `Looks like the Debug Service was started by an external service. This may impact your VS Code experience.` :
+              `Looks like you have the debug PTF but don't have it configured.`
+            } Do you want to see the Walkthrough to set it up?`, `Take me there`);
 
           if (openTut === `Take me there`) {
             vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
@@ -439,24 +438,31 @@ export async function initialize(context: ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());
 }
 
-function validateIPv4address(ipaddress: string) {  
-  if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {  
-    return (true)  
+function validateIPv4address(ipaddress: string) {
+  if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {
+    return (true)
   }
-  return (false)  
-}  
+  return (false)
+}
 
 interface DebugOptions {
   password: string;
   library: string;
   object: string;
-  libraries: ILELibrarySettings
+  libraries: ILELibrarySettings;
+  sep?: {
+    type: "*PGM" | "*SRVPGM";
+    moduleName?: string;
+    procedureName?: string;
+  }
 };
 
 export async function startDebug(instance: Instance, options: DebugOptions) {
   const connection = instance.getConnection();
   const config = instance.getConfig();
   const storage = instance.getStorage();
+
+  const serviceDetails = await server.getDebugServiceDetails(instance.getContent()!);
 
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;
@@ -477,48 +483,69 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     }
   }
 
-  const pathKey = options.library.trim() + `/` + options.object.trim();
+  if (options.sep) {
+    if (serviceDetails.version === `1.0.0`) {
+      vscode.window.showErrorMessage(`The debug service on this system, version ${serviceDetails.version}, does not support service entry points.`);
+      return;
+    }
 
-  const previousCommands = storage!.getDebugCommands();
+    // libraryName/programName programType/moduleName/procedureName
+    const formattedDebugString = `${options.library.toUpperCase()}/${options.object.toUpperCase()} ${options.sep.type}/${options.sep.moduleName || `*ALL`}/${options.sep.procedureName || `*ALL`}`;
+    vscode.commands.executeCommand(
+      `ibmidebug.create-service-entry-point-with-prompt`, 
+      connection?.currentHost!, 
+      connection?.currentUser!.toUpperCase(), 
+      options.password, 
+      formattedDebugString, 
+      Number(config?.debugPort), 
+      Number(config?.debugSepPort)
+    );
 
-  let currentCommand: string | undefined = previousCommands[pathKey] || `CALL PGM(` + pathKey + `)`;
+  } else {
 
-  currentCommand = await vscode.window.showInputBox({
-    ignoreFocusOut: true,
-    title: `Debug command`,
-    prompt: `Command used to start debugging the ${pathKey} program object. The command is wrapped around SBMJOB.`,
-    value: currentCommand
-  });
+    const pathKey = options.library.trim() + `/` + options.object.trim();
 
-  if (currentCommand) {
-    previousCommands[pathKey] = currentCommand;
-    storage?.setDebugCommands(previousCommands);
+    const previousCommands = storage!.getDebugCommands();
 
-    const debugConfig = {
-      "type": `IBMiDebug`,
-      "request": `launch`,
-      "name": `Remote debug: Launch a batch debug session`,
-      "user": connection!.currentUser.toUpperCase(),
-      "password": options.password,
-      "host": connection!.currentHost,
-      "port": port,
-      "secure": secure,  // Enforce secure mode
-      "ignoreCertificateErrors": !secure,
-      "subType": "batch",
-      "library": options.library.toUpperCase(),
-      "program": options.object.toUpperCase(),
-      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
-      "updateProductionFiles": updateProductionFiles,
-      "trace": enableDebugTracing,
-    };
+    let currentCommand: string | undefined = previousCommands[pathKey] || `CALL PGM(` + pathKey + `)`;
 
-    const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
+    currentCommand = await vscode.window.showInputBox({
+      ignoreFocusOut: true,
+      title: `Debug command`,
+      prompt: `Command used to start debugging the ${pathKey} program object. The command is wrapped around SBMJOB.`,
+      value: currentCommand
+    });
 
-    if (debugResult) {
-      connectionConfirmed = true;
-    } else {
-      if (!connectionConfirmed) {
-        temporaryPassword = undefined;
+    if (currentCommand) {
+      previousCommands[pathKey] = currentCommand;
+      storage?.setDebugCommands(previousCommands);
+
+      const debugConfig = {
+        "type": `IBMiDebug`,
+        "request": `launch`,
+        "name": `Remote debug: Launch a batch debug session`,
+        "user": connection!.currentUser.toUpperCase(),
+        "password": options.password,
+        "host": connection!.currentHost,
+        "port": port,
+        "secure": secure,  // Enforce secure mode
+        "ignoreCertificateErrors": !secure,
+        "subType": "batch",
+        "library": options.library.toUpperCase(),
+        "program": options.object.toUpperCase(),
+        "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
+        "updateProductionFiles": updateProductionFiles,
+        "trace": enableDebugTracing,
+      };
+
+      const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
+
+      if (debugResult) {
+        connectionConfirmed = true;
+      } else {
+        if (!connectionConfirmed) {
+          temporaryPassword = undefined;
+        }
       }
     }
   }
