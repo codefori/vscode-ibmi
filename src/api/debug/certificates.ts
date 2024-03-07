@@ -116,7 +116,9 @@ export async function setup(connection: IBMi) {
     `openssl genrsa -out debug_service.key 2048`,
     `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${host}'`,
     `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -sha256 -req -extfile <(printf "${extFileContent}")`,
-    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`
+    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`,
+    `rm debug_service.key debug_service.csr`, 
+    `chmod 444 debug_service.pfx`
   ];
 
   const directory = getRemoteCertDirectory(connection);
