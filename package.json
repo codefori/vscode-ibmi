@@ -379,6 +379,11 @@
 								"default": "8005",
 								"description": "Port to connect to IBM i Debug Service."
 							},
+							"debugSepPort": {
+								"type": "string",
+								"default": "8008",
+								"description": "Port to connect to IBM i Debug Service for SEP."
+							},
 							"debugIsSecure": {
 								"type": "boolean",
 								"default": false,
