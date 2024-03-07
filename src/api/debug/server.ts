@@ -46,13 +46,14 @@ async function getDebugServiceDetails(content: IBMiContent): Promise<DebugServic
 export async function startup(instance: Instance){
   const connection = instance.getConnection()!;
   const content = instance.getContent()!;
-  
+  const config = instance.getConfig()!;
+
   const host = connection.currentHost;
   const details = await getDebugServiceDetails(content);
   const javaHome = getMyJavaHome(details.java);
 
   const encryptResult = await connection.sendCommand({
-    command: `${javaHome} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(directory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
+    command: `${javaHome} MY_DBGSRV_SECURED_PORT="${config.debugPort}" MY_DBGSRV_SEP_DAEMON_PORT=${config.debugSepPort} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(directory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
   });
 
   if ((encryptResult.code || 0) >= 1) {
