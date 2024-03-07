@@ -4,15 +4,55 @@ import { window } from "vscode";
 import IBMi from "../IBMi";
 import IBMiContent from "../IBMiContent";
 import * as certificates from "./certificates";
+import Instance from "../Instance";
 
 const directory = `/QIBM/ProdData/IBMiDebugService/bin/`;
-const MY_JAVA_HOME = `MY_JAVA_HOME="/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit"`;
+const detailFile = `package,json`;
 
-export async function startup(connection: IBMi) {
+const JavaPaths: {[version: string]: string} = {
+  "8": `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`,
+  "11": `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`
+}
+
+interface DebugServiceDetails {
+  version: string;
+  java: string;
+}
+
+function getMyJavaHome(javaVersion: string) {
+  if (JavaPaths[javaVersion]) {
+    return `MY_JAVA_HOME="${JavaPaths[javaVersion]}"`;
+  }
+}
+
+async function getDebugServiceDetails(content: IBMiContent): Promise<DebugServiceDetails> {
+  const detailExists = await content.testStreamFile(path.posix.join(directory, detailFile), "r");
+  if (detailExists) {
+    const fileContents = await content.downloadStreamfile(path.posix.join(directory, detailFile));
+    try {
+      return JSON.parse(fileContents);
+    } catch (e) {
+      // Something very very bad has happened
+      console.log(e);
+    }
+  }
+
+  return {
+    version: `1.0.0`,
+    java: `8`
+  }
+}
+
+export async function startup(instance: Instance){
+  const connection = instance.getConnection()!;
+  const content = instance.getContent()!;
+  
   const host = connection.currentHost;
+  const details = await getDebugServiceDetails(content);
+  const javaHome = getMyJavaHome(details.java);
 
   const encryptResult = await connection.sendCommand({
-    command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(directory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
+    command: `${javaHome} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(directory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
   });
 
   if ((encryptResult.code || 0) >= 1) {
@@ -28,7 +68,7 @@ export async function startup(connection: IBMi) {
   const keystorePath = certificates.getRemoteServerCertPath(connection);
 
   connection.sendCommand({
-    command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(directory, `startDebugService.sh`)}"`
+    command: `${javaHome} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(directory, `startDebugService.sh`)}"`
   }).then(startResult => {
     if ((startResult.code || 0) >= 1) {
       window.showErrorMessage(startResult.stdout || startResult.stderr);
@@ -56,9 +96,15 @@ export async function getRunningJob(localPort: string, content: IBMiContent): Pr
   return (rows.length > 0 ? String(rows[0].JOB_NAME) : undefined);
 }
 
-export async function end(connection: IBMi): Promise<void> {
+export async function end(instance: Instance): Promise<void> {
+  const connection = instance.getConnection()!;
+  const content = instance.getContent()!;
+
+  const details = await getDebugServiceDetails(content);
+  const javaHome = getMyJavaHome(details.java);
+
   const endResult = await connection.sendCommand({
-    command: `${MY_JAVA_HOME} ${path.posix.join(directory, `stopDebugService.sh`)}`
+    command: `${javaHome} ${path.posix.join(directory, `stopDebugService.sh`)}`
   });
 
   if (endResult.code && endResult.code >= 0) {

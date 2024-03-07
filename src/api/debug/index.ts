@@ -346,7 +346,7 @@ export async function initialize(context: ExtensionContext) {
                 if (confirmEndServer === `End service`) {
                   progress.report({ increment: 33, message: `Ending currently running service.` });
                   try {
-                    await server.end(connection);
+                    await server.end(instance);
                     startupService = true;
                   } catch (e: any) {
                     vscode.window.showErrorMessage(`Failed to end existing debug service (${e.message})`);
@@ -359,7 +359,7 @@ export async function initialize(context: ExtensionContext) {
               if (startupService) {
                 progress.report({ increment: 34, message: `Starting service up.` });
                 try {
-                  await server.startup(connection);
+                  await server.startup(instance);
                 } catch (e: any) {
                   vscode.window.showErrorMessage(`Failed to start debug service (${e.message})`);
                 }
