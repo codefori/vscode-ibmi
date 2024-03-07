@@ -504,6 +504,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       "port": port,
       "secure": secure,  // Enforce secure mode
       "ignoreCertificateErrors": !secure,
+      "subType": "batch",
       "library": options.library.toUpperCase(),
       "program": options.object.toUpperCase(),
       "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
