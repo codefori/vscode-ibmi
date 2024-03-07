@@ -97,6 +97,13 @@ export class GlobalStorage extends Storage {
     await this.set(SERVER_SETTINGS_CACHE_KEY(name), serverSettings);
   }
 
+  async setServerSettingsCacheSpecific(name: string, newSettings: Partial<CachedServerSettings>) {
+    await this.set(SERVER_SETTINGS_CACHE_KEY(name), {
+      ...this.getServerSettingsCache(name),
+      ...newSettings
+    });
+  }
+
   async deleteServerSettingsCache(name: string) {
     await this.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
   }

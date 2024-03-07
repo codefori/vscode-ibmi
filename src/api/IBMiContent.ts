@@ -68,7 +68,7 @@ export default class IBMiContent {
   }
 
   /**
-   * 
+   *
    * @param remotePath Remote IFS path
    * @param localPath Local path to download file to
    */
@@ -103,7 +103,7 @@ export default class IBMiContent {
   }
 
   /**
-   * @param originalPath 
+   * @param originalPath
    * @param content Raw content
    * @param encoding Optional encoding to write.
    */
@@ -249,7 +249,7 @@ export default class IBMiContent {
    * Run SQL statements.
    * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
    * If a statement starts with @, it will be run as a CL command.
-   * 
+   *
    * @param statements
    * @returns a Result set
    */
@@ -259,7 +259,7 @@ export default class IBMiContent {
     if (QZDFMDB2) {
       if (this.chgJobCCSID === undefined) {
         this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
-      }      
+      }
 
       const output = await this.ibmi.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
@@ -398,7 +398,7 @@ export default class IBMiContent {
       `;
       results = await this.runSQL(statement);
     } else {
-      results = await this.getQTempTable([`CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYS/*ALL) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST)')`], "LIBLIST");
+      results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
       if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
         return [];
       }
@@ -475,7 +475,7 @@ export default class IBMiContent {
   /**
    * @param filters
    * @param sortOrder
-   * @returns an array of IBMiFile
+   * @returns an array of IBMiObject
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const library = filters.library.toUpperCase();
@@ -491,7 +491,7 @@ export default class IBMiContent {
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
 
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
-    const withSourceFiles = ['*ALL', '*SRCPF'].includes(type);
+    const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     const queries: string[] = [];
 
@@ -506,35 +506,61 @@ export default class IBMiContent {
     let createOBJLIST;
     if (sourceFilesOnly) {
       //DSPFD only
-      createOBJLIST = `Select PHFILE as NAME, ` +
-        `'*FILE' As TYPE, ` +
-        `PHFILA As ATTRIBUTE, ` +
-        `PHTXT As TEXT, ` +
-        `1 As IS_SOURCE, ` +
-        `PHNOMB As NB_MBR ` +
-        `From QTEMP.CODE4IFD Where PHDTAT = 'S'`;
+      createOBJLIST = `select PHFILE as NAME, ` +
+        `'*FILE' as TYPE, ` +
+        `PHFILA as ATTRIBUTE, ` +
+        `PHTXT as TEXT, ` +
+        `1 as IS_SOURCE, ` +
+        `PHNOMB as NB_MBR, ` +
+        'PHMXRL as SOURCE_LENGTH, ' +
+        'PHCSID as CCSID ' +
+        `from QTEMP.CODE4IFD where PHDTAT = 'S'`;
     } else if (!withSourceFiles) {
       //DSPOBJD only
-      createOBJLIST = `Select ODOBNM as NAME, ` +
-        `ODOBTP As TYPE, ` +
-        `ODOBAT As ATTRIBUTE, ` +
-        `ODOBTX As TEXT, ` +
-        `0 As IS_SOURCE ` +
-        `From QTEMP.CODE4IOBJD`;
+      createOBJLIST = `select ODOBNM as NAME, ` +
+        `ODOBTP as TYPE, ` +
+        `ODOBAT as ATTRIBUTE, ` +
+        `ODOBTX as TEXT, ` +
+        `0 as IS_SOURCE, ` +
+        `ODOBSZ as SIZE, ` +
+        `ODCCEN, ` +
+        `ODCDAT, ` +
+        `ODCTIM, ` +
+        `ODLCEN, ` +
+        `ODLDAT, ` +
+        `ODLTIM, ` +
+        `ODOBOW as OWNER, ` +
+        `ODCRTU as CREATED_BY, ` +
+        `ODSIZU as SIZE_IN_UNITS, ` +
+        `ODBPUN as BYTES_PER_UNIT ` +
+        `from QTEMP.CODE4IOBJD`;
     }
     else {
       //Both DSPOBJD and DSPFD
-      createOBJLIST = `Select ODOBNM as NAME, ` +
-        `ODOBTP As TYPE, ` +
-        `ODOBAT As ATTRIBUTE, ` +
-        `ODOBTX As TEXT, ` +
-        `Case When PHDTAT = 'S' Then 1 Else 0 End As IS_SOURCE, ` +
-        `PHNOMB As NB_MBR ` +
-        `From QTEMP.CODE4IOBJD  ` +
-        `Left Join QTEMP.CODE4IFD On PHFILE = ODOBNM And PHDTAT = 'S'`;
+      createOBJLIST = `select ODOBNM as NAME, ` +
+        `ODOBTP as TYPE, ` +
+        `ODOBAT as ATTRIBUTE, ` +
+        `ODOBTX as TEXT, ` +
+        `Case When PHDTAT = 'S' Then 1 Else 0 End as IS_SOURCE, ` +
+        `PHNOMB as NB_MBR, ` +
+        'PHMXRL as SOURCE_LENGTH, ' +
+        'PHCSID as CCSID, ' +
+        `ODOBSZ as SIZE, ` +
+        `ODCCEN, ` +
+        `ODCDAT, ` +
+        `ODCTIM, ` +
+        `ODLCEN, ` +
+        `ODLDAT, ` +
+        `ODLTIM, ` +
+        `ODOBOW as OWNER, ` +
+        `ODCRTU as CREATED_BY, ` +
+        `ODSIZU as SIZE_IN_UNITS, ` +
+        `ODBPUN as BYTES_PER_UNIT ` +
+        `from QTEMP.CODE4IOBJD  ` +
+        `left join QTEMP.CODE4IFD on PHFILE = ODOBNM And PHDTAT = 'S'`;
     }
 
-    queries.push(`Create Table QTEMP.OBJLIST As (${createOBJLIST}) With DATA`);
+    queries.push(`create table QTEMP.OBJLIST as (${createOBJLIST}) with data`);
 
     const objects = (await this.getQTempTable(queries, "OBJLIST"));
     return objects.map(object => ({
@@ -544,7 +570,14 @@ export default class IBMiContent {
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT),
       memberCount: object.NB_MBR !== undefined ? Number(object.NB_MBR) : undefined,
-      sourceFile: Boolean(object.IS_SOURCE)
+      sourceFile: Boolean(object.IS_SOURCE),
+      sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+      CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined,
+      size: Number(object.SIZE) !== 9999999999 ? Number(object.SIZE) : Number(object.SIZE_IN_UNITS) * Number(object.BYTES_PER_UNIT),
+      created: this.getDspObjDdDate(String(object.ODCCEN), String(object.ODCDAT), String(object.ODCTIM)),
+      changed: this.getDspObjDdDate(String(object.ODLCEN), String(object.ODLDAT), String(object.ODLTIM)),
+      created_by: object.CREATED_BY,
+      owner: object.OWNER,
     } as IBMiObject))
       .filter(object => !typeFilter || typeFilter(object.type))
       .filter(object => nameFilter.test(object.name))
@@ -800,8 +833,9 @@ export default class IBMiContent {
    * @param timeString: string in HHMMSS
    * @returns date
    */
-  getDspfdDate(century: string = `0`, YYMMDD: string = `010101`, HHMMSS: string = `000000`): Date {
+  getDspObjDdDate(century: string = `0`, MMDDYY: string = `010101`, HHMMSS: string = `000000`): Date {
     let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
+    let YYMMDD: string = MMDDYY.slice(4,).concat(MMDDYY.slice(0, 4));
     let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
     [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
     return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
@@ -845,7 +879,7 @@ export default class IBMiContent {
   }
 
   /**
-   * 
+   *
    * @param command Optionally qualified CL command
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string

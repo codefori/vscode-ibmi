@@ -21,12 +21,13 @@ import { updateLocale } from "./locale";
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
 import { CodeForIBMi, ConnectionData } from "./typings";
-import { ObjectBrowserProvider } from "./views/ConnectionBrowser";
+import { initializeConnectionBrowser } from "./views/ConnectionBrowser";
 import { LibraryListProvider } from "./views/LibraryListView";
 import { ProfilesView } from "./views/ProfilesView";
 import { HelpView } from "./views/helpView";
 import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
+import { SettingsUI } from "./webviews/settings";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -34,22 +35,19 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   await loadAllofExtension(context);
-
   const checkLastConnections = () => {
     const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
     const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
     GlobalStorage.get().setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
   };
-
+  
+  SettingsUI.init(context);
+  initializeConnectionBrowser(context);
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
   
-  context.subscriptions.push(
-    window.registerTreeDataProvider(
-      `connectionBrowser`,
-      new ObjectBrowserProvider(context)
-    ),
+  context.subscriptions.push(    
     window.registerTreeDataProvider(
       `helpView`,
       new HelpView()
