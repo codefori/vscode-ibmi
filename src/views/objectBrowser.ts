@@ -726,11 +726,11 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       let newNameOK;
 
       // Check if the member is currently open in an editor tab.
-      const oldMemberTab = Tools.findMemberTab(oldUri);
+      const oldMemberTabs = Tools.findUriTabs(oldUri);
 
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.
-      if(oldMemberTab && oldMemberTab.isDirty) {
+      if(oldMemberTabs.find(tab => tab.isDirty)){
         vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", "The member has unsaved changes."));
         return;
       }
@@ -783,13 +783,17 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         }
       } while (newBasename && !newNameOK)
 
-      // If the member was open in an editor tab, refresh that tab.
-      // (Evidently the VS Code API does not allow us to modify an
-      // open tab to change its label or its uri, so we have to close
-      // the existing tab and then open a new one at the updated uri.
-      if (oldMemberTab && newNameOK && newMemberPath) {
-        vscode.window.tabGroups.close(oldMemberTab);
-        vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+      // If the member was open in an editor tab prior to the renaming,
+      // refresh those tabs to reflect the new member path/name.
+      // (Directly modifying the label or uri of an open tab is apparently not
+      // possible with the current VS Code API, so refresh the tab by closing
+      // it and then opening a new one at the new uri.)
+      if (newNameOK && newMemberPath) {
+        oldMemberTabs.forEach((tab) => {
+          vscode.window.tabGroups.close(tab).then(() => {
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+          });
+        })
       }
     }),
 

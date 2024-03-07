@@ -261,6 +261,12 @@ export namespace Tools {
     }
   }
 
+  /**
+   * Check whether two given uris point to the same file/member
+   */
+  export function areEquivalentUris(uriA: vscode.Uri, uriB: vscode.Uri) {
+    return uriStringWithoutFragment(uriA) === uriStringWithoutFragment(uriB);
+  }
 
   /**
    * We do this to find previously opened files with the same path, but different case OR readonly flags.
@@ -283,23 +289,20 @@ export namespace Tools {
   }
 
   /**
-   * For a given member's path or uri, find an open tab (if any)
-   * where that member is being edited.
-   * Assume that the member is not open in more than one tab.
+   * Given the uri of a member or other resource, find all
+   * (if any) open tabs where that resource is being edited.
   */
-  export function findMemberTab(member: vscode.Uri | string): vscode.Tab | undefined {
-    let memberTab: vscode.Tab | undefined;
-    const memberPath = ((member instanceof vscode.Uri) ? member.path : member).toLowerCase();
+  export function findUriTabs(uriToFind: vscode.Uri): vscode.Tab[] {
+    let resourceTabs: vscode.Tab[] = [];
     for (const group of vscode.window.tabGroups.all) {
-      memberTab = group.tabs.find(tab =>
+      group.tabs.filter(tab =>
         (tab.input instanceof vscode.TabInputText)
-        && (tab.input.uri.scheme === `member`)
-        && (tab.input.uri.path.toLowerCase() === memberPath)
-      );
-      if (memberTab)
-        break;
+        && areEquivalentUris(tab.input.uri, uriToFind)
+      ).forEach(tab => {
+        resourceTabs.push(tab);
+      });
     }
-    return memberTab;
+    return resourceTabs;
   }
 
   /**
