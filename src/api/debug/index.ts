@@ -10,6 +10,7 @@ import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
 import { getEnvConfig } from "../local/env";
 import { ILELibrarySettings } from "../CompileTools";
+import { ObjectItem } from "../../typings";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -31,7 +32,7 @@ export async function initialize(context: ExtensionContext) {
     return debugclient !== undefined;
   }
 
-  const startDebugging = async (objectLibrary: string, objectName: string, workspaceFolder?: vscode.WorkspaceFolder) => {
+  const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, workspaceFolder?: vscode.WorkspaceFolder) => {
     if (debugExtensionAvailable()) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
@@ -59,12 +60,18 @@ export async function initialize(context: ExtensionContext) {
           }
 
           if (password) {
-            const debugOpts: DebugOptions = {
+            let debugOpts: DebugOptions = {
               password,
               library: objectLibrary,
               object: objectName,
               libraries
             };
+
+            if (type === `sep`) {
+              debugOpts.sep = {
+                type: objectType
+              }
+            }
 
             startDebug(instance, debugOpts);
           }
@@ -93,7 +100,24 @@ export async function initialize(context: ExtensionContext) {
     }
   }
 
-  const getObjectFromUri = async (uri: Uri) => {
+  let cachedResolvedTypes: { [path: string]: DebugObjectType } = {};
+  const getObjectType = async(library: string, objectName: string) => {
+    const path = library + `/` + objectName;
+    if (cachedResolvedTypes[path]) {
+      return cachedResolvedTypes[path];
+    } else {
+      const content = instance.getContent()!;
+
+      const [row] = await content.runSQL(`select OBJTYPE from table(qsys2.object_statistics('${library}', '*PGM *SRVPGM', '${objectName}')) X`) as { OBJTYPE: DebugObjectType }[];
+  
+      if (row) {
+        cachedResolvedTypes[path] = row.OBJTYPE;
+        return row.OBJTYPE;
+      };
+    }
+  }
+
+  const getObjectFromUri = (uri: Uri) => {
     const connection = instance.getConnection();
 
     const configuration = instance.getConfig();
@@ -187,24 +211,35 @@ export async function initialize(context: ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
-      const activeEditor = vscode.window.activeTextEditor;
-      if (activeEditor) {
-        // Get the workspace folder if one is available.
-        const workspaceFolder = [`member`, `streamfile`].includes(activeEditor.document.uri.scheme) ? undefined : vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
-
-        const qualifiedObject = await getObjectFromUri(activeEditor.document.uri);
-
-        if (qualifiedObject.library && qualifiedObject.object) {
-          startDebugging(qualifiedObject.library, qualifiedObject.object, workspaceFolder);
-        }
-      }
+    vscode.commands.registerCommand(`code-for-ibmi.debug.batch`, (node?: ObjectItem|Uri) => {
+      vscode.commands.executeCommand(`code-for-ibmi.debug`, `batch`, node);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.program`, async (node) => {
-      const [library, object] = node.path.split(`/`);
-      if (library && object) {
-        startDebugging(library, object);
+    vscode.commands.registerCommand(`code-for-ibmi.debug.sep`, (node?: ObjectItem|Uri) => {
+      vscode.commands.executeCommand(`code-for-ibmi.debug`, `sep`, node);
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.debug`, async (debugType?: DebugType, node?: ObjectItem|Uri) => {
+      if (debugType && node) {
+        if (node instanceof Uri) {
+          const workspaceFolder = [`member`, `streamfile`].includes(node.scheme) ? undefined : vscode.workspace.getWorkspaceFolder(node);
+
+          const qualifiedObject = getObjectFromUri(node);
+  
+          if (qualifiedObject.library && qualifiedObject.object) {
+            const objectType = await getObjectType(qualifiedObject.library, qualifiedObject.object);
+            if (objectType) {
+              startDebugging(debugType, objectType, qualifiedObject.library, qualifiedObject.object, workspaceFolder);
+            } else {
+              vscode.window.showErrorMessage(`Failed to determine object type. Ensure the object exists and is a program (*PGM) or service program (*SRVPGM).`);
+            }
+          }
+        } else
+        if ('object' in node) {
+          const { library, name, type } = node.object
+
+          startDebugging(debugType, type as DebugObjectType, library, name);
+        }
       }
     }),
 
@@ -451,11 +486,14 @@ interface DebugOptions {
   object: string;
   libraries: ILELibrarySettings;
   sep?: {
-    type: "*PGM" | "*SRVPGM";
+    type: DebugObjectType;
     moduleName?: string;
     procedureName?: string;
   }
 };
+
+type DebugType = "batch" | "sep";
+type DebugObjectType = "*PGM" | "*SRVPGM";
 
 export async function startDebug(instance: Instance, options: DebugOptions) {
   const connection = instance.getConnection();
