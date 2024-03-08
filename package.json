@@ -966,14 +966,14 @@
 			},
 			{
 				"command": "code-for-ibmi.debug.batch",
-				"title": "Start Debugging (Batch)",
+				"title": "Batch",
 				"category": "IBM i",
 				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
 				"command": "code-for-ibmi.debug.sep",
-				"title": "Start Debugging (SEP)",
+				"title": "Service Entry Point",
 				"category": "IBM i",
 				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
@@ -1768,7 +1768,8 @@
 			},
 			{
 				"id": "code-for-ibmi.debug.group",
-				"label": "Start Debugging"
+				"label": "Start Debugging",
+				"icon": "$(debug-start)"
 			}
 		],
 		"menus": {
@@ -2465,7 +2466,7 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.debug.group",
+					"submenu": "code-for-ibmi.debug.group",
 					"when": "view == objectBrowser && !inDebugMode && (viewItem =~ /^object.pgm.*/ || viewItem =~ /^object.srvpgm.*/)",
 					"group": "2_debug@1"
 				},
