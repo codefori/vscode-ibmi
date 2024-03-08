@@ -965,16 +965,17 @@
 				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
-				"command": "code-for-ibmi.debug.activeEditor",
-				"title": "Start Debugging Active Source",
+				"command": "code-for-ibmi.debug.batch",
+				"title": "Start Debugging (Batch)",
 				"category": "IBM i",
 				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
-				"command": "code-for-ibmi.debug.program",
-				"title": "Debug Program",
+				"command": "code-for-ibmi.debug.sep",
+				"title": "Start Debugging (SEP)",
 				"category": "IBM i",
+				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
@@ -1764,6 +1765,10 @@
 			{
 				"id": "code-for-ibmi.openMember",
 				"label": "Open"
+			},
+			{
+				"id": "code-for-ibmi.debug.group",
+				"label": "Start Debugging"
 			}
 		],
 		"menus": {
@@ -1798,6 +1803,14 @@
 				{
 					"command": "code-for-ibmi.edit",
 					"when": "viewItem == member"
+				}
+			],
+			"code-for-ibmi.debug.group": [
+				{
+					"command": "code-for-ibmi.debug.batch"
+				},
+				{
+					"command": "code-for-ibmi.debug.sep"
 				}
 			],
 			"commandPalette": [
@@ -2062,7 +2075,11 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.debug.program",
+					"command": "code-for-ibmi.debug.batch",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.sep",
 					"when": "never"
 				},
 				{
@@ -2251,7 +2268,7 @@
 			],
 			"editor/title": [
 				{
-					"command": "code-for-ibmi.debug.activeEditor",
+					"submenu": "code-for-ibmi.debug.group",
 					"when": "code-for-ibmi:connected && !inDebugMode && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
 					"group": "navigation@1"
 				},
@@ -2448,8 +2465,8 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.debug.program",
-					"when": "view == objectBrowser && !inDebugMode && viewItem =~ /^object.pgm.*/",
+					"command": "code-for-ibmi.debug.group",
+					"when": "view == objectBrowser && !inDebugMode && (viewItem =~ /^object.pgm.*/ || viewItem =~ /^object.srvpgm.*/)",
 					"group": "2_debug@1"
 				},
 				{
