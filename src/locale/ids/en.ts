@@ -66,6 +66,9 @@ export const en: Locale = {
   'connectionBrowser.deleteConnection.multiple.warning': `Are you sure you want to delete these {0} connections?`,
   'connectionBrowser.ServerItem.tooltip': ` (previous connection)`,
   'connectionBrowser.ServerItem.title': `Connect`,
+  'connectionBrowser.duplicateConnection.prompt':'Duplicate connection {0}',
+  'connectionBrowser.duplicateConnection.placeholder':'New connection name',
+  'connectionBrowser.duplicateConnection.already.exists':'Connection {0} already exists',
   // helpView:
   'helpView.getStarted': `Get started`,
   'helpView.officialForum': `Open official Forum`,

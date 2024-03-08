@@ -1035,6 +1035,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.duplicateConnection",
+				"title": "Duplicate...",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.disconnect",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Disconnect",
@@ -1829,6 +1834,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.duplicateConnection",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
@@ -2273,9 +2282,14 @@
 					"group": "2_delete@1"
 				},
 				{
+					"command": "code-for-ibmi.duplicateConnection",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
+					"group": "2_delete@2"
+				},
+				{
 					"command": "code-for-ibmi.deleteConnection",
 					"when": "view == connectionBrowser && viewItem == server",
-					"group": "2_delete@2"
+					"group": "2_delete@3"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",

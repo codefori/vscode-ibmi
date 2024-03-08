@@ -66,6 +66,9 @@ export const fr: Locale = {
   'connectionBrowser.deleteConnection.multiple.warning': `Êtes vous sûr de vouloir supprimer ces {0} connexions?`,
   'connectionBrowser.ServerItem.tooltip': ` (précédente connexion)`,
   'connectionBrowser.ServerItem.title': `Se Connecter`,
+  'connectionBrowser.duplicateConnection.prompt':'Dupliquer la connextion {0}',
+  'connectionBrowser.duplicateConnection.placeholder':'Nouveau nom de connexion',
+  'connectionBrowser.duplicateConnection.already.exists':'La connexion {0} existe déjà',
   // helpView:
   'helpView.getStarted': `Pour commencer`,
   'helpView.officialForum': `Forum officiel`,

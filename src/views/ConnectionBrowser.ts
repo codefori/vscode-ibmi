@@ -173,6 +173,45 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           connectionBrowser.refresh();
         }
       }
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.duplicateConnection`, async (server: Server) => {
+      const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+      const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
+
+      const connection = connections.find(connection => server.name === connection.name);
+      const connectionSetting = connectionSettings.find(connection => server.name === connection.name);
+
+      if (connection && connectionSettings) {
+        const newConnectionName = await vscode.window.showInputBox({
+          prompt: t("connectionBrowser.duplicateConnection.prompt", server.name),
+          placeHolder: t('connectionBrowser.duplicateConnection.placeholder'),
+          validateInput: value => connections.some(connection => connection.name === value) ?
+            t('connectionBrowser.duplicateConnection.already.exists', value) :
+            undefined
+        });
+
+        if (newConnectionName) {
+          const newConnection = Object.assign({}, connection);          
+          newConnection.name = newConnectionName;
+          connections.push(newConnection);
+          await GlobalConfiguration.set(`connections`, connections);
+          
+          const newConnectionSetting = Object.assign({}, connectionSetting);
+          newConnectionSetting.name = newConnectionName;
+          newConnectionSetting.homeDirectory = '.';
+          newConnectionSetting.currentLibrary = '';
+          newConnectionSetting.libraryList = [];
+          newConnectionSetting.objectFilters = [];
+          newConnectionSetting.ifsShortcuts = [];
+          newConnectionSetting.customVariables = [];
+          newConnectionSetting.commandProfiles = [];
+          newConnectionSetting.connectionProfiles = [];
+          connectionSettings.push(newConnectionSetting);
+          await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
+
+          connectionBrowser.refresh();
+        }
+      }
     })
   );
 }
