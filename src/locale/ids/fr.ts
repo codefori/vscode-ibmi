@@ -69,7 +69,7 @@ export const fr: Locale = {
   'connectionBrowser.copyConnection.prompt':'Copier la connexion {0}',
   'connectionBrowser.copyConnection.placeholder':'Nouveau nom de connexion',
   'connectionBrowser.copyConnection.already.exists':'La connexion {0} existe déjà',
-  'connectionBrowser.copyConnection.select.settings':'Sélectionner les paramètres à copier depuis {0}',
+  'connectionBrowser.copyConnection.select.settings':'Sélectionner les paramètres à copier de {0} vers {1}',
   'connectionBrowser.copyConnection.select.home.directory':'Répertoire home',
   'connectionBrowser.copyConnection.select.library.list':'Liste de bibliothèques',
   'connectionBrowser.copyConnection.select.object.filters':'Filtres d\'objets',

@@ -188,56 +188,61 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       const connectionSetting = connectionSettings.find(connection => server.name === connection.name);
 
       if (connection && connectionSetting) {
-        const newConnectionName = await vscode.window.showInputBox({
-          prompt: t("connectionBrowser.copyConnection.prompt", server.name),
-          placeHolder: t('connectionBrowser.copyConnection.placeholder'),
-          validateInput: value => connections.some(connection => connection.name === value) ?
-            t('connectionBrowser.copyConnection.already.exists', value) :
-            undefined
-        });
+        let newConnectionName;
+        let copyOperations;
+        do {
+          newConnectionName = await vscode.window.showInputBox({
+            prompt: t("connectionBrowser.copyConnection.prompt", server.name),
+            placeHolder: t('connectionBrowser.copyConnection.placeholder'),
+            value: newConnectionName,
+            validateInput: value => connections.some(connection => connection.name === value) ?
+              t('connectionBrowser.copyConnection.already.exists', value) :
+              undefined
+          });
 
-        if (newConnectionName) {
-          const copyOperations = (await vscode.window.showQuickPick<CopyOperationItem>([
-            { label: t('connectionBrowser.copyConnection.select.home.directory'), picked: true, copy: (from, to) => to.homeDirectory = from.homeDirectory },
-            { label: t('connectionBrowser.copyConnection.select.library.list'), picked: true, copy: (from, to) => { to.libraryList = from.libraryList; to.currentLibrary = from.currentLibrary; } },
-            { label: t('connectionBrowser.copyConnection.select.object.filters'), picked: true, copy: (from, to) => to.objectFilters = from.objectFilters },
-            { label: t('connectionBrowser.copyConnection.select.ifs.shortcuts'), picked: true, copy: (from, to) => to.ifsShortcuts = from.ifsShortcuts },
-            { label: t('connectionBrowser.copyConnection.select.custom.variables'), picked: true, copy: (from, to) => to.customVariables = from.customVariables },
-            { label: t('connectionBrowser.copyConnection.select.command.profiles'), picked: true, copy: (from, to) => to.commandProfiles = from.commandProfiles },
-            { label: t('connectionBrowser.copyConnection.select.connection.profiles'), picked: true, copy: (from, to) => to.connectionProfiles = from.connectionProfiles }
-          ],
-            {
-              canPickMany: true,
-              title: t('connectionBrowser.copyConnection.select.settings', server.name)
-            }))?.map(picked => picked.copy);
-
-          if (copyOperations) {
-            const newConnection = Object.assign({}, connection);
-            newConnection.name = newConnectionName;
-            connections.push(newConnection);
-            await GlobalConfiguration.set(`connections`, connections);
-
-            const newConnectionSetting = Object.assign({}, connectionSetting);
-            newConnectionSetting.name = newConnectionName;
-            newConnectionSetting.homeDirectory = '.';
-            newConnectionSetting.currentLibrary = '';
-            newConnectionSetting.libraryList = [];
-            newConnectionSetting.objectFilters = [];
-            newConnectionSetting.ifsShortcuts = [];
-            newConnectionSetting.customVariables = [];
-            newConnectionSetting.commandProfiles = [];
-            newConnectionSetting.connectionProfiles = [];
-            copyOperations?.forEach(operation => operation(connectionSetting, newConnectionSetting));
-            connectionSettings.push(newConnectionSetting);
-            await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
-            
-            const password = await context.secrets.get(`${server.name}_password`);
-            if(password){
-              await context.secrets.store(`${newConnectionName}_password`, password);
-            }            
-
-            connectionBrowser.refresh();
+          if (newConnectionName) {
+            copyOperations = (await vscode.window.showQuickPick<CopyOperationItem>([
+              { label: t('connectionBrowser.copyConnection.select.home.directory'), picked: true, copy: (from, to) => to.homeDirectory = from.homeDirectory },
+              { label: t('connectionBrowser.copyConnection.select.library.list'), picked: true, copy: (from, to) => { to.libraryList = from.libraryList; to.currentLibrary = from.currentLibrary; } },
+              { label: t('connectionBrowser.copyConnection.select.object.filters'), picked: true, copy: (from, to) => to.objectFilters = from.objectFilters },
+              { label: t('connectionBrowser.copyConnection.select.ifs.shortcuts'), picked: true, copy: (from, to) => to.ifsShortcuts = from.ifsShortcuts },
+              { label: t('connectionBrowser.copyConnection.select.custom.variables'), picked: true, copy: (from, to) => to.customVariables = from.customVariables },
+              { label: t('connectionBrowser.copyConnection.select.command.profiles'), picked: true, copy: (from, to) => to.commandProfiles = from.commandProfiles },
+              { label: t('connectionBrowser.copyConnection.select.connection.profiles'), picked: true, copy: (from, to) => to.connectionProfiles = from.connectionProfiles }
+            ],
+              {
+                canPickMany: true,
+                title: t('connectionBrowser.copyConnection.select.settings', server.name, newConnectionName)
+              }))?.map(picked => picked.copy);
           }
+        } while (newConnectionName && !copyOperations);
+
+        if (newConnectionName && copyOperations) {
+          const newConnection = Object.assign({}, connection);
+          newConnection.name = newConnectionName;
+          connections.push(newConnection);
+          await GlobalConfiguration.set(`connections`, connections);
+
+          const newConnectionSetting = Object.assign({}, connectionSetting);
+          newConnectionSetting.name = newConnectionName;
+          newConnectionSetting.homeDirectory = '.';
+          newConnectionSetting.currentLibrary = '';
+          newConnectionSetting.libraryList = [];
+          newConnectionSetting.objectFilters = [];
+          newConnectionSetting.ifsShortcuts = [];
+          newConnectionSetting.customVariables = [];
+          newConnectionSetting.commandProfiles = [];
+          newConnectionSetting.connectionProfiles = [];
+          copyOperations.forEach(operation => operation(connectionSetting, newConnectionSetting));
+          connectionSettings.push(newConnectionSetting);
+          await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
+
+          const password = await context.secrets.get(`${server.name}_password`);
+          if (password) {
+            await context.secrets.store(`${newConnectionName}_password`, password);
+          }
+
+          connectionBrowser.refresh();
         }
       }
     })
