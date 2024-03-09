@@ -1035,8 +1035,8 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.duplicateConnection",
-				"title": "Duplicate...",
+				"command": "code-for-ibmi.copyConnection",
+				"title": "Copy...",
 				"category": "IBM i"
 			},
 			{
@@ -1834,7 +1834,7 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.duplicateConnection",
+					"command": "code-for-ibmi.copyConnection",
 					"when": "never"
 				},
 				{
@@ -2277,12 +2277,12 @@
 			],
 			"view/item/context": [
 				{
-					"command": "code-for-ibmi.renameConnection",
+					"command": "code-for-ibmi.copyConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "2_delete@1"
 				},
 				{
-					"command": "code-for-ibmi.duplicateConnection",
+					"command": "code-for-ibmi.renameConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "2_delete@2"
 				},

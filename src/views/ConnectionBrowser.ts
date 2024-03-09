@@ -174,7 +174,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         }
       }
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.duplicateConnection`, async (server: Server) => {
+    vscode.commands.registerCommand(`code-for-ibmi.copyConnection`, async (server: Server) => {
       const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
       const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
 
@@ -183,10 +183,10 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 
       if (connection && connectionSettings) {
         const newConnectionName = await vscode.window.showInputBox({
-          prompt: t("connectionBrowser.duplicateConnection.prompt", server.name),
-          placeHolder: t('connectionBrowser.duplicateConnection.placeholder'),
+          prompt: t("connectionBrowser.copyConnection.prompt", server.name),
+          placeHolder: t('connectionBrowser.copyConnection.placeholder'),
           validateInput: value => connections.some(connection => connection.name === value) ?
-            t('connectionBrowser.duplicateConnection.already.exists', value) :
+            t('connectionBrowser.copyConnection.already.exists', value) :
             undefined
         });
 

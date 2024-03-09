@@ -66,9 +66,9 @@ export const da: Locale = {
   'connectionBrowser.deleteConnection.multiple.warning': `Er du sikker på at du vil slette disse {0} forbindelser?`,
   'connectionBrowser.ServerItem.tooltip': ` (forrige forbindelse)`,
   'connectionBrowser.ServerItem.title': `Forbind`,
-  'connectionBrowser.duplicateConnection.prompt':'Duplicate connection {0}',
-  'connectionBrowser.duplicateConnection.placeholder':'New connection name',
-  'connectionBrowser.duplicateConnection.already.exists':'Connection {0} already exists',
+  'connectionBrowser.copyConnection.prompt':'Copy connection {0}',
+  'connectionBrowser.copyConnection.placeholder':'New connection name',
+  'connectionBrowser.copyConnection.already.exists':'Connection {0} already exists',
   // helpView:
   'helpView.getStarted': `Dokumentation`,
   'helpView.officialForum': `Forum`,
