@@ -225,7 +225,7 @@ function escapeString(val: string): string {
       case `\b`:
         return `\\b`;
       case `\t`:
-        return `\\t`;
+        return `  `;
       case `\x1a`:
         return `\\Z`;
       case `'`:
