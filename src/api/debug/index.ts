@@ -58,7 +58,7 @@ export async function initialize(context: ExtensionContext) {
             }
           }
 
-          if (config.debugIsSecure) {
+          if (config.debugIsSecure && !isManaged()) {
             if (!await certificates.localClientCertExists(connection)) {
               vscode.window.showInformationMessage(`Debug Service Certificates`, {
                 modal: true,
