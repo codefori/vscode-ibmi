@@ -85,18 +85,6 @@ export async function remoteServerCertExists(connection: IBMi, legacy = false) {
   return list.includes(pfxPath);
 }
 
-export async function remoteClientCertExists(connection: IBMi) {
-  const crtPath = getRemoteClientCertPath(connection);
-
-  const dirList = await connection.sendCommand({
-    command: `ls -p ${crtPath}`
-  });
-
-  const list = dirList.stdout.split(`\n`);
-
-  return list.includes(crtPath);
-}
-
 /**
  * Generate all certifcates on the server
  */
@@ -115,9 +103,9 @@ export async function setup(connection: IBMi) {
   const commands = [
     `openssl genrsa -out debug_service.key 2048`,
     `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${host}'`,
-    `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -sha256 -req -extfile <(printf "${extFileContent}")`,
+    `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
     `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`,
-    `rm debug_service.key debug_service.csr`, 
+    `rm debug_service.key debug_service.csr debug_service.crt`, 
     `chmod 444 debug_service.pfx`
   ];
 
@@ -141,11 +129,19 @@ export async function setup(connection: IBMi) {
   }
 }
 
-export function downloadClientCert(connection: IBMi) {
-  const remotePath = getRemoteClientCertPath(connection);
+export async function downloadClientCert(connection: IBMi) {
   const localPath = getLocalCertPath(connection);
 
-  return connection.downloadFile(localPath, remotePath);
+  const result = await connection.sendCommand({
+    command: `openssl s_client -connect localhost:${connection.config?.debugPort} -showcerts < /dev/null 2> /dev/null | openssl x509 -outform PEM`,
+    directory: getRemoteCertDirectory(connection)
+  });
+
+  if (result.code && result.code > 0) {
+    throw new Error(`Failed to download client certificate.`);
+  }
+
+  await fs.writeFile(localPath, result.stdout, {encoding: `utf8`});
 }
 
 export function getLocalCertPath(connection: IBMi) {

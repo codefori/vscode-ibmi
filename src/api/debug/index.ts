@@ -274,18 +274,27 @@ export async function initialize(context: ExtensionContext) {
           if (connection.config!.debugIsSecure) {
 
             try {
-              const remoteClientCertExists = await certificates.remoteClientCertExists(connection);
+              const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
+              const remoteCertExists = await certificates.remoteServerCertExists(connection);
 
               // If the client certificate exists on the server, download it
-              if (remoteClientCertExists) {
-                await certificates.downloadClientCert(connection);
-                localCertsOk = true;
-                vscode.window.showInformationMessage(`Debug certificate downloaded from the server.`);
+              if (remoteCertExists) {
+                if (existingDebugService) {
+                  await certificates.downloadClientCert(connection);
+                  localCertsOk = true;
+                  vscode.window.showInformationMessage(`Debug certificate downloaded from the server.`);
+                } else {
+                  vscode.window.showInformationMessage(`Cannot fetch client certificate because the Debug Service is not running.`, `Startup Service`).then(result => {
+                    if (result === `Startup Service`) {
+                      vscode.commands.executeCommand(`code-for-ibmi.debug.start`);
+                    }
+                  });
+                }
 
               } else {
                 const doImport = await vscode.window.showInformationMessage(`Debug setup`, {
                   modal: true,
-                  detail: `The client certificate is not setup on the server. Would you like to import a certificate from your device?`
+                  detail: `The server certificate is not setup on the server. Would you like to import a certificate from your device?`
                 }, `Yes`, `No`);
 
                 if (doImport === `Yes`) {
@@ -414,7 +423,7 @@ export async function initialize(context: ExtensionContext) {
         if (remoteCertsExist) {
           vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
-          if (isSecure) {
+          if (isSecure && existingDebugService) {
             const localCertsExists = await certificates.localClientCertExists(connection);
 
             if (localCertsExists) {
