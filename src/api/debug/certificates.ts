@@ -24,7 +24,7 @@ function resolveHostnameToIP(hostName: string): Promise<string | undefined> {
   });
 }
 
-async function getExtFileConent(host: string, connection: IBMi) {
+async function getExtFileContent(host: string, connection: IBMi) {
   const ipRegexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
   let hostname = undefined;
   let ipAddr = undefined;
@@ -94,7 +94,7 @@ export async function remoteClientCertExists(connection: IBMi) {
  */
 export async function setup(connection: IBMi) {
   const host = connection.currentHost;
-  const extFileContent = await getExtFileConent(host, connection);
+  const extFileContent = await getExtFileContent(host, connection);
 
   const commands = [
     `openssl genrsa -out debug_service_ca.key 2048`,
