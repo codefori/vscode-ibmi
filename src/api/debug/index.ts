@@ -58,6 +58,22 @@ export async function initialize(context: ExtensionContext) {
             }
           }
 
+          if (config.debugIsSecure) {
+            if (!await certificates.localClientCertExists(connection)) {
+              vscode.window.showInformationMessage(`Debug Service Certificates`, {
+                modal: true,
+                detail: `Debug client certificate is not setup.`
+              },
+                `Setup`
+              ).then(result => {
+                if (result === `Setup`) {
+                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                }
+              });
+              return;
+            }
+          }
+
           if (password) {
             const debugOpts: DebugOptions = {
               password,
@@ -240,11 +256,6 @@ export async function initialize(context: ExtensionContext) {
                 vscode.window.showInformationMessage(`Certificates successfully generated on server.`);
                 remoteCertsOk = true;
                 remoteCertsAreNew = true;
-              }
-
-              // Download the client certificates to the device if setup correctly.
-              if (remoteCertsOk) {
-                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
               }
             } catch (e: any) {
               vscode.window.showErrorMessage(e.message || e);
@@ -433,11 +444,10 @@ export async function initialize(context: ExtensionContext) {
             }
           }
         } else {
-          const openTut = await vscode.window.showInformationMessage(`${
-            existingDebugService ? 
-            `Looks like the Debug Service was started by an external service. This may impact your VS Code experience.` : 
+          const openTut = await vscode.window.showInformationMessage(`${existingDebugService ?
+            `Looks like the Debug Service was started by an external service. This may impact your VS Code experience.` :
             `Looks like you have the debug PTF but don't have it configured.`
-          } Do you want to see the Walkthrough to set it up?`, `Take me there`);
+            } Do you want to see the Walkthrough to set it up?`, `Take me there`);
 
           if (openTut === `Take me there`) {
             vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
@@ -450,12 +460,12 @@ export async function initialize(context: ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());
 }
 
-function validateIPv4address(ipaddress: string) {  
-  if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {  
-    return (true)  
+function validateIPv4address(ipaddress: string) {
+  if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(ipaddress)) {
+    return (true)
   }
-  return (false)  
-}  
+  return (false)
+}
 
 interface DebugOptions {
   password: string;
