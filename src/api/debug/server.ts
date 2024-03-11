@@ -6,8 +6,9 @@ import IBMiContent from "../IBMiContent";
 import * as certificates from "./certificates";
 import Instance from "../Instance";
 
-const directory = `/QIBM/ProdData/IBMiDebugService/bin/`;
-const detailFile = `package,json`;
+const directory = `/QIBM/ProdData/IBMiDebugService/`;
+const binDirectory = path.posix.join(directory, `bin`);
+const detailFile = `package.json`;
 
 const JavaPaths: {[version: string]: string} = {
   "8": `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`,
@@ -26,6 +27,10 @@ function getMyJavaHome(javaVersion: string) {
 }
 
 let debugServiceDetails: DebugServiceDetails | undefined;
+export function resetDebugServiceDetails() {
+  debugServiceDetails = undefined;
+}
+
 export async function getDebugServiceDetails(content: IBMiContent): Promise<DebugServiceDetails> {
   if (debugServiceDetails) {
     return debugServiceDetails;
@@ -60,7 +65,7 @@ export async function startup(instance: Instance){
   const javaHome = getMyJavaHome(details.java);
 
   const encryptResult = await connection.sendCommand({
-    command: `${javaHome} MY_DBGSRV_SECURED_PORT="${config.debugPort}" MY_DBGSRV_SEP_DAEMON_PORT=${config.debugSepPort} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(directory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
+    command: `${javaHome} MY_DBGSRV_SECURED_PORT="${config.debugPort}" MY_DBGSRV_SEP_DAEMON_PORT=${config.debugSepPort} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(binDirectory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
   });
 
   if ((encryptResult.code || 0) >= 1) {
@@ -76,7 +81,7 @@ export async function startup(instance: Instance){
   const keystorePath = certificates.getRemoteServerCertPath(connection);
 
   connection.sendCommand({
-    command: `${javaHome} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(directory, `startDebugService.sh`)}"`
+    command: `${javaHome} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(binDirectory, `startDebugService.sh`)}"`
   }).then(startResult => {
     if ((startResult.code || 0) >= 1) {
       window.showErrorMessage(startResult.stdout || startResult.stderr);
@@ -86,9 +91,16 @@ export async function startup(instance: Instance){
   return;
 }
 
-export async function stop(connection: IBMi) {
+export async function stop(instance: Instance) {
+  const connection = instance.getConnection()!;
+  const content = instance.getContent()!;
+  const config = instance.getConfig()!;
+
+  const details = await getDebugServiceDetails(content);
+  const javaHome = getMyJavaHome(details.java);
+
   const endResult = await connection.sendCommand({
-    command: `${path.posix.join(directory, `stopDebugService.sh`)}`
+    command: `${javaHome} ${path.posix.join(binDirectory, `stopDebugService.sh`)}`
   });
 
   if (endResult.code === 0) {
@@ -112,7 +124,7 @@ export async function end(instance: Instance): Promise<void> {
   const javaHome = getMyJavaHome(details.java);
 
   const endResult = await connection.sendCommand({
-    command: `${javaHome} ${path.posix.join(directory, `stopDebugService.sh`)}`
+    command: `${javaHome} ${path.posix.join(binDirectory, `stopDebugService.sh`)}`
   });
 
   if (endResult.code && endResult.code >= 0) {
