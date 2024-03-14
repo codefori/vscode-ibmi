@@ -18,6 +18,8 @@ export interface MemberParts extends IBMiMember {
 }
 const CCSID_SYSVAL = -2;
 
+const SERVER_SETTINGS_PATH = `/etc/code4i/settings.json`;
+
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
@@ -57,6 +59,8 @@ export default class IBMi {
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
   lastErrors: object[];
+
+  loadedServerSettings: string[];
   config?: ConnectionConfiguration.Parameters;
 
   commandsExecuted: number = 0;
@@ -111,6 +115,7 @@ export default class IBMi {
      * */
     this.lastErrors = [];
 
+    this.loadedServerSettings = [];
   }
 
   /**
@@ -160,12 +165,19 @@ export default class IBMi {
           };
         };
 
+        if (!reconnecting) {
+          instance.setConnection(this);
+        }
+
         progress.report({
           message: `Loading configuration.`
         });
 
         //Load existing config
         this.config = await ConnectionConfiguration.load(this.currentConnectionName);
+
+        //Check and load server settings
+        await this.loadServerSettings();
 
         // Load cached server settings.
         const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
@@ -205,10 +217,6 @@ export default class IBMi {
         this.client.connection!.once(`timeout`, disconnected);
         this.client.connection!.once(`end`, disconnected);
         this.client.connection!.once(`error`, disconnected);
-
-        if (!reconnecting) {
-          instance.setConnection(this);
-        }
 
         progress.report({
           message: `Checking home directory.`
@@ -1025,6 +1033,40 @@ export default class IBMi {
     instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
     vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
+  }
+
+  async loadServerSettings() {
+    const content = instance.getContent();
+
+    const exists = await content?.testStreamFile(SERVER_SETTINGS_PATH, `r`);
+    if (exists) {
+      const settings = await content?.downloadStreamfile(SERVER_SETTINGS_PATH);
+      if (settings) {
+        try {
+          // Ready in the new settings
+          const asJson = JSON.parse(settings);
+
+          // Apply the settings over the top
+          this.config = {
+            ...this.config,
+            ...asJson
+          }
+
+          // Store the changes locally to be nice
+          await ConnectionConfiguration.update(this.config!);
+
+          // Mark which config is managed by the server
+          this.loadedServerSettings = Object.keys(asJson);
+
+        } catch (e) {
+          this.appendOutput(`Was not able to read server settings as JSON.\n`);
+        }
+      } else {
+        this.appendOutput(`Failed to load server settings.\n`);
+      }
+    } else {
+      this.appendOutput(`Server settings not found.\n`);
+    }
   }
 
   /**
