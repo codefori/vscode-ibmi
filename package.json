@@ -45,10 +45,6 @@
 		],
 		"snippets": [
 			{
-				"path": "./schemas/cl.code-snippets",
-				"language": "cl"
-			},
-			{
 				"path": "./schemas/local-variables.code-snippets",
 				"language": "json"
 			}
@@ -1588,11 +1584,6 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.cl.runSelected",
-				"title": "Run selected CL command",
-				"category": "IBM i"
-			},
-			{
 				"command": "code-for-ibmi.openTerminalHere",
 				"title": "Open Terminal Here",
 				"category": "IBM i"
@@ -1658,12 +1649,6 @@
 				"command": "code-for-ibmi.connectTo",
 				"key": "ctrl+alt+c",
 				"mac": "cmd+alt+c"
-			},
-			{
-				"command": "code-for-ibmi.cl.runSelected",
-				"key": "ctrl+r",
-				"mac": "cmd+r",
-				"when": "editorLangId == cl"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
@@ -1896,10 +1881,6 @@
 				{
 					"command": "code-for-ibmi.sortMembersByName",
 					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.cl.runSelected",
-					"when": "code-for-ibmi:connected && editorLangId === cl"
 				},
 				{
 					"command": "code-for-ibmi.openTerminalHere",

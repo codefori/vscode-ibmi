@@ -9,8 +9,6 @@ import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
-import { init as clApiInit } from "./languages/clle/clApi";
-import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
@@ -661,8 +659,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     SEUColorProvider.intitialize(context);
   }
 
-  clRunner.initialise(context);
-
   // Register git events based on workspace folders
 	if (vscode.workspace.workspaceFolders) {
     setupGitEventHandler(context);
@@ -686,12 +682,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
-  // CL content assist
-  const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
-  if (clExtension) {
-    clApiInit();
-  }
 
   initGetNewLibl(instance);
 
