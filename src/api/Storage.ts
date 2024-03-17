@@ -205,9 +205,9 @@ export class ConnectionStorage extends Storage {
     await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
   }
 
-  async addAuthorisedExtension(extension: vscode.Extension<any>) {
+  async grantExtensionAuthorisation(extension: vscode.Extension<any>) {
     const extensions = this.getAuthorisedExtensions();
-    if (!this.isExtensionAuthorised(extension)) {
+    if (!this.getExtensionAuthorisation(extension)) {
       extensions.push({
         id: extension.id,
         displayName: extension.packageJSON.displayName,
@@ -218,23 +218,23 @@ export class ConnectionStorage extends Storage {
     }
   }
 
-  isExtensionAuthorised(extension: vscode.Extension<any>) {
+  getExtensionAuthorisation(extension: vscode.Extension<any>) {
     const authorisedExtension = this.getAuthorisedExtensions().find(authorisedExtension => authorisedExtension.id === extension.id);
     if (authorisedExtension) {
       authorisedExtension.lastAccess = new Date().getTime();
     }
-    return authorisedExtension !== undefined;
+    return authorisedExtension;
   }
 
   getAuthorisedExtensions(): AuthorisedExtension[] {
     return this.get<AuthorisedExtension[]>(AUTHORISED_EXTENSIONS_KEY) || [];
   }
 
-  removeAllAuthorisedExtension() {
-    this.removeAuthorisedExtension(this.getAuthorisedExtensions());
+  revokeAllExtensionAuthorisations() {
+    this.revokeExtensionAuthorisation(...this.getAuthorisedExtensions());
   }
 
-  removeAuthorisedExtension(extensions: AuthorisedExtension[]) {
+  revokeExtensionAuthorisation(...extensions: AuthorisedExtension[]) {
     const newExtensions = this.getAuthorisedExtensions().filter(ext => !extensions.includes(ext));
     return this.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
   }

@@ -238,7 +238,7 @@ export class SettingsUI {
                 break;
 
               case `clearAllowedExts`:
-                instance.getStorage()?.removeAllAuthorisedExtension();
+                instance.getStorage()?.revokeAllExtensionAuthorisations();
                 break;
 
               default:
