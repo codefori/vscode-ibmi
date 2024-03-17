@@ -8,6 +8,7 @@ import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
+import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { init as clApiInit } from "./languages/clle/clApi";
 import * as clRunner from "./languages/clle/clRunner";
@@ -17,11 +18,10 @@ import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions,
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import { setupGitEventHandler } from './api/local/git';
 
 export let instance: Instance;
 
-let passwordAttempts: {[ext: string]: number} = {}
+const passwordAttempts: {[extensionId: string]: number} = {}
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
@@ -643,27 +643,27 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             if (storedPassword) {
 
               const storage = instance.getStorage()!;
-              let isAuthed = storage.extensionIsAuthorised(extensionId);
+              let isAuthed = storage.isExtensionAuthorised(extensionId);
 
               if (!isAuthed) {
                 const displayName = extension.packageJSON.displayName || extensionId;
                 const detail = `The ${displayName} extension is requesting access to your password for this connection. ${reason ? `\n\nReason: ${reason}` : `The extension did not provide a reason for password access.`}`;
                 let done = false;
-                let asModal = true;
+                let modal = true;
 
                 while (!done) {
-                  let options: string[] = [`Allow`];
+                  const options: string[] = [`Allow`];
 
-                  if (asModal) {
+                  if (modal) {
                     options.push(`View on Marketplace`);
                   } else {
                     options.push(`Deny`);
                   }
                   
                   const result = await vscode.window.showWarningMessage(
-                    asModal ? `Password Request` : detail, 
+                    modal ? `Password Request` : detail, 
                     {
-                      modal: asModal,
+                      modal,
                       detail,
                     }, 
                     ...options
@@ -671,14 +671,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
                   switch (result) {
                     case `Allow`:
-                      await storage.authorizeExtension(extensionId);
+                      await storage.addAuthorizedExtension(extensionId);
                       isAuthed = true;
                       done = true;
                       break;
 
                     case `View on Marketplace`:
                       vscode.commands.executeCommand('extension.open', extensionId);
-                      asModal = false;
+                      modal = false;
                       break;
 
                     default:
@@ -699,8 +699,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             throw new Error(`Not connected to an IBM i.`);
           }
         }
-
-        return undefined;
       }
     }),
 

@@ -198,7 +198,7 @@ export class ConnectionStorage extends Storage {
     await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
   }
 
-  async authorizeExtension(extension: string) {
+  async addAuthorizedExtension(extension: string) {
     const extensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
     if (!extensions.includes(extension)) {
       extensions.push(extension);
@@ -206,12 +206,12 @@ export class ConnectionStorage extends Storage {
     }
   }
 
-  extensionIsAuthorised(extension: string) {
+  isExtensionAuthorised(extension: string) {
     const extensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
     return extensions.includes(extension);
   }
 
-  authorizedExtensions(): string[] {
+  getAuthorizedExtensions(): string[] {
     return this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
   }
 

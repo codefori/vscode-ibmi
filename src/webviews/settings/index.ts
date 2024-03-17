@@ -1,7 +1,7 @@
 import vscode from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
-import { GlobalStorage } from '../../api/Storage';
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
+import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
@@ -32,7 +32,7 @@ export class SettingsUI {
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
-        const passwordAuthorisedExtensions: string[] = instance.getStorage()?.authorizedExtensions() || [];
+        const passwordAuthorisedExtensions: string[] = instance.getStorage()?.getAuthorizedExtensions() || [];
 
         let config: ConnectionConfiguration.Parameters;
 
@@ -206,7 +206,7 @@ export class SettingsUI {
 
         const ui = new CustomUI();
 
-        if (passwordAuthorisedExtensions.length > 0) {
+        if (passwordAuthorisedExtensions.length) {
           const passwordAuthTab = new Section();
 
           passwordAuthTab
@@ -236,17 +236,18 @@ export class SettingsUI {
               case `import`:
                 vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
                 break;
-              
+
               case `clearAllowedExts`:
-                if (instance.getStorage()) {
-                  instance.getStorage()?.removeAuthorizedExtension(instance.getStorage()?.authorizedExtensions()!);
+                const storage = instance.getStorage();
+                if (storage) {
+                  storage.removeAuthorizedExtension(storage.getAuthorizedExtensions());
                 }
                 break;
 
               default:
                 const data = page.data;
                 for (const key in data) {
-  
+
                   //In case we need to play with the data
                   switch (key) {
                     case `sourceASP`:
@@ -266,25 +267,25 @@ export class SettingsUI {
                         .filter(Tools.distinct);
                       break;
                   }
-  
+
                   //Refresh connection browser if not connected
                   if (!instance.getConnection()) {
                     vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
                   }
                 }
-  
+
                 if (restartFields.some(item => data[item] && data[item] !== config[item])) {
                   restart = true;
                 }
-  
+
                 const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
                 const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
-  
+
                 Object.assign(config, data);
                 await instance.setConfig(config);
                 if (removeCachedSettings)
                   GlobalStorage.get().deleteServerSettingsCache(config.name);
-  
+
                 if (connection) {
                   if (restart) {
                     vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
