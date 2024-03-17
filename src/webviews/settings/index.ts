@@ -32,7 +32,7 @@ export class SettingsUI {
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
-        const passwordAuthorisedExtensions: string[] = instance.getStorage()?.getAuthorizedExtensions() || [];
+        const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
         let config: ConnectionConfiguration.Parameters;
 
@@ -211,7 +211,7 @@ export class SettingsUI {
 
           passwordAuthTab
             .addParagraph(`The following extensions are authorized to use the password for this connection.`)
-            .addParagraph(`<ul>${passwordAuthorisedExtensions.map(ext => `<li>✅ <code>${ext}</code></li>`).join(``)}</ul>`)
+            .addParagraph(`<ul>${passwordAuthorisedExtensions.map(authExtension => `<li>✅ <code>${authExtension.displayName || authExtension.id}</code> - since ${new Date(authExtension.since).toDateString()} - last access on ${new Date(authExtension.lastAccess).toDateString()}</li>`).join(``)}</ul>`)
             .addButtons({ id: `clearAllowedExts`, label: `Clear list` })
 
           tabs.push({ label: `Extension Auth`, fields: passwordAuthTab.fields });
@@ -238,10 +238,7 @@ export class SettingsUI {
                 break;
 
               case `clearAllowedExts`:
-                const storage = instance.getStorage();
-                if (storage) {
-                  storage.removeAuthorizedExtension(storage.getAuthorizedExtensions());
-                }
+                instance.getStorage()?.removeAllAuthorisedExtension();
                 break;
 
               default:

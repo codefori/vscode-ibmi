@@ -642,7 +642,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const storedPassword = await context.secrets.get(connectionKey);
 
             if (storedPassword) {
-              let isAuthed = storage.isExtensionAuthorised(extensionId);
+              let isAuthed = storage.isExtensionAuthorised(extension);
 
               if (!isAuthed) {
                 const detail = `The ${displayName} extension is requesting access to your password for this connection. ${reason ? `\n\nReason: ${reason}` : `The extension did not provide a reason for password access.`}`;
@@ -669,7 +669,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
                   switch (result) {
                     case `Allow`:
-                      await storage.addAuthorizedExtension(extensionId);
+                      await storage.addAuthorisedExtension(extension);
                       isAuthed = true;
                       done = true;
                       break;

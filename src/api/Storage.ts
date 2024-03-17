@@ -5,7 +5,7 @@ const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
-const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
+const SERVER_SETTINGS_CACHE_KEY = (name: string) => `serverSettingsCache_${name}`;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
@@ -13,6 +13,13 @@ const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
 export type DebugCommands = Record<string, string>;
+
+type AuthorisedExtension = {
+  id: string
+  displayName: string
+  since: number
+  lastAccess: number
+}
 
 abstract class Storage {
   protected readonly globalState;
@@ -181,7 +188,7 @@ export class ConnectionStorage extends Storage {
     return this.set(DEBUG_KEY, existingCommands);
   }
 
-  getWorkspaceDeployPath(workspaceFolder : vscode.WorkspaceFolder){
+  getWorkspaceDeployPath(workspaceFolder: vscode.WorkspaceFolder) {
     const deployDirs = this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
     return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
   }
@@ -198,26 +205,37 @@ export class ConnectionStorage extends Storage {
     await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
   }
 
-  async addAuthorizedExtension(extension: string) {
-    const extensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
-    if (!extensions.includes(extension)) {
-      extensions.push(extension);
+  async addAuthorisedExtension(extension: vscode.Extension<any>) {
+    const extensions = this.getAuthorisedExtensions();
+    if (!this.isExtensionAuthorised(extension)) {
+      extensions.push({
+        id: extension.id,
+        displayName: extension.packageJSON.displayName,
+        since: new Date().getTime(),
+        lastAccess: new Date().getTime()
+      });
       await this.set(AUTHORISED_EXTENSIONS_KEY, extensions);
     }
   }
 
-  isExtensionAuthorised(extension: string) {
-    const extensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
-    return extensions.includes(extension);
+  isExtensionAuthorised(extension: vscode.Extension<any>) {
+    const authorisedExtension = this.getAuthorisedExtensions().find(authorisedExtension => authorisedExtension.id === extension.id);
+    if (authorisedExtension) {
+      authorisedExtension.lastAccess = new Date().getTime();
+    }
+    return authorisedExtension !== undefined;
   }
 
-  getAuthorizedExtensions(): string[] {
-    return this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
+  getAuthorisedExtensions(): AuthorisedExtension[] {
+    return this.get<AuthorisedExtension[]>(AUTHORISED_EXTENSIONS_KEY) || [];
   }
 
-  removeAuthorizedExtension(extensions: string[]) {
-    const authorizedExtensions = this.get<string[]>(AUTHORISED_EXTENSIONS_KEY) || [];
-    const newExtensions = authorizedExtensions.filter(ext => !extensions.includes(ext));
+  removeAllAuthorisedExtension() {
+    this.removeAuthorisedExtension(this.getAuthorisedExtensions());
+  }
+
+  removeAuthorisedExtension(extensions: AuthorisedExtension[]) {
+    const newExtensions = this.getAuthorisedExtensions().filter(ext => !extensions.includes(ext));
     return this.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
   }
 }
