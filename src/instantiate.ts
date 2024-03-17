@@ -21,7 +21,7 @@ import { VariablesUI } from "./webviews/variables";
 
 export let instance: Instance;
 
-const passwordAttempts: {[extensionId: string]: number} = {}
+const passwordAttempts: { [extensionId: string]: number } = {}
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
@@ -627,26 +627,24 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         const extension = vscode.extensions.getExtension(extensionId);
         const isValid = (extension && extension.isActive);
         if (isValid) {
-
           const connection = instance.getConnection();
-          if (connection) {
+          const storage = instance.getStorage();
+          if (connection && storage) {
+            const displayName = extension.packageJSON.displayName || extensionId;
 
             // Some logic to stop spam from extensions.
             passwordAttempts[extensionId] = passwordAttempts[extensionId] || 0;
             if (passwordAttempts[extensionId] > 1) {
-              throw new Error(`Password request denied.`);
+              throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
             const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
             const storedPassword = await context.secrets.get(connectionKey);
 
             if (storedPassword) {
-
-              const storage = instance.getStorage()!;
               let isAuthed = storage.isExtensionAuthorised(extensionId);
 
               if (!isAuthed) {
-                const displayName = extension.packageJSON.displayName || extensionId;
                 const detail = `The ${displayName} extension is requesting access to your password for this connection. ${reason ? `\n\nReason: ${reason}` : `The extension did not provide a reason for password access.`}`;
                 let done = false;
                 let modal = true;
@@ -659,13 +657,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   } else {
                     options.push(`Deny`);
                   }
-                  
+
                   const result = await vscode.window.showWarningMessage(
-                    modal ? `Password Request` : detail, 
+                    modal ? `Password Request` : detail,
                     {
                       modal,
                       detail,
-                    }, 
+                    },
                     ...options
                   );
 
