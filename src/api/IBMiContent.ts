@@ -152,10 +152,25 @@ export default class IBMiContent {
     let path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
     while (true) {
-      const copyResult = await this.ibmi.runCommand({
-        command: `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-        noLibList: true
-      });
+      let copyResult: CommandResult;
+      if (new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+        copyResult = { code: 0, stdout: '', stderr: '' };
+        try {
+          await this.runSQL([
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
+          ].join("\n"));
+        } catch (error: any) {
+          copyResult.code = -1;
+          copyResult.stderr = String(error);
+        }
+      }
+      else {
+        copyResult = await this.ibmi.runCommand({
+          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          noLibList: true
+        });
+      }
 
       if (copyResult.code === 0) {
         if (!localPath) {
@@ -212,10 +227,26 @@ export default class IBMiContent {
       await client.putFile(tmpobj, tempRmt);
 
       while (true) {
-        const copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
+        let copyResult: CommandResult;
+        if (new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+          copyResult = { code: 0, stdout: '', stderr: '' };
+          try {
+            await this.runSQL([
+              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
+            ].join("\n"));
+          } catch (error: any) {
+            copyResult.code = -1;
+            copyResult.stderr = String(error);
+          }
+        }
+        else {
+          copyResult = await this.ibmi.runCommand({
+            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            noLibList: true
+          });
+        }
 
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
