@@ -933,13 +933,13 @@
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.remote",
-				"title": "Setup Remote Certificates",
+				"title": "Setup Service Certificate",
 				"category": "IBM i Debug",
 				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
-				"title": "Import Local Certificate",
+				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
 				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
