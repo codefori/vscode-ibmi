@@ -246,6 +246,14 @@ export default class IBMiContent {
   }
 
   /**
+   * @param statements Either an SQL statement or CL statement. CL statements start with @
+   * @returns result set
+   */
+  runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
+    return this.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
+  }
+
+  /**
    * Run SQL statements.
    * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
    * If a statement starts with @, it will be run as a CL command.
@@ -374,10 +382,8 @@ export default class IBMiContent {
    * @param table : the name of the table expected to be found in QTEMP
    * @returns : the table's content
    */
-  async getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    prepareQueries.push(`Select * From QTEMP.${table}`);
-    const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
-    return await this.runSQL(fullQuery);
+  getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
+    return this.runStatements(...prepareQueries, `select * from QTEMP.${table}`);
   }
 
   /**
