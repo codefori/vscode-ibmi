@@ -10,7 +10,7 @@ import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
-  tests: [        
+  tests: [
     {
       name: `Test memberResolve`, test: async () => {
         const content = instance.getContent();
@@ -99,7 +99,7 @@ export const ContentSuite: TestSuite = {
 
         const lib = await content?.objectResolve(`CMRCV`, [
           "QSYSINC", // Doesn't exist here
-          "QSYS2" // Does exist 
+          "QSYS2" // Does exist
         ]);
 
         assert.strictEqual(lib, "QSYS2");
@@ -525,7 +525,7 @@ export const ContentSuite: TestSuite = {
         const queries = [
           `CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYSINC/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPOBJD)')`,
           `Create Table QTEMP.OBJECTS As (
-          Select ODLBNM as LIBRARY, 
+          Select ODLBNM as LIBRARY,
             ODOBNM as NAME,
             ODOBAT as ATTRIBUTE,
             ODOBTP as TYPE,
@@ -546,7 +546,7 @@ export const ContentSuite: TestSuite = {
 
         assert.notStrictEqual(objects?.length, 0);
         assert.strictEqual(objects?.every(obj => obj.library === "QSYSINC"), true);
-        
+
         const qrpglesrc = objects.find(obj => obj.name === "QRPGLESRC");
         assert.notStrictEqual(qrpglesrc, undefined);
         assert.strictEqual(qrpglesrc?.attribute === "PF", true);
@@ -592,11 +592,35 @@ export const ContentSuite: TestSuite = {
       }
     },
     {
+      name: `Check getMemberInfo`, test: async () => {
+        const content = instance.getContent();
+
+        const memberInfoA = await content?.getMemberInfo(`QSYSINC`, `H`, `MATH` );
+        assert.ok(memberInfoA);
+        assert.strictEqual(memberInfoA?.library === `QSYSINC`, true);
+        assert.strictEqual(memberInfoA?.file === `H`, true);
+        assert.strictEqual(memberInfoA?.name === `MATH`, true);
+        assert.strictEqual(memberInfoA?.extension === `C`, true);
+        assert.strictEqual(memberInfoA?.text === `STANDARD HEADER FILE MATH`, true);
+
+        const memberInfoB = await content?.getMemberInfo(`QSYSINC`, `H`, `MEMORY` );
+        assert.ok(memberInfoB);
+        assert.strictEqual(memberInfoB?.library === `QSYSINC`, true);
+        assert.strictEqual(memberInfoB?.file === `H`, true);
+        assert.strictEqual(memberInfoB?.name === `MEMORY`, true);
+        assert.strictEqual(memberInfoB?.extension === `CPP`, true);
+        assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
+
+        const memberInfoC = await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO` );
+        assert.ok(!memberInfoC);
+      }
+    },
+    {
       name: `Test @clCommand + select statement`, test: async () => {
         const content = instance.getContent()!;
-        
+
         const [result] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
-        
+
         assert.deepStrictEqual(result.OBJNAME, "UNITTEST");
         assert.deepStrictEqual(result.OBJTEXT, "Code for i test");
       }
