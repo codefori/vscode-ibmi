@@ -61,6 +61,8 @@ export default class IBMi {
 
   commandsExecuted: number = 0;
 
+  dangerousVariants = false;
+
   constructor() {
     this.client = new node_ssh.NodeSSH;
     this.currentHost = ``;
@@ -877,6 +879,9 @@ export default class IBMi {
           defaultCCSID: this.defaultCCSID
         });
 
+        //Keep track of variant characters that can be uppercased
+        this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
+
         return {
           success: true
         };
@@ -1044,7 +1049,7 @@ export default class IBMi {
       }
   }
 
-  parserMemberPath(string: string): MemberParts {    
+  parserMemberPath(string: string): MemberParts {
     const variant_chars_local = this.variantChars.local;
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
@@ -1149,12 +1154,12 @@ export default class IBMi {
   }
 
   getLastDownloadLocation() {
-    if(this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))){
+    if (this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))) {
       return this.config.lastDownloadLocation;
     }
-    else{
+    else {
       return os.homedir();
-    }    
+    }
   }
 
   async setLastDownloadLocation(location: string) {
@@ -1198,17 +1203,22 @@ export default class IBMi {
    * Uppercases an object name, keeping the variant chars case intact
    * @param name
    */
-  upperCaseName(name : string){    
-    const upperCased = [];
-    for(const char of name){
-      const upChar = char.toLocaleUpperCase();
-      if(new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)){
-        upperCased.push(upChar);
+  upperCaseName(name: string) {
+    if (this.dangerousVariants && new RegExp(`[${this.variantChars.local}]`).test(name)) {
+      const upperCased = [];
+      for (const char of name) {
+        const upChar = char.toLocaleUpperCase();
+        if (new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)) {
+          upperCased.push(upChar);
+        }
+        else {
+          upperCased.push(char);
+        }
       }
-      else{
-        upperCased.push(char);
-      }
+      return upperCased.join("");
     }
-    return upperCased.join("");
+    else{
+      return name.toLocaleUpperCase();
+    }
   }
 }

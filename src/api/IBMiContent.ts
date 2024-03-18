@@ -153,7 +153,7 @@ export default class IBMiContent {
     const tempRmt = this.getTempRemote(path);
     while (true) {
       let copyResult: CommandResult;
-      if (new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
           await this.runSQL([
@@ -228,7 +228,7 @@ export default class IBMiContent {
 
       while (true) {
         let copyResult: CommandResult;
-        if (new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
           try {
             await this.runSQL([
