@@ -1,14 +1,18 @@
-import path from "path";
-import {promises as fs} from "fs";
-import * as os from "os";
-import IBMi from "../IBMi";
 import * as dns from 'dns';
-import {window} from "vscode";
+import { promises as fs } from "fs";
+import * as os from "os";
+import path from "path";
+import { window } from "vscode";
+import { ConnectionConfiguration } from "../Configuration";
+import IBMi from "../IBMi";
 
-const serverCertName = `debug_service.pfx`;
-const clientCertName = `debug_service.crt`;
+const SERVER_CERTIFICATE = `debug_service.pfx`;
+const CLIENT_CERTIFICATE = `debug_service.crt`;
 
-function getRemoteCertDirectory(connection: IBMi) {
+export const LEGACY_CERT_DIRECTORY = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
+export const DEFAULT_CERT_DIRECTORY = `/QIBM/UserData/IBMiDebugService/certs`;
+
+export function getRemoteCertificateDirectory(connection: IBMi) {
   return connection.config?.debugCertDirectory!;
 }
 
@@ -57,16 +61,16 @@ async function getExtFileContent(host: string, connection: IBMi) {
   return extFileContent;
 }
 
-export function getRemoteServerCertPath(connection: IBMi) {
-  return path.posix.join(getRemoteCertDirectory(connection), serverCertName);
+function getLegacyCertificatePath() {
+  return path.posix.join(LEGACY_CERT_DIRECTORY, SERVER_CERTIFICATE);
 }
 
-export function getRemoteClientCertPath(connection: IBMi) {
-  return path.posix.join(getRemoteCertDirectory(connection), clientCertName);
+export function getRemoteServerCertificatePath(connection: IBMi) {
+  return path.posix.join(getRemoteCertificateDirectory(connection), SERVER_CERTIFICATE);
 }
 
-export async function remoteServerCertExists(connection: IBMi) {
-  const pfxPath = getRemoteServerCertPath(connection);
+export async function remoteServerCertificateExists(connection: IBMi, legacy = false) {
+  const pfxPath = legacy ? getLegacyCertificatePath() : getRemoteServerCertificatePath(connection);
 
   const dirList = await connection.sendCommand({
     command: `ls -p ${pfxPath}`
@@ -77,18 +81,6 @@ export async function remoteServerCertExists(connection: IBMi) {
   return list.includes(pfxPath);
 }
 
-export async function remoteClientCertExists(connection: IBMi) {
-  const crtPath = getRemoteClientCertPath(connection);
-
-  const dirList = await connection.sendCommand({
-    command: `ls -p ${crtPath}`
-  });
-
-  const list = dirList.stdout.split(`\n`);
-
-  return list.includes(crtPath);
-}
-
 /**
  * Generate all certifcates on the server
  */
@@ -96,23 +88,31 @@ export async function setup(connection: IBMi) {
   const host = connection.currentHost;
   const extFileContent = await getExtFileContent(host, connection);
 
+  if (!connection.usingBash()) {
+    if (connection.remoteFeatures[`bash`]) {
+      throw new Error(`Bash is installed on the IBM i, but it is not your default shell. Please switch to bash to setup the debug service.`);
+    } else {
+      throw new Error(`The debug service setup requires bash to be installed on the IBM i. Please install bash and try again.`);
+    }
+  }
+
   const commands = [
-    `openssl genrsa -out debug_service_ca.key 2048`,
-    `openssl req -x509 -new -nodes -key debug_service_ca.key -sha256 -days 1825 -out debug_service_ca.pem -subj '/CN=${host}'`,
     `openssl genrsa -out debug_service.key 2048`,
     `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${host}'`,
-    `openssl x509 -req -in debug_service.csr -CA debug_service_ca.pem -CAkey debug_service_ca.key -CAcreateserial -out debug_service.crt -days 1095 -sha256 -sha256 -req -extfile <(printf "${extFileContent}")`,
-    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`
+    `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
+    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`,
+    `rm debug_service.key debug_service.csr debug_service.crt`, 
+    `chmod 444 debug_service.pfx`
   ];
 
-  const directory = getRemoteCertDirectory(connection);
+  const directory = getRemoteCertificateDirectory(connection);
 
   const mkdirResult = await connection.sendCommand({
     command: `mkdir -p ${directory}`
   });
 
   if (mkdirResult.code && mkdirResult.code > 0) {
-    throw new Error(`Failed to create certificate directory: ${directory}`);
+    throw new Error(`Failed to create server certificate directory: ${directory}`);
   }
 
   const creationResults = await connection.sendCommand({
@@ -121,20 +121,28 @@ export async function setup(connection: IBMi) {
   });
 
   if (creationResults.code && creationResults.code > 0) {
-    throw new Error(`Failed to create certificates.`);
+    throw new Error(`Failed to create server certificate.`);
   }
 }
 
-export function downloadClientCert(connection: IBMi) {
-  const remotePath = getRemoteClientCertPath(connection);
+export async function downloadClientCert(connection: IBMi) {
   const localPath = getLocalCertPath(connection);
 
-  return connection.downloadFile(localPath, remotePath);
+  const result = await connection.sendCommand({
+    command: `openssl s_client -connect localhost:${connection.config?.debugPort} -showcerts < /dev/null 2> /dev/null | openssl x509 -outform PEM`,
+    directory: getRemoteCertificateDirectory(connection)
+  });
+
+  if (result.code && result.code > 0) {
+    throw new Error(`Failed to download client certificate.`);
+  }
+
+  await fs.writeFile(localPath, result.stdout, {encoding: `utf8`});
 }
 
 export function getLocalCertPath(connection: IBMi) {
   const host = connection.currentHost;
-  return path.join(os.homedir(), `${host}_${clientCertName}`);
+  return path.join(os.homedir(), `${host}_${CLIENT_CERTIFICATE}`);
 }
 
 export async function localClientCertExists(connection: IBMi) {
@@ -144,5 +152,60 @@ export async function localClientCertExists(connection: IBMi) {
     return true;
   } catch (e) {
     return false;
+  }
+}
+
+export async function legacyCertificateChecks(connection: IBMi, existingDebugService: string|undefined) {
+  // We need to migrate away from using the old legacy directory to a new one if
+  // the user has the old directory configured but isn't running the server
+  const usingLegacyCertPath = (getRemoteCertificateDirectory(connection) === LEGACY_CERT_DIRECTORY);
+  const certsExistAtConfig = await remoteServerCertificateExists(connection);
+
+  let changeCertDirConfig: string|undefined;
+
+  if (usingLegacyCertPath) {
+    if (existingDebugService) {
+      // The server is running and they still have the legacy path configured. Do certs exist inside of the legacy path?
+
+      // If the legacy certs do exist, it might be using them!
+
+      // If not...
+      if (!certsExistAtConfig) {
+        // The server is running but the certs don't exist in the legacy path. 
+        // Let's change their default path from the legacy path to the new default path!
+        changeCertDirConfig = DEFAULT_CERT_DIRECTORY;
+      }
+
+    } else {
+      // The server isn't running. Let's change their default path from the legacy path
+      // to the new default path! And even.. let's try and delete the old certs directory!
+      changeCertDirConfig = DEFAULT_CERT_DIRECTORY;
+
+      // To be safe, let's try to delete the old directory.
+      // We don't care if it fails really.
+      await connection.sendCommand({
+        command: `rm -rf ${LEGACY_CERT_DIRECTORY}`,
+      })
+    }
+  } else {
+    // If the config isn't using the legacy path, we should check if the legacy certificates exist
+
+    if (existingDebugService) {
+      if (!certsExistAtConfig) {
+        // The server is running but the certs don't exist in the new path, let's
+        // check if they exist at the legacy path and switch back to that
+        const legacyCertsExist = await remoteServerCertificateExists(connection, true);
+        if (legacyCertsExist) {
+          changeCertDirConfig = LEGACY_CERT_DIRECTORY;
+        }
+      }
+    }
+  }
+
+  if (changeCertDirConfig) {
+    await ConnectionConfiguration.update({
+      ...connection.config!,
+      debugCertDirectory: changeCertDirConfig
+    })
   }
 }

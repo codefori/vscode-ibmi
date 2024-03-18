@@ -5,13 +5,21 @@ const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
-const SERVER_SETTINGS_CACHE_KEY = (name : string) => `serverSettingsCache_${name}`;
+const SERVER_SETTINGS_CACHE_KEY = (name: string) => `serverSettingsCache_${name}`;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
+const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
 
 export type PathContent = Record<string, string[]>;
 export type DeploymentPath = Record<string, string>;
 export type DebugCommands = Record<string, string>;
+
+type AuthorisedExtension = {
+  id: string
+  displayName: string
+  since: number
+  lastAccess: number
+}
 
 abstract class Storage {
   protected readonly globalState;
@@ -180,7 +188,7 @@ export class ConnectionStorage extends Storage {
     return this.set(DEBUG_KEY, existingCommands);
   }
 
-  getWorkspaceDeployPath(workspaceFolder : vscode.WorkspaceFolder){
+  getWorkspaceDeployPath(workspaceFolder: vscode.WorkspaceFolder) {
     const deployDirs = this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
     return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
   }
@@ -195,5 +203,39 @@ export class ConnectionStorage extends Storage {
 
   async clearRecentlyOpenedFiles() {
     await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
+  }
+
+  async grantExtensionAuthorisation(extension: vscode.Extension<any>) {
+    const extensions = this.getAuthorisedExtensions();
+    if (!this.getExtensionAuthorisation(extension)) {
+      extensions.push({
+        id: extension.id,
+        displayName: extension.packageJSON.displayName,
+        since: new Date().getTime(),
+        lastAccess: new Date().getTime()
+      });
+      await this.set(AUTHORISED_EXTENSIONS_KEY, extensions);
+    }
+  }
+
+  getExtensionAuthorisation(extension: vscode.Extension<any>) {
+    const authorisedExtension = this.getAuthorisedExtensions().find(authorisedExtension => authorisedExtension.id === extension.id);
+    if (authorisedExtension) {
+      authorisedExtension.lastAccess = new Date().getTime();
+    }
+    return authorisedExtension;
+  }
+
+  getAuthorisedExtensions(): AuthorisedExtension[] {
+    return this.get<AuthorisedExtension[]>(AUTHORISED_EXTENSIONS_KEY) || [];
+  }
+
+  revokeAllExtensionAuthorisations() {
+    this.revokeExtensionAuthorisation(...this.getAuthorisedExtensions());
+  }
+
+  revokeExtensionAuthorisation(...extensions: AuthorisedExtension[]) {
+    const newExtensions = this.getAuthorisedExtensions().filter(ext => !extensions.includes(ext));
+    return this.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
   }
 }

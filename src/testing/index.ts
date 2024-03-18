@@ -7,6 +7,7 @@ import { ContentSuite } from "./content";
 import { DeployToolsSuite } from "./deployTools";
 import { FilterSuite } from "./filter";
 import { ILEErrorSuite } from "./ileErrors";
+import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
 
@@ -17,7 +18,8 @@ const suites: TestSuite[] = [
   DeployToolsSuite,
   ToolsSuite,
   ILEErrorSuite,
-  FilterSuite
+  FilterSuite,
+  StorageSuite
 ]
 
 export type TestSuite = {

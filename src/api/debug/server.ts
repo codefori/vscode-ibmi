@@ -78,7 +78,7 @@ export async function startup(instance: Instance){
 
   const password = encryptResult.stdout;
 
-  const keystorePath = certificates.getRemoteServerCertPath(connection);
+  const keystorePath = certificates.getRemoteServerCertificatePath(connection);
 
   connection.sendCommand({
     command: `${javaHome} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(binDirectory, `startDebugService.sh`)}"`
@@ -100,7 +100,7 @@ export async function stop(instance: Instance) {
   const javaHome = getMyJavaHome(details.java);
 
   const endResult = await connection.sendCommand({
-    command: `${javaHome} ${path.posix.join(binDirectory, `stopDebugService.sh`)}`
+    command: `${path.posix.join(binDirectory, `stopDebugService.sh`)}`
   });
 
   if (endResult.code === 0) {

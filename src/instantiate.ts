@@ -8,18 +8,18 @@ import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
+import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
-import { init as clApiInit } from "./languages/clle/clApi";
-import * as clRunner from "./languages/clle/clRunner";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import { setupGitEventHandler } from './api/local/git';
 
 export let instance: Instance;
+
+const passwordAttempts: { [extensionId: string]: number } = {}
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
@@ -620,14 +620,82 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.secret`, async (key: string, newValue: string) => {
-      const connectionKey = `${instance.getConnection()!.currentConnectionName}_${key}`;
-      if (newValue) {
-        await context.secrets.store(connectionKey, newValue);
-        return newValue;
-      }
+    vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
+      if (extensionId) {
+        const extension = vscode.extensions.getExtension(extensionId);
+        const isValid = (extension && extension.isActive);
+        if (isValid) {
+          const connection = instance.getConnection();
+          const storage = instance.getStorage();
+          if (connection && storage) {
+            const displayName = extension.packageJSON.displayName || extensionId;
 
-      return await context.secrets.get(connectionKey);
+            // Some logic to stop spam from extensions.
+            passwordAttempts[extensionId] = passwordAttempts[extensionId] || 0;
+            if (passwordAttempts[extensionId] > 1) {
+              throw new Error(`Password request denied for extension ${displayName}.`);
+            }
+
+            const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
+            const storedPassword = await context.secrets.get(connectionKey);
+
+            if (storedPassword) {
+              let isAuthed = storage.getExtensionAuthorisation(extension) !== undefined;
+
+              if (!isAuthed) {
+                const detail = `The ${displayName} extension is requesting access to your password for this connection. ${reason ? `\n\nReason: ${reason}` : `The extension did not provide a reason for password access.`}`;
+                let done = false;
+                let modal = true;
+
+                while (!done) {
+                  const options: string[] = [`Allow`];
+
+                  if (modal) {
+                    options.push(`View on Marketplace`);
+                  } else {
+                    options.push(`Deny`);
+                  }
+
+                  const result = await vscode.window.showWarningMessage(
+                    modal ? `Password Request` : detail,
+                    {
+                      modal,
+                      detail,
+                    },
+                    ...options
+                  );
+
+                  switch (result) {
+                    case `Allow`:
+                      await storage.grantExtensionAuthorisation(extension);
+                      isAuthed = true;
+                      done = true;
+                      break;
+
+                    case `View on Marketplace`:
+                      vscode.commands.executeCommand('extension.open', extensionId);
+                      modal = false;
+                      break;
+
+                    default:
+                      done = true;
+                      break;
+                  }
+                }
+              }
+
+              if (isAuthed) {
+                return storedPassword;
+              } else {
+                passwordAttempts[extensionId]++;
+              }
+            }
+
+          } else {
+            throw new Error(`Not connected to an IBM i.`);
+          }
+        }
+      }
     }),
 
     vscode.commands.registerCommand("code-for-ibmi.browse", (item: WithPath | MemberItem) => {
@@ -661,10 +729,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     SEUColorProvider.intitialize(context);
   }
 
-  clRunner.initialise(context);
-
   // Register git events based on workspace folders
-	if (vscode.workspace.workspaceFolders) {
+  if (vscode.workspace.workspaceFolders) {
     setupGitEventHandler(context);
   }
 
@@ -686,12 +752,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
-  // CL content assist
-  const clExtension = vscode.extensions.getExtension(`IBM.vscode-clle`);
-  if (clExtension) {
-    clApiInit();
-  }
 
   initGetNewLibl(instance);
 
