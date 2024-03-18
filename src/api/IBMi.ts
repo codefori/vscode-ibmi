@@ -1044,12 +1044,13 @@ export default class IBMi {
       }
   }
 
-  parserMemberPath(string: string): MemberParts {
+  parserMemberPath(string: string): MemberParts {    
     const variant_chars_local = this.variantChars.local;
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
     // Remove leading slash
-    const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
+    const upperCasedString = this.upperCaseName(string);
+    const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
 
     const basename = path[path.length - 1];
     const file = path[path.length - 2];
@@ -1191,5 +1192,23 @@ export default class IBMi {
     else {
       throw new Error(`Failed to create temporary directory ${tempDirectory}: ${prepareDirectory.stderr}`);
     }
+  }
+
+  /**
+   * Uppercases an object name, keeping the variant chars case intact
+   * @param name
+   */
+  upperCaseName(name : string){    
+    const upperCased = [];
+    for(const char of name){
+      const upChar = char.toLocaleUpperCase();
+      if(new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)){
+        upperCased.push(upChar);
+      }
+      else{
+        upperCased.push(char);
+      }
+    }
+    return upperCased.join("");
   }
 }

@@ -144,9 +144,9 @@ export default class IBMiContent {
    */
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
     asp = asp || this.config.sourceASP;
-    library = library.toUpperCase();
-    sourceFile = sourceFile.toUpperCase();
-    member = member.toUpperCase();
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     let retry = false;
     let path = Tools.qualifyPath(library, sourceFile, member, asp);
@@ -197,9 +197,9 @@ export default class IBMiContent {
    */
   async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array) {
     asp = asp || this.config.sourceASP;
-    library = library.toUpperCase();
-    sourceFile = sourceFile.toUpperCase();
-    member = member.toUpperCase();
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     const client = this.ibmi.client;
     const tmpobj = await tmpFile();
