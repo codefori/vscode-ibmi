@@ -13,6 +13,7 @@ import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import ConnectionSettings from './ConnectionSettings';
 import * as configVars from './configVars';
+import { clear } from "console";
 
 const CCSID_SYSVAL = -2;
 
@@ -153,10 +154,7 @@ export default class IBMi {
           message: `Checking shell output.`
         });
 
-        try {
-          await connSettings.CheckShellOutput();
-        }
-        catch (error) {
+        if (!(await connSettings.CheckShellOutput())) {
           const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
             detail: [
               `This extension can not work with the shell configured on ${connectionObject.name},`,
@@ -188,34 +186,32 @@ export default class IBMi {
           message: `Checking home directory.`
         });
 
-        try {
-          let homeDirSettings = await connSettings.checkHomeDirectory();
-          if (!homeDirSettings.homeExists) {
+        let homeDirValues = await connSettings.checkHomeDirectory();
+        if (!homeDirValues.homeErr) {
+
+          if (!homeDirValues.homeExists) {
             if (reconnecting) {
-              vscode.window.showWarningMessage(`Your home directory (${homeDirSettings.homeDir}) does not exist. Code for IBM i may not function correctly.`, { modal: false });
+              vscode.window.showWarningMessage(`Your home directory (${homeDirValues.homeDir}) does not exist. Code for IBM i may not function correctly.`, { modal: false });
             }
             else {
               if (await vscode.window.showWarningMessage(`Home directory does not exist`, {
                 modal: true,
-                detail: `Your home directory (${homeDirSettings.homeDir}) does not exist, so Code for IBM i may not function correctly. Would you like to create this directory now?`,
+                detail: `Your home directory (${homeDirValues.homeDir}) does not exist, so Code for IBM i may not function correctly. Would you like to create this directory now?`,
               }, `Yes`)) {
-                this.appendOutput(`creating home directory ${homeDirSettings.homeDir}`);
-                try {
-                  await connSettings.createHomeDirectory(homeDirSettings.homeDir, connectionObject.username);
-                }
-                catch (error: any) {
-                  await vscode.window.showWarningMessage(error.message, { modal: true });
+                this.appendOutput(`creating home directory ${homeDirValues.homeDir}`);
+                let homeDirResult = await connSettings.createHomeDirectory(homeDirValues.homeDir, connectionObject.username);
+                if (!homeDirResult.homeCreated) {
+                  await vscode.window.showWarningMessage(homeDirResult.homeMsg, { modal: true });
                 }
               }
             }
           }
-
-          if (homeDirSettings.homeChanged) {
-            vscode.window.showInformationMessage(`Configured home directory reset to ${homeDirSettings.homeDir}.`);
+          if (homeDirValues.homeChanged) {
+            vscode.window.showInformationMessage(`Configured home directory reset to ${homeDirValues.homeDir}.`);
           }
         }
-        catch (error: any) {
-          await vscode.window.showWarningMessage(error.message, { modal: !reconnecting });
+        else {
+          await vscode.window.showWarningMessage(homeDirValues.homeMsg, { modal: !reconnecting });
         }
 
         //Checking library list configuration
@@ -239,29 +235,26 @@ export default class IBMi {
           message: `Checking temporary directory configuration.`
         });
 
-        await connSettings.checkTempDirectoryConfig();
+        const tempDirSet = await connSettings.checkTempDirectoryConfig();
 
         //Clear temporary data
-        if (await connSettings.getTempLibrarySet() && this.config?.autoClearTempData) {
+        if (tempDirSet && this.config?.autoClearTempData) {
 
           progress.report({
             message: `Clearing temporary data.`
           });
-          try {
-            await connSettings.clearTempDataSys(); //Clear temporary data in SYS filesystem
-          }
-          catch (error: any) {
-            vscode.window.showErrorMessage(error.message, `View log`).then(async choice => {
+          let clearResult = await connSettings.clearTempDataSys(); //Clear temporary data in SYS filesystem
+          if(!clearResult.cleared) {
+            vscode.window.showErrorMessage(clearResult.message, `View log`).then(async choice => {
               if (choice === `View log`) {
                 this.outputChannel!.show();
               }
             });
           }
-          try {
-            await connSettings.clearTempDataIFS(); //Clear temporary data in IFS
-          }
-          catch (error: any) {
-            vscode.window.showErrorMessage(error.message, `View log`).then(async choice => {
+          
+          clearResult = await connSettings.clearTempDataIFS(); //Clear temporary data in IFS
+          if(!clearResult.cleared) {
+            vscode.window.showErrorMessage(clearResult.message, `View log`).then(async choice => {
               if (choice === `View log`) {
                 this.outputChannel!.show();
               }
@@ -274,7 +267,7 @@ export default class IBMi {
           progress.report({
             message: `Checking for bad data areas.`
           });
-          
+
           if (await connSettings.checkQCPTOIMPF()) {
             vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
               detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
@@ -297,7 +290,7 @@ export default class IBMi {
             });
           }
 
-          if (await connSettings.checkQCPFRMIMPF) {
+          if (await connSettings.checkQCPFRMIMPF()) {
             vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
               modal: false,
             }, `Delete`, `Read more`).then(choice => {
@@ -333,7 +326,7 @@ export default class IBMi {
 
           //Next, we see what pase features are available (installed via yum)
           //This may enable certain features in the future.
-          const remoteApps = await connSettings.getRemoteApps();
+          const remoteApps = connSettings.getRemoteApps();
           for (const remoteFeature of remoteApps) {
             progress.report({
               message: `Checking installed components on host IBM i: ${remoteFeature.path}`
@@ -388,38 +381,38 @@ export default class IBMi {
 
             // Next, we're going to see if we can get the CCSID from the user or the system.
             // Some things don't work without it!!!
-              const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-              if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
-              }
+            const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+            if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+              this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
+            }
 
-              if (!this.qccsid || this.qccsid === CCSID_SYSVAL) {
-                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-                }
+            if (!this.qccsid || this.qccsid === CCSID_SYSVAL) {
+              const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+              if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
               }
+            }
 
-              try {
-                const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
-                this.defaultCCSID = Number(activeJob.DEFAULT_CCSID);
-              }
-              catch (error) {
-                const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
-                  .stdout
-                  .split("\n")
-                  .filter(line => line.includes("DFTCCSID"));
+            try {
+              const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+              this.defaultCCSID = Number(activeJob.DEFAULT_CCSID);
+            }
+            catch (error) {
+              const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
+                .stdout
+                .split("\n")
+                .filter(line => line.includes("DFTCCSID"));
 
-                const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
-                if (defaultCCSCID && !isNaN(defaultCCSCID)) {
-                  this.defaultCCSID = defaultCCSCID;
-                }
+              const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
+              if (defaultCCSCID && !isNaN(defaultCCSCID)) {
+                this.defaultCCSID = defaultCCSCID;
               }
+            }
 
-              if (this.config.enableSQL && this.qccsid === 65535) {
-                this.config.enableSQL = false;
-                vscode.window.showErrorMessage(`QCCSID is set to 65535. Using fallback methods to access the IBM i file systems.`);
-              }
+            if (this.config.enableSQL && this.qccsid === 65535) {
+              this.config.enableSQL = false;
+              vscode.window.showErrorMessage(`QCCSID is set to 65535. Using fallback methods to access the IBM i file systems.`);
+            }
 
             progress.report({
               message: `Fetching local encoding values.`
@@ -837,12 +830,12 @@ export default class IBMi {
   }
 
   getLastDownloadLocation() {
-    if(this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))){
+    if (this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))) {
       return this.config.lastDownloadLocation;
     }
-    else{
+    else {
       return os.homedir();
-    }    
+    }
   }
 
   async setLastDownloadLocation(location: string) {

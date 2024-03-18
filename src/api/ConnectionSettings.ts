@@ -2,25 +2,22 @@ import path from 'path';
 
 import IBMi from "./IBMi";
 import IBMiContent from "./IBMiContent";
-import { CommandResult,RemoteFeature, RemoteApps } from "../typings";
+import { CommandResult, RemoteFeature, RemoteApps } from "../typings";
 import { Tools } from './Tools';
 import RemoteApp from './RemoteApp';
 import { instance } from "../instantiate";
+import { get } from 'http';
 
 export default class ConnectionSettings {
 
-  private tempLibrarySet: boolean;
-  private tempDirSet: boolean;
   private remoteApp: RemoteApp;
 
   constructor(private connection: IBMi) {
-    this.tempLibrarySet = false;
-    this.tempDirSet = false;
     this.remoteApp = new RemoteApp();
   }
 
-  async CheckShellOutput() {
-    
+  async CheckShellOutput(): Promise<boolean> {
+
     const checkShellText = `This should be the only text!`;
     const checkShellResult = await this.connection.sendCommand({
       command: `echo "${checkShellText}"`,
@@ -28,17 +25,21 @@ export default class ConnectionSettings {
     });
 
     if (checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
-      throw (`Shell config error`);
+      return false; //Shell config error
     }
-  
+
+    return true;
+
   }
 
-  async checkHomeDirectory(): Promise<{homeDir: string, homeExists: boolean, homeChanged: boolean}> {
-    
+  async checkHomeDirectory(): Promise<{ homeErr: boolean, homeDir: string, homeExists: boolean, homeChanged: boolean, homeMsg: string }> {
+
     let homeDir; //Home Directory name
     let homeExists = false; //Home directory exists will be true otherwise false
     let homeChanged = false; //Home directory exists and value changed
- 
+    let homeMsg = '';
+    let homeErr = false;
+
     const homeResult = await this.connection.sendCommand({
       command: `echo $HOME && cd && test -w $HOME`,
       directory: `.`
@@ -66,23 +67,27 @@ export default class ConnectionSettings {
         //       But, remember, but we only got here if 'cd $HOME' failed.
         //       Let's try to figure out why....
         if (0 !== (await this.connection.sendCommand({ command: `test -d ${homeDir}` })).code) {
-          throw(`Your home directory (${homeDir}) is not a directory! Code for IBM i may not function correctly. Please contact your system administrator.`);
+          homeErr = true;
+          homeMsg = `Your home directory (${homeDir}) is not a directory! Code for IBM i may not function correctly. Please contact your system administrator.`;
         }
         else if (0 !== (await this.connection.sendCommand({ command: `test -w ${homeDir}` })).code) {
-          throw(`Your home directory (${homeDir}) is not writable! Code for IBM i may not function correctly. Please contact your system administrator.`);
+          homeErr = true;
+          homeMsg = `Your home directory (${homeDir}) is not writable! Code for IBM i may not function correctly. Please contact your system administrator.`;
         }
         else if (0 !== (await this.connection.sendCommand({ command: `test -x ${homeDir}` })).code) {
-          throw(`Your home directory (${homeDir}) is not usable due to permissions! Code for IBM i may not function correctly. Please contact your system administrator.`);
+          homeErr = true;
+          homeMsg = `Your home directory (${homeDir}) is not usable due to permissions! Code for IBM i may not function correctly. Please contact your system administrator.`;
         }
         else {
-           // not sure, but get your sys admin involved
-          throw(`Your home directory (${homeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`);
+          // not sure, but get your sys admin involved
+          homeErr = true;
+          homeMsg = `Your home directory (${homeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`;
         }
       }
       else homeExists = false;
     }
-    
-    if (this.connection.config) {
+
+    if (!homeErr && this.connection.config) {
 
       // Check to see if we need to store a new value for the home directory
       if (homeExists) {
@@ -108,30 +113,40 @@ export default class ConnectionSettings {
       }
     }
 
-    return {homeDir,homeExists, homeChanged};  
+    return { homeErr, homeDir, homeExists, homeChanged, homeMsg };
   }
 
-  async createHomeDirectory(homeDir: string, username: string) {
+  async createHomeDirectory(homeDir: string, username: string): Promise<{ homeCreated: boolean, homeMsg: string }> {
+
+    let homeCreated = true;
+    let homeMsg = '';
+
     let mkHomeCmd = `mkdir -p ${homeDir} && chown ${username.toLowerCase()} ${homeDir} && chmod 0755 ${homeDir}`;
     let mkHomeResult = await this.connection.sendCommand({ command: mkHomeCmd, directory: `.` });
     if (0 !== mkHomeResult.code) {
-      let mkHomeErrs = mkHomeResult.stderr;
+      homeMsg = mkHomeResult.stderr;
       // We still get 'Could not chdir to home directory' in stderr so we need to hackily gut that out, as well as the bashisms that are a side effect of our API
-      mkHomeErrs = mkHomeErrs.substring(1 + mkHomeErrs.indexOf(`\n`)).replace(`bash: line 1: `, ``);
+      homeMsg = homeMsg.substring(1 + homeMsg.indexOf(`\n`)).replace(`bash: line 1: `, ``);
+      homeCreated = false;
     } else {
-      let mkHomeErrs = mkHomeResult.stderr;
+      homeMsg = mkHomeResult.stderr;
       // We still get 'Could not chdir to home directory' in stderr so we need to hackily gut that out, as well as the bashisms that are a side effect of our API
-      mkHomeErrs = mkHomeErrs.substring(1 + mkHomeErrs.indexOf(`\n`)).replace(`bash: line 1: `, ``);
-      throw(`Error creating home directory (${homeDir}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`);
-    } 
+      homeMsg = homeMsg.substring(1 + homeMsg.indexOf(`\n`)).replace(`bash: line 1: `, ``);
+      homeMsg = `Error creating home directory (${homeDir}):\n${homeMsg}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`;
+      homeCreated = false;
+    }
+
+    return { homeCreated, homeMsg };
+
   }
 
-  async checkLibraryList() {
+  async checkLibraryList(): Promise<boolean> {
 
     //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
     //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
     let currentLibrary = `QGPL`;
     this.connection.defaultUserLibraries = [];
+    let LibListSet = false;
 
     const liblResult = await this.connection.sendQsh({
       command: `liblist`
@@ -165,18 +180,19 @@ export default class ConnectionSettings {
           if (this.connection.config.libraryList.length === 0) {
             this.connection.config.libraryList = this.connection.defaultUserLibraries;
           }
+          LibListSet = true;
         }
 
       }
     }
+
+    return LibListSet;
+
   }
 
-  getTempLibrarySet(): boolean {
-    return this.tempLibrarySet;
-  }
-  async checkTempLibConfig() {
+  async checkTempLibConfig(): Promise<boolean> {
 
-    this.tempLibrarySet = false;
+    let tempLibrarySet = false;
 
     if (this.connection.config) {
 
@@ -187,11 +203,11 @@ export default class ConnectionSettings {
       });
 
       if (createdTempLib.code === 0) {
-        this.tempLibrarySet = true;
+        tempLibrarySet = true;
       } else {
         const messages = Tools.parseMessages(createdTempLib.stderr);
         if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)            
-          this.tempLibrarySet = true;
+          tempLibrarySet = true;
         }
         else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
           const tempLibExists = await this.connection.runCommand({
@@ -201,22 +217,24 @@ export default class ConnectionSettings {
 
           if (tempLibExists.code === 0) {
             //We're all good if no errors
-            this.tempLibrarySet = true;
+            tempLibrarySet = true;
           } else if (this.connection.config.currentLibrary && !this.connection.config.currentLibrary.startsWith(`Q`)) {
             //Using ${currentLibrary} as the temporary library for temporary data.
             this.connection.config.tempLibrary = this.connection.config.currentLibrary;
-            this.tempLibrarySet = true;
+            tempLibrarySet = true;
           }
         }
       }
 
     }
 
+    return tempLibrarySet;
+
   }
 
-  async checkTempDirectoryConfig() {
-    
-    this.tempDirSet = false;
+  async checkTempDirectoryConfig(): Promise<boolean> {
+
+    let tempDirSet = false;
     // Next, we need to check if the temp directory exists
     let result = await this.connection.sendCommand({
       command: `[ -d "${this.connection.config?.tempDir}" ]`
@@ -224,7 +242,7 @@ export default class ConnectionSettings {
 
     if (result.code === 0) {
       // Directory exists
-      this.tempDirSet = true;
+      tempDirSet = true;
     } else {
       // Directory does not exist, try to create it
       let result = await this.connection.sendCommand({
@@ -232,18 +250,25 @@ export default class ConnectionSettings {
       });
       if (result.code === 0) {
         // Directory created
-        this.tempDirSet = true;
+        tempDirSet = true;
       } else {
         // Directory not created
       }
     }
 
-    if (!this.tempDirSet && this.connection.config) {
+    if (!tempDirSet && this.connection.config) {
       this.connection.config.tempDir = `/tmp`;
     }
+
+    return tempDirSet;
+
   }
 
-  async clearTempDataSys(){
+  clearTempDataSys(): Promise<{ cleared: boolean, message: string }> {
+
+    let cleared = false;
+    let message = '';
+
     if (this.connection.config?.tempLibrary) {
       this.connection.runCommand({
         command: `DLTOBJ OBJ(${this.connection.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
@@ -255,31 +280,50 @@ export default class ConnectionSettings {
             const messages = Tools.parseMessages(result.stderr);
             if (!messages.findId(`CPF2125`)) {
               // @ts-ignore We know the config exists.
-              throw(`Temporary data not cleared from ${this.config.tempLibrary}.`);
+              cleared = false;
+              message = `Temporary data not cleared from ${this.connection.config?.tempLibrary}.`;
+
             }
           }
-        })
+          else {
+            cleared = true;
+            message = 'Temporary data cleared from ' + this.connection.config?.tempLibrary;
+          }
+        });
     }
+
+    return Promise.resolve({ cleared, message });
+
   }
 
-  async clearTempDataIFS() {
+  clearTempDataIFS(): Promise<{ cleared: boolean, message: string }> {
+
+    let cleared = false;
+    let message = '';
+
     if (this.connection.config?.tempLibrary) {
       this.connection.sendCommand({
         command: `rm -f ${path.posix.join(this.connection.config.tempDir, `vscodetemp*`)}`
       })
         .then(result => {
           // All good!
+          cleared = true;
+          message = `Temporary data cleared from ${this.connection.config?.tempDir}.`
         })
         .catch(e => {
           // CPF2125: No objects deleted.
           // @ts-ignore We know the config exists.
-          throw(`Temporary data not cleared from ${this.config.tempDir}.`);
+          cleared = false;
+          message = `Temporary data not cleared from ${this.connection.config?.tempDir}.`
         });
     }
+
+    return Promise.resolve({ cleared, message });
+
   }
 
   async checkQCPTOIMPF(): Promise<boolean> {
-    
+
     let dataArea = false;
 
     const QCPTOIMPF = await this.connection.runCommand({
@@ -292,7 +336,7 @@ export default class ConnectionSettings {
     return dataArea;
   }
 
-  async deleteQCPTOIMPF(): Promise<CommandResult>{
+  deleteQCPTOIMPF(): Promise<CommandResult> {
     return this.connection.runCommand({
       command: `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
       noLibList: true
@@ -300,7 +344,7 @@ export default class ConnectionSettings {
   }
 
   async checkQCPFRMIMPF(): Promise<boolean> {
-    
+
     let dataArea = false;
 
     const QCPFRMIMPF = await this.connection.runCommand({
@@ -315,7 +359,7 @@ export default class ConnectionSettings {
     return dataArea;
   }
 
-  async deleteQCPFRMIMPF(): Promise<CommandResult> {
+  deleteQCPFRMIMPF(): Promise<CommandResult> {
     return this.connection.runCommand({
       command: `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
       noLibList: true
@@ -333,33 +377,35 @@ export default class ConnectionSettings {
         }
       );
     }
-    return this.remoteApp.getFeatures();  
+    return this.remoteApp.getFeatures();
   }
 
   async checkInstalledFeature(remoteFeature: RemoteFeature) {
-    
+
     //Next, we see what pase features are available (installed via yum)
     //This may enable certain features in the future.
-      try {
-        const call = await this.connection.sendCommand({ command: `ls -p ${remoteFeature.path}${remoteFeature.specific || ``}` });
-        if (call.stdout) {
-          const files = call.stdout.split(`\n`);
+    try {
+      const call = await this.connection.sendCommand({ command: `ls -p ${remoteFeature.path}${remoteFeature.specific || ``}` });
+      if (call.stdout) {
+        const files = call.stdout.split(`\n`);
 
-          if (remoteFeature.specific) {
-            for (const name of remoteFeature.names)
-              this.connection.remoteFeatures[name] = files.find(file => file.includes(name));
-          } else {
-            for (const name of remoteFeature.names)
-              if (files.includes(name))
-                this.connection.remoteFeatures[name] = remoteFeature.path + name;
-          }
+        if (remoteFeature.specific) {
+          for (const name of remoteFeature.names)
+            this.connection.remoteFeatures[name] = files.find(file => file.includes(name));
+        } else {
+          for (const name of remoteFeature.names)
+            if (files.includes(name))
+              this.connection.remoteFeatures[name] = remoteFeature.path + name;
         }
-      } catch (e) {
-        console.log(e);
       }
+    } catch (e) {
+      console.log(e);
+    }
   }
 
-  async checkASPInfo() {
+  async checkASPInfo(): Promise<boolean> {
+
+    let getASPInfo = false;
 
     //This is mostly a nice to have. We grab the ASP info so user's do
     //not have to provide the ASP in the settings.
@@ -367,52 +413,72 @@ export default class ConnectionSettings {
     resultSet.forEach(row => {
       if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
         this.connection.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+        getASPInfo = true;
       }
     });
+
+    return Promise.resolve(getASPInfo);
+
   }
 
-  async checkCCSID() {
+  async checkCCSID(): Promise<{ ccsidNum: number, ccsidSet: boolean, ccsidMessage: string }> {
 
-  // Next, we're going to see if we can get the CCSID from the user or the system.
-  // Some things don't work without it!!!
-    try{
-    const CCSID_SYSVAL = -2;
-    let statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.connection.currentUser}') ) )`;
-    let output = await this.connection.sendCommand({
-      command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-      stdin: statement
-    });
+    let ccsidNum = 0;
+    let ccsidSet = false;
+    let ccsidMessage = '';
 
-    if (output.stdout) {
-      const [row] = Tools.db2Parse(output.stdout);
-      if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
-        this.connection.qccsid = row.CHARACTER_CODE_SET_ID;
-      }
-    }
-
-    if (this.connection.qccsid === undefined || this.connection.qccsid === CCSID_SYSVAL) {
-      statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
-      output = await this.connection.sendCommand({
+    // Next, we're going to see if we can get the CCSID from the user or the system.
+    // Some things don't work without it!!!
+    try {
+      const CCSID_SYSVAL = -2;
+      let statement = `select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.connection.currentUser}') ) )`;
+      let output = await this.connection.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
         stdin: statement
       });
 
       if (output.stdout) {
-        const rows = Tools.db2Parse(output.stdout);
-        const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
-        if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
-          this.connection.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+        const [row] = Tools.db2Parse(output.stdout);
+        if (row && row.CHARACTER_CODE_SET_ID !== `null` && typeof row.CHARACTER_CODE_SET_ID === 'number') {
+          this.connection.qccsid = row.CHARACTER_CODE_SET_ID;
+          ccsidNum = row.CHARACTER_CODE_SET_ID;
+          ccsidSet = true;
+        }
+      }
+
+      if (this.connection.qccsid === undefined || this.connection.qccsid === CCSID_SYSVAL) {
+        statement = `select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`;
+        output = await this.connection.sendCommand({
+          command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+          stdin: statement
+        });
+
+        if (output.stdout) {
+          const rows = Tools.db2Parse(output.stdout);
+          const ccsid = rows.find(row => row.SYSTEM_VALUE_NAME === `QCCSID`);
+          if (ccsid && typeof ccsid.CURRENT_NUMERIC_VALUE === 'number') {
+            this.connection.qccsid = ccsid.CURRENT_NUMERIC_VALUE;
+            ccsidNum = ccsid.CURRENT_NUMERIC_VALUE;
+            ccsidSet = true;
+          }
         }
       }
     }
+    catch (e: any) {
+      ccsidNum = 0;
+      ccsidSet = false;
+      ccsidMessage = e.message;
     }
-  catch (e) {
-    // Oh well!
-    console.log(e);
-  }
+
+    return Promise.resolve({ ccsidNum, ccsidSet, ccsidMessage });
+
   }
 
-  async checkLocalEncoding() {
+  async checkLocalEncoding(): Promise<{ local: String, localEncoding: boolean, localMessage: string }> {
+
+    let local = '';
+    let localEncoding = false;
+    let localMessage = '';
 
     try {
 
@@ -432,18 +498,29 @@ export default class ConnectionSettings {
         const [row] = Tools.db2Parse(output.stdout);
         if (row && row.LOCAL !== `null` && typeof row.LOCAL === 'string') {
           this.connection.variantChars.local = row.LOCAL;
+          local = row.LOCAL;
+          localEncoding = true;
         }
       } else {
-        throw new Error(`There was an error running the SQL statement.`);
+        localEncoding = false;
+        localMessage = `There was an error running the SQL statement to retreive Local Encoding.`;
       }
     }
-    catch (e) {
-      // Oh well!
+    catch (e: any) {
       console.log(e);
+      localEncoding = false;
+      localMessage = e.message;
     }
+
+    return Promise.resolve({ local, localEncoding, localMessage });
+
   }
 
-  async checkDefaultShell() {
+  async checkDefaultShell(): Promise<{ usesBash: boolean, bashMessage: string }> {
+
+    let usesBash = false;
+    let bashMessage = '';
+
     try {
       if (this.connection.config) {
         this.connection.config.usesBash = false;
@@ -451,37 +528,51 @@ export default class ConnectionSettings {
         const bashShellPath = '/QOpenSys/pkgs/bin/bash';
         const commandShellResult = await this.connection.sendCommand({
           command: `echo $SHELL`
-        }); 
+        });
         if (!commandShellResult.stderr) {
           this.connection.config.usesBash = commandShellResult.stdout.trim() === bashShellPath;
-        } 
+          usesBash = this.connection.config.usesBash;
+        }
       }
     }
-    catch (e) {
+    catch (e: any) {
       // Oh well...trying to set default shell is not worth stopping for.
       console.log(e);
+      usesBash = false;
+      bashMessage = e.message;
     }
+
+    return Promise.resolve({ usesBash, bashMessage });
+
   }
 
-  async setShelltoBash() {
-    if(this.connection.config) {     
-    const commandSetBashResult = await this.connection.sendCommand({
-      command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
-    });
-    if (!commandSetBashResult.stderr) {
-      this.connection.config.usesBash = true;
-    } else {
-      this.connection.config.usesBash = false
-    }        
-  }
+  async setShelltoBash(): Promise<boolean> {
+
+    let usesBash = false;
+
+    if (this.connection.config) {
+      const commandSetBashResult = await this.connection.sendCommand({
+        command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+      });
+      if (!commandSetBashResult.stderr) {
+        this.connection.config.usesBash = true;
+        usesBash = true;
+      } else {
+        this.connection.config.usesBash = false;
+        usesBash = false;
+      }
+    }
+
+    return Promise.resolve(usesBash);
+
   }
 
-  async checkBashPath(): Promise<{reason: string, bashrcFile: string, bashrcExists: boolean}> {
+  async checkBashPath(): Promise<{ reason: string, bashrcFile: string, bashrcExists: boolean }> {
 
     const currentPaths = (await this.connection.sendCommand({ command: "echo $PATH" })).stdout.split(":");
     const bashrcFile = `${this.connection.config?.homeDirectory}/.bashrc`;
     const bashrcExists = (await this.connection.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
-  
+
     let reason = '';
     if (!currentPaths.includes("/QOpenSys/pkgs/bin")) {
       reason = "Your $PATH shell environment variable does not include /QOpenSys/pkgs/bin";
@@ -489,12 +580,12 @@ export default class ConnectionSettings {
     else if (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin") || currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")) {
       reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
     }
-    return {reason,bashrcFile,bashrcExists};
+    return Promise.resolve({ reason, bashrcFile, bashrcExists });
   }
 
-  async updateBashrc(bashrcFile:string,username: string): Promise<CommandResult>  {
+  async updateBashrc(bashrcFile: string, username: string): Promise<CommandResult> {
     const bashrc = await this.connection.sendCommand({ command: `echo "# Generated by Code for IBM i\nexport PATH=/QOpenSys/pkgs/bin:\\$PATH" >> ${bashrcFile} && chown ${username.toLowerCase()} ${bashrcFile} && chmod 755 ${bashrcFile}` });
-    return bashrc;   
+    return bashrc;
   }
 
   async createBashrc(bashrcFile: string) {
@@ -526,8 +617,7 @@ export default class ConnectionSettings {
   }
 
   async validateLibraryList(): Promise<string[]> {
-    
-    let validLibs: string[] = [];
+
     let badLibs: string[] = [];
 
     if (this.connection.config) {
@@ -549,15 +639,8 @@ export default class ConnectionSettings {
         });
       }
     }
-    
+
     return badLibs;
 
   }
-
-  private appendOutput(content: string) {
-    if (this.connection.outputChannel) {
-      this.connection.outputChannel.append(content);
-    }
-  }
-
 }
