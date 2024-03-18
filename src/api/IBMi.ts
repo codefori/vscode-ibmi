@@ -65,7 +65,6 @@ export default class IBMi {
       chsh: undefined,
       stat: undefined,
       sort: undefined,
-      'GENCMDXML.PGM': undefined,
       'GETNEWLIBL.PGM': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,

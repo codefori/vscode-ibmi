@@ -399,7 +399,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Member`,
-      arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
+      arguments: [{path: this.path}, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
 
     this.readonly = readonly;

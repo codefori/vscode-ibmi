@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.8.2-dev.0",
+	"version": "2.8.3-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -44,10 +44,6 @@
 			}
 		],
 		"snippets": [
-			{
-				"path": "./schemas/cl.code-snippets",
-				"language": "cl"
-			},
 			{
 				"path": "./schemas/local-variables.code-snippets",
 				"language": "json"
@@ -1035,6 +1031,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.copyConnection",
+				"title": "Copy...",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.disconnect",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Disconnect",
@@ -1583,11 +1584,6 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.cl.runSelected",
-				"title": "Run selected CL command",
-				"category": "IBM i"
-			},
-			{
 				"command": "code-for-ibmi.openTerminalHere",
 				"title": "Open Terminal Here",
 				"category": "IBM i"
@@ -1653,12 +1649,6 @@
 				"command": "code-for-ibmi.connectTo",
 				"key": "ctrl+alt+c",
 				"mac": "cmd+alt+c"
-			},
-			{
-				"command": "code-for-ibmi.cl.runSelected",
-				"key": "ctrl+r",
-				"mac": "cmd+r",
-				"when": "editorLangId == cl"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
@@ -1829,6 +1819,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.copyConnection",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
@@ -1887,10 +1881,6 @@
 				{
 					"command": "code-for-ibmi.sortMembersByName",
 					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.cl.runSelected",
-					"when": "code-for-ibmi:connected && editorLangId === cl"
 				},
 				{
 					"command": "code-for-ibmi.openTerminalHere",
@@ -2268,14 +2258,19 @@
 			],
 			"view/item/context": [
 				{
-					"command": "code-for-ibmi.renameConnection",
+					"command": "code-for-ibmi.copyConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "2_delete@1"
 				},
 				{
+					"command": "code-for-ibmi.renameConnection",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
+					"group": "2_delete@2"
+				},
+				{
 					"command": "code-for-ibmi.deleteConnection",
 					"when": "view == connectionBrowser && viewItem == server",
-					"group": "2_delete@2"
+					"group": "2_delete@3"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
