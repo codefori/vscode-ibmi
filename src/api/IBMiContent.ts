@@ -249,7 +249,7 @@ export default class IBMiContent {
    * @param statements Either an SQL statement or CL statement. CL statements start with @
    * @returns result set
    */
-  runStatements(statements: string[]): Promise<Tools.DB2Row[]> {
+  runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
     return this.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
   }
 
@@ -383,10 +383,7 @@ export default class IBMiContent {
    * @returns : the table's content
    */
   getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    return this.runStatements([
-      ...prepareQueries,
-      `select * from QTEMP.${table}`
-    ])
+    return this.runStatements(...prepareQueries, `select * from QTEMP.${table}`);
   }
 
   /**

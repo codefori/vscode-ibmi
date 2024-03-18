@@ -600,10 +600,10 @@ export const ContentSuite: TestSuite = {
         assert.deepStrictEqual(resultA.OBJNAME, "UNITTEST");
         assert.deepStrictEqual(resultA.OBJTEXT, "Code for i test");
         
-        const [resultB] = await content.runStatements([
+        const [resultB] = await content.runStatements(
           `@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test')`,
           `Select * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF'`
-        ]);
+        );
         
         assert.deepStrictEqual(resultB.OBJNAME, "UNITTEST");
         assert.deepStrictEqual(resultB.OBJTEXT, "Code for i test");
