@@ -4,7 +4,6 @@ import path, { basename, dirname } from "path";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
 import { parseFilter } from "../api/Filter";
-import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
@@ -12,7 +11,7 @@ import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
+import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, MemberParts, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
 import { editFilter } from "../webviews/filters";
 
 const URI_LIST_SEPARATOR = "\r\n";

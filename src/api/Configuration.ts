@@ -60,6 +60,7 @@ export namespace ConnectionConfiguration {
     debugEnableDebugTracing: boolean;
     readOnlyMode: boolean;
     quickConnect: boolean;
+    usesBash: boolean;
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
     showHiddenFiles: boolean;
@@ -142,6 +143,7 @@ export namespace ConnectionConfiguration {
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),
       quickConnect: (parameters.quickConnect === true || parameters.quickConnect === undefined),
+      usesBash: (parameters.usesBash === undefined),
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
       protectedPaths: (parameters.protectedPaths || []),
       showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),

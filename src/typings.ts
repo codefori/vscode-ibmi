@@ -123,6 +123,10 @@ export interface IBMiMember {
   changed?: Date
 }
 
+export interface MemberParts extends IBMiMember {
+  basename: string
+}
+
 export interface IFSFile {
   type: "directory" | "streamfile"
   name: string
@@ -209,3 +213,11 @@ export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser"
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
+
+export type RemoteFeature = {
+  path: string;
+  specific?: string;
+  names: string[];
+}
+
+export type RemoteApps = RemoteFeature[];
