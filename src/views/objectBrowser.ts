@@ -494,9 +494,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           const filter = {
             name: `Filter ${objectFilters.length + 1}`,
             filterType: 'simple',
-            library: `QSYS`,
-            object: `${parsedFilter.lib}*`,
-            types: [`*LIB`],
+            library: `${parsedFilter.lib}*`,
+            object: `*`,
+            types: [`*ALL`],
             member: `*`,
             memberType: `*`,
             protected: false
