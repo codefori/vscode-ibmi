@@ -196,7 +196,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       let starRemoved: boolean = false;
 
-      if (!storage && !content) return;
+      if (!storage && !content && !connection) return;
       let list: string[] = [];
 
       // Get recently opened files - cut if limit has been reduced.
@@ -265,14 +265,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           );
           filteredItems = [];
         } else {
-          if (!starRemoved && !list.includes(quickPick.value.toUpperCase())) {
-            quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+          if (!starRemoved && !list.includes(connection!.upperCaseName(quickPick.value))) {
+            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({ label }));
           }
         }
 
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
-          const selectionSplit = quickPick.value.toUpperCase().split('/');
+          const selectionSplit = connection!.upperCaseName(quickPick.value).split('/');
           const lastPart = selectionSplit[selectionSplit.length - 1];
           let filterText = lastPart.substring(0, lastPart.indexOf(`*`));
 
@@ -427,7 +427,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             );
             vscode.window.showInformationMessage(`Cleared cached files.`);
           } else {
-            const selectionSplit = selection.toUpperCase().split('/')
+            const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
               if (config && config.enableSQL && !selection.startsWith(`/`)) {
                 const lib = `${connection!.sysNameInAmerican(selectionSplit[0])}`;
@@ -463,12 +463,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   vscode.window.showWarningMessage(`${selection} does not exist or is not a file.`);
                   return;
                 }
-                selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
+                selection = connection!.upperCaseName(selection) === connection!.upperCaseName(quickPick.value) ? quickPick.value : selection;
               }
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, { readonly });
               quickPick.hide();
             } else {
-              quickPick.value = selection.toUpperCase() + '/'
+              quickPick.value = connection!.upperCaseName(selection) + '/'
             }
           }
         }

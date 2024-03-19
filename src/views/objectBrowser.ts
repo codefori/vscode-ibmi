@@ -400,7 +400,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Member`,
-      arguments: [{path: this.path}, (readonly ? "browse" : undefined) as DefaultOpenMode]
+      arguments: [{ path: this.path }, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
 
     this.readonly = readonly;
@@ -561,7 +561,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
       const connection = getConnection();
-      const toPath = (value: string) => `${node.path}/${value}`.toUpperCase();
+      const toPath = (value: string) => connection.upperCaseName(`${node.path}/${value}`);
       fullName = await vscode.window.showInputBox({
         prompt: t(`objectBrowser.createMember.prompt`),
         value: fullName,
@@ -603,7 +603,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath) => {
+    vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath?: string) => {
       const connection = getConnection();
       const oldMember = node.member;
       fullPath = await vscode.window.showInputBox({
@@ -662,7 +662,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (GlobalConfiguration.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, memberPath);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
             if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
@@ -728,7 +728,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         newBasename = await vscode.window.showInputBox({
           value: newBasename,
           prompt: t(`objectBrowser.renameMember.prompt`, oldMember.basename),
-          validateInput: value => value.toUpperCase() === oldMember.basename ? t("objectBrowser.renameMember.invalid.input") : undefined
+          validateInput: value => connection.upperCaseName(value) === oldMember.basename ? t("objectBrowser.renameMember.invalid.input") : undefined
         });
 
         if (newBasename) {
@@ -928,7 +928,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         });
 
         if (input) {
-          const path = input.trim().toUpperCase().split(`/`);
+          const path = connection.upperCaseName(input.trim()).split(`/`);
           parameters.path = [path[0], path[1]].join('/');
         }
       }
@@ -1053,7 +1053,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (fileName) {
           const connection = getConnection();
           const library = node.library;
-          const uriPath = `${library}/${fileName.toUpperCase()}`
+          const uriPath = `${library}/${connection.upperCaseName(fileName)}`
 
           vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
           const createResult = await connection.runCommand({

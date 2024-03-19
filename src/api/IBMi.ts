@@ -541,7 +541,7 @@ export default class IBMi {
           // We need to check if our remote programs are installed.
           remoteApps.push(
             {
-              path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+              path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
               names: [`GETNEWLIBL.PGM`],
               specific: `GE*.PGM`
             }
