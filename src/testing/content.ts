@@ -3,7 +3,6 @@ import tmp from 'tmp';
 import util from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
-import IBMiContent from "../api/IBMiContent";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
@@ -555,7 +554,7 @@ export const ContentSuite: TestSuite = {
     },
     {
       name: `To CL`, test: async () => {
-        const command = IBMiContent.toCl("TEST", {
+        const command = instance.getContent()!.toCl("TEST", {
           ZERO: 0,
           NONE:'*NONE',
           EMPTY: `''`,
