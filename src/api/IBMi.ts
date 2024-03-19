@@ -15,7 +15,34 @@ import ConnectionSettings from './ConnectionSettings';
 import * as configVars from './configVars';
 import { clear } from "console";
 
+export interface MemberParts extends IBMiMember {
+  basename: string
+}
 const CCSID_SYSVAL = -2;
+
+const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
+  {
+    path: `/usr/bin/`,
+    names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`]
+  },
+  {
+    path: `/QOpenSys/pkgs/bin/`,
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`]
+  },
+  {
+    path: `/QSYS.LIB/`,
+    // In the future, we may use a generic specific. 
+    // Right now we only need one program
+    // specific: `*.PGM`,
+    specific: `QZDFMDB2.PGM`,
+    names: [`QZDFMDB2.PGM`]
+  },
+  {
+    path: `/QIBM/ProdData/IBMiDebugService/bin/`,
+    specific: `startDebugService.sh`,
+    names: [`startDebugService.sh`]
+  }
+];
 
 export default class IBMi {
   client: node_ssh.NodeSSH;
@@ -33,8 +60,11 @@ export default class IBMi {
   variantChars: { american: string, local: string };
   lastErrors: object[];
   config?: ConnectionConfiguration.Parameters;
+  shell?: string;
 
   commandsExecuted: number = 0;
+
+  dangerousVariants = false;
 
   constructor() {
     this.client = new node_ssh.NodeSSH;
@@ -261,6 +291,14 @@ export default class IBMi {
           }
         }
 
+        const commandShellResult = await this.sendCommand({
+          command: `echo $SHELL`
+        });
+
+        if (commandShellResult.code === 0) {
+          this.shell = commandShellResult.stdout.trim();
+        }
+
         // Check for bad data areas
         if (!(quickConnect === true && cachedServerSettings?.badDataAreasChecked === true)) {
           progress.report({
@@ -435,28 +473,40 @@ export default class IBMi {
 
         // give user option to set bash as default shell.
         if (this.remoteFeatures[`bash`]) {
-          await connSettings.checkDefaultShell();
-          if (!this.config?.usesBash) {
-            // make sure chsh is installed
-            if (this.remoteFeatures[`chsh`]) {
-              vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
-                switch (choice) {
-                  case `Set shell to bash`:
-                    await connSettings.setShelltoBash();
-                    if (this.config?.usesBash) {
-                      vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+          try {
+            //check users default shell
+            const bashShellPath = '/QOpenSys/pkgs/bin/bash';
+            const commandShellResult = await this.sendCommand({
+              command: `echo $SHELL`
+            });
+
+            if (!commandShellResult.stderr) {
+              let usesBash = commandShellResult.stdout.trim() === bashShellPath;
+              if (!usesBash) {
+                // make sure chsh is installed
+                if (this.remoteFeatures[`chsh`]) {
+                  vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
+                    switch (choice) {
+                      case `Set shell to bash`:
+                        const commandSetBashResult = await this.sendCommand({
+                          command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+                        });
+
+                        if (!commandSetBashResult.stderr) {
+                          vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+                          usesBash = true;
+                        } else {
+                          vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                        }
+                        break;
+
+                      case `Read More`:
+                        vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                        break;
                     }
-                    else {
-                      vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
-                    }
-                    break;
-                  case `Read More`:
-                    vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
-                    break;
+                  });
                 }
-              });
-            }
-          }
+              }
 
           if (this.config?.usesBash) {
             if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
@@ -558,6 +608,9 @@ export default class IBMi {
           defaultCCSID: this.defaultCCSID
         });
 
+        //Keep track of variant characters that can be uppercased
+        this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
+
         return {
           success: true
         };
@@ -595,6 +648,10 @@ export default class IBMi {
     finally {
       ConnectionConfiguration.update(this.config!);
     }
+  }
+
+  usingBash() {
+    return this.shell === bashShellPath;
   }
 
   /**
@@ -730,7 +787,8 @@ export default class IBMi {
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
     // Remove leading slash
-    const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
+    const upperCasedString = this.upperCaseName(string);
+    const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
 
     const basename = path[path.length - 1];
     const file = path[path.length - 2];
@@ -871,6 +929,29 @@ export default class IBMi {
     }
     else {
       throw new Error(`Failed to create temporary directory ${tempDirectory}: ${prepareDirectory.stderr}`);
+    }
+  }
+
+  /**
+   * Uppercases an object name, keeping the variant chars case intact
+   * @param name
+   */
+  upperCaseName(name: string) {
+    if (this.dangerousVariants && new RegExp(`[${this.variantChars.local}]`).test(name)) {
+      const upperCased = [];
+      for (const char of name) {
+        const upChar = char.toLocaleUpperCase();
+        if (new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)) {
+          upperCased.push(upChar);
+        }
+        else {
+          upperCased.push(char);
+        }
+      }
+      return upperCased.join("");
+    }
+    else{
+      return name.toLocaleUpperCase();
     }
   }
 }

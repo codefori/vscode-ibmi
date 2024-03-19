@@ -5,14 +5,14 @@ import IBMi from "../IBMi";
 import IBMiContent from "../IBMiContent";
 import * as certificates from "./certificates";
 
-const directory = `/QIBM/ProdData/IBMiDebugService/bin/`;
+const serverDirectory = `/QIBM/ProdData/IBMiDebugService/bin/`;
 const MY_JAVA_HOME = `MY_JAVA_HOME="/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit"`;
 
 export async function startup(connection: IBMi) {
   const host = connection.currentHost;
 
   const encryptResult = await connection.sendCommand({
-    command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(directory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
+    command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${host}" ${path.posix.join(serverDirectory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`
   });
 
   if ((encryptResult.code || 0) >= 1) {
@@ -25,10 +25,10 @@ export async function startup(connection: IBMi) {
 
   const password = encryptResult.stdout;
 
-  const keystorePath = certificates.getRemoteServerCertPath(connection);
+  const keystorePath = certificates.getRemoteServerCertificatePath(connection);
 
   connection.sendCommand({
-    command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(directory, `startDebugService.sh`)}"`
+    command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(serverDirectory, `startDebugService.sh`)}"`
   }).then(startResult => {
     if ((startResult.code || 0) >= 1) {
       window.showErrorMessage(startResult.stdout || startResult.stderr);
@@ -40,7 +40,7 @@ export async function startup(connection: IBMi) {
 
 export async function stop(connection: IBMi) {
   const endResult = await connection.sendCommand({
-    command: `${path.posix.join(directory, `stopDebugService.sh`)}`
+    command: `${path.posix.join(serverDirectory, `stopDebugService.sh`)}`
   });
 
   if (endResult.code === 0) {
@@ -58,7 +58,7 @@ export async function getRunningJob(localPort: string, content: IBMiContent): Pr
 
 export async function end(connection: IBMi): Promise<void> {
   const endResult = await connection.sendCommand({
-    command: `${MY_JAVA_HOME} ${path.posix.join(directory, `stopDebugService.sh`)}`
+    command: `${MY_JAVA_HOME} ${path.posix.join(serverDirectory, `stopDebugService.sh`)}`
   });
 
   if (endResult.code && endResult.code >= 0) {

@@ -1,7 +1,7 @@
 import vscode from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
-import { GlobalStorage } from '../../api/Storage';
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
+import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
@@ -32,6 +32,7 @@ export class SettingsUI {
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
         const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
+        const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
         let config: ConnectionConfiguration.Parameters;
 
@@ -201,9 +202,20 @@ export class SettingsUI {
           { label: `Terminals`, fields: terminalsTab.fields },
           { label: `Debugger`, fields: debuggerTab.fields },
           { label: `Temporary Data`, fields: tempDataTab.fields },
-        ].filter(tab => tab !== undefined) as ComplexTab[];
+        ];
 
         const ui = new CustomUI();
+
+        if (passwordAuthorisedExtensions.length) {
+          const passwordAuthTab = new Section();
+
+          passwordAuthTab
+            .addParagraph(`The following extensions are authorized to use the password for this connection.`)
+            .addParagraph(`<ul>${passwordAuthorisedExtensions.map(authExtension => `<li>✅ <code>${authExtension.displayName || authExtension.id}</code> - since ${new Date(authExtension.since).toDateString()} - last access on ${new Date(authExtension.lastAccess).toDateString()}</li>`).join(``)}</ul>`)
+            .addButtons({ id: `clearAllowedExts`, label: `Clear list` })
+
+          tabs.push({ label: `Extension Auth`, fields: passwordAuthTab.fields });
+        }
 
         const defaultTab = tabs.findIndex(t => t.label === tab);
 
@@ -220,66 +232,72 @@ export class SettingsUI {
             const data = page.data;
             const button = data.buttons;
 
-            if (button === `import`) {
-              vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+            switch (button) {
+              case `import`:
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                break;
 
-            } else {
+              case `clearAllowedExts`:
+                instance.getStorage()?.revokeAllExtensionAuthorisations();
+                break;
 
-              const data = page.data;
-              for (const key in data) {
+              default:
+                const data = page.data;
+                for (const key in data) {
 
-                //In case we need to play with the data
-                switch (key) {
-                  case `sourceASP`:
-                    if (data[key].trim() === ``) data[key] = null;
-                    break;
-                  case `hideCompileErrors`:
-                    data[key] = String(data[key]).split(`,`)
-                      .map(item => item.toUpperCase().trim())
-                      .filter(item => item !== ``)
-                      .filter(Tools.distinct);
-                    break;
-                  case `protectedPaths`:
-                    data[key] = String(data[key]).split(`,`)
-                      .map(item => item.trim())
-                      .map(item => item.startsWith('/') ? item : item.toUpperCase())
-                      .filter(item => item !== ``)
-                      .filter(Tools.distinct);
-                    break;
+                  //In case we need to play with the data
+                  switch (key) {
+                    case `sourceASP`:
+                      if (data[key].trim() === ``) data[key] = null;
+                      break;
+                    case `hideCompileErrors`:
+                      data[key] = String(data[key]).split(`,`)
+                        .map(item => item.toUpperCase().trim())
+                        .filter(item => item !== ``)
+                        .filter(Tools.distinct);
+                      break;
+                    case `protectedPaths`:
+                      data[key] = String(data[key]).split(`,`)
+                        .map(item => item.trim())
+                        .map(item => item.startsWith('/') ? item : item.toUpperCase())
+                        .filter(item => item !== ``)
+                        .filter(Tools.distinct);
+                      break;
+                  }
+
+                  //Refresh connection browser if not connected
+                  if (!instance.getConnection()) {
+                    vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+                  }
                 }
 
-                //Refresh connection browser if not connected
-                if (!instance.getConnection()) {
-                  vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+                if (restartFields.some(item => data[item] && data[item] !== config[item])) {
+                  restart = true;
                 }
-              }
 
-              if (restartFields.some(item => data[item] && data[item] !== config[item])) {
-                restart = true;
-              }
+                const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
+                const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
 
-              const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
-              const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
+                Object.assign(config, data);
+                await instance.setConfig(config);
+                if (removeCachedSettings)
+                  GlobalStorage.get().deleteServerSettingsCache(config.name);
 
-              Object.assign(config, data);
-              await instance.setConfig(config);
-              if (removeCachedSettings)
-                GlobalStorage.get().deleteServerSettingsCache(config.name);
-
-              if (connection) {
-                if (restart) {
-                  vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-                    .then(async (value) => {
-                      if (value === `Reload`) {
-                        await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                      }
-                    });
+                if (connection) {
+                  if (restart) {
+                    vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                      .then(async (value) => {
+                        if (value === `Reload`) {
+                          await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                        }
+                      });
+                  }
+                  else if (reloadBrowsers) {
+                    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                  }
                 }
-                else if (reloadBrowsers) {
-                  vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
-                  vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
-                }
-              }
+                break;
             }
           }
         }
