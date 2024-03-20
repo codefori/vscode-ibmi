@@ -430,15 +430,18 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
               if (config && config.enableSQL && !selection.startsWith(`/`)) {
-                const lib = `${connection!.sysNameInAmerican(selectionSplit[0])}`;
-                const file = `${connection!.sysNameInAmerican(selectionSplit[1])}`;
-                const member = path.parse(`${connection!.sysNameInAmerican(selectionSplit[2])}`);
+                const libUS = connection!.sysNameInAmerican(selectionSplit[0]);
+                const fileUS = connection!.sysNameInAmerican(selectionSplit[1]);
+                const memberUS = path.parse(connection!.sysNameInAmerican(selectionSplit[2]));
+                const lib = selectionSplit[0];
+                const file = selectionSplit[1];
+                const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
                 const fullMember = await content!.runSQL(`
                   select rtrim( cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) ) as MEMBER
                        , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
                     from QSYS2.SYSPARTITIONSTAT
-                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${member.name}' )
+                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${libUS}', '${fileUS}', '${memberUS.name}' )
                    limit 1
                 `).then((resultSet) => {
                   return resultSet.length !== 1 ? {} :
