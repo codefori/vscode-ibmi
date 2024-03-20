@@ -77,11 +77,13 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     stat(uri: vscode.Uri): vscode.FileStat {
+        let type = uri.path.split(`/`).length > 3 ? vscode.FileType.File : vscode.FileType.Directory;
+
         return {
             ctime: 0,
             mtime: 0,
             size: 0,
-            type: vscode.FileType.File,
+            type,
             permissions: getFilePermission(uri)
         }
     }
