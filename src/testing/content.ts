@@ -53,6 +53,43 @@ export const ContentSuite: TestSuite = {
     },
 
     {
+      name: `Test memberResolve with variants`, test: async () => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+        const tempLib = config!.tempLibrary,
+              tempSPF = `O_ABC`.concat(connection!.variantChars.local),
+              tempMbr = `O_ABC`.concat(connection!.variantChars.local);
+
+        const result = await connection!.runCommand({
+          command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+          environment: `ile`
+        });
+
+        const member = await content?.memberResolve(tempMbr, [
+          { library: `QSYSINC`, name: `MIH` }, // Doesn't exist here
+          { library: `NOEXIST`, name: `SUP` }, // Doesn't exist here
+          { library: tempLib, name: tempSPF } // Doesn't exist here
+        ]);
+
+        assert.deepStrictEqual(member, {
+          asp: undefined,
+          library: tempLib,
+          file: tempSPF,
+          name: tempMbr,
+          extension: `MBR`,
+          basename: `${tempMbr}.MBR`
+        });
+
+        // Cleanup...
+        await connection!.runCommand({
+          command: `DLTF ${tempLib}/${tempSPF}`,
+          environment: `ile`
+        });
+      }
+    },
+
+    {
       name: `Test memberResolve with bad name`, test: async () => {
         const content = instance.getContent();
 
