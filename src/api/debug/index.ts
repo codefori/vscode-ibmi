@@ -141,7 +141,7 @@ export async function initialize(context: ExtensionContext) {
 
       if (qualifiedPath.object) {
         // Remove .pgm ending potentially
-        qualifiedPath.object = qualifiedPath.object.toUpperCase();
+        qualifiedPath.object = connection.upperCaseName(qualifiedPath.object);
         if (qualifiedPath.object.endsWith(`.PGM`))
           qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
       }
@@ -523,8 +523,8 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       "port": port,
       "secure": secure,  // Enforce secure mode
       "ignoreCertificateErrors": true,
-      "library": options.library.toUpperCase(),
-      "program": options.object.toUpperCase(),
+      "library": connection!.upperCaseName(options.library),
+      "program": connection!.upperCaseName(options.object),
       "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
       "updateProductionFiles": updateProductionFiles,
       "trace": enableDebugTracing,

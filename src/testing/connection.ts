@@ -151,13 +151,13 @@ export const ConnectionSuite: TestSuite = {
       name: `Test runCommand (ILE)`, test: async () => {
         const connection = instance.getConnection();
 
-        const result = await connection?.runCommand({
-          command: `DSPLIBL`,
+        const result = await connection!.runCommand({
+          command: `DSPJOB OPTION(*DFNA)`,
           environment: `ile`
         });
 
         assert.strictEqual(result?.code, 0);
-        assert.strictEqual(result.stdout.includes(`Library List`), true);
+        assert.strictEqual(["JOBPTY", "OUTPTY", "ENDSEV", "DDMCNV", "BRKMSG", "STSMSG", "DEVRCYACN", "TSEPOOL", "PRTKEYFMT", "SRTSEQ"].every(attribute => result.stdout.includes(attribute)), true);
       }
     },
 
@@ -275,8 +275,8 @@ export const ConnectionSuite: TestSuite = {
       name: `Test withTempDirectory`, test: async () => {
         const connection = instance.getConnection()!;
         let temp;
-        const countFiles = async(dir:string) => {
-          const countResult = await connection.sendCommand({command: `find ${dir} -type f | wc -l`});
+        const countFiles = async (dir: string) => {
+          const countResult = await connection.sendCommand({ command: `find ${dir} -type f | wc -l` });
           assert.strictEqual(countResult.code, 0);
           return Number(countResult.stdout);
         };
@@ -284,24 +284,50 @@ export const ConnectionSuite: TestSuite = {
         await connection.withTempDirectory(async tempDir => {
           temp = tempDir;
           //Directory must exist
-          assert.strictEqual((await connection.sendCommand({command: `[ -d ${tempDir} ]`})).code, 0);
+          assert.strictEqual((await connection.sendCommand({ command: `[ -d ${tempDir} ]` })).code, 0);
 
           //Directory must be empty
           assert.strictEqual(await countFiles(tempDir), 0);
 
           const toCreate = 10;
-          for(let i = 0; i < toCreate; i++){
-            assert.strictEqual((await connection.sendCommand({command: `echo "Test ${i}" >> ${tempDir}/file${i}`})).code, 0);
+          for (let i = 0; i < toCreate; i++) {
+            assert.strictEqual((await connection.sendCommand({ command: `echo "Test ${i}" >> ${tempDir}/file${i}` })).code, 0);
           }
 
-          const newCountResult = await connection.sendCommand({command: `ls -l ${tempDir} | wc -l`});
+          const newCountResult = await connection.sendCommand({ command: `ls -l ${tempDir} | wc -l` });
           assert.strictEqual(newCountResult.code, 0);
           assert.strictEqual(await countFiles(tempDir), toCreate);
         });
 
-        if(temp){
+        if (temp) {
           //Directory must be gone
-          assert.strictEqual((await connection.sendCommand({command: `[ -d ${temp} ]`})).code, 1);
+          assert.strictEqual((await connection.sendCommand({ command: `[ -d ${temp} ]` })).code, 1);
+        }
+      }
+    },
+    {
+      name: `Test upperCaseName`, test: async () => {
+        const connection = instance.getConnection()!;
+        const variantsBackup = connection.variantChars.local;
+                
+        try{
+          const checkVariants = () => connection.variantChars.local !== connection.variantChars.local.toLocaleUpperCase();
+          //CCSID 297 variants
+          connection.variantChars.local = '£à$';
+          connection.dangerousVariants = checkVariants();
+          assert.strictEqual(connection.dangerousVariants, true);
+          assert.strictEqual(connection.upperCaseName("àTesT£ye$"), "àTEST£YE$");
+          assert.strictEqual(connection.upperCaseName("test_cAsE"), "TEST_CASE");
+
+          //CCSID 37 variants
+          connection.variantChars.local = '#@$';
+          connection.dangerousVariants = checkVariants();
+          assert.strictEqual(connection.dangerousVariants, false);
+          assert.strictEqual(connection.upperCaseName("@TesT#ye$"), "@TEST#YE$");
+          assert.strictEqual(connection.upperCaseName("test_cAsE"), "TEST_CASE");
+        }
+        finally{
+          connection.variantChars.local = variantsBackup;
         }
       }
     }

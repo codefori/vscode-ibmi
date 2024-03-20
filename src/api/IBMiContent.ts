@@ -515,14 +515,14 @@ export default class IBMiContent {
    * @returns an array of IBMiObject
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
-    const library = filters.library.toUpperCase();
+    const library = this.ibmi.upperCaseName(filters.library);
     if (!await this.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
       throw new Error(`Library ${library} does not exist.`);
     }
 
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
-    const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`;
+    const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : `*ALL`;
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
@@ -638,14 +638,14 @@ export default class IBMiContent {
    */
   async getMemberList(filter: { library: string, sourceFile: string, members?: string, extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
-    const library = filter.library.toUpperCase();
-    const sourceFile = filter.sourceFile.toUpperCase();
+    const library = this.ibmi.upperCaseName(filter.library);
+    const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
 
     const memberFilter = parseFilter(filter.members, filter.filterType);
-    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? this.ibmi.upperCaseName(filter.members).replace(/[*]/g, `%`) : undefined;
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
-    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
 
     const statement =
       `With MEMBERS As (
@@ -779,20 +779,21 @@ export default class IBMiContent {
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     // Escape names for shell
-    const pathList = files
-      .map(file => {
-        const asp = file.asp || this.config.sourceASP;
-        if (asp && asp.length > 0) {
-          return [
-            Tools.qualifyPath(file.library, file.name, member, asp, true),
-            Tools.qualifyPath(file.library, file.name, member, undefined, true)
-          ].join(` `);
-        } else {
-          return Tools.qualifyPath(file.library, file.name, member, undefined, true);
-        }
-      })
-      .join(` `)
-      .toUpperCase();
+    const pathList = this.ibmi.upperCaseName(
+      files
+        .map(file => {
+          const asp = file.asp || this.config.sourceASP;
+          if (asp && asp.length > 0) {
+            return [
+              Tools.qualifyPath(file.library, file.name, member, asp, true),
+              Tools.qualifyPath(file.library, file.name, member, undefined, true)
+            ].join(` `);
+          } else {
+            return Tools.qualifyPath(file.library, file.name, member, undefined, true);
+          }
+        })
+        .join(` `)
+    );
 
     const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
     const result = await this.ibmi.sendCommand({
@@ -819,7 +820,7 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.upperCaseName(lib)}.LIB/${this.ibmi.upperCaseName(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -891,8 +892,8 @@ export default class IBMiContent {
 
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: IBMiContent.toCl(`CHKOBJ`, {
-        obj: `${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}`,
+      command: this.toCl(`CHKOBJ`, {
+        obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
         objtype: object.type.toLocaleUpperCase(),
         aut: authorities.join(" "),
         mbr: object.member
@@ -911,7 +912,7 @@ export default class IBMiContent {
     }
     else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);
-      return this.config.protectedPaths.includes(qsysObject.library.toLocaleUpperCase());
+      return this.config.protectedPaths.includes(this.ibmi.upperCaseName(qsysObject.library));
     }
   }
 
@@ -921,7 +922,7 @@ export default class IBMiContent {
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string
    */
-  static toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
+  toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
     let cl = command;
 
     for (const [key, value] of Object.entries(parameters)) {
@@ -929,7 +930,7 @@ export default class IBMiContent {
 
       if (value !== undefined) {
         if (typeof value === 'string') {
-          if (value === value.toLocaleUpperCase()) {
+          if (value === this.ibmi.upperCaseName(value)) {
             parmValue = value;
           } else {
             parmValue = value.replace(/'/g, `''`);

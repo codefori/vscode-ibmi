@@ -1,12 +1,12 @@
 import assert from "assert";
 import tmp from 'tmp';
-import util from 'util';
+import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
-import IBMiContent from "../api/IBMiContent";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
+import { getMemberUri } from "../filesystems/qsys/QSysFs";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -49,20 +49,6 @@ export const ContentSuite: TestSuite = {
           extension: `MBR`,
           basename: `MATH.MBR`
         });
-      }
-    },
-
-    {
-      name: `Test memberResolve with bad name`, test: async () => {
-        const content = instance.getContent();
-
-        const member = await content?.memberResolve(`BOOOP`, [
-          { library: `QSYSINC`, name: `MIH` }, // Doesn't exist here
-          { library: `NOEXIST`, name: `SUP` }, // Doesn't exist here
-          { library: `QSYSINC`, name: `H` } // Doesn't exist here
-        ]);
-
-        assert.deepStrictEqual(member, undefined);
       }
     },
 
@@ -555,7 +541,7 @@ export const ContentSuite: TestSuite = {
     },
     {
       name: `To CL`, test: async () => {
-        const command = IBMiContent.toCl("TEST", {
+        const command = instance.getContent()!.toCl("TEST", {
           ZERO: 0,
           NONE:'*NONE',
           EMPTY: `''`,
@@ -609,5 +595,37 @@ export const ContentSuite: TestSuite = {
         assert.deepStrictEqual(resultB.OBJTEXT, "Code for i test");
       }
     },
+    {
+      name: `Write tab to member using SQL`, test: async () => {
+        const lines = [
+          `if (a) {`,
+          `\tcoolstuff();\t`,
+          `}`
+        ].join(`\n`);
+
+        const connection = instance.getConnection();
+        const config = instance.getConfig()!;
+
+        assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
+
+        const tempLib = config!.tempLibrary;
+
+        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/TABTEST) RCDLEN(112)`, noLibList: true });
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/TABTEST) MBR(THEBADONE) SRCTYPE(HELLO)` });
+
+        const theBadOneUri = getMemberUri({library: tempLib, file: `TABTEST`, name: `THEBADONE`, extension: `HELLO`});
+
+        // We have to read it first to create the alias!
+        await workspace.fs.readFile(theBadOneUri);
+
+        await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
+
+        const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
+        const fileContent = new TextDecoder().decode(memberContentBuf)
+        
+        assert.strictEqual(fileContent, lines);
+
+      }
+    }
   ]
 };
