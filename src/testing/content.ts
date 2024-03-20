@@ -130,6 +130,35 @@ export const ContentSuite: TestSuite = {
     },
 
     {
+      name: `Test objectResolve .DTAARA with variants`, test: async () => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+        const tempLib = config!.tempLibrary,
+              tempObj = `O_ABC`.concat(connection!.variantChars.local);
+
+        await connection!.runCommand({
+          command: `CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+          environment: `ile`
+        });
+
+        const lib = await content?.objectResolve(tempObj, [
+          "QSYSINC", // Doesn't exist here
+          "QSYS2", // Doesn't exist here
+          tempLib // Does exist here
+        ]);
+
+        assert.strictEqual(lib, tempLib);
+
+        // Cleanup...
+        await connection!.runCommand({
+          command: `DLTDTAARA ${tempLib}/${tempObj}`,
+          environment: `ile`
+        });
+      }
+    },
+
+    {
       name: `Test objectResolve with bad name`, test: async () => {
         const content = instance.getContent();
 
