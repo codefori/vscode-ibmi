@@ -472,6 +472,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createQuickFilter`, async () => {
       const config = getConfig();
+      const connection = getConnection();
       const objectFilters = config.objectFilters;
 
       const LIBRARY_REGEX = /^(?<lib>[^/.() ]+)\*$/;
@@ -481,14 +482,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         prompt: `Enter filter as LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`,
         value: ``,
         validateInput: newFilter => {
-          const libraryRegex = LIBRARY_REGEX.exec(newFilter.toUpperCase());
-          const filterRegex = FILTER_REGEX.exec(newFilter.toUpperCase());
+          const libraryRegex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
+          const filterRegex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
           if (!libraryRegex && !filterRegex) return `Invalid filter: ${newFilter}. Use format LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`;
         }
       });
 
       if (newFilter) {
-        let regex = LIBRARY_REGEX.exec(newFilter.toUpperCase());
+        let regex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
         const parsedFilter = regex?.groups;
         if (regex && parsedFilter) {
           const filter = {
@@ -503,7 +504,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           } as ConnectionConfiguration.ObjectFilters;
           objectFilters.push(filter);
         } else {
-          regex = FILTER_REGEX.exec(newFilter.toUpperCase());
+          regex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
           const parsedFilter = regex?.groups;
           if (regex && parsedFilter) {
             const filter = {
