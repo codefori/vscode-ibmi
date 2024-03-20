@@ -259,7 +259,7 @@ export const ContentSuite: TestSuite = {
           command: `DSPOBJD OBJ(QSYS/QSYSINC) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`,
           noLibList: true
         });
-        const tableA = await content?.getTable(tempLib, TempName, TempName, true);
+        const tableA = await content?.getTable(tempLib, TempName, TempName, false);
 
         // Then we fetch the table without SQL
         config!.enableSQL = false;
