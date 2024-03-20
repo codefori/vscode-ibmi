@@ -10,7 +10,7 @@ import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
-  tests: [        
+  tests: [
     {
       name: `Test memberResolve`, test: async () => {
         const content = instance.getContent();
@@ -99,7 +99,7 @@ export const ContentSuite: TestSuite = {
 
         const lib = await content?.objectResolve(`CMRCV`, [
           "QSYSINC", // Doesn't exist here
-          "QSYS2" // Does exist 
+          "QSYS2" // Does exist
         ]);
 
         assert.strictEqual(lib, "QSYS2");
@@ -263,9 +263,10 @@ export const ContentSuite: TestSuite = {
         const content = instance.getContent();
         const connection = instance.getConnection();
 
-        assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+        const resetValue = config!.enableSQL;
 
         // First we fetch the table in SQL mode
+        config!.enableSQL = true;
         const tempLib = config!.tempLibrary;
         const TempName = Tools.makeid();
         await connection?.runCommand({
@@ -274,13 +275,12 @@ export const ContentSuite: TestSuite = {
         });
         const tableA = await content?.getTable(tempLib, TempName, TempName, true);
 
-        config!.enableSQL = false;
-
         // Then we fetch the table without SQL
+        config!.enableSQL = false;
         const tableB = await content?.getTable(tempLib, TempName, TempName, true);
 
         // Reset the config
-        config!.enableSQL = true;
+        config!.enableSQL = resetValue;
 
         assert.notDeepStrictEqual(tableA, tableB);
       }
@@ -291,9 +291,14 @@ export const ContentSuite: TestSuite = {
         const config = instance.getConfig();
         const content = instance.getContent();
 
-        assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+        const resetValue = config!.enableSQL;
+
+        config!.enableSQL = true;
 
         const rows = await content?.getTable(`qiws`, `qcustcdt`, `qcustcdt`);
+
+        // Reset the config
+        config!.enableSQL = resetValue;
 
         assert.notStrictEqual(rows?.length, 0);
       }
@@ -446,13 +451,20 @@ export const ContentSuite: TestSuite = {
     },
     {
       name: `getMemberList (SQL, no filter)`, test: async () => {
+        const config = instance.getConfig();
         const content = instance.getContent();
 
+        const resetValue = config!.enableSQL;
+
+        config!.enableSQL = true;
         let members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: `*inxen` });
+        config!.enableSQL = resetValue;
 
         assert.strictEqual(members?.length, 3);
 
+        config!.enableSQL = true;
         members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
+        config!.enableSQL = resetValue;
 
         const actbpgm = members?.find(mbr => mbr.name === `ACTBPGM`);
 
@@ -469,16 +481,18 @@ export const ContentSuite: TestSuite = {
         const config = instance.getConfig();
         const content = instance.getContent();
 
-        assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+        const resetValue = config!.enableSQL;
 
         // First we fetch the members in SQL mode
+        config!.enableSQL = true;
         const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
-        config!.enableSQL = false;
 
         // Then we fetch the members without SQL
+        config!.enableSQL = false;
         const membersB = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
+
         // Reset the config
-        config!.enableSQL = true;
+        config!.enableSQL = resetValue;
 
         assert.deepStrictEqual(membersA, membersB);
       }
@@ -489,18 +503,18 @@ export const ContentSuite: TestSuite = {
         const config = instance.getConfig();
         const content = instance.getContent();
 
-        assert.strictEqual(config!.enableSQL, true, `SQL must be enabled for this test`);
+        const resetValue = config!.enableSQL;
 
         // First we fetch the members in SQL mode
+        config!.enableSQL = true;
         const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
 
-        config!.enableSQL = false;
-
         // Then we fetch the members without SQL
+        config!.enableSQL = false;
         const membersB = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
 
         // Reset the config
-        config!.enableSQL = true;
+        config!.enableSQL = resetValue;
 
         assert.deepStrictEqual(membersA, membersB);
       }
@@ -525,7 +539,7 @@ export const ContentSuite: TestSuite = {
         const queries = [
           `CALL QSYS2.QCMDEXC('DSPOBJD OBJ(QSYSINC/*ALL) OBJTYPE(*ALL) OUTPUT(*OUTFILE) OUTFILE(QTEMP/DSPOBJD)')`,
           `Create Table QTEMP.OBJECTS As (
-          Select ODLBNM as LIBRARY, 
+          Select ODLBNM as LIBRARY,
             ODOBNM as NAME,
             ODOBAT as ATTRIBUTE,
             ODOBTP as TYPE,
@@ -546,7 +560,7 @@ export const ContentSuite: TestSuite = {
 
         assert.notStrictEqual(objects?.length, 0);
         assert.strictEqual(objects?.every(obj => obj.library === "QSYSINC"), true);
-        
+
         const qrpglesrc = objects.find(obj => obj.name === "QRPGLESRC");
         assert.notStrictEqual(qrpglesrc, undefined);
         assert.strictEqual(qrpglesrc?.attribute === "PF", true);
@@ -594,17 +608,17 @@ export const ContentSuite: TestSuite = {
     {
       name: `Test @clCommand + select statement`, test: async () => {
         const content = instance.getContent()!;
-        
+
         const [resultA] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
-        
+
         assert.deepStrictEqual(resultA.OBJNAME, "UNITTEST");
         assert.deepStrictEqual(resultA.OBJTEXT, "Code for i test");
-        
+
         const [resultB] = await content.runStatements(
           `@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test')`,
           `Select * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF'`
         );
-        
+
         assert.deepStrictEqual(resultB.OBJNAME, "UNITTEST");
         assert.deepStrictEqual(resultB.OBJTEXT, "Code for i test");
       }
