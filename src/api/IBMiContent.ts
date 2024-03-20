@@ -778,22 +778,24 @@ export default class IBMiContent {
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
+    const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
+    const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
+
     // Escape names for shell
-    const pathList = this.ibmi.upperCaseName(
-      files
-        .map(file => {
-          const asp = file.asp || this.config.sourceASP;
-          if (asp && asp.length > 0) {
-            return [
-              Tools.qualifyPath(file.library, file.name, member, asp, true),
-              Tools.qualifyPath(file.library, file.name, member, undefined, true)
-            ].join(` `);
-          } else {
-            return Tools.qualifyPath(file.library, file.name, member, undefined, true);
-          }
-        })
-        .join(` `)
-    );
+    const pathList = files
+      .map(file => {
+        const asp = file.asp || this.config.sourceASP;
+        if (asp && asp.length > 0) {
+          return [
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
+          ].join(` `);
+        } else {
+          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
+        }
+      })
+      .join(` `)
+      .toUpperCase();
 
     const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
     const result = await this.ibmi.sendCommand({
@@ -805,7 +807,7 @@ export default class IBMiContent {
 
       if (firstMost) {
         try {
-          const simplePath = Tools.unqualifyPath(firstMost);
+          const simplePath = inLocal(Tools.unqualifyPath(firstMost));
 
           // This can error if the path format is wrong for some reason.
           // Not that this would ever happen, but better to be safe than sorry
