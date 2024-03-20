@@ -822,7 +822,7 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.upperCaseName(lib)}.LIB/${this.ibmi.upperCaseName(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -832,7 +832,7 @@ export default class IBMiContent {
       const firstMost = result.stdout;
 
       if (firstMost) {
-        const lib = Tools.unqualifyPath(firstMost);
+        const lib = this.ibmi.sysNameInLocal(Tools.unqualifyPath(firstMost));
 
         return lib.split('/')[1];
       }
