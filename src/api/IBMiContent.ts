@@ -144,18 +144,33 @@ export default class IBMiContent {
    */
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
     asp = asp || this.config.sourceASP;
-    library = library.toUpperCase();
-    sourceFile = sourceFile.toUpperCase();
-    member = member.toUpperCase();
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     let retry = false;
     let path = Tools.qualifyPath(library, sourceFile, member, asp);
     const tempRmt = this.getTempRemote(path);
     while (true) {
-      const copyResult = await this.ibmi.runCommand({
-        command: `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-        noLibList: true
-      });
+      let copyResult: CommandResult;
+      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+        copyResult = { code: 0, stdout: '', stderr: '' };
+        try {
+          await this.runSQL([
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
+          ].join("\n"));
+        } catch (error: any) {
+          copyResult.code = -1;
+          copyResult.stderr = String(error);
+        }
+      }
+      else {
+        copyResult = await this.ibmi.runCommand({
+          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          noLibList: true
+        });
+      }
 
       if (copyResult.code === 0) {
         if (!localPath) {
@@ -197,9 +212,9 @@ export default class IBMiContent {
    */
   async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array) {
     asp = asp || this.config.sourceASP;
-    library = library.toUpperCase();
-    sourceFile = sourceFile.toUpperCase();
-    member = member.toUpperCase();
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     const client = this.ibmi.client;
     const tmpobj = await tmpFile();
@@ -212,10 +227,26 @@ export default class IBMiContent {
       await client.putFile(tmpobj, tempRmt);
 
       while (true) {
-        const copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
+        let copyResult: CommandResult;
+        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+          copyResult = { code: 0, stdout: '', stderr: '' };
+          try {
+            await this.runSQL([
+              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
+            ].join("\n"));
+          } catch (error: any) {
+            copyResult.code = -1;
+            copyResult.stderr = String(error);
+          }
+        }
+        else {
+          copyResult = await this.ibmi.runCommand({
+            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            noLibList: true
+          });
+        }
 
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
@@ -243,6 +274,14 @@ export default class IBMiContent {
       console.log(`Failed uploading member: ` + error);
       return Promise.reject(error);
     }
+  }
+
+  /**
+   * @param statements Either an SQL statement or CL statement. CL statements start with @
+   * @returns result set
+   */
+  runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
+    return this.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
   }
 
   /**
@@ -374,10 +413,8 @@ export default class IBMiContent {
    * @param table : the name of the table expected to be found in QTEMP
    * @returns : the table's content
    */
-  async getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    prepareQueries.push(`Select * From QTEMP.${table}`);
-    const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
-    return await this.runSQL(fullQuery);
+  getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
+    return this.runStatements(...prepareQueries, `select * from QTEMP.${table}`);
   }
 
   /**
@@ -478,14 +515,14 @@ export default class IBMiContent {
    * @returns an array of IBMiObject
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
-    const library = filters.library.toUpperCase();
+    const library = this.ibmi.upperCaseName(filters.library);
     if (!await this.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
       throw new Error(`Library ${library} does not exist.`);
     }
 
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
-    const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`;
+    const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : `*ALL`;
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
@@ -601,14 +638,14 @@ export default class IBMiContent {
    */
   async getMemberList(filter: { library: string, sourceFile: string, members?: string, extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
-    const library = filter.library.toUpperCase();
-    const sourceFile = filter.sourceFile.toUpperCase();
+    const library = this.ibmi.upperCaseName(filter.library);
+    const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
 
     const memberFilter = parseFilter(filter.members, filter.filterType);
-    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? this.ibmi.upperCaseName(filter.members).replace(/[*]/g, `%`) : undefined;
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
-    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
 
     const statement =
       `With MEMBERS As (
@@ -742,20 +779,21 @@ export default class IBMiContent {
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
     // Escape names for shell
-    const pathList = files
-      .map(file => {
-        const asp = file.asp || this.config.sourceASP;
-        if (asp && asp.length > 0) {
-          return [
-            Tools.qualifyPath(file.library, file.name, member, asp, true),
-            Tools.qualifyPath(file.library, file.name, member, undefined, true)
-          ].join(` `);
-        } else {
-          return Tools.qualifyPath(file.library, file.name, member, undefined, true);
-        }
-      })
-      .join(` `)
-      .toUpperCase();
+    const pathList = this.ibmi.upperCaseName(
+      files
+        .map(file => {
+          const asp = file.asp || this.config.sourceASP;
+          if (asp && asp.length > 0) {
+            return [
+              Tools.qualifyPath(file.library, file.name, member, asp, true),
+              Tools.qualifyPath(file.library, file.name, member, undefined, true)
+            ].join(` `);
+          } else {
+            return Tools.qualifyPath(file.library, file.name, member, undefined, true);
+          }
+        })
+        .join(` `)
+    );
 
     const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
     const result = await this.ibmi.sendCommand({
@@ -782,7 +820,7 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.upperCaseName(lib)}.LIB/${this.ibmi.upperCaseName(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -854,8 +892,8 @@ export default class IBMiContent {
 
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: IBMiContent.toCl(`CHKOBJ`, {
-        obj: `${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}`,
+      command: this.toCl(`CHKOBJ`, {
+        obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
         objtype: object.type.toLocaleUpperCase(),
         aut: authorities.join(" "),
         mbr: object.member
@@ -874,7 +912,7 @@ export default class IBMiContent {
     }
     else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);
-      return this.config.protectedPaths.includes(qsysObject.library.toLocaleUpperCase());
+      return this.config.protectedPaths.includes(this.ibmi.upperCaseName(qsysObject.library));
     }
   }
 
@@ -884,7 +922,7 @@ export default class IBMiContent {
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string
    */
-  static toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
+  toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
     let cl = command;
 
     for (const [key, value] of Object.entries(parameters)) {
@@ -892,7 +930,7 @@ export default class IBMiContent {
 
       if (value !== undefined) {
         if (typeof value === 'string') {
-          if (value === value.toLocaleUpperCase()) {
+          if (value === this.ibmi.upperCaseName(value)) {
             parmValue = value;
           } else {
             parmValue = value.replace(/'/g, `''`);

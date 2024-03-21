@@ -400,7 +400,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Member`,
-      arguments: [this, (readonly ? "browse" : undefined) as DefaultOpenMode]
+      arguments: [{ path: this.path }, (readonly ? "browse" : undefined) as DefaultOpenMode]
     };
 
     this.readonly = readonly;
@@ -472,6 +472,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createQuickFilter`, async () => {
       const config = getConfig();
+      const connection = getConnection();
       const objectFilters = config.objectFilters;
 
       const LIBRARY_REGEX = /^(?<lib>[^/.() ]+)\*$/;
@@ -481,29 +482,29 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         prompt: `Enter filter as LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`,
         value: ``,
         validateInput: newFilter => {
-          const libraryRegex = LIBRARY_REGEX.exec(newFilter.toUpperCase());
-          const filterRegex = FILTER_REGEX.exec(newFilter.toUpperCase());
+          const libraryRegex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
+          const filterRegex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
           if (!libraryRegex && !filterRegex) return `Invalid filter: ${newFilter}. Use format LIB* or LIB/OBJ/MBR.MBRTYPE (OBJTYPE) where each parameter is optional except the library`;
         }
       });
 
       if (newFilter) {
-        let regex = LIBRARY_REGEX.exec(newFilter.toUpperCase());
+        let regex = LIBRARY_REGEX.exec(connection.upperCaseName(newFilter));
         const parsedFilter = regex?.groups;
         if (regex && parsedFilter) {
           const filter = {
             name: `Filter ${objectFilters.length + 1}`,
             filterType: 'simple',
-            library: `QSYS`,
-            object: `${parsedFilter.lib}*`,
-            types: [`*LIB`],
+            library: `${parsedFilter.lib}*`,
+            object: `*`,
+            types: [`*ALL`],
             member: `*`,
             memberType: `*`,
             protected: false
           } as ConnectionConfiguration.ObjectFilters;
           objectFilters.push(filter);
         } else {
-          regex = FILTER_REGEX.exec(newFilter.toUpperCase());
+          regex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
           const parsedFilter = regex?.groups;
           if (regex && parsedFilter) {
             const filter = {
@@ -560,7 +561,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createMember`, async (node: ObjectBrowserSourcePhysicalFileItem, fullName?: string) => {
       const connection = getConnection();
-      const toPath = (value: string) => `${node.path}/${value}`.toUpperCase();
+      const toPath = (value: string) => connection.upperCaseName(`${node.path}/${value}`);
       fullName = await vscode.window.showInputBox({
         prompt: t(`objectBrowser.createMember.prompt`),
         value: fullName,
@@ -602,7 +603,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath) => {
+    vscode.commands.registerCommand(`code-for-ibmi.copyMember`, async (node: ObjectBrowserMemberItem, fullPath?: string) => {
       const connection = getConnection();
       const oldMember = node.member;
       fullPath = await vscode.window.showInputBox({
@@ -661,7 +662,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
 
             if (GlobalConfiguration.get(`autoOpenFile`)) {
-              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, memberPath);
+              vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
             if (oldMember.library.toLocaleLowerCase() === memberPath.library.toLocaleLowerCase()) {
@@ -727,7 +728,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         newBasename = await vscode.window.showInputBox({
           value: newBasename,
           prompt: t(`objectBrowser.renameMember.prompt`, oldMember.basename),
-          validateInput: value => value.toUpperCase() === oldMember.basename ? t("objectBrowser.renameMember.invalid.input") : undefined
+          validateInput: value => connection.upperCaseName(value) === oldMember.basename ? t("objectBrowser.renameMember.invalid.input") : undefined
         });
 
         if (newBasename) {
@@ -927,7 +928,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         });
 
         if (input) {
-          const path = input.trim().toUpperCase().split(`/`);
+          const path = connection.upperCaseName(input.trim()).split(`/`);
           parameters.path = [path[0], path[1]].join('/');
         }
       }
@@ -1052,7 +1053,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         if (fileName) {
           const connection = getConnection();
           const library = node.library;
-          const uriPath = `${library}/${fileName.toUpperCase()}`
+          const uriPath = `${library}/${connection.upperCaseName(fileName)}`
 
           vscode.window.showInformationMessage(t(`objectBrowser.createSourceFile.infoMessage`, uriPath));
           const createResult = await connection.runCommand({

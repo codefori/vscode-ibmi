@@ -138,10 +138,12 @@ class IFSFileItem extends IFSItem {
     this.contextValue = "streamfile";
     this.iconPath = vscode.ThemeIcon.File;
 
-    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` }); this.command = {
+    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
+    
+    this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [this]
+      arguments: [{path: this.path}]
     };
   }
 
@@ -748,7 +750,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           const remoteFilepath = path.join(ibmi.getLastDownloadLocation(), path.basename(node.path));
           downloadLocation = (await vscode.window.showSaveDialog({
             defaultUri: vscode.Uri.file(remoteFilepath),
-            filters: { 'Streamfile': [extname(node.path) || '*'] }
+            filters: { 'Streamfile': [extname(node.path).substring(1) || '*'] }
           }))?.path;
         }
 
@@ -760,7 +762,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               for (const item of items) {
                 const targetPath = item.path;
                 task.report({ message: targetPath, increment });
-                if (saveIntoDirectory) {                  
+                if (saveIntoDirectory) {
                   const target = path.join(Tools.fixWindowsPath(downloadLocation!), path.basename(targetPath));
                   if (item.file.type === "directory") {
                     let proceed = !existsSync(target);
@@ -782,7 +784,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                     }
                   }
                 }
-                else{
+                else {
                   await ibmi.downloadFile(downloadLocation!, targetPath);
                 }
               }
@@ -871,6 +873,6 @@ async function showOpenDialog() {
 /**
  * Filters the content of an IFSItem array to keep only items whose parent are not in the array
  */
-function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {  
-    return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(folder.file.path));
+function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
+  return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(folder.file.path));
 }
