@@ -310,6 +310,8 @@ export class SettingsUI {
 
               const data = page.data;
 
+              let doUpdate = false;
+
               if (data.password) {
                 // New password was entered, so store the password
                 // and remove the private key path from the data
@@ -317,6 +319,8 @@ export class SettingsUI {
                 data.privateKeyPath = undefined;
 
                 vscode.window.showInformationMessage(t(`login.password.updated`, name));
+
+                doUpdate = true;
 
               } else {
                 // If no password was entered, but a keypath exists
@@ -326,6 +330,8 @@ export class SettingsUI {
                   await context.secrets.delete(`${name}_password`);
 
                   vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
+
+                  doUpdate = true;
                 }
               }
 
@@ -334,8 +340,10 @@ export class SettingsUI {
               delete data.password;
               delete data.buttons;
 
-              connections[connectionIdx] = Object.assign(connection, data);
-              await GlobalConfiguration.set(`connections`, connections);
+              if (doUpdate) {
+                connections[connectionIdx] = Object.assign(connection, data);
+                await GlobalConfiguration.set(`connections`, connections);
+              }
             }
           }
         }
