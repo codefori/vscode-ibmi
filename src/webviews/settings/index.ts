@@ -302,7 +302,10 @@ export class SettingsUI {
               .addParagraph(t(`login.authDecision`))
               .addPassword(`password`, t(`password`), t(`login.password.label`))
               .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (${t(`current`)}: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
-              .addButtons({ id: `submitButton`, label: t(`save`), requiresValidation: true })
+              .addButtons(
+                { id: `submitButton`, label: t(`save`), requiresValidation: true },
+                { id: `removeAuth`, label: t(`login.removeAuth`) }
+              )
               .loadPage<LoginSettings>(t(`login.title.edit`, name));
 
             if (page && page.data) {
@@ -312,35 +315,52 @@ export class SettingsUI {
 
               let doUpdate = false;
 
-              if (data.password) {
-                // New password was entered, so store the password
-                // and remove the private key path from the data
-                await context.secrets.store(`${name}_password`, `${data.password}`);
-                data.privateKeyPath = undefined;
+              const chosenButton = data.buttons as "submitButton" | "removeAuth";
 
-                vscode.window.showInformationMessage(t(`login.password.updated`, name));
+              switch (chosenButton) {
+                case `submitButton`:
+                  if (data.password) {
+                    // New password was entered, so store the password
+                    // and remove the private key path from the data
+                    await context.secrets.store(`${name}_password`, `${data.password}`);
+                    data.privateKeyPath = undefined;
 
-                doUpdate = true;
+                    vscode.window.showInformationMessage(t(`login.password.updated`, name));
 
-              } else {
-                // If no password was entered, but a keypath exists
-                // then remove the password from the data and
-                // use the keypath instead
-                if (data.privateKeyPath?.trim()) {
+                    doUpdate = true;
+
+                  } else {
+                    // If no password was entered, but a keypath exists
+                    // then remove the password from the data and
+                    // use the keypath instead
+                    if (data.privateKeyPath?.trim()) {
+                      await context.secrets.delete(`${name}_password`);
+
+                      vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
+
+                      doUpdate = true;
+                    }
+                  }
+                  break;
+
+                case `removeAuth`:
                   await context.secrets.delete(`${name}_password`);
+                  data.password = undefined;
+                  data.privateKeyPath = undefined;
 
-                  vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
+                  vscode.window.showInformationMessage(t(`login.authRemoved`, name));
 
                   doUpdate = true;
-                }
+                  break;
               }
 
-              //Fix values before assigning the data
-              data.port = Number(data.port);
-              delete data.password;
-              delete data.buttons;
 
               if (doUpdate) {
+                //Fix values before assigning the data
+                data.port = Number(data.port);
+                delete data.password;
+                delete data.buttons;
+
                 connections[connectionIdx] = Object.assign(connection, data);
                 await GlobalConfiguration.set(`connections`, connections);
               }

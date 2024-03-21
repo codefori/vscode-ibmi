@@ -78,6 +78,8 @@ export const en: Locale = {
   'login.host': `Host or IP Address`,
   'login.port': `Port (SSH)`,
   'login.authDecision': `Only provide either the password or a private key - not both.`,
+  'login.removeAuth': `Remove auth methods`,
+  'login.authRemoved': `Authentification methods removed for {0}.`,
   'login.password.label': 'Only provide a password if you want to update an existing one or set a new one.',
   'login.password.updated': `Password updated and will be used for {0}.`,
   'login.savePassword': `Save Password`,
