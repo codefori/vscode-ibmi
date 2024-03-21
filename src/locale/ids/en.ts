@@ -15,6 +15,7 @@ export const en: Locale = {
   'clearList': `$(trash) Clear list`,
   'clearedList': `Cleared list.`,
   'currentLibrary': `(current library)`,
+  'current': `current`,
   'duplicate': 'Duplicate',
   'save': 'Save',
   'delete': 'Delete',

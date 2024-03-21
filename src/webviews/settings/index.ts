@@ -301,7 +301,7 @@ export class SettingsUI {
               .addInput(`username`, t(`username`), undefined, { default: connection.username, minlength: 1 })
               .addParagraph(t(`login.authDecision`))
               .addPassword(`password`, t(`password`), t(`login.password.label`))
-              .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (current: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
+              .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (${t(`current`)}: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
               .addButtons({ id: `submitButton`, label: t(`save`), requiresValidation: true })
               .loadPage<LoginSettings>(t(`login.title.edit`, name));
 
