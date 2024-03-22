@@ -74,18 +74,18 @@ export const en: Locale = {
 
   // Login page:
   'login.title.create': `Connect to IBM i`,
-  'login.title.edit': `Login Settings: {0}`,
+  'login.title.edit': `Login Settings: '{0}'`,
   'login.host': `Host or IP Address`,
   'login.port': `Port (SSH)`,
   'login.authDecision': `Only provide either the password or a private key - not both.`,
   'login.removeAuth': `Remove auth methods`,
-  'login.authRemoved': `Authentification methods removed for {0}.`,
+  'login.authRemoved': `Authentification methods removed for '{0}'.`,
   'login.password.label': 'Only provide a password if you want to update an existing one or set a new one.',
-  'login.password.updated': `Password updated and will be used for {0}.`,
+  'login.password.updated': `Password updated and will be used for '{0}'.`,
   'login.savePassword': `Save Password`,
   'login.privateKey.label': `Only provide a private key if you want to update from the existing one or set one.`,
-  'login.privateKey.support': 'OpenSSH, RFC4716, or PPK formats are supported.',
-  'login.privateKey.updated': `Private key updated and will be used for {0}.`,
+  'login.privateKey.support': 'OpenSSH, RFC4716 and PPK formats are supported.',
+  'login.privateKey.updated': `Private key updated and will be used for '{0}'.`,
 
   // Connection browser:
   'connectionBrowser.copyConnection.prompt': `Copy connection '{0}'`,
