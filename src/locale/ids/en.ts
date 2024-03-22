@@ -42,7 +42,7 @@ export const en: Locale = {
   'password': 'Password',
   'privateKey': 'Private Key',
   'username': 'Username',
-  
+
   // Sandbox:
   'sandbox.input.user.title': `User for server`,
   'sandbox.input.user.prompt': `Enter username for {0}`,
@@ -71,23 +71,6 @@ export const en: Locale = {
   'connectionBrowser.deleteConnection.multiple.warning': `Are you sure you want to delete these {0} connections?`,
   'connectionBrowser.ServerItem.tooltip': ` (previous connection)`,
   'connectionBrowser.ServerItem.title': `Connect`,
-
-  // Login page:
-  'login.title.create': `Connect to IBM i`,
-  'login.title.edit': `Login Settings: '{0}'`,
-  'login.host': `Host or IP Address`,
-  'login.port': `Port (SSH)`,
-  'login.authDecision': `Only provide either the password or a private key - not both.`,
-  'login.removeAuth': `Remove auth methods`,
-  'login.authRemoved': `Authentification methods removed for '{0}'.`,
-  'login.password.label': 'Only provide a password if you want to update an existing one or set a new one.',
-  'login.password.updated': `Password updated and will be used for '{0}'.`,
-  'login.savePassword': `Save Password`,
-  'login.privateKey.label': `Only provide a private key if you want to update from the existing one or set one.`,
-  'login.privateKey.support': 'OpenSSH, RFC4716 and PPK formats are supported.',
-  'login.privateKey.updated': `Private key updated and will be used for '{0}'.`,
-
-  // Connection browser:
   'connectionBrowser.copyConnection.prompt': `Copy connection '{0}'`,
   'connectionBrowser.copyConnection.placeholder': `New connection name`,
   'connectionBrowser.copyConnection.already.exists': `Connection '{0}' already exists`,
@@ -99,7 +82,20 @@ export const en: Locale = {
   'connectionBrowser.copyConnection.select.custom.variables': `Custom variables`,
   'connectionBrowser.copyConnection.select.command.profiles': `Command profiles`,
   'connectionBrowser.copyConnection.select.connection.profiles': `Connection profiles`,
-  
+  // Login page:
+  'login.title.create': `Connect to IBM i`,
+  'login.title.edit': `Login Settings: '{0}'`,
+  'login.host': `Host or IP Address`,
+  'login.port': `Port (SSH)`,
+  'login.authDecision': `Only provide either the password or a private key - not both.`,
+  'login.removeAuth': `Remove auth methods`,
+  'login.authRemoved': `Authentication methods removed for '{0}'.`,
+  'login.password.label': 'Only provide a password if you want to update an existing one or set a new one.',
+  'login.password.updated': `Password updated and will be used for '{0}'.`,
+  'login.savePassword': `Save Password`,
+  'login.privateKey.label': `Only provide a private key if you want to update from the existing one or set one.`,
+  'login.privateKey.support': 'OpenSSH, RFC4716 and PPK formats are supported.',
+  'login.privateKey.updated': `Private key updated and will be used for '{0}'.`,
   // helpView:
   'helpView.getStarted': `Get started`,
   'helpView.officialForum': `Open official Forum`,
@@ -154,7 +150,7 @@ export const en: Locale = {
   'ifsBrowser.searchIFS.placeholder': `Enter search term or select one of the previous search terms.`,
   'ifsBrowser.searchIFS.placeholder2': `Enter search term.`,
   'ifsBrowser.searchIFS.noGrep': `grep must be installed on the remote system for the IFS search.`,
-  'ifsBrowser.downloadStreamfile.downloading':'Downloading',  
+  'ifsBrowser.downloadStreamfile.downloading':'Downloading',
   'ifsBrowser.downloadStreamfile.complete': `Download complete`,
   'ifsBrowser.downloadStreamfile.errorMessage': `Error downloading file(s): {0}`,
   'ifsBrowser.getChildren.errorMessage': `Error loading objects.`,
