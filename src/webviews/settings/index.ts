@@ -312,13 +312,14 @@ export class SettingsUI {
           if (connections) {
             const connectionIdx = connections.findIndex(item => item.name === name);
             let connection = connections[connectionIdx];
+            const storedPassword = await context.secrets.get(`${name}_password`);
 
             const page = await new CustomUI()
               .addInput(`host`, t(`login.host`), undefined, { default: connection.host, minlength: 1 })
               .addInput(`port`, t(`login.port`), undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
               .addInput(`username`, t(`username`), undefined, { default: connection.username, minlength: 1 })
               .addParagraph(t(`login.authDecision`))
-              .addPassword(`password`, t(`password`), t(`login.password.label`))
+              .addPassword(`password`, `${t(`password`)}${storedPassword ? ` (${t(`stored`)})` : ``}`, t(`login.password.label`))
               .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (${t(`current`)}: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
               .addButtons(
                 { id: `submitButton`, label: t(`save`), requiresValidation: true },

@@ -42,7 +42,7 @@ export const en: Locale = {
   'password': 'Password',
   'privateKey': 'Private Key',
   'username': 'Username',
-
+  'stored': `stored`,
   // Sandbox:
   'sandbox.input.user.title': `User for server`,
   'sandbox.input.user.prompt': `Enter username for {0}`,

@@ -42,6 +42,7 @@ export const da: Locale = {
   'password': 'Kodeord',
   'privateKey': 'Privat nøgle',
   'username': 'Brugernavn',
+  'stored': `gemt`,
   // Sandbox:
   'sandbox.input.user.title': `Bruger for server`,
   'sandbox.input.user.prompt': `Indtast brugernavn for {0}`,
