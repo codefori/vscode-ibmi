@@ -1,12 +1,19 @@
 import path from "path";
 import { window } from "vscode";
 
+import { instance } from "../../instantiate";
 import IBMi from "../IBMi";
 import IBMiContent from "../IBMiContent";
+import { Tools } from "../Tools";
 import * as certificates from "./certificates";
 
 const serverDirectory = `/QIBM/ProdData/IBMiDebugService/bin/`;
 const MY_JAVA_HOME = `MY_JAVA_HOME="/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit"`;
+
+export type DebugJob = {
+  job: string
+  port: number
+}
 
 export async function startup(connection: IBMi) {
   const host = connection.currentHost;
@@ -50,10 +57,26 @@ export async function stop(connection: IBMi) {
   }
 }
 
-export async function getRunningJob(localPort: string, content: IBMiContent): Promise<string | undefined> {
-  const rows = await content.runSQL(`select job_name, authorization_name from qsys2.netstat_job_info j where local_port = ${localPort} group by job_name, authorization_name`);
+export async function getDebugServiceJob() {
+  const content = instance.getContent();
+  if (content) {
+    return rowToDebugJob(
+      (await content.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where local_port = ${content.ibmi.config?.debugPort || 8005} fetch first row only`)).at(0)
+    );
+  }
+}
 
-  return (rows.length > 0 ? String(rows[0].JOB_NAME) : undefined);
+export async function getDebugServerJob() {
+  const content = instance.getContent();
+  if (content) {
+    return rowToDebugJob(
+      (await content.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`)).at(0)
+    );
+  }
+}
+
+function rowToDebugJob(row?: Tools.DB2Row): DebugJob | undefined {
+  return row?.JOB_NAME ? { job: String(row.JOB_NAME), port: Number(row.LOCAL_PORT) } : undefined;
 }
 
 export async function end(connection: IBMi): Promise<void> {
@@ -86,4 +109,8 @@ export function endJobs(jobIds: string[], connection: IBMi) {
   }));
 
   return Promise.all(promises);
+}
+
+export async function isDebugEngineRunning() {
+  return Boolean(await getDebugServerJob()) && Boolean(await getDebugServiceJob());
 }

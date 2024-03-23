@@ -7,6 +7,7 @@ import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeFo
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
+import { isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
@@ -37,12 +38,6 @@ connectedBarItem.command = {
   command: `code-for-ibmi.showAdditionalSettings`,
   title: `Show connection settings`
 };
-connectedBarItem.tooltip = new vscode.MarkdownString([
-  `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-  `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
-  `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`
-].join(`\n\n---\n\n`), true);
-connectedBarItem.tooltip.isTrusted = true;
 
 let selectedForCompare: vscode.Uri;
 let searchViewContext: SearchView;
@@ -739,11 +734,20 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
 }
 
-function updateConnectedBar() {
+async function updateConnectedBar() {
   const config = instance.getConfig();
   if (config) {
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
   }
+
+  const debugRunning = await isDebugEngineRunning();
+  connectedBarItem.tooltip = new vscode.MarkdownString([
+    `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
+    `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
+    `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
+    `[$(${debugRunning ? "bug" : "debug"}) Debugger (${debugRunning ? "on" : "off"})](command:code-for-ibmi.openDebugStatus)`,
+  ].join(`\n\n---\n\n`), true);
+  connectedBarItem.tooltip.isTrusted = true;
 }
 
 async function onConnected(context: vscode.ExtensionContext) {

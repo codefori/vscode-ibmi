@@ -155,7 +155,7 @@ export async function localClientCertExists(connection: IBMi) {
   }
 }
 
-export async function legacyCertificateChecks(connection: IBMi, existingDebugService: string|undefined) {
+export async function legacyCertificateChecks(connection: IBMi, serviceIsRunning: boolean) {
   // We need to migrate away from using the old legacy directory to a new one if
   // the user has the old directory configured but isn't running the server
   const usingLegacyCertPath = (getRemoteCertificateDirectory(connection) === LEGACY_CERT_DIRECTORY);
@@ -164,7 +164,7 @@ export async function legacyCertificateChecks(connection: IBMi, existingDebugSer
   let changeCertDirConfig: string|undefined;
 
   if (usingLegacyCertPath) {
-    if (existingDebugService) {
+    if (serviceIsRunning) {
       // The server is running and they still have the legacy path configured. Do certs exist inside of the legacy path?
 
       // If the legacy certs do exist, it might be using them!
@@ -190,7 +190,7 @@ export async function legacyCertificateChecks(connection: IBMi, existingDebugSer
   } else {
     // If the config isn't using the legacy path, we should check if the legacy certificates exist
 
-    if (existingDebugService) {
+    if (serviceIsRunning) {
       if (!certsExistAtConfig) {
         // The server is running but the certs don't exist in the new path, let's
         // check if they exist at the legacy path and switch back to that

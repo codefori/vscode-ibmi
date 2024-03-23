@@ -1610,7 +1610,12 @@
 				"title": "Toggle hidden files",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
-				"icon": "$(shield)"
+				"icon": "$(shield)"			
+			},
+			{
+				"command": "code-for-ibmi.openDebugStatus",
+				"title": "Toggle hidden files",
+				"category": "IBM i"
 			}
 		],
 		"keybindings": [
@@ -2104,6 +2109,10 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.openDebugStatus",
 					"when": "never"
 				}
 			],
