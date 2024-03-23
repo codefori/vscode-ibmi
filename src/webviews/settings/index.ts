@@ -7,6 +7,7 @@ import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
+import { t } from "../../locale";
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -311,44 +312,77 @@ export class SettingsUI {
           if (connections) {
             const connectionIdx = connections.findIndex(item => item.name === name);
             let connection = connections[connectionIdx];
+            const storedPassword = await context.secrets.get(`${name}_password`);
 
             const page = await new CustomUI()
-              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host, minlength: 1 })
-              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-              .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
-              .addParagraph(`Only provide either the password or a private key - not both.`)
-              .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
-              .addFile(`privateKeyPath`, `Private Key${connection.privateKeyPath ? ` (current: ${connection.privateKeyPath})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
-              .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
-              .loadPage<LoginSettings>(`Login Settings: ${name}`);
+              .addInput(`host`, t(`login.host`), undefined, { default: connection.host, minlength: 1 })
+              .addInput(`port`, t(`login.port`), undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`username`, t(`username`), undefined, { default: connection.username, minlength: 1 })
+              .addParagraph(t(`login.authDecision`))
+              .addPassword(`password`, `${t(`password`)}${storedPassword ? ` (${t(`stored`)})` : ``}`, t(`login.password.label`))
+              .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (${t(`current`)}: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
+              .addButtons(
+                { id: `submitButton`, label: t(`save`), requiresValidation: true },
+                { id: `removeAuth`, label: t(`login.removeAuth`) }
+              )
+              .loadPage<LoginSettings>(t(`login.title.edit`, name));
 
             if (page && page.data) {
               page.panel.dispose();
 
               const data = page.data;
-              if (!data.privateKeyPath?.trim()) {
-                if (connection.privateKeyPath?.trim()) {
-                  data.privateKeyPath = connection.privateKeyPath;
+
+              let doUpdate = false;
+
+              const chosenButton = data.buttons as "submitButton" | "removeAuth";
+
+              switch (chosenButton) {
+                case `submitButton`:
+                  if (data.password) {
+                    // New password was entered, so store the password
+                    // and remove the private key path from the data
+                    await context.secrets.store(`${name}_password`, `${data.password}`);
+                    data.privateKeyPath = undefined;
+
+                    vscode.window.showInformationMessage(t(`login.password.updated`, name));
+
+                    doUpdate = true;
+
+                  } else {
+                    // If no password was entered, but a keypath exists
+                    // then remove the password from the data and
+                    // use the keypath instead
+                    if (data.privateKeyPath?.trim()) {
+                      await context.secrets.delete(`${name}_password`);
+
+                      vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
+
+                      doUpdate = true;
+                    }
+                  }
+                  break;
+
+                case `removeAuth`:
                   await context.secrets.delete(`${name}_password`);
-                }
-                else {
-                  delete data.privateKeyPath;
-                }
+                  data.password = undefined;
+                  data.privateKeyPath = undefined;
+
+                  vscode.window.showInformationMessage(t(`login.authRemoved`, name));
+
+                  doUpdate = true;
+                  break;
               }
 
-              if (data.password && !data.privateKeyPath) {
-                await context.secrets.delete(`${name}_password`);
-                await context.secrets.store(`${name}_password`, `${data.password}`);
-                delete data.privateKeyPath;
+
+              if (doUpdate) {
+                //Fix values before assigning the data
+                data.port = Number(data.port);
+                delete data.password;
+                delete data.buttons;
+
+                connections[connectionIdx] = Object.assign(connection, data);
+                await GlobalConfiguration.set(`connections`, connections);
               }
-
-              //Fix values before assigning the data
-              data.port = Number(data.port);
-              delete data.password;
-              delete data.buttons;
-
-              connections[connectionIdx] = Object.assign(connection, data);
-              await GlobalConfiguration.set(`connections`, connections);
             }
           }
         }
