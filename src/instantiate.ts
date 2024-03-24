@@ -707,7 +707,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode) => {
       const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
-    })
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
   );
 
   ActionsUI.initialize(context);
@@ -731,7 +732,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   if (vscode.workspace.workspaceFolders) {
     setupGitEventHandler(context);
   }
-
 }
 
 async function updateConnectedBar() {
@@ -759,7 +759,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
   initGetNewLibl(instance);
 
   // Enable the profile view if profiles exist.
