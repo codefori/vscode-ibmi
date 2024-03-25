@@ -363,12 +363,7 @@ export async function initialize(context: ExtensionContext) {
 
                 if (confirmEndServer === `End service`) {
                   progress.report({ increment: 33, message: `Ending currently running service.` });
-                  try {
-                    await server.end(connection);
-                    startupService = true;
-                  } catch (e: any) {
-                    vscode.window.showErrorMessage(`Failed to end existing debug service (${e.message})`);
-                  }
+                  startupService = await server.stopService(connection);
                 }
               } else {
                 startupService = true;
@@ -376,11 +371,7 @@ export async function initialize(context: ExtensionContext) {
 
               if (startupService) {
                 progress.report({ increment: 34, message: `Starting service up.` });
-                try {
-                  await server.startup(connection);
-                } catch (e: any) {
-                  vscode.window.showErrorMessage(`Failed to start debug service (${e.message})`);
-                }
+                await server.startService(connection);
               } else {
                 vscode.window.showInformationMessage(`Cancelled startup of debug service.`);
               }
@@ -402,7 +393,7 @@ export async function initialize(context: ExtensionContext) {
         if (ptfInstalled) {
           vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
             progress.report({ message: `Ending Debug Service` });
-            await server.stop(connection);
+            await server.stopService(connection);
           });
         }
       }
