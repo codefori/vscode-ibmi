@@ -319,6 +319,7 @@ export async function initialize(context: ExtensionContext) {
                     copyFileSync(selectedFile[0].fsPath, certificates.getLocalCertPath(connection));
                     localCertsOk = true;
                     vscode.window.showInformationMessage(`Certificate imported.`);
+                    return true;
                   }
                 }
               }
@@ -340,6 +341,7 @@ export async function initialize(context: ExtensionContext) {
           vscode.window.showErrorMessage(`Debug PTF not installed.`);
         }
       }
+      return false;
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.start`, async () => {

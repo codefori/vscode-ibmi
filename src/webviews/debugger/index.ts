@@ -4,7 +4,7 @@ import { CustomUI, Field, Page, Section } from "../../api/CustomUI";
 import IBMiContent from "../../api/IBMiContent";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
-import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists } from "../../api/debug/certificates";
+import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists, setup } from "../../api/debug/certificates";
 import { DebugJob, getDebugServerJob, getDebugServiceJob, startServer, startService, stopServer, stopService } from "../../api/debug/server";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
@@ -85,7 +85,11 @@ export async function openDebugStatusPanel() {
           : ""
         }        
     </ul>`);
-    addStartStopButtons("service", summary, debbuggerInfo.service !== undefined);
+
+    if (debbuggerInfo.certificate.remoteExists) {
+      //Can't start the service without a certificate
+      addStartStopButtons("service", summary, debbuggerInfo.service !== undefined);
+    }
 
     //Certificates summary
     const certificatesMatch = certificateMatchStatus(debbuggerInfo.certificate);
@@ -103,7 +107,7 @@ export async function openDebugStatusPanel() {
       </ul>`)
       .addButtons(
         !debbuggerInfo.certificate.remoteExists ? { id: `service.generateCertificate`, label: t("generate.certificate") } : undefined,
-        debbuggerInfo.certificate.remoteExists && config.debugIsSecure && !certificatesMatch ? { id: `service.downloadCertificate`, label: t("download.certificate") } : undefined
+        debbuggerInfo.certificate.remoteExists && config.debugIsSecure && !certificatesMatch && debbuggerInfo.service?.job ? { id: `service.downloadCertificate`, label: t("download.certificate") } : undefined
       );
 
     const tabs = [{
@@ -183,7 +187,7 @@ function handleAction(page: Page<DebuggerPage>) {
   const actionParts = page.data?.buttons?.split('.');
   const target = actionParts?.at(0);
   const action = actionParts?.at(1);
-  console.log(target, action);
+
   if (action) {
     let result;
     if (target === "server") {
@@ -228,7 +232,16 @@ async function handleServiceAction(action: string): Promise<boolean> {
       case "stop":
         return stop();
       case "generateCertificate":
+        try {
+          await setup(connection);
+          return true;
+        }
+        catch (error: any) {
+          vscode.window.showErrorMessage(error);
+          return false;
+        }
       case "downloadCertificate":
+        return await vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
     }
   }
 
