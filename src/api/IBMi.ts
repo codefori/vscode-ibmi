@@ -64,6 +64,8 @@ export default class IBMi {
 
   commandsExecuted: number = 0;
 
+  dangerousVariants = false;
+
   constructor() {
     this.client = new node_ssh.NodeSSH;
     this.currentHost = ``;
@@ -539,7 +541,7 @@ export default class IBMi {
           // We need to check if our remote programs are installed.
           remoteApps.push(
             {
-              path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
+              path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
               names: [`GETNEWLIBL.PGM`],
               specific: `GE*.PGM`
             }
@@ -883,6 +885,9 @@ export default class IBMi {
           defaultCCSID: this.defaultCCSID
         });
 
+        //Keep track of variant characters that can be uppercased
+        this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
+
         return {
           success: true
         };
@@ -1059,7 +1064,8 @@ export default class IBMi {
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
     // Remove leading slash
-    const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
+    const upperCasedString = this.upperCaseName(string);
+    const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
 
     const basename = path[path.length - 1];
     const file = path[path.length - 2];
@@ -1158,12 +1164,12 @@ export default class IBMi {
   }
 
   getLastDownloadLocation() {
-    if(this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))){
+    if (this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))) {
       return this.config.lastDownloadLocation;
     }
-    else{
+    else {
       return os.homedir();
-    }    
+    }
   }
 
   async setLastDownloadLocation(location: string) {
@@ -1200,6 +1206,29 @@ export default class IBMi {
     }
     else {
       throw new Error(`Failed to create temporary directory ${tempDirectory}: ${prepareDirectory.stderr}`);
+    }
+  }
+
+  /**
+   * Uppercases an object name, keeping the variant chars case intact
+   * @param name
+   */
+  upperCaseName(name: string) {
+    if (this.dangerousVariants && new RegExp(`[${this.variantChars.local}]`).test(name)) {
+      const upperCased = [];
+      for (const char of name) {
+        const upChar = char.toLocaleUpperCase();
+        if (new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)) {
+          upperCased.push(upChar);
+        }
+        else {
+          upperCased.push(char);
+        }
+      }
+      return upperCased.join("");
+    }
+    else{
+      return name.toLocaleUpperCase();
     }
   }
 }

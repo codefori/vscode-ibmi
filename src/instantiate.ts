@@ -196,7 +196,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       let starRemoved: boolean = false;
 
-      if (!storage && !content) return;
+      if (!storage && !content && !connection) return;
       let list: string[] = [];
 
       // Get recently opened files - cut if limit has been reduced.
@@ -265,14 +265,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           );
           filteredItems = [];
         } else {
-          if (!starRemoved && !list.includes(quickPick.value.toUpperCase())) {
-            quickPick.items = [quickPick.value.toUpperCase(), ...list].map(label => ({ label }));
+          if (!starRemoved && !list.includes(connection!.upperCaseName(quickPick.value))) {
+            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({ label }));
           }
         }
 
         // autosuggest
         if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
-          const selectionSplit = quickPick.value.toUpperCase().split('/');
+          const selectionSplit = connection!.upperCaseName(quickPick.value).split('/');
           const lastPart = selectionSplit[selectionSplit.length - 1];
           let filterText = lastPart.substring(0, lastPart.indexOf(`*`));
 
@@ -427,18 +427,21 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             );
             vscode.window.showInformationMessage(`Cleared cached files.`);
           } else {
-            const selectionSplit = selection.toUpperCase().split('/')
+            const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
               if (config && config.enableSQL && !selection.startsWith(`/`)) {
-                const lib = `${connection!.sysNameInAmerican(selectionSplit[0])}`;
-                const file = `${connection!.sysNameInAmerican(selectionSplit[1])}`;
-                const member = path.parse(`${connection!.sysNameInAmerican(selectionSplit[2])}`);
+                const libUS = connection!.sysNameInAmerican(selectionSplit[0]);
+                const fileUS = connection!.sysNameInAmerican(selectionSplit[1]);
+                const memberUS = path.parse(connection!.sysNameInAmerican(selectionSplit[2]));
+                const lib = selectionSplit[0];
+                const file = selectionSplit[1];
+                const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
                 const fullMember = await content!.runSQL(`
                   select rtrim( cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) ) as MEMBER
                        , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
                     from QSYS2.SYSPARTITIONSTAT
-                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${lib}', '${file}', '${member.name}' )
+                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${libUS}', '${fileUS}', '${memberUS.name}' )
                    limit 1
                 `).then((resultSet) => {
                   return resultSet.length !== 1 ? {} :
@@ -463,12 +466,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                   vscode.window.showWarningMessage(`${selection} does not exist or is not a file.`);
                   return;
                 }
-                selection = selection.toUpperCase() === quickPick.value.toUpperCase() ? quickPick.value : selection;
+                selection = connection!.upperCaseName(selection) === connection!.upperCaseName(quickPick.value) ? quickPick.value : selection;
               }
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, selection, { readonly });
               quickPick.hide();
             } else {
-              quickPick.value = selection.toUpperCase() + '/'
+              quickPick.value = connection!.upperCaseName(selection) + '/'
             }
           }
         }

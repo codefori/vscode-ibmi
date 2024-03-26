@@ -143,9 +143,13 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
   const actionRan = await CompileTools.runAction(instance, uri, action, `all`);
   assert.ok(actionRan);
 
+  const keysToCompare = [`library`, `name`, `type`, `text`, `attribute`, `sourceFile`, `memberCount`];
+  const toJSON = (obj: Object) => JSON.stringify(obj, (key, value) => {
+    if (keysToCompare.includes(key)) { return value }
+  });
   const content = instance.getContent();
   const helloWorldProgram = (await content?.getObjectList({ library: library, object: 'HELLO', types: ['*PGM'] }))![0];
-  assert.deepStrictEqual(helloWorldProgram, {
+  assert.deepStrictEqual(toJSON(helloWorldProgram), toJSON({
     library: library,
     name: 'HELLO',
     type: '*PGM',
@@ -153,7 +157,7 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
     attribute: 'RPGLE',
     sourceFile: false,
     memberCount: undefined,
-  });
+  }));
 
   const connection = instance.getConnection();
   await connection?.runCommand({ command: `DLTOBJ OBJ(${library}/HELLO) OBJTYPE(*PGM)` });

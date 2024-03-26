@@ -260,7 +260,7 @@ export class SettingsUI {
                     case `protectedPaths`:
                       data[key] = String(data[key]).split(`,`)
                         .map(item => item.trim())
-                        .map(item => item.startsWith('/') ? item : item.toUpperCase())
+                        .map(item => item.startsWith('/') ? item : connection?.upperCaseName(item) || item.toUpperCase())
                         .filter(item => item !== ``)
                         .filter(Tools.distinct);
                       break;

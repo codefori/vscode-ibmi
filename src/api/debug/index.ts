@@ -165,7 +165,7 @@ export async function initialize(context: ExtensionContext) {
 
       if (qualifiedPath.object) {
         // Remove .pgm ending potentially
-        qualifiedPath.object = qualifiedPath.object.toUpperCase();
+        qualifiedPath.object = connection.upperCaseName(qualifiedPath.object);
         if (qualifiedPath.object.endsWith(`.PGM`))
           qualifiedPath.object = qualifiedPath.object.substring(0, qualifiedPath.object.length - 4);
       }
@@ -588,7 +588,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
         "host": connection!.currentHost,
         "port": port,
         "secure": secure,  // Enforce secure mode
-        "ignoreCertificateErrors": !secure,
+        "ignoreCertificateErrors": true,
         "subType": "batch",
         "library": options.library.toUpperCase(),
         "program": options.object.toUpperCase(),
