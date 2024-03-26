@@ -962,14 +962,14 @@
 			},
 			{
 				"command": "code-for-ibmi.debug.batch",
-				"title": "Batch",
+				"title": "Debug as Batch",
 				"category": "IBM i",
 				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
 				"command": "code-for-ibmi.debug.sep",
-				"title": "Service Entry Point",
+				"title": "Set Service Entry Point",
 				"category": "IBM i",
 				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
