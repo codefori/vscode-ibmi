@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
 import { ILELibrarySettings } from "../CompileTools";
+import { ObjectItem } from "../../typings";
 import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
 import * as server from "./server";
@@ -31,7 +32,7 @@ export async function initialize(context: ExtensionContext) {
     return debugclient !== undefined;
   }
 
-  const startDebugging = async (objectLibrary: string, objectName: string, workspaceFolder?: vscode.WorkspaceFolder) => {
+  const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, workspaceFolder?: vscode.WorkspaceFolder) => {
     if (debugExtensionAvailable()) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
@@ -75,12 +76,18 @@ export async function initialize(context: ExtensionContext) {
           }
 
           if (password) {
-            const debugOpts: DebugOptions = {
+            let debugOpts: DebugOptions = {
               password,
               library: objectLibrary,
               object: objectName,
               libraries
             };
+
+            if (type === `sep`) {
+              debugOpts.sep = {
+                type: objectType
+              }
+            }
 
             startDebug(instance, debugOpts);
           }
@@ -109,7 +116,24 @@ export async function initialize(context: ExtensionContext) {
     }
   }
 
-  const getObjectFromUri = async (uri: Uri) => {
+  let cachedResolvedTypes: { [path: string]: DebugObjectType } = {};
+  const getObjectType = async(library: string, objectName: string) => {
+    const path = library + `/` + objectName;
+    if (cachedResolvedTypes[path]) {
+      return cachedResolvedTypes[path];
+    } else {
+      const content = instance.getContent()!;
+
+      const [row] = await content.runSQL(`select OBJTYPE from table(qsys2.object_statistics('${library}', '*PGM *SRVPGM', '${objectName}')) X`) as { OBJTYPE: DebugObjectType }[];
+  
+      if (row) {
+        cachedResolvedTypes[path] = row.OBJTYPE;
+        return row.OBJTYPE;
+      };
+    }
+  }
+
+  const getObjectFromUri = (uri: Uri) => {
     const connection = instance.getConnection();
 
     const configuration = instance.getConfig();
@@ -203,24 +227,35 @@ export async function initialize(context: ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.activeEditor`, async () => {
-      const activeEditor = vscode.window.activeTextEditor;
-      if (activeEditor) {
-        // Get the workspace folder if one is available.
-        const workspaceFolder = [`member`, `streamfile`].includes(activeEditor.document.uri.scheme) ? undefined : vscode.workspace.getWorkspaceFolder(activeEditor.document.uri);
-
-        const qualifiedObject = await getObjectFromUri(activeEditor.document.uri);
-
-        if (qualifiedObject.library && qualifiedObject.object) {
-          startDebugging(qualifiedObject.library, qualifiedObject.object, workspaceFolder);
-        }
-      }
+    vscode.commands.registerCommand(`code-for-ibmi.debug.batch`, (node?: ObjectItem|Uri) => {
+      vscode.commands.executeCommand(`code-for-ibmi.debug`, `batch`, node);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.program`, async (node) => {
-      const [library, object] = node.path.split(`/`);
-      if (library && object) {
-        startDebugging(library, object);
+    vscode.commands.registerCommand(`code-for-ibmi.debug.sep`, (node?: ObjectItem|Uri) => {
+      vscode.commands.executeCommand(`code-for-ibmi.debug`, `sep`, node);
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.debug`, async (debugType?: DebugType, node?: ObjectItem|Uri) => {
+      if (debugType && node) {
+        if (node instanceof Uri) {
+          const workspaceFolder = [`member`, `streamfile`].includes(node.scheme) ? undefined : vscode.workspace.getWorkspaceFolder(node);
+
+          const qualifiedObject = getObjectFromUri(node);
+  
+          if (qualifiedObject.library && qualifiedObject.object) {
+            const objectType = await getObjectType(qualifiedObject.library, qualifiedObject.object);
+            if (objectType) {
+              startDebugging(debugType, objectType, qualifiedObject.library, qualifiedObject.object, workspaceFolder);
+            } else {
+              vscode.window.showErrorMessage(`Failed to determine object type. Ensure the object exists and is a program (*PGM) or service program (*SRVPGM).`);
+            }
+          }
+        } else
+        if ('object' in node) {
+          const { library, name, type } = node.object
+
+          startDebugging(debugType, type as DebugObjectType, library, name);
+        }
       }
     }),
 
@@ -364,7 +399,7 @@ export async function initialize(context: ExtensionContext) {
                 if (confirmEndServer === `End service`) {
                   progress.report({ increment: 33, message: `Ending currently running service.` });
                   try {
-                    await server.end(connection);
+                    await server.end(instance);
                     startupService = true;
                   } catch (e: any) {
                     vscode.window.showErrorMessage(`Failed to end existing debug service (${e.message})`);
@@ -377,7 +412,7 @@ export async function initialize(context: ExtensionContext) {
               if (startupService) {
                 progress.report({ increment: 34, message: `Starting service up.` });
                 try {
-                  await server.startup(connection);
+                  await server.startup(instance);
                 } catch (e: any) {
                   vscode.window.showErrorMessage(`Failed to start debug service (${e.message})`);
                 }
@@ -402,7 +437,7 @@ export async function initialize(context: ExtensionContext) {
         if (ptfInstalled) {
           vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
             progress.report({ message: `Ending Debug Service` });
-            await server.stop(connection);
+            await server.stop(instance);
           });
         }
       }
@@ -411,6 +446,7 @@ export async function initialize(context: ExtensionContext) {
 
   // Run during startup:
   instance.onEvent("connected", async () => {
+    server.resetDebugServiceDetails()
     const connection = instance.getConnection();
     const content = instance.getContent();
     if (connection && content && debugPTFInstalled()) {
@@ -469,13 +505,23 @@ interface DebugOptions {
   password: string;
   library: string;
   object: string;
-  libraries: ILELibrarySettings
+  libraries: ILELibrarySettings;
+  sep?: {
+    type: DebugObjectType;
+    moduleName?: string;
+    procedureName?: string;
+  }
 };
+
+type DebugType = "batch" | "sep";
+type DebugObjectType = "*PGM" | "*SRVPGM";
 
 export async function startDebug(instance: Instance, options: DebugOptions) {
   const connection = instance.getConnection();
   const config = instance.getConfig();
   const storage = instance.getStorage();
+
+  const serviceDetails = await server.getDebugServiceDetails(instance.getContent()!);
 
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;
@@ -496,47 +542,69 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     }
   }
 
-  const pathKey = options.library.trim() + `/` + options.object.trim();
+  if (options.sep) {
+    if (serviceDetails.version === `1.0.0`) {
+      vscode.window.showErrorMessage(`The debug service on this system, version ${serviceDetails.version}, does not support service entry points.`);
+      return;
+    }
 
-  const previousCommands = storage!.getDebugCommands();
+    // libraryName/programName programType/moduleName/procedureName
+    const formattedDebugString = `${options.library.toUpperCase()}/${options.object.toUpperCase()} ${options.sep.type}/${options.sep.moduleName || `*ALL`}/${options.sep.procedureName || `*ALL`}`;
+    vscode.commands.executeCommand(
+      `ibmidebug.create-service-entry-point-with-prompt`, 
+      connection?.currentHost!, 
+      connection?.currentUser!.toUpperCase(), 
+      options.password, 
+      formattedDebugString, 
+      Number(config?.debugPort), 
+      Number(config?.debugSepPort)
+    );
 
-  let currentCommand: string | undefined = previousCommands[pathKey] || `CALL PGM(` + pathKey + `)`;
+  } else {
 
-  currentCommand = await vscode.window.showInputBox({
-    ignoreFocusOut: true,
-    title: `Debug command`,
-    prompt: `Command used to start debugging the ${pathKey} program object. The command is wrapped around SBMJOB.`,
-    value: currentCommand
-  });
+    const pathKey = options.library.trim() + `/` + options.object.trim();
 
-  if (currentCommand) {
-    previousCommands[pathKey] = currentCommand;
-    storage?.setDebugCommands(previousCommands);
+    const previousCommands = storage!.getDebugCommands();
 
-    const debugConfig = {
-      "type": `IBMiDebug`,
-      "request": `launch`,
-      "name": `Remote debug: Launch a batch debug session`,
-      "user": connection!.currentUser.toUpperCase(),
-      "password": options.password,
-      "host": connection!.currentHost,
-      "port": port,
-      "secure": secure,  // Enforce secure mode
-      "ignoreCertificateErrors": true,
-      "library": connection!.upperCaseName(options.library),
-      "program": connection!.upperCaseName(options.object),
-      "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
-      "updateProductionFiles": updateProductionFiles,
-      "trace": enableDebugTracing,
-    };
+    let currentCommand: string | undefined = previousCommands[pathKey] || `CALL PGM(` + pathKey + `)`;
 
-    const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
+    currentCommand = await vscode.window.showInputBox({
+      ignoreFocusOut: true,
+      title: `Debug command`,
+      prompt: `Command used to start debugging the ${pathKey} program object. The command is wrapped around SBMJOB.`,
+      value: currentCommand
+    });
 
-    if (debugResult) {
-      connectionConfirmed = true;
-    } else {
-      if (!connectionConfirmed) {
-        temporaryPassword = undefined;
+    if (currentCommand) {
+      previousCommands[pathKey] = currentCommand;
+      storage?.setDebugCommands(previousCommands);
+
+      const debugConfig = {
+        "type": `IBMiDebug`,
+        "request": `launch`,
+        "name": `Remote debug: Launch a batch debug session`,
+        "user": connection!.currentUser.toUpperCase(),
+        "password": options.password,
+        "host": connection!.currentHost,
+        "port": port,
+        "secure": secure,  // Enforce secure mode
+        "ignoreCertificateErrors": true,
+        "subType": "batch",
+        "library": options.library.toUpperCase(),
+        "program": options.object.toUpperCase(),
+        "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
+        "updateProductionFiles": updateProductionFiles,
+        "trace": enableDebugTracing,
+      };
+
+      const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
+
+      if (debugResult) {
+        connectionConfirmed = true;
+      } else {
+        if (!connectionConfirmed) {
+          temporaryPassword = undefined;
+        }
       }
     }
   }
