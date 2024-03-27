@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 
 import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
+import { openDebugStatusPanel } from "../../webviews/debugger";
 import { ILELibrarySettings } from "../CompileTools";
 import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
@@ -283,12 +284,12 @@ export async function initialize(context: ExtensionContext) {
           if (connection.config!.debugIsSecure) {
 
             try {
-              const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
+              const debugServiceJob = await server.getDebugServiceJob();
               const remoteCertExists = await certificates.remoteServerCertificateExists(connection);
 
               // If the client certificate exists on the server, download it
               if (remoteCertExists) {
-                if (existingDebugService) {
+                if (debugServiceJob) {
                   await certificates.downloadClientCert(connection);
                   localCertsOk = true;
                   vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
@@ -318,6 +319,7 @@ export async function initialize(context: ExtensionContext) {
                     copyFileSync(selectedFile[0].fsPath, certificates.getLocalCertPath(connection));
                     localCertsOk = true;
                     vscode.window.showInformationMessage(`Certificate imported.`);
+                    return true;
                   }
                 }
               }
@@ -339,6 +341,7 @@ export async function initialize(context: ExtensionContext) {
           vscode.window.showErrorMessage(`Debug PTF not installed.`);
         }
       }
+      return false;
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.debug.start`, async () => {
@@ -353,22 +356,16 @@ export async function initialize(context: ExtensionContext) {
               let startupService = false;
 
               progress.report({ increment: 33, message: `Checking if service is already running.` });
-              const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
-
-              if (existingDebugService) {
+              const debugServiceJob = await server.getDebugServiceJob();
+              if (debugServiceJob) {
                 const confirmEndServer = await vscode.window.showInformationMessage(`Starting debug service`, {
-                  detail: `Looks like the debug service is currently running under ${existingDebugService}. Do you want to end it to start a new instance?`,
+                  detail: `Looks like the debug service is currently running under ${debugServiceJob}. Do you want to end it to start a new instance?`,
                   modal: true
                 }, `End service`);
 
                 if (confirmEndServer === `End service`) {
                   progress.report({ increment: 33, message: `Ending currently running service.` });
-                  try {
-                    await server.end(connection);
-                    startupService = true;
-                  } catch (e: any) {
-                    vscode.window.showErrorMessage(`Failed to end existing debug service (${e.message})`);
-                  }
+                  startupService = await server.stopService(connection);
                 }
               } else {
                 startupService = true;
@@ -376,11 +373,7 @@ export async function initialize(context: ExtensionContext) {
 
               if (startupService) {
                 progress.report({ increment: 34, message: `Starting service up.` });
-                try {
-                  await server.startup(connection);
-                } catch (e: any) {
-                  vscode.window.showErrorMessage(`Failed to start debug service (${e.message})`);
-                }
+                await server.startService(connection);
               } else {
                 vscode.window.showInformationMessage(`Cancelled startup of debug service.`);
               }
@@ -402,11 +395,13 @@ export async function initialize(context: ExtensionContext) {
         if (ptfInstalled) {
           vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
             progress.report({ message: `Ending Debug Service` });
-            await server.stop(connection);
+            await server.stopService(connection);
           });
         }
       }
-    })
+    }),
+
+    vscode.commands.registerCommand("code-for-ibmi.openDebugStatus", openDebugStatusPanel)
   );
 
   // Run during startup:
@@ -423,16 +418,16 @@ export async function initialize(context: ExtensionContext) {
           vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with secure debugging. Please use a hostname in the Login Settings instead.`);
         }
 
-        const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
+        const debugServiceJob = await server.getDebugServiceJob();
 
-        await certificates.legacyCertificateChecks(connection, existingDebugService);
+        await certificates.legacyCertificateChecks(connection, Boolean(debugServiceJob));
 
         const remoteCertsExist = await certificates.remoteServerCertificateExists(connection);
 
         if (remoteCertsExist) {
           vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
 
-          if (isSecure && existingDebugService) {
+          if (isSecure && debugServiceJob) {
             const localCertsExists = await certificates.localClientCertExists(connection);
 
             if (localCertsExists) {
@@ -442,7 +437,7 @@ export async function initialize(context: ExtensionContext) {
             }
           }
         } else {
-          const openTut = await vscode.window.showInformationMessage(`${existingDebugService ?
+          const openTut = await vscode.window.showInformationMessage(`${debugServiceJob ?
             `Looks like the Debug Service was started by an external service. This may impact your VS Code experience.` :
             `Looks like you have the debug PTF but don't have it configured.`
             } Do you want to see the Walkthrough to set it up?`, `Take me there`);
