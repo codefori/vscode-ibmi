@@ -157,3 +157,7 @@ export async function stopServer() {
   }
   return true;
 }
+
+export function getServiceConfigurationFile(){
+  return path.posix.join(serverDirectory, "DebugService.env");
+}

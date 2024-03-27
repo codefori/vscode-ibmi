@@ -382,5 +382,6 @@ export const fr: Locale = {
   'start.debug.service.failed': 'Échec du démarrage du service de débogage: {0}',
   'stop.debug.service.task': 'Arrêt du service de débogage...',
   'stop.debug.service.succeeded': 'Service de débogage arrêté.',
-  'stop.debug.service.failed': 'Échec de l\'arrêt du service de débogage: {0}'
+  'stop.debug.service.failed': 'Échec de l\'arrêt du service de débogage: {0}',
+  'open.service.configuration': 'Ouvrir la configuration'
 };

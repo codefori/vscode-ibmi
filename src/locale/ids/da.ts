@@ -382,5 +382,6 @@ export const da: Locale = {
   'start.debug.service.failed': 'Failed to start debug service: {0}',
   'stop.debug.service.task': 'Stopping debug service...',
   'stop.debug.service.succeeded': 'Debug service stopped.',
-  'stop.debug.service.failed': 'Failed to stop debug service: {0}'
+  'stop.debug.service.failed': 'Failed to stop debug service: {0}',
+  'open.service.configuration': 'Open configuration'
 };

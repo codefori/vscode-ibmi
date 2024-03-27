@@ -1,11 +1,11 @@
 import { readFileSync } from "fs";
 import vscode from "vscode";
-import { CustomUI, Field, Page, Section } from "../../api/CustomUI";
+import { Button, CustomUI, Field, Page, Section } from "../../api/CustomUI";
 import IBMiContent from "../../api/IBMiContent";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists, setup } from "../../api/debug/certificates";
-import { DebugJob, getDebugServerJob, getDebugServiceJob, startServer, startService, stopServer, stopService } from "../../api/debug/server";
+import { DebugJob, getDebugServerJob, getDebugServiceJob, getServiceConfigurationFile, startServer, startService, stopServer, stopService } from "../../api/debug/server";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 
@@ -69,27 +69,27 @@ export async function openDebugStatusPanel() {
         <li>${t("listening.on.port")}: ${debbuggerInfo.server.job.port}</li>`
           : ""
         }
-    </ul>`);
-    addStartStopButtons("server", summary, debbuggerInfo.server !== undefined);
+    </ul>`)
+      .addButtons(...getStartStopButtons("server", debbuggerInfo.server !== undefined))
 
-    //Debug Service summary
-    summary.addHorizontalRule()
+      //Debug Service summary
+      .addHorizontalRule()
       .addParagraph(/* html */`
-    <h4>${t("debug.service")} ${debbuggerInfo.service ? "✅" : "❌"}</h4>
-    <ul>
-    <li>${t("status")}: ${debbuggerInfo.service ? t("online") : t("offline")} </li>
-        ${debbuggerInfo.service ? /* html */ `
-        <li>${t("job")}: ${debbuggerInfo.service.job.name}</li>
-        <li>${t("listening.on.port")}: ${debbuggerInfo.service.job.port}</li>
-        `
+        <h4>${t("debug.service")} ${debbuggerInfo.service ? "✅" : "❌"}</h4>
+        <ul>
+        <li>${t("status")}: ${debbuggerInfo.service ? t("online") : t("offline")} </li>
+            ${debbuggerInfo.service ? /* html */ `
+            <li>${t("job")}: ${debbuggerInfo.service.job.name}</li>
+            <li>${t("listening.on.port")}: ${debbuggerInfo.service.job.port}</li>
+            `
           : ""
         }        
-    </ul>`);
+        </ul>`)
 
-    if (debbuggerInfo.certificate.remoteExists) {
-      //Can't start the service without a certificate
-      addStartStopButtons("service", summary, debbuggerInfo.service !== undefined);
-    }
+      .addButtons(
+        ...(debbuggerInfo.certificate.remoteExists ? getStartStopButtons("service", debbuggerInfo.service !== undefined) : []),
+        { id: "service.openConfig", label: t("open.service.configuration") }
+      );
 
     //Certificates summary
     const certificatesMatch = certificateMatchStatus(debbuggerInfo.certificate);
@@ -139,12 +139,12 @@ export async function openDebugStatusPanel() {
   }
 }
 
-function addStartStopButtons(target: "server" | "service", section: Section, running: boolean) {
-  section.addButtons(
+function getStartStopButtons(target: "server" | "service", running: boolean): (Button | undefined)[] {
+  return [
     running ? undefined : { id: `${target}.start`, label: t("start") },
     running ? { id: `${target}.restart`, label: t("restart") } : undefined,
     running ? { id: `${target}.stop`, label: t("stop") } : undefined
-  );
+  ];
 }
 
 async function readActiveJob(content: IBMiContent, job: DebugJob) {
@@ -242,6 +242,9 @@ async function handleServiceAction(action: string): Promise<boolean> {
         }
       case "downloadCertificate":
         return await vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+      case "openConfig":
+        vscode.commands.executeCommand("code-for-ibmi.openEditable", getServiceConfigurationFile());
+        return false;
     }
   }
 
