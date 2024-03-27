@@ -2,10 +2,9 @@ import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
-import { LocalLanguageActions } from './LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
-import { ConnectionConfiguration } from '../Configuration';
 import { Tools } from '../Tools';
+import { LocalLanguageActions } from './LocalLanguageActions';
 import { Deployment } from './deployment';
 
 type ServerFileChanges = {uploads: Uri[], relativeRemoteDeletes: string[]};
@@ -337,13 +336,18 @@ export namespace DeployTools {
 
   export async function getDefaultIgnoreRules(workspaceFolder: vscode.WorkspaceFolder): Promise<Ignore> {
     const ignoreRules = createIgnore({ ignorecase: true }).add(`.git`);
-    // get the .gitignore file from workspace
-    const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.gitignore`), ``, 1);
-    if (gitignores.length > 0) {
+    // get the .deployignore file or .gitignore file from workspace with priority to .deployignore
+    const ignoreFile = [
+      ...await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.deployignore`), ``, 1),
+      ...await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.gitignore`), ``, 1)      
+    ].at(0);
+
+    if (ignoreFile) {
       // get the content from the file
-      const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
+      const gitignoreContent = (await vscode.workspace.fs.readFile(ignoreFile)).toString().replace(new RegExp(`\\\r`, `g`), ``);
       ignoreRules.add(gitignoreContent.split(`\n`));
       ignoreRules.add('**/.gitignore');
+      ignoreRules.add('**/.deployignore');
     }
 
     return ignoreRules;
