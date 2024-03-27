@@ -25,7 +25,7 @@ export class File {
     remotePath?: string;
 
     constructor(readonly name: string, content?: string[]) {
-        if(content) {
+        if (content) {
             this.content = content;
         } else {
             this.changeContent();
@@ -162,11 +162,43 @@ export const DeployToolsSuite: TestSuite = {
                 };
 
                 await CompileTools.runAction(instance, vscode.Uri.joinPath(fakeProject.localPath!, "hello.txt"), action);
-                
+
                 const localRoot = vscode.workspace.getWorkspaceFolder(fakeProject.localPath!)?.uri;
                 assert.ok(localRoot, "No workspace folder");
                 assert.ok(existsSync(vscode.Uri.joinPath(localRoot, `random`, `random.txt`).fsPath));
                 assert.ok(existsSync(vscode.Uri.joinPath(localRoot, "hello.txt").fsPath));
+            }
+        },
+        {
+            name: `Test .deployignore`, test: async () => {
+                const workspace = vscode.workspace.workspaceFolders![0];
+                const getRootFile = (name: string) => vscode.Uri.joinPath(workspace.uri, name);
+                const prepare = async (name: string, rollback?: boolean) => {
+                    const file = getRootFile(rollback ? `${name}_backup` : name);
+                    if (existsSync(file.fsPath)) {
+                        await vscode.workspace.fs.rename(file, getRootFile(rollback ? name : `${name}_backup`), { overwrite: true });
+                    }
+                    return file;
+                };
+
+                try {
+                    const toIgnore = ["ignore1", "ignore2", "ignore3", "ignore4", ".gitignore", ".deployignore", ".notignored"];                   
+
+                    const deployignore = await prepare(".deployignore");
+                    vscode.workspace.fs.writeFile(deployignore, Buffer.from("**/ignore2\n**/ignore4"));
+                    const ignoreDeploy = await DeployTools.getDefaultIgnoreRules(workspace);
+                    assert.strictEqual(ignoreDeploy.filter(toIgnore).join(","), "ignore1,ignore3,.notignored");
+                    await vscode.workspace.fs.delete(deployignore);
+
+                    const gitignore = await prepare(".gitignore");
+                    await vscode.workspace.fs.writeFile(gitignore, Buffer.from("**/ignore1\n**/ignore3"));
+                    const ignoreGit = await DeployTools.getDefaultIgnoreRules(workspace);
+                    assert.strictEqual(ignoreGit.filter(toIgnore).join(","), "ignore2,ignore4,.notignored");
+                }
+                finally {
+                    await prepare(".gitignore", true);
+                    await prepare(".deployignore", true);
+                }
             }
         },
     ],
