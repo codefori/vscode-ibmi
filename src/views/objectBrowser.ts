@@ -792,7 +792,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node: BrowserItem, nodes?: BrowserItem[]) => {
+    vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node: ObjectItem | MemberItem, nodes?: (ObjectItem | MemberItem)[]) => {
       const contentApi = getContent();
       const connection = getConnection();
       const config = getConfig();
@@ -800,10 +800,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       //Gather all the members
       const members: IBMiMember[] = [];
       for (const item of (nodes || [node])) {
-        if (item instanceof ObjectBrowserSourcePhysicalFileItem) {
+        if ("object" in item) {
           members.push(...await contentApi.getMemberList({ library: item.object.library, sourceFile: item.object.name }));
         }
-        else if (item instanceof ObjectBrowserMemberItem) {
+        else if ("member" in item) {
           members.push(item.member);
         }
       }
