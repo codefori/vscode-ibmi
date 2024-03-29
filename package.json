@@ -382,7 +382,7 @@
 							},
 							"debugIsSecure": {
 								"type": "boolean",
-								"default": false,
+								"default": true,
 								"description": "Used to determine if the client should connect securely or not."
 							},
 							"debugUpdateProductionFiles": {
