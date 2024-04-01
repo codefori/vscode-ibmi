@@ -175,7 +175,7 @@ export class SettingsUI {
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab
             .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-            .addInput(`debugPort`, `SEP debug port`, `Default secure port is <code>8008</code>. Tells the client which port the debug service for SEP is running on.`, { default: config.debugSepPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+            .addInput(`debugSepPort`, `SEP debug port`, `Default secure port is <code>8008</code>. Tells the client which port the debug service for SEP is running on.`, { default: config.debugSepPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
             .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
