@@ -403,7 +403,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       })
 
       quickPick.onDidAccept(async () => {
-        let selection = quickPick.selectedItems[0].label;
+        let selection = quickPick.selectedItems.length === 1 ? quickPick.selectedItems[0].label : undefined;
         if (selection && selection !== LOADING_LABEL) {
           if (selection === CLEAR_RECENT) {
             recentItems.length = 0;
