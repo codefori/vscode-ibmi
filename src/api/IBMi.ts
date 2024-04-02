@@ -45,21 +45,32 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
-  private qccsid: number;
-  private userDefaultCCSID: number;
+  private qccsid: number = 65535;
+  private userDefaultCCSID: number = CCSID_SYSVAL;
 
   client: node_ssh.NodeSSH;
-  currentHost: string;
-  currentPort: number;
-  currentUser: string;
-  currentConnectionName: string;
-  tempRemoteFiles: { [name: string]: string };
-  defaultUserLibraries: string[];
+  currentHost: string = ``;
+  currentPort: number = 22;
+  currentUser: string = ``;
+  currentConnectionName: string = ``;
+  tempRemoteFiles: { [name: string]: string } = {};
+  defaultUserLibraries: string[] = [];
   outputChannel?: vscode.OutputChannel;
-  aspInfo: { [id: number]: string };
+
+  /**
+   * Used to store ASP numbers and their names
+   * Their names usually maps up to a directory in
+   * the root of the IFS, thus why we store it.
+   */
+  aspInfo: { [id: number]: string } = {};
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
-  lastErrors: object[];
+
+  /** 
+   * Strictly for storing errors from sendCommand.
+   * Used when creating issues on GitHub.
+   * */
+  lastErrors: object[] = [];
   config?: ConnectionConfiguration.Parameters;
   shell?: string;
 
@@ -69,22 +80,6 @@ export default class IBMi {
 
   constructor() {
     this.client = new node_ssh.NodeSSH;
-    this.currentHost = ``;
-    this.currentPort = 22;
-    this.currentUser = ``;
-    this.currentConnectionName = ``;
-
-    this.tempRemoteFiles = {};
-    this.defaultUserLibraries = [];
-
-    /**
-     * Used to store ASP numbers and their names
-     * THeir names usually maps up to a directory in
-     * the root of the IFS, thus why we store it.
-     */
-    this.aspInfo = {};
-    this.qccsid = CCSID_SYSVAL;
-    this.userDefaultCCSID = 0;
 
     this.remoteFeatures = {
       git: undefined,
@@ -109,13 +104,6 @@ export default class IBMi {
       american: `#@$`,
       local: `#@$`
     };
-
-    /** 
-     * Strictly for storing errors from sendCommand.
-     * Used when creating issues on GitHub.
-     * */
-    this.lastErrors = [];
-
   }
 
   /**
@@ -575,8 +563,10 @@ export default class IBMi {
           }
         }
 
-        if (this.remoteFeatures[`QZDFMDB2.PGM`]) {
+        if (this.sqlRunnerAvailable()) {
           //Temporary function to run SQL
+
+          // TODO: stop using this runSQL function and this.runSql
           const runSQL = async (statement: string) => {
             const output = await this.sendCommand({
               command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
@@ -657,12 +647,6 @@ export default class IBMi {
                 }
               }
 
-              const ccsidDetail = this.getEncoding()
-              if (this.config.enableSQL && ccsidDetail.fallback) {
-                this.config.enableSQL = false;
-                vscode.window.showErrorMessage(`CCSID is set to ${ccsidDetail.ccsid}. Using fallback methods to access the IBM i file systems.`);
-              }
-
               progress.report({
                 message: `Fetching local encoding values.`
               });
@@ -684,12 +668,16 @@ export default class IBMi {
           }
         } else {
           // Disable it if it's not found
-          if (this.config.enableSQL) {
+          if (this.enableSQL) {
             progress.report({
               message: `SQL program not installed. Disabling SQL.`
             });
-            this.config.enableSQL = false;
           }
+        }
+
+        if (!this.enableSQL) {
+          const ccsidDetail = this.getEncoding();
+          vscode.window.showErrorMessage(`CCSID is set to ${ccsidDetail.ccsid}. Using fallback methods to access the IBM i file systems.`);
         }
 
         if ((this.qccsid < 1 || this.qccsid === 65535)) {
@@ -1045,6 +1033,28 @@ export default class IBMi {
   }
 
   /**
+   * SQL only available when runner is installed and CCSID is valid.
+   */
+  get enableSQL(): boolean {
+    const sqlRunner = this.sqlRunnerAvailable();
+    const encodings = this.getEncoding();
+    return sqlRunner && encodings.invalid === false;
+  }
+
+  /**
+   * Do not use this API directly.
+   * It exists to support some backwards compatability.
+   * @deprecated
+   */
+  set enableSQL(value: boolean) {
+    this.remoteFeatures[`QZDFMDB2.PGM`] = value ? `/QSYS.LIB/QZDFMDB2.PGM` : undefined;
+  }
+
+  public sqlRunnerAvailable() {
+    return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
+  }
+
+  /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
    */
@@ -1248,7 +1258,7 @@ export default class IBMi {
 
     if (QZDFMDB2) {
       const ccsidDetail = this.getEncoding();
-      const possibleChangeCommand = ccsidDetail.fallback ? `@CHGJOB CCSID(${ccsidDetail.fallback});\n` : '';
+      const possibleChangeCommand = (ccsidDetail.fallback && !ccsidDetail.invalid ? `@CHGJOB CCSID(${ccsidDetail.ccsid});\n` : '');
 
       const output = await this.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
@@ -1266,13 +1276,13 @@ export default class IBMi {
     }
   }
 
-  getEncoding(): { invalid: boolean, fallback: boolean, ccsid: number } {
-    const fallback = (this.qccsid && this.userDefaultCCSID && (this.qccsid < 1 || this.qccsid === 65535) && this.userDefaultCCSID > 0) ? true : false;
+  getEncoding() {
+    const fallback = ((this.qccsid < 1 || this.qccsid === 65535) && this.userDefaultCCSID > 0 ? true : false);
     const ccsid = fallback ? this.userDefaultCCSID : this.qccsid;
     return {
       fallback,
       ccsid,
-      invalid: (ccsid === 65535 || ccsid < 1)
+      invalid: (ccsid < 1 || ccsid === 65535)
     };
   }
 
