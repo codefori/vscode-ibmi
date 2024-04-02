@@ -11,6 +11,7 @@ import { ObjectItem } from "../../typings";
 import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
 import * as server from "./server";
+import { debug } from "console";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -26,11 +27,19 @@ export function isManaged() {
   return process.env[`DEBUG_MANAGED`] === `true`;
 }
 
-export async function initialize(context: ExtensionContext) {
-  const debugExtensionAvailable = () => {
-    const debugclient = vscode.extensions.getExtension(debugExtensionId);
-    return debugclient !== undefined;
+const activateDebugExtension = async () => {
+  const debugclient = vscode.extensions.getExtension(debugExtensionId);
+  if (debugclient && !debugclient.isActive) {
+    await debugclient.activate();
   }
+}
+
+const debugExtensionAvailable = () => {
+  const debugclient = vscode.extensions.getExtension(debugExtensionId);
+  return debugclient && debugclient.isActive;
+}
+
+export async function initialize(context: ExtensionContext) {
 
   const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, workspaceFolder?: vscode.WorkspaceFolder) => {
     if (debugExtensionAvailable()) {
@@ -437,6 +446,7 @@ export async function initialize(context: ExtensionContext) {
 
   // Run during startup:
   instance.onEvent("connected", async () => {
+    activateDebugExtension();
     server.resetDebugServiceDetails()
     const connection = instance.getConnection();
     const content = instance.getContent();
