@@ -589,7 +589,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
         "host": connection!.currentHost,
         "port": port,
         "secure": secure,  // Enforce secure mode
-        "ignoreCertificateErrors": true,
+        "ignoreCertificateErrors": !secure,
         "subType": "batch",
         "library": options.library.toUpperCase(),
         "program": options.object.toUpperCase(),
