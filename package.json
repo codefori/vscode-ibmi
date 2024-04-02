@@ -209,11 +209,6 @@
 								"default": true,
 								"description": "Automatically delete temporary objects from the temporary library on startup."
 							},
-							"enableSQL": {
-								"type": "boolean",
-								"default": true,
-								"description": "Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
-							},
 							"currentLibrary": {
 								"type": "string",
 								"default": "QTEMP",
