@@ -62,7 +62,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         const config = connection?.config;
 
         if (connection && config?.enableSourceDates) {
-            if (connection.remoteFeatures[`QZDFMDB2.PGM`]) {
+            if (connection.sqlRunnerAvailable()) {
                 this.extendedMemberSupport = true;
                 this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
                 const ccsidDetail = connection.getEncoding();
