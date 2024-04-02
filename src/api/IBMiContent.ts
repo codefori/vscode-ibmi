@@ -338,7 +338,7 @@ export default class IBMiContent {
   async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
-    if (file === member && this.config.enableSQL) {
+    if (file === member && this.ibmi.enableSQL) {
       const data = await this.ibmi.runSQL(`SELECT * FROM ${library}.${file}`);
 
       if (deleteTable && this.config.autoClearTempData) {
@@ -406,7 +406,7 @@ export default class IBMiContent {
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
     let results: Tools.DB2Row[];
 
-    if (this.config.enableSQL) {
+    if (this.ibmi.enableSQL) {
       const statement = `
         select os.OBJNAME as ODOBNM
              , coalesce(os.OBJTEXT, '') as ODOBTX
@@ -426,7 +426,7 @@ export default class IBMiContent {
     const objects = results.map(object => ({
       library: 'QSYS',
       type: '*LIB',
-      name: this.config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(String(object.ODOBNM)),
+      name: this.ibmi.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(String(object.ODOBNM)),
       attribute: object.ODOBAT,
       text: object.ODOBTX
     } as IBMiObject));

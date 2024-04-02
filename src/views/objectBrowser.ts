@@ -257,6 +257,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
   }
 
   async getChildren(): Promise<BrowserItem[] | undefined> {
+    const connection = getConnection();
     const content = getContent();
 
     const writable = await content.checkObject({
@@ -281,9 +282,9 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
     } catch (e: any) {
       console.log(e);
 
-      // Work around since we can't get the member list if the users QCCSID is not setup.
+      // Work around since we can't get the member list if the users CCSID is not setup.
       const config = getConfig();
-      if (config.enableSQL) {
+      if (connection.enableSQL) {
         if (e && e.message && e.message.includes(`CCSID`)) {
           vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. It is recommended you reload. ${e.message}`, `Reload`).then(async (value) => {
             if (value === `Reload`) {
@@ -291,7 +292,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
             }
           });
 
-          config.enableSQL = false;
+          connection.enableSQL = false;
           await ConnectionConfiguration.update(config);
           return this.getChildren();
         }

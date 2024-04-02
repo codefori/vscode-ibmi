@@ -156,7 +156,7 @@ async function getRemoteSection() {
           `|Tech Refresh|${osVersion?.TR || '?'}|`,
           `|QCCSID|${ccsids.qccsid || '?'}|`,
           `|Default CCSID|${ccsids.userDefaultCCSID || '?'}|`,
-          `|SQL|${config.enableSQL ? 'Enabled' : 'Disabled'}`,
+          `|SQL|${connection.enableSQL ? 'Enabled' : 'Disabled'}`,
           `|Source dates|${config.enableSourceDates ? 'Enabled' : 'Disabled'}`,
           '',
           `### Enabled features`,
