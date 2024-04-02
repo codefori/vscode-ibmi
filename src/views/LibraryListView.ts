@@ -2,7 +2,7 @@ import vscode, { commands } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
-import { Library as LibraryListEntry } from "../typings";
+import { WithLibrary } from "../typings";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -23,7 +23,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         const config = instance.getConfig();
         const storage = instance.getStorage();
         if (connection && storage && config) {
-          const currentLibrary = config.currentLibrary.toUpperCase();
+          const currentLibrary = connection.upperCaseName(config.currentLibrary);
           let prevCurLibs = storage.getPreviousCurLibs();
           let list = [...prevCurLibs];
           const listHeader = [
@@ -42,8 +42,8 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           quickPick.onDidChangeValue(() => {
             if (quickPick.value === ``) {
               quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
-            } else if (!list.includes(quickPick.value.toUpperCase())) {
-              quickPick.items = [{ label: quickPick.value.toUpperCase() }].concat(listHeader)
+            } else if (!list.includes(connection.upperCaseName(quickPick.value))) {
+              quickPick.items = [{ label: connection.upperCaseName(quickPick.value) }].concat(listHeader)
                 .concat(list.map(lib => ({ label: lib })))
             }
           })
@@ -59,24 +59,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                 quickPick.show();
               } else {
                 if (newLibrary !== currentLibrary) {
-                  let newLibraryOK = true;
-                  try {
-                    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${newLibrary}` });
-                    if (commandResult?.code != 0) {
-                      throw(t(`LibraryListView.addToLibraryList.invalidLib`, newLibrary));
-                    }
-                  } catch (e) {
-                    vscode.window.showErrorMessage(String(e));
-                    newLibraryOK = false;
-                  }
-                  if (newLibraryOK) {
+                  if (await changeCurrentLibrary(newLibrary)) {
+                    this.refresh();
                     quickPick.hide();
-                    config.currentLibrary = newLibrary;
-                    vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.changedCurrent`, newLibrary));
-                    prevCurLibs = prevCurLibs.filter(lib => lib !== newLibrary);
-                    prevCurLibs.splice(0, 0, currentLibrary);
-                    await storage.setPreviousCurLibs(prevCurLibs);
-                    await this.updateConfig(config);
                   }
                 } else {
                   quickPick.hide();
@@ -99,7 +84,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
           const newLibraryListStr = await vscode.window.showInputBox({
             prompt: t(`LibraryListView.changeUserLibraryList.prompt`),
-            value: libraryList.map(lib => lib.toUpperCase()).join(`, `)
+            value: libraryList.map(lib => connection.upperCaseName(lib)).join(`, `)
           });
 
           if (newLibraryListStr) {
@@ -112,7 +97,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
               newLibraryList = newLibraryListStr
                 .replace(/,/g, ` `)
                 .split(` `)
-                .map(lib => lib.toUpperCase())
+                .map(lib => connection.upperCaseName(lib))
                 .filter((lib, idx, libl) => lib && libl.indexOf(lib) === idx);
               const badLibs = await content.validateLibraryList(newLibraryList);
 
@@ -128,65 +113,60 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary = ``) => {
+      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList.prompt`, async () => {
+        vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: await vscode.window.showInputBox({ prompt: t(`LibraryListView.addToLibraryList.prompt`) }) });
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: WithLibrary) => {
         const content = instance.getContent();
         const config = instance.getConfig();
-        if (content && config) {
-          let addingLib;
+        const connection = instance.getConnection();
+        if (content && config && connection) {
+          const addingLib = connection.upperCaseName(newLibrary.library);
+
+          if (addingLib.length > 10) {
+            vscode.window.showErrorMessage(t(`LibraryListView.addToLibraryList.tooLong`));
+            return;
+          }
+
           let libraryList = [...config.libraryList];
 
-          if (typeof newLibrary !== `string` || newLibrary == ``) {
-            addingLib = await vscode.window.showInputBox({
-              prompt: t(`LibraryListView.addToLibraryList.prompt`)
-            });
+          if (libraryList.includes(addingLib)) {
+            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.alreadyInList`, addingLib));
+            return;
+          }
+
+          let badLibs = await content.validateLibraryList([addingLib]);
+
+          if (badLibs.length > 0) {
+            libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.invalidLib`, badLibs.join(`, `)));
           } else {
-            addingLib = newLibrary;
+            libraryList.push(addingLib);
+            vscode.window.showInformationMessage(t(`LibraryListView.addToLibraryList.addedLib`, addingLib));
           }
 
-          if (addingLib) {
-            if (addingLib.length > 10) {
-              vscode.window.showErrorMessage(t(`LibraryListView.addToLibraryList.tooLong`));
-              return;
-            }
+          badLibs = await content.validateLibraryList(libraryList);
 
-            addingLib = addingLib.toUpperCase();
-
-            if (libraryList.includes(addingLib)) {
-              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.alreadyInList`, addingLib));
-              return;
-            }
-
-            let badLibs = await content.validateLibraryList([addingLib]);
-
-            if (badLibs.length > 0) {
-              libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.invalidLib`, badLibs.join(`, `)));
-            } else {
-              libraryList.push(addingLib);
-              vscode.window.showInformationMessage(t(`LibraryListView.addToLibraryList.addedLib`, addingLib));
-            }
-
-            badLibs = await content.validateLibraryList(libraryList);
-
-            if (badLibs.length > 0) {
-              libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-              vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
-            }
-
-            config.libraryList = libraryList;
-            await this.updateConfig(config);
+          if (badLibs.length > 0) {
+            libraryList = libraryList.filter(lib => !badLibs.includes(lib));
+            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
           }
+
+          config.libraryList = libraryList;
+          await this.updateConfig(config);
         }
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.removeFromLibraryList`, async (node: LibraryListNode) => {
         if (node) {
           //Running from right click
+          const connection = instance.getConnection();
           const config = instance.getConfig();
-          if (config) {
+          if (connection && config) {
             let libraryList = config.libraryList;
 
-            let index = libraryList.findIndex(file => file.toUpperCase() === node.path)
+            let index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library)
             if (index >= 0) {
               const removedLib = libraryList[index];
               libraryList.splice(index, 1);
@@ -203,10 +183,11 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         if (node) {
           //Running from right click
           const config = instance.getConfig();
-          if (config) {
+          const connection = instance.getConnection();
+          if (connection && config) {
             const libraryList = config.libraryList;
 
-            const index = libraryList.findIndex(file => file.toUpperCase() === node.path);
+            const index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library);
             if (index >= 0 && (index - 1) >= 0) {
               const library = libraryList[index];
               libraryList.splice(index, 1);
@@ -223,9 +204,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         if (node) {
           //Running from right click
           const config = instance.getConfig();
-          if (config) {
+          const connection = instance.getConnection();
+          if (connection && config) {
             const libraryList = config.libraryList;
-            const index = libraryList.findIndex(file => file.toUpperCase() === node.path);
+            const index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library);
             if (index >= 0 && (index + 1) >= 0) {
               const library = libraryList[index];
               libraryList.splice(index, 1);
@@ -255,11 +237,27 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           }
         }
       }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.setCurrentLibrary`, async (node: WithLibrary) => {
+        const library = node.library;
+        if (library) {
+          const connection = instance.getConnection();
+          const content = instance.getContent();
+          const config = instance.getConfig();
+          const storage = instance.getStorage();
+          if (connection && config && content && storage) {
+            if (await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
+              await changeCurrentLibrary(library);
+              this.refresh();
+            }
+          }
+        }
+      })
     )
     instance.onEvent(`connected`, () => this.refresh());
   }
 
-  private async updateConfig(config: ConnectionConfiguration.Parameters){
+  private async updateConfig(config: ConnectionConfiguration.Parameters) {
     await ConnectionConfiguration.update(config);
     if (GlobalConfiguration.get(`autoRefresh`)) {
       this.refresh();
@@ -280,8 +278,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
     if (connection) {
       const content = instance.getContent();
       const config = instance.getConfig();
-      if (content && config) {
-        const currentLibrary = config.currentLibrary.toUpperCase();
+      const connection = instance.getConnection();
+      if (connection && content && config) {
+        const currentLibrary = connection.upperCaseName(config.currentLibrary);
 
         const libraries = [];
         if (config.showDescInLibList === true) {
@@ -290,7 +289,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           libraries.push(...[currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` } }));
         }
         items.push(...libraries.map((lib, index) => {
-          return new LibraryListNode(lib.name.toUpperCase(), lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
+          return new LibraryListNode(connection.upperCaseName(lib.name), lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
         }));
       }
     }
@@ -298,12 +297,35 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
   }
 }
 
-class LibraryListNode extends vscode.TreeItem implements LibraryListEntry {
-  constructor(readonly path: string, text: string = ``, attribute: string = ``, context: 'currentLibrary' | 'library' = `library`) {
-    super(path, vscode.TreeItemCollapsibleState.None);
+class LibraryListNode extends vscode.TreeItem implements WithLibrary {
+  constructor(readonly library: string, text: string = ``, attribute: string = ``, context: 'currentLibrary' | 'library' = `library`) {
+    super(library, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = context;
     this.description = (context === `currentLibrary` ? `${t(`currentLibrary`)} ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
     this.tooltip = ``;
+  }
+}
+
+async function changeCurrentLibrary(library: string) {
+  const connection = instance.getConnection();
+  const config = instance.getConfig();
+  const storage = instance.getStorage();
+  if (connection && config && storage) {
+    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${library}` });
+    if (commandResult.code === 0) {
+      const currentLibrary = connection.upperCaseName(config.currentLibrary);
+      config.currentLibrary = library;
+      vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.changedCurrent`, library));
+      storage.getPreviousCurLibs();
+      const previousCurLibs = storage.getPreviousCurLibs().filter(lib => lib !== library);
+      previousCurLibs.splice(0, 0, currentLibrary);
+      await storage.setPreviousCurLibs(previousCurLibs);
+      await ConnectionConfiguration.update(config);
+      return true;
+    } else {
+      vscode.window.showErrorMessage(t(`LibraryListView.setCurrentLibrary.failed`, library, commandResult.stderr));
+      return false;
+    }
   }
 }

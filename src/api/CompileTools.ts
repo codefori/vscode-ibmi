@@ -430,7 +430,7 @@ export namespace CompileTools {
                           const downloads = postDownloads.map(
                             async (postDownload) => {
                               if (postDownload.type === vscode.FileType.Directory) {
-                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true });
+                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
                               } else {
                                 return connection.downloadFile(postDownload.localPath, postDownload.remotePath);
                               }
@@ -772,7 +772,7 @@ export namespace CompileTools {
 
   function buildLibraryList(config: ILELibrarySettings): string[] {
     //We have to reverse it because `liblist -a` adds the next item to the top always 
-    return config.libraryList.reverse();
+    return config.libraryList.slice(0).reverse();
   }
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {

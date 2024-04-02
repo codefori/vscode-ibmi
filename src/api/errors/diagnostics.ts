@@ -69,7 +69,10 @@ export async function refreshDiagnosticsFromServer(instance: Instance, evfeventI
     const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => String(row.EVFEVENT));
 
-    clearDiagnostics();
+    if (GlobalConfiguration.get(`clearErrorsBeforeBuild`)) {
+      // Clear all errors if the user has this setting enabled
+      clearDiagnostics();
+    }
 
     handleEvfeventLines(lines, instance, evfeventInfo);
   } else {
@@ -83,7 +86,10 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
     if (evfeventFiles) {
       const filesContent = await Promise.all(evfeventFiles.map(uri => vscode.workspace.fs.readFile(uri)));
 
-      clearDiagnostics();
+      if (GlobalConfiguration.get(`clearErrorsBeforeBuild`)) {
+        // Clear all errors if the user has this setting enabled
+        clearDiagnostics();
+      }
 
       for (const contentBuffer of filesContent) {
         const content = contentBuffer.toString();

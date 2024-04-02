@@ -19,7 +19,7 @@
 			"preLaunchTask": "${defaultBuildTask}"
 		},
 		{
-			"name": "Extension Tests",
+			"name": "Extension Tests (All)",
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
@@ -32,6 +32,23 @@
 			"preLaunchTask": "${defaultBuildTask}",
 			"env": {
 				"testing": "true"
+			}
+		},
+		{
+			"name": "Extension Tests (Individual)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],			
+			"sourceMaps": true,
+			"preLaunchTask": "${defaultBuildTask}",
+			"env": {
+				"testing": "true",
+				"individual": "true"
 			}
 		},
 	]

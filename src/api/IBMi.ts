@@ -3,6 +3,8 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
+import { existsSync } from "fs";
+import os from "os";
 import path from 'path';
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
@@ -14,7 +16,9 @@ import * as configVars from './configVars';
 export interface MemberParts extends IBMiMember {
   basename: string
 }
+
 const CCSID_SYSVAL = -2;
+const bashShellPath = '/QOpenSys/pkgs/bin/bash';
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
@@ -56,8 +60,11 @@ export default class IBMi {
   variantChars: { american: string, local: string };
   lastErrors: object[];
   config?: ConnectionConfiguration.Parameters;
+  shell?: string;
 
   commandsExecuted: number = 0;
+
+  dangerousVariants = false;
 
   constructor() {
     this.client = new node_ssh.NodeSSH;
@@ -88,7 +95,6 @@ export default class IBMi {
       chsh: undefined,
       stat: undefined,
       sort: undefined,
-      'GENCMDXML.PGM': undefined,
       'GETNEWLIBL.PGM': undefined,
       'GETMBRINFO.SQL': undefined,
       'QZDFMDB2.PGM': undefined,
@@ -446,6 +452,14 @@ export default class IBMi {
             });
         }
 
+        const commandShellResult = await this.sendCommand({
+          command: `echo $SHELL`
+        });
+
+        if (commandShellResult.code === 0) {
+          this.shell = commandShellResult.stdout.trim();
+        }
+
         // Check for bad data areas?
         if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
           // Do nothing, bad data areas are already checked.
@@ -528,8 +542,8 @@ export default class IBMi {
           // We need to check if our remote programs are installed.
           remoteApps.push(
             {
-              path: `/QSYS.lib/${this.config.tempLibrary.toUpperCase()}.lib/`,
-              names: [`GENCMDXML.PGM`, `GETNEWLIBL.PGM`],
+              path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
+              names: [`GETNEWLIBL.PGM`],
               specific: `GE*.PGM`
             }
           );
@@ -614,7 +628,7 @@ export default class IBMi {
 
             // Next, we're going to see if we can get the CCSID from the user or the system.
             // Some things don't work without it!!!
-            try {              
+            try {
               const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
               if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
                 this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
@@ -677,7 +691,7 @@ export default class IBMi {
           }
         }
 
-        if((this.qccsid < 1 || this.qccsid === 65535)){
+        if ((this.qccsid < 1 || this.qccsid === 65535)) {
           this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.defaultCCSID}\n`);
         }
 
@@ -685,13 +699,9 @@ export default class IBMi {
         if (this.remoteFeatures[`bash`]) {
           try {
             //check users default shell
-            const bashShellPath = '/QOpenSys/pkgs/bin/bash';
-            const commandShellResult = await this.sendCommand({
-              command: `echo $SHELL`
-            });
 
             if (!commandShellResult.stderr) {
-              let usesBash = commandShellResult.stdout.trim() === bashShellPath;
+              let usesBash = this.shell === bashShellPath;
               if (!usesBash) {
                 // make sure chsh is installed
                 if (this.remoteFeatures[`chsh`]) {
@@ -876,6 +886,9 @@ export default class IBMi {
           defaultCCSID: this.defaultCCSID
         });
 
+        //Keep track of variant characters that can be uppercased
+        this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
+
         return {
           success: true
         };
@@ -913,6 +926,10 @@ export default class IBMi {
     finally {
       ConnectionConfiguration.update(this.config!);
     }
+  }
+
+  usingBash() {
+    return this.shell === bashShellPath;
   }
 
   /**
@@ -1048,7 +1065,8 @@ export default class IBMi {
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
     // Remove leading slash
-    const path = string.startsWith(`/`) ? string.substring(1).toUpperCase().split(`/`) : string.toUpperCase().split(`/`);
+    const upperCasedString = this.upperCaseName(string);
+    const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
 
     const basename = path[path.length - 1];
     const file = path[path.length - 2];
@@ -1146,18 +1164,72 @@ export default class IBMi {
     await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
   }
 
+  getLastDownloadLocation() {
+    if (this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))) {
+      return this.config.lastDownloadLocation;
+    }
+    else {
+      return os.homedir();
+    }
+  }
+
+  async setLastDownloadLocation(location: string) {
+    if (this.config && location && location !== this.config.lastDownloadLocation) {
+      this.config.lastDownloadLocation = location;
+      await ConnectionConfiguration.update(this.config);
+    }
+  }
+
   fileToPath(file: string | vscode.Uri): string {
     if (typeof file === "string") {
-      if (process.platform === `win32` && file[0] === `/`) {
-        //Issue with getFile not working propertly on Windows
-        //when there was a / at the start.
-        return file.substring(1);
-      } else {
-        return file;
-      }
+      return Tools.fixWindowsPath(file);
     }
     else {
       return file.fsPath;
+    }
+  }
+
+  /**
+   * Creates a temporary directory and pass it on to a `process` function.
+   * The directory is guaranteed to be empty when created and deleted after the `process` is done.
+   * @param process the process that will run on the empty directory
+   */
+  async withTempDirectory(process: (directory: string) => Promise<void>) {
+    const tempDirectory = `${this.config?.tempDir || '/tmp'}/code4itemp${Tools.makeid(20)}`;
+    const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
+    if (prepareDirectory.code === 0) {
+      try {
+        await process(tempDirectory);
+      }
+      finally {
+        await this.sendCommand({ command: `rm -rf ${tempDirectory}` });
+      }
+    }
+    else {
+      throw new Error(`Failed to create temporary directory ${tempDirectory}: ${prepareDirectory.stderr}`);
+    }
+  }
+
+  /**
+   * Uppercases an object name, keeping the variant chars case intact
+   * @param name
+   */
+  upperCaseName(name: string) {
+    if (this.dangerousVariants && new RegExp(`[${this.variantChars.local}]`).test(name)) {
+      const upperCased = [];
+      for (const char of name) {
+        const upChar = char.toLocaleUpperCase();
+        if (new RegExp(`[A-Z${this.variantChars.local}]`).test(upChar)) {
+          upperCased.push(upChar);
+        }
+        else {
+          upperCased.push(char);
+        }
+      }
+      return upperCased.join("");
+    }
+    else{
+      return name.toLocaleUpperCase();
     }
   }
 }

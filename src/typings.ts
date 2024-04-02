@@ -103,6 +103,11 @@ export interface IBMiObject extends QsysPath {
   memberCount?: number
   sourceLength?: number
   CCSID?: number
+  size?: number
+  created?: Date
+  changed?: Date
+  created_by?: string
+  owner?: string
 }
 
 export interface IBMiMember {
@@ -152,7 +157,9 @@ export interface WithPath {
   path: string
 }
 
-export interface Library extends WithPath { }
+export interface WithLibrary {
+  library: string
+}
 
 export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean | number }
 
@@ -183,10 +190,6 @@ export interface FilteredItem {
 
 export interface ObjectItem extends FilteredItem, WithPath {
   object: IBMiObject
-}
-
-export interface SourcePhysicalFileItem extends FilteredItem, WithPath {
-  sourceFile: IBMiObject
 }
 
 export interface MemberItem extends FilteredItem, WithPath {

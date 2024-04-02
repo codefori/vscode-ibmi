@@ -1,7 +1,8 @@
 import os from "os";
-import path from "path";
-import vscode, { FileType } from "vscode";
+import path, { dirname, extname } from "path";
+import vscode, { FileType, window } from "vscode";
 
+import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
@@ -9,7 +10,7 @@ import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, CommandResult, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
+import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";
@@ -100,13 +101,13 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip =  new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
       size: file.size,
       modified: file.modified ? new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
       owner: file.owner ? file.owner.toUpperCase() : ``
     }));
     this.tooltip.supportHtml = true;
-    }
+  }
 
   sortBy(sort: SortOptions) {
     if (this.sort.order !== sort.order) {
@@ -137,10 +138,12 @@ class IFSFileItem extends IFSItem {
     this.contextValue = "streamfile";
     this.iconPath = vscode.ThemeIcon.File;
 
-    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` }); this.command = {
+    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
+    
+    this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [this]
+      arguments: [{path: this.path}]
     };
   }
 
@@ -162,7 +165,7 @@ class IFSDirectoryItem extends IFSItem {
     if (content) {
       try {
         const showHidden = instance.getConfig()?.showHiddenFiles;
-        const filterIFSFile = (file:IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
+        const filterIFSFile = (file: IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
         const directories = objects.filter(f => filterIFSFile(f, "directory"));
         const streamFiles = objects.filter(f => filterIFSFile(f, "streamfile"));
@@ -216,8 +219,8 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
       if (ifsBrowserItems) {
         this.moveOrCopyItems(ifsBrowserItems.value as IFSItem[], toDirectory)
       } else if (objectBrowserItems) {
-          const memberUris = (await objectBrowserItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
-          this.copyMembers(memberUris, toDirectory)
+        const memberUris = (await objectBrowserItems.asString()).split(URI_LIST_SEPARATOR).map(uri => vscode.Uri.parse(uri));
+        this.copyMembers(memberUris, toDirectory)
       }
       else {
         const explorerItems = dataTransfer.get(URI_LIST_MIMETYPE);
@@ -286,7 +289,7 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
             noLibList: true
           });
           if (result.code !== 0) {
-            throw(t(`ifsBrowser.copyToStreamfile.failed`, toDirectory.path, result!.stderr));
+            throw (t(`ifsBrowser.copyToStreamfile.failed`, toDirectory.path, result!.stderr));
           }
         };
 
@@ -546,58 +549,68 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
       if (connection && config) {
-        items = items || [singleItem];
-        if (!items.find(n => isProtected(n.path))) {
-          let deletionConfirmed = false;
-          const proceed = items.length > 1 ?
-            await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length), t(`Yes`), t(`Cancel`)) === t(`Yes`) :
-            await vscode.window.showWarningMessage(t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path), t(`Yes`), t(`Cancel`)) === t(`Yes`);
-          if (proceed) {
-            for (const item of items) {
-              if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.contextValue === `directory`) { //Check if path is directory
-                const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
-
-                const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
-                const input = await vscode.window.showInputBox({
-                  placeHolder: dirName,
-                  prompt: deletionPrompt,
-                  validateInput: text => {
-                    return (text === dirName) ? null : deletionPrompt + t(`ifsBrowser.deleteIFS.deletionPrompt2`);
-                  }
-                });
-                deletionConfirmed = (input === dirName);
-              }
-              else {
-                // If deleting a file rather than a directory, skip the name entry
-                deletionConfirmed = true;
-              }
-
-              if (deletionConfirmed) {
-                try {
-                  const removeResult = await connection.sendCommand({ command: `rm -rf ${Tools.escapePath(item.path)}` })
-                  if (removeResult.code === 0) {
-                    vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.infoMessage`, item.path));
-                  }
-                  else {
-                    throw removeResult.stderr;
-                  }
-                } catch (e) {
-                  vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
-                }
-              }
-              else {
-                vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.cancelled`));
-              }
-            }
-            if (GlobalConfiguration.get(`autoRefresh`)) {
-              items.map(item => item.parent)
-                .filter(Tools.distinct)
-                .forEach(async parent => parent?.refresh?.());
-            }
-          }
+        if (items || singleItem) {
+          items = (items || [singleItem]).filter(reduceIFSPath);
         }
         else {
-          vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
+          items = (ifsTreeViewer.selection.filter(selected => selected instanceof IFSItem) as IFSItem[]).filter(reduceIFSPath);
+        }
+
+        if (items && items.length) {
+          if (!items.find(n => isProtected(n.path))) {
+            let deletionConfirmed = false;
+            const message = items.length === 1 ? t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path) : t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length);
+            const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
+            if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
+              const toBeDeleted: string[] = [];
+              for (const item of items) {
+                if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
+                  const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
+
+                  const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
+                  const input = await vscode.window.showInputBox({
+                    placeHolder: dirName,
+                    prompt: deletionPrompt,
+                    validateInput: text => {
+                      return (text === dirName) ? null : deletionPrompt + t(`ifsBrowser.deleteIFS.deletionPrompt2`);
+                    }
+                  });
+                  deletionConfirmed = (input === dirName);
+                }
+                else {
+                  // If deleting a file rather than a directory, skip the name entry
+                  // Do not delete a file if one of its parent directory is going to be deleted
+                  deletionConfirmed = true;
+                }
+
+                if (deletionConfirmed) {
+                  toBeDeleted.push(item.path);
+                }
+              }
+
+              try {
+                const removeResult = await vscode.window.withProgress({ title: t('ifsBrowser.deleteIFS.progress', toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
+                  return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
+                });
+                if (removeResult.code !== 0) {
+                  throw removeResult.stderr;
+                }
+                if (GlobalConfiguration.get(`autoRefresh`)) {
+                  items.map(item => item.parent)
+                    .filter(Tools.distinct)
+                    .forEach(async parent => parent?.refresh?.());
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
+              }
+            }
+            else {
+              vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.cancelled`));
+            }
+          }
+          else {
+            vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
+          }
         }
       }
     }),
@@ -719,20 +732,68 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem) => {
+    vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem, nodes?: IFSItem[]) => {
       const ibmi = instance.getConnection();
       if (ibmi) {
-        //Get filename from path on server
-        const remoteFilepath = path.join(os.homedir(), path.basename(node.path));
+        const items = (nodes || [node]).filter(reduceIFSPath);
+        const saveIntoDirectory = items.length > 1 || items[0].file.type === "directory";
+        let downloadLocation: string | undefined;
+        if (saveIntoDirectory) {
+          downloadLocation = (await vscode.window.showOpenDialog({
+            canSelectMany: false,
+            canSelectFiles: false,
+            canSelectFolders: true,
+            defaultUri: vscode.Uri.file(ibmi.getLastDownloadLocation())
+          }))?.[0]?.path;
+        }
+        else {
+          const remoteFilepath = path.join(ibmi.getLastDownloadLocation(), path.basename(node.path));
+          downloadLocation = (await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file(remoteFilepath),
+            filters: { 'Streamfile': [extname(node.path).substring(1) || '*'] }
+          }))?.path;
+        }
 
-        const localPath = (await vscode.window.showSaveDialog({ defaultUri: vscode.Uri.file(remoteFilepath) }))?.path;
-        if (localPath) {
-          try {
-            await ibmi.downloadFile(localPath, node.path);
-            vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.infoMessage`));
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, t(String(node.contextValue)), e));
-          }
+        if (downloadLocation) {
+          await ibmi.setLastDownloadLocation(saveIntoDirectory ? downloadLocation : dirname(downloadLocation));
+          const increment = 100 / items.length;
+          window.withProgress({ title: t('ifsBrowser.downloadStreamfile.downloading'), location: vscode.ProgressLocation.Notification }, async (task) => {
+            try {
+              for (const item of items) {
+                const targetPath = item.path;
+                task.report({ message: targetPath, increment });
+                if (saveIntoDirectory) {
+                  const target = path.join(Tools.fixWindowsPath(downloadLocation!), path.basename(targetPath));
+                  if (item.file.type === "directory") {
+                    let proceed = !existsSync(target);
+                    if (!proceed) {
+                      if (await vscode.window.showWarningMessage(t('ifsBrowser.downloadStreamfile.overwrite', target), { modal: true }, t("Yes"))) {
+                        rmdirSync(target, { recursive: true });
+                        proceed = true;
+                      }
+                    }
+
+                    if (proceed) {
+                      mkdirSync(target, { recursive: true });
+                      await ibmi.downloadDirectory(target, targetPath, { concurrency: 5 });
+                    }
+                  }
+                  else {
+                    if (!existsSync(target) || await vscode.window.showWarningMessage(t('ask.overwrite', target), { modal: true }, t("Yes"))) {
+                      await ibmi.downloadFile(target, targetPath);
+                    }
+                  }
+                }
+                else {
+                  await ibmi.downloadFile(downloadLocation!, targetPath);
+                }
+              }
+              vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.complete`));
+            }
+            catch (e) {
+              vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, e));
+            }
+          });
         }
       }
     }),
@@ -807,4 +868,11 @@ async function showOpenDialog() {
       }
     })
   }
+}
+
+/**
+ * Filters the content of an IFSItem array to keep only items whose parent are not in the array
+ */
+function reduceIFSPath(item: IFSItem, index: number, array: IFSItem[]) {
+  return !array.filter(i => i.file.type === "directory" && i !== item).some(folder => item.file.path.startsWith(folder.file.path));
 }
