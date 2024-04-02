@@ -146,14 +146,16 @@ async function getRemoteSection() {
         }
       }
 
+      const ccsids = connection.getCcsids();
+
       return [
         createSection(`Remote system`,
           '|Setting|Value|',
           '|-|-|',
           `|IBM i OS|${osVersion?.OS || '?'}|`,
           `|Tech Refresh|${osVersion?.TR || '?'}|`,
-          `|CCSID|${connection.qccsid || '?'}|`,
-          `|Default CCSID|${connection.defaultCCSID || '?'}|`,
+          `|QCCSID|${ccsids.qccsid || '?'}|`,
+          `|Default CCSID|${ccsids.userDefaultCCSID || '?'}|`,
           `|SQL|${config.enableSQL ? 'Enabled' : 'Disabled'}`,
           `|Source dates|${config.enableSourceDates ? 'Enabled' : 'Disabled'}`,
           '',

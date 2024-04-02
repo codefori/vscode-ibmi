@@ -45,6 +45,9 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
+  private qccsid: number;
+  private userDefaultCCSID: number;
+
   client: node_ssh.NodeSSH;
   currentHost: string;
   currentPort: number;
@@ -54,8 +57,6 @@ export default class IBMi {
   defaultUserLibraries: string[];
   outputChannel?: vscode.OutputChannel;
   aspInfo: { [id: number]: string };
-  qccsid: number;
-  defaultCCSID: number;
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
   lastErrors: object[];
@@ -83,7 +84,7 @@ export default class IBMi {
      */
     this.aspInfo = {};
     this.qccsid = CCSID_SYSVAL;
-    this.defaultCCSID = 0;
+    this.userDefaultCCSID = 0;
 
     this.remoteFeatures = {
       git: undefined,
@@ -619,7 +620,7 @@ export default class IBMi {
           if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.defaultCCSID) {
             this.qccsid = cachedServerSettings.qccsid;
             this.variantChars = cachedServerSettings.variantChars;
-            this.defaultCCSID = cachedServerSettings.defaultCCSID;
+            this.userDefaultCCSID = cachedServerSettings.defaultCCSID;
           } else {
             progress.report({
               message: `Fetching conversion values.`
@@ -642,7 +643,7 @@ export default class IBMi {
 
               try {
                 const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
-                this.defaultCCSID = Number(activeJob.DEFAULT_CCSID);
+                this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
               }
               catch (error) {
                 const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
@@ -652,13 +653,14 @@ export default class IBMi {
 
                 const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
                 if (defaultCCSCID && !isNaN(defaultCCSCID)) {
-                  this.defaultCCSID = defaultCCSCID;
+                  this.userDefaultCCSID = defaultCCSCID;
                 }
               }
 
-              if (this.config.enableSQL && this.qccsid === 65535) {
+              const ccsidDetail = this.getEncoding()
+              if (this.config.enableSQL && ccsidDetail.fallback) {
                 this.config.enableSQL = false;
-                vscode.window.showErrorMessage(`QCCSID is set to 65535. Using fallback methods to access the IBM i file systems.`);
+                vscode.window.showErrorMessage(`CCSID is set to ${ccsidDetail.ccsid}. Using fallback methods to access the IBM i file systems.`);
               }
 
               progress.report({
@@ -691,7 +693,7 @@ export default class IBMi {
         }
 
         if ((this.qccsid < 1 || this.qccsid === 65535)) {
-          this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.defaultCCSID}\n`);
+          this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.userDefaultCCSID}\n`);
         }
 
         // give user option to set bash as default shell.
@@ -882,7 +884,7 @@ export default class IBMi {
           badDataAreasChecked: true,
           libraryListValidated: true,
           pathChecked: true,
-          defaultCCSID: this.defaultCCSID
+          defaultCCSID: this.userDefaultCCSID
         });
 
         //Keep track of variant characters that can be uppercased
@@ -1231,4 +1233,53 @@ export default class IBMi {
       return name.toLocaleUpperCase();
     }
   }
+
+
+  /**
+   * Run SQL statements.
+   * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
+   * If a statement starts with @, it will be run as a CL command.
+   *
+   * @param statements
+   * @returns a Result set
+   */
+  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
+    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
+
+    if (QZDFMDB2) {
+      const ccsidDetail = this.getEncoding();
+      const possibleChangeCommand = ccsidDetail.fallback ? `@CHGJOB CCSID(${ccsidDetail.fallback});\n` : '';
+
+      const output = await this.sendCommand({
+        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
+        stdin: Tools.fixSQL(`${possibleChangeCommand}${statements}`)
+      })
+
+      if (output.stdout) {
+        return Tools.db2Parse(output.stdout);
+      } else {
+        throw new Error(`There was an error running the SQL statement.`);
+      }
+
+    } else {
+      throw new Error(`There is no way to run SQL on this system.`);
+    }
+  }
+
+  getEncoding(): { invalid: boolean, fallback: boolean, ccsid: number } {
+    const fallback = (this.qccsid && this.userDefaultCCSID && (this.qccsid < 1 || this.qccsid === 65535) && this.userDefaultCCSID > 0) ? true : false;
+    const ccsid = fallback ? this.userDefaultCCSID : this.qccsid;
+    return {
+      fallback,
+      ccsid,
+      invalid: (ccsid === 65535 || ccsid < 1)
+    };
+  }
+
+  getCcsids() {
+    return {
+      qccsid: this.qccsid,
+      userDefaultCCSID: this.userDefaultCCSID
+    };
+  } 
 }
