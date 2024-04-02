@@ -65,6 +65,10 @@ function getLegacyCertificatePath() {
   return path.posix.join(LEGACY_CERT_DIRECTORY, SERVER_CERTIFICATE);
 }
 
+function getPasswordForHost(connection: IBMi) {
+  return connection.currentHost;
+}
+
 export function getRemoteServerCertificatePath(connection: IBMi) {
   return path.posix.join(getRemoteCertificateDirectory(connection), SERVER_CERTIFICATE);
 }
@@ -85,8 +89,8 @@ export async function remoteServerCertificateExists(connection: IBMi, legacy = f
  * Generate all certifcates on the server
  */
 export async function setup(connection: IBMi) {
-  const host = connection.currentHost;
-  const extFileContent = await getExtFileContent(host, connection);
+  const pw = getPasswordForHost(connection);
+  const extFileContent = await getExtFileContent(pw, connection);
 
   if (!connection.usingBash()) {
     if (connection.remoteFeatures[`bash`]) {
@@ -98,9 +102,9 @@ export async function setup(connection: IBMi) {
 
   const commands = [
     `openssl genrsa -out debug_service.key 2048`,
-    `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${host}'`,
+    `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${pw}'`,
     `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
-    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`,
+    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${pw}`,
     `rm debug_service.key debug_service.csr debug_service.crt`, 
     `chmod 444 debug_service.pfx`
   ];
@@ -127,9 +131,10 @@ export async function setup(connection: IBMi) {
 
 export async function downloadClientCert(connection: IBMi) {
   const localPath = getLocalCertPath(connection);
+  const keyPass = getPasswordForHost(connection);
 
   const result = await connection.sendCommand({
-    command: `openssl s_client -connect localhost:${connection.config?.debugPort} -showcerts < /dev/null 2> /dev/null | openssl x509 -outform PEM`,
+    command: `openssl pkcs12 -in ${getRemoteServerCertificatePath(connection)} -passin pass:${keyPass} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
     directory: getRemoteCertificateDirectory(connection)
   });
 

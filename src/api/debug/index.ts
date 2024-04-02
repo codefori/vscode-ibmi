@@ -318,22 +318,13 @@ export async function initialize(context: ExtensionContext) {
           if (connection.config!.debugIsSecure) {
 
             try {
-              const existingDebugService = await server.getRunningJob(connection.config?.debugPort || "8005", instance.getContent()!);
               const remoteCertExists = await certificates.remoteServerCertificateExists(connection);
 
               // If the client certificate exists on the server, download it
               if (remoteCertExists) {
-                if (existingDebugService) {
-                  await certificates.downloadClientCert(connection);
-                  localCertsOk = true;
-                  vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
-                } else {
-                  vscode.window.showInformationMessage(`Cannot fetch client certificate because the Debug Service is not running.`, `Startup Service`).then(result => {
-                    if (result) {
-                      vscode.commands.executeCommand(`code-for-ibmi.debug.start`);
-                    }
-                  });
-                }
+                await certificates.downloadClientCert(connection);
+                localCertsOk = true;
+                vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
               } else {
                 const doImport = await vscode.window.showInformationMessage(`Debug setup`, {
                   modal: true,
