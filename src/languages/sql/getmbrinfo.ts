@@ -1,5 +1,6 @@
 import { window } from "vscode";
 import Instance from "../../api/Instance";
+import { GlobalStorage } from "../../api/Storage";
 
 export async function initGetMemberInfo(instance: Instance) {
   const connection = instance.getConnection();
@@ -22,6 +23,7 @@ export async function initGetMemberInfo(instance: Instance) {
       .then((result) => {
         if (result.code === 0) {
           connection.remoteFeatures[`GETMBRINFO.SQL`] = `${config.tempLibrary}.GETMBRINFO`;
+          GlobalStorage.get().setServerSettingsCacheSpecific(connection.currentConnectionName, { remoteFeatures: connection.remoteFeatures });
         } else {
           window.showWarningMessage(`Unable to install GETMBRINFO. See Code for IBM i output for details.`);
         }
