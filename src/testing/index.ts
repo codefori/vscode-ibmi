@@ -112,11 +112,15 @@ async function runTests() {
 }
 
 async function runTest(test: TestCase) {
+  const connection = instance.getConnection();
+
   console.log(`\tRunning ${test.name}`);
   test.status = "running";
   testSuitesTreeProvider.refresh(test);
   const start = +(new Date());
   try {
+    connection!.enableSQL = true;
+    
     await test.test();
     test.status = "pass";
   }
