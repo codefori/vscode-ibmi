@@ -45,8 +45,8 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
-  private qccsid: number = 65535;
-  private userDefaultCCSID: number = CCSID_SYSVAL;
+  private runtimeCcsid: number = CCSID_SYSVAL;
+  private userDefaultCCSID: number = 0;
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -607,10 +607,10 @@ export default class IBMi {
           }
 
           // Fetch conversion values?
-          if (quickConnect === true && cachedServerSettings?.qccsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.defaultCCSID) {
-            this.qccsid = cachedServerSettings.qccsid;
+          if (quickConnect === true && cachedServerSettings?.runtimeCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID) {
+            this.runtimeCcsid = cachedServerSettings.runtimeCcsid;
             this.variantChars = cachedServerSettings.variantChars;
-            this.userDefaultCCSID = cachedServerSettings.defaultCCSID;
+            this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
           } else {
             progress.report({
               message: `Fetching conversion values.`
@@ -619,18 +619,21 @@ export default class IBMi {
             // Next, we're going to see if we can get the CCSID from the user or the system.
             // Some things don't work without it!!!
             try {
+              // First we grab the users default CCSID
               const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
               if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                this.qccsid = userInfo.CHARACTER_CODE_SET_ID;
+                this.runtimeCcsid = userInfo.CHARACTER_CODE_SET_ID;
               }
 
-              if (!this.qccsid || this.qccsid === CCSID_SYSVAL) {
+              // But if that CCSID is *SYSVAL, then we need to grab the system CCSID (QCCSID)
+              if (!this.runtimeCcsid || this.runtimeCcsid === CCSID_SYSVAL) {
                 const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
                 if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
+                  this.runtimeCcsid = systemCCSID.CURRENT_NUMERIC_VALUE;
                 }
               }
 
+              // Let's also get the user's default CCSID
               try {
                 const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
                 this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
@@ -676,12 +679,7 @@ export default class IBMi {
         }
 
         if (!this.enableSQL) {
-          const ccsidDetail = this.getEncoding();
-          vscode.window.showErrorMessage(`CCSID is set to ${ccsidDetail.ccsid}. Using fallback methods to access the IBM i file systems.`);
-        }
-
-        if ((this.qccsid < 1 || this.qccsid === 65535)) {
-          this.outputChannel?.appendLine(`\nUser CCSID is ${this.qccsid}; falling back to using default CCSID ${this.userDefaultCCSID}\n`);
+          vscode.window.showErrorMessage(`SQL is disabled for this connection. Using fallback methods to access the IBM i file systems.`);
         }
 
         // give user option to set bash as default shell.
@@ -862,7 +860,7 @@ export default class IBMi {
 
         GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
           aspInfo: this.aspInfo,
-          qccsid: this.qccsid,
+          runtimeCcsid: this.runtimeCcsid,
           remoteFeatures: this.remoteFeatures,
           remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
           variantChars: {
@@ -872,7 +870,7 @@ export default class IBMi {
           badDataAreasChecked: true,
           libraryListValidated: true,
           pathChecked: true,
-          defaultCCSID: this.userDefaultCCSID
+          userDefaultCCSID: this.userDefaultCCSID
         });
 
         //Keep track of variant characters that can be uppercased
@@ -1277,8 +1275,8 @@ export default class IBMi {
   }
 
   getEncoding() {
-    const fallback = ((this.qccsid < 1 || this.qccsid === 65535) && this.userDefaultCCSID > 0 ? true : false);
-    const ccsid = fallback ? this.userDefaultCCSID : this.qccsid;
+    const fallback = ((this.runtimeCcsid < 1 || this.runtimeCcsid === 65535) && this.userDefaultCCSID > 0 ? true : false);
+    const ccsid = fallback ? this.userDefaultCCSID : this.runtimeCcsid;
     return {
       fallback,
       ccsid,
@@ -1288,7 +1286,7 @@ export default class IBMi {
 
   getCcsids() {
     return {
-      qccsid: this.qccsid,
+      qccsid: this.runtimeCcsid,
       userDefaultCCSID: this.userDefaultCCSID
     };
   } 
