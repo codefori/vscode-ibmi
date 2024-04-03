@@ -682,7 +682,18 @@ export default class IBMi {
         }
 
         if (!this.enableSQL) {
-          vscode.window.showErrorMessage(`SQL is disabled for this connection. Using fallback methods to access the IBM i file systems.`);
+          const encoding = this.getEncoding();
+          // Show a message if the system CCSID is bad
+          const ccsidMessage = this.runtimeCcsidOrigin === CcsidOrigin.System && this.runtimeCcsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile.` : undefined;
+
+          // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
+          const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID in your user profile.` : undefined;
+
+          vscode.window.showErrorMessage([
+            ccsidMessage,
+            encodingMessage,
+            `Using fallback methods to access the IBM i file systems.`
+          ].filter(x => x).join(` `));
         }
 
         // give user option to set bash as default shell.
