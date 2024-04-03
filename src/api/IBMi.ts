@@ -7,7 +7,7 @@ import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
 import { instance } from "../instantiate";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
+import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
@@ -45,6 +45,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
+  private runtimeCcsidOrigin = CcsidOrigin.User;
   private runtimeCcsid: number = CCSID_SYSVAL;
   private userDefaultCCSID: number = 0;
 
@@ -623,6 +624,7 @@ export default class IBMi {
               const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
               if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
                 this.runtimeCcsid = userInfo.CHARACTER_CODE_SET_ID;
+                this.runtimeCcsidOrigin = CcsidOrigin.User;
               }
 
               // But if that CCSID is *SYSVAL, then we need to grab the system CCSID (QCCSID)
@@ -630,6 +632,7 @@ export default class IBMi {
                 const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
                 if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
                   this.runtimeCcsid = systemCCSID.CURRENT_NUMERIC_VALUE;
+                  this.runtimeCcsidOrigin = CcsidOrigin.System;
                 }
               }
 
@@ -1286,7 +1289,8 @@ export default class IBMi {
 
   getCcsids() {
     return {
-      qccsid: this.runtimeCcsid,
+      origin: this.runtimeCcsidOrigin,
+      runtimeCcsid: this.runtimeCcsid,
       userDefaultCCSID: this.userDefaultCCSID
     };
   } 

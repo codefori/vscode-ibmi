@@ -36,6 +36,11 @@ export type ActionType = "member" | "streamfile" | "object" | "file";
 export type ActionRefresh = "no" | "parent" | "filter" | "browser";
 export type ActionEnvironment = "ile" | "qsh" | "pase";
 
+export enum CcsidOrigin {
+  User = "user",
+  System = "system",
+};
+
 export interface RemoteCommand {
   title?: string;
   command: string;
