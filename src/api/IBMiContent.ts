@@ -484,10 +484,12 @@ export default class IBMiContent {
       return true;
     });
 
+    const sanitized = Tools.sanitizeLibraryNames(newLibl);
+
     const result = await this.ibmi.sendQsh({
       command: [
         `liblist -d ` + Tools.sanitizeLibraryNames(this.ibmi.defaultUserLibraries).join(` `),
-        ...newLibl.map(lib => `liblist -a ` + Tools.sanitizeLibraryNames([lib]))
+        ...sanitized.map(lib => `liblist -a ` + lib)
       ].join(`; `)
     });
 
@@ -495,10 +497,13 @@ export default class IBMiContent {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `) || line.includes(`ibrary ${Tools.sanitizeLibraryNames([lib])} `));
+        const isNotFound = line.includes(`CPF2110`);
+        if (isNotFound) {
+          const libraryReference = sanitized.find(lib => line.includes(lib));
 
-        // If there is an error about the library, remove it
-        if (badLib) badLibs.push(badLib);
+          // If there is an error about the library, remove it
+          if (libraryReference) badLibs.push(libraryReference);
+        }
       });
     }
 
