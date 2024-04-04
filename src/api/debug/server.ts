@@ -158,7 +158,7 @@ export async function stopService(connection: IBMi) {
 export async function getDebugServiceJob() {
   const content = instance.getContent();
   if (content) {
-    const rows = await content.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${content.ibmi.config?.debugPort || 8005} fetch first row only)`);
+    const rows = await content.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${content.ibmi.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only)`);
     if (rows && rows.length) {
       return {
         name: String(rows[0].JOB_NAME),
