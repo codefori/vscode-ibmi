@@ -5,9 +5,10 @@ import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
+import { isSEPSupported } from "../../api/debug/server";
 import { instance } from "../../instantiate";
-import { ConnectionData, Server } from '../../typings';
 import { t } from "../../locale";
+import { ConnectionData, Server } from '../../typings';
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -175,9 +176,13 @@ export class SettingsUI {
         const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab
-            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-            .addInput(`debugSepPort`, `SEP debug port`, `Default secure port is <code>8008</code>. Tells the client which port the debug service for SEP is running on.`, { default: config.debugSepPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-            .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
+            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` });
+
+          if (await isSEPSupported()) {
+            debuggerTab.addInput(`debugSepPort`, `SEP debug port`, `Default secure port is <code>8008</code>. Tells the client which port the debug service for SEP is running on.`, { default: config.debugSepPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` });
+          }
+          
+          debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {

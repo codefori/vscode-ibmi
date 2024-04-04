@@ -15,6 +15,9 @@ import * as server from "./server";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
+const debugContext = 'code-for-ibmi:debug';
+const debugSEPContext = 'code-for-ibmi:debug.SEP';
+
 // These context values are used for walkthroughs only
 const ptfContext = `code-for-ibmi:debug.ptf`;
 const remoteCertContext = `code-for-ibmi:debug.remote`;
@@ -203,12 +206,7 @@ export async function initialize(context: ExtensionContext) {
     }
 
     return password;
-  }
-
-  const debugPTFInstalled = () => {
-    const connection = instance.getConnection();
-    return connection?.remoteFeatures[`startDebugService.sh`] !== undefined;
-  }
+  }  
 
   context.subscriptions.push(
     vscode.commands.registerCommand(`code-for-ibmi.debug.extension`, () => {
@@ -271,7 +269,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const ptfInstalled = debugPTFInstalled();
+        const ptfInstalled = server.debugPTFInstalled();
 
         if (ptfInstalled) {
           const remoteCertExists = await certificates.remoteServerCertificateExists(connection);
@@ -320,7 +318,7 @@ export async function initialize(context: ExtensionContext) {
       const connection = instance.getConnection();
 
       if (connection) {
-        const ptfInstalled = debugPTFInstalled();
+        const ptfInstalled = server.debugPTFInstalled();
 
         if (ptfInstalled) {
           let localCertsOk = false;
@@ -381,7 +379,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.start`, async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const ptfInstalled = debugPTFInstalled();
+        const ptfInstalled = server.debugPTFInstalled();
         if (ptfInstalled) {
           const remoteExists = await certificates.remoteServerCertificateExists(connection);
           if (remoteExists) {
@@ -425,7 +423,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.stop`, async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const ptfInstalled = debugPTFInstalled();
+        const ptfInstalled = server.debugPTFInstalled();
         if (ptfInstalled) {
           vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
             progress.report({ message: `Ending Debug Service` });
@@ -444,8 +442,14 @@ export async function initialize(context: ExtensionContext) {
     server.resetDebugServiceDetails()
     const connection = instance.getConnection();
     const content = instance.getContent();
-    if (connection && content && debugPTFInstalled()) {
+    if (connection && content && server.debugPTFInstalled()) {
       vscode.commands.executeCommand(`setContext`, ptfContext, true);
+
+      //Enable debug related commands
+      vscode.commands.executeCommand(`setContext`, debugContext, true);
+
+      //Enable service entry points related commands
+      vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
 
       if (!isManaged()) {
         const isSecure = connection.config!.debugIsSecure;
@@ -484,6 +488,11 @@ export async function initialize(context: ExtensionContext) {
         }
       }
     }
+  });
+
+  instance.onEvent("disconnected", () => {
+    vscode.commands.executeCommand(`setContext`, debugContext, false);
+    vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
   });
 
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());

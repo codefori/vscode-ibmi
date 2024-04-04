@@ -1616,7 +1616,7 @@
 				"title": "Toggle hidden files",
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
-				"icon": "$(shield)"			
+				"icon": "$(shield)"
 			},
 			{
 				"command": "code-for-ibmi.openDebugStatus",
@@ -1803,10 +1803,12 @@
 			],
 			"code-for-ibmi.debug.group": [
 				{
-					"command": "code-for-ibmi.debug.batch"
+					"command": "code-for-ibmi.debug.batch",
+					"when": "code-for-ibmi:debug"
 				},
 				{
-					"command": "code-for-ibmi.debug.sep"
+					"command": "code-for-ibmi.debug.sep",
+					"when": "code-for-ibmi:debug.SEP"
 				}
 			],
 			"commandPalette": [
@@ -2137,6 +2139,26 @@
 				{
 					"command": "code-for-ibmi.openDebugStatus",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.remote",
+					"when": "code-for-ibmi:debug"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.local",
+					"when": "code-for-ibmi:debug"
+				},
+				{
+					"command": "code-for-ibmi.debug.start",
+					"when": "code-for-ibmi:debug"
+				},
+				{
+					"command": "code-for-ibmi.debug.stop",
+					"when": "code-for-ibmi:debug"
+				},
+				{
+					"command": "code-for-ibmi.debug.endDebug",
+					"when": "code-for-ibmi:debug"
 				}
 			],
 			"view/title": [

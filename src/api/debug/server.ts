@@ -17,8 +17,13 @@ const JavaPaths: { [version: string]: string } = {
 }
 
 interface DebugServiceDetails {
-  version: string;
-  java: string;
+  version: string
+  java: string
+  semanticVersion: () => {
+    major: number
+    minor: number
+    patch: number
+  }
 }
 
 
@@ -40,7 +45,12 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
 
   debugServiceDetails = {
     version: `1.0.0`,
-    java: `8`
+    java: `8`,
+    semanticVersion: () => ({
+      major: 1,
+      minor: 0,
+      patch: 0
+    })
   };
 
   const detailFilePath = path.posix.join(directory, detailFile);
@@ -48,7 +58,18 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
   if (detailExists) {
     try {
       const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
-      debugServiceDetails = JSON.parse(fileContents);
+      const parsed = JSON.parse(fileContents);
+      debugServiceDetails = {
+        ...parsed as DebugServiceDetails,
+        semanticVersion: () => {
+          const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
+          return {
+            major: parts[0],
+            minor: parts[1],
+            patch: parts[2]
+          };
+        }
+      }
     } catch (e) {
       // Something very very bad has happened
       window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
@@ -56,7 +77,15 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
     }
   }
 
-  return debugServiceDetails!;
+  return debugServiceDetails;
+}
+
+export function debugPTFInstalled() {
+  return instance.getConnection()?.remoteFeatures[`startDebugService.sh`] !== undefined;
+}
+
+export async function isSEPSupported(){
+  return (await getDebugServiceDetails()).semanticVersion().major > 1;
 }
 
 export async function startService(connection: IBMi) {
