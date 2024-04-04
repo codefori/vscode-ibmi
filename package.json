@@ -1620,8 +1620,33 @@
 			},
 			{
 				"command": "code-for-ibmi.openDebugStatus",
-				"title": "Toggle hidden files",
-				"category": "IBM i"
+				"title": "Open debugger dashboard",
+				"category": "IBM i",
+				"icon":"$(dashboard)"
+			},
+			{
+				"command": "code-for-ibmi.debug.refresh",
+				"title": "Refresh",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.debug.job.start",
+				"title": "Start",
+				"category": "IBM i",
+				"icon": "$(debug-start)"
+			},
+			{
+				"command": "code-for-ibmi.debug.job.restart",
+				"title": "Restart",
+				"category": "IBM i",
+				"icon": "$(debug-restart)"
+			},
+			{
+				"command": "code-for-ibmi.debug.job.stop",
+				"title": "Stop",
+				"category": "IBM i",
+				"icon": "$(debug-stop)"
 			}
 		],
 		"keybindings": [
@@ -1691,7 +1716,7 @@
 				}
 			]
 		},
-		"views": {
+		"views": {			
 			"ibmi-explorer": [
 				{
 					"id": "helpView",
@@ -1741,6 +1766,13 @@
 					"id": "searchView",
 					"name": "Results",
 					"when": "code-for-ibmi:searchViewVisible"
+				}
+			],
+			"debug": [
+				{
+					"id": "ibmiDebugBrowser",
+					"name": "IBM i debugger",
+					"when": "code-for-ibmi:connected && code-for-ibmi:debug"
 				}
 			]
 		},
@@ -2159,6 +2191,10 @@
 				{
 					"command": "code-for-ibmi.debug.endDebug",
 					"when": "code-for-ibmi:debug"
+				},
+				{
+					"command": "code-for-ibmi.debug.refresh",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2286,6 +2322,16 @@
 					"command": "code-for-ibmi.collapseSearchView",
 					"group": "navigation@1",
 					"when": "view == searchView"
+				},
+				{
+					"command": "code-for-ibmi.openDebugStatus",
+					"group": "navigation@01",
+					"when": "view == ibmiDebugBrowser"
+				},
+				{
+					"command": "code-for-ibmi.debug.refresh",
+					"group": "navigation@99",
+					"when": "view == ibmiDebugBrowser"
 				}
 			],
 			"editor/title": [
@@ -2710,6 +2756,21 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.debug.job.start",
+					"when": "view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_off$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.job.restart",
+					"when": "view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.job.stop",
+					"when": "view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"group": "inline"
 				}
 			]
 		},

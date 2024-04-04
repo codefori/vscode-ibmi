@@ -84,7 +84,7 @@ export function debugPTFInstalled() {
   return instance.getConnection()?.remoteFeatures[`startDebugService.sh`] !== undefined;
 }
 
-export async function isSEPSupported(){
+export async function isSEPSupported() {
   return (await getDebugServiceDetails()).semanticVersion().major > 1;
 }
 
@@ -126,7 +126,7 @@ export async function startService(connection: IBMi) {
   while (!didNotStart && tries < 20) {
     if (await getDebugServiceJob()) {
       window.showInformationMessage(t("start.debug.service.succeeded"));
-      commands.executeCommand("code-for-ibmi.updateConnectedBar");
+      refreshDebugSensitiveItems();
       return true;
     }
     else {
@@ -147,7 +147,7 @@ export async function stopService(connection: IBMi) {
 
   if (!endResult.code) {
     window.showInformationMessage(t("stop.debug.service.succeeded"));
-    commands.executeCommand("code-for-ibmi.updateConnectedBar");
+    refreshDebugSensitiveItems();
     return true;
   } else {
     window.showErrorMessage(t("stop.debug.service.failed", endResult.stdout || endResult.stderr));
@@ -215,7 +215,7 @@ export async function startServer() {
       return false;
     }
     else {
-      commands.executeCommand("code-for-ibmi.updateConnectedBar");
+      refreshDebugSensitiveItems();
       window.showInformationMessage(t("strdbgsvr.succeeded"));
     }
   }
@@ -230,7 +230,7 @@ export async function stopServer() {
       return false;
     }
     else {
-      commands.executeCommand("code-for-ibmi.updateConnectedBar");
+      refreshDebugSensitiveItems();
       window.showInformationMessage(t("enddbgsvr.succeeded"));
     }
   }
@@ -239,4 +239,9 @@ export async function stopServer() {
 
 export function getServiceConfigurationFile() {
   return path.posix.join(binDirectory, "DebugService.env");
+}
+
+function refreshDebugSensitiveItems() {
+  commands.executeCommand("code-for-ibmi.updateConnectedBar");
+  commands.executeCommand("code-for-ibmi.debug.refresh");
 }

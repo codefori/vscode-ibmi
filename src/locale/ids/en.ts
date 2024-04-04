@@ -385,5 +385,7 @@ export const en: Locale = {
   'stop.debug.service.succeeded': 'Debug service stopped.',
   'stop.debug.service.failed': 'Failed to stop debug service: {0}',
   'open.service.configuration': 'Open configuration',
-  'detail.reading.error':'Failed to read debug service detail file {0}: {1}'
+  'detail.reading.error': 'Failed to read debug service detail file {0}: {1}',
+  'start.debug.server.task': 'Starting debug server...',
+  'stop.debug.server.task': 'Stopping debug server...'
 };
