@@ -1,6 +1,5 @@
 import path from "path";
 import { commands, window } from "vscode";
-
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import IBMi from "../IBMi";
@@ -8,8 +7,51 @@ import IBMiContent from "../IBMiContent";
 import { Tools } from "../Tools";
 import * as certificates from "./certificates";
 
-const serverDirectory = `/QIBM/ProdData/IBMiDebugService/bin/`;
-const MY_JAVA_HOME = `MY_JAVA_HOME="/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit"`;
+const directory = `/QIBM/ProdData/IBMiDebugService/`;
+const binDirectory = path.posix.join(directory, `bin`);
+const detailFile = `package.json`;
+
+const JavaPaths: { [version: string]: string } = {
+  "8": `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`,
+  "11": `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`
+}
+
+interface DebugServiceDetails {
+  version: string;
+  java: string;
+}
+
+let debugServiceDetails: DebugServiceDetails | undefined;
+export function resetDebugServiceDetails() {
+  debugServiceDetails = undefined;
+}
+
+export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
+  const content = instance.getContent()!;
+  if (debugServiceDetails) {
+    return debugServiceDetails;
+  }
+
+  debugServiceDetails = {
+    version: `1.0.0`,
+    java: `8`
+  };
+
+  const detailFilePath = path.posix.join(directory, detailFile);
+  const detailExists = await content.testStreamFile(detailFile, "r");
+  if (detailExists) {    
+    try {
+      const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
+      debugServiceDetails = JSON.parse(fileContents);
+    } catch (e) {
+      // Something very very bad has happened
+      window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
+      console.log(e);
+    }
+  }
+
+  return debugServiceDetails!;
+}
 
 export type DebugJob = {
   name: string
@@ -17,31 +59,32 @@ export type DebugJob = {
 }
 
 export async function startService(connection: IBMi) {
-  const host = connection.currentHost;
+  const config = connection.config!;
 
+  const env = {
+    MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java],
+    MY_DBGSRV_SEP_DAEMON_PORT: config.debugSepPort,
+    MY_DBGSRV_SECURED_PORT: config.debugPort,
+    DEBUG_SERVICE_KEYSTORE_PASSWORD: connection.currentHost,
+    DEBUG_SERVICE_KEYSTORE_FILE: certificates.getRemoteServerCertificatePath(connection)
+  }
   const encryptResult = await connection.sendCommand({
-    command: `${path.posix.join(serverDirectory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
-    env: {
-      DEBUG_SERVICE_KEYSTORE_PASSWORD: host,
-      MY_JAVA_HOME: "/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit"
-    }
+    command: `${path.posix.join(binDirectory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
+    env
   });
 
-  if ((encryptResult.code || 0) >= 1) {
-    // Usually means it failed.
+  if (encryptResult.code === 0) {
+    env.DEBUG_SERVICE_KEYSTORE_PASSWORD = encryptResult.stdout;
+  } else {
     // Nice error text comes through as stdout.
     // Real error comes through in stderr.
-
     throw new Error(encryptResult.stdout || encryptResult.stderr);
   }
 
-  const password = encryptResult.stdout;
-
-  const keystorePath = certificates.getRemoteServerCertificatePath(connection);
-
   let didNotStart = false;
   connection.sendCommand({
-    command: `${MY_JAVA_HOME} DEBUG_SERVICE_KEYSTORE_PASSWORD="${password}" DEBUG_SERVICE_KEYSTORE_FILE="${keystorePath}" /QOpenSys/usr/bin/nohup "${path.posix.join(serverDirectory, `startDebugService.sh`)}"`
+    command: `/QOpenSys/usr/bin/nohup "${path.posix.join(binDirectory, `startDebugService.sh`)}"`,
+    env
   }).then(startResult => {
     if (startResult.code) {
       window.showErrorMessage(t("start.debug.service.failed", startResult.stdout || startResult.stderr));
@@ -61,13 +104,15 @@ export async function startService(connection: IBMi) {
       tries++;
     }
   }
-
   return false;
 }
 
 export async function stopService(connection: IBMi) {
   const endResult = await connection.sendCommand({
-    command: `${MY_JAVA_HOME} ${path.posix.join(serverDirectory, `stopDebugService.sh`)}`
+    command: `${path.posix.join(binDirectory, `stopDebugService.sh`)}`,
+    env: {
+      MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
+    }
   });
 
   if (!endResult.code) {
@@ -158,6 +203,6 @@ export async function stopServer() {
   return true;
 }
 
-export function getServiceConfigurationFile(){
-  return path.posix.join(serverDirectory, "DebugService.env");
+export function getServiceConfigurationFile() {
+  return path.posix.join(binDirectory, "DebugService.env");
 }

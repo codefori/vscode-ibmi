@@ -375,9 +375,14 @@
 								"default": "8005",
 								"description": "Port to connect to IBM i Debug Service."
 							},
+							"debugSepPort": {
+								"type": "string",
+								"default": "8008",
+								"description": "Port to connect to IBM i Debug Service for SEP."
+							},
 							"debugIsSecure": {
 								"type": "boolean",
-								"default": false,
+								"default": true,
 								"description": "Used to determine if the client should connect securely or not."
 							},
 							"debugUpdateProductionFiles": {
@@ -956,16 +961,17 @@
 				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
-				"command": "code-for-ibmi.debug.activeEditor",
-				"title": "Start Debugging Active Source",
+				"command": "code-for-ibmi.debug.batch",
+				"title": "Debug as Batch",
 				"category": "IBM i",
 				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
-				"command": "code-for-ibmi.debug.program",
-				"title": "Debug Program",
+				"command": "code-for-ibmi.debug.sep",
+				"title": "Set Service Entry Point",
 				"category": "IBM i",
+				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
@@ -1754,6 +1760,11 @@
 			{
 				"id": "code-for-ibmi.openMember",
 				"label": "Open"
+			},
+			{
+				"id": "code-for-ibmi.debug.group",
+				"label": "Start Debugging",
+				"icon": "$(debug-start)"
 			}
 		],
 		"menus": {
@@ -1788,6 +1799,14 @@
 				{
 					"command": "code-for-ibmi.edit",
 					"when": "viewItem == member"
+				}
+			],
+			"code-for-ibmi.debug.group": [
+				{
+					"command": "code-for-ibmi.debug.batch"
+				},
+				{
+					"command": "code-for-ibmi.debug.sep"
 				}
 			],
 			"commandPalette": [
@@ -2052,7 +2071,11 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.debug.program",
+					"command": "code-for-ibmi.debug.batch",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.sep",
 					"when": "never"
 				},
 				{
@@ -2245,7 +2268,7 @@
 			],
 			"editor/title": [
 				{
-					"command": "code-for-ibmi.debug.activeEditor",
+					"submenu": "code-for-ibmi.debug.group",
 					"when": "code-for-ibmi:connected && !inDebugMode && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
 					"group": "navigation@1"
 				},
@@ -2447,8 +2470,8 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.debug.program",
-					"when": "view == objectBrowser && !inDebugMode && viewItem =~ /^object.pgm.*/",
+					"submenu": "code-for-ibmi.debug.group",
+					"when": "view == objectBrowser && !inDebugMode && (viewItem =~ /^object.pgm.*/ || viewItem =~ /^object.srvpgm.*/)",
 					"group": "2_debug@1"
 				},
 				{
