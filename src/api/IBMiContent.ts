@@ -502,7 +502,9 @@ export default class IBMiContent {
           const libraryReference = sanitized.find(lib => line.includes(lib));
 
           // If there is an error about the library, remove it
-          if (libraryReference) badLibs.push(libraryReference);
+          if (libraryReference) {
+            badLibs.push(libraryReference);
+          }
         }
       });
     }
