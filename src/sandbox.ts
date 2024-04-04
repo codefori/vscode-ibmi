@@ -1,7 +1,7 @@
 import { env } from "process";
 import querystring from "querystring";
 import { commands, ExtensionContext, Uri, window } from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "./api/Configuration";
 import { Tools } from "./api/Tools";
 import { instance } from "./instantiate";
 import { t } from "./locale";
@@ -62,21 +62,11 @@ export async function registerUriHandler(context: ExtensionContext) {
                     await initialSetup(connectionData.username);
 
                     if (save) {
-                      let existingConnections: ConnectionData[] | undefined = GlobalConfiguration.get(`connections`);
+                      const existingConnection = ConnectionManager.getByName(connectionData.name);
 
-                      if (existingConnections) {
-                        const existingConnection = existingConnections.find(item => item.name === host);
-
-                        if (!existingConnection) {
-                          // New connection!
-                          existingConnections.push({
-                            ...connectionData,
-                            password: undefined, // Removes the password from the object
-                          });
-
-                          await context.secrets.store(`${host}_password`, pass);
-                          await GlobalConfiguration.set(`connections`, existingConnections);
-                        }
+                      if (!existingConnection) {
+                        // New connection!
+                        await ConnectionManager.storeNew(connectionData);
                       }
                     }
 

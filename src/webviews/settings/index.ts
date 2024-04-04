@@ -1,5 +1,5 @@
 import vscode from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { ConnectionManager, ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
@@ -307,21 +307,20 @@ export class SettingsUI {
 
       vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server?: Server) => {
         if (server) {
-          const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`);
           const name = server.name;
 
-          if (connections) {
-            const connectionIdx = connections.findIndex(item => item.name === name);
-            let connection = connections[connectionIdx];
-            const storedPassword = await context.secrets.get(`${name}_password`);
+          const connection = ConnectionManager.getByName(name);
+          if (connection) {
+            const storedPassword = await ConnectionManager.getStoredPassword(context, name);
+            let { data: stored, index } = connection;
 
             const page = await new CustomUI()
-              .addInput(`host`, t(`login.host`), undefined, { default: connection.host, minlength: 1 })
-              .addInput(`port`, t(`login.port`), undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-              .addInput(`username`, t(`username`), undefined, { default: connection.username, minlength: 1 })
+              .addInput(`host`, t(`login.host`), undefined, { default: stored.host, minlength: 1 })
+              .addInput(`port`, t(`login.port`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`username`, t(`username`), undefined, { default: stored.username, minlength: 1 })
               .addParagraph(t(`login.authDecision`))
               .addPassword(`password`, `${t(`password`)}${storedPassword ? ` (${t(`stored`)})` : ``}`, t(`login.password.label`))
-              .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (${t(`current`)}: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
+              .addFile(`privateKeyPath`, `${t(`privateKey`)}${stored.privateKeyPath ? ` (${t(`current`)}: ${stored.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
               .addButtons(
                 { id: `submitButton`, label: t(`save`), requiresValidation: true },
                 { id: `removeAuth`, label: t(`login.removeAuth`) }
@@ -381,8 +380,8 @@ export class SettingsUI {
                 delete data.password;
                 delete data.buttons;
 
-                connections[connectionIdx] = Object.assign(connection, data);
-                await GlobalConfiguration.set(`connections`, connections);
+                stored = Object.assign(stored, data);
+                await ConnectionManager.updateByIndex(index, stored);
               }
             }
           }
