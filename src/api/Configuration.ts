@@ -1,6 +1,6 @@
 import os from "os";
 import * as vscode from 'vscode';
-import { DeploymentMethod } from '../typings';
+import { ConnectionData, DeploymentMethod } from '../typings';
 import { FilterType } from './Filter';
 import { DEFAULT_CERT_DIRECTORY } from "./debug/certificates";
 
@@ -28,6 +28,79 @@ export namespace GlobalConfiguration {
   export function set(key: string, value: any) {
     return getConfiguration().update(key, value, vscode.ConfigurationTarget.Global);
   }  
+}
+
+export interface StoredConnection {
+  index: number,
+  data: ConnectionData
+};
+
+export namespace ConnectionManager {
+  export function getByName(name: string): StoredConnection | undefined {
+    const connections = getAll();
+    if (connections) {
+      const index = connections.findIndex(conn => conn.name === name);
+      if (index !== -1) {
+        return { index, data: connections[index] };
+      }
+    }
+  }
+
+  export function sort() {
+    const connections = getAll();
+    connections.sort((a, b) => a.name.localeCompare(b.name));
+    return GlobalConfiguration.set(`connections`, connections);
+  }
+
+  export function getAll(): ConnectionData[] {
+    return GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+  }
+
+  function setAll(connections: ConnectionData[]) {
+    return GlobalConfiguration.set(`connections`, connections);
+  }
+
+  export async function storeNew(data: ConnectionData): Promise<StoredConnection> {
+    let connections = getAll();
+    const newId = connections.length;
+    connections.push(data);
+    await setAll(connections);
+    return { index: newId, data };
+  }
+
+  export function deleteByName(name: string) {
+    const connections = getAll();
+    const index = connections.findIndex(conn => conn.name === name);
+    if (index !== -1) {
+      connections.splice(index, 1);
+      return setAll(connections);
+    }
+  }
+
+  export function updateByIndex(index: number, data: ConnectionData) {
+    const connections = getAll();
+    connections[index] = data;
+
+    // Remove possible password from any connection
+    connections.forEach(conn => delete conn.password);
+
+    return GlobalConfiguration.set(`connections`, connections);
+  }
+
+  export function getStoredPassword(context: vscode.ExtensionContext, connectionName: string) {
+    const connectionKey = `${connectionName}_password`;
+    return context.secrets.get(connectionKey);
+  }
+
+  export function setStoredPassword(context: vscode.ExtensionContext, connectionName: string, password: string) {
+    const connectionKey = `${connectionName}_password`;
+    return context.secrets.store(connectionKey, password);
+  }
+
+  export function deleteStoredPassword(context: vscode.ExtensionContext, connectionName: string) {
+    const connectionKey = `${connectionName}_password`;
+    return context.secrets.delete(connectionKey);
+  }
 }
 
 export namespace ConnectionConfiguration {
