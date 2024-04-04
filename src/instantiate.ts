@@ -3,7 +3,7 @@ import { Tools } from './api/Tools';
 import path, { dirname } from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
-import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
@@ -639,8 +639,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
-            const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
-            const storedPassword = await context.secrets.get(connectionKey);
+            const storedPassword = await ConnectionManager.getStoredPassword(context, instance.getConnection()!.currentConnectionName);
 
             if (storedPassword) {
               let isAuthed = storage.getExtensionAuthorisation(extension) !== undefined;

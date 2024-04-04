@@ -12,6 +12,7 @@ import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
 import * as server from "./server";
 import { debug } from "console";
+import { ConnectionManager } from "../Configuration";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -186,7 +187,7 @@ export async function initialize(context: ExtensionContext) {
   const getPassword = async () => {
     const connection = instance.getConnection();
 
-    let password = await context.secrets.get(`${connection!.currentConnectionName}_password`);
+    let password = await ConnectionManager.getStoredPassword(context, connection!.currentConnectionName);
 
     if (!password) {
       password = temporaryPassword;

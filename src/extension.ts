@@ -69,7 +69,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         }
 
         if (savePassword && connectionData.password) {
-          await context.secrets.store(`${connectionData.name}_password`, `${connectionData.password}`);
+          await ConnectionManager.setStoredPassword(context, connectionData.name, connectionData.password);
         }
 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;

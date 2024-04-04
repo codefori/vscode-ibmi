@@ -341,7 +341,7 @@ export class SettingsUI {
                   if (data.password) {
                     // New password was entered, so store the password
                     // and remove the private key path from the data
-                    await context.secrets.store(`${name}_password`, `${data.password}`);
+                    await ConnectionManager.setStoredPassword(context, name, data.password);
                     data.privateKeyPath = undefined;
 
                     vscode.window.showInformationMessage(t(`login.password.updated`, name));
@@ -353,7 +353,7 @@ export class SettingsUI {
                     // then remove the password from the data and
                     // use the keypath instead
                     if (data.privateKeyPath?.trim()) {
-                      await context.secrets.delete(`${name}_password`);
+                      await ConnectionManager.deleteStoredPassword(context, name);
 
                       vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
 
@@ -363,7 +363,7 @@ export class SettingsUI {
                   break;
 
                 case `removeAuth`:
-                  await context.secrets.delete(`${name}_password`);
+                  await ConnectionManager.deleteStoredPassword(context, name);
                   data.password = undefined;
                   data.privateKeyPath = undefined;
 

@@ -112,7 +112,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             const cachedConnectionSettings = GlobalStorage.get().getServerSettingsCache(server.name);
 
             // Then get the password key
-            const secret = await context.secrets.get(`${server.name}_password`);
+            const secret = await ConnectionManager.getStoredPassword(context, server.name);
 
             // No errors - update the settings.
             await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
@@ -230,9 +230,9 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           connectionSettings.push(newConnectionSetting);
           await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
 
-          const password = await context.secrets.get(`${server.name}_password`);
+          const password = await ConnectionManager.getStoredPassword(context, server.name);
           if (password) {
-            await context.secrets.store(`${newConnectionName}_password`, password);
+            await ConnectionManager.setStoredPassword(context, newConnectionName, password);
           }
 
           connectionBrowser.refresh();
