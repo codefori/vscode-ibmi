@@ -360,10 +360,11 @@ export const ContentSuite: TestSuite = {
       name: `Test validateLibraryList`, test: async () => {
         const content = instance.getContent();
 
-        const badLibs = await content?.validateLibraryList([`QSYSINC`, `BEEPBOOP`]);
+        const badLibs = await content?.validateLibraryList([`SCOOBY`, `QSYSINC`, `BEEPBOOP`]);
 
         assert.strictEqual(badLibs?.includes(`BEEPBOOP`), true);
         assert.strictEqual(badLibs?.includes(`QSYSINC`), false);
+        assert.strictEqual(badLibs?.includes(`SCOOBY`), true);
       }
     },
 
