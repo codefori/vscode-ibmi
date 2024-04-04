@@ -51,6 +51,7 @@ export const fr: Locale = {
   'restart': 'Redémarrer',
   'stop': 'Arrêter',
   'listening.on.port': 'Écoute sur le port',
+  'listening.on.ports': 'Écoute sur les ports',
   'overview': 'Aperçu',
   'JOB_NAME_SHORT': 'Nom du job',
   'JOB_USER': 'Utilisateur',
@@ -360,7 +361,7 @@ export const fr: Locale = {
   'actions.workAction.runOnProtected': 'Exécuter en mode protégé/lecture seule',
   'actions.workAction.runOnProtected.description': `Autorise l'exécution de cette action sur des cibles protégés ou en lecture seule`,
   //Debugger  
-  'debugger.status': 'Status du débogueur',
+  'debugger.status': 'Status du débogueur {0}',
   'loading.debugger.info': 'Chargement du status du débogueur...',
   'debug.server': 'Serveur de débogage',
   'debug.service': 'Service de débogage',

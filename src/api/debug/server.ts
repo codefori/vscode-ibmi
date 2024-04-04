@@ -21,6 +21,12 @@ interface DebugServiceDetails {
   java: string;
 }
 
+
+export type DebugJob = {
+  name: string
+  ports: number[]
+}
+
 let debugServiceDetails: DebugServiceDetails | undefined;
 export function resetDebugServiceDetails() {
   debugServiceDetails = undefined;
@@ -39,7 +45,7 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
 
   const detailFilePath = path.posix.join(directory, detailFile);
   const detailExists = await content.testStreamFile(detailFile, "r");
-  if (detailExists) {    
+  if (detailExists) {
     try {
       const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
       debugServiceDetails = JSON.parse(fileContents);
@@ -51,11 +57,6 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
   }
 
   return debugServiceDetails!;
-}
-
-export type DebugJob = {
-  name: string
-  port: number
 }
 
 export async function startService(connection: IBMi) {
@@ -128,23 +129,27 @@ export async function stopService(connection: IBMi) {
 export async function getDebugServiceJob() {
   const content = instance.getContent();
   if (content) {
-    return rowToDebugJob(
-      (await content.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where local_port = ${content.ibmi.config?.debugPort || 8005} fetch first row only`)).at(0)
-    );
+    const rows = await content.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${content.ibmi.config?.debugPort || 8005} fetch first row only)`);
+    if (rows && rows.length) {
+      return {
+        name: String(rows[0].JOB_NAME),
+        ports: rows.map(row => Number(row.LOCAL_PORT)).sort()
+      } as DebugJob;
+    }
   }
 }
 
 export async function getDebugServerJob() {
   const content = instance.getContent();
   if (content) {
-    return rowToDebugJob(
-      (await content.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`)).at(0)
-    );
+    const [row] = await content.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`);
+    if (row) {
+      return {
+        name: String(row.JOB_NAME),
+        ports: [Number(row.LOCAL_PORT)]
+      } as DebugJob;
+    }
   }
-}
-
-function rowToDebugJob(row?: Tools.DB2Row): DebugJob | undefined {
-  return row?.JOB_NAME ? { name: String(row.JOB_NAME), port: Number(row.LOCAL_PORT) } : undefined;
 }
 
 /**

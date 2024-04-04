@@ -51,6 +51,7 @@ export const da: Locale = {
   'restart': 'Restart',
   'stop': 'Stop',
   'listening.on.port': 'Listening on port',
+  'listening.on.ports': 'Listening on ports',
   'overview': 'Overview',
   'JOB_NAME_SHORT': 'Job name',
   'JOB_USER': 'Job user',
@@ -360,7 +361,7 @@ export const da: Locale = {
   'actions.workAction.runOnProtected': 'Må afvikles på sikret/skrive-beskyttet',
   'actions.workAction.runOnProtected.description': 'Tillader afvikling af denne aktion på sikrede eller skrive-beskyttede mål',
   //Debugger  
-  'debugger.status': 'Debugger Status',
+  'debugger.status': 'Debugger {0} Status',
   'loading.debugger.info': 'Loading debugger information...',
   'debug.server': 'Debug Server',
   'debug.service': 'Debug Service',

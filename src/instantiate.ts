@@ -7,7 +7,7 @@ import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeFo
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
-import { isDebugEngineRunning } from './api/debug/server';
+import { getDebugServiceDetails, isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
@@ -745,7 +745,7 @@ async function updateConnectedBar() {
     `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
     `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
     `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
-    `[$(${debugRunning ? "bug" : "debug"}) Debugger (${debugRunning ? "on" : "off"})](command:code-for-ibmi.openDebugStatus)`,
+    `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:code-for-ibmi.openDebugStatus)`,
   ].join(`\n\n---\n\n`), true);
   connectedBarItem.tooltip.isTrusted = true;
 }

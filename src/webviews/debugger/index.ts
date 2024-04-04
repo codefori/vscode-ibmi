@@ -5,7 +5,7 @@ import IBMiContent from "../../api/IBMiContent";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists, setup } from "../../api/debug/certificates";
-import { DebugJob, getDebugServerJob, getDebugServiceJob, getServiceConfigurationFile, startServer, startService, stopServer, stopService } from "../../api/debug/server";
+import { DebugJob, getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, getServiceConfigurationFile, startServer, startService, stopServer, stopService } from "../../api/debug/server";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 
@@ -19,6 +19,7 @@ export async function openDebugStatusPanel() {
   const config = instance.getConfig()
   const connection = instance.getConnection();
   if (content && config && connection) {
+    const debuggerDetails =await getDebugServiceDetails();
     const debbuggerInfo = await vscode.window.withProgress({ title: t("loading.debugger.info"), location: vscode.ProgressLocation.Notification }, async () => {
       const serverJob = await getDebugServerJob();
       const activeServerJob = serverJob ? await readActiveJob(content, serverJob) : undefined;
@@ -66,7 +67,7 @@ export async function openDebugStatusPanel() {
         <li>${t("status")}: ${debbuggerInfo.server ? t("online") : t("offline")}</li>
         ${debbuggerInfo.server ? /* html */ `
         <li>${t("job")}: ${debbuggerInfo.server.job.name}</li>
-        <li>${t("listening.on.port")}: ${debbuggerInfo.server.job.port}</li>`
+        <li>${t("listening.on.port")}: ${debbuggerInfo.server.job.ports[0]}</li>`
           : ""
         }
     </ul>`)
@@ -80,7 +81,7 @@ export async function openDebugStatusPanel() {
         <li>${t("status")}: ${debbuggerInfo.service ? t("online") : t("offline")} </li>
             ${debbuggerInfo.service ? /* html */ `
             <li>${t("job")}: ${debbuggerInfo.service.job.name}</li>
-            <li>${t("listening.on.port")}: ${debbuggerInfo.service.job.port}</li>
+            <li>${t("listening.on.ports")}: ${debbuggerInfo.service.job.ports.join(", ")}</li>
             `
           : ""
         }        
@@ -135,7 +136,7 @@ export async function openDebugStatusPanel() {
 
     new CustomUI()
       .addComplexTabs(tabs)
-      .loadPage<DebuggerPage>(t('debugger.status'), handleAction);
+      .loadPage<DebuggerPage>(t('debugger.status', debuggerDetails.version), handleAction);
   }
 }
 

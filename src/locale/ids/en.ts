@@ -51,6 +51,7 @@ export const en: Locale = {
   'restart': 'Restart',
   'stop': 'Stop',
   'listening.on.port': 'Listening on port',
+  'listening.on.ports': 'Listening on ports',
   'overview': 'Overview',
   'JOB_NAME_SHORT': 'Job name',
   'JOB_USER': 'Job user',
@@ -360,7 +361,7 @@ export const en: Locale = {
   'actions.workAction.runOnProtected': 'Run on protected/read only',
   'actions.workAction.runOnProtected.description': 'Allows the execution of this Action on protected or read only targets',
   //Debugger  
-  'debugger.status': 'Debugger Status',
+  'debugger.status': 'Debugger {0} Status',
   'loading.debugger.info': 'Loading debugger information...',
   'debug.server': 'Debug Server',
   'debug.service': 'Debug Service',
