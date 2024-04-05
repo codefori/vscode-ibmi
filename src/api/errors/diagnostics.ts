@@ -105,7 +105,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
   }
 }
 
-export async function handleEvfeventLines(lines: string[], instance: Instance, evfeventInfo: EvfEventInfo) {
+export function handleEvfeventLines(lines: string[], instance: Instance, evfeventInfo: EvfEventInfo) {
   const connection = instance.getConnection();
   const config = instance.getConfig();
   const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
@@ -151,29 +151,35 @@ export async function handleEvfeventLines(lines: string[], instance: Instance, e
           const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceFolder);
           const deployPathIndex = file.toLowerCase().indexOf(workspaceDeployPath.toLowerCase());
         
-          let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : file);
+          let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
 
-          if (connection) {
-            // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
-            const aspNames = Object.values(connection.aspInfo);
-            for (const aspName of aspNames) {
-              const aspRoot = `/${aspName}`;
-              if (relativeCompilePath.startsWith(aspRoot)) {
-                relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
-                break;
+          if (relativeCompilePath) {
+
+            if (connection) {
+              // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
+              const aspNames = Object.values(connection.aspInfo);
+              for (const aspName of aspNames) {
+                const aspRoot = `/${aspName}`;
+                if (relativeCompilePath.startsWith(aspRoot)) {
+                  relativeCompilePath = relativeCompilePath.substring(aspRoot.length);
+                  break;
+                }
               }
             }
-          }
 
-          const diagnosticTargetFile = vscode.Uri.joinPath(workspaceFolder.uri, relativeCompilePath);
+            const diagnosticTargetFile = vscode.Uri.joinPath(workspaceFolder.uri, relativeCompilePath);
 
-          if (diagnosticTargetFile !== undefined) {
-            ileDiagnostics.set(diagnosticTargetFile, diagnostics);
-          } else {
-            vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
+            if (diagnosticTargetFile !== undefined) {
+              ileDiagnostics.set(diagnosticTargetFile, diagnostics);
+            } else {
+              vscode.window.showWarningMessage("Couldn't show compile error(s) in problem view.");
+            }
+            continue;
           }
         }
-      } else {
+      }
+
+      {
         if (file.startsWith(`/`))
           ileDiagnostics.set(Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
         else {
