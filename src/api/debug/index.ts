@@ -206,7 +206,7 @@ export async function initialize(context: ExtensionContext) {
     }
 
     return password;
-  }  
+  }
 
   context.subscriptions.push(
     vscode.commands.registerCommand(`code-for-ibmi.debug.extension`, () => {
@@ -257,12 +257,10 @@ export async function initialize(context: ExtensionContext) {
               vscode.window.showErrorMessage(`Failed to determine object type. Ensure the object exists and is a program (*PGM) or service program (*SRVPGM).`);
             }
           }
-        } else
-          if ('object' in node) {
-            const { library, name, type } = node.object
-
-            startDebugging(debugType, type as DebugObjectType, library, name);
-          }
+        } else {
+          const { library, name, type } = node.object
+          startDebugging(debugType, type as DebugObjectType, library, name);
+        }
       }
     }),
 
