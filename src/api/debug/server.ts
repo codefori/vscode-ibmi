@@ -4,7 +4,6 @@ import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import IBMi from "../IBMi";
 import IBMiContent from "../IBMiContent";
-import { Tools } from "../Tools";
 import * as certificates from "./certificates";
 
 const directory = `/QIBM/ProdData/IBMiDebugService/`;
@@ -122,19 +121,23 @@ export async function startService(connection: IBMi) {
     }
   });
 
-  let tries = 0;
-  while (!didNotStart && tries < 20) {
-    if (await getDebugServiceJob()) {
-      window.showInformationMessage(t("start.debug.service.succeeded"));
-      refreshDebugSensitiveItems();
-      return true;
-    }
-    else {
-      await Tools.sleep(500);
-      tries++;
-    }
-  }
-  return false;
+
+  return await new Promise<boolean>(async (done) => {
+    let tries = 0;
+    const intervalId = setInterval(async () => {
+      if (!didNotStart && tries++ < 20) {
+        if (await getDebugServiceJob()) {
+          clearInterval(intervalId);
+          window.showInformationMessage(t("start.debug.service.succeeded"));
+          refreshDebugSensitiveItems();
+          done(true);
+        }
+      } else {
+        clearInterval(intervalId);
+        done(false);
+      }
+    }, 500);
+  });
 }
 
 export async function stopService(connection: IBMi) {
