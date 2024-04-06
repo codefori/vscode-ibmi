@@ -125,7 +125,7 @@ export async function startService(connection: IBMi) {
   return await new Promise<boolean>(async (done) => {
     let tries = 0;
     const intervalId = setInterval(async () => {
-      if (!didNotStart && tries++ < 20) {
+      if (!didNotStart && tries++ < 15) {
         if (await getDebugServiceJob()) {
           clearInterval(intervalId);
           window.showInformationMessage(t("start.debug.service.succeeded"));
@@ -136,7 +136,7 @@ export async function startService(connection: IBMi) {
         clearInterval(intervalId);
         done(false);
       }
-    }, 500);
+    }, 1000);
   });
 }
 
@@ -244,7 +244,7 @@ export function getServiceConfigurationFile() {
   return path.posix.join(binDirectory, "DebugService.env");
 }
 
-function refreshDebugSensitiveItems() {
+export function refreshDebugSensitiveItems() {
   commands.executeCommand("code-for-ibmi.updateConnectedBar");
   commands.executeCommand("code-for-ibmi.debug.refresh");
 }

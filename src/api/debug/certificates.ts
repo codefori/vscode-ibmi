@@ -86,7 +86,7 @@ export async function remoteServerCertificateExists(connection: IBMi, legacy = f
 }
 
 /**
- * Generate all certifcates on the server
+ * Generate debug service certifciate
  */
 export async function setup(connection: IBMi) {
   const pw = getPasswordForHost(connection);

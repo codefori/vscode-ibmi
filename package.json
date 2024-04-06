@@ -940,13 +940,15 @@
 				"command": "code-for-ibmi.debug.setup.remote",
 				"title": "Setup Service Certificate",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true",
+				"icon": "$(file-binary)"
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
 				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
+				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true",
+				"icon":"$(desktop-download)"
 			},
 			{
 				"command": "code-for-ibmi.debug.start",
@@ -2770,6 +2772,16 @@
 				{
 					"command": "code-for-ibmi.debug.job.stop",
 					"when": "view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.remote",
+					"when": "view == ibmiDebugBrowser && viewItem === certificateIssue_noremote",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.local",
+					"when": "view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_(nolocal|dontmatch)$/",
 					"group": "inline"
 				}
 			]

@@ -387,5 +387,9 @@ export const en: Locale = {
   'open.service.configuration': 'Open configuration',
   'detail.reading.error': 'Failed to read debug service detail file {0}: {1}',
   'start.debug.server.task': 'Starting debug server...',
-  'stop.debug.server.task': 'Stopping debug server...'
+  'stop.debug.server.task': 'Stopping debug server...',
+  'remote.certificate.not.found': 'Remote certificate not found',
+  'remote.certificate.not.found.detail': '<code>{0}</code> not found under {1}',
+  'local.certificate.not.found': 'Local certificate not found',
+  'local.dont.match.remote': 'Local certificate don\'t match remote'
 };

@@ -1,10 +1,23 @@
+import { readFileSync } from "fs";
 import vscode from "vscode";
+import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists } from "../api/debug/certificates";
 import { DebugJob, getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, isDebugEngineRunning, startServer, startService, stopServer, stopService } from "../api/debug/server";
 import { instance } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem } from "../typings";
 
 const title = "IBM i debugger";
+type Certificates = {
+  secureDebug: boolean
+  remoteCertificate?: string,
+  localCertificate?: string
+}
+
+type CertificateIssue = {
+  label: string
+  detail?: string
+  context: string
+}
 
 export function initializeDebugBrowser(context: vscode.ExtensionContext) {
   const debugBrowser = new DebugBrowser();
@@ -40,7 +53,7 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
   );
 }
 
-class DebugBrowser implements vscode.TreeDataProvider<DebugItem> {
+class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private readonly _emitter: vscode.EventEmitter<DebugItem | undefined | null | void> = new vscode.EventEmitter();
   readonly onDidChangeTreeData: vscode.Event<DebugItem | undefined | null | void> = this._emitter.event;
 
@@ -52,9 +65,24 @@ class DebugBrowser implements vscode.TreeDataProvider<DebugItem> {
     return element;
   }
 
-  async getChildren(): Promise<DebugItem[]> {
+  async getChildren(item?: DebugItem) {
+    return item?.getChildren?.() || this.getRootItems();    
+  }
+
+  private async getRootItems(){
     const connection = instance.getConnection();
     if (connection) {
+      const certificates: Certificates = {
+        secureDebug: connection.config?.debugIsSecure || false
+      };
+
+      if (await remoteServerCertificateExists(connection)) {
+        certificates.remoteCertificate = await readRemoteCertificate(connection);
+        if (certificates.secureDebug && await localClientCertExists(connection)) {
+          certificates.localCertificate = readFileSync(getLocalCertPath(connection)).toString("utf-8");
+        }
+      }
+
       return [
         new DebugJobItem("server",
           t("debug.server"),
@@ -66,14 +94,16 @@ class DebugBrowser implements vscode.TreeDataProvider<DebugItem> {
           t("debug.service"),
           () => startService(connection),
           () => stopService(connection),
-          await getDebugServiceJob()
-        )
+          await getDebugServiceJob(),
+          certificates
+        ),
+        //new LocalCertificateItem("")
       ];
     }
-    else {
+    else{
       return [];
     }
-  }
+  }  
 }
 
 class DebugItem extends BrowserItem {
@@ -83,20 +113,56 @@ class DebugItem extends BrowserItem {
 }
 
 class DebugJobItem extends DebugItem {
-  constructor(readonly type: "server" | "service", label: string, readonly startFunction: () => Promise<boolean>, readonly stopFunction: () => Promise<boolean>, readonly debugJob?: DebugJob) {
-    const running = debugJob !== undefined;
+  private problem: undefined | CertificateIssue;
+
+  constructor(readonly type: "server" | "service", label: string, readonly startFunction: () => Promise<boolean>, readonly stopFunction: () => Promise<boolean>, readonly debugJob?: DebugJob, certificates?: Certificates) {
+    let problem: undefined | CertificateIssue
+    const cantRun = certificates && !certificates.remoteCertificate;
+    const running = !cantRun && debugJob !== undefined;
+    if (certificates) {
+      if (!certificates.remoteCertificate) {
+        problem = {
+          context: "noremote",
+          label: t('remote.certificate.not.found'),
+          detail: t('remote.certificate.not.found.detail', "debug_service.pfx", getRemoteCertificateDirectory(instance.getConnection()!))
+        }
+      }
+      else if (certificates.secureDebug) {
+        if (!certificates.localCertificate) {
+          problem = {
+            context: "nolocal",
+            label: t('local.certificate.not.found')
+          };
+        }
+        else if (certificates.remoteCertificate !== certificates.localCertificate) {
+          problem = {
+            context: "dontmatch",
+            label: t('local.dont.match.remote')
+          };
+        }
+      }
+    }
+
     super(label, {
-      state: vscode.TreeItemCollapsibleState.None,
-      icon: running ? "pass" : "error",
-      color: running ? "testing.iconPassed" : "testing.iconFailed"
+      state: problem ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.None,
+      icon: problem ? "warning" : (running ? "pass" : "error"),
+      color: problem ? "testing.iconQueued" : (running ? "testing.iconPassed" : "testing.iconFailed")
     });
-    this.contextValue = `debugJob_${type}_${running ? "on" : "off"}`;
+    this.contextValue = `debugJob_${type}${cantRun ? '' : `_${running ? "on" : "off"}`}`;
+    this.problem = problem;
+
     if (running) {
       this.description = debugJob.name;
       this.tooltip = `${t(`listening.on.port${debugJob?.ports.length === 1 ? '' : 's'}`)} ${debugJob?.ports.join(", ")}`;
     }
     else {
       this.description = t("offline");
+    }
+  }
+
+  getChildren() {
+    if (this.problem) {
+      return [new CertificateIssueItem(this.problem)];
     }
   }
 
@@ -107,4 +173,15 @@ class DebugJobItem extends DebugItem {
   async stop() {
     return vscode.window.withProgress({ title: t(`stop.debug.${this.type}.task`), location: vscode.ProgressLocation.Window }, this.stopFunction);
   }
+}
+
+class CertificateIssueItem extends DebugItem {
+  constructor(issue: CertificateIssue) {
+    super(issue.label)
+    this.description = issue.detail;
+    this.contextValue = `certificateIssue_${issue.context}`;
+  }
+}
+
+class LocalCertificateItem extends DebugItem {
 }

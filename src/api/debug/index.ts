@@ -302,6 +302,7 @@ export async function initialize(context: ExtensionContext) {
 
           if (remoteCertsOk) {
             vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
+            server.refreshDebugSensitiveItems();
           }
         } else {
           vscode.window.showErrorMessage(`Debug PTF not installed.`);
@@ -366,6 +367,7 @@ export async function initialize(context: ExtensionContext) {
 
           if (localCertsOk) {
             vscode.commands.executeCommand(`setContext`, localCertContext, true);
+            server.refreshDebugSensitiveItems();
           }
         } else {
           vscode.window.showErrorMessage(`Debug PTF not installed.`);
