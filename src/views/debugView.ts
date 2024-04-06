@@ -91,8 +91,13 @@ class DebugJobItem extends DebugItem {
       color: running ? "testing.iconPassed" : "testing.iconFailed"
     });
     this.contextValue = `debugJob_${type}_${running ? "on" : "off"}`;
-    this.description = running ? debugJob.name : t("offline");
-    this.tooltip = `${t(`listening.on.port${debugJob?.ports.length === 1 ? '' : 's'}`)} ${debugJob?.ports.join(", ")}`;
+    if (running) {
+      this.description = debugJob.name;
+      this.tooltip = `${t(`listening.on.port${debugJob?.ports.length === 1 ? '' : 's'}`)} ${debugJob?.ports.join(", ")}`;
+    }
+    else {
+      this.description = t("offline");
+    }
   }
 
   async start() {
