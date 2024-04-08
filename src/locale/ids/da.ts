@@ -389,7 +389,7 @@ export const da: Locale = {
   'start.debug.server.task': 'Starting debug server...',
   'stop.debug.server.task': 'Stopping debug server...',
   'remote.certificate.not.found': 'Remote certificate not found',
-  'remote.certificate.not.found.detail': '<code>{0}</code> not found under {1}',
+  'remote.certificate.not.found.detail': '{0} not found under {1}',
   'local.certificate.not.found': 'Local certificate not found',
-  'local.dont.match.remote': 'Local certificate don\'t match remote'
+  'local.dont.match.remote': 'Local certificate doesn\'t match remote'
 };

@@ -248,3 +248,25 @@ export function refreshDebugSensitiveItems() {
   commands.executeCommand("code-for-ibmi.updateConnectedBar");
   commands.executeCommand("code-for-ibmi.debug.refresh");
 }
+
+export async function readActiveJob(content: IBMiContent, job: DebugJob) {
+  try {
+    return (await content.runSQL(
+      `select job_name_short, job_user, job_number, subsystem_library_name || '/' || subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
+    )).at(0);
+  } catch (error) {
+    return String(error);
+  }
+}
+
+export async function readJVMInfo(content: IBMiContent, job: DebugJob) {
+  try {
+    return (await content.runSQL(`
+      select START_TIME, JAVA_HOME, USER_DIRECTORY, CURRENT_HEAP_SIZE, MAX_HEAP_SIZE
+      from QSYS2.JVM_INFO
+      where job_name = '${job.name}'
+      fetch first row only`)).at(0);
+  } catch (error) {
+    return String(error);
+  }
+}

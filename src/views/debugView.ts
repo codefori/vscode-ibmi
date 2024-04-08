@@ -1,7 +1,8 @@
 import { readFileSync } from "fs";
 import vscode from "vscode";
+import { Tools } from "../api/Tools";
 import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists } from "../api/debug/certificates";
-import { DebugJob, getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, isDebugEngineRunning, startServer, startService, stopServer, stopService } from "../api/debug/server";
+import { DebugJob, getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../api/debug/server";
 import { instance } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem } from "../typings";
@@ -66,10 +67,10 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async getChildren(item?: DebugItem) {
-    return item?.getChildren?.() || this.getRootItems();    
+    return item?.getChildren?.() || this.getRootItems();
   }
 
-  private async getRootItems(){
+  private async getRootItems() {
     const connection = instance.getConnection();
     if (connection) {
       const certificates: Certificates = {
@@ -96,14 +97,34 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
           () => stopService(connection),
           await getDebugServiceJob(),
           certificates
-        ),
-        //new LocalCertificateItem("")
+        )
       ];
     }
-    else{
+    else {
       return [];
     }
-  }  
+  }
+
+  async resolveTreeItem(item: vscode.TreeItem, element: BrowserItem, token: vscode.CancellationToken) {
+    const content = instance.getContent();
+    if (content && element.tooltip === undefined && element instanceof DebugJobItem && element.debugJob) {
+      element.tooltip = new vscode.MarkdownString(`${t(`listening.on.port${element.debugJob.ports.length === 1 ? '' : 's'}`)} ${element.debugJob.ports.join(", ")}\n\n`);
+      const activeJob = await readActiveJob(content, element.debugJob);
+      if (activeJob) {
+        const jobToMarkDown = (job: Tools.DB2Row | string) => typeof job === "string" ? job : Object.entries(job).filter(([key, value]) => value !== null).map(([key, value]) => `- ${t(key)}: ${value}`).join("\n");
+        element.tooltip.appendMarkdown(jobToMarkDown(activeJob));
+        if (element.type === "service") {
+          element.tooltip.appendMarkdown("\n\n");
+          const jvmJob = await readJVMInfo(content, element.debugJob);
+          if (jvmJob) {
+            element.tooltip.appendMarkdown(jobToMarkDown(jvmJob));
+          }
+        }
+      }
+
+      return element;
+    }
+  }
 }
 
 class DebugItem extends BrowserItem {
@@ -146,17 +167,17 @@ class DebugJobItem extends DebugItem {
     super(label, {
       state: problem ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.None,
       icon: problem ? "warning" : (running ? "pass" : "error"),
-      color: problem ? "testing.iconQueued" : (running ? "testing.iconPassed" : "testing.iconFailed")
+      color: problem ? cantRun ? "testing.iconFailed" : "testing.iconQueued" : (running ? "testing.iconPassed" : "testing.iconFailed")
     });
     this.contextValue = `debugJob_${type}${cantRun ? '' : `_${running ? "on" : "off"}`}`;
     this.problem = problem;
 
     if (running) {
       this.description = debugJob.name;
-      this.tooltip = `${t(`listening.on.port${debugJob?.ports.length === 1 ? '' : 's'}`)} ${debugJob?.ports.join(", ")}`;
     }
     else {
       this.description = t("offline");
+      this.tooltip = "";
     }
   }
 
@@ -179,9 +200,7 @@ class CertificateIssueItem extends DebugItem {
   constructor(issue: CertificateIssue) {
     super(issue.label)
     this.description = issue.detail;
+    this.tooltip = issue.detail || '';
     this.contextValue = `certificateIssue_${issue.context}`;
   }
-}
-
-class LocalCertificateItem extends DebugItem {
 }

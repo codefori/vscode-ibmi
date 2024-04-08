@@ -1,11 +1,10 @@
 import { readFileSync } from "fs";
 import vscode from "vscode";
 import { Button, CustomUI, Field, Page, Section } from "../../api/CustomUI";
-import IBMiContent from "../../api/IBMiContent";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists, setup } from "../../api/debug/certificates";
-import { DebugJob, getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, getServiceConfigurationFile, startServer, startService, stopServer, stopService } from "../../api/debug/server";
+import { getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, getServiceConfigurationFile, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../../api/debug/server";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 
@@ -146,28 +145,6 @@ function getStartStopButtons(target: "server" | "service", running: boolean): (B
     running ? { id: `${target}.restart`, label: t("restart") } : undefined,
     running ? { id: `${target}.stop`, label: t("stop") } : undefined
   ];
-}
-
-async function readActiveJob(content: IBMiContent, job: DebugJob) {
-  try {
-    return (await content.runSQL(
-      `select job_name_short, job_user, job_number, subsystem_library_name || '/' || subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
-    )).at(0);
-  } catch (error) {
-    return String(error);
-  }
-}
-
-async function readJVMInfo(content: IBMiContent, job: DebugJob) {
-  try {
-    return (await content.runSQL(`
-      select START_TIME, JAVA_HOME, USER_DIRECTORY, CURRENT_HEAP_SIZE, MAX_HEAP_SIZE
-      from QSYS2.JVM_INFO
-      where job_name = '${job.name}'
-      fetch first row only`)).at(0);
-  } catch (error) {
-    return String(error);
-  }
 }
 
 function getActiveJobFields(label: string, jobRow: Tools.DB2Row | string): Field[] {

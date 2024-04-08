@@ -389,7 +389,7 @@ export const fr: Locale = {
   'start.debug.server.task': 'Démarrage du serveur de débogage...',
   'stop.debug.server.task': 'Arrêt du serveur de débogage...',
   'remote.certificate.not.found': 'Le certificat du service n\'existe pas',
-  'remote.certificate.not.found.detail': '<code>{0}</code> n\'a pas été trouvé dans {1}',
+  'remote.certificate.not.found.detail': '{0} n\'a pas été trouvé dans {1}',
   'local.certificate.not.found': 'Le certificat local n\'existe pas',
   'local.dont.match.remote': 'Le certificat local ne correspond pas à celui du service'
 };
