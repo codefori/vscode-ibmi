@@ -940,27 +940,15 @@
 				"command": "code-for-ibmi.debug.setup.remote",
 				"title": "Setup Service Certificate",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
 				"icon": "$(file-binary)"
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
 				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
 				"icon":"$(desktop-download)"
-			},
-			{
-				"command": "code-for-ibmi.debug.start",
-				"title": "Start Debug Service",
-				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
-			},
-			{
-				"command": "code-for-ibmi.debug.stop",
-				"title": "Stop Debug Service",
-				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
 			},
 			{
 				"command": "code-for-ibmi.debug.batch",
@@ -1630,19 +1618,22 @@
 				"command": "code-for-ibmi.debug.job.start",
 				"title": "Start",
 				"category": "IBM i",
-				"icon": "$(debug-start)"
+				"icon": "$(debug-start)",
+				"enablement": "!code-for-ibmi:debugWorking"
 			},
 			{
 				"command": "code-for-ibmi.debug.job.restart",
 				"title": "Restart",
 				"category": "IBM i",
-				"icon": "$(debug-restart)"
+				"icon": "$(debug-restart)",				
+				"enablement": "!code-for-ibmi:debugWorking"
 			},
 			{
 				"command": "code-for-ibmi.debug.job.stop",
 				"title": "Stop",
 				"category": "IBM i",
-				"icon": "$(debug-stop)"
+				"icon": "$(debug-stop)",
+				"enablement": "!code-for-ibmi:debugWorking"
 			}
 		],
 		"keybindings": [
@@ -2172,14 +2163,6 @@
 				{
 					"command": "code-for-ibmi.debug.setup.local",
 					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.debug.start",
-					"when": "code-for-ibmi:debug"
-				},
-				{
-					"command": "code-for-ibmi.debug.stop",
-					"when": "code-for-ibmi:debug"
 				},
 				{
 					"command": "code-for-ibmi.debug.endDebug",

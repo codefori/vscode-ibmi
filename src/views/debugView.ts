@@ -48,9 +48,9 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
     debugTreeViewer,
     vscode.commands.registerCommand("code-for-ibmi.debug.refresh", updateDebugBrowser),
     vscode.commands.registerCommand("code-for-ibmi.debug.refresh.item", (item: DebugItem) => debugBrowser.refresh(item)),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.start", (item: DebugJobItem) => item.start()),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.stop", (item: DebugJobItem) => item.stop()),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.restart", async (item: DebugJobItem) => await item.start() && item.stop()),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.start", (item: DebugJobItem) => Tools.withContext(`code-for-ibmi:debugWorking`, () => item.start())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.stop", (item: DebugJobItem) => Tools.withContext(`code-for-ibmi:debugWorking`, () => item.stop())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.restart", async (item: DebugJobItem) => Tools.withContext(`code-for-ibmi:debugWorking`, async () => await item.stop() && item.start())),
   );
 }
 
@@ -67,7 +67,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async getChildren(item?: DebugItem) {
-    return item?.getChildren?.() || this.getRootItems();
+    return Tools.withContext(`code-for-ibmi:debugWorking`, async () => item?.getChildren?.() || this.getRootItems());
   }
 
   private async getRootItems() {

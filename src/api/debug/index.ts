@@ -8,6 +8,7 @@ import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
 import { ObjectItem } from "../../typings";
 import { ILELibrarySettings } from "../CompileTools";
+import { Tools } from "../Tools";
 import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
 import * as server from "./server";
@@ -263,176 +264,123 @@ export async function initialize(context: ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, async () => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const ptfInstalled = server.debugPTFInstalled();
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, () =>
+      Tools.withContext("code-for-ibmi:debugWorking", async () => {
+        const connection = instance.getConnection();
+        if (connection) {
+          const ptfInstalled = server.debugPTFInstalled();
 
-        if (ptfInstalled) {
-          const remoteCertExists = await certificates.remoteServerCertificateExists(connection);
-          let remoteCertsOk = false;
+          if (ptfInstalled) {
+            const remoteCertExists = await certificates.remoteServerCertificateExists(connection);
+            let remoteCertsOk = false;
 
-          if (remoteCertExists) {
-            vscode.window.showInformationMessage(`Certificates already exist on the server.`);
-            remoteCertsOk = true;
-          }
-
-          // This popup will show a message based on if the certificates exist or not
-          const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
-            modal: true,
-            detail: `${remoteCertExists
-              ? `Debug service certificate already exist on this system! This will download the client certificate to enable secure debugging.`
-              : `Debug service certificate is not setup on the system. This will generate the server certificate and download the client certificate to your device.`
-              } Continue with setup?`
-          }, `Continue`);
-
-          if (doSetup) {
-            try {
-              // If the remote certs don't exist, generate them
-              if (!remoteCertExists) {
-                await certificates.setup(connection);
-                vscode.window.showInformationMessage(`Certificate successfully generated on server.`);
-                remoteCertsOk = true;
-                //Download the client certificate while we're at it
-                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
-              }
-            } catch (e: any) {
-              vscode.window.showErrorMessage(e.message || e);
+            if (remoteCertExists) {
+              vscode.window.showInformationMessage(`Certificates already exist on the server.`);
+              remoteCertsOk = true;
             }
+
+            // This popup will show a message based on if the certificates exist or not
+            const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
+              modal: true,
+              detail: `${remoteCertExists
+                ? `Debug service certificate already exist on this system! This will download the client certificate to enable secure debugging.`
+                : `Debug service certificate is not setup on the system. This will generate the server certificate and download the client certificate to your device.`
+                } Continue with setup?`
+            }, `Continue`);
+
+            if (doSetup) {
+              try {
+                // If the remote certs don't exist, generate them
+                if (!remoteCertExists) {
+                  await certificates.setup(connection);
+                  vscode.window.showInformationMessage(`Certificate successfully generated on server.`);
+                  remoteCertsOk = true;
+                  //Download the client certificate while we're at it
+                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                }
+              } catch (e: any) {
+                vscode.window.showErrorMessage(e.message || e);
+              }
+            }
+
+            if (remoteCertsOk) {
+              vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
+              server.refreshDebugSensitiveItems();
+            }
+          } else {
+            vscode.window.showErrorMessage(`Debug PTF not installed.`);
           }
 
-          if (remoteCertsOk) {
-            vscode.commands.executeCommand(`setContext`, remoteCertContext, true);
-            server.refreshDebugSensitiveItems();
-          }
         } else {
-          vscode.window.showErrorMessage(`Debug PTF not installed.`);
+          vscode.window.showErrorMessage(`No connection to IBM i available.`);
         }
+      })
+    ),
 
-      } else {
-        vscode.window.showErrorMessage(`No connection to IBM i available.`);
-      }
-    }),
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, async () =>
+      await Tools.withContext("code-for-ibmi:debugWorking", async () => {
+        const connection = instance.getConnection();
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, async () => {
-      const connection = instance.getConnection();
+        if (connection) {
+          const ptfInstalled = server.debugPTFInstalled();
 
-      if (connection) {
-        const ptfInstalled = server.debugPTFInstalled();
+          if (ptfInstalled) {
+            let localCertsOk = false;
+            if (connection.config!.debugIsSecure) {
 
-        if (ptfInstalled) {
-          let localCertsOk = false;
-          if (connection.config!.debugIsSecure) {
+              try {
+                const remoteCertExists = await certificates.remoteServerCertificateExists(connection);
 
-            try {
-              const remoteCertExists = await certificates.remoteServerCertificateExists(connection);
+                // If the client certificate exists on the server, download it
+                if (remoteCertExists) {
+                  await certificates.downloadClientCert(connection);
+                  localCertsOk = true;
+                  vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
+                } else {
+                  const doImport = await vscode.window.showInformationMessage(`Debug setup`, {
+                    modal: true,
+                    detail: `The debug service certificate is not setup on the server. Would you like to import a server certificate from your device?`
+                  }, `Yes`, `No`);
 
-              // If the client certificate exists on the server, download it
-              if (remoteCertExists) {
-                await certificates.downloadClientCert(connection);
-                localCertsOk = true;
-                vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
-              } else {
-                const doImport = await vscode.window.showInformationMessage(`Debug setup`, {
-                  modal: true,
-                  detail: `The debug service certificate is not setup on the server. Would you like to import a server certificate from your device?`
-                }, `Yes`, `No`);
+                  if (doImport === `Yes`) {
+                    const selectedFile = await vscode.window.showOpenDialog({
+                      canSelectFiles: true,
+                      canSelectFolders: false,
+                      canSelectMany: false,
+                      title: `Select debug service certificate`,
+                      filters: { "PFX certificate": ["pfx"] }
+                    });
 
-                if (doImport === `Yes`) {
-                  const selectedFile = await vscode.window.showOpenDialog({
-                    canSelectFiles: true,
-                    canSelectFolders: false,
-                    canSelectMany: false,
-                    title: `Select debug service certificate`,
-                    filters: { "PFX certificate": ["pfx"] }
-                  });
-
-                  if (selectedFile && selectedFile.length === 1) {
-                    copyFileSync(selectedFile[0].fsPath, certificates.getLocalCertPath(connection));
-                    localCertsOk = true;
-                    vscode.window.showInformationMessage(`Certificate imported.`);
-                    return true;
+                    if (selectedFile && selectedFile.length === 1) {
+                      copyFileSync(selectedFile[0].fsPath, certificates.getLocalCertPath(connection));
+                      localCertsOk = true;
+                      vscode.window.showInformationMessage(`Certificate imported.`);
+                      return true;
+                    }
                   }
                 }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Failed to work with debug client certificate. See Code for IBM i logs.`);
               }
-            } catch (e) {
-              vscode.window.showErrorMessage(`Failed to work with debug client certificate. See Code for IBM i logs.`);
+            } else {
+              vscode.window.showInformationMessage(`Import of debug client certificate skipped as not required in current mode.`, `Open configuration`).then(result => {
+                if (result) {
+                  vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
+                }
+              });
+            }
+
+            if (localCertsOk) {
+              vscode.commands.executeCommand(`setContext`, localCertContext, true);
+              server.refreshDebugSensitiveItems();
             }
           } else {
-            vscode.window.showInformationMessage(`Import of debug client certificate skipped as not required in current mode.`, `Open configuration`).then(result => {
-              if (result) {
-                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
-              }
-            });
+            vscode.window.showErrorMessage(`Debug PTF not installed.`);
           }
-
-          if (localCertsOk) {
-            vscode.commands.executeCommand(`setContext`, localCertContext, true);
-            server.refreshDebugSensitiveItems();
-          }
-        } else {
-          vscode.window.showErrorMessage(`Debug PTF not installed.`);
         }
-      }
-      return false;
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.debug.start`, async () => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const ptfInstalled = server.debugPTFInstalled();
-        if (ptfInstalled) {
-          const remoteExists = await certificates.remoteServerCertificateExists(connection);
-          if (remoteExists) {
-            vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
-
-              let startupService = false;
-
-              progress.report({ increment: 33, message: `Checking if service is already running.` });
-              const debugServiceJob = await server.getDebugServiceJob();
-              if (debugServiceJob) {
-                const confirmEndServer = await vscode.window.showInformationMessage(`Starting debug service`, {
-                  detail: `Looks like the debug service is currently running under ${debugServiceJob}. Do you want to end it to start a new instance?`,
-                  modal: true
-                }, `End service`);
-
-                if (confirmEndServer === `End service`) {
-                  progress.report({ increment: 33, message: `Ending currently running service.` });
-                  startupService = await server.stopService(connection);
-                }
-              } else {
-                startupService = true;
-              }
-
-              if (startupService) {
-                progress.report({ increment: 34, message: `Starting service up.` });
-                await server.startService(connection);
-              } else {
-                vscode.window.showInformationMessage(`Cancelled startup of debug service.`);
-              }
-            })
-
-          } else {
-            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
-          }
-        } else {
-          vscode.window.showErrorMessage(`Debug PTF not installed.`);
-        }
-      }
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.debug.stop`, async () => {
-      const connection = instance.getConnection();
-      if (connection) {
-        const ptfInstalled = server.debugPTFInstalled();
-        if (ptfInstalled) {
-          vscode.window.withProgress({ location: vscode.ProgressLocation.Notification }, async (progress) => {
-            progress.report({ message: `Ending Debug Service` });
-            await server.stopService(connection);
-          });
-        }
-      }
-    })
+        return false;
+      })
+    )
   );
 
   // Run during startup:

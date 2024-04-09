@@ -310,13 +310,48 @@ export namespace Tools {
       .concat(`</table>`);
   }
 
-  export function fixWindowsPath(path:string){
+  export function fixWindowsPath(path: string) {
     if (process.platform === `win32` && path[0] === `/`) {
       //Issue with getFile not working propertly on Windows
       //when there was a / at the start.
       return path.substring(1);
     } else {
       return path;
+    }
+  }
+
+  const activeContexts: Map<string, number> = new Map;
+  /**
+   * Runs a function while a context value is set to true.
+   * 
+   * If multiple callers call this function with the same context, only the last one returning will unset the context value.
+   * 
+   * @param context the context value that will be set to `true` during `task` execution
+   * @param task the function to run while the context value is `true`
+   */
+  export async function withContext<T>(context: string, task: () => Promise<T>) {
+    try {
+      let stack = activeContexts.get(context);
+      if (stack === undefined) {
+        await vscode.commands.executeCommand(`setContext`, context, true);
+        activeContexts.set(context, 0);
+      }
+      else{
+        activeContexts.set(context, stack++);
+      }
+      return await task();
+    }
+    finally {
+      let stack = activeContexts.get(context);
+      if (stack !== undefined) {
+        if(stack){
+          activeContexts.set(context, stack--);
+        }
+        else{
+          await vscode.commands.executeCommand(`setContext`, context, undefined);
+          activeContexts.delete(context);
+        }        
+      }
     }
   }
 }
