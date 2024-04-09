@@ -1768,7 +1768,8 @@
 				{
 					"id": "ibmiDebugBrowser",
 					"name": "IBM i debugger",
-					"when": "code-for-ibmi:connected && code-for-ibmi:debug"
+					"when": "code-for-ibmi:connected && code-for-ibmi:debug",
+					"visibility": "collapsed"
 				}
 			]
 		},
@@ -2166,11 +2167,11 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.setup.remote",
-					"when": "code-for-ibmi:debug"
+					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.debug.setup.local",
-					"when": "code-for-ibmi:debug"
+					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.debug.start",
@@ -2746,27 +2747,27 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.job.start",
-					"when": "view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_off$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_off$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.debug.job.restart",
-					"when": "view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.debug.job.stop",
-					"when": "view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.debug.setup.remote",
-					"when": "view == ibmiDebugBrowser && viewItem === certificateIssue_noremote",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem === certificateIssue_noremote",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.debug.setup.local",
-					"when": "view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_(nolocal|dontmatch)$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_(nolocal|dontmatch)$/",
 					"group": "inline"
 				}
 			]
