@@ -293,6 +293,8 @@ export async function initialize(context: ExtensionContext) {
                 await certificates.setup(connection);
                 vscode.window.showInformationMessage(`Certificate successfully generated on server.`);
                 remoteCertsOk = true;
+                //Download the client certificate while we're at it
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
               }
             } catch (e: any) {
               vscode.window.showErrorMessage(e.message || e);
