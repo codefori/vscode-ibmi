@@ -7,7 +7,6 @@ import * as vscode from 'vscode';
 import { copyFileSync } from "fs";
 import { instance } from "../../instantiate";
 import { ObjectItem } from "../../typings";
-import { openDebugStatusPanel } from "../../webviews/debugger";
 import { ILELibrarySettings } from "../CompileTools";
 import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
@@ -431,9 +430,7 @@ export async function initialize(context: ExtensionContext) {
           });
         }
       }
-    }),
-
-    vscode.commands.registerCommand("code-for-ibmi.openDebugStatus", openDebugStatusPanel)
+    })
   );
 
   // Run during startup:

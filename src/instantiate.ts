@@ -746,7 +746,7 @@ async function updateConnectedBar() {
     `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
     `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
     debugPTFInstalled() ? 
-      `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:code-for-ibmi.openDebugStatus)`
+      `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
       :
       `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
   ].join(`\n\n---\n\n`), true);

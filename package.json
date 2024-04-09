@@ -1621,12 +1621,6 @@
 				"icon": "$(shield)"
 			},
 			{
-				"command": "code-for-ibmi.openDebugStatus",
-				"title": "Open debugger dashboard",
-				"category": "IBM i",
-				"icon":"$(dashboard)"
-			},
-			{
 				"command": "code-for-ibmi.debug.refresh",
 				"title": "Refresh",
 				"category": "IBM i",
@@ -2171,10 +2165,6 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.openDebugStatus",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.debug.setup.remote",
 					"when": "code-for-ibmi:debug"
 				},
@@ -2324,11 +2314,6 @@
 					"command": "code-for-ibmi.collapseSearchView",
 					"group": "navigation@1",
 					"when": "view == searchView"
-				},
-				{
-					"command": "code-for-ibmi.openDebugStatus",
-					"group": "navigation@01",
-					"when": "view == ibmiDebugBrowser"
 				},
 				{
 					"command": "code-for-ibmi.debug.refresh",
