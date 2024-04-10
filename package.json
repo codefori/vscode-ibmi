@@ -2801,7 +2801,7 @@
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
 		"node-ssh": "^13.1.0",
-		"tar": "^6.1.13",
+		"tar": "^6.2.1",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
