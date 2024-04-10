@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.9.1-dev.0",
+	"version": "2.9.2-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -948,7 +948,7 @@
 				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
-				"icon":"$(desktop-download)"
+				"icon": "$(desktop-download)"
 			},
 			{
 				"command": "code-for-ibmi.debug.batch",
@@ -1625,7 +1625,7 @@
 				"command": "code-for-ibmi.debug.job.restart",
 				"title": "Restart",
 				"category": "IBM i",
-				"icon": "$(debug-restart)",				
+				"icon": "$(debug-restart)",
 				"enablement": "!code-for-ibmi:debugWorking"
 			},
 			{
@@ -1703,7 +1703,7 @@
 				}
 			]
 		},
-		"views": {			
+		"views": {
 			"ibmi-explorer": [
 				{
 					"id": "helpView",
