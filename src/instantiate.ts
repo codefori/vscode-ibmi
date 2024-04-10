@@ -7,6 +7,7 @@ import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeFo
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
+import { debugPTFInstalled, getDebugServiceDetails, isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
@@ -37,12 +38,6 @@ connectedBarItem.command = {
   command: `code-for-ibmi.showAdditionalSettings`,
   title: `Show connection settings`
 };
-connectedBarItem.tooltip = new vscode.MarkdownString([
-  `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-  `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
-  `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`
-].join(`\n\n---\n\n`), true);
-connectedBarItem.tooltip.isTrusted = true;
 
 let selectedForCompare: vscode.Uri;
 let searchViewContext: SearchView;
@@ -712,7 +707,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode) => {
       const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
-    })
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
   );
 
   ActionsUI.initialize(context);
@@ -736,14 +732,25 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   if (vscode.workspace.workspaceFolders) {
     setupGitEventHandler(context);
   }
-
 }
 
-function updateConnectedBar() {
+async function updateConnectedBar() {
   const config = instance.getConfig();
   if (config) {
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
   }
+
+  const debugRunning = await isDebugEngineRunning();
+  connectedBarItem.tooltip = new vscode.MarkdownString([
+    `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
+    `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
+    `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
+    debugPTFInstalled() ? 
+      `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
+      :
+      `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
+  ].join(`\n\n---\n\n`), true);
+  connectedBarItem.tooltip.isTrusted = true;
 }
 
 async function onConnected(context: vscode.ExtensionContext) {
@@ -755,7 +762,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
   initGetNewLibl(instance);
 
   // Enable the profile view if profiles exist.

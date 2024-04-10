@@ -24,6 +24,7 @@ import { CodeForIBMi, ConnectionData } from "./typings";
 import { initializeConnectionBrowser } from "./views/ConnectionBrowser";
 import { LibraryListProvider } from "./views/LibraryListView";
 import { ProfilesView } from "./views/ProfilesView";
+import { initializeDebugBrowser } from "./views/debugView";
 import { HelpView } from "./views/helpView";
 import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
@@ -46,7 +47,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeConnectionBrowser(context);
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
-  
+  initializeDebugBrowser(context);
+
   context.subscriptions.push(    
     window.registerTreeDataProvider(
       `helpView`,
