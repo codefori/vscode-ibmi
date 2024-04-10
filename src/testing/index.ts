@@ -10,6 +10,7 @@ import { ILEErrorSuite } from "./ileErrors";
 import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
+import { EncodingSuite } from "./encoding";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -19,7 +20,8 @@ const suites: TestSuite[] = [
   ToolsSuite,
   ILEErrorSuite,
   FilterSuite,
-  StorageSuite
+  StorageSuite,
+  EncodingSuite
 ]
 
 export type TestSuite = {
