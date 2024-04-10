@@ -1265,12 +1265,13 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, opts: {userCcsid?: number} = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
       const ccsidDetail = this.getEncoding();
-      const possibleChangeCommand = (ccsidDetail.fallback && !ccsidDetail.invalid ? `@CHGJOB CCSID(${ccsidDetail.ccsid});\n` : '');
+      const useCcsid = opts.userCcsid || (ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined);
+      const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
 
       const output = await this.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
