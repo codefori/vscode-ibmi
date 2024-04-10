@@ -214,7 +214,7 @@ export async function startServer() {
   const result = await instance.getConnection()?.runCommand({ command: "STRDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
-      window.showErrorMessage(t("strdbgsvr.failed"), result.stderr);
+      window.showErrorMessage(t("strdbgsvr.failed", result.stderr));
       return false;
     }
     else {
@@ -229,7 +229,7 @@ export async function stopServer() {
   const result = await instance.getConnection()?.runCommand({ command: "ENDDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
-      window.showErrorMessage(t("enddbgsvr.failed"), result.stderr);
+      window.showErrorMessage(t("enddbgsvr.failed", result.stderr));
       return false;
     }
     else {
