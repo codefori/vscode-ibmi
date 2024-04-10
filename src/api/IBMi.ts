@@ -50,8 +50,6 @@ export default class IBMi {
   private runtimeCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
-  /** override allows the API to hardcode a CCSID. Usually good for testing */
-  private overrideCcsid: number | undefined;
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -1293,13 +1291,9 @@ export default class IBMi {
     }
   }
 
-  setOverrideCcsid(ccsid: number | undefined) {
-    this.overrideCcsid = ccsid;
-  }
-
   getEncoding() {
-    const fallback = this.overrideCcsid !== undefined || ((this.runtimeCcsid < 1 || this.runtimeCcsid === 65535) && this.userDefaultCCSID > 0 ? true : false);
-    const ccsid = fallback ? (this.overrideCcsid || this.userDefaultCCSID) : this.runtimeCcsid;
+    const fallback = ((this.runtimeCcsid < 1 || this.runtimeCcsid === 65535) && this.userDefaultCCSID > 0 ? true : false);
+    const ccsid = fallback ? (this.userDefaultCCSID) : this.runtimeCcsid;
     return {
       fallback,
       ccsid,
@@ -1312,7 +1306,6 @@ export default class IBMi {
       origin: this.runtimeCcsidOrigin,
       runtimeCcsid: this.runtimeCcsid,
       userDefaultCCSID: this.userDefaultCCSID,
-      overrideCcsid: this.overrideCcsid,
     };
   } 
 }

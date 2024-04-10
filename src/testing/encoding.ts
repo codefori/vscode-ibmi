@@ -10,11 +10,6 @@ import { getMemberUri } from "../filesystems/qsys/QSysFs";
 
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
-  after: async () => {
-    const connection = instance.getConnection();
-    connection?.setOverrideCcsid(undefined);
-  },
-
   before: async () => {
     const config = instance.getConfig()!;
     assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
@@ -31,8 +26,6 @@ export const EncodingSuite: TestSuite = {
         ].join(`\n`);
 
         const tempLib = config!.tempLibrary;
-
-        connection?.setOverrideCcsid(37);
 
         const file = `TEST37`;
 
