@@ -57,7 +57,7 @@ export class ExtendedIBMiContent {
         );
       else
         rows = await content.runSQL(
-          `select srcdat, srcdta from ${aliasPath}`
+          `select srcdat, rtrim(srcdta) as srcdta from ${aliasPath}`
         );
 
       if (rows.length === 0) {

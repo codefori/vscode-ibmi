@@ -12,6 +12,9 @@ import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
+import { SQLRunner } from "./sql/runner";
+import { Db2Runner } from "./sql/db2";
+import { Db2UtilRunner } from "./sql/db2util";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -27,7 +30,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `db2util`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -50,6 +53,8 @@ export default class IBMi {
   private runtimeCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
+
+  private sqlRunner: SQLRunner = new Db2Runner(this);
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -569,21 +574,6 @@ export default class IBMi {
         if (this.sqlRunnerAvailable()) {
           //Temporary function to run SQL
 
-          // TODO: stop using this runSQL function and this.runSql
-          const runSQL = async (statement: string) => {
-            const output = await this.sendCommand({
-              command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-              stdin: statement
-            });
-
-            if (output.code === 0) {
-              return Tools.db2Parse(output.stdout);
-            }
-            else {
-              throw new Error(output.stdout);
-            }
-          };
-
           // Check for ASP information?
           if (quickConnect === true && cachedServerSettings?.aspInfo) {
             this.aspInfo = cachedServerSettings.aspInfo;
@@ -595,7 +585,7 @@ export default class IBMi {
             //This is mostly a nice to have. We grab the ASP info so user's do
             //not have to provide the ASP in the settings.
             try {
-              const resultSet = await runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+              const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
               resultSet.forEach(row => {
                 if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
                   this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
@@ -623,7 +613,7 @@ export default class IBMi {
             // Some things don't work without it!!!
             try {
               // First we grab the users default CCSID
-              const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+              const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
               if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
                 this.runtimeCcsid = userInfo.CHARACTER_CODE_SET_ID;
                 this.runtimeCcsidOrigin = CcsidOrigin.User;
@@ -631,7 +621,7 @@ export default class IBMi {
 
               // But if that CCSID is *SYSVAL, then we need to grab the system CCSID (QCCSID)
               if (!this.runtimeCcsid || this.runtimeCcsid === CCSID_SYSVAL) {
-                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
                 if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
                   this.runtimeCcsid = systemCCSID.CURRENT_NUMERIC_VALUE;
                   this.runtimeCcsidOrigin = CcsidOrigin.System;
@@ -640,7 +630,7 @@ export default class IBMi {
 
               // Let's also get the user's default CCSID
               try {
-                const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+                const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
                 this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
               }
               catch (error) {
@@ -659,7 +649,7 @@ export default class IBMi {
                 message: `Fetching local encoding values.`
               });
 
-              const [variants] = await runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+              const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
                 + `  values ( cast( x'7B' as varchar(1) )`
                 + `         , cast( x'7C' as varchar(1) )`
                 + `         , cast( x'5B' as varchar(1) ) )`
@@ -892,6 +882,10 @@ export default class IBMi {
         //Keep track of variant characters that can be uppercased
         this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
 
+        if (this.remoteFeatures[`db2util`]) {
+          this.sqlRunner = new Db2UtilRunner(this);
+        }
+
         return {
           success: true
         };
@@ -1065,7 +1059,7 @@ export default class IBMi {
   }
 
   public sqlRunnerAvailable() {
-    return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
+    return (this.sqlRunner && this.sqlRunner.isAvailable() ? true : false);
   }
 
   /**
@@ -1267,28 +1261,12 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, opts: {userCcsid?: number} = {}): Promise<Tools.DB2Row[]> {
-    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
-
-    if (QZDFMDB2) {
-      const ccsidDetail = this.getEncoding();
-      const useCcsid = opts.userCcsid || (ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined);
-      const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
-
-      const output = await this.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: Tools.fixSQL(`${possibleChangeCommand}${statements}`)
-      })
-
-      if (output.stdout) {
-        return Tools.db2Parse(output.stdout);
-      } else {
-        throw new Error(`There was an error running the SQL statement.`);
-      }
-
-    } else {
-      throw new Error(`There is no way to run SQL on this system.`);
+  runSQL(statements: string): Promise<Tools.DB2Row[]> {
+    if (this.sqlRunner) { 
+      return this.sqlRunner?.runSql(statements);
     }
+
+    throw new Error(`SQL runner is not available.`);
   }
 
   getEncoding() {

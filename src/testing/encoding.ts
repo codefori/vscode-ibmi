@@ -44,36 +44,34 @@ export const EncodingSuite: TestSuite = {
         assert.strictEqual(fileContent, lines);
       },
     },
-    // {
-    //   name: `Encoding 273`, test: async () => {
-    //     const connection = instance.getConnection();
-    //     const config = instance.getConfig()!;
+    {
+      name: `Encoding 273`, test: async () => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig()!;
 
-    //     const lines = [
-    //       `Hello world`,
-    //       `àáãÄÜö£øß`
-    //     ].join(`\n`);
+        const lines = [
+          `Hello world`,
+          `àáãÄÜö£øß`
+        ].join(`\n`);
 
-    //     const tempLib = config!.tempLibrary;
+        const tempLib = config!.tempLibrary;
 
-    //     connection?.setOverrideCcsid(37);
+        const file = `TEST273`;
 
-    //     const file = `TEST273`;
+        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(273)`, noLibList: true });
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
 
-    //     await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(273)`, noLibList: true });
-    //     await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
+        const theBadOneUri = getMemberUri({library: tempLib, file, name: `THEMEMBER`, extension: `TXT`});
 
-    //     const theBadOneUri = getMemberUri({library: tempLib, file, name: `THEMEMBER`, extension: `TXT`});
+        await workspace.fs.readFile(theBadOneUri);
 
-    //     await workspace.fs.readFile(theBadOneUri);
+        await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
 
-    //     await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
-
-    //     const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-    //     const fileContent = new TextDecoder().decode(memberContentBuf)
+        const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
+        const fileContent = new TextDecoder().decode(memberContentBuf)
         
-    //     assert.strictEqual(fileContent, lines);
-    //   }
-    // }
+        assert.strictEqual(fileContent, lines);
+      }
+    }
   ]
 };
