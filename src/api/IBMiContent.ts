@@ -291,7 +291,7 @@ export default class IBMiContent {
    *
    * @param statements
    * @returns a Result set
-   * @deprecated Use `IBMi#runSQL` instead
+   * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
   runSQL(statements: string) {
     return this.ibmi.runSQL(statements);  
