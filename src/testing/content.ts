@@ -4,9 +4,9 @@ import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
+import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -432,7 +432,6 @@ export const ContentSuite: TestSuite = {
     },
     {
       name: `getMemberList (SQL, no filter)`, test: async () => {
-        const connection = instance.getConnection();
         const content = instance.getContent();
 
         let members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: `*inxen` });
