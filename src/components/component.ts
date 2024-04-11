@@ -15,7 +15,7 @@ export class ComponentManager {
 
   public async startup(connection: IBMi) {
     this.GetNewLibl = new GetNewLibl(connection);
-    await this.GetNewLibl.install();
+    await this.GetNewLibl.checkState();
   }
 
   get<T>(id: ComponentIds): T|undefined {
@@ -28,10 +28,11 @@ export class ComponentManager {
 
 export abstract class ComponentT {
   public state: ComponentState = ComponentState.NotChecked;
-  public installedVersion: number = 0;
+  public currentVersion: number = 0;
 
   constructor(public connection: IBMi) { }
 
-  abstract install(): Promise<boolean>
+  abstract getInstalledVersion(): Promise<number | undefined>;
+  abstract checkState(): Promise<boolean>
   abstract getState(): ComponentState;
 }

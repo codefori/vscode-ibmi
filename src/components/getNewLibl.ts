@@ -4,15 +4,19 @@ import { ComponentT, ComponentState } from "./component";
 
 export class GetNewLibl implements ComponentT {
   public state: ComponentState = ComponentState.NotChecked;
-  public installedVersion: number = 0;
+  public currentVersion: number = 1;
 
-  constructor(public connection: IBMi) {
-    this.state = connection.remoteFeatures[`GETNEWLIBL.PGM`] !== undefined ? ComponentState.Installed : ComponentState.NotInstalled
+  constructor(public connection: IBMi) {}
+
+  async getInstalledVersion(): Promise<number> {
+    return (this.connection.remoteFeatures[`GETNEWLIBL.PGM`] ? 1 : 0);
   }
 
-  async install(): Promise<boolean> {
-    if (this.state === ComponentState.Installed) {
-      return true;
+  async checkState(): Promise<boolean> {
+    const installedVersion = await this.getInstalledVersion();
+
+    if (installedVersion === this.currentVersion) {
+      this.state = ComponentState.Installed;
     }
 
     const config = this.connection.config!
