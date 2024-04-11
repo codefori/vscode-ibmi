@@ -15,6 +15,7 @@ import * as configVars from './configVars';
 import { SQLRunner } from "./sql/runner";
 import { Db2Runner } from "./sql/db2";
 import { Db2UtilRunner } from "./sql/db2util";
+import { ToCsvRunner } from "./sql/toCsv";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -882,9 +883,11 @@ export default class IBMi {
         //Keep track of variant characters that can be uppercased
         this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
 
-        if (this.remoteFeatures[`db2util`]) {
-          this.sqlRunner = new Db2UtilRunner(this);
-        }
+        // if (this.remoteFeatures[`db2util`]) {
+        //   this.sqlRunner = new Db2UtilRunner(this);
+        // }
+
+        this.sqlRunner = new ToCsvRunner(this);
 
         return {
           success: true
