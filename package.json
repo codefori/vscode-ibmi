@@ -43,12 +43,6 @@
 				"type": "ibmi"
 			}
 		],
-		"snippets": [
-			{
-				"path": "./schemas/local-variables.code-snippets",
-				"language": "json"
-			}
-		],
 		"jsonValidation": [
 			{
 				"fileMatch": [
