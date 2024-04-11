@@ -11,6 +11,7 @@ import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
 import { EncodingSuite } from "./encoding";
+import { ComponentSuite } from "./components";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -21,7 +22,8 @@ const suites: TestSuite[] = [
   ILEErrorSuite,
   FilterSuite,
   StorageSuite,
-  EncodingSuite
+  EncodingSuite,
+  ComponentSuite
 ]
 
 export type TestSuite = {
