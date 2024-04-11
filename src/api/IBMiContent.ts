@@ -298,37 +298,6 @@ export default class IBMiContent {
   }
 
   /**
-   * @param ileCommand Command that would change the library list, like CHGLIBL
-   */
-  async getLibraryListFromCommand(ileCommand: string): Promise<{ currentLibrary: string; libraryList: string[]; } | undefined> {
-    if (this.ibmi.remoteFeatures[`GETNEWLIBL.PGM`]) {
-      const tempLib = this.config.tempLibrary;
-      const resultSet = await this.ibmi.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
-
-      let result = {
-        currentLibrary: `QGPL`,
-        libraryList: [] as string[]
-      };
-
-      resultSet.forEach(row => {
-        const libraryName = String(row.SYSTEM_SCHEMA_NAME);
-        switch (row.PORTION) {
-          case `CURRENT`:
-            result.currentLibrary = libraryName;
-            break;
-          case `USER`:
-            result.libraryList.push(libraryName);
-            break;
-        }
-      })
-
-      return result;
-    }
-
-    return undefined;
-  }
-
-  /**
    * Download the contents of a table.
    * @param library
    * @param file

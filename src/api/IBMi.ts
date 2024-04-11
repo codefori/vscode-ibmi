@@ -12,6 +12,7 @@ import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
+import { ComponentIds, ComponentManager } from "../components/component";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -50,6 +51,8 @@ export default class IBMi {
   private runtimeCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
+
+  private components: ComponentManager = new ComponentManager();
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -892,6 +895,9 @@ export default class IBMi {
         //Keep track of variant characters that can be uppercased
         this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
 
+        progress.report({ message: `Checking Code for IBM i components.` });
+        await this.components.startup(this);
+
         return {
           success: true
         };
@@ -1258,6 +1264,9 @@ export default class IBMi {
     }
   }
 
+  getComponent<T>(id: ComponentIds) {
+    return this.components.get<T>(id);
+  }
 
   /**
    * Run SQL statements.
