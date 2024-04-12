@@ -870,6 +870,9 @@ export default class IBMi {
           }
         }
 
+        progress.report({ message: `Checking Code for IBM i components.` });
+        await this.components.startup(this);
+
         if (!reconnecting) {
           vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
           await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
@@ -894,9 +897,6 @@ export default class IBMi {
 
         //Keep track of variant characters that can be uppercased
         this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
-
-        progress.report({ message: `Checking Code for IBM i components.` });
-        await this.components.startup(this);
 
         return {
           success: true
