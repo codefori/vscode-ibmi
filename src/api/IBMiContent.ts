@@ -514,11 +514,11 @@ export default class IBMiContent {
     const queries: string[] = [];
 
     if (!sourceFilesOnly) {
-      queries.push(`@DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD) OUTMBR(*REPLACE)`);
+      queries.push(`@DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)`);
     }
 
     if (withSourceFiles) {
-      queries.push(`@DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD) OUTMBR(*REPLACE)`);
+      queries.push(`@DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)`);
     }
 
     let createOBJLIST;

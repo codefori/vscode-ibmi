@@ -13,7 +13,7 @@ const contents = {
   '273': [`Hello world`, `àáãÄÜö£øß`],
   '277': [`Hello world`, `çñßØ¢åæ`],
   '297': [`Hello world`, `âÑéè¥ýÝÞã`],
-  '290': [`Hello world`, `ｦｯ!ﾓﾄｴﾜﾈﾁｾ`],
+  '290': [`ｦｯ!ﾓﾄｴﾜﾈﾁｾ`, `Hello world`, `ｦｯ!ﾓﾄｴﾜﾈﾁｾ`],
   '420': [`Hello world`, `ص ث ب ﻷ`],
 }
 
