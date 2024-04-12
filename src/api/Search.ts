@@ -27,7 +27,7 @@ export namespace Search {
       let asp = ``;
       if (config.sourceASP) {
         asp = `/${config.sourceASP}`;
-      } else if (config.enableSQL) {
+      } else if (connection.enableSQL) {
         try {
           const [row] = await content.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${library}'))`);
           const iaspNumber = row?.IASP_NUMBER;

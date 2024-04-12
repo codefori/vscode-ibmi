@@ -10,6 +10,7 @@ import { ILEErrorSuite } from "./ileErrors";
 import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
+import { EncodingSuite } from "./encoding";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -19,7 +20,8 @@ const suites: TestSuite[] = [
   ToolsSuite,
   ILEErrorSuite,
   FilterSuite,
-  StorageSuite
+  StorageSuite,
+  EncodingSuite
 ]
 
 export type TestSuite = {
@@ -112,11 +114,15 @@ async function runTests() {
 }
 
 async function runTest(test: TestCase) {
+  const connection = instance.getConnection();
+
   console.log(`\tRunning ${test.name}`);
   test.status = "running";
   testSuitesTreeProvider.refresh(test);
   const start = +(new Date());
   try {
+    connection!.enableSQL = true;
+    
     await test.test();
     test.status = "pass";
   }

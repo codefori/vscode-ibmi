@@ -37,7 +37,6 @@ export namespace ConnectionConfiguration {
     connectionProfiles: ConnectionProfile[];
     commandProfiles: CommandProfile[];
     autoSortIFSShortcuts: boolean;
-    enableSQL: boolean;
     tempLibrary: string;
     tempDir: string;
     sourceASP: string;
@@ -119,7 +118,6 @@ export namespace ConnectionConfiguration {
       autoSortIFSShortcuts: parameters.autoSortIFSShortcuts || false,
       homeDirectory: parameters.homeDirectory || `.`,
       /** Undefined means not created, so default to on */
-      enableSQL: (parameters.enableSQL === true || parameters.enableSQL === undefined),
       tempLibrary: parameters.tempLibrary || `ILEDITOR`,
       tempDir: parameters.tempDir || `/tmp`,
       currentLibrary: parameters.currentLibrary || ``,

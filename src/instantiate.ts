@@ -187,7 +187,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const LOADING_LABEL = `Please wait`;
       const storage = instance.getStorage();
       const content = instance.getContent();
-      const config = instance.getConfig();
       const connection = instance.getConnection();
       let starRemoved: boolean = false;
 
@@ -232,7 +231,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.show();
 
       // Create a cache for Schema if autosuggest enabled
-      if (schemaItems.length === 0 && config && config.enableSQL) {
+      if (schemaItems.length === 0 && connection?.enableSQL) {
         content!.runSQL(`
           select cast( SYSTEM_SCHEMA_NAME as char( 10 ) for bit data ) as SYSTEM_SCHEMA_NAME
                , ifnull( cast( SCHEMA_TEXT as char( 50 ) for bit data ), '' ) as SCHEMA_TEXT 
@@ -266,7 +265,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         }
 
         // autosuggest
-        if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
+        if (connection && connection.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
           const selectionSplit = connection!.upperCaseName(quickPick.value).split('/');
           const lastPart = selectionSplit[selectionSplit.length - 1];
           let filterText = lastPart.substring(0, lastPart.indexOf(`*`));
@@ -424,7 +423,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           } else {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
-              if (config && config.enableSQL && !selection.startsWith(`/`)) {
+              if (connection?.enableSQL && !selection.startsWith(`/`)) {
                 const libUS = connection!.sysNameInAmerican(selectionSplit[0]);
                 const fileUS = connection!.sysNameInAmerican(selectionSplit[1]);
                 const memberUS = path.parse(connection!.sysNameInAmerican(selectionSplit[2]));
