@@ -2,11 +2,8 @@ import IBMi from "../api/IBMi";
 import { instance } from "../instantiate";
 import { ComponentT, ComponentState } from "./component";
 
-export class GetNewLibl implements ComponentT {
-  public state: ComponentState = ComponentState.NotChecked;
+export class GetNewLibl extends ComponentT {
   public currentVersion: number = 1;
-
-  constructor(public connection: IBMi) {}
 
   async getInstalledVersion(): Promise<number> {
     return (this.connection.remoteFeatures[`GETNEWLIBL.PGM`] ? 1 : 0);

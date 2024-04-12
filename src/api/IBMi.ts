@@ -12,7 +12,7 @@ import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
-import { ComponentIds, ComponentManager } from "../components/component";
+import { ComponentId, ComponentManager } from "../components/component";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1264,7 +1264,7 @@ export default class IBMi {
     }
   }
 
-  getComponent<T>(id: ComponentIds) {
+  getComponent<T>(id: ComponentId) {
     return this.components.get<T>(id);
   }
 

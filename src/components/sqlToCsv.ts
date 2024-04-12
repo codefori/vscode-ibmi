@@ -4,11 +4,8 @@ import { instance } from "../instantiate";
 import { ComponentT, ComponentState } from "./component";
 import { parse } from 'csv-parse/sync';
 
-export class SqlToCsv implements ComponentT {
-  public state: ComponentState = ComponentState.NotChecked;
+export class SqlToCsv extends ComponentT {
   public currentVersion: number = 2;
-
-  constructor(public connection: IBMi) {}
 
   async getInstalledVersion(): Promise<number> {
     const config = this.connection.config!

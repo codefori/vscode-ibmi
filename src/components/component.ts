@@ -8,24 +8,28 @@ export enum ComponentState {
   Installed = `Installed`,
   Error = `Error`,
 }
+interface ComponentRegistry {
+  GetNewLibl?: GetNewLibl;
+  SqlToCsv?: SqlToCsv;
+}
 
-export type ComponentIds = `GetNewLibl`|`SqlToCsv`;
+export type ComponentId = keyof ComponentRegistry;
 
 export class ComponentManager {
-  private GetNewLibl: GetNewLibl | undefined;
-  private SqlToCsv: SqlToCsv | undefined;
+  private registered: ComponentRegistry = {};
 
   public async startup(connection: IBMi) {
-    this.GetNewLibl = new GetNewLibl(connection);
-    await this.GetNewLibl.checkState();
+    this.registered.GetNewLibl = new GetNewLibl(connection);
+    await this.registered.GetNewLibl.checkState();
 
-    this.SqlToCsv = new SqlToCsv(connection);
-    await this.SqlToCsv.checkState();
+    this.registered.SqlToCsv = new SqlToCsv(connection);
+    await this.registered.SqlToCsv.checkState();
   }
 
-  get<T>(id: ComponentIds): T|undefined {
-    const component = this[id as keyof ComponentManager] as unknown as ComponentT;
-    if (component.getState() === ComponentState.Installed) {
+  // TODO: return type based on ComponentIds
+  get<T>(id: ComponentId): T|undefined {
+    const component = this.registered[id];
+    if (component && component.getState() === ComponentState.Installed) {
       return component as T;
     }
   }
