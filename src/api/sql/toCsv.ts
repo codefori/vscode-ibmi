@@ -27,11 +27,12 @@ export class ToCsvRunner extends SQLRunner {
           lastStatement = lastStatement.slice(0, -1);
         }
 
-        lastStatement = `CREATE OR REPLACE TABLE QTEMP.TEMP_DATA AS (${lastStatement}) WITH DATA;`;
-        statementList[statementList.length - 1] = lastStatement;
-
+        // lastStatement = `CREATE OR REPLACE TABLE QTEMP.TEMP_DATA AS (${lastStatement}) WITH DATA;`;
         getCsv = this.connection.getTempRemote(Tools.makeid());
-        statementList.push(`Call QSYS2.QCMDEXC('` + `CPYTOIMPF FROMFILE(QTEMP/TEMP_DATA TEMP_DATA) TOSTMF('${getCsv}') MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*LF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`.replaceAll(`'`, `''`) + `');`);
+
+        // lastStatement = `CREATE OR REPLACE TABLE QTEMP.TEMP_DATA AS (${lastStatement}) WITH DATA;`;
+        lastStatement = `CALL LIAMA.SQL_TO_CSV('${lastStatement.replaceAll(`'`, `''`)}', '${getCsv}');`
+        statementList[statementList.length - 1] = lastStatement;
       }
 
       const output = await this.connection.sendCommand({
@@ -39,7 +40,7 @@ export class ToCsvRunner extends SQLRunner {
         stdin:  statementList.join(`\n`)
       })
 
-      if (output.stdout) {
+      if (output.code === 0) {
         if (getCsv) {
           const content = instance.getContent();
           let result = await content?.downloadStreamfile(getCsv);
