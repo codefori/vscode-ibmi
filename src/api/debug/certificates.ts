@@ -2,10 +2,17 @@ import * as dns from 'dns';
 import { promises as fs } from "fs";
 import * as os from "os";
 import path from "path";
-import { window } from "vscode";
+import { promisify } from 'util';
 import { ConnectionConfiguration } from "../Configuration";
 import IBMi from "../IBMi";
 
+type HostInfo = {
+  ip: string
+  hostName: string
+}
+
+const IP_REGEX = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
+const dnsLookup = promisify(dns.lookup);
 const SERVER_CERTIFICATE = `debug_service.pfx`;
 const CLIENT_CERTIFICATE = `debug_service.crt`;
 
@@ -16,46 +23,36 @@ export function getRemoteCertificateDirectory(connection: IBMi) {
   return connection.config?.debugCertDirectory!;
 }
 
-function resolveHostnameToIP(hostName: string): Promise<string | undefined> {
-  return new Promise<string | undefined>((resolve) => {
-    dns.lookup(hostName, (err, res) => {
-      if (err) {
-        resolve(undefined);
-      } else {
-        resolve(res);
-      }
-    });
-  });
-}
-
-async function getExtFileContent(host: string, connection: IBMi) {
-  const ipRegexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
-  let hostname = undefined;
-  let ipAddr = undefined;
-
-  if (ipRegexExp.test(host)) {
-    ipAddr = host;
-    const hostnameResult = await connection.sendCommand({
-      command: `hostname`
-    });
-
-    if (hostnameResult.stdout) {
-      hostname = hostnameResult.stdout;
-    } else {
-      window.showWarningMessage(`Hostname cannot be retrieved from IBM i, certificate will be created only using the IP address!`);
-    }
-  } else {
-    hostname = host;
-    ipAddr = await resolveHostnameToIP(host);
+async function getHostInfo(connection: IBMi): Promise<HostInfo> {
+  const hostName = (await connection.sendCommand({ command: `hostname` })).stdout;
+  if (!hostName) {
+    throw new Error(`Hostname is undefined on ${connection.currentHost}; please fix the TCP/IP configuration.`);
   }
 
+  let ip;
+  try {
+    ip = (await dnsLookup(hostName)).address
+  }
+  catch (error) {
+    if (IP_REGEX.test(connection.currentHost)) {
+      ip = connection.currentHost;
+    }
+    else {
+      throw new Error(`IP address for ${hostName} could not be resolved: ${error}`);
+    }
+  }
+
+  return { hostName, ip };
+}
+
+async function getExtFileContent(hostInfo: HostInfo) {
   let extFileContent;
-  if (hostname && ipAddr) {
-    extFileContent = `subjectAltName=DNS:${hostname},IP:${ipAddr}`;
-  } else if (hostname) {
-    extFileContent = `subjectAltName=DNS:${hostname}`;
+  if (hostInfo.ip && hostInfo.hostName) {
+    extFileContent = `subjectAltName=DNS:${hostInfo.hostName},IP:${hostInfo.ip}`;
+  } else if (hostInfo.hostName) {
+    extFileContent = `subjectAltName=DNS:${hostInfo.hostName}`;
   } else {
-    extFileContent = `subjectAltName=IP:${ipAddr}`;
+    extFileContent = `subjectAltName=IP:${hostInfo.ip}`;
   }
 
   return extFileContent;
@@ -63,10 +60,6 @@ async function getExtFileContent(host: string, connection: IBMi) {
 
 function getLegacyCertificatePath() {
   return path.posix.join(LEGACY_CERT_DIRECTORY, SERVER_CERTIFICATE);
-}
-
-function getPasswordForHost(connection: IBMi) {
-  return connection.currentHost;
 }
 
 export function getRemoteServerCertificatePath(connection: IBMi) {
@@ -89,9 +82,6 @@ export async function remoteServerCertificateExists(connection: IBMi, legacy = f
  * Generate debug service certifciate
  */
 export async function setup(connection: IBMi) {
-  const pw = getPasswordForHost(connection);
-  const extFileContent = await getExtFileContent(pw, connection);
-
   if (!connection.usingBash()) {
     if (connection.remoteFeatures[`bash`]) {
       throw new Error(`Bash is installed on the IBM i, but it is not your default shell. Please switch to bash to setup the debug service.`);
@@ -100,12 +90,14 @@ export async function setup(connection: IBMi) {
     }
   }
 
+  const hostInfo = await getHostInfo(connection);
+  const extFileContent = await getExtFileContent(hostInfo);
   const commands = [
     `openssl genrsa -out debug_service.key 2048`,
-    `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${pw}'`,
+    `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostName}'`,
     `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
-    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${pw}`,
-    `rm debug_service.key debug_service.csr debug_service.crt`, 
+    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${hostInfo.hostName}`,
+    `rm debug_service.key debug_service.csr debug_service.crt`,
     `chmod 444 debug_service.pfx`
   ];
 
@@ -135,7 +127,7 @@ export async function downloadClientCert(connection: IBMi) {
 }
 
 export async function readRemoteCertificate(connection: IBMi) {
-  const keyPass = getPasswordForHost(connection);
+  const keyPass = (await getHostInfo(connection)).hostName;
 
   const result = await connection.sendCommand({
     command: `openssl pkcs12 -in ${getRemoteServerCertificatePath(connection)} -passin pass:${keyPass} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,

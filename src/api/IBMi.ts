@@ -12,6 +12,8 @@ import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
+import { DebugConfiguration } from "./debug/config";
+import { debugPTFInstalled, getServiceConfigurationFile } from "./debug/server";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -863,6 +865,23 @@ export default class IBMi {
           }
         }
 
+        let debugConfigLoaded = false
+        if ((!quickConnect || !cachedServerSettings?.debugConfigLoaded)) {
+          if(debugPTFInstalled()){
+            try{
+              const debugServiceConfig = new DebugConfiguration(getServiceConfigurationFile());
+              await debugServiceConfig.load();
+              this.config.debugCertDirectory = `${debugServiceConfig.getOrDefault("DBGSRV_WRK_DIR", "/QIBM/UserData/IBMiDebugService")}/certs`
+              this.config.debugPort = debugServiceConfig.getOrDefault("DBGSRV_SECURED_PORT", "8005");
+              this.config.debugSepPort = debugServiceConfig.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
+              debugConfigLoaded = true;
+            }
+            catch(error){
+              vscode.window.showWarningMessage(`Could not load debug service configuration: ${error}`);
+            }            
+          }
+        }
+
         if (!reconnecting) {
           vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
           await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
@@ -882,7 +901,8 @@ export default class IBMi {
           badDataAreasChecked: true,
           libraryListValidated: true,
           pathChecked: true,
-          defaultCCSID: this.defaultCCSID
+          defaultCCSID: this.defaultCCSID,
+          debugConfigLoaded
         });
 
         //Keep track of variant characters that can be uppercased

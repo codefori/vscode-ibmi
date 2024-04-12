@@ -45,15 +45,16 @@ export type LastConnection = {
 };
 
 export type CachedServerSettings = {
-  aspInfo: { [id: number]: string };
-  qccsid: number | null;
-  remoteFeatures: { [name: string]: string | undefined };
-  remoteFeaturesKeys: string | null;
-  variantChars: { american: string, local: string };
-  badDataAreasChecked: boolean | null,
-  libraryListValidated: boolean | null,
+  aspInfo: { [id: number]: string }
+  qccsid: number | null
+  remoteFeatures: { [name: string]: string | undefined }
+  remoteFeaturesKeys: string | null
+  variantChars: { american: string, local: string }
+  badDataAreasChecked: boolean | null
+  libraryListValidated: boolean | null
   pathChecked?: boolean
-  defaultCCSID: number | null;
+  defaultCCSID: number | null
+  debugConfigLoaded : boolean
 } | undefined;
 
 export class GlobalStorage extends Storage {
