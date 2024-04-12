@@ -1,5 +1,6 @@
 import IBMi from "../api/IBMi";
 import { GetNewLibl } from "./getNewLibl";
+import { IfsWrite } from "./ifsWrite";
 import { SqlToCsv } from "./sqlToCsv";
 
 export enum ComponentState {
@@ -11,6 +12,7 @@ export enum ComponentState {
 interface ComponentRegistry {
   GetNewLibl?: GetNewLibl;
   SqlToCsv?: SqlToCsv;
+  IfsWrite?: IfsWrite;
 }
 
 export type ComponentId = keyof ComponentRegistry;
@@ -32,6 +34,9 @@ export class ComponentManager {
   public async startup(connection: IBMi) {
     this.registered.GetNewLibl = new GetNewLibl(connection);
     await this.registered.GetNewLibl.checkState();
+
+    this.registered.IfsWrite = new IfsWrite(connection);
+    await this.registered.IfsWrite.checkState();
 
     this.registered.SqlToCsv = new SqlToCsv(connection);
     await this.registered.SqlToCsv.checkState();

@@ -1,7 +1,7 @@
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
-import { ComponentT, ComponentState } from "./component";
+import { ComponentT, ComponentState, ComponentManager } from "./component";
 
 export interface WrapResult {
   newStatement: string;
@@ -9,6 +9,7 @@ export interface WrapResult {
 }
 
 export class SqlToCsv implements ComponentT {
+  private readonly name = 'SQL_TO_CSV';
   public state: ComponentState = ComponentState.NotInstalled;
   public currentVersion: number = 2;
 
@@ -17,7 +18,7 @@ export class SqlToCsv implements ComponentT {
   async getInstalledVersion(): Promise<number> {
     const config = this.connection.config!
     const lib = config.tempLibrary!;
-    const sql = `select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${lib.toUpperCase()}' and routine_name = 'SQL_TO_CSV'`
+    const sql = `select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${lib.toUpperCase()}' and routine_name = '${this.name}'`
     const [result] = await this.connection.runSQL(sql);
     if (result) {
       const comment = result.LONG_COMMENT as string;
@@ -32,6 +33,14 @@ export class SqlToCsv implements ComponentT {
   }
 
   async checkState(): Promise<boolean> {
+    const ifsWriteComponent = this.connection.getComponent(`IfsWrite`);
+
+    if (!ifsWriteComponent) {
+      // This procedure will depend on IfsWrite
+      this.state = ComponentState.Error;
+      return false;
+    }
+
     const installedVersion = await this.getInstalledVersion();
 
     if (installedVersion === this.currentVersion) {
@@ -44,7 +53,7 @@ export class SqlToCsv implements ComponentT {
 
     const tempSourcePath = this.connection.getTempRemote(`csvToSql.sql`)!;
 
-    await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary));
+    await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary, this.name));
     const result = await this.connection.runCommand({
       command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
       cwd: `/`,
@@ -69,15 +78,15 @@ export class SqlToCsv implements ComponentT {
     const outStmf = this.connection.getTempRemote(Tools.makeid())!;
 
     return {
-      newStatement: `CALL ${tempLib}.SQL_TO_CSV('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`,
+      newStatement: `CALL ${tempLib}.${this.name}('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`,
       outStmf
     };
   }
 }
 
-function getSource(library: string) {
+function getSource(library: string, name: string) {
   return `
-create or replace procedure ${library}.sql_to_csv
+create or replace procedure ${library}.${name}
 (
     in sql_statement    clob,
     in output_file      varchar(256)
@@ -174,6 +183,6 @@ begin atomic
     call qsys2.ifs_write_utf8(output_file, file_content, overwrite => 'REPLACE', end_of_line => 'LF');
 end;
 
-comment on procedure ${library}.sql_to_csv is '1 - Produce a CSV file from a SQL statement';
+comment on procedure ${library}.${name} is '1 - Produce a CSV file from a SQL statement';
   `
 }
