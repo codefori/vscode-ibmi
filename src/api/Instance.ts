@@ -7,7 +7,6 @@ import { IBMiEvent } from "../typings";
 
 export default class Instance {
   private connection: IBMi | undefined;
-  private content: IBMiContent | undefined;
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
   private events: { event: IBMiEvent, func: Function }[] = [];
@@ -25,12 +24,10 @@ export default class Instance {
     if (connection) {
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
-      this.content = new IBMiContent(connection);
       await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
     }
     else {
       this.connection = undefined;
-      this.content = undefined;
       this.storage.setConnectionName("");
     }
   }
@@ -49,7 +46,7 @@ export default class Instance {
   }
 
   getContent() {
-    return this.content;
+    return this.connection?.content;
   }
 
   getStorage() {

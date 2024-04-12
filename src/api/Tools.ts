@@ -288,8 +288,8 @@ export namespace Tools {
    * @param statement the statement to fix
    * @returns statement compatible with QZDFMDB2
    */
-  export function fixSQL(statement: string) {
-    return statement.split("\n").map(line => {
+  export function fixSQL(statement: string, removeComments = false): string {
+    let statements = statement.split("\n").map(line => {
       if (line.startsWith('@')) {
         //- Escape all '
         //- Remove any trailing ;
@@ -299,8 +299,13 @@ export namespace Tools {
 
       //Make each comment start on a new line
       return line.replaceAll("--", "\n--");
+    }).join(`\n`);
+
+    if (removeComments) {
+      statements = statements.split(`\n`).filter(l => !l.trim().startsWith(`--`)).join(`\n`);
     }
-    ).join("\n");
+
+    return statements;
   }
 
   export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {

@@ -15,6 +15,17 @@ interface ComponentRegistry {
 
 export type ComponentId = keyof ComponentRegistry;
 
+export abstract class ComponentT {
+  public state: ComponentState = ComponentState.NotChecked;
+  public currentVersion: number = 0;
+
+  constructor(public connection: IBMi) { }
+
+  abstract getInstalledVersion(): Promise<number | undefined>;
+  abstract checkState(): Promise<boolean>
+  abstract getState(): ComponentState;
+}
+
 export class ComponentManager {
   private registered: ComponentRegistry = {};
 
@@ -33,15 +44,4 @@ export class ComponentManager {
       return component as T;
     }
   }
-}
-
-export abstract class ComponentT {
-  public state: ComponentState = ComponentState.NotChecked;
-  public currentVersion: number = 0;
-
-  constructor(public connection: IBMi) { }
-
-  abstract getInstalledVersion(): Promise<number | undefined>;
-  abstract checkState(): Promise<boolean>
-  abstract getState(): ComponentState;
 }

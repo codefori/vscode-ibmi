@@ -2,10 +2,17 @@ import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { ComponentT, ComponentState } from "./component";
-import { parse } from 'csv-parse/sync';
 
-export class SqlToCsv extends ComponentT {
+export interface WrapResult {
+  newStatement: string;
+  outStmf: string;
+}
+
+export class SqlToCsv implements ComponentT {
+  public state: ComponentState = ComponentState.NotInstalled;
   public currentVersion: number = 2;
+
+  constructor(public connection: IBMi) {}
 
   async getInstalledVersion(): Promise<number> {
     const config = this.connection.config!
@@ -57,32 +64,14 @@ export class SqlToCsv extends ComponentT {
     return this.state;
   }
 
-  async runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
+  wrap(statement: string): WrapResult {
     const tempLib = this.connection.config!.tempLibrary!;
-    const getCsv = this.connection.getTempRemote(Tools.makeid())!;
-    const content = instance.getContent();
+    const outStmf = this.connection.getTempRemote(Tools.makeid())!;
 
-    statements[statements.length - 1] = `CALL ${tempLib}.SQL_TO_CSV('${statements[0].replaceAll(`'`, `''`)}', '${getCsv}')`;
-
-    // Will throw
-    await content?.runStatements(...statements);
-
-    const csvContent = await content?.downloadStreamfile(getCsv);
-    if (csvContent) {
-      return parse(csvContent, {
-        columns: true,
-        skip_empty_lines: true,
-        cast: true,
-        onRecord(record) {
-          for (const key of Object.keys(record)) {
-            record[key] = record[key] === ` ` ? `` : record[key];
-          }
-          return record;
-        }
-      }) as Tools.DB2Row[];
-    }
-
-    throw new Error(`There was an error getting the SQL result.`);
+    return {
+      newStatement: `CALL ${tempLib}.SQL_TO_CSV('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`,
+      outStmf
+    };
   }
 }
 

@@ -13,6 +13,9 @@ import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { ComponentId, ComponentManager } from "../components/component";
+import { SqlToCsv, WrapResult } from "../components/sqlToCsv";
+import IBMiContent from "./IBMiContent";
+import { parse } from 'csv-parse/sync';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -78,6 +81,7 @@ export default class IBMi {
    * */
   lastErrors: object[] = [];
   config?: ConnectionConfiguration.Parameters;
+  content = new IBMiContent(this);
   shell?: string;
 
   commandsExecuted: number = 0;
@@ -765,7 +769,7 @@ export default class IBMi {
                       }
                       else {
                         try {
-                          const content = instance.getContent();
+                          const content = this.content;
                           if (content) {
                             const bashrcContent = (await content.downloadStreamfile(bashrcFile)).split("\n");
                             let replaced = false;
@@ -1276,7 +1280,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, opts: {userCcsid?: number} = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, opts: { userCcsid?: number } = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
@@ -1284,20 +1288,55 @@ export default class IBMi {
       const useCcsid = opts.userCcsid || (ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined);
       const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
 
+      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`);
+
+      let returningAsCsv: WrapResult | undefined;
+
+      const sqlToCsv = this.getComponent<SqlToCsv>(`SqlToCsv`);
+      if (sqlToCsv) {
+        let list = input.split(`\n`);
+        const lastStmt = list[list.length - 1];
+        const asUpper = lastStmt.toUpperCase();
+        if (asUpper.startsWith(`SELECT`) || asUpper.startsWith(`WITH`)) {
+          returningAsCsv = sqlToCsv.wrap(lastStmt);
+          list[list.length - 1] = returningAsCsv.newStatement;
+        }
+      }
+
       const output = await this.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: Tools.fixSQL(`${possibleChangeCommand}${statements}`)
+        stdin: input
       })
 
       if (output.stdout) {
-        return Tools.db2Parse(output.stdout);
-      } else {
-        throw new Error(`There was an error running the SQL statement.`);
-      }
+        Tools.db2Parse(output.stdout);
+        
+        if (returningAsCsv) {
+          // Will throw an error if stdout contains an error
 
-    } else {
-      throw new Error(`There is no way to run SQL on this system.`);
+          const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
+          if (csvContent) {
+            return parse(csvContent, {
+              columns: true,
+              skip_empty_lines: true,
+              cast: true,
+              onRecord(record) {
+                for (const key of Object.keys(record)) {
+                  record[key] = record[key] === ` ` ? `` : record[key];
+                }
+                return record;
+              }
+            }) as Tools.DB2Row[];
+          }
+
+          throw new Error(`There was an error fetching the SQL result set.`)
+        } else {
+          return Tools.db2Parse(output.stdout);
+        }
+      }
     }
+
+    throw new Error(`There is no way to run SQL on this system.`);
   }
 
   getEncoding() {
@@ -1316,5 +1355,5 @@ export default class IBMi {
       runtimeCcsid: this.runtimeCcsid,
       userDefaultCCSID: this.userDefaultCCSID,
     };
-  } 
+  }
 }
