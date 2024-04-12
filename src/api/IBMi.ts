@@ -1280,12 +1280,12 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, opts: { userCcsid?: number } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
       const ccsidDetail = this.getEncoding();
-      const useCcsid = opts.userCcsid || (ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined);
+      const useCcsid = ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined;
       const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
 
       let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`);
@@ -1300,6 +1300,7 @@ export default class IBMi {
         if (asUpper.startsWith(`SELECT`) || asUpper.startsWith(`WITH`)) {
           returningAsCsv = sqlToCsv.wrap(lastStmt);
           list[list.length - 1] = returningAsCsv.newStatement;
+          input = list.join(`\n`);
         }
       }
 
