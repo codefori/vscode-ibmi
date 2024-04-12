@@ -1292,7 +1292,7 @@ export default class IBMi {
   }
 
   getEncoding() {
-    const fallback = ((this.runtimeCcsid < 1 || this.runtimeCcsid === 65535) && this.userDefaultCCSID > 0 ? true : false);
+    const fallback = ((this.runtimeCcsid < 1 || this.runtimeCcsid === 65535) && this.userDefaultCCSID > 0);
     const ccsid = fallback ? (this.userDefaultCCSID) : this.runtimeCcsid;
     return {
       fallback,
