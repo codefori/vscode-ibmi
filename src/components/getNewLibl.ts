@@ -17,6 +17,7 @@ export class GetNewLibl implements ComponentT {
 
     if (installedVersion === this.currentVersion) {
       this.state = ComponentState.Installed;
+      return true;
     }
 
     const config = this.connection.config!
