@@ -4,9 +4,9 @@ import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
+import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -53,6 +53,43 @@ export const ContentSuite: TestSuite = {
     },
 
     {
+      name: `Test memberResolve with variants`, test: async () => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+        const tempLib = config!.tempLibrary,
+              tempSPF = `O_ABC`.concat(connection!.variantChars.local),
+              tempMbr = `O_ABC`.concat(connection!.variantChars.local);
+
+        const result = await connection!.runCommand({
+          command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
+          environment: `ile`
+        });
+
+        const member = await content?.memberResolve(tempMbr, [
+          { library: `QSYSINC`, name: `MIH` }, // Doesn't exist here
+          { library: `NOEXIST`, name: `SUP` }, // Doesn't exist here
+          { library: tempLib, name: tempSPF } // Doesn't exist here
+        ]);
+
+        assert.deepStrictEqual(member, {
+          asp: undefined,
+          library: tempLib,
+          file: tempSPF,
+          name: tempMbr,
+          extension: `MBR`,
+          basename: `${tempMbr}.MBR`
+        });
+
+        // Cleanup...
+        await connection!.runCommand({
+          command: `DLTF ${tempLib}/${tempSPF}`,
+          environment: `ile`
+        });
+      }
+    },
+
+    {
       name: `Test memberResolve with bad name`, test: async () => {
         const content = instance.getContent();
 
@@ -89,6 +126,35 @@ export const ContentSuite: TestSuite = {
         ]);
 
         assert.strictEqual(lib, "QSYS2");
+      }
+    },
+
+    {
+      name: `Test objectResolve .DTAARA with variants`, test: async () => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+        const tempLib = config!.tempLibrary,
+              tempObj = `O_ABC`.concat(connection!.variantChars.local);
+
+        await connection!.runCommand({
+          command: `CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
+          environment: `ile`
+        });
+
+        const lib = await content?.objectResolve(tempObj, [
+          "QSYSINC", // Doesn't exist here
+          "QSYS2", // Doesn't exist here
+          tempLib // Does exist here
+        ]);
+
+        assert.strictEqual(lib, tempLib);
+
+        // Cleanup...
+        await connection!.runCommand({
+          command: `DLTDTAARA ${tempLib}/${tempObj}`,
+          environment: `ile`
+        });
       }
     },
 
@@ -289,10 +355,11 @@ export const ContentSuite: TestSuite = {
       name: `Test validateLibraryList`, test: async () => {
         const content = instance.getContent();
 
-        const badLibs = await content?.validateLibraryList([`QSYSINC`, `BEEPBOOP`]);
+        const badLibs = await content?.validateLibraryList([`SCOOBY`, `QSYSINC`, `BEEPBOOP`]);
 
         assert.strictEqual(badLibs?.includes(`BEEPBOOP`), true);
         assert.strictEqual(badLibs?.includes(`QSYSINC`), false);
+        assert.strictEqual(badLibs?.includes(`SCOOBY`), true);
       }
     },
 
@@ -432,7 +499,6 @@ export const ContentSuite: TestSuite = {
     },
     {
       name: `getMemberList (SQL, no filter)`, test: async () => {
-        const connection = instance.getConnection();
         const content = instance.getContent();
 
         let members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: `*inxen` });

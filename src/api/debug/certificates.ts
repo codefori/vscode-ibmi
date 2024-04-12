@@ -65,6 +65,10 @@ function getLegacyCertificatePath() {
   return path.posix.join(LEGACY_CERT_DIRECTORY, SERVER_CERTIFICATE);
 }
 
+function getPasswordForHost(connection: IBMi) {
+  return connection.currentHost;
+}
+
 export function getRemoteServerCertificatePath(connection: IBMi) {
   return path.posix.join(getRemoteCertificateDirectory(connection), SERVER_CERTIFICATE);
 }
@@ -82,11 +86,11 @@ export async function remoteServerCertificateExists(connection: IBMi, legacy = f
 }
 
 /**
- * Generate all certifcates on the server
+ * Generate debug service certifciate
  */
 export async function setup(connection: IBMi) {
-  const host = connection.currentHost;
-  const extFileContent = await getExtFileContent(host, connection);
+  const pw = getPasswordForHost(connection);
+  const extFileContent = await getExtFileContent(pw, connection);
 
   if (!connection.usingBash()) {
     if (connection.remoteFeatures[`bash`]) {
@@ -98,9 +102,9 @@ export async function setup(connection: IBMi) {
 
   const commands = [
     `openssl genrsa -out debug_service.key 2048`,
-    `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${host}'`,
+    `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${pw}'`,
     `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out debug_service.crt -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
-    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`,
+    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${pw}`,
     `rm debug_service.key debug_service.csr debug_service.crt`, 
     `chmod 444 debug_service.pfx`
   ];
@@ -112,7 +116,7 @@ export async function setup(connection: IBMi) {
   });
 
   if (mkdirResult.code && mkdirResult.code > 0) {
-    throw new Error(`Failed to create server certificate directory: ${directory}`);
+    throw new Error(`Failed to create server certificate directory ${directory}: ${mkdirResult.stderr}`);
   }
 
   const creationResults = await connection.sendCommand({
@@ -121,23 +125,28 @@ export async function setup(connection: IBMi) {
   });
 
   if (creationResults.code && creationResults.code > 0) {
-    throw new Error(`Failed to create server certificate.`);
+    throw new Error(`Failed to create server certificate: ${creationResults.stderr}`);
   }
 }
 
 export async function downloadClientCert(connection: IBMi) {
   const localPath = getLocalCertPath(connection);
+  await fs.writeFile(localPath, await readRemoteCertificate(connection), { encoding: `utf8` });
+}
+
+export async function readRemoteCertificate(connection: IBMi) {
+  const keyPass = getPasswordForHost(connection);
 
   const result = await connection.sendCommand({
-    command: `openssl s_client -connect localhost:${connection.config?.debugPort} -showcerts < /dev/null 2> /dev/null | openssl x509 -outform PEM`,
+    command: `openssl pkcs12 -in ${getRemoteServerCertificatePath(connection)} -passin pass:${keyPass} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
     directory: getRemoteCertificateDirectory(connection)
   });
 
   if (result.code && result.code > 0) {
-    throw new Error(`Failed to download client certificate.`);
+    throw new Error(`Failed to download client certificate: ${result.stderr}`);
   }
 
-  await fs.writeFile(localPath, result.stdout, {encoding: `utf8`});
+  return result.stdout;
 }
 
 export function getLocalCertPath(connection: IBMi) {
@@ -155,16 +164,16 @@ export async function localClientCertExists(connection: IBMi) {
   }
 }
 
-export async function legacyCertificateChecks(connection: IBMi, existingDebugService: string|undefined) {
+export async function legacyCertificateChecks(connection: IBMi, serviceIsRunning: boolean) {
   // We need to migrate away from using the old legacy directory to a new one if
   // the user has the old directory configured but isn't running the server
   const usingLegacyCertPath = (getRemoteCertificateDirectory(connection) === LEGACY_CERT_DIRECTORY);
   const certsExistAtConfig = await remoteServerCertificateExists(connection);
 
-  let changeCertDirConfig: string|undefined;
+  let changeCertDirConfig: string | undefined;
 
   if (usingLegacyCertPath) {
-    if (existingDebugService) {
+    if (serviceIsRunning) {
       // The server is running and they still have the legacy path configured. Do certs exist inside of the legacy path?
 
       // If the legacy certs do exist, it might be using them!
@@ -190,7 +199,7 @@ export async function legacyCertificateChecks(connection: IBMi, existingDebugSer
   } else {
     // If the config isn't using the legacy path, we should check if the legacy certificates exist
 
-    if (existingDebugService) {
+    if (serviceIsRunning) {
       if (!certsExistAtConfig) {
         // The server is running but the certs don't exist in the new path, let's
         // check if they exist at the legacy path and switch back to that

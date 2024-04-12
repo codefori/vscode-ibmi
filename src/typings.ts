@@ -1,5 +1,5 @@
 import { Ignore } from 'ignore';
-import { ProviderResult, Range, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
+import { ProviderResult, Range, ThemeColor, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
 import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
@@ -170,6 +170,7 @@ export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean
 
 export type BrowserItemParameters = {
   icon?: string
+  color?: string
   state?: TreeItemCollapsibleState
   parent?: BrowserItem
 }
@@ -177,7 +178,7 @@ export type BrowserItemParameters = {
 export class BrowserItem extends TreeItem {
   constructor(label: string, readonly params?: BrowserItemParameters) {
     super(label, params?.state);
-    this.iconPath = params?.icon ? new ThemeIcon(params.icon) : undefined;
+    this.iconPath = params?.icon ? new ThemeIcon(params.icon, params.color ? new ThemeColor(params.color) : undefined) : undefined;
   }
 
   get parent() {

@@ -291,7 +291,7 @@ export default class IBMiContent {
    *
    * @param statements
    * @returns a Result set
-   * @deprecated Use `IBMi#runSQL` instead
+   * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
   runSQL(statements: string) {
     return this.ibmi.runSQL(statements);  
@@ -434,10 +434,12 @@ export default class IBMiContent {
       return true;
     });
 
+    const sanitized = Tools.sanitizeLibraryNames(newLibl);
+
     const result = await this.ibmi.sendQsh({
       command: [
         `liblist -d ` + Tools.sanitizeLibraryNames(this.ibmi.defaultUserLibraries).join(` `),
-        ...newLibl.map(lib => `liblist -a ` + Tools.sanitizeLibraryNames([lib]))
+        ...sanitized.map(lib => `liblist -a ` + lib)
       ].join(`; `)
     });
 
@@ -445,10 +447,15 @@ export default class IBMiContent {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `) || line.includes(`ibrary ${Tools.sanitizeLibraryNames([lib])} `));
+        const isNotFound = line.includes(`CPF2110`);
+        if (isNotFound) {
+          const libraryReference = sanitized.find(lib => line.includes(lib));
 
-        // If there is an error about the library, remove it
-        if (badLib) badLibs.push(badLib);
+          // If there is an error about the library, remove it
+          if (libraryReference) {
+            badLibs.push(libraryReference);
+          }
+        }
       });
     }
 
@@ -728,22 +735,24 @@ export default class IBMiContent {
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
+    const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
+    const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
+
     // Escape names for shell
-    const pathList = this.ibmi.upperCaseName(
-      files
-        .map(file => {
-          const asp = file.asp || this.config.sourceASP;
-          if (asp && asp.length > 0) {
-            return [
-              Tools.qualifyPath(file.library, file.name, member, asp, true),
-              Tools.qualifyPath(file.library, file.name, member, undefined, true)
-            ].join(` `);
-          } else {
-            return Tools.qualifyPath(file.library, file.name, member, undefined, true);
-          }
-        })
-        .join(` `)
-    );
+    const pathList = files
+      .map(file => {
+        const asp = file.asp || this.config.sourceASP;
+        if (asp && asp.length > 0) {
+          return [
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
+          ].join(` `);
+        } else {
+          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
+        }
+      })
+      .join(` `)
+      .toUpperCase();
 
     const command = `for f in ${pathList}; do if [ -f $f ]; then echo $f; break; fi; done`;
     const result = await this.ibmi.sendCommand({
@@ -755,7 +764,7 @@ export default class IBMiContent {
 
       if (firstMost) {
         try {
-          const simplePath = Tools.unqualifyPath(firstMost);
+          const simplePath = inLocal(Tools.unqualifyPath(firstMost));
 
           // This can error if the path format is wrong for some reason.
           // Not that this would ever happen, but better to be safe than sorry
@@ -770,7 +779,7 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.upperCaseName(lib)}.LIB/${this.ibmi.upperCaseName(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -780,7 +789,7 @@ export default class IBMiContent {
       const firstMost = result.stdout;
 
       if (firstMost) {
-        const lib = Tools.unqualifyPath(firstMost);
+        const lib = this.ibmi.sysNameInLocal(Tools.unqualifyPath(firstMost));
 
         return lib.split('/')[1];
       }

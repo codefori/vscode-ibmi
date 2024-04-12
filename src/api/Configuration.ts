@@ -54,6 +54,7 @@ export namespace ConnectionConfiguration {
     showDescInLibList: boolean;
     debugCertDirectory: string;
     debugPort: string;
+    debugSepPort: string;
     debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
     debugEnableDebugTracing: boolean;
@@ -135,6 +136,7 @@ export namespace ConnectionConfiguration {
       showDescInLibList: (parameters.showDescInLibList === true),
       debugCertDirectory: (parameters.debugCertDirectory || DEFAULT_CERT_DIRECTORY),
       debugPort: (parameters.debugPort || "8005"),
+      debugSepPort: (parameters.debugSepPort || "8008"),
       debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
