@@ -294,7 +294,7 @@ export default class IBMiContent {
    * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
   runSQL(statements: string) {
-    return this.ibmi.runSQL(statements);  
+    return this.ibmi.runSQL(statements);
   }
 
   /**
@@ -904,6 +904,10 @@ export default class IBMiContent {
       const qsysObject = Tools.parseQSysPath(path);
       return this.config.protectedPaths.includes(this.ibmi.upperCaseName(qsysObject.library));
     }
+  }
+
+  async streamFileExists(path: string) {
+    return (await this.ibmi.sendCommand({ command: `[ -f ${path} ]` })).code === 0;
   }
 
   /**
