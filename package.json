@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.8.5-dev.0",
+	"version": "2.9.2-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -41,12 +41,6 @@
 		"taskDefinitions": [
 			{
 				"type": "ibmi"
-			}
-		],
-		"snippets": [
-			{
-				"path": "./schemas/local-variables.code-snippets",
-				"language": "json"
 			}
 		],
 		"jsonValidation": [
@@ -208,11 +202,6 @@
 								"type": "boolean",
 								"default": true,
 								"description": "Automatically delete temporary objects from the temporary library on startup."
-							},
-							"enableSQL": {
-								"type": "boolean",
-								"default": true,
-								"description": "Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
 							},
 							"currentLibrary": {
 								"type": "string",
@@ -948,7 +937,7 @@
 				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
 				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
-				"icon":"$(desktop-download)"
+				"icon": "$(desktop-download)"
 			},
 			{
 				"command": "code-for-ibmi.debug.batch",
@@ -1625,7 +1614,7 @@
 				"command": "code-for-ibmi.debug.job.restart",
 				"title": "Restart",
 				"category": "IBM i",
-				"icon": "$(debug-restart)",				
+				"icon": "$(debug-restart)",
 				"enablement": "!code-for-ibmi:debugWorking"
 			},
 			{
@@ -1703,7 +1692,7 @@
 				}
 			]
 		},
-		"views": {			
+		"views": {
 			"ibmi-explorer": [
 				{
 					"id": "helpView",
@@ -2801,7 +2790,7 @@
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
 		"node-ssh": "^13.1.0",
-		"tar": "^6.1.13",
+		"tar": "^6.2.1",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
