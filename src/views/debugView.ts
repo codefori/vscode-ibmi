@@ -1,7 +1,7 @@
-import { readFileSync } from "fs";
 import vscode from "vscode";
 import { Tools } from "../api/Tools";
-import { getLocalCertPath, getRemoteCertificateDirectory, localClientCertExists, readRemoteCertificate, remoteServerCertificateExists } from "../api/debug/certificates";
+import { checkClientCertificate, remoteCertificatesExists } from "../api/debug/certificates";
+import { DebugConfiguration } from "../api/debug/config";
 import { DebugJob, getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../api/debug/server";
 import { instance } from "../instantiate";
 import { t } from "../locale";
@@ -10,8 +10,9 @@ import { BrowserItem } from "../typings";
 const title = "IBM i debugger";
 type Certificates = {
   secureDebug: boolean
-  remoteCertificate?: string,
-  localCertificate?: string
+  remoteCertificate: boolean
+  remoteCertificatePath?: string
+  localCertificateIssue?: string
 }
 
 type CertificateIssue = {
@@ -73,14 +74,21 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private async getRootItems() {
     const connection = instance.getConnection();
     if (connection) {
+      const debugConfig = await new DebugConfiguration().load();
       const certificates: Certificates = {
-        secureDebug: connection.config?.debugIsSecure || false
+        secureDebug: connection.config?.debugIsSecure || false,
+        remoteCertificate: await remoteCertificatesExists(debugConfig),
+        remoteCertificatePath: debugConfig.getRemoteServiceCertificatePath()
       };
 
-      if (await remoteServerCertificateExists(connection)) {
-        certificates.remoteCertificate = await readRemoteCertificate(connection);
-        if (certificates.secureDebug && await localClientCertExists(connection)) {
-          certificates.localCertificate = readFileSync(getLocalCertPath(connection)).toString("utf-8");
+      if (certificates.remoteCertificate) {
+        if (certificates.secureDebug) {
+          try {
+            await checkClientCertificate(connection, debugConfig);
+          }
+          catch (error) {
+            certificates.localCertificateIssue = String(error);
+          }
         }
       }
 
@@ -145,22 +153,14 @@ class DebugJobItem extends DebugItem {
         problem = {
           context: "noremote",
           label: t('remote.certificate.not.found'),
-          detail: t('remote.certificate.not.found.detail', "debug_service.pfx", getRemoteCertificateDirectory(instance.getConnection()!))
+          detail: t('remote.certificate.not.found.detail', "debug_service.pfx", certificates.remoteCertificatePath)
         }
       }
-      else if (certificates.secureDebug) {
-        if (!certificates.localCertificate) {
-          problem = {
-            context: "nolocal",
-            label: t('local.certificate.not.found')
-          };
-        }
-        else if (certificates.remoteCertificate !== certificates.localCertificate) {
-          problem = {
-            context: "dontmatch",
-            label: t('local.dont.match.remote')
-          };
-        }
+      else if (certificates.secureDebug && certificates.localCertificateIssue) {
+        problem = {
+          context: "localissue",
+          label: certificates.localCertificateIssue
+        };
       }
     }
 

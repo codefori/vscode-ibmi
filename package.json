@@ -2739,7 +2739,7 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.setup.local",
-					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_(nolocal|dontmatch)$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_localissue$/",
 					"group": "inline"
 				}
 			]

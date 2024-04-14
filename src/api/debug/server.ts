@@ -4,10 +4,8 @@ import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import IBMi from "../IBMi";
 import IBMiContent from "../IBMiContent";
-import * as certificates from "./certificates";
+import { DebugConfiguration } from "./config";
 
-const directory = `/QIBM/ProdData/IBMiDebugService/`;
-const binDirectory = path.posix.join(directory, `bin`);
 const detailFile = `package.json`;
 
 const JavaPaths: { [version: string]: string } = {
@@ -52,7 +50,7 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
     })
   };
 
-  const detailFilePath = path.posix.join(directory, detailFile);
+  const detailFilePath = path.posix.join((await new DebugConfiguration().load()).getRemoteServiceRoot(), detailFile);
   const detailExists = await content.testStreamFile(detailFile, "r");
   if (detailExists) {
     try {
@@ -88,39 +86,23 @@ export async function isSEPSupported() {
 }
 
 export async function startService(connection: IBMi) {
-  const config = connection.config!;
+  const debugConfig = await new DebugConfiguration().load();
 
   const env = {
-    MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java],
-    MY_DBGSRV_SEP_DAEMON_PORT: config.debugSepPort,
-    MY_DBGSRV_SECURED_PORT: config.debugPort,
-    DEBUG_SERVICE_KEYSTORE_PASSWORD: connection.currentHost,
-    DEBUG_SERVICE_KEYSTORE_FILE: certificates.getRemoteServerCertificatePath(connection)
-  }
-  const encryptResult = await connection.sendCommand({
-    command: `${path.posix.join(binDirectory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
-    env
-  });
-
-  if (encryptResult.code === 0) {
-    env.DEBUG_SERVICE_KEYSTORE_PASSWORD = encryptResult.stdout;
-  } else {
-    // Nice error text comes through as stdout.
-    // Real error comes through in stderr.
-    throw new Error(encryptResult.stdout || encryptResult.stderr);
-  }
+    MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
+  };
 
   let didNotStart = false;
   connection.sendCommand({
-    command: `/QOpenSys/usr/bin/nohup "${path.posix.join(binDirectory, `startDebugService.sh`)}"`,
-    env
+    command: `/QOpenSys/usr/bin/nohup "${path.posix.join(debugConfig.getRemoteServiceBin(), `startDebugService.sh`)}"`,
+    env,
+    directory: debugConfig.getRemoteServiceWorkDir()
   }).then(startResult => {
     if (startResult.code) {
       window.showErrorMessage(t("start.debug.service.failed", startResult.stdout || startResult.stderr));
       didNotStart = true;
     }
   });
-
 
   return await new Promise<boolean>(async (done) => {
     let tries = 0;
@@ -141,8 +123,9 @@ export async function startService(connection: IBMi) {
 }
 
 export async function stopService(connection: IBMi) {
+  const debugConfig = await new DebugConfiguration().load();
   const endResult = await connection.sendCommand({
-    command: `${path.posix.join(binDirectory, `stopDebugService.sh`)}`,
+    command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`,
     env: {
       MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
     }
@@ -238,10 +221,6 @@ export async function stopServer() {
     }
   }
   return true;
-}
-
-export function getServiceConfigurationFile() {
-  return path.posix.join(binDirectory, "DebugService.env");
 }
 
 export function refreshDebugSensitiveItems() {

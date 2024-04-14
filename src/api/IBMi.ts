@@ -13,7 +13,7 @@ import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
-import { debugPTFInstalled, getServiceConfigurationFile } from "./debug/server";
+import { debugPTFInstalled } from "./debug/server";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -873,9 +873,8 @@ export default class IBMi {
         if ((!quickConnect || !cachedServerSettings?.debugConfigLoaded)) {
           if(debugPTFInstalled()){
             try{
-              const debugServiceConfig = new DebugConfiguration(getServiceConfigurationFile());
-              await debugServiceConfig.load();
-              this.config.debugCertDirectory = `${debugServiceConfig.getOrDefault("DBGSRV_WRK_DIR", "/QIBM/UserData/IBMiDebugService")}/certs`
+              const debugServiceConfig = await new DebugConfiguration().load();
+              delete this.config.debugCertDirectory;
               this.config.debugPort = debugServiceConfig.getOrDefault("DBGSRV_SECURED_PORT", "8005");
               this.config.debugSepPort = debugServiceConfig.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
               debugConfigLoaded = true;
