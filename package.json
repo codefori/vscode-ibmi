@@ -1623,6 +1623,13 @@
 				"category": "IBM i",
 				"icon": "$(debug-stop)",
 				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.debug.open.service.config",
+				"title": "Open configuration",
+				"category": "IBM i",
+				"icon": "$(settings-gear)",
+				"enablement": "!code-for-ibmi:debugWorking"
 			}
 		],
 		"keybindings": [
@@ -2159,6 +2166,10 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.refresh",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.open.service.config",
 					"when": "never"
 				}
 			],
@@ -2730,6 +2741,11 @@
 				{
 					"command": "code-for-ibmi.debug.job.stop",
 					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.open.service.config",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_service.*$/",
 					"group": "inline"
 				},
 				{

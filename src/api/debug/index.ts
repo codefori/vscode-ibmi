@@ -10,6 +10,7 @@ import { ILELibrarySettings } from "../CompileTools";
 import { Tools } from "../Tools";
 import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
+import { DEBUG_CONFIG_FILE } from "./config";
 import * as server from "./server";
 
 const debugExtensionId = `IBM.ibmidebug`;
@@ -353,7 +354,8 @@ export async function initialize(context: ExtensionContext) {
         }
         return false;
       })
-    )
+    ),
+    vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", DEBUG_CONFIG_FILE))
   );
 
   // Run during startup:

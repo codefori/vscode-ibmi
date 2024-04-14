@@ -5,10 +5,10 @@ type ConfigLine = {
   key: string
   value?: string
 }
+export const DEBUG_CONFIG_FILE = "/QIBM/ProdData/IBMiDebugService/bin/DebugService.env";
 
 export class DebugConfiguration {
-  readonly configLines: ConfigLine[] = [];
-  readonly configurationFile = "/QIBM/ProdData/IBMiDebugService/bin/DebugService.env";
+  readonly configLines: ConfigLine[] = [];  
 
   private getContent() {
     const content = instance.getContent();
@@ -45,7 +45,7 @@ export class DebugConfiguration {
   }
 
   async load() {
-    const content = (await this.getContent().downloadStreamfileRaw(this.configurationFile)).toString("utf-8");
+    const content = (await this.getContent().downloadStreamfileRaw(DEBUG_CONFIG_FILE)).toString("utf-8");
     this.configLines.push(...content.split("\n")
       .map(line => line.trim())
       .map(line => {
@@ -65,7 +65,7 @@ export class DebugConfiguration {
   }
 
   async save() {
-    await this.getContent().writeStreamfileRaw(this.configurationFile, Buffer.from(this.configLines.map(line => `${line.key}${line.value !== undefined ? `=${line.value}` : ''}`).join("\n"), `utf8`));
+    await this.getContent().writeStreamfileRaw(DEBUG_CONFIG_FILE, Buffer.from(this.configLines.map(line => `${line.key}${line.value !== undefined ? `=${line.value}` : ''}`).join("\n"), `utf8`));
   }
 
   getRemoteServiceCertificatePath() {
