@@ -83,6 +83,8 @@ export class SqlToCsv implements ComponentT {
       statement = statement.substring(0, statement.length - 1);
     }
 
+    statement = statement.replace(new RegExp(`for bit data`, `gi`), ``);
+
     return {
       newStatement: `CALL ${tempLib}.${this.name}('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`,
       outStmf
