@@ -22,7 +22,7 @@ export type ImportedCertificate = {
   password: string
 }
 
-const ENCRYPTION_KEY = "code4i.debug";
+const ENCRYPTION_KEY = ".code4i.debug";
 const IP_REGEX = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
 const dnsLookup = promisify(dns.lookup);
 export const SERVICE_CERTIFICATE = `debug_service.pfx`;
