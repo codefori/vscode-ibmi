@@ -1317,6 +1317,8 @@ export default class IBMi {
 
           const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
           if (csvContent) {
+            this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
+
             return parse(csvContent, {
               columns: true,
               skip_empty_lines: true,
