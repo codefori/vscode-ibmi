@@ -2,6 +2,7 @@ import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { ComponentT, ComponentState, ComponentManager } from "./component";
+import { IfsWrite } from "./ifsWrite";
 
 export interface WrapResult {
   newStatement: string;
@@ -33,7 +34,7 @@ export class SqlToCsv implements ComponentT {
   }
 
   async checkState(): Promise<boolean> {
-    const ifsWriteComponent = this.connection.getComponent(`IfsWrite`);
+    const ifsWriteComponent = this.connection.getComponent<IfsWrite>(`IfsWrite`);
 
     if (!ifsWriteComponent) {
       // This procedure will depend on IfsWrite
@@ -53,7 +54,7 @@ export class SqlToCsv implements ComponentT {
 
     const tempSourcePath = this.connection.getTempRemote(`csvToSql.sql`)!;
 
-    await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary, this.name));
+    await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary, this.name, ifsWriteComponent.name));
     const result = await this.connection.runCommand({
       command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
       cwd: `/`,
@@ -77,6 +78,11 @@ export class SqlToCsv implements ComponentT {
     const tempLib = this.connection.config!.tempLibrary!;
     const outStmf = this.connection.getTempRemote(Tools.makeid())!;
 
+    statement = statement.trim();
+    if (statement.endsWith(';')) {
+      statement = statement.substring(0, statement.length - 1);
+    }
+
     return {
       newStatement: `CALL ${tempLib}.${this.name}('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`,
       outStmf
@@ -84,7 +90,7 @@ export class SqlToCsv implements ComponentT {
   }
 }
 
-function getSource(library: string, name: string) {
+function getSource(library: string, name: string, writeName: string) {
   return `
 create or replace procedure ${library}.${name}
 (
@@ -180,7 +186,8 @@ begin atomic
     deallocate descriptor local 'modified';
     deallocate descriptor local 'original';
 
-    call qsys2.ifs_write_utf8(output_file, file_content, overwrite => 'REPLACE', end_of_line => 'LF');
+    -- call qsys2.ifs_write_utf8(output_file, file_content, overwrite => 'REPLACE', end_of_line => 'LF');
+    call ${library}.${writeName}(output_file, file_content);
 end;
 
 comment on procedure ${library}.${name} is '1 - Produce a CSV file from a SQL statement';

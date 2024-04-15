@@ -9,7 +9,7 @@ export interface WrapResult {
 }
 
 export class IfsWrite implements ComponentT {
-  private readonly name = 'IFS_WRITE';
+  public readonly name = 'IFS_WRITE';
   public state: ComponentState = ComponentState.NotInstalled;
   public currentVersion: number = 2;
 
@@ -66,6 +66,7 @@ export class IfsWrite implements ComponentT {
   }
 }
 
+// todo: support CLOB instead of varchar
 function getSource(library: string, name: string) {
   return `
 call qcmdexc ('addlible qsysinc');
@@ -86,7 +87,7 @@ insert into qtemp.c (srcdta) values
     ('}')
 ;
 
-create or replace procedure ${library}.${name}(name varchar(256), buf clob ccsid 1208 )
+create or replace procedure ${library}.${name}(name varchar(256), buf varchar(32700) ccsid 1208 )
 external action 
 modifies sql data
 set option output=*print, commit=*none, dbgview = *source
