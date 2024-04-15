@@ -1288,19 +1288,19 @@ export default class IBMi {
       const useCcsid = ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined;
       const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
 
-      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`);
+      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
 
       let returningAsCsv: WrapResult | undefined;
 
       const sqlToCsv = this.getComponent<SqlToCsv>(`SqlToCsv`);
       if (sqlToCsv) {
-        let list = input.split(`\n`);
-        const lastStmt = list[list.length - 1];
-        const asUpper = lastStmt.toUpperCase();
-        if (asUpper.startsWith(`SELECT`) || asUpper.startsWith(`WITH`)) {
+        let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
+        const lastStmt = list.pop()?.trim();
+        const asUpper = lastStmt?.toUpperCase();
+        if (lastStmt && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
           returningAsCsv = sqlToCsv.wrap(lastStmt);
-          list[list.length - 1] = returningAsCsv.newStatement;
-          input = list.join(`\n`);
+          list.push(returningAsCsv.newStatement);
+          input = list.join(`;\n`);
         }
       }
 
