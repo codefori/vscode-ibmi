@@ -182,7 +182,7 @@ export async function remoteCertificatesExists(debugConfig?: DebugConfiguration)
   const content = instance.getContent();
   if (content) {
     debugConfig = debugConfig || await new DebugConfiguration().load();
-    return await content.streamFileExists(debugConfig.getRemoteServiceCertificatePath()) && await content.streamFileExists(debugConfig.getRemoteClientCertificatePath());
+    return await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f") && await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
   }
   else {
     throw new Error("Not connected to an IBM i");
@@ -229,10 +229,10 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
   //The encryption key is backed up since it's destroyed every time the service starts up
   //The remote certificate is only valid if the client certificate is found too
   const debugConfig = await new DebugConfiguration().load();
-  const remoteCertExists = await content.streamFileExists(debugConfig.getRemoteServiceCertificatePath());
-  const remoteClientCertExists = await content.streamFileExists(debugConfig.getRemoteClientCertificatePath());
-  const encryptionKeyExists = await content.streamFileExists(`${debugConfig.getRemoteServiceWorkDir()}/${ENCRYPTION_KEY}`);
-  const legacyCertExists = await content.streamFileExists(`${LEGACY_CERT_DIRECTORY}/${SERVICE_CERTIFICATE}`);
+  const remoteCertExists = await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f");
+  const remoteClientCertExists = await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
+  const encryptionKeyExists = await content.testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/${ENCRYPTION_KEY}`, "f");
+  const legacyCertExists = await content.testStreamFile(`${LEGACY_CERT_DIRECTORY}/${SERVICE_CERTIFICATE}`, "f");
 
   if ((encryptionKeyExists && remoteCertExists && remoteClientCertExists) || (!legacyCertExists && !remoteCertExists)) {
     //We're good! Let's clean up the legacy certificate if needed

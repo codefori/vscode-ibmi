@@ -892,7 +892,7 @@ export default class IBMiContent {
     })).code === 0;
   }
 
-  async testStreamFile(path: string, right: "r" | "w" | "x") {
+  async testStreamFile(path: string, right: "f" | "d" | "r" | "w" | "x") {
     return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
   }
 
@@ -904,10 +904,6 @@ export default class IBMiContent {
       const qsysObject = Tools.parseQSysPath(path);
       return this.config.protectedPaths.includes(this.ibmi.upperCaseName(qsysObject.library));
     }
-  }
-
-  async streamFileExists(path: string) {
-    return (await this.ibmi.sendCommand({ command: `[ -f ${path} ]` })).code === 0;
   }
 
   /**
