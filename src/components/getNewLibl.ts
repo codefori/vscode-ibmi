@@ -52,7 +52,7 @@ export class GetNewLibl implements ComponentT {
       const tempLib = this.connection.config!.tempLibrary;
       const resultSet = await this.connection.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
 
-      let result = {
+      const result = {
         currentLibrary: `QGPL`,
         libraryList: [] as string[]
       };

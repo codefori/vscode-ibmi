@@ -1,14 +1,8 @@
 import assert from "assert";
-import tmp from 'tmp';
-import util, { TextDecoder } from 'util';
-import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
-import { Tools } from "../api/Tools";
-import { instance } from "../instantiate";
-import { CommandResult } from "../typings";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { GetNewLibl } from "../components/getNewLibl";
 import { SqlToCsv } from "../components/sqlToCsv";
+import { instance } from "../instantiate";
 
 export const ComponentSuite: TestSuite = {
   name: `Component tests`,
@@ -50,7 +44,7 @@ export const ComponentSuite: TestSuite = {
         const file = `TEST273`;
 
         const statement = `SELECT * FROM ${tempLib}.${tempLib}_${file}_THEMEMBER`;
-        const wrapped = await component.wrap(statement);
+        const wrapped = component.wrap(statement);
         assert.ok(wrapped.newStatement.startsWith(`CALL ${tempLib}.SQL_TO_CSV('${statement}'`));
         assert.ok(wrapped.outStmf.startsWith(config.tempDir));
       }
