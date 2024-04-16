@@ -1813,7 +1813,7 @@
 			"code-for-ibmi.debug.group": [
 				{
 					"command": "code-for-ibmi.debug.batch",
-					"when": "code-for-ibmi:debug"
+					"when": "code-for-ibmi:debug && viewItem =~ /^object.pgm.*/"
 				},
 				{
 					"command": "code-for-ibmi.debug.sep",
