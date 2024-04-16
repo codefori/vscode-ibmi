@@ -1820,7 +1820,7 @@
 			"code-for-ibmi.debug.group": [
 				{
 					"command": "code-for-ibmi.debug.batch",
-					"when": "code-for-ibmi:debug"
+					"when": "code-for-ibmi:debug && viewItem =~ /^object.pgm.*/"
 				},
 				{
 					"command": "code-for-ibmi.debug.sep",
@@ -2510,7 +2510,7 @@
 				},
 				{
 					"submenu": "code-for-ibmi.debug.group",
-					"when": "view == objectBrowser && !inDebugMode && (viewItem =~ /^object.pgm.*/ || viewItem =~ /^object.srvpgm.*/)",
+					"when": "view == objectBrowser && !inDebugMode && viewItem =~ /^object.(pgm|srvpgm).*/",
 					"group": "2_debug@1"
 				},
 				{
