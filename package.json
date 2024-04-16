@@ -2297,7 +2297,7 @@
 			"editor/title": [
 				{
 					"submenu": "code-for-ibmi.debug.group",
-					"when": "code-for-ibmi:connected && !inDebugMode && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
+					"when": "code-for-ibmi:connected && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
 					"group": "navigation@1"
 				},
 				{
@@ -2499,7 +2499,7 @@
 				},
 				{
 					"submenu": "code-for-ibmi.debug.group",
-					"when": "view == objectBrowser && !inDebugMode && (viewItem =~ /^object.pgm.*/ || viewItem =~ /^object.srvpgm.*/)",
+					"when": "view == objectBrowser && viewItem =~ /^object.(pgm|srvpgm).*/",
 					"group": "2_debug@1"
 				},
 				{
