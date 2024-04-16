@@ -276,7 +276,7 @@ export async function initialize(context: ExtensionContext) {
             else {
               const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
                 modal: true,
-                detail: `Debug service certificate does not exist on the system or it needs to be re-created. You can either import an existing certificate or generate one. Then the client certificate will be downloaded to your device.`
+                detail: `Debug service server and client certificates do not exist on the system or they need to be re-created. You can either import an existing server certificate or generate one. Then the client certificate will be generated and downloaded to your device.`
               }, `Generate`, `Import`);
 
               if (doSetup) {
@@ -287,7 +287,7 @@ export async function initialize(context: ExtensionContext) {
                       canSelectFiles: true,
                       canSelectFolders: false,
                       canSelectMany: false,
-                      title: `Select debug service certificate`,
+                      title: `Select debug service server certificate`,
                       filters: { "PFX certificate": ["pfx"] }
                     }))?.at(0);
 
@@ -299,9 +299,9 @@ export async function initialize(context: ExtensionContext) {
                     }
                   }
                   await certificates.setup(connection, imported);
-                  vscode.window.showInformationMessage(`Debug Service certificate successfully generated on server.`);
+                  vscode.window.showInformationMessage(`Debug Service server and client certificates successfully ${imported ? "imported" : "generated"}.`);
                   await certificates.downloadClientCert(connection);
-                  vscode.window.showInformationMessage(`Debug Service Client certificate downloaded from the server.`);
+                  vscode.window.showInformationMessage(`Debug Service client certificate downloaded from the server.`);
                 } catch (e: any) {
                   vscode.window.showErrorMessage(e.message || e);
                 }
