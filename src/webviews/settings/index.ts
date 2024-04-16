@@ -198,10 +198,10 @@ export class SettingsUI {
               catch (error) {
                 localCertificateIssue = `${String(error)}. Debugging securely will not function correctly.`;
               }
-              debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for server has been imported."}</b>`)
+              debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`);
               if (!localCertificateIssue) {
-                debuggerTab.addButtons({ id: `import`, label: `Import service certificate` })
+                debuggerTab.addButtons({ id: `import`, label: `Download client certificate` })
               }
             }
             else {
