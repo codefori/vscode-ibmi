@@ -3,19 +3,19 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
+import { parse } from 'csv-parse/sync';
 import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
+import { ComponentId, ComponentManager } from "../components/component";
+import { SqlToCsv, WrapResult } from "../components/sqlToCsv";
 import { instance } from "../instantiate";
 import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
 import { CompileTools } from "./CompileTools";
+import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
-import { ComponentId, ComponentManager } from "../components/component";
-import { SqlToCsv, WrapResult } from "../components/sqlToCsv";
-import IBMiContent from "./IBMiContent";
-import { parse } from 'csv-parse/sync';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1229,12 +1229,12 @@ export default class IBMi {
    * The directory is guaranteed to be empty when created and deleted after the `process` is done.
    * @param process the process that will run on the empty directory
    */
-  async withTempDirectory(process: (directory: string) => Promise<void>) {
+  async withTempDirectory<T>(process: (directory: string) => Promise<T>) {
     const tempDirectory = `${this.config?.tempDir || '/tmp'}/code4itemp${Tools.makeid(20)}`;
     const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
     if (prepareDirectory.code === 0) {
       try {
-        await process(tempDirectory);
+        return await process(tempDirectory);
       }
       finally {
         await this.sendCommand({ command: `rm -rf ${tempDirectory}` });
