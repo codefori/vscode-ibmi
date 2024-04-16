@@ -26,7 +26,7 @@ export class GetNewLibl implements ComponentT {
     return this.connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 
-      await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary));
+      await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary));
       const result = await this.connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
@@ -78,7 +78,7 @@ export class GetNewLibl implements ComponentT {
 }
 
 function getSource(library: string) {
-  return [
+  return Buffer.from([
     `CREATE OR REPLACE PROCEDURE ${library}.GETNEWLIBL(IN COMMAND VARCHAR(2000))`,
     `DYNAMIC RESULT SETS 1 `,
     `BEGIN`,
@@ -88,5 +88,5 @@ function getSource(library: string) {
     `  CALL QSYS2.QCMDEXC(COMMAND);`,
     `  OPEN clibl;`,
     `END;`,
-  ].join(`\n`);
+  ].join(`\n`), "utf8");
 }

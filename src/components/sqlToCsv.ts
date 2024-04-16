@@ -56,7 +56,7 @@ export class SqlToCsv implements ComponentT {
     return this.connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `csvToSql.sql`);
 
-      await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary, this.name, ifsWriteComponent.name));
+      await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.name, ifsWriteComponent.name));
       const result = await this.connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
@@ -96,7 +96,7 @@ export class SqlToCsv implements ComponentT {
 }
 
 function getSource(library: string, name: string, writeName: string) {
-  return `
+  return Buffer.from(`
 create or replace procedure ${library}.${name}
 (
     in sql_statement    clob,
@@ -196,5 +196,5 @@ begin atomic
 end;
 
 comment on procedure ${library}.${name} is '1 - Produce a CSV file from a SQL statement';
-  `
+  `, "utf8");
 }
