@@ -66,10 +66,16 @@ async function getExtFileContent(hostInfo: HostInfo) {
 }
 
 /**
- * Generate debug service certifciate
+ * Generates or imports the debug service server certificate and generates the client certificate from it.
+ * The keystore containing the certificate and its key must use the PKCS12 format.
+ * 
+ * @param connection the IBM i where the certificate must be generated/imported
+ * @param imported if defined, gives the location and password of a local or remote (i.e. on the IFS) service certificate to import
  */
 export async function setup(connection: IBMi, imported?: ImportedCertificate) {
-  await vscode.window.withProgress({ title: "Configuring debug service", location: vscode.ProgressLocation.Window }, async () => {
+  await vscode.window.withProgress({ title: "Setup debug service", location: vscode.ProgressLocation.Window }, async (task) => {
+    const setProgress = (message: string) => task.report({ message: `${message}...` });
+
     if (!connection.usingBash()) {
       if (connection.remoteFeatures[`bash`]) {
         throw new Error(`Bash is installed on the IBM i, but it is not your default shell. Please switch to bash to setup the debug service.`);
@@ -94,14 +100,18 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
     if (imported) {
       password = imported.password;
       if (imported.localFile) {
+        setProgress("importing local certificate");
         await connection.uploadFiles([{ local: imported.localFile, remote: debugConfig.getRemoteServiceCertificatePath() }]);
       }
       else if (imported.remoteFile) {
+        setProgress("importing remote certificate");
         const copy = await connection.sendCommand({ command: `cp ${imported.remoteFile} ${debugConfig.getRemoteServiceCertificatePath()}` });
         if (copy.code) {
           throw copy.stderr;
         }
       }
+
+      setProgress("generating client certificate");
       const clientCertificate = await connection.sendCommand({
         command: `openssl pkcs12 -in ${debugConfig.getRemoteServiceCertificatePath()} -passin pass:${password} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
       });
@@ -120,9 +130,11 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       }
     }
     else {
-      password = Tools.makeid(50);
+      setProgress("generating server and client certificates");
+      password = Tools.makeid(50); //We generate a random password that will be stored encrypted; we don't need to know it after the configuration is done.
       const hostInfo = await getHostInfo(connection);
       const extFileContent = await getExtFileContent(hostInfo);
+      //This will generate everything at once and keep only the .pfx (keystore) and .crt (client certificate) files.
       const commands = [
         `openssl genrsa -out debug_service.key 2048`,
         `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostName}'`,
@@ -138,11 +150,12 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       });
 
       if (creationResults.code && creationResults.code > 0) {
-        throw new Error(`Failed to create server certificate: ${creationResults.stderr}`);
+        throw new Error(`Failed to create server and client certificate: ${creationResults.stderr}`);
       }
     }
 
     try {
+      setProgress("encrypting server certificate password");
       if (debugConfig.get("DEBUG_SERVICE_KEYSTORE_PASSWORD") !== undefined) {
         debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
         await debugConfig.save();
@@ -155,6 +168,11 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       });
 
       if (!encryptResult.code) {
+        //After the certificates are generated/imported and the password is encrypted, we make a copy of the encryption key
+        //because it gets deleted each time the service starts. The CODE4IDEBUG variable is here to run the script that will restore the key
+        //when the service starts.
+        //The certificate path and password are recored in the configuration too, so the service can start only by running the startDebugService.sh script.
+        setProgress("updating service configuration");
         const backupKey = await connection.sendCommand({ command: `cp key.properties ${ENCRYPTION_KEY}`, directory: debugConfig.getRemoteServiceWorkDir() });
         if (!backupKey.code) {
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_FILE", certificatePath);
