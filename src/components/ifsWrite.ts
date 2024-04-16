@@ -1,7 +1,7 @@
+import { posix } from "path";
 import IBMi from "../api/IBMi";
-import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
-import { ComponentT, ComponentState } from "./component";
+import { ComponentState, ComponentT } from "./component";
 
 export interface WrapResult {
   newStatement: string;
@@ -13,7 +13,7 @@ export class IfsWrite implements ComponentT {
   public state: ComponentState = ComponentState.NotInstalled;
   public currentVersion: number = 2;
 
-  constructor(public connection: IBMi) {}
+  constructor(public connection: IBMi) { }
 
   async getInstalledVersion(): Promise<number> {
     const config = this.connection.config!
@@ -43,22 +43,24 @@ export class IfsWrite implements ComponentT {
     const config = this.connection.config!
     const content = instance.getContent();
 
-    const tempSourcePath = this.connection.getTempRemote(`ifs_write.sql`)!;
+    return this.connection.withTempDirectory(async tempDir => {
+      const tempSourcePath = posix.join(tempDir, `ifs_write.sql`);
 
-    await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary, this.name));
-    const result = await this.connection.runCommand({
-      command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
-      cwd: `/`,
-      noLibList: true
+      await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary, this.name));
+      const result = await this.connection.runCommand({
+        command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
+        cwd: `/`,
+        noLibList: true
+      });
+
+      if (result.code === 0) {
+        this.state = ComponentState.Installed;
+      } else {
+        this.state = ComponentState.Error;
+      }
+
+      return this.state === ComponentState.Installed;
     });
-
-    if (result.code === 0) {
-      this.state = ComponentState.Installed;
-    } else {
-      this.state = ComponentState.Error;
-    }
-
-    return this.state === ComponentState.Installed;
   }
 
   getState(): ComponentState {

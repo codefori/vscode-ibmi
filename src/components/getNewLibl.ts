@@ -1,12 +1,13 @@
+import { posix } from "path";
 import IBMi from "../api/IBMi";
 import { instance } from "../instantiate";
-import { ComponentT, ComponentState } from "./component";
+import { ComponentState, ComponentT } from "./component";
 
 export class GetNewLibl implements ComponentT {
   public state: ComponentState = ComponentState.NotInstalled;
   public currentVersion: number = 1;
 
-  constructor(public connection: IBMi) {}
+  constructor(public connection: IBMi) { }
 
   async getInstalledVersion(): Promise<number> {
     return (this.connection.remoteFeatures[`GETNEWLIBL.PGM`] ? 1 : 0);
@@ -22,23 +23,24 @@ export class GetNewLibl implements ComponentT {
 
     const config = this.connection.config!
     const content = instance.getContent();
+    return this.connection.withTempDirectory(async tempDir => {
+      const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 
-    const tempSourcePath = this.connection.getTempRemote(`getnewlibl.sql`) || `/tmp/getnewlibl.sql`;
+      await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary));
+      const result = await this.connection.runCommand({
+        command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
+        cwd: `/`,
+        noLibList: true
+      });
 
-    await content!.writeStreamfile(tempSourcePath, getSource(config.tempLibrary));
-    const result = await this.connection.runCommand({
-      command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
-      cwd: `/`,
-      noLibList: true
+      if (result.code === 0) {
+        this.state = ComponentState.Installed;
+      } else {
+        this.state = ComponentState.Error;
+      }
+
+      return this.state === ComponentState.Installed;
     });
-
-    if (result.code === 0) {
-      this.state = ComponentState.Installed;
-    } else {
-      this.state = ComponentState.Error;
-    }
-
-    return this.state === ComponentState.Installed;
   }
 
   getState(): ComponentState {
