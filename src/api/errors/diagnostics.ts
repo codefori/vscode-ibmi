@@ -1,11 +1,11 @@
 
 import * as vscode from "vscode";
-import Instance from "../Instance";
-import { parseErrors } from "./parser";
 import { FileError } from "../../typings";
-import { getEvfeventFiles } from "../local/actions";
 import { GlobalConfiguration } from "../Configuration";
+import Instance from "../Instance";
 import { Tools } from "../Tools";
+import { getEvfeventFiles } from "../local/actions";
+import { parseErrors } from "./parser";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -55,7 +55,7 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
     const existing = currentList.findIndex(d => d.range.contains(changeRange));
 
     if (existing >= 0) {
-      const newList = [...currentList.slice(0, existing), ...currentList.slice(existing+1)];
+      const newList = [...currentList.slice(0, existing), ...currentList.slice(existing + 1)];
 
       ileDiagnostics.set(uri, newList);
     }
@@ -150,11 +150,10 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
         if (workspaceFolder && storage) {
           const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceFolder);
           const deployPathIndex = file.toLowerCase().indexOf(workspaceDeployPath.toLowerCase());
-        
+
           let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
 
           if (relativeCompilePath) {
-
             if (connection) {
               // Belive it or not, sometimes if the deploy directory is symlinked into as ASP, this can be a problem
               const aspNames = Object.values(connection.aspInfo);
@@ -168,7 +167,6 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
             }
 
             const diagnosticTargetFile = vscode.Uri.joinPath(workspaceFolder.uri, relativeCompilePath);
-
             if (diagnosticTargetFile !== undefined) {
               ileDiagnostics.set(diagnosticTargetFile, diagnostics);
             } else {
@@ -179,13 +177,12 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
         }
       }
 
-      {
-        if (file.startsWith(`/`))
-          ileDiagnostics.set(Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
-        else {
-          const memberUri = Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
-          ileDiagnostics.set(memberUri, diagnostics);
-        }
+      if (file.startsWith(`/`)) {
+        ileDiagnostics.set(Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
+      }
+      else {
+        const memberUri = Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
+        ileDiagnostics.set(memberUri, diagnostics);
       }
     }
   } else {
