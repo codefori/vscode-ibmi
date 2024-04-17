@@ -24,10 +24,12 @@ export class SqlToCsv implements ComponentT {
     const [result] = await this.connection.runSQL(sql);
     if (result) {
       const comment = result.LONG_COMMENT as string;
-      const dash = comment.indexOf('-');
-      if (dash > -1) {
-        const version = comment.substring(0, dash).trim();
-        return parseInt(version);
+      if (comment) {
+        const dash = comment.indexOf('-');
+        if (dash > -1) {
+          const version = comment.substring(0, dash).trim();
+          return parseInt(version);
+        }
       }
     }
 
@@ -88,8 +90,31 @@ export class SqlToCsv implements ComponentT {
 
     statement = statement.replace(new RegExp(`for bit data`, `gi`), ``);
 
+    let newStatement = `CALL ${tempLib}.${this.name}('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`;
+
+    const parts = statement.split(` `);
+
+    // If it's a simple statement, then we should use fallback to CPYTOIMPF as it's faster in some cases.
+    if (parts.length === 4 && parts[0].toUpperCase() === `SELECT` && parts[1] === `*` && parts[2].toUpperCase() === `FROM` && parts[3].includes(`.`)) {
+      const [lib, file] = parts[3].toUpperCase().split(`.`);
+      if (file.length <= 10) {
+        newStatement = `Call QSYS2.QCMDEXC('` + this.connection.content.toCl(`CPYTOIMPF`, {
+          FROMFILE: `${lib}/${file} ${file}`,
+          TOSTMF: outStmf,
+          MBROPT: `*REPLACE`,
+          STMFCCSID: 1208,
+          RCDDLM: `*CRLF`,
+          DTAFMT: `*DLM`,
+          RMVBLANK: `*TRAILING`,
+          ADDCOLNAM: `*SQL`,
+          FLDDLM: `','`,
+          DECPNT: `*PERIOD`
+        }).replaceAll(`'`, `''`) + `')`;
+      }
+    }
+
     return {
-      newStatement: `CALL ${tempLib}.${this.name}('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`,
+      newStatement,
       outStmf
     };
   }
