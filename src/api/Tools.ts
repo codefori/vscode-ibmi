@@ -101,11 +101,15 @@ export namespace Tools {
         figuredLengths = true;
       } else {
         let row: DB2Row = {};
+        let slideBytesBy = 0;
 
         headers.forEach(header => {
-          const strValue = line.substring(header.from, header.from + header.length).trimEnd();
+          const fromPos = header.from - slideBytesBy;
+          const strValue = line.substring(fromPos, fromPos + header.length).trimEnd();
 
           let realValue: string | number | null = strValue;
+
+          slideBytesBy += strValue.split(``).map(c => Buffer.byteLength(c) === 1 ? 0 : 1).reduce((a: number, b: number) => a + b, 0);
 
           // is value a number?
           if (strValue.startsWith(` `)) {
