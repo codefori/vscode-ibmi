@@ -41,7 +41,7 @@ export class IfsWrite implements ComponentT {
     return this.connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `ifs_write.sql`);
 
-      await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.name));
+      await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.name, this.currentVersion));
       const result = await this.connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
@@ -64,7 +64,7 @@ export class IfsWrite implements ComponentT {
 }
 
 // todo: support CLOB instead of varchar
-function getSource(library: string, name: string) {
+function getSource(library: string, name: string, version: number) {
   return Buffer.from(`
 call qcmdexc ('addlible qsysinc');
 call qcmdexc ('crtsrcpf FILE(QTEMP/C) MBR(C)');
@@ -94,6 +94,6 @@ begin
     end if;
 end;
 
-comment on procedure ${library}.${name} is '1 - Write UTF8 contents to streamfile';
+comment on procedure ${library}.${name} is '${version} - Write UTF8 contents to streamfile';
   `, 'utf-8');
 }
