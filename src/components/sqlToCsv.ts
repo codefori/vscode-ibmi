@@ -117,6 +117,7 @@ begin atomic
     declare colName  varchar(256);
     declare colLabel varchar(256);
     declare colValue varchar(32000) ccsid 1208;
+    declare colInd int;
     declare newline     varchar(2) default ux'000A';
     declare comma    varchar (1) default '';
     declare file_content clob(16m) ccsid 1208 default '';
@@ -172,15 +173,19 @@ begin atomic
                 colType   = TYPE;
 
             get descriptor 'modified' value colNo
-                colValue = DATA;
+                colValue = DATA, colInd = INDICATOR;
             
-            if colType in (1, 12) then -- char or varchar
-                set file_content = concat(file_content, comma || '"' || replace(trim(colValue), '"' , '""')  || '"');
-            elseif colType in (2 , 3) then -- decimal
-                set file_content = concat(file_content, comma || trim(colValue));
-            else
-                set file_content = concat(file_content, comma || trim(colValue));
-            end if;
+              if colInd = -1 then
+                set file_content = concat(file_content, comma || 'null');
+              else
+                if colType in (1, 12) then -- char or varchar
+                    set file_content = concat(file_content, comma || '"' || replace(trim(colValue), '"' , '""')  || '"');
+                elseif colType in (2 , 3) then -- decimal
+                    set file_content = concat(file_content, comma || trim(colValue));
+                else
+                    set file_content = concat(file_content, comma || trim(colValue));
+                end if;
+              end if;
             set comma = ',';
             set colNo = colNo + 1;
         end while;
