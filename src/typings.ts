@@ -215,3 +215,8 @@ export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser"
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
+
+export interface WrapResult {
+  newStatements: string[];
+  outStmf: string;
+}

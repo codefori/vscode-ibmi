@@ -3,11 +3,6 @@ import IBMi from "../api/IBMi";
 import { instance } from "../instantiate";
 import { ComponentState, ComponentT } from "./component";
 
-export interface WrapResult {
-  newStatement: string;
-  outStmf: string;
-}
-
 export class IfsWrite implements ComponentT {
   public readonly name = 'IFS_WRITE';
   public state: ComponentState = ComponentState.NotInstalled;

@@ -4,11 +4,7 @@ import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { ComponentState, ComponentT } from "./component";
 import { IfsWrite } from "./ifsWrite";
-
-export interface WrapResult {
-  newStatement: string;
-  outStmf: string;
-}
+import { WrapResult } from "../typings";
 
 export class SqlToCsv implements ComponentT {
   private readonly name = 'SQL_TO_CSV';
@@ -90,31 +86,10 @@ export class SqlToCsv implements ComponentT {
 
     statement = statement.replace(new RegExp(`for bit data`, `gi`), ``);
 
-    let newStatement = `CALL ${tempLib}.${this.name}('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`;
-
-    const parts = statement.split(` `);
-
-    // If it's a simple statement, then we should use fallback to CPYTOIMPF as it's faster in some cases.
-    if (parts.length === 4 && parts[0].toUpperCase() === `SELECT` && parts[1] === `*` && parts[2].toUpperCase() === `FROM` && parts[3].includes(`.`)) {
-      const [lib, file] = parts[3].toUpperCase().split(`.`);
-      if (file.length <= 10) {
-        newStatement = `Call QSYS2.QCMDEXC('` + this.connection.content.toCl(`CPYTOIMPF`, {
-          FROMFILE: `${lib}/${file} ${file}`,
-          TOSTMF: outStmf,
-          MBROPT: `*REPLACE`,
-          STMFCCSID: 1208,
-          RCDDLM: `*CRLF`,
-          DTAFMT: `*DLM`,
-          RMVBLANK: `*TRAILING`,
-          ADDCOLNAM: `*SQL`,
-          FLDDLM: `','`,
-          DECPNT: `*PERIOD`
-        }).replaceAll(`'`, `''`) + `')`;
-      }
-    }
+    const newStatement = `CALL ${tempLib}.${this.name}('${statement.replaceAll(`'`, `''`)}', '${outStmf}')`;
 
     return {
-      newStatement,
+      newStatements: [newStatement],
       outStmf
     };
   }

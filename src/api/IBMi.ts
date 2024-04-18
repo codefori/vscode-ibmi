@@ -8,14 +8,15 @@ import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
 import { ComponentId, ComponentManager } from "../components/component";
-import { SqlToCsv, WrapResult } from "../components/sqlToCsv";
+import { SqlToCsv } from "../components/sqlToCsv";
 import { instance } from "../instantiate";
-import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
+import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
+import { CopyToImport } from "../components/copyToImport";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1292,14 +1293,25 @@ export default class IBMi {
 
       let returningAsCsv: WrapResult | undefined;
 
-      const sqlToCsv = this.getComponent<SqlToCsv>(`SqlToCsv`);
-      if (sqlToCsv) {
-        let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
-        const lastStmt = list.pop()?.trim();
-        const asUpper = lastStmt?.toUpperCase();
-        if (lastStmt && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
+      // TODO: only do the wrap if QCCSID is 65535
+      let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
+      const lastStmt = list.pop()?.trim();
+      const asUpper = lastStmt?.toUpperCase();
+      
+      if (lastStmt && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
+        const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
+        const sqlToCsv = this.getComponent<SqlToCsv>(`SqlToCsv`);
+        const isSimple = CopyToImport.isSimple(lastStmt);
+
+        // If the statement is simple, then we can just use copy to import.
+        if (sqlToCsv && !isSimple) {
           returningAsCsv = sqlToCsv.wrap(lastStmt);
-          list.push(returningAsCsv.newStatement);
+          list.push(...returningAsCsv.newStatements);
+          input = list.join(`;\n`);
+
+        } else if (copyToImport) {
+          returningAsCsv = copyToImport.wrap(lastStmt);
+          list.push(...returningAsCsv.newStatements);
           input = list.join(`;\n`);
         }
       }
