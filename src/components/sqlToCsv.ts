@@ -9,7 +9,7 @@ import { WrapResult } from "../typings";
 export class SqlToCsv implements ComponentT {
   private readonly name = 'SQL_TO_CSV';
   public state: ComponentState = ComponentState.NotInstalled;
-  public currentVersion: number = 2;
+  public currentVersion: number = 3;
 
   constructor(public connection: IBMi) { }
 
@@ -175,9 +175,9 @@ begin atomic
             get descriptor 'modified' value colNo
                 colValue = DATA, colInd = INDICATOR;
             
-              if colInd = -1 then
-                set file_content = concat(file_content, comma || 'null');
-              else
+              -- if colInd = -1 then
+              --   set file_content = concat(file_content, comma || 'null');
+              -- else
                 if colType in (1, 12) then -- char or varchar
                     set file_content = concat(file_content, comma || '"' || replace(trim(colValue), '"' , '""')  || '"');
                 elseif colType in (2 , 3) then -- decimal
@@ -185,7 +185,7 @@ begin atomic
                 else
                     set file_content = concat(file_content, comma || trim(colValue));
                 end if;
-              end if;
+              -- end if;
             set comma = ',';
             set colNo = colNo + 1;
         end while;
