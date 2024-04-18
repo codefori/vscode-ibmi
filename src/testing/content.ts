@@ -650,6 +650,30 @@ export const ContentSuite: TestSuite = {
       }
     },
     {
+      name: `Check getMemberInfo`, test: async () => {
+        const content = instance.getContent();
+
+        const memberInfoA = await content?.getMemberInfo(`QSYSINC`, `H`, `MATH` );
+        assert.ok(memberInfoA);
+        assert.strictEqual(memberInfoA?.library === `QSYSINC`, true);
+        assert.strictEqual(memberInfoA?.file === `H`, true);
+        assert.strictEqual(memberInfoA?.name === `MATH`, true);
+        assert.strictEqual(memberInfoA?.extension === `C`, true);
+        assert.strictEqual(memberInfoA?.text === `STANDARD HEADER FILE MATH`, true);
+
+        const memberInfoB = await content?.getMemberInfo(`QSYSINC`, `H`, `MEMORY` );
+        assert.ok(memberInfoB);
+        assert.strictEqual(memberInfoB?.library === `QSYSINC`, true);
+        assert.strictEqual(memberInfoB?.file === `H`, true);
+        assert.strictEqual(memberInfoB?.name === `MEMORY`, true);
+        assert.strictEqual(memberInfoB?.extension === `CPP`, true);
+        assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
+
+        const memberInfoC = await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO` );
+        assert.ok(!memberInfoC);
+      }
+    },
+    {
       name: `Test @clCommand + select statement`, test: async () => {
         const content = instance.getContent()!;
 

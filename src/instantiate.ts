@@ -13,6 +13,7 @@ import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+import { initGetMemberInfo } from "./languages/sql/getmbrinfo";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
@@ -234,8 +235,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (schemaItems.length === 0 && connection?.enableSQL) {
         content!.runSQL(`
           select cast( SYSTEM_SCHEMA_NAME as char( 10 ) for bit data ) as SYSTEM_SCHEMA_NAME
-               , ifnull( cast( SCHEMA_TEXT as char( 50 ) for bit data ), '' ) as SCHEMA_TEXT 
-            from QSYS2.SYSSCHEMAS 
+               , ifnull( cast( SCHEMA_TEXT as char( 50 ) for bit data ), '' ) as SCHEMA_TEXT
+            from QSYS2.SYSSCHEMAS
            order by 1`
         ).then(resultSetLibrary => {
           schemaItems = resultSetLibrary.map(row => ({
@@ -301,10 +302,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               resultSet = await content!.runSQL(`
                 select ifnull( cast( SYSTEM_TABLE_NAME as char( 10 ) for bit data ), '' ) as SYSTEM_TABLE_NAME
-                     , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT 
-                  from QSYS2.SYSTABLES 
-                 where SYSTEM_TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}' 
-                       and FILE_TYPE = 'S' 
+                     , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT
+                  from QSYS2.SYSTABLES
+                 where SYSTEM_TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
+                       and FILE_TYPE = 'S'
                   ${filterText ? `and SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
                  order by 1
               `);
@@ -396,7 +397,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       })
 
       quickPick.onDidAccept(async () => {
-        let selection = quickPick.selectedItems[0].label;
+        let selection = quickPick.selectedItems.length === 1 ? quickPick.selectedItems[0].label : undefined;
         if (selection && selection !== LOADING_LABEL) {
           if (selection === CLEAR_RECENT) {
             recentItems.length = 0;
@@ -423,37 +424,27 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           } else {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
-              if (connection?.enableSQL && !selection.startsWith(`/`)) {
-                const libUS = connection!.sysNameInAmerican(selectionSplit[0]);
-                const fileUS = connection!.sysNameInAmerican(selectionSplit[1]);
-                const memberUS = path.parse(connection!.sysNameInAmerican(selectionSplit[2]));
+
+              // When selection is QSYS path
+              if (!selection.startsWith(`/`)) {
                 const lib = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const fullMember = await content!.runSQL(`
-                  select rtrim( cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) ) as MEMBER
-                       , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
-                    from QSYS2.SYSPARTITIONSTAT
-                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${libUS}', '${fileUS}', '${memberUS.name}' )
-                   limit 1
-                `).then((resultSet) => {
-                  return resultSet.length !== 1 ? {} :
-                    {
-                      base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
-                      name: `${resultSet[0].MEMBER}`,
-                      ext: `${resultSet[0].TYPE}`,
-                    }
-                });
-                if (!fullMember) {
-                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.base} does not exist.`);
+                const memberInfo = await content!.getMemberInfo(lib, file, member.name);
+                if (!memberInfo) {
+                  vscode.window.showWarningMessage(`Source member ${lib}/${file}/${member.base} does not exist.`);
                   return;
-                } else if (fullMember.name !== member.name || (member.ext && fullMember.ext !== member.ext)) {
+                } else if (memberInfo.name !== member.name || (member.ext && memberInfo.extension !== member.ext)) {
                   vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.name} of type ${member.ext} does not exist.`);
                   return;
                 }
-                selection = `${lib}/${file}/${fullMember.base}`;
+
+                member.base = `${member.name}.${member.ext || memberInfo.extension}`;
+                selection = `${lib}/${file}/${member.base}`;
               };
+
+              // When select is IFS path
               if (selection.startsWith(`/`)) {
                 const streamFile = await content!.streamfileResolve([selection.substring(1)], [`/`]);
                 if (!streamFile) {
@@ -762,6 +753,7 @@ async function onConnected(context: vscode.ExtensionContext) {
 
   updateConnectedBar();
   initGetNewLibl(instance);
+  initGetMemberInfo(instance);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
