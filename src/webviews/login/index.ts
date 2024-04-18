@@ -4,6 +4,7 @@ import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
 import { ConnectionData } from '../../typings';
+import { t } from "../../locale";
 
 type NewLoginSettings = ConnectionData & {
   savePassword: boolean
@@ -28,13 +29,13 @@ export class Login {
 
     const connectionTab = new Section()
       .addInput(`name`, `Connection Name`, undefined, { minlength: 1 })
-      .addInput(`host`, `Host or IP Address`, undefined, { minlength: 1 })
-      .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-      .addInput(`username`, `Username`, undefined, { minlength: 1, maxlength: 10 })
-      .addParagraph(`Only provide either the password or a private key - not both.`)
-      .addPassword(`password`, `Password`)
-      .addCheckbox(`savePassword`, `Save Password`)
-      .addFile(`privateKeyPath`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`);
+      .addInput(`host`, t(`login.host`), undefined, { minlength: 1 })
+      .addInput(`port`, t(`login.port`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+      .addInput(`username`, t(`username`), undefined, { minlength: 1, maxlength: 10 })
+      .addParagraph(t(`login.authDecision`))
+      .addPassword(`password`, t(`password`))
+      .addCheckbox(`savePassword`, t(`login.savePassword`))
+      .addFile(`privateKeyPath`, t(`privateKey`), t(`login.privateKey.support`));
 
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })

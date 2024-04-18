@@ -1,5 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, commands, window, workspace } from "vscode";
+import { ExtensionContext, commands, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -17,6 +17,7 @@ import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
 import { IFSFS } from "./filesystems/ifsFs";
+import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { updateLocale } from "./locale";
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
@@ -24,6 +25,7 @@ import { CodeForIBMi, ConnectionData } from "./typings";
 import { initializeConnectionBrowser } from "./views/ConnectionBrowser";
 import { LibraryListProvider } from "./views/LibraryListView";
 import { ProfilesView } from "./views/ProfilesView";
+import { initializeDebugBrowser } from "./views/debugView";
 import { HelpView } from "./views/helpView";
 import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
@@ -41,13 +43,14 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     GlobalStorage.get().setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
   };
-  
+
   SettingsUI.init(context);
   initializeConnectionBrowser(context);
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
-  
-  context.subscriptions.push(    
+  initializeDebugBrowser(context);
+
+  context.subscriptions.push(
     window.registerTreeDataProvider(
       `helpView`,
       new HelpView()
@@ -88,7 +91,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     }),
     workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
-    })
+    }),
+    languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&")
   );
 
   CompileTools.register(context);
@@ -120,14 +124,14 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
 
-async function fixLoginSettings(){
+async function fixLoginSettings() {
   const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
   let update = false;
-  for(const connection of connections){
+  for (const connection of connections) {
     //privateKey was used to hold privateKeyPath 
-    if('privateKey' in connection){
+    if ('privateKey' in connection) {
       const privateKey = connection["privateKey"] as string;
-      if(privateKey){
+      if (privateKey) {
         connection.privateKeyPath = privateKey;
       }
       delete connection["privateKey"];
@@ -135,19 +139,19 @@ async function fixLoginSettings(){
     }
 
     //An empty privateKeyPath will crash the connection
-    if(!connection.privateKeyPath?.trim()) {
+    if (!connection.privateKeyPath?.trim()) {
       connection.privateKeyPath = undefined;
       update = true;
     }
-    
+
     //buttons were added by the login settings page
-    if(`buttons` in connection) {
+    if (`buttons` in connection) {
       delete connection["buttons"];
       update = true;
     }
   }
 
-  if(update){
+  if (update) {
     await GlobalConfiguration.set(`connections`, connections);
   }
 }

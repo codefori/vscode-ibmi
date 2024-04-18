@@ -257,6 +257,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
   }
 
   async getChildren(): Promise<BrowserItem[] | undefined> {
+    const connection = getConnection();
     const content = getContent();
 
     const writable = await content.checkObject({
@@ -281,9 +282,9 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
     } catch (e: any) {
       console.log(e);
 
-      // Work around since we can't get the member list if the users QCCSID is not setup.
+      // Work around since we can't get the member list if the users CCSID is not setup.
       const config = getConfig();
-      if (config.enableSQL) {
+      if (connection.enableSQL) {
         if (e && e.message && e.message.includes(`CCSID`)) {
           vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. It is recommended you reload. ${e.message}`, `Reload`).then(async (value) => {
             if (value === `Reload`) {
@@ -291,7 +292,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
             }
           });
 
-          config.enableSQL = false;
+          connection.enableSQL = false;
           await ConnectionConfiguration.update(config);
           return this.getChildren();
         }
@@ -792,7 +793,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node: BrowserItem, nodes?: BrowserItem[]) => {
+    vscode.commands.registerCommand(`code-for-ibmi.downloadMemberAsFile`, async (node: ObjectItem | MemberItem, nodes?: (ObjectItem | MemberItem)[]) => {
       const contentApi = getContent();
       const connection = getConnection();
       const config = getConfig();
@@ -800,10 +801,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       //Gather all the members
       const members: IBMiMember[] = [];
       for (const item of (nodes || [node])) {
-        if (item instanceof ObjectBrowserSourcePhysicalFileItem) {
+        if ("object" in item) {
           members.push(...await contentApi.getMemberList({ library: item.object.library, sourceFile: item.object.name }));
         }
-        else if (item instanceof ObjectBrowserMemberItem) {
+        else if ("member" in item) {
           members.push(item.member);
         }
       }

@@ -5,7 +5,9 @@ import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
+import { isSEPSupported } from "../../api/debug/server";
 import { instance } from "../../instantiate";
+import { t } from "../../locale";
 import { ConnectionData, Server } from '../../typings';
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
@@ -50,13 +52,12 @@ export class SettingsUI {
           }
         }
 
-        const restartFields = [`enableSQL`, `showDescInLibList`, `tempDir`, `debugCertDirectory`];
+        const restartFields = [`showDescInLibList`, `tempDir`, `debugCertDirectory`];
         let restart = false;
 
         const featuresTab = new Section();
         featuresTab
           .addCheckbox(`quickConnect`, `Quick Connect`, `When enabled, server settings from previous connection will be used, resulting in much quicker connection. If server settings are changed, right-click the connection in Connection Browser and select <code>Connect and Reload Server Settings</code> to refresh the cache.`, config.quickConnect)
-          .addCheckbox(`enableSQL`, `Enable SQL`, `Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If your QCCSID system value is set to 65535, it is recommended that SQL is disabled. When disabled, will use import files where possible.`, config.enableSQL)
           .addCheckbox(`showDescInLibList`, `Show description of libraries in User Library List view`, `When enabled, library text and attribute will be shown in User Library List. It is recommended to also enable SQL for this.`, config.showDescInLibList)
           .addCheckbox(`showHiddenFiles`, `Show hidden files and directories in IFS browser.`, `When disabled, hidden files and directories (i.e. names starting with '.') will not be shown in the IFS browser, except for special config files.`, config.showHiddenFiles)
           .addCheckbox(`autoSortIFSShortcuts`, `Sort IFS shortcuts automatically`, `Automatically sort the shortcuts in IFS browser when shortcut is added or removed.`, config.autoSortIFSShortcuts)
@@ -174,8 +175,13 @@ export class SettingsUI {
         const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
           debuggerTab
-            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-            .addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
+            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` });
+
+          if (await isSEPSupported()) {
+            debuggerTab.addInput(`debugSepPort`, `SEP debug port`, `Default secure port is <code>8008</code>. Tells the client which port the debug service for SEP is running on.`, { default: config.debugSepPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` });
+          }
+          
+          debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {
@@ -311,44 +317,77 @@ export class SettingsUI {
           if (connections) {
             const connectionIdx = connections.findIndex(item => item.name === name);
             let connection = connections[connectionIdx];
+            const storedPassword = await context.secrets.get(`${name}_password`);
 
             const page = await new CustomUI()
-              .addInput(`host`, `Host or IP Address`, undefined, { default: connection.host, minlength: 1 })
-              .addInput(`port`, `Port (SSH)`, undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-              .addInput(`username`, `Username`, undefined, { default: connection.username, minlength: 1 })
-              .addParagraph(`Only provide either the password or a private key - not both.`)
-              .addPassword(`password`, `Password`, `Only provide a password if you want to update an existing one or set a new one.`)
-              .addFile(`privateKeyPath`, `Private Key${connection.privateKeyPath ? ` (current: ${connection.privateKeyPath})` : ``}`, `Only provide a private key if you want to update from the existing one or set one. OpenSSH, RFC4716, or PPK formats are supported.`)
-              .addButtons({ id: `submitButton`, label: `Save`, requiresValidation: true })
-              .loadPage<LoginSettings>(`Login Settings: ${name}`);
+              .addInput(`host`, t(`login.host`), undefined, { default: connection.host, minlength: 1 })
+              .addInput(`port`, t(`login.port`), undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`username`, t(`username`), undefined, { default: connection.username, minlength: 1 })
+              .addParagraph(t(`login.authDecision`))
+              .addPassword(`password`, `${t(`password`)}${storedPassword ? ` (${t(`stored`)})` : ``}`, t(`login.password.label`))
+              .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (${t(`current`)}: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
+              .addButtons(
+                { id: `submitButton`, label: t(`save`), requiresValidation: true },
+                { id: `removeAuth`, label: t(`login.removeAuth`) }
+              )
+              .loadPage<LoginSettings>(t(`login.title.edit`, name));
 
             if (page && page.data) {
               page.panel.dispose();
 
               const data = page.data;
-              if (!data.privateKeyPath?.trim()) {
-                if (connection.privateKeyPath?.trim()) {
-                  data.privateKeyPath = connection.privateKeyPath;
+
+              let doUpdate = false;
+
+              const chosenButton = data.buttons as "submitButton" | "removeAuth";
+
+              switch (chosenButton) {
+                case `submitButton`:
+                  if (data.password) {
+                    // New password was entered, so store the password
+                    // and remove the private key path from the data
+                    await context.secrets.store(`${name}_password`, `${data.password}`);
+                    data.privateKeyPath = undefined;
+
+                    vscode.window.showInformationMessage(t(`login.password.updated`, name));
+
+                    doUpdate = true;
+
+                  } else {
+                    // If no password was entered, but a keypath exists
+                    // then remove the password from the data and
+                    // use the keypath instead
+                    if (data.privateKeyPath?.trim()) {
+                      await context.secrets.delete(`${name}_password`);
+
+                      vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
+
+                      doUpdate = true;
+                    }
+                  }
+                  break;
+
+                case `removeAuth`:
                   await context.secrets.delete(`${name}_password`);
-                }
-                else {
-                  delete data.privateKeyPath;
-                }
+                  data.password = undefined;
+                  data.privateKeyPath = undefined;
+
+                  vscode.window.showInformationMessage(t(`login.authRemoved`, name));
+
+                  doUpdate = true;
+                  break;
               }
 
-              if (data.password && !data.privateKeyPath) {
-                await context.secrets.delete(`${name}_password`);
-                await context.secrets.store(`${name}_password`, `${data.password}`);
-                delete data.privateKeyPath;
+
+              if (doUpdate) {
+                //Fix values before assigning the data
+                data.port = Number(data.port);
+                delete data.password;
+                delete data.buttons;
+
+                connections[connectionIdx] = Object.assign(connection, data);
+                await GlobalConfiguration.set(`connections`, connections);
               }
-
-              //Fix values before assigning the data
-              data.port = Number(data.port);
-              delete data.password;
-              delete data.buttons;
-
-              connections[connectionIdx] = Object.assign(connection, data);
-              await GlobalConfiguration.set(`connections`, connections);
             }
           }
         }
