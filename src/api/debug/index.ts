@@ -254,7 +254,7 @@ export async function initialize(context: ExtensionContext) {
             if (objectType) {
               startDebugging(debugType, objectType, qualifiedObject.library, qualifiedObject.object, workspaceFolder);
             } else {
-              vscode.window.showErrorMessage(`Failed to determine object type. Ensure the object exists and is a program (*PGM) or service program (*SRVPGM).`);
+              vscode.window.showErrorMessage(`Failed to determine object type. Ensure the object exists and is a program (*PGM)${debugType === "sep" ? " or service program (*SRVPGM)" : ""}.`);
             }
           }
         } else {

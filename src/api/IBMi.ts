@@ -36,7 +36,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   },
   {
     path: `/QSYS.LIB/`,
-    // In the future, we may use a generic specific. 
+    // In the future, we may use a generic specific.
     // Right now we only need one program
     // specific: `*.PGM`,
     specific: `QZDFMDB2.PGM`,
@@ -102,6 +102,7 @@ export default class IBMi {
       stat: undefined,
       sort: undefined,
       'GETNEWLIBL.PGM': undefined,
+      'GETMBRINFO.SQL': undefined,
       'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
       attr: undefined,
@@ -225,7 +226,7 @@ export default class IBMi {
         });
         // Note: if the home directory does not exist, the behavior of the echo/cd/test command combo is as follows:
         //   - stderr contains 'Could not chdir to home directory /home/________: No such file or directory'
-        //       (The output contains 'chdir' regardless of locale and shell, so maybe we could use that 
+        //       (The output contains 'chdir' regardless of locale and shell, so maybe we could use that
         //        if we iterate on this code again in the future)
         //   - stdout contains the name of the home directory (even if it does not exist)
         //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
@@ -287,7 +288,7 @@ export default class IBMi {
             vscode.window.showInformationMessage(`Configured home directory reset to ${defaultHomeDir}.`);
           }
         } else {
-          // New connections always have `.` as the initial value. 
+          // New connections always have `.` as the initial value.
           // If we can't find a usable home directory, just reset it to
           // the initial default.
           this.config.homeDirectory = `.`;
@@ -359,7 +360,7 @@ export default class IBMi {
           tempLibrarySet = true;
         } else {
           const messages = Tools.parseMessages(createdTempLib.stderr);
-          if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)            
+          if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)
             tempLibrarySet = true;
           }
           else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
