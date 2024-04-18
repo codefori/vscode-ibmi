@@ -68,7 +68,7 @@ export class CopyToImport implements ComponentT {
     }
 
     newStatements.push(`Call QSYS2.QCMDEXC('` + this.connection.content.toCl(`CPYTOIMPF`, {
-      FROMFILE: `${library!}/${table!} ${table!}`,
+      FROMFILE: `${library!}/${table!} *FIRST`,
       TOSTMF: outStmf,
       MBROPT: `*REPLACE`,
       STMFCCSID: 1208,
