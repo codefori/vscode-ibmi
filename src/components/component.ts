@@ -1,5 +1,6 @@
 import IBMi from "../api/IBMi";
 import { CopyToImport } from "./copyToImport";
+import { GetMemberInfo } from "./getMemberInfo";
 import { GetNewLibl } from "./getNewLibl";
 import { IfsWrite } from "./ifsWrite";
 import { SqlToCsv } from "./sqlToCsv";
@@ -15,6 +16,7 @@ interface ComponentRegistry {
   SqlToCsv?: SqlToCsv;
   IfsWrite?: IfsWrite;
   CopyToImport?: CopyToImport;
+  GetMemberInfo?: GetMemberInfo;
 }
 
 export type ComponentId = keyof ComponentRegistry;
@@ -45,6 +47,9 @@ export class ComponentManager {
 
     this.registered.CopyToImport = new CopyToImport(connection);
     await this.registered.CopyToImport.checkState();
+
+    this.registered.GetMemberInfo = new GetMemberInfo(connection);
+    await this.registered.GetMemberInfo.checkState();
   }
 
   // TODO: return type based on ComponentIds

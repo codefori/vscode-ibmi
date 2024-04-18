@@ -12,11 +12,11 @@ import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { initGetMemberInfo } from "./languages/sql/getmbrinfo";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { GetMemberInfo } from './components/getMemberInfo';
 
 export let instance: Instance;
 
@@ -424,13 +424,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
 
+              const infoComponent = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`);
+
               // When selection is QSYS path
-              if (!selection.startsWith(`/`)) {
+              if (!selection.startsWith(`/`) && infoComponent) {
                 const lib = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const memberInfo = await content!.getMemberInfo(lib, file, member.name);
+                const memberInfo = await infoComponent.getMemberInfo(lib, file, member.name);
                 if (!memberInfo) {
                   vscode.window.showWarningMessage(`Source member ${lib}/${file}/${member.base} does not exist.`);
                   return;
