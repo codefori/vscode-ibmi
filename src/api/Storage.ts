@@ -46,7 +46,8 @@ export type LastConnection = {
 
 export type CachedServerSettings = {
   aspInfo: { [id: number]: string };
-  runtimeCcsid: number | null;
+  qccsid: number | null;
+  jobCcsid: number | null;
   remoteFeatures: { [name: string]: string | undefined };
   remoteFeaturesKeys: string | null;
   variantChars: { american: string, local: string };
