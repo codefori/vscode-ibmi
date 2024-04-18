@@ -424,7 +424,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           } else {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
-              if (config && config.enableSQL && !selection.startsWith(`/`)) {
+
+              // When selection is QSYS path
+              if (!selection.startsWith(`/`)) {
                 const lib = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
@@ -441,6 +443,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 member.base = `${member.name}.${member.ext || memberInfo.extension}`;
                 selection = `${lib}/${file}/${member.base}`;
               };
+
+              // When select is IFS path
               if (selection.startsWith(`/`)) {
                 const streamFile = await content!.streamfileResolve([selection.substring(1)], [`/`]);
                 if (!streamFile) {
