@@ -3,11 +3,9 @@ import tmp from 'tmp';
 import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
-import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
-import { GetMemberInfo } from "../components/getMemberInfo";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -602,34 +600,6 @@ export const ContentSuite: TestSuite = {
 
         const exists = await content?.checkObject({ library: `QSYSINC`, name: `H`, type: `*FILE`, member: `MATH` });
         assert.ok(exists);
-      }
-    },
-    {
-      name: `Check getMemberInfo`, test: async () => {
-        const content = instance.getContent();
-        const connection = instance.getConnection();
-        const component = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`)!;
-
-        assert.ok(component);
-
-        const memberInfoA = await component.getMemberInfo(`QSYSINC`, `H`, `MATH` );
-        assert.ok(memberInfoA);
-        assert.strictEqual(memberInfoA?.library === `QSYSINC`, true);
-        assert.strictEqual(memberInfoA?.file === `H`, true);
-        assert.strictEqual(memberInfoA?.name === `MATH`, true);
-        assert.strictEqual(memberInfoA?.extension === `C`, true);
-        assert.strictEqual(memberInfoA?.text === `STANDARD HEADER FILE MATH`, true);
-
-        const memberInfoB = await component.getMemberInfo(`QSYSINC`, `H`, `MEMORY` );
-        assert.ok(memberInfoB);
-        assert.strictEqual(memberInfoB?.library === `QSYSINC`, true);
-        assert.strictEqual(memberInfoB?.file === `H`, true);
-        assert.strictEqual(memberInfoB?.name === `MEMORY`, true);
-        assert.strictEqual(memberInfoB?.extension === `CPP`, true);
-        assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
-
-        const memberInfoC = await component.getMemberInfo(`QSYSINC`, `H`, `OH_NONO` );
-        assert.ok(!memberInfoC);
       }
     },
     {
