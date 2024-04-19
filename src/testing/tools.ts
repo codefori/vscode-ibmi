@@ -85,6 +85,41 @@ export const ToolsSuite: TestSuite = {
       }
     },
     {
+      name: `DA result set test`, test: async () => {
+        const lines = [
+          `DB2>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          ``,
+          `COL1A      COL2N       COL3Æ      COL4Ø      COL5Å      ÆCOL6      ØCOL7      ÅCOL8      ÆCOL9      ØCOL10     ÅCOL11    `,
+          `---------- ----------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ---------- ----------`,
+          `Val1                 1 Val3æÆ     Val4øØ     Val5åÅ     æÆVal6     øØVal7     åÅVal8     ValæÆ9     ValøØ10    ValåÅ11   `,
+          ``,
+          `  1 RECORD(S) SELECTED.`,
+        ]
+
+        const rows = Tools.db2Parse(lines.join(`\n`));
+
+        assert.strictEqual(rows.length, 1);
+
+        assert.strictEqual(rows[0].COL1A, `Val1`);
+        assert.strictEqual(rows[0].COL2N, 1);
+        assert.strictEqual(rows[0].COL3Æ, `Val3æÆ`);
+        assert.strictEqual(rows[0].COL4Ø, `Val4øØ`);
+        assert.strictEqual(rows[0].COL5Å, `Val5åÅ`);
+        assert.strictEqual(rows[0].ÆCOL6, `æÆVal6`);
+        assert.strictEqual(rows[0].ØCOL7, `øØVal7`);
+        assert.strictEqual(rows[0].ÅCOL8, `åÅVal8`);
+        assert.strictEqual(rows[0].ÆCOL9, `ValæÆ9`);
+        assert.strictEqual(rows[0].ØCOL10, `ValøØ10`);
+        assert.strictEqual(rows[0].ÅCOL11, `ValåÅ11`);
+      }
+    },
+    {
       name: `JP result set test (A)`, test: async () => {
         const lines = [
           `DB2>`,
