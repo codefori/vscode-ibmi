@@ -105,11 +105,16 @@ export namespace Tools {
 
         headers.forEach(header => {
           const fromPos = header.from - slideBytesBy;
-          const strValue = line.substring(fromPos, fromPos + header.length).trimEnd();
+          let strValue = line.substring(fromPos, fromPos + header.length);
 
-          let realValue: string | number | null = strValue;
+          const extendedBytes = strValue.split(``).map(c => Buffer.byteLength(c) === 1 ? 0 : 1).reduce((a: number, b: number) => a + b, 0);
 
-          slideBytesBy += strValue.split(``).map(c => Buffer.byteLength(c) === 1 ? 0 : 1).reduce((a: number, b: number) => a + b, 0);
+          slideBytesBy += extendedBytes;
+          if (extendedBytes > 0) {
+            strValue = strValue.substring(0, strValue.length - extendedBytes);
+          }
+
+          let realValue: string | number | null = strValue.trimEnd();
 
           // is value a number?
           if (strValue.startsWith(` `)) {

@@ -85,7 +85,7 @@ export const ToolsSuite: TestSuite = {
       }
     },
     {
-      name: `JP result set test`, test: async () => {
+      name: `JP result set test (A)`, test: async () => {
         const lines = [
           `DB2>`,
           `  ?>`,
@@ -116,6 +116,39 @@ export const ToolsSuite: TestSuite = {
         assert.strictEqual(rows[0].LINES, 124);
         assert.strictEqual(rows[0].CREATED, 1712670631000);
         assert.strictEqual(rows[0].CHANGED, 1712683676000);
+      }
+    },
+    {
+      name: `JP result set test (B)`, test: async () => {
+        const lines = [
+          `DB2>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          ``,
+          ``,
+          `LIBRARY   RECORD_LENGTH        ASP    SOURCE_FILE  NAME       TYPE       TEXT                                                                                                                           LINES                CREATED              CHANGED`,
+          `--------- -------------------- ------ ------------ ---------- ---------- ------------------------------------------------------------------------------------------------------------------------------ -------------------- -------------------- --------------------`,
+          `SNDLIB                     112      0 QRPGLESRC    TESTEDTW   RPGLE      日付と時刻を先行０付きで表示-> 8桁では無理？                                                                                                  9        1713451802000        1713453741000`,
+          ``,
+          `  1 RECORD(S) SELECTED.`,
+        ];
+
+        const rows = Tools.db2Parse(lines.join(`\n`));
+
+        assert.strictEqual(rows.length, 1);
+
+        assert.strictEqual(rows[0].LIBRARY, `SNDLIB`);
+        assert.strictEqual(rows[0].RECORD_LENGTH, 112);
+        assert.strictEqual(rows[0].ASP, 0);
+        assert.strictEqual(rows[0].SOURCE_FILE, `QRPGLESRC`);
+        assert.strictEqual(rows[0].NAME, `TESTEDTW`);
+        assert.strictEqual(rows[0].TYPE, `RPGLE`);
+        assert.strictEqual(rows[0].TEXT, `日付と時刻を先行０付きで表示-> 8桁では無理？`);
+        assert.strictEqual(rows[0].LINES, 9);
+        assert.strictEqual(rows[0].CREATED, 1713451802000);
+        assert.strictEqual(rows[0].CHANGED, 1713453741000);
       }
     }
   ]
