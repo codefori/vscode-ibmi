@@ -523,61 +523,82 @@ export default class IBMiContent {
       //DSPFD only
       createOBJLIST = [
         `select `,
-        `  t.SYSTEM_TABLE_NAME as name,`,
-        `  '*FILE' as type,`,
-        `  '' as attribute,`,
-        `  t.table_text as text,`,
-        `  1 as is_source,`,
-        `  -1 as nb_mbr, -- no idea how to get this`,
-        `  c.character_maximum_length as SOURCE_LENGTH,`,
-        `  c.ccsid`,
-        `from qsys2.systables as t`,
-        `right join qsys2.syscolumns2 as c on t.system_table_schema = c.system_table_schema and t.SYSTEM_TABLE_NAME = c.SYSTEM_TABLE_NAME and c.column_name = 'SRCDTA'`,
+        `  t.SYSTEM_TABLE_NAME as NAME,`,
+        `  '*FILE'             as TYPE,`,
+        `  'PF'                as ATTRIBUTE,`,
+        `  t.TABLE_TEXT        as TEXT,`,
+        `  1                   as IS_SOURCE,`,
+        `  p.NUMBER_PARTITIONS as NB_MBR,`,
+        `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `  c.CCSID             as CCSID`,
+        `from QSYS2.SYSTABLES as t`,
+        `     join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
+        `     join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
         `where t.table_schema = '${library}' and t.file_type = 'S'`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
       createOBJLIST = [
         `select `,
-        `  o.objlib as LIBRARY,`,
-        `  o.objname as NAME,`,
-        `  o.objtype as TYPE,`,
-        `  o.objattribute as ATTRIBUTE,`,
-        `  o.objtext as TEXT,`,
-        `  0 as NB_MBR,`,
-        `  0 as IS_SOURCE,`,
-        `  0 as SOURCE_LENGTH,`,
-        `  65535 as CCSID,`,
-        `  o.objsize as SIZE,`,
-        `  o.objcreated as CREATED_TS,`,
-        `  o.objowner as OWNER,`,
-        `  o.objdefiner as CREATED_BY,`,
-        `  o.objsize as SIZE_IN_UNITS,`,
-        `  0 as BYTES_PER_UNIT`,
-        `from table(qsys2.object_statistics('${library}', '${type}')) as o`
+        `  OBJNAME          as NAME,`,
+        `  OBJTYPE          as TYPE,`,
+        `  OBJATTRIBUTE     as ATTRIBUTE,`,
+        `  OBJTEXT          as TEXT,`,
+        `  0                as IS_SOURCE,`,
+        `  OBJSIZE          as SIZE,`,
+        `  extract(epoch from (OBJCREATED))*1000       as CREATED,`,
+        `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
+        `  OBJOWNER         as OWNER,`,
+        `  OBJDEFINER       as CREATED_BY`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'))`,
       ];
     }
     else {
       //Both DSPOBJD and DSPFD
       createOBJLIST = [
-        `select `,
-        `  o.objlib as LIBRARY,`,
-        `  o.objname as NAME,`,
-        `  o.objtype as TYPE,`,
-        `  o.objattribute as ATTRIBUTE,`,
-        `  o.objtext as TEXT,`,
-        `  -1 as NB_MBR,`,
-        `  case when c.character_maximum_length is null then 0 else 1 end as IS_SOURCE,`,
-        `  c.character_maximum_length as SOURCE_LENGTH,`,
-        `  c.ccsid as CCSID,`,
-        `  o.objsize as SIZE,`,
-        `  o.objcreated as CREATED_TS,`,
-        `  o.objowner as OWNER,`,
-        `  o.objdefiner as CREATED_BY,`,
-        `  o.objsize as SIZE_IN_UNITS,`,
-        `  0 as BYTES_PER_UNIT`,
-        `from table(qsys2.object_statistics('${library}', '${type}')) as o`,
-        `left outer join qsys2.syscolumns2 as c on o.objlib = c.system_table_schema and o.objname = c.SYSTEM_TABLE_NAME and c.column_name = 'SRCDTA'`,
+        `with SRCPF as (`,
+        `  select `,
+        `    t.SYSTEM_TABLE_NAME as NAME,`,
+        `    '*FILE'             as TYPE,`,
+        `    'PF'                as ATTRIBUTE,`,
+        `    t.TABLE_TEXT        as TEXT,`,
+        `    1                   as IS_SOURCE,`,
+        `    p.NUMBER_PARTITIONS as NB_MBR,`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `    c.CCSID             as CCSID`,
+        `  from QSYS2.SYSTABLES as t`,
+        `       join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
+        `       join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
+        `  where t.table_schema = '${library}' and t.file_type = 'S'`,
+        `), OBJD as (`,
+        `  select `,
+        `    OBJNAME           as NAME,`,
+        `    OBJTYPE           as TYPE,`,
+        `    OBJATTRIBUTE      as ATTRIBUTE,`,
+        `    OBJTEXT           as TEXT,`,
+        `    0                 as IS_SOURCE,`,
+        `    OBJSIZE           as SIZE,`,
+        `    extract(epoch from (OBJCREATED))*1000       as CREATED,`,
+        `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
+        `    OBJOWNER          as OWNER,`,
+        `    OBJDEFINER        as CREATED_BY`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'))`,
+        `  )`,
+        `select`,
+        `  o.NAME,`,
+        `  o.TYPE,`,
+        `  o.ATTRIBUTE,`,
+        `  o.TEXT,`,
+        `  case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,`,
+        `  s.NB_MBR,`,
+        `  s.SOURCE_LENGTH,`,
+        `  s.CCSID,`,
+        `  o.SIZE,`,
+        `  o.CREATED,`,
+        `  o.CHANGED,`,
+        `  o.OWNER,`,
+        `  o.CREATED_BY`,
+        `from OBJD o left join SRCPF s on o.NAME = s.NAME`,
       ];
     }
 
@@ -593,9 +614,9 @@ export default class IBMiContent {
       sourceFile: Boolean(object.IS_SOURCE),
       sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
       CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined,
-      size: Number(object.SIZE) !== 9999999999 ? Number(object.SIZE) : Number(object.SIZE_IN_UNITS) * Number(object.BYTES_PER_UNIT),
-      created: this.getDspObjDdDate(String(object.ODCCEN), String(object.ODCDAT), String(object.ODCTIM)),
-      changed: this.getDspObjDdDate(String(object.ODLCEN), String(object.ODLDAT), String(object.ODLTIM)),
+      size: Number(object.SIZE),
+      created: new Date(Number(object.CREATED)),
+      changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
     } as IBMiObject))
@@ -887,20 +908,6 @@ export default class IBMiContent {
     return errorsString.split(`\n`)
       .map(error => error.split(':'))
       .map(codeText => ({ code: codeText[0], text: codeText[1] }));
-  }
-
-  /**
-   * @param century; century code (1=20xx, 0=19xx)
-   * @param dateString: string in YYMMDD
-   * @param timeString: string in HHMMSS
-   * @returns date
-   */
-  getDspObjDdDate(century: string = `0`, MMDDYY: string = `010101`, HHMMSS: string = `000000`): Date {
-    let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
-    let YYMMDD: string = MMDDYY.slice(4,).concat(MMDDYY.slice(0, 4));
-    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
-    [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
-    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
   }
 
   /**
