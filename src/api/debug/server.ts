@@ -53,7 +53,7 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
   };
 
   const detailFilePath = path.posix.join(directory, detailFile);
-  const detailExists = await content.testStreamFile(detailFile, "r");
+  const detailExists = await content.testStreamFile(detailFilePath, "r");
   if (detailExists) {
     try {
       const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
