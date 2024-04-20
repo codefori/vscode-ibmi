@@ -85,6 +85,39 @@ export const ToolsSuite: TestSuite = {
       }
     },
     {
+      name: `FR result set test`, test: async () => {
+        const lines = [
+          `DB2>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          `  ?>`,
+          ``,
+          `ALPHA      NUMÉRIQUE   état       unité      MAJUSCULES minuscules aperçu     hélas      où?    `,
+          `---------- ----------- ---------- ---------- ---------- ---------- ---------- ---------- -------`,
+          `Valeur1              1 Français   mètre      ÀÉÈÇÙ      àéèçù      déterminé  oui?       LÀ-BAS!`,
+          ``,
+          `  1 RECORD(S) SELECTED.`,
+        ]
+
+        const rows = Tools.db2Parse(lines.join(`\n`));
+
+        assert.strictEqual(rows.length, 1);
+
+        assert.strictEqual(rows[0].ALPHA, `Valeur1`);
+        assert.strictEqual(rows[0].NUMÉRIQUE, 1);
+        assert.strictEqual(rows[0].état, `Français`);
+        assert.strictEqual(rows[0].unité, `mètre`);
+        assert.strictEqual(rows[0].MAJUSCULES, `ÀÉÈÇÙ`);
+        assert.strictEqual(rows[0].minuscules, `àéèçù`);
+        assert.strictEqual(rows[0].aperçu, `déterminé`);
+        assert.strictEqual(rows[0].hélas, `oui?`);
+        assert.strictEqual(rows[0]["où?"], `LÀ-BAS!`);
+      }
+    },
+    {
       name: `DA result set test`, test: async () => {
         const lines = [
           `DB2>`,
