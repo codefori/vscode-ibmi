@@ -550,7 +550,7 @@ export default class IBMiContent {
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'))`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'))`,
       ];
     }
     else {
@@ -582,7 +582,7 @@ export default class IBMiContent {
         `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `    OBJOWNER          as OWNER,`,
         `    OBJDEFINER        as CREATED_BY`,
-        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'))`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'))`,
         `  )`,
         `select`,
         `  o.NAME,`,
