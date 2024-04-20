@@ -1,13 +1,13 @@
 import vscode from "vscode";
-import { ConnectionManager, ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
 import { instance } from "../../instantiate";
-import { ConnectionData, Server } from '../../typings';
 import { t } from "../../locale";
+import { ConnectionData, Server } from '../../typings';
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -331,58 +331,42 @@ export class SettingsUI {
               page.panel.dispose();
 
               const data = page.data;
-
-              let doUpdate = false;
-
               const chosenButton = data.buttons as "submitButton" | "removeAuth";
 
               switch (chosenButton) {
                 case `submitButton`:
                   if (data.password) {
-                    // New password was entered, so store the password
-                    // and remove the private key path from the data
-                    await ConnectionManager.setStoredPassword(context, name, data.password);
                     data.privateKeyPath = undefined;
-
-                    vscode.window.showInformationMessage(t(`login.password.updated`, name));
-
-                    doUpdate = true;
-
-                  } else {
+                    if (data.password !== storedPassword) {
+                      // New password was entered, so store the password
+                      // and remove the private key path from the data
+                      await ConnectionManager.setStoredPassword(context, name, data.password);
+                      vscode.window.showInformationMessage(t(`login.password.updated`, name));
+                    }
+                  } else if (data.privateKeyPath?.trim()) {
                     // If no password was entered, but a keypath exists
                     // then remove the password from the data and
                     // use the keypath instead
-                    if (data.privateKeyPath?.trim()) {
-                      await ConnectionManager.deleteStoredPassword(context, name);
-
-                      vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
-
-                      doUpdate = true;
-                    }
+                    await ConnectionManager.deleteStoredPassword(context, name);
+                    vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
                   }
                   break;
 
                 case `removeAuth`:
                   await ConnectionManager.deleteStoredPassword(context, name);
-                  data.password = undefined;
                   data.privateKeyPath = undefined;
-
                   vscode.window.showInformationMessage(t(`login.authRemoved`, name));
-
-                  doUpdate = true;
                   break;
               }
 
+              //Fix values before assigning the data
+              data.port = Number(data.port);
+              delete data.password;
+              delete data.buttons;
 
-              if (doUpdate) {
-                //Fix values before assigning the data
-                data.port = Number(data.port);
-                delete data.password;
-                delete data.buttons;
-
-                stored = Object.assign(stored, data);
-                await ConnectionManager.updateByIndex(index, stored);
-              }
+              stored = Object.assign(stored, data);
+              await ConnectionManager.updateByIndex(index, stored);
+              vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
             }
           }
         }
