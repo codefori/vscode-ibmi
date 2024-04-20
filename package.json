@@ -1820,7 +1820,7 @@
 			"code-for-ibmi.debug.group": [
 				{
 					"command": "code-for-ibmi.debug.batch",
-					"when": "code-for-ibmi:debug && viewItem =~ /^object.pgm.*/"
+					"when": "code-for-ibmi:debug && (viewItem =~ /^object.pgm.*/ || editorFocus)"
 				},
 				{
 					"command": "code-for-ibmi.debug.sep",
