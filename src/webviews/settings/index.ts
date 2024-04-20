@@ -333,8 +333,14 @@ export class SettingsUI {
               const data = page.data;
               const chosenButton = data.buttons as "submitButton" | "removeAuth";
 
-              switch (chosenButton) {
-                case `submitButton`:
+              switch (chosenButton) {              
+                case `removeAuth`:
+                  await ConnectionManager.deleteStoredPassword(context, name);
+                  data.privateKeyPath = undefined;
+                  vscode.window.showInformationMessage(t(`login.authRemoved`, name));
+                  break;
+                
+                default:
                   if (data.password) {
                     data.privateKeyPath = undefined;
                     if (data.password !== storedPassword) {
@@ -350,12 +356,6 @@ export class SettingsUI {
                     await ConnectionManager.deleteStoredPassword(context, name);
                     vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
                   }
-                  break;
-
-                case `removeAuth`:
-                  await ConnectionManager.deleteStoredPassword(context, name);
-                  data.privateKeyPath = undefined;
-                  vscode.window.showInformationMessage(t(`login.authRemoved`, name));
                   break;
               }
 
