@@ -473,76 +473,71 @@ export default class IBMiContent {
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
-    const queries: string[] = [];
-
-    if (!sourceFilesOnly) {
-      queries.push(`@DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)`);
-    }
-
-    if (withSourceFiles) {
-      queries.push(`@DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)`);
-    }
-
-    let createOBJLIST;
+    let createOBJLIST: string[];
     if (sourceFilesOnly) {
       //DSPFD only
-      createOBJLIST = `select PHFILE as NAME, ` +
-        `'*FILE' as TYPE, ` +
-        `PHFILA as ATTRIBUTE, ` +
-        `PHTXT as TEXT, ` +
-        `1 as IS_SOURCE, ` +
-        `PHNOMB as NB_MBR, ` +
-        'PHMXRL as SOURCE_LENGTH, ' +
-        'PHCSID as CCSID ' +
-        `from QTEMP.CODE4IFD where PHDTAT = 'S'`;
+      createOBJLIST = [
+        `select `,
+        `  t.SYSTEM_TABLE_NAME as name,`,
+        `  '*FILE' as type,`,
+        `  '' as attribute,`,
+        `  t.table_text as text,`,
+        `  1 as is_source,`,
+        `  -1 as nb_mbr, -- no idea how to get this`,
+        `  c.character_maximum_length as SOURCE_LENGTH,`,
+        `  c.ccsid`,
+        `from qsys2.systables as t`,
+        `right join qsys2.syscolumns2 as c on t.system_table_schema = c.system_table_schema and t.SYSTEM_TABLE_NAME = c.SYSTEM_TABLE_NAME and c.column_name = 'SRCDTA'`,
+        `where t.table_schema = '${library}' and t.file_type = 'S'`,
+      ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
-      createOBJLIST = `select ODOBNM as NAME, ` +
-        `ODOBTP as TYPE, ` +
-        `ODOBAT as ATTRIBUTE, ` +
-        `ODOBTX as TEXT, ` +
-        `0 as IS_SOURCE, ` +
-        `ODOBSZ as SIZE, ` +
-        `ODCCEN, ` +
-        `ODCDAT, ` +
-        `ODCTIM, ` +
-        `ODLCEN, ` +
-        `ODLDAT, ` +
-        `ODLTIM, ` +
-        `ODOBOW as OWNER, ` +
-        `ODCRTU as CREATED_BY, ` +
-        `ODSIZU as SIZE_IN_UNITS, ` +
-        `ODBPUN as BYTES_PER_UNIT ` +
-        `from QTEMP.CODE4IOBJD`;
+      createOBJLIST = [
+        `select `,
+        `  o.objlib as LIBRARY,`,
+        `  o.objname as NAME,`,
+        `  o.objtype as TYPE,`,
+        `  o.objattribute as ATTRIBUTE,`,
+        `  o.objtext as TEXT,`,
+        `  0 as NB_MBR,`,
+        `  0 as IS_SOURCE,`,
+        `  0 as SOURCE_LENGTH,`,
+        `  65535 as CCSID,`,
+        `  o.objsize as SIZE,`,
+        `  o.objcreated as CREATED_TS,`,
+        `  o.objowner as OWNER,`,
+        `  o.objdefiner as CREATED_BY,`,
+        `  o.objsize as SIZE_IN_UNITS,`,
+        `  0 as BYTES_PER_UNIT`,
+        `from table(qsys2.object_statistics('${library}', '${type}')) as o`
+      ];
     }
     else {
       //Both DSPOBJD and DSPFD
-      createOBJLIST = `select ODOBNM as NAME, ` +
-        `ODOBTP as TYPE, ` +
-        `ODOBAT as ATTRIBUTE, ` +
-        `ODOBTX as TEXT, ` +
-        `Case When PHDTAT = 'S' Then 1 Else 0 End as IS_SOURCE, ` +
-        `PHNOMB as NB_MBR, ` +
-        'PHMXRL as SOURCE_LENGTH, ' +
-        'PHCSID as CCSID, ' +
-        `ODOBSZ as SIZE, ` +
-        `ODCCEN, ` +
-        `ODCDAT, ` +
-        `ODCTIM, ` +
-        `ODLCEN, ` +
-        `ODLDAT, ` +
-        `ODLTIM, ` +
-        `ODOBOW as OWNER, ` +
-        `ODCRTU as CREATED_BY, ` +
-        `ODSIZU as SIZE_IN_UNITS, ` +
-        `ODBPUN as BYTES_PER_UNIT ` +
-        `from QTEMP.CODE4IOBJD  ` +
-        `left join QTEMP.CODE4IFD on PHFILE = ODOBNM And PHDTAT = 'S'`;
+      createOBJLIST = [
+        `select `,
+        `  o.objlib as LIBRARY,`,
+        `  o.objname as NAME,`,
+        `  o.objtype as TYPE,`,
+        `  o.objattribute as ATTRIBUTE,`,
+        `  o.objtext as TEXT,`,
+        `  -1 as NB_MBR,`,
+        `  case when c.character_maximum_length is null then 0 else 1 end as IS_SOURCE,`,
+        `  c.character_maximum_length as SOURCE_LENGTH,`,
+        `  c.ccsid as CCSID,`,
+        `  o.objsize as SIZE,`,
+        `  o.objcreated as CREATED_TS,`,
+        `  o.objowner as OWNER,`,
+        `  o.objdefiner as CREATED_BY,`,
+        `  o.objsize as SIZE_IN_UNITS,`,
+        `  0 as BYTES_PER_UNIT`,
+        `from table(qsys2.object_statistics('${library}', '${type}')) as o`,
+        `left outer join qsys2.syscolumns2 as c on o.objlib = c.system_table_schema and o.objname = c.SYSTEM_TABLE_NAME and c.column_name = 'SRCDTA'`,
+      ];
     }
 
-    queries.push(`create table QTEMP.OBJLIST as (${createOBJLIST}) with data`);
-
-    const objects = (await this.getQTempTable(queries, "OBJLIST"));
+    const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
+    
     return objects.map(object => ({
       library,
       name: this.ibmi.sysNameInLocal(String(object.NAME)),
