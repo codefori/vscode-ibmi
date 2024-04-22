@@ -101,11 +101,36 @@ export namespace Tools {
         figuredLengths = true;
       } else {
         let row: DB2Row = {};
+        let slideBytesBy = 0;
 
         headers.forEach(header => {
-          const strValue = line.substring(header.from, header.from + header.length).trimEnd();
+          const fromPos = header.from - slideBytesBy;
+          let strValue = line.substring(fromPos, fromPos + header.length);
 
-          let realValue: string | number | null = strValue;
+          /* For each DBCS character, add 1
+          Since we are reading characters as UTF8 here, we assume any UTF8 character made up of more than 2 bytes is DBCS
+
+          https://stackoverflow.com/a/14495321/4763757
+
+          Look at a list of Unicode blocks and their code point ranges, e.g. 
+          the browsable http://www.fileformat.info/info/unicode/block/index.htm or 
+          the official http://www.unicode.org/Public/UNIDATA/Blocks.txt :
+
+          Anything up to U+007F takes 1 byte: Basic Latin
+          Then up to U+07FF it takes 2 bytes: Greek, Arabic, Cyrillic, Hebrew, etc
+          Then up to U+FFFF it takes 3 bytes: Chinese, Japanese, Korean, Devanagari, etc
+          Beyond that it takes 4 bytes
+
+          */
+
+          const extendedBytes = strValue.split(``).map(c => Buffer.byteLength(c) < 3 ? 0 : 1).reduce((a: number, b: number) => a + b, 0);
+
+          slideBytesBy += extendedBytes;
+          if (extendedBytes > 0) {
+            strValue = strValue.substring(0, strValue.length - extendedBytes);
+          }
+
+          let realValue: string | number | null = strValue.trimEnd();
 
           // is value a number?
           if (strValue.startsWith(` `)) {
