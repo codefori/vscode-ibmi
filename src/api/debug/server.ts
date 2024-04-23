@@ -3,7 +3,6 @@ import { commands, window } from "vscode";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import IBMi from "../IBMi";
-import IBMiContent from "../IBMiContent";
 import { DebugConfiguration, getDebugServiceDetails } from "./config";
 
 export type DebugJob = {
@@ -75,9 +74,9 @@ export async function stopService(connection: IBMi) {
 }
 
 export async function getDebugServiceJob() {
-  const content = instance.getContent();
-  if (content) {
-    const rows = await content.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${content.ibmi.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only)`);
+  const connection = instance.getConnection();
+  if (connection) {
+    const rows = await connection.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only)`);
     if (rows && rows.length) {
       return {
         name: String(rows[0].JOB_NAME),
@@ -88,9 +87,9 @@ export async function getDebugServiceJob() {
 }
 
 export async function getDebugServerJob() {
-  const content = instance.getContent();
-  if (content) {
-    const [row] = await content.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`);
+  const connection = instance.getConnection();
+  if (connection) {
+    const [row] = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`);
     if (row) {
       return {
         name: String(row.JOB_NAME),
@@ -103,14 +102,14 @@ export async function getDebugServerJob() {
 /**
  * Gets a list of debug jobs stuck at MSGW in QSYSWRK
  */
-export async function getStuckJobs(userProfile: string, content: IBMiContent): Promise<string[]> {
+export async function getStuckJobs(connection: IBMi): Promise<string[]> {
   const sql = [
     `SELECT JOB_NAME`,
-    `FROM TABLE(QSYS2.ACTIVE_JOB_INFO(SUBSYSTEM_LIST_FILTER => 'QSYSWRK', CURRENT_USER_LIST_FILTER => '${userProfile.toUpperCase()}')) X`,
+    `FROM TABLE(QSYS2.ACTIVE_JOB_INFO(SUBSYSTEM_LIST_FILTER => 'QSYSWRK', CURRENT_USER_LIST_FILTER => '${connection.currentUser.toUpperCase()}')) X`,
     `where JOB_STATUS = 'MSGW'`,
   ].join(` `);
 
-  const jobs = await content.runSQL(sql);
+  const jobs = await connection.runSQL(sql);
   return jobs.map(row => String(row.JOB_NAME));
 }
 
@@ -161,9 +160,9 @@ export function refreshDebugSensitiveItems() {
   commands.executeCommand("code-for-ibmi.debug.refresh");
 }
 
-export async function readActiveJob(content: IBMiContent, job: DebugJob) {
+export async function readActiveJob(connection: IBMi, job: DebugJob) {
   try {
-    return (await content.runSQL(
+    return (await connection.runSQL(
       `select job_name_short, job_user, job_number, subsystem_library_name concat '/' concat subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
     )).at(0);
   } catch (error) {
@@ -171,9 +170,9 @@ export async function readActiveJob(content: IBMiContent, job: DebugJob) {
   }
 }
 
-export async function readJVMInfo(content: IBMiContent, job: DebugJob) {
+export async function readJVMInfo(connection: IBMi, job: DebugJob) {
   try {
-    return (await content.runSQL(`
+    return (await connection.runSQL(`
       select START_TIME, JAVA_HOME, USER_DIRECTORY, CURRENT_HEAP_SIZE, MAX_HEAP_SIZE
       from QSYS2.JVM_INFO
       where job_name = '${job.name}'

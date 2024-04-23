@@ -214,10 +214,9 @@ export async function initialize(context: ExtensionContext) {
     }),
 
     vscode.debug.onDidTerminateDebugSession(async session => {
-      if (session.configuration.type === `IBMiDebug`) {
-        const connection = instance.getConnection();
-
-        server.getStuckJobs(connection?.currentUser!, instance.getContent()!).then(jobIds => {
+      const connection = instance.getConnection();
+      if (connection && session.configuration.type === `IBMiDebug`) {
+        server.getStuckJobs(connection).then(jobIds => {
           if (jobIds.length > 0) {
             vscode.window.showInformationMessage(`You have ${jobIds.length} debug job${jobIds.length !== 1 ? `s` : ``} stuck at MSGW under your user profile.`, `End jobs`, `Ignore`)
               .then(selection => {

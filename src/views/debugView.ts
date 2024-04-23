@@ -1,8 +1,8 @@
 import vscode from "vscode";
 import { Tools } from "../api/Tools";
 import { checkClientCertificate, remoteCertificatesExists } from "../api/debug/certificates";
-import { DebugConfiguration } from "../api/debug/config";
-import { DebugJob, getDebugServerJob, getDebugServiceDetails, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../api/debug/server";
+import { DebugConfiguration, getDebugServiceDetails } from "../api/debug/config";
+import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../api/debug/server";
 import { instance } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem } from "../typings";
@@ -114,16 +114,16 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async resolveTreeItem(item: vscode.TreeItem, element: BrowserItem, token: vscode.CancellationToken) {
-    const content = instance.getContent();
-    if (content && element.tooltip === undefined && element instanceof DebugJobItem && element.debugJob) {
+    const connection = instance.getConnection();
+    if (connection && element.tooltip === undefined && element instanceof DebugJobItem && element.debugJob) {
       element.tooltip = new vscode.MarkdownString(`${t(`listening.on.port${element.debugJob.ports.length === 1 ? '' : 's'}`)} ${element.debugJob.ports.join(", ")}\n\n`);
-      const activeJob = await readActiveJob(content, element.debugJob);
+      const activeJob = await readActiveJob(connection, element.debugJob);
       if (activeJob) {
         const jobToMarkDown = (job: Tools.DB2Row | string) => typeof job === "string" ? job : Object.entries(job).filter(([key, value]) => value !== null).map(([key, value]) => `- ${t(key)}: ${value}`).join("\n");
         element.tooltip.appendMarkdown(jobToMarkDown(activeJob));
         if (element.type === "service") {
           element.tooltip.appendMarkdown("\n\n");
-          const jvmJob = await readJVMInfo(content, element.debugJob);
+          const jvmJob = await readJVMInfo(connection, element.debugJob);
           if (jvmJob) {
             element.tooltip.appendMarkdown(jobToMarkDown(jvmJob));
           }
