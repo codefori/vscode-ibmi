@@ -872,17 +872,17 @@ export default class IBMi {
 
         let debugConfigLoaded = false
         if ((!quickConnect || !cachedServerSettings?.debugConfigLoaded)) {
-          if(debugPTFInstalled()){
-            try{
+          if (debugPTFInstalled()) {
+            try {
               const debugServiceConfig = await new DebugConfiguration().load();
               delete this.config.debugCertDirectory;
               this.config.debugPort = debugServiceConfig.getOrDefault("DBGSRV_SECURED_PORT", "8005");
               this.config.debugSepPort = debugServiceConfig.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
               debugConfigLoaded = true;
             }
-            catch(error){
+            catch (error) {
               vscode.window.showWarningMessage(`Could not load debug service configuration: ${error}`);
-            }            
+            }
           }
         }
 
@@ -1273,7 +1273,7 @@ export default class IBMi {
       }
       return upperCased.join("");
     }
-    else{
+    else {
       return name.toLocaleUpperCase();
     }
   }
@@ -1287,7 +1287,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, opts: {userCcsid?: number} = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, opts: { userCcsid?: number } = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
@@ -1327,5 +1327,21 @@ export default class IBMi {
       runtimeCcsid: this.runtimeCcsid,
       userDefaultCCSID: this.userDefaultCCSID,
     };
-  } 
+  }
+
+  async checkUserSpecialAuthorities(authorities: ("*ALLOBJ" | "*AUDIT" | "*IOSYSCFG" | "*JOBCTL" | "*SAVSYS" | "*SECADM" | "*SERVICE" | "*SPLCTL")[], user?: string) {
+    const profile = (user || this.currentUser).toLocaleUpperCase();
+    const [row] = await this.runSQL(
+      `select trim(coalesce(usr.special_authorities,'') concat ' ' concat coalesce(grp.special_authorities, '')) AUTHORITIES ` +
+      `from qsys2.user_info_basic usr ` +
+      `left join qsys2.user_info_basic grp on grp.authorization_name = usr.group_profile_name ` +
+      `where usr.authorization_name = '${profile}'`
+    );
+
+    const userAuthorities = row.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
+    const missing = authorities.filter(auth => !userAuthorities.includes(auth));
+    if (missing.length) {
+      throw new Error(`User ${profile} misses the following special authorities: ${missing.join(", ")}.`);
+    }
+  }
 }
