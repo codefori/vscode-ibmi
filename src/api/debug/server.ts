@@ -86,40 +86,47 @@ export async function isSEPSupported() {
 }
 
 export async function startService(connection: IBMi) {
-  const debugConfig = await new DebugConfiguration().load();
+  try {
+    await connection.checkUserSpecialAuthorities(["*ALLOBJ"]);
+    const debugConfig = await new DebugConfiguration().load();
 
-  const env = {
-    MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
-  };
+    const env = {
+      MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
+    };
 
-  let didNotStart = false;
-  connection.sendCommand({
-    command: `/QOpenSys/usr/bin/nohup "${path.posix.join(debugConfig.getRemoteServiceBin(), `startDebugService.sh`)}"`,
-    env,
-    directory: debugConfig.getRemoteServiceWorkDir()
-  }).then(startResult => {
-    if (startResult.code) {
-      window.showErrorMessage(t("start.debug.service.failed", startResult.stdout || startResult.stderr));
-      didNotStart = true;
-    }
-  });
-
-  return await new Promise<boolean>(async (done) => {
-    let tries = 0;
-    const intervalId = setInterval(async () => {
-      if (!didNotStart && tries++ < 15) {
-        if (await getDebugServiceJob()) {
-          clearInterval(intervalId);
-          window.showInformationMessage(t("start.debug.service.succeeded"));
-          refreshDebugSensitiveItems();
-          done(true);
-        }
-      } else {
-        clearInterval(intervalId);
-        done(false);
+    let didNotStart = false;
+    connection.sendCommand({
+      command: `/QOpenSys/usr/bin/nohup "${path.posix.join(debugConfig.getRemoteServiceBin(), `startDebugService.sh`)}"`,
+      env,
+      directory: debugConfig.getRemoteServiceWorkDir()
+    }).then(startResult => {
+      if (startResult.code) {
+        window.showErrorMessage(t("start.debug.service.failed", startResult.stdout || startResult.stderr));
+        didNotStart = true;
       }
-    }, 1000);
-  });
+    });
+
+    return await new Promise<boolean>(async (done) => {
+      let tries = 0;
+      const intervalId = setInterval(async () => {
+        if (!didNotStart && tries++ < 15) {
+          if (await getDebugServiceJob()) {
+            clearInterval(intervalId);
+            window.showInformationMessage(t("start.debug.service.succeeded"));
+            refreshDebugSensitiveItems();
+            done(true);
+          }
+        } else {
+          clearInterval(intervalId);
+          done(false);
+        }
+      }, 1000);
+    });
+  }
+  catch (error) {
+    window.showErrorMessage(String(error));
+    return false;
+  }
 }
 
 export async function stopService(connection: IBMi) {
