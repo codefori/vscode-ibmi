@@ -238,7 +238,7 @@ export function refreshDebugSensitiveItems() {
 export async function readActiveJob(content: IBMiContent, job: DebugJob) {
   try {
     return (await content.runSQL(
-      `select job_name_short, job_user, job_number, subsystem_library_name || '/' || subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
+      `select job_name_short, job_user, job_number, subsystem_library_name concat '/' concat subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
     )).at(0);
   } catch (error) {
     return String(error);
