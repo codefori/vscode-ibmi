@@ -1,7 +1,7 @@
 import * as dns from 'dns';
 import { existsSync, readFileSync } from "fs";
 import * as os from "os";
-import path, { dirname } from "path";
+import path, { dirname, posix } from "path";
 import { promisify } from 'util';
 import vscode from "vscode";
 import { instance } from '../../instantiate';
@@ -9,7 +9,7 @@ import { t } from '../../locale';
 import IBMi from "../IBMi";
 import IBMiContent from '../IBMiContent';
 import { Tools } from '../Tools';
-import { DebugConfiguration } from './config';
+import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaHome } from './config';
 
 type HostInfo = {
   ip: string
@@ -160,14 +160,17 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
         await debugConfig.save();
       }
+      const javaHome = getJavaHome((await getDebugServiceDetails()).java);
       const encryptResult = await connection.sendCommand({
         command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
         env: {
+          MY_JAVA_HOME: javaHome,
           DEBUG_SERVICE_KEYSTORE_PASSWORD: password
         }
       });
 
-      if (!encryptResult.code) {
+      //Check if encryption key exists too...because the encryption script can return 0 and an error in stdout in some cases.
+      if (!encryptResult.code && await instance.getContent()?.testStreamFile(posix.join(debugConfig.getRemoteServiceWorkDir(), "key.properties"), "r")) {
         //After the certificates are generated/imported and the password is encrypted, we make a copy of the encryption key
         //because it gets deleted each time the service starts. The CODE4IDEBUG variable is here to run the script that will restore the key
         //when the service starts.
@@ -175,13 +178,14 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         setProgress("updating service configuration");
         const backupKey = await connection.sendCommand({ command: `cp key.properties ${ENCRYPTION_KEY}`, directory: debugConfig.getRemoteServiceWorkDir() });
         if (!backupKey.code) {
+          debugConfig.set("JAVA_HOME", javaHome);
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_FILE", certificatePath);
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_PASSWORD", encryptResult.stdout);
           debugConfig.set("CODE4IDEBUG", `$([ -f $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} ] && cp $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} $DBGSRV_WRK_DIR/key.properties)`);
           debugConfig.save();
         }
         else {
-          throw new Error(`Failed to backup encryption key: ${backupKey.stderr}`);
+          throw new Error(`Failed to backup encryption key: ${backupKey.stderr || backupKey.stdout}`);
         }
       }
       else {
@@ -247,6 +251,22 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
   //The encryption key is backed up since it's destroyed every time the service starts up
   //The remote certificate is only valid if the client certificate is found too
   const debugConfig = await new DebugConfiguration().load();
+
+  //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
+  const javaHome = debugConfig.get("JAVA_HOME");
+  const expectedJavaHome = getJavaHome((await getDebugServiceDetails()).java);
+  if (javaHome && javaHome !== expectedJavaHome) {
+    if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
+      //Automatically make the change if possible
+      debugConfig.set("JAVA_HOME", expectedJavaHome);
+      await debugConfig.save();
+    }
+    else {
+      //No write access: we warn about the required change
+      vscode.window.showWarningMessage(`JAVA_HOME should be set to ${expectedJavaHome} in the Debug Service configuration file (${DEBUG_CONFIG_FILE}).`);
+    }
+  }
+
   const remoteCertExists = await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f");
   const remoteClientCertExists = await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
   const encryptionKeyExists = await content.testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/${ENCRYPTION_KEY}`, "f");

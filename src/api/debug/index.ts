@@ -10,7 +10,7 @@ import { ILELibrarySettings } from "../CompileTools";
 import { Tools } from "../Tools";
 import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
-import { DEBUG_CONFIG_FILE } from "./config";
+import { DEBUG_CONFIG_FILE, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";
 
 const debugExtensionId = `IBM.ibmidebug`;
@@ -361,7 +361,7 @@ export async function initialize(context: ExtensionContext) {
   // Run during startup:
   instance.onEvent("connected", async () => {
     activateDebugExtension();
-    server.resetDebugServiceDetails();
+    resetDebugServiceDetails();
     const connection = instance.getConnection();
     const content = instance.getContent();
     if (connection && content && server.debugPTFInstalled()) {
@@ -420,7 +420,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
   const config = instance.getConfig();
   const storage = instance.getStorage();
 
-  const serviceDetails = await server.getDebugServiceDetails();
+  const serviceDetails = await getDebugServiceDetails();
 
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;

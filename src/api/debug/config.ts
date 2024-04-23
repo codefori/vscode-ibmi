@@ -1,4 +1,7 @@
+import path from "path";
+import vscode from "vscode";
 import { instance } from "../../instantiate";
+import { t } from "../../locale";
 import { SERVICE_CERTIFICATE } from "./certificates";
 
 type ConfigLine = {
@@ -8,7 +11,7 @@ type ConfigLine = {
 export const DEBUG_CONFIG_FILE = "/QIBM/ProdData/IBMiDebugService/bin/DebugService.env";
 
 export class DebugConfiguration {
-  readonly configLines: ConfigLine[] = [];  
+  readonly configLines: ConfigLine[] = [];
 
   private getContent() {
     const content = instance.getContent();
@@ -29,7 +32,7 @@ export class DebugConfiguration {
 
   delete(key: string) {
     const index = this.configLines.findIndex(line => line.key === key && line.value !== undefined);
-    if(index > -1){
+    if (index > -1) {
       this.configLines.splice(index, 1);
     }
   }
@@ -87,5 +90,71 @@ export class DebugConfiguration {
 
   getRemoteServiceWorkDir() {
     return this.getOrDefault("DBGSRV_WRK_DIR", "/QIBM/UserData/IBMiDebugService");
+  }
+}
+
+interface DebugServiceDetails {
+  version: string
+  java: string
+  semanticVersion: () => {
+    major: number
+    minor: number
+    patch: number
+  }
+}
+
+let debugServiceDetails: DebugServiceDetails | undefined;
+
+export function resetDebugServiceDetails() {
+  debugServiceDetails = undefined;
+}
+
+export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
+  const content = instance.getContent()!;
+  if (debugServiceDetails) {
+    return debugServiceDetails;
+  }
+
+  debugServiceDetails = {
+    version: `1.0.0`,
+    java: `8`,
+    semanticVersion: () => ({
+      major: 1,
+      minor: 0,
+      patch: 0
+    })
+  };
+
+  const detailFilePath = path.posix.join((await new DebugConfiguration().load()).getRemoteServiceRoot(), `package.json`);
+  const detailExists = await content.testStreamFile(detailFilePath, "r");
+  if (detailExists) {
+    try {
+      const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
+      const parsed = JSON.parse(fileContents);
+      debugServiceDetails = {
+        ...parsed as DebugServiceDetails,
+        semanticVersion: () => {
+          const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
+          return {
+            major: parts[0],
+            minor: parts[1],
+            patch: parts[2]
+          };
+        }
+      }
+    } catch (e) {
+      // Something very very bad has happened
+      vscode.window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
+      console.log(e);
+    }
+  }
+
+  return debugServiceDetails;
+}
+
+export function getJavaHome(version: string) {
+  switch (version) {
+    case "11": return `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`;
+    default: return `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`;
   }
 }

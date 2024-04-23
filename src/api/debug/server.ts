@@ -4,77 +4,11 @@ import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import IBMi from "../IBMi";
 import IBMiContent from "../IBMiContent";
-import { DebugConfiguration } from "./config";
-
-const detailFile = `package.json`;
-
-const JavaPaths: { [version: string]: string } = {
-  "8": `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`,
-  "11": `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`
-}
-
-interface DebugServiceDetails {
-  version: string
-  java: string
-  semanticVersion: () => {
-    major: number
-    minor: number
-    patch: number
-  }
-}
-
+import { DebugConfiguration, getDebugServiceDetails } from "./config";
 
 export type DebugJob = {
   name: string
   ports: number[]
-}
-
-let debugServiceDetails: DebugServiceDetails | undefined;
-export function resetDebugServiceDetails() {
-  debugServiceDetails = undefined;
-}
-
-export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
-  const content = instance.getContent()!;
-  if (debugServiceDetails) {
-    return debugServiceDetails;
-  }
-
-  debugServiceDetails = {
-    version: `1.0.0`,
-    java: `8`,
-    semanticVersion: () => ({
-      major: 1,
-      minor: 0,
-      patch: 0
-    })
-  };
-
-  const detailFilePath = path.posix.join((await new DebugConfiguration().load()).getRemoteServiceRoot(), detailFile);
-  const detailExists = await content.testStreamFile(detailFilePath, "r");
-  if (detailExists) {
-    try {
-      const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
-      const parsed = JSON.parse(fileContents);
-      debugServiceDetails = {
-        ...parsed as DebugServiceDetails,
-        semanticVersion: () => {
-          const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
-          return {
-            major: parts[0],
-            minor: parts[1],
-            patch: parts[2]
-          };
-        }
-      }
-    } catch (e) {
-      // Something very very bad has happened
-      window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
-      console.log(e);
-    }
-  }
-
-  return debugServiceDetails;
 }
 
 export function debugPTFInstalled() {
@@ -90,14 +24,9 @@ export async function startService(connection: IBMi) {
     await connection.checkUserSpecialAuthorities(["*ALLOBJ"]);
     const debugConfig = await new DebugConfiguration().load();
 
-    const env = {
-      MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
-    };
-
     let didNotStart = false;
     connection.sendCommand({
       command: `/QOpenSys/usr/bin/nohup "${path.posix.join(debugConfig.getRemoteServiceBin(), `startDebugService.sh`)}"`,
-      env,
       directory: debugConfig.getRemoteServiceWorkDir()
     }).then(startResult => {
       if (startResult.code) {
@@ -132,10 +61,7 @@ export async function startService(connection: IBMi) {
 export async function stopService(connection: IBMi) {
   const debugConfig = await new DebugConfiguration().load();
   const endResult = await connection.sendCommand({
-    command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`,
-    env: {
-      MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
-    }
+    command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`
   });
 
   if (!endResult.code) {
