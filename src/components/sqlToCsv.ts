@@ -201,5 +201,7 @@ begin atomic
 end;
 
 comment on procedure ${library}.${name} is '${version} - Produce a CSV file from a SQL statement';
-  `, "utf8");
+
+call QSYS2.QCMDEXC( 'grtobjaut ${library}/${name} *PGM *PUBLIC *ALL' );
+`, "utf8");
 }

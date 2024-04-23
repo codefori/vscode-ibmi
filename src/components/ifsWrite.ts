@@ -95,5 +95,7 @@ begin
 end;
 
 comment on procedure ${library}.${name} is '${version} - Write UTF8 contents to streamfile';
-  `, 'utf-8');
+
+call QSYS2.QCMDEXC( 'grtobjaut ${library}/${name} *PGM *PUBLIC *ALL' );
+`, 'utf-8');
 }

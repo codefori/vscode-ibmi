@@ -88,5 +88,7 @@ function getSource(library: string) {
     `  CALL QSYS2.QCMDEXC(COMMAND);`,
     `  OPEN clibl;`,
     `END;`,
-  ].join(`\n`), "utf8");
+    ``,
+    `call QSYS2.QCMDEXC( 'grtobjaut ${library}/GETNEWLIBL *PGM *PUBLIC *ALL' );`
+].join(`\n`), "utf8");
 }

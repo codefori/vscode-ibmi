@@ -160,6 +160,8 @@ function getSource(library: string, name: string, version: number) {
     `  return;`,
     `end;`,
     ``,
-    `comment on function ${library}.${name} is '${version} - Validate member information';`
+    `comment on function ${library}.${name} is '${version} - Validate member information';`,
+    ``,
+    `call QSYS2.QCMDEXC( 'grtobjaut ${library}/${name} *SRVPGM *PUBLIC *ALL' );`
   ].join(`\n`));
 }
