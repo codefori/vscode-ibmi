@@ -4,9 +4,9 @@ import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
+import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -290,16 +290,12 @@ export const ContentSuite: TestSuite = {
 
     {
       name: `Test getTable (SQL disabled)`, test: async () => {
-        const config = instance.getConfig();
+        const connection = instance.getConnection();
         const content = instance.getContent();
 
-        const resetValue = config!.enableSQL;
-
         // SQL needs to be disabled for this test.
-        config!.enableSQL = false;
+        connection!.enableSQL = false;
         const rows = await content?.getTable(`qiws`, `qcustcdt`, `*all`);
-
-        config!.enableSQL = resetValue;
 
         assert.notStrictEqual(rows?.length, 0);
         const firstRow = rows![0];
@@ -315,42 +311,41 @@ export const ContentSuite: TestSuite = {
         const content = instance.getContent();
         const connection = instance.getConnection();
 
-        const resetValue = config!.enableSQL;
-
-        // First we fetch the table in SQL mode
-        config!.enableSQL = true;
         const tempLib = config!.tempLibrary;
         const TempName = Tools.makeid();
         await connection?.runCommand({
           command: `DSPOBJD OBJ(QSYS/QSYSINC) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`,
           noLibList: true
         });
+
+        // First we fetch the table in SQL mode
+        connection!.enableSQL = true;
         const tableA = await content?.getTable(tempLib, TempName, TempName, false);
 
         // Then we fetch the table without SQL
-        config!.enableSQL = false;
+        connection!.enableSQL = false;
         const tableB = await content?.getTable(tempLib, TempName, TempName, true);
 
-        // Reset the config
-        config!.enableSQL = resetValue;
-
-        assert.notDeepStrictEqual(tableA, tableB);
+        assert.deepStrictEqual(tableA, tableB);
       }
     },
 
     {
       name: `Test getTable (SQL enabled)`, test: async () => {
-        const config = instance.getConfig();
+        const connection = instance.getConnection();
         const content = instance.getContent();
+        const config = instance.getConfig();
 
-        const resetValue = config!.enableSQL;
+        const tempLib = config!.tempLibrary;
+        const TempName = Tools.makeid();
+        await connection?.runCommand({
+          command: `DSPOBJD OBJ(QSYS/QSYSINC) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`,
+          noLibList: true
+        });
 
-        config!.enableSQL = true;
+        connection!.enableSQL = true;
 
-        const rows = await content?.getTable(`qiws`, `qcustcdt`, `qcustcdt`);
-
-        // Reset the config
-        config!.enableSQL = resetValue;
+        const rows = await content?.getTable(tempLib, TempName, TempName);
 
         assert.notStrictEqual(rows?.length, 0);
       }
@@ -504,20 +499,13 @@ export const ContentSuite: TestSuite = {
     },
     {
       name: `getMemberList (SQL, no filter)`, test: async () => {
-        const config = instance.getConfig();
         const content = instance.getContent();
 
-        const resetValue = config!.enableSQL;
-
-        config!.enableSQL = true;
         let members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: `*inxen` });
-        config!.enableSQL = resetValue;
 
         assert.strictEqual(members?.length, 3);
 
-        config!.enableSQL = true;
         members = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
-        config!.enableSQL = resetValue;
 
         const actbpgm = members?.find(mbr => mbr.name === `ACTBPGM`);
 
@@ -531,45 +519,48 @@ export const ContentSuite: TestSuite = {
 
     {
       name: `getMemberList (SQL compared to nosql)`, test: async () => {
-        const config = instance.getConfig();
+        const connection = instance.getConnection();
         const content = instance.getContent();
 
-        const resetValue = config!.enableSQL;
-
         // First we fetch the members in SQL mode
-        config!.enableSQL = true;
         const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
 
+        assert.notStrictEqual(membersA?.length, 0);
+
         // Then we fetch the members without SQL
-        config!.enableSQL = false;
-        const membersB = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
+        connection!.enableSQL = false;
 
-        // Reset the config
-        config!.enableSQL = resetValue;
-
-        assert.deepStrictEqual(membersA, membersB);
+        try {
+          await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
+          assert.fail(`Should have thrown an error`);
+        } catch (e) {
+          // This fails because getMemberList has no ability   to fetch members without SQL
+          assert.ok(e);
+        }
       }
     },
 
     {
       name: `getMemberList (name filter, SQL compared to nosql)`, test: async () => {
-        const config = instance.getConfig();
+        const connection = instance.getConnection();
         const content = instance.getContent();
 
-        const resetValue = config!.enableSQL;
-
         // First we fetch the members in SQL mode
-        config!.enableSQL = true;
+        connection!.enableSQL = true;
         const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
 
+        assert.notStrictEqual(membersA?.length, 0);
+
         // Then we fetch the members without SQL
-        config!.enableSQL = false;
-        const membersB = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
+        connection!.enableSQL = false;
 
-        // Reset the config
-        config!.enableSQL = resetValue;
-
-        assert.deepStrictEqual(membersA, membersB);
+        try {
+          await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
+          assert.fail(`Should have thrown an error`);
+        } catch (e) {
+          // This fails because getMemberList has no ability   to fetch members without SQL
+          assert.ok(e);
+        }
       }
     },
     {
@@ -659,6 +650,30 @@ export const ContentSuite: TestSuite = {
       }
     },
     {
+      name: `Check getMemberInfo`, test: async () => {
+        const content = instance.getContent();
+
+        const memberInfoA = await content?.getMemberInfo(`QSYSINC`, `H`, `MATH` );
+        assert.ok(memberInfoA);
+        assert.strictEqual(memberInfoA?.library === `QSYSINC`, true);
+        assert.strictEqual(memberInfoA?.file === `H`, true);
+        assert.strictEqual(memberInfoA?.name === `MATH`, true);
+        assert.strictEqual(memberInfoA?.extension === `C`, true);
+        assert.strictEqual(memberInfoA?.text === `STANDARD HEADER FILE MATH`, true);
+
+        const memberInfoB = await content?.getMemberInfo(`QSYSINC`, `H`, `MEMORY` );
+        assert.ok(memberInfoB);
+        assert.strictEqual(memberInfoB?.library === `QSYSINC`, true);
+        assert.strictEqual(memberInfoB?.file === `H`, true);
+        assert.strictEqual(memberInfoB?.name === `MEMORY`, true);
+        assert.strictEqual(memberInfoB?.extension === `CPP`, true);
+        assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
+
+        const memberInfoC = await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO` );
+        assert.ok(!memberInfoC);
+      }
+    },
+    {
       name: `Test @clCommand + select statement`, test: async () => {
         const content = instance.getContent()!;
 
@@ -678,6 +693,7 @@ export const ContentSuite: TestSuite = {
     },
     {
       name: `Write tab to member using SQL`, test: async () => {
+        // Note: This is a known failure.
         const lines = [
           `if (a) {`,
           `\tcoolstuff();\t`,

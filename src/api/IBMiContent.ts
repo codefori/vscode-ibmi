@@ -156,7 +156,7 @@ export default class IBMiContent {
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
-          await this.runSQL([
+          await this.ibmi.runSQL([
             `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
             `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
           ].join("\n"));
@@ -231,7 +231,7 @@ export default class IBMiContent {
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
           try {
-            await this.runSQL([
+            await this.ibmi.runSQL([
               `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
               `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
               `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
@@ -281,7 +281,7 @@ export default class IBMiContent {
    * @returns result set
    */
   runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
-    return this.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
+    return this.ibmi.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
   }
 
   /**
@@ -291,29 +291,10 @@ export default class IBMiContent {
    *
    * @param statements
    * @returns a Result set
+   * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
-  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
-    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
-
-    if (QZDFMDB2) {
-      if (this.chgJobCCSID === undefined) {
-        this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
-      }
-
-      const output = await this.ibmi.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: Tools.fixSQL(`${this.chgJobCCSID}${statements}`)
-      })
-
-      if (output.stdout) {
-        return Tools.db2Parse(output.stdout);
-      } else {
-        throw new Error(`There was an error running the SQL statement.`);
-      }
-
-    } else {
-      throw new Error(`There is no way to run SQL on this system.`);
-    }
+  runSQL(statements: string) {
+    return this.ibmi.runSQL(statements);  
   }
 
   /**
@@ -322,7 +303,7 @@ export default class IBMiContent {
   async getLibraryListFromCommand(ileCommand: string): Promise<{ currentLibrary: string; libraryList: string[]; } | undefined> {
     if (this.ibmi.remoteFeatures[`GETNEWLIBL.PGM`]) {
       const tempLib = this.config.tempLibrary;
-      const resultSet = await this.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
+      const resultSet = await this.ibmi.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
 
       let result = {
         currentLibrary: `QGPL`,
@@ -357,8 +338,8 @@ export default class IBMiContent {
   async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
-    if (file === member && this.config.enableSQL) {
-      const data = await this.runSQL(`SELECT * FROM ${library}.${file}`);
+    if (file === member && this.ibmi.enableSQL) {
+      const data = await this.ibmi.runSQL(`SELECT * FROM ${library}.${file}`);
 
       if (deleteTable && this.config.autoClearTempData) {
         await this.ibmi.runCommand({
@@ -425,7 +406,7 @@ export default class IBMiContent {
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
     let results: Tools.DB2Row[];
 
-    if (this.config.enableSQL) {
+    if (this.ibmi.enableSQL) {
       const statement = `
         select os.OBJNAME as ODOBNM
              , coalesce(os.OBJTEXT, '') as ODOBTX
@@ -433,7 +414,7 @@ export default class IBMiContent {
           from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs
              , table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
       `;
-      results = await this.runSQL(statement);
+      results = await this.ibmi.runSQL(statement);
     } else {
       results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
       if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
@@ -445,7 +426,7 @@ export default class IBMiContent {
     const objects = results.map(object => ({
       library: 'QSYS',
       type: '*LIB',
-      name: this.config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(String(object.ODOBNM)),
+      name: this.ibmi.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(String(object.ODOBNM)),
       attribute: object.ODOBAT,
       text: object.ODOBTX
     } as IBMiObject));
@@ -679,7 +660,7 @@ export default class IBMiContent {
         ${singleMemberExtension ? `And TYPE Like '${singleMemberExtension}'` : ''}
       Order By ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
-    const results = await this.runSQL(statement);
+    const results = await this.ibmi.runSQL(statement);
     if (results.length) {
       const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
       return results.map(result => ({
@@ -699,6 +680,45 @@ export default class IBMiContent {
     }
     else {
       return [];
+    }
+  }
+
+  /**
+   *
+   * @param filter: the criterias used to list the members
+   * @returns
+   */
+  async getMemberInfo(library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
+    if (this.ibmi.remoteFeatures[`GETMBRINFO.SQL`]) {
+      const tempLib = this.config.tempLibrary;
+      const statement = `select * from table(${tempLib}.GETMBRINFO('${library}', '${sourceFile}', '${member}'))`;
+
+      let results: Tools.DB2Row[] = [];
+      if (this.config.enableSQL) {
+        try {
+          results = await this.runSQL(statement);
+        } catch (e) {}; // Ignore errors, will return undefined.
+      }
+      else {
+        results = await this.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      }
+
+      if (results.length === 1 && results[0].ISSOURCE === 'Y') {
+        const result = results[0];
+        const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
+        return {
+          library: result.LIBRARY,
+          file: result.FILE,
+          name: result.MEMBER,
+          extension: result.EXTENSION,
+          text: result.DESCRIPTION,
+          created: new Date(result.CREATED ? Number(result.CREATED) : 0),
+          changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+        } as IBMiMember
+      }
+      else {
+        return undefined;
+      }
     }
   }
 
