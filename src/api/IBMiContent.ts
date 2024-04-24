@@ -294,7 +294,7 @@ export default class IBMiContent {
    * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
   runSQL(statements: string) {
-    return this.ibmi.runSQL(statements);  
+    return this.ibmi.runSQL(statements);
   }
 
   /**
@@ -603,13 +603,13 @@ export default class IBMiContent {
     }
 
     const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
-    
+
     return objects.map(object => ({
       library,
       name: this.ibmi.sysNameInLocal(String(object.NAME)),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
-      text: String(object.TEXT),
+      text: String(object.TEXT || ""),
       memberCount: object.NB_MBR !== undefined ? Number(object.NB_MBR) : undefined,
       sourceFile: Boolean(object.IS_SOURCE),
       sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
@@ -713,7 +713,7 @@ export default class IBMiContent {
       if (this.config.enableSQL) {
         try {
           results = await this.runSQL(statement);
-        } catch (e) {}; // Ignore errors, will return undefined.
+        } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
         results = await this.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
