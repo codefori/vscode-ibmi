@@ -3,6 +3,7 @@ import { commands, window } from "vscode";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import IBMi from "../IBMi";
+import { Tools } from "../Tools";
 import { DebugConfiguration, getDebugServiceDetails } from "./config";
 
 export type DebugJob = {
@@ -23,38 +24,65 @@ export async function startService(connection: IBMi) {
     await connection.checkUserSpecialAuthorities(["*ALLOBJ"]);
     const debugConfig = await new DebugConfiguration().load();
 
-    let didNotStart = false;
-    connection.sendCommand({
-      command: `/QOpenSys/usr/bin/nohup "${path.posix.join(debugConfig.getRemoteServiceBin(), `startDebugService.sh`)}"`,
-      directory: debugConfig.getRemoteServiceWorkDir()
-    }).then(startResult => {
-      if (startResult.code) {
-        window.showErrorMessage(t("start.debug.service.failed", startResult.stdout || startResult.stderr));
-        didNotStart = true;
-      }
+    const submitOptions = await window.showInputBox({
+      title: t("debug.service.submit.options"),
+      prompt: t("debug.service.submit.options.prompt"),
+      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(*CURRENT)`
     });
 
-    return await new Promise<boolean>(async (done) => {
-      let tries = 0;
-      const intervalId = setInterval(async () => {
-        if (!didNotStart && tries++ < 15) {
-          if (await getDebugServiceJob()) {
-            clearInterval(intervalId);
-            window.showInformationMessage(t("start.debug.service.succeeded"));
-            refreshDebugSensitiveItems();
-            done(true);
+    if (submitOptions) {
+      const submitUser = /USER\(([^)]+)\)/.exec(submitOptions)?.[1]?.toLocaleUpperCase();
+      await connection.checkUserSpecialAuthorities(["*ALLOBJ"], submitUser && submitUser !== "*CURRENT" ? submitUser : undefined);
+      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh')) JOB(DBGSVCE) ${submitOptions}`
+      const submitResult = await connection.runCommand({ command, cwd: debugConfig.getRemoteServiceWorkDir(), noLibList: true });
+      if (submitResult.code === 0) {
+        const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
+        if (submitMessage) {
+          const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
+          if (job) {
+            return await new Promise<boolean>(async (done, failed) => {
+              let tries = 0;
+              const intervalId = setInterval(async () => {
+                if (tries++ < 30) {
+                  const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
+                  if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+                    if (await getDebugServiceJob()) {
+                      clearInterval(intervalId);
+                      window.showInformationMessage(t("start.debug.service.succeeded"));
+                      refreshDebugSensitiveItems();
+                      done(true);
+                    }
+                  } else {
+                    clearInterval(intervalId);
+                    let reason;
+                    if (typeof jobDetail === "object") {
+                      reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
+                    }
+                    else if (jobDetail) {
+                      reason = jobDetail;
+                    }
+                    else {
+                      reason = "job has ended";
+                    }
+                    failed(`Debug Service job ${job} failed: ${reason}.`);
+                  }
+                }
+                else {
+                  clearInterval(intervalId);
+                  done(false);
+                }
+              }, 1000);
+            });
           }
-        } else {
-          clearInterval(intervalId);
-          done(false);
         }
-      }, 1000);
-    });
+      }
+      throw new Error(`Failed to submit Debug Service job: ${submitResult.stderr || submitResult.stdout}`)
+    }
   }
   catch (error) {
     window.showErrorMessage(String(error));
-    return false;
   }
+  return false;
 }
 
 export async function stopService(connection: IBMi) {
