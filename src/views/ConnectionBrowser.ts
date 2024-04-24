@@ -96,8 +96,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         if (newName) {
           try {
             // First rename the connection details
-            const existingConnection = ConnectionManager.getByName(server.name)!;
-            let { index, data } = existingConnection!
+            let { index, data } = ConnectionManager.getByName(server.name)!
             if (index === -1) throw (t(`connectionBrowser.renameConnection.noConnectionFound`, server.name));
             data.name = newName;
             await ConnectionManager.updateByIndex(index, data);
