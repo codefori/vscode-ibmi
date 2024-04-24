@@ -1702,7 +1702,7 @@
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
-					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
+					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled"
 				},
 				{
 					"id": "profilesView",
