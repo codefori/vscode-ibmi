@@ -92,7 +92,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
     const certificatePath = debugConfig.getRemoteServiceCertificatePath();
     const directory = dirname(certificatePath);
     const mkdirResult = await connection.sendCommand({
-      command: `mkdir -p ${directory}`
+      command: `mkdir -p ${directory} && chmod 755 ${directory}` //Certificates folder needs to be accessible by everyone
     });
 
     if (mkdirResult.code && mkdirResult.code > 0) {
@@ -121,7 +121,6 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       try {
         if (!clientCertificate.code) {
           instance.getContent()!.writeStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), Buffer.from(clientCertificate.stdout), "utf-8");
-          await connection.sendCommand({ command: "chmod 444 debug_service.*", directory });
         }
         else {
           throw clientCertificate.stderr;
@@ -143,8 +142,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostName}'`,
         `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out ${CLIENT_CERTIFICATE} -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
         `openssl pkcs12 -export -out ${SERVICE_CERTIFICATE} -inkey debug_service.key -in ${CLIENT_CERTIFICATE} -password pass:${password}`,
-        `rm debug_service.key debug_service.csr`,
-        `chmod 444 debug_service.*`
+        `rm debug_service.key debug_service.csr`
       ];
 
       const creationResults = await connection.sendCommand({
@@ -156,6 +154,8 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         throw new Error(`Failed to create server and client certificate: ${creationResults.stderr}`);
       }
     }
+
+    await connection.sendCommand({ command: "chmod 400 debug_service.pfx && chmod 444 debug_service.crt", directory });
 
     try {
       setProgress("encrypting server certificate password");
@@ -179,7 +179,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         //when the service starts.
         //The certificate path and password are recored in the configuration too, so the service can start only by running the startDebugService.sh script.
         setProgress("updating service configuration");
-        const backupKey = await connection.sendCommand({ command: `cp key.properties ${ENCRYPTION_KEY}`, directory: debugConfig.getRemoteServiceWorkDir() });
+        const backupKey = await connection.sendCommand({ command: `mv key.properties ${ENCRYPTION_KEY} && chmod 400 ${ENCRYPTION_KEY}`, directory: debugConfig.getRemoteServiceWorkDir() });
         if (!backupKey.code) {
           debugConfig.set("JAVA_HOME", javaHome);
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_FILE", certificatePath);
