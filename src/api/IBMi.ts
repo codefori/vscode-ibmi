@@ -1338,7 +1338,7 @@ export default class IBMi {
       `where usr.authorization_name = '${profile}'`
     );
 
-    const userAuthorities = row.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
+    const userAuthorities = row?.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
     const missing = authorities.filter(auth => !userAuthorities.includes(auth));
     if (missing.length) {
       throw new Error(`User ${profile} misses the following special authorities: ${missing.join(", ")}.`);
