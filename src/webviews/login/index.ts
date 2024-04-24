@@ -141,7 +141,7 @@ export class Login {
       // If the user is already connected and trying to connect to a different system, disconnect them first
       if (name !== existingConnection.currentConnectionName) {
         vscode.window.showInformationMessage(`Disconnecting from ${existingConnection.currentHost}.`);
-        if (!disconnect()) return false;
+        if (!await disconnect()) return false;
       }
     }
 
