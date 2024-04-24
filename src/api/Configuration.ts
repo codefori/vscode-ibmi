@@ -59,7 +59,7 @@ export namespace ConnectionManager {
   }
 
   export async function storeNew(data: ConnectionData): Promise<StoredConnection> {
-    let connections = getAll();
+    const connections = getAll();
     const newId = connections.length;
     connections.push(data);
     await setAll(connections);
