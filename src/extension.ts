@@ -36,7 +36,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 
   await loadAllofExtension(context);
   const checkLastConnections = () => {
-    const connections = (ConnectionManager.getAll() || []);
+    const connections = ConnectionManager.getAll();
     const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
     GlobalStorage.get().setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);

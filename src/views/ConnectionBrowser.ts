@@ -261,7 +261,7 @@ class ConnectionBrowser implements vscode.TreeDataProvider<ServerItem> {
 
   async getChildren(): Promise<ServerItem[]> {
     const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
-    return (ConnectionManager.getAll() || [])
+    return ConnectionManager.getAll()
       .map(connection => new ServerItem(connection, connection.name === lastConnection?.name));
   }
 }
