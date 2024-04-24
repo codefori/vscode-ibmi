@@ -510,7 +510,7 @@ export default class IBMiContent {
 
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
-    const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : `*ALL`;
+    const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
@@ -621,7 +621,7 @@ export default class IBMiContent {
       owner: object.OWNER,
     } as IBMiObject))
       .filter(object => !typeFilter || typeFilter(object.type))
-      .filter(object => nameFilter.test(object.name))
+      .filter(object => (nameFilter.test(object.name) && (objectFilter ? object.name.startsWith(objectFilter) : true)))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
           return a.library.localeCompare(b.library)
