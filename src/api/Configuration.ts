@@ -38,11 +38,9 @@ export interface StoredConnection {
 export namespace ConnectionManager {
   export function getByName(name: string): StoredConnection | undefined {
     const connections = getAll();
-    if (connections) {
-      const index = connections.findIndex(conn => conn.name === name);
-      if (index !== -1) {
-        return { index, data: connections[index] };
-      }
+    const index = connections.findIndex(conn => conn.name === name);
+    if (index !== -1) {
+      return { index, data: connections[index] };
     }
   }
 
