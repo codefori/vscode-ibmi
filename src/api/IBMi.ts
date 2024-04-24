@@ -7,7 +7,7 @@ import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
 import { instance } from "../instantiate";
-import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand } from "../typings";
+import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
@@ -1329,7 +1329,7 @@ export default class IBMi {
     };
   }
 
-  async checkUserSpecialAuthorities(authorities: ("*ALLOBJ" | "*AUDIT" | "*IOSYSCFG" | "*JOBCTL" | "*SAVSYS" | "*SECADM" | "*SERVICE" | "*SPLCTL")[], user?: string) {
+  async checkUserSpecialAuthorities(authorities: SpecialAuthorities[], user?: string) {
     const profile = (user || this.currentUser).toLocaleUpperCase();
     const [row] = await this.runSQL(
       `select trim(coalesce(usr.special_authorities,'') concat ' ' concat coalesce(grp.special_authorities, '')) AUTHORITIES ` +
@@ -1340,8 +1340,6 @@ export default class IBMi {
 
     const userAuthorities = row?.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
     const missing = authorities.filter(auth => !userAuthorities.includes(auth));
-    if (missing.length) {
-      throw new Error(`User ${profile} misses the following special authorities: ${missing.join(", ")}.`);
-    }
+    return { valid: !Boolean(missing.length), missing };
   }
 }

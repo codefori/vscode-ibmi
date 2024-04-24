@@ -20,8 +20,14 @@ export async function isSEPSupported() {
 }
 
 export async function startService(connection: IBMi) {
+  const checkAuthority = async (user?: string) => {
+    if (!(await connection.checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+      throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
+    }
+  };
+
   try {
-    await connection.checkUserSpecialAuthorities(["*ALLOBJ"]);
+    await checkAuthority();
     const debugConfig = await new DebugConfiguration().load();
 
     const submitOptions = await window.showInputBox({
@@ -32,7 +38,9 @@ export async function startService(connection: IBMi) {
 
     if (submitOptions) {
       const submitUser = /USER\(([^)]+)\)/.exec(submitOptions)?.[1]?.toLocaleUpperCase();
-      await connection.checkUserSpecialAuthorities(["*ALLOBJ"], submitUser && submitUser !== "*CURRENT" ? submitUser : undefined);
+      if (submitUser && submitUser !== "*CURRENT") {
+        await checkAuthority(submitUser);
+      }
       const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh')) JOB(DBGSVCE) ${submitOptions}`
       const submitResult = await connection.runCommand({ command, cwd: debugConfig.getRemoteServiceWorkDir(), noLibList: true });
       if (submitResult.code === 0) {
