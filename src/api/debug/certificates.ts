@@ -73,6 +73,7 @@ async function getExtFileContent(hostInfo: HostInfo) {
  * @param imported if defined, gives the location and password of a local or remote (i.e. on the IFS) service certificate to import
  */
 export async function setup(connection: IBMi, imported?: ImportedCertificate) {
+  await connection.checkUserSpecialAuthorities(["*ALLOBJ"]);
   await vscode.window.withProgress({ title: "Setup debug service", location: vscode.ProgressLocation.Window }, async (task) => {
     const setProgress = (message: string) => task.report({ message: `${message}...` });
 
