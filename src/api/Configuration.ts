@@ -35,6 +35,8 @@ export interface StoredConnection {
   data: ConnectionData
 };
 
+const getPasswordKey = (connectionName:string) => `${connectionName}_password`;  
+
 export namespace ConnectionManager {
   export function getByName(name: string): StoredConnection | undefined {
     const connections = getAll();
@@ -86,17 +88,17 @@ export namespace ConnectionManager {
   }
 
   export function getStoredPassword(context: vscode.ExtensionContext, connectionName: string) {
-    const connectionKey = `${connectionName}_password`;
+    const connectionKey = getPasswordKey(connectionName);
     return context.secrets.get(connectionKey);
   }
 
   export function setStoredPassword(context: vscode.ExtensionContext, connectionName: string, password: string) {
-    const connectionKey = `${connectionName}_password`;
+    const connectionKey = getPasswordKey(connectionName);
     return context.secrets.store(connectionKey, password);
   }
 
   export function deleteStoredPassword(context: vscode.ExtensionContext, connectionName: string) {
-    const connectionKey = `${connectionName}_password`;
+    const connectionKey = getPasswordKey(connectionName);
     return context.secrets.delete(connectionKey);
   }
 }
