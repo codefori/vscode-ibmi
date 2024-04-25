@@ -133,12 +133,12 @@ export namespace Tools {
           let realValue: string | number | null = strValue.trimEnd();
 
           // is value a number?
-          if (strValue.startsWith(` `)) {
+          if (realValue.startsWith(` `)) {
             const asNumber = Number(strValue.trim());
             if (!isNaN(asNumber)) {
               realValue = asNumber;
             }
-          } else if (strValue === `-`) {
+          } else if (realValue === `-`) {
             realValue = null; //null?
           }
 
@@ -361,7 +361,7 @@ export namespace Tools {
         await vscode.commands.executeCommand(`setContext`, context, true);
         activeContexts.set(context, 0);
       }
-      else{
+      else {
         activeContexts.set(context, stack++);
       }
       return await task();
@@ -369,13 +369,13 @@ export namespace Tools {
     finally {
       let stack = activeContexts.get(context);
       if (stack !== undefined) {
-        if(stack){
+        if (stack) {
           activeContexts.set(context, stack--);
         }
-        else{
+        else {
           await vscode.commands.executeCommand(`setContext`, context, undefined);
           activeContexts.delete(context);
-        }        
+        }
       }
     }
   }
