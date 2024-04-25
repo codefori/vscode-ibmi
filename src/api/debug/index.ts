@@ -100,15 +100,6 @@ export async function initialize(context: ExtensionContext) {
 
             startDebug(instance, debugOpts);
           }
-        } else {
-          if (isManaged()) {
-            vscode.window.showInformationMessage(`Looks like the Debug Service is not setup on this IBM i server. Please contact your system administrator.`);
-          } else {
-            const openTut = await vscode.window.showInformationMessage(`Looks like you do not have the debug PTF installed. Do you want to see the Walkthrough to set it up?`, `Take me there`);
-            if (openTut === `Take me there`) {
-              vscode.commands.executeCommand(`workbench.action.openWalkthrough`, `halcyontechltd.vscode-ibmi-walkthroughs#code-ibmi-debug`);
-            }
-          }
         }
       }
 
