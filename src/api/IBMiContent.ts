@@ -510,7 +510,9 @@ export default class IBMiContent {
 
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
-    const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : `*ALL`;
+    const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
+    const objectNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
+    const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
@@ -518,94 +520,110 @@ export default class IBMiContent {
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
-    const queries: string[] = [];
-
-    if (!sourceFilesOnly) {
-      queries.push(`@DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)`);
-    }
-
-    if (withSourceFiles) {
-      queries.push(`@DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)`);
-    }
-
-    let createOBJLIST;
+    let createOBJLIST: string[];
     if (sourceFilesOnly) {
       //DSPFD only
-      createOBJLIST = `select PHFILE as NAME, ` +
-        `'*FILE' as TYPE, ` +
-        `PHFILA as ATTRIBUTE, ` +
-        `PHTXT as TEXT, ` +
-        `1 as IS_SOURCE, ` +
-        `PHNOMB as NB_MBR, ` +
-        'PHMXRL as SOURCE_LENGTH, ' +
-        'PHCSID as CCSID ' +
-        `from QTEMP.CODE4IFD where PHDTAT = 'S'`;
+      createOBJLIST = [
+        `select `,
+        `  t.SYSTEM_TABLE_NAME as NAME,`,
+        `  '*FILE'             as TYPE,`,
+        `  'PF'                as ATTRIBUTE,`,
+        `  t.TABLE_TEXT        as TEXT,`,
+        `  1                   as IS_SOURCE,`,
+        `  p.NUMBER_PARTITIONS as NB_MBR,`,
+        `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `  c.CCSID             as CCSID`,
+        `from QSYS2.SYSTABLES as t`,
+        `     join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
+        `     join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
+        `where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
+      ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
-      createOBJLIST = `select ODOBNM as NAME, ` +
-        `ODOBTP as TYPE, ` +
-        `ODOBAT as ATTRIBUTE, ` +
-        `ODOBTX as TEXT, ` +
-        `0 as IS_SOURCE, ` +
-        `ODOBSZ as SIZE, ` +
-        `ODCCEN, ` +
-        `ODCDAT, ` +
-        `ODCTIM, ` +
-        `ODLCEN, ` +
-        `ODLDAT, ` +
-        `ODLTIM, ` +
-        `ODOBOW as OWNER, ` +
-        `ODCRTU as CREATED_BY, ` +
-        `ODSIZU as SIZE_IN_UNITS, ` +
-        `ODBPUN as BYTES_PER_UNIT ` +
-        `from QTEMP.CODE4IOBJD`;
+      createOBJLIST = [
+        `select `,
+        `  OBJNAME          as NAME,`,
+        `  OBJTYPE          as TYPE,`,
+        `  OBJATTRIBUTE     as ATTRIBUTE,`,
+        `  OBJTEXT          as TEXT,`,
+        `  0                as IS_SOURCE,`,
+        `  OBJSIZE          as SIZE,`,
+        `  extract(epoch from (OBJCREATED))*1000       as CREATED,`,
+        `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
+        `  OBJOWNER         as OWNER,`,
+        `  OBJDEFINER       as CREATED_BY`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
+      ];
     }
     else {
       //Both DSPOBJD and DSPFD
-      createOBJLIST = `select ODOBNM as NAME, ` +
-        `ODOBTP as TYPE, ` +
-        `ODOBAT as ATTRIBUTE, ` +
-        `ODOBTX as TEXT, ` +
-        `Case When PHDTAT = 'S' Then 1 Else 0 End as IS_SOURCE, ` +
-        `PHNOMB as NB_MBR, ` +
-        'PHMXRL as SOURCE_LENGTH, ' +
-        'PHCSID as CCSID, ' +
-        `ODOBSZ as SIZE, ` +
-        `ODCCEN, ` +
-        `ODCDAT, ` +
-        `ODCTIM, ` +
-        `ODLCEN, ` +
-        `ODLDAT, ` +
-        `ODLTIM, ` +
-        `ODOBOW as OWNER, ` +
-        `ODCRTU as CREATED_BY, ` +
-        `ODSIZU as SIZE_IN_UNITS, ` +
-        `ODBPUN as BYTES_PER_UNIT ` +
-        `from QTEMP.CODE4IOBJD  ` +
-        `left join QTEMP.CODE4IFD on PHFILE = ODOBNM And PHDTAT = 'S'`;
+      createOBJLIST = [
+        `with SRCPF as (`,
+        `  select `,
+        `    t.SYSTEM_TABLE_NAME as NAME,`,
+        `    '*FILE'             as TYPE,`,
+        `    'PF'                as ATTRIBUTE,`,
+        `    t.TABLE_TEXT        as TEXT,`,
+        `    1                   as IS_SOURCE,`,
+        `    p.NUMBER_PARTITIONS as NB_MBR,`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `    c.CCSID             as CCSID`,
+        `  from QSYS2.SYSTABLES as t`,
+        `       join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
+        `       join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
+        `  where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
+        `), OBJD as (`,
+        `  select `,
+        `    OBJNAME           as NAME,`,
+        `    OBJTYPE           as TYPE,`,
+        `    OBJATTRIBUTE      as ATTRIBUTE,`,
+        `    OBJTEXT           as TEXT,`,
+        `    0                 as IS_SOURCE,`,
+        `    OBJSIZE           as SIZE,`,
+        `    extract(epoch from (OBJCREATED))*1000       as CREATED,`,
+        `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
+        `    OBJOWNER          as OWNER,`,
+        `    OBJDEFINER        as CREATED_BY`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `  )`,
+        `select`,
+        `  o.NAME,`,
+        `  o.TYPE,`,
+        `  o.ATTRIBUTE,`,
+        `  o.TEXT,`,
+        `  case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,`,
+        `  s.NB_MBR,`,
+        `  s.SOURCE_LENGTH,`,
+        `  s.CCSID,`,
+        `  o.SIZE,`,
+        `  o.CREATED,`,
+        `  o.CHANGED,`,
+        `  o.OWNER,`,
+        `  o.CREATED_BY`,
+        `from OBJD o left join SRCPF s on o.NAME = s.NAME`,
+      ];
     }
 
-    queries.push(`create table QTEMP.OBJLIST as (${createOBJLIST}) with data`);
+    const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
 
-    const objects = (await this.getQTempTable(queries, "OBJLIST"));
     return objects.map(object => ({
       library,
       name: this.ibmi.sysNameInLocal(String(object.NAME)),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
-      text: String(object.TEXT),
+      text: String(object.TEXT || ""),
       memberCount: object.NB_MBR !== undefined ? Number(object.NB_MBR) : undefined,
       sourceFile: Boolean(object.IS_SOURCE),
       sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
       CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined,
-      size: Number(object.SIZE) !== 9999999999 ? Number(object.SIZE) : Number(object.SIZE_IN_UNITS) * Number(object.BYTES_PER_UNIT),
-      created: this.getDspObjDdDate(String(object.ODCCEN), String(object.ODCDAT), String(object.ODCTIM)),
-      changed: this.getDspObjDdDate(String(object.ODLCEN), String(object.ODLDAT), String(object.ODLTIM)),
+      size: Number(object.SIZE),
+      created: new Date(Number(object.CREATED)),
+      changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
     } as IBMiObject))
       .filter(object => !typeFilter || typeFilter(object.type))
-      .filter(object => nameFilter.test(object.name))
+      .filter(object => objectFilter || nameFilter.test(object.name))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
           return a.library.localeCompare(b.library)
@@ -697,7 +715,7 @@ export default class IBMiContent {
       if (this.config.enableSQL) {
         try {
           results = await this.runSQL(statement);
-        } catch (e) {}; // Ignore errors, will return undefined.
+        } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
         results = await this.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
@@ -892,20 +910,6 @@ export default class IBMiContent {
     return errorsString.split(`\n`)
       .map(error => error.split(':'))
       .map(codeText => ({ code: codeText[0], text: codeText[1] }));
-  }
-
-  /**
-   * @param century; century code (1=20xx, 0=19xx)
-   * @param dateString: string in YYMMDD
-   * @param timeString: string in HHMMSS
-   * @returns date
-   */
-  getDspObjDdDate(century: string = `0`, MMDDYY: string = `010101`, HHMMSS: string = `000000`): Date {
-    let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
-    let YYMMDD: string = MMDDYY.slice(4,).concat(MMDDYY.slice(0, 4));
-    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
-    [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
-    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
   }
 
   /**
