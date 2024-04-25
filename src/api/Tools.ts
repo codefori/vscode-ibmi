@@ -129,16 +129,16 @@ export namespace Tools {
           if (extendedBytes > 0) {
             strValue = strValue.substring(0, strValue.length - extendedBytes);
           }
-
+            
           let realValue: string | number | null = strValue.trimEnd();
 
           // is value a number?
-          if (strValue.startsWith(` `)) {
+          if (realValue.startsWith(` `)) {
             const asNumber = Number(strValue.trim());
             if (!isNaN(asNumber)) {
               realValue = asNumber;
             }
-          } else if (strValue === `-`) {
+          } else if (realValue === `-`) {
             realValue = null; //null?
           }
 
