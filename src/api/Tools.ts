@@ -129,7 +129,7 @@ export namespace Tools {
           if (extendedBytes > 0) {
             strValue = strValue.substring(0, strValue.length - extendedBytes);
           }
-            
+
           let realValue: string | number | null = strValue.trimEnd();
 
           // is value a number?
@@ -361,7 +361,7 @@ export namespace Tools {
         await vscode.commands.executeCommand(`setContext`, context, true);
         activeContexts.set(context, 0);
       }
-      else{
+      else {
         activeContexts.set(context, stack++);
       }
       return await task();
@@ -369,13 +369,13 @@ export namespace Tools {
     finally {
       let stack = activeContexts.get(context);
       if (stack !== undefined) {
-        if(stack){
+        if (stack) {
           activeContexts.set(context, stack--);
         }
-        else{
+        else {
           await vscode.commands.executeCommand(`setContext`, context, undefined);
           activeContexts.delete(context);
-        }        
+        }
       }
     }
   }
