@@ -396,5 +396,7 @@ export const fr: Locale = {
   'remote.certificate.not.found': 'Le certificat du service n\'existe pas',
   'remote.certificate.not.found.detail': '{0} n\'a pas été trouvé dans {1}',
   'local.certificate.not.found': 'Le certificat local n\'existe pas',
-  'local.dont.match.remote': 'Le certificat local ne correspond pas à celui du service'
+  'local.dont.match.remote': 'Le certificat local ne correspond pas à celui du service',
+  'debug.service.submit.options':'Options de soumission du Service de Debug',
+  'debug.service.submit.options.prompt':'Paramètres valides de SBMJOB'
 };
