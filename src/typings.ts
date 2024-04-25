@@ -215,3 +215,5 @@ export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser"
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
+
+export type SpecialAuthorities = "*ALLOBJ" | "*AUDIT" | "*IOSYSCFG" | "*JOBCTL" | "*SAVSYS" | "*SECADM" | "*SERVICE" | "*SPLCTL";

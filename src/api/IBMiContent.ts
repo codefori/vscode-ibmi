@@ -294,7 +294,7 @@ export default class IBMiContent {
    * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
   runSQL(statements: string) {
-    return this.ibmi.runSQL(statements);  
+    return this.ibmi.runSQL(statements);
   }
 
   /**
@@ -931,7 +931,7 @@ export default class IBMiContent {
     })).code === 0;
   }
 
-  async testStreamFile(path: string, right: "r" | "w" | "x") {
+  async testStreamFile(path: string, right: "f" | "d" | "r" | "w" | "x") {
     return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
   }
 

@@ -3,80 +3,12 @@ import { commands, window } from "vscode";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import IBMi from "../IBMi";
-import IBMiContent from "../IBMiContent";
-import * as certificates from "./certificates";
-
-const directory = `/QIBM/ProdData/IBMiDebugService/`;
-const binDirectory = path.posix.join(directory, `bin`);
-const detailFile = `package.json`;
-
-const JavaPaths: { [version: string]: string } = {
-  "8": `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`,
-  "11": `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`
-}
-
-interface DebugServiceDetails {
-  version: string
-  java: string
-  semanticVersion: () => {
-    major: number
-    minor: number
-    patch: number
-  }
-}
-
+import { Tools } from "../Tools";
+import { DebugConfiguration, getDebugServiceDetails } from "./config";
 
 export type DebugJob = {
   name: string
   ports: number[]
-}
-
-let debugServiceDetails: DebugServiceDetails | undefined;
-export function resetDebugServiceDetails() {
-  debugServiceDetails = undefined;
-}
-
-export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
-  const content = instance.getContent()!;
-  if (debugServiceDetails) {
-    return debugServiceDetails;
-  }
-
-  debugServiceDetails = {
-    version: `1.0.0`,
-    java: `8`,
-    semanticVersion: () => ({
-      major: 1,
-      minor: 0,
-      patch: 0
-    })
-  };
-
-  const detailFilePath = path.posix.join(directory, detailFile);
-  const detailExists = await content.testStreamFile(detailFilePath, "r");
-  if (detailExists) {
-    try {
-      const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
-      const parsed = JSON.parse(fileContents);
-      debugServiceDetails = {
-        ...parsed as DebugServiceDetails,
-        semanticVersion: () => {
-          const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
-          return {
-            major: parts[0],
-            minor: parts[1],
-            patch: parts[2]
-          };
-        }
-      }
-    } catch (e) {
-      // Something very very bad has happened
-      window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
-      console.log(e);
-    }
-  }
-
-  return debugServiceDetails;
 }
 
 export function debugPTFInstalled() {
@@ -88,64 +20,83 @@ export async function isSEPSupported() {
 }
 
 export async function startService(connection: IBMi) {
-  const config = connection.config!;
-
-  const env = {
-    MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java],
-    MY_DBGSRV_SEP_DAEMON_PORT: config.debugSepPort,
-    MY_DBGSRV_SECURED_PORT: config.debugPort,
-    DEBUG_SERVICE_KEYSTORE_PASSWORD: connection.currentHost,
-    DEBUG_SERVICE_KEYSTORE_FILE: certificates.getRemoteServerCertificatePath(connection)
-  }
-  const encryptResult = await connection.sendCommand({
-    command: `${path.posix.join(binDirectory, `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
-    env
-  });
-
-  if (encryptResult.code === 0) {
-    env.DEBUG_SERVICE_KEYSTORE_PASSWORD = encryptResult.stdout;
-  } else {
-    // Nice error text comes through as stdout.
-    // Real error comes through in stderr.
-    throw new Error(encryptResult.stdout || encryptResult.stderr);
-  }
-
-  let didNotStart = false;
-  connection.sendCommand({
-    command: `/QOpenSys/usr/bin/nohup "${path.posix.join(binDirectory, `startDebugService.sh`)}"`,
-    env
-  }).then(startResult => {
-    if (startResult.code) {
-      window.showErrorMessage(t("start.debug.service.failed", startResult.stdout || startResult.stderr));
-      didNotStart = true;
+  const checkAuthority = async (user?: string) => {
+    if (!(await connection.checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+      throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
     }
-  });
+  };
 
+  try {
+    await checkAuthority();
+    const debugConfig = await new DebugConfiguration().load();
 
-  return await new Promise<boolean>(async (done) => {
-    let tries = 0;
-    const intervalId = setInterval(async () => {
-      if (!didNotStart && tries++ < 15) {
-        if (await getDebugServiceJob()) {
-          clearInterval(intervalId);
-          window.showInformationMessage(t("start.debug.service.succeeded"));
-          refreshDebugSensitiveItems();
-          done(true);
-        }
-      } else {
-        clearInterval(intervalId);
-        done(false);
+    const submitOptions = await window.showInputBox({
+      title: t("debug.service.submit.options"),
+      prompt: t("debug.service.submit.options.prompt"),
+      value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(*CURRENT)`
+    });
+
+    if (submitOptions) {
+      const submitUser = /USER\(([^)]+)\)/.exec(submitOptions)?.[1]?.toLocaleUpperCase();
+      if (submitUser && submitUser !== "*CURRENT") {
+        await checkAuthority(submitUser);
       }
-    }, 1000);
-  });
+      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh')) JOB(DBGSVCE) ${submitOptions}`
+      const submitResult = await connection.runCommand({ command, cwd: debugConfig.getRemoteServiceWorkDir(), noLibList: true });
+      if (submitResult.code === 0) {
+        const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
+        if (submitMessage) {
+          const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
+          if (job) {
+            return await new Promise<boolean>(async (done, failed) => {
+              let tries = 0;
+              const intervalId = setInterval(async () => {
+                if (tries++ < 30) {
+                  const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
+                  if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+                    if (await getDebugServiceJob()) {
+                      clearInterval(intervalId);
+                      window.showInformationMessage(t("start.debug.service.succeeded"));
+                      refreshDebugSensitiveItems();
+                      done(true);
+                    }
+                  } else {
+                    clearInterval(intervalId);
+                    let reason;
+                    if (typeof jobDetail === "object") {
+                      reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
+                    }
+                    else if (jobDetail) {
+                      reason = jobDetail;
+                    }
+                    else {
+                      reason = "job has ended";
+                    }
+                    failed(`Debug Service job ${job} failed: ${reason}.`);
+                  }
+                }
+                else {
+                  clearInterval(intervalId);
+                  done(false);
+                }
+              }, 1000);
+            });
+          }
+        }
+      }
+      throw new Error(`Failed to submit Debug Service job: ${submitResult.stderr || submitResult.stdout}`)
+    }
+  }
+  catch (error) {
+    window.showErrorMessage(String(error));
+  }
+  return false;
 }
 
 export async function stopService(connection: IBMi) {
+  const debugConfig = await new DebugConfiguration().load();
   const endResult = await connection.sendCommand({
-    command: `${path.posix.join(binDirectory, `stopDebugService.sh`)}`,
-    env: {
-      MY_JAVA_HOME: JavaPaths[(await getDebugServiceDetails()).java]
-    }
+    command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`
   });
 
   if (!endResult.code) {
@@ -159,9 +110,9 @@ export async function stopService(connection: IBMi) {
 }
 
 export async function getDebugServiceJob() {
-  const content = instance.getContent();
-  if (content) {
-    const rows = await content.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${content.ibmi.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only)`);
+  const connection = instance.getConnection();
+  if (connection) {
+    const rows = await connection.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only)`);
     if (rows && rows.length) {
       return {
         name: String(rows[0].JOB_NAME),
@@ -172,9 +123,9 @@ export async function getDebugServiceJob() {
 }
 
 export async function getDebugServerJob() {
-  const content = instance.getContent();
-  if (content) {
-    const [row] = await content.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`);
+  const connection = instance.getConnection();
+  if (connection) {
+    const [row] = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info where cast(local_port_name as VarChar(14) CCSID 37) = 'is-debug-ile' fetch first row only`);
     if (row) {
       return {
         name: String(row.JOB_NAME),
@@ -187,14 +138,14 @@ export async function getDebugServerJob() {
 /**
  * Gets a list of debug jobs stuck at MSGW in QSYSWRK
  */
-export async function getStuckJobs(userProfile: string, content: IBMiContent): Promise<string[]> {
+export async function getStuckJobs(connection: IBMi): Promise<string[]> {
   const sql = [
     `SELECT JOB_NAME`,
-    `FROM TABLE(QSYS2.ACTIVE_JOB_INFO(SUBSYSTEM_LIST_FILTER => 'QSYSWRK', CURRENT_USER_LIST_FILTER => '${userProfile.toUpperCase()}')) X`,
+    `FROM TABLE(QSYS2.ACTIVE_JOB_INFO(SUBSYSTEM_LIST_FILTER => 'QSYSWRK', CURRENT_USER_LIST_FILTER => '${connection.currentUser.toUpperCase()}')) X`,
     `where JOB_STATUS = 'MSGW'`,
   ].join(` `);
 
-  const jobs = await content.runSQL(sql);
+  const jobs = await connection.runSQL(sql);
   return jobs.map(row => String(row.JOB_NAME));
 }
 
@@ -240,28 +191,24 @@ export async function stopServer() {
   return true;
 }
 
-export function getServiceConfigurationFile() {
-  return path.posix.join(binDirectory, "DebugService.env");
-}
-
 export function refreshDebugSensitiveItems() {
   commands.executeCommand("code-for-ibmi.updateConnectedBar");
   commands.executeCommand("code-for-ibmi.debug.refresh");
 }
 
-export async function readActiveJob(content: IBMiContent, job: DebugJob) {
+export async function readActiveJob(connection: IBMi, job: DebugJob) {
   try {
-    return (await content.runSQL(
-      `select job_name_short, job_user, job_number, subsystem_library_name || '/' || subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
+    return (await connection.runSQL(
+      `select job_name_short, job_user, job_number, subsystem_library_name concat '/' concat subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
     )).at(0);
   } catch (error) {
     return String(error);
   }
 }
 
-export async function readJVMInfo(content: IBMiContent, job: DebugJob) {
+export async function readJVMInfo(connection: IBMi, job: DebugJob) {
   try {
-    return (await content.runSQL(`
+    return (await connection.runSQL(`
       select START_TIME, JAVA_HOME, USER_DIRECTORY, CURRENT_HEAP_SIZE, MAX_HEAP_SIZE
       from QSYS2.JVM_INFO
       where job_name = '${job.name}'
