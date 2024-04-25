@@ -1364,7 +1364,7 @@
 			{
 				"command": "code-for-ibmi.removeIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Remove",
+				"title": "Remove Shortcut...",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
