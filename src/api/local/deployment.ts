@@ -258,11 +258,11 @@ export namespace Deployment {
    * 
    * @returns `true` if the default CCSID of IFS files is not 1208.
    */
-  async function mustFixCCSID() {    
+  async function mustFixCCSID() {
     if (fixCCSID === undefined) {
       const connection = getConnection();
-      fixCCSID = Boolean(connection.remoteFeatures.attr) && 
-          Boolean(connection.remoteFeatures.setccsid) &&
+      fixCCSID = Boolean(connection.remoteFeatures.attr) &&
+        Boolean(connection.remoteFeatures.setccsid) &&
         (await connection.sendCommand({ command: `touch codeforiccsidtest && ${connection.remoteFeatures.attr} codeforiccsidtest CCSID && rm codeforiccsidtest` })).stdout !== "1208";
     }
 
