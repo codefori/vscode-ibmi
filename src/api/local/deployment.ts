@@ -234,7 +234,7 @@ export namespace Deployment {
 
       if (await mustFixCCSID()) {
         progress?.report({ message: 'Fixing files CCSID...' });
-        const fix = await connection.sendCommand({ command: `setccsid -R 1208 ${parameters.remotePath}` });
+        const fix = await connection.sendCommand({ command: `${connection.remoteFeatures.setccsid} -R 1208 ${parameters.remotePath}` });
         if (fix.code === 0) {
           deploymentLog.appendLine(`Deployed files' CCSID set to 1208`);
         }
@@ -258,9 +258,12 @@ export namespace Deployment {
    * 
    * @returns `true` if the default CCSID of IFS files is not 1208.
    */
-  async function mustFixCCSID() {
+  async function mustFixCCSID() {    
     if (fixCCSID === undefined) {
-      fixCCSID = (await getConnection().sendCommand({ command: 'touch codeforiccsidtest && attr codeforiccsidtest CCSID && rm codeforiccsidtest' })).stdout !== "1208";
+      const connection = getConnection();
+      fixCCSID = Boolean(connection.remoteFeatures.attr) && 
+          Boolean(connection.remoteFeatures.setccsid) &&
+        (await connection.sendCommand({ command: `touch codeforiccsidtest && ${connection.remoteFeatures.attr} codeforiccsidtest CCSID && rm codeforiccsidtest` })).stdout !== "1208";
     }
 
     return fixCCSID;
