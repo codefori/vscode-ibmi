@@ -481,7 +481,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
         "subType": "batch",
         "library": options.library.toUpperCase(),
         "program": options.object.toUpperCase(),
-        "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF)`,
+        "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF) CPYENVVAR(*YES)`,
         "updateProductionFiles": updateProductionFiles,
         "trace": enableDebugTracing,
       };
