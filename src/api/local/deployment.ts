@@ -23,6 +23,8 @@ export namespace Deployment {
   export const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
   export const workspaceChanges: Map<vscode.WorkspaceFolder, Map<string, vscode.Uri>> = new Map;
 
+  let fixCCSID: boolean | undefined;
+
   export function initialize(context: vscode.ExtensionContext) {
     button.command = {
       command: `code-for-ibmi.launchDeploy`,
@@ -89,6 +91,7 @@ export namespace Deployment {
     });
 
     instance.onEvent("disconnected", () => {
+      fixCCSID = undefined;
       button.hide();
     })
   }
@@ -228,6 +231,17 @@ export namespace Deployment {
       tar.t({ sync: true, file: localTarball.name, onentry: entry => entries.push(entry.path) });
       deploymentLog.appendLine(`${entries.length} file(s) uploaded to ${parameters.remotePath}`);
       entries.sort().map(e => `\t${e}`).forEach(deploymentLog.appendLine);
+
+      if (await mustFixCCSID()) {
+        progress?.report({ message: 'Fixing files CCSID...' });
+        const fix = await connection.sendCommand({ command: `${connection.remoteFeatures.setccsid} -R 1208 ${parameters.remotePath}` });
+        if (fix.code === 0) {
+          deploymentLog.appendLine(`Deployed files' CCSID set to 1208`);
+        }
+        else {
+          deploymentLog.appendLine(`Failed to set deployed files' CCSID to 1208: ${fix.stderr}`);
+        }
+      }
     }
     finally {
       deploymentLog.appendLine('');
@@ -237,5 +251,21 @@ export namespace Deployment {
       localTarball.removeCallback();
       deploymentLog.appendLine(`${localTarball.name} deleted`);
     }
+  }
+
+  /**
+   * Check if default CCSID of created/deployed files is not 1208 (utf-8).
+   * 
+   * @returns `true` if the default CCSID of IFS files is not 1208.
+   */
+  async function mustFixCCSID() {
+    if (fixCCSID === undefined) {
+      const connection = getConnection();
+      fixCCSID = Boolean(connection.remoteFeatures.attr) &&
+        Boolean(connection.remoteFeatures.setccsid) &&
+        (await connection.sendCommand({ command: `touch codeforiccsidtest && ${connection.remoteFeatures.attr} codeforiccsidtest CCSID && rm codeforiccsidtest` })).stdout !== "1208";
+    }
+
+    return fixCCSID;
   }
 }
