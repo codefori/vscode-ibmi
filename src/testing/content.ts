@@ -1,4 +1,5 @@
 import assert from "assert";
+import { posix } from "path";
 import tmp from 'tmp';
 import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
@@ -58,8 +59,8 @@ export const ContentSuite: TestSuite = {
         const config = instance.getConfig();
         const connection = instance.getConnection();
         const tempLib = config!.tempLibrary,
-              tempSPF = `O_ABC`.concat(connection!.variantChars.local),
-              tempMbr = `O_ABC`.concat(connection!.variantChars.local);
+          tempSPF = `O_ABC`.concat(connection!.variantChars.local),
+          tempMbr = `O_ABC`.concat(connection!.variantChars.local);
 
         const result = await connection!.runCommand({
           command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(${tempMbr})`,
@@ -135,7 +136,7 @@ export const ContentSuite: TestSuite = {
         const config = instance.getConfig();
         const connection = instance.getConnection();
         const tempLib = config!.tempLibrary,
-              tempObj = `O_ABC`.concat(connection!.variantChars.local);
+          tempObj = `O_ABC`.concat(connection!.variantChars.local);
 
         await connection!.runCommand({
           command: `CRTDTAARA ${tempLib}/${tempObj} TYPE(*CHAR)`,
@@ -649,7 +650,7 @@ export const ContentSuite: TestSuite = {
       name: `To CL`, test: async () => {
         const command = instance.getContent()!.toCl("TEST", {
           ZERO: 0,
-          NONE:'*NONE',
+          NONE: '*NONE',
           EMPTY: `''`,
           OBJNAME: `OBJECT`,
           OBJCHAR: `ObJect`,
@@ -687,7 +688,7 @@ export const ContentSuite: TestSuite = {
       name: `Check getMemberInfo`, test: async () => {
         const content = instance.getContent();
 
-        const memberInfoA = await content?.getMemberInfo(`QSYSINC`, `H`, `MATH` );
+        const memberInfoA = await content?.getMemberInfo(`QSYSINC`, `H`, `MATH`);
         assert.ok(memberInfoA);
         assert.strictEqual(memberInfoA?.library === `QSYSINC`, true);
         assert.strictEqual(memberInfoA?.file === `H`, true);
@@ -695,7 +696,7 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(memberInfoA?.extension === `C`, true);
         assert.strictEqual(memberInfoA?.text === `STANDARD HEADER FILE MATH`, true);
 
-        const memberInfoB = await content?.getMemberInfo(`QSYSINC`, `H`, `MEMORY` );
+        const memberInfoB = await content?.getMemberInfo(`QSYSINC`, `H`, `MEMORY`);
         assert.ok(memberInfoB);
         assert.strictEqual(memberInfoB?.library === `QSYSINC`, true);
         assert.strictEqual(memberInfoB?.file === `H`, true);
@@ -703,7 +704,7 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(memberInfoB?.extension === `CPP`, true);
         assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
 
-        const memberInfoC = await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO` );
+        const memberInfoC = await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`);
         assert.ok(!memberInfoC);
       }
     },
@@ -744,7 +745,7 @@ export const ContentSuite: TestSuite = {
         await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/TABTEST) RCDLEN(112)`, noLibList: true });
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/TABTEST) MBR(THEBADONE) SRCTYPE(HELLO)` });
 
-        const theBadOneUri = getMemberUri({library: tempLib, file: `TABTEST`, name: `THEBADONE`, extension: `HELLO`});
+        const theBadOneUri = getMemberUri({ library: tempLib, file: `TABTEST`, name: `THEBADONE`, extension: `HELLO` });
 
         // We have to read it first to create the alias!
         await workspace.fs.readFile(theBadOneUri);
@@ -753,9 +754,42 @@ export const ContentSuite: TestSuite = {
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
         const fileContent = new TextDecoder().decode(memberContentBuf)
-        
+
         assert.strictEqual(fileContent, lines);
 
+      }
+    },
+    {
+      name: `Get attributes`, test: async () => {
+        const connection = instance.getConnection()!;
+        const content = instance.getContent()!;
+        connection.withTempDirectory(async directory => {
+          assert.strictEqual((await connection.sendCommand({ command: 'echo "I am a test file" > test.txt', directory })).code, 0);
+          const fileAttributes = await content.getAttributes(posix.join(directory, 'test.txt'), 'DATA_SIZE', 'OBJTYPE');
+          assert.ok(fileAttributes);
+          assert.strictEqual(fileAttributes.OBJTYPE, '*STMF');
+          assert.strictEqual(fileAttributes.DATA_SIZE, '17');
+
+          const directoryAttributes = await content.getAttributes(directory, 'DATA_SIZE', 'OBJTYPE');
+          assert.ok(directoryAttributes);
+          assert.strictEqual(directoryAttributes.OBJTYPE, '*DIR');
+          assert.strictEqual(directoryAttributes.DATA_SIZE, '8192');
+        });
+
+        const qsysLibraryAttributes = await content.getAttributes('/QSYS.LIB/QSYSINC.LIB', 'ASP', 'OBJTYPE');
+        assert.ok(qsysLibraryAttributes);
+        assert.strictEqual(qsysLibraryAttributes.OBJTYPE, '*LIB');
+        assert.strictEqual(qsysLibraryAttributes.ASP, '1');
+
+        const qsysFileAttributes = await content.getAttributes('/QSYS.LIB/QSYSINC.LIB/H.FILE', 'ASP', 'OBJTYPE');
+        assert.ok(qsysFileAttributes);
+        assert.strictEqual(qsysFileAttributes.OBJTYPE, '*FILE');
+        assert.strictEqual(qsysFileAttributes.ASP, '1');
+
+        const qsysMemberAttributes = await content.getAttributes('/QSYS.LIB/QSYSINC.LIB/H.FILE/MATH.MBR', 'ASP', 'OBJTYPE');
+        assert.ok(qsysMemberAttributes);
+        assert.strictEqual(qsysMemberAttributes.OBJTYPE, '*MBR');
+        assert.strictEqual(qsysMemberAttributes.ASP, '1');
       }
     }
   ]

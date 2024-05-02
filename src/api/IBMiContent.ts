@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import util from 'util';
 import { window } from 'vscode';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
-import { CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
@@ -978,5 +978,18 @@ export default class IBMiContent {
     }
 
     return cl;
+  }
+
+  async getAttributes(path: string, ...operands: AttrOperands[]) {
+    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${path} ${operands.join(" ")}` });
+    if (result.code === 0) {
+      return result.stdout
+        .split('\n')
+        .map(line => line.split('='))
+        .reduce((attributes, [key, value]) => {
+          attributes[key] = value;
+          return attributes;
+        }, {} as Record<string, string>)
+    }
   }
 }
