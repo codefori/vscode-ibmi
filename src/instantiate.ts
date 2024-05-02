@@ -7,7 +7,8 @@ import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeFo
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
-import { debugPTFInstalled, getDebugServiceDetails, isDebugEngineRunning } from './api/debug/server';
+import { getDebugServiceDetails } from './api/debug/config';
+import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";

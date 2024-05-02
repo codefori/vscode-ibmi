@@ -220,3 +220,5 @@ export interface WrapResult {
   newStatements: string[];
   outStmf: string;
 }
+
+export type SpecialAuthorities = "*ALLOBJ" | "*AUDIT" | "*IOSYSCFG" | "*JOBCTL" | "*SAVSYS" | "*SECADM" | "*SERVICE" | "*SPLCTL";
