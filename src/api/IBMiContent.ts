@@ -502,7 +502,7 @@ export default class IBMiContent {
    * @param sortOrder
    * @returns an array of IBMiObject
    */
-  async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
+  async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType, detailed?: boolean }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const library = this.ibmi.upperCaseName(filters.library);
     if (!await this.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
       throw new Error(`Library ${library} does not exist.`);
@@ -530,12 +530,12 @@ export default class IBMiContent {
         `  'PF'                as ATTRIBUTE,`,
         `  t.TABLE_TEXT        as TEXT,`,
         `  1                   as IS_SOURCE,`,
-        // `  p.NUMBER_PARTITIONS as NB_MBR,`,
+        (filters.detailed ? `  p.NUMBER_PARTITIONS as NB_MBR,` : ``),
+        (filters.detailed ? `  c.CCSID             as CCSID,` : ``),
         `  t.ROW_LENGTH        as SOURCE_LENGTH`,
-        // `  c.CCSID             as CCSID`,
         `from QSYS2.SYSTABLES as t`,
-        // `     join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
-        // `     join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
+        (filters.detailed ? `     join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )` : ``),
+        (filters.detailed ? `     join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )` : ``),
         `where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
       ];
     } else if (!withSourceFiles) {
@@ -565,12 +565,12 @@ export default class IBMiContent {
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
         `    1                   as IS_SOURCE,`,
-        // `    p.NUMBER_PARTITIONS as NB_MBR,`,
+        (filters.detailed ? `    p.NUMBER_PARTITIONS as NB_MBR,` : ``),
+        (filters.detailed ? `    c.CCSID             as CCSID,` : ``),
         `    t.ROW_LENGTH        as SOURCE_LENGTH`,
-        // `    c.CCSID             as CCSID`,
         `  from QSYS2.SYSTABLES as t`,
-        // `       join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
-        // `       join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
+        (filters.detailed ? `       join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )` : ``),
+        (filters.detailed ? `       join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )` : ``),
         `  where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
         `), OBJD as (`,
         `  select `,
