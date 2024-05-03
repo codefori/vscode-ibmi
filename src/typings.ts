@@ -1,5 +1,5 @@
 import { Ignore } from 'ignore';
-import { ProviderResult, Range, ThemeColor, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
+import { MarkdownString, ProviderResult, Range, ThemeColor, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
 import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
@@ -188,6 +188,7 @@ export class BrowserItem extends TreeItem {
   getChildren?(): ProviderResult<BrowserItem[]>;
   refresh?(): void;
   reveal?(options?: FocusOptions): Thenable<void>;
+  getToolTip?(): Promise<MarkdownString | undefined>;
 }
 
 export interface FilteredItem {
