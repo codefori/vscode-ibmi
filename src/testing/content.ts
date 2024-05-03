@@ -440,7 +440,6 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(containsNonPgms, false);
       }
     },
-
     {
       name: `Test getObjectList (source files only)`, test: async () => {
         const content = instance.getContent();
@@ -454,6 +453,41 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(containsNonFiles, false);
       }
     },
+
+    {
+      name: `Test getObjectList (source files only, detailed)`, test: async () => {
+        const content = instance.getContent();
+
+        const objectsA = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`] });
+
+        assert.ok(objectsA?.every(obj => obj.memberCount === undefined));
+        assert.ok(objectsA?.every(obj => obj.CCSID === undefined));
+
+        const objectsB = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`], detailed: true });
+
+        assert.ok(objectsB?.every(obj => obj.memberCount !== undefined));
+        assert.ok(objectsB?.every(obj => obj.CCSID !== undefined));
+      }
+    },
+
+    {
+      name: `Test getObjectList (single source file only, detailed)`, test: async () => {
+        const content = instance.getContent();
+
+        const objectsA = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`], object: `MIH` });
+
+        assert.strictEqual(objectsA?.length, 1);
+        assert.ok(objectsA?.every(obj => obj.memberCount === undefined));
+        assert.ok(objectsA?.every(obj => obj.CCSID === undefined));
+
+        const objectsB = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`], object: `MIH`, detailed: true });
+
+        assert.strictEqual(objectsB?.length, 1);
+        assert.ok(objectsB?.every(obj => obj.memberCount !== undefined));
+        assert.ok(objectsB?.every(obj => obj.CCSID !== undefined));
+      }
+    },
+
     {
       name: `Test getObjectList (source files only, named filter)`, test: async () => {
         const content = instance.getContent();
