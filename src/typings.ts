@@ -105,9 +105,7 @@ export interface IBMiObject extends QsysPath {
   text: string,
   sourceFile?: boolean
   attribute?: string,
-  memberCount?: number
   sourceLength?: number
-  CCSID?: number
   size?: number
   created?: Date
   changed?: Date

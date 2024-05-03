@@ -313,27 +313,16 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
 
   async getToolTip() {
     const content = getContent();
-    const [detail] = await content.getObjectList({
-      library: this.object.library,
-      object: this.object.name,
-      types: [`*SRCPF`],
-      detailed: true
-    });
+    const tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+      text: this.object.text,
+      members: await content.countMembers(this.object),
+      length: this.object.sourceLength,
+      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?'
+    }));
 
-    if (detail) {
-      const tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-        text: detail.text,
-        members: detail.memberCount,
-        length: detail.sourceLength,
-        CCSID: detail.CCSID
-      }));
+    tooltip.supportHtml = true;
 
-      tooltip.supportHtml = true;
-
-      return tooltip;
-    }
-
-    return undefined;
+    return tooltip;
   }
 }
 
