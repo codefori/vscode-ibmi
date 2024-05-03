@@ -144,6 +144,14 @@ class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
   getParent(element: BrowserItem): vscode.ProviderResult<BrowserItem> {
     return element.parent;
   }
+
+  async resolveTreeItem(item: vscode.TreeItem, element: BrowserItem, token: vscode.CancellationToken): Promise<BrowserItem> {
+    if (element.getToolTip) {
+      element.tooltip = await element.getToolTip();
+    }
+
+    return element;
+  }
 }
 
 class CreateFilterItem extends BrowserItem {
@@ -218,13 +226,6 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
     this.updateDescription();
 
     this.path = [object.library, object.name].join(`/`);
-    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      text: object.text,
-      members: object.memberCount,
-      length: object.sourceLength,
-      CCSID: object.CCSID
-    }));
-    this.tooltip.supportHtml = true;
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -308,6 +309,31 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
 
   async delete() {
     return deleteObject(this.object);
+  }
+
+  async getToolTip() {
+    const content = getContent();
+    const [detail] = await content.getObjectList({
+      library: this.object.library,
+      object: this.object.name,
+      types: [`*SRCPF`],
+      detailed: true
+    });
+
+    if (detail) {
+      const tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
+        text: detail.text,
+        members: detail.memberCount,
+        length: detail.sourceLength,
+        CCSID: detail.CCSID
+      }));
+
+      tooltip.supportHtml = true;
+
+      return tooltip;
+    }
+
+    return undefined;
   }
 }
 
