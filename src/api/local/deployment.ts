@@ -104,6 +104,14 @@ export namespace Deployment {
     return connection;
   }
 
+  export function getContent() {
+    const content = instance.getContent();
+    if (!content) {
+      throw new Error("Please connect to an IBM i");
+    }
+    return content;
+  }
+
   export async function createRemoteDirectory(remotePath: string) {
     return await getConnection().sendCommand({
       command: `mkdir -p "${remotePath}"`

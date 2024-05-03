@@ -1,4 +1,5 @@
 import assert from "assert";
+import { randomInt } from "crypto";
 import { posix } from "path";
 import tmp from 'tmp';
 import util, { TextDecoder } from 'util';
@@ -454,23 +455,6 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(containsNonFiles, false);
       }
     },
-
-    {
-      name: `Test getObjectList (source files only, detailed)`, test: async () => {
-        const content = instance.getContent();
-
-        const objectsA = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`] });
-
-        assert.ok(objectsA?.every(obj => obj.memberCount === undefined));
-        assert.ok(objectsA?.every(obj => obj.CCSID === undefined));
-
-        const objectsB = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`], detailed: true });
-
-        assert.ok(objectsB?.every(obj => obj.memberCount !== undefined));
-        assert.ok(objectsB?.every(obj => obj.CCSID !== undefined));
-      }
-    },
-
     {
       name: `Test getObjectList (single source file only, detailed)`, test: async () => {
         const content = instance.getContent();
@@ -478,14 +462,6 @@ export const ContentSuite: TestSuite = {
         const objectsA = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`], object: `MIH` });
 
         assert.strictEqual(objectsA?.length, 1);
-        assert.ok(objectsA?.every(obj => obj.memberCount === undefined));
-        assert.ok(objectsA?.every(obj => obj.CCSID === undefined));
-
-        const objectsB = await content?.getObjectList({ library: `QSYSINC`, types: [`*SRCPF`], object: `MIH`, detailed: true });
-
-        assert.strictEqual(objectsB?.length, 1);
-        assert.ok(objectsB?.every(obj => obj.memberCount !== undefined));
-        assert.ok(objectsB?.every(obj => obj.CCSID !== undefined));
       }
     },
 
@@ -781,15 +757,51 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(qsysLibraryAttributes.OBJTYPE, '*LIB');
         assert.strictEqual(qsysLibraryAttributes.ASP, '1');
 
-        const qsysFileAttributes = await content.getAttributes('/QSYS.LIB/QSYSINC.LIB/H.FILE', 'ASP', 'OBJTYPE');
+        const qsysFileAttributes = await content.getAttributes({ library: "QSYSINC", name: "H" }, 'ASP', 'OBJTYPE');
         assert.ok(qsysFileAttributes);
         assert.strictEqual(qsysFileAttributes.OBJTYPE, '*FILE');
         assert.strictEqual(qsysFileAttributes.ASP, '1');
 
-        const qsysMemberAttributes = await content.getAttributes('/QSYS.LIB/QSYSINC.LIB/H.FILE/MATH.MBR', 'ASP', 'OBJTYPE');
+        const qsysMemberAttributes = await content.getAttributes({ library: "QSYSINC", name: "H", member: "MATH" }, 'ASP', 'OBJTYPE');
         assert.ok(qsysMemberAttributes);
         assert.strictEqual(qsysMemberAttributes.OBJTYPE, '*MBR');
         assert.strictEqual(qsysMemberAttributes.ASP, '1');
+      }
+    },
+    {
+      name: `Test count members`, test: async () => {
+        const connection = instance.getConnection()!;
+        const content = instance.getContent()!;
+        const tempLib = connection.config?.tempLibrary;
+        if (tempLib) {
+          const file = Tools.makeid(8);
+          const deleteSPF = async () => await connection.runCommand({ command: `DLTF FILE(${tempLib}/${file})`, noLibList: true });
+          await deleteSPF();
+          const createSPF = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
+          if (createSPF.code === 0) {
+            try {
+              const expectedCount = randomInt(5, 10);
+              for (let i = 0; i < expectedCount; i++) {
+                const createMember = await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(MEMBER${i}) SRCTYPE(TXT)` });
+                if (createMember.code) {
+                  throw new Error(`Failed to create member ${tempLib}/${file},MEMBER${i}: ${createMember.stderr}`);
+                }
+              }
+
+              const count = await content.countMembers({ library: tempLib, name: file });
+              assert.strictEqual(count, expectedCount);
+            }
+            finally {
+              await deleteSPF();
+            }
+          }
+          else {
+            throw new Error(`Failed to create source physical file ${tempLib}/${file}: ${createSPF.stderr}`);
+          }
+        }
+        else {
+          throw new Error("No temporary library defined in configuration");
+        }
       }
     }
   ]
