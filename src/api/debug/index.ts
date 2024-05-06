@@ -471,7 +471,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       const debugConfig = {
         "type": `IBMiDebug`,
         "request": `launch`,
-        "name": `Remote debug: Launch a batch debug session`,
+        "name": `IBM i batch debug: program ${options.library.toUpperCase()}/${options.object.toUpperCase()}`,
         "user": connection!.currentUser.toUpperCase(),
         "password": options.password,
         "host": connection!.currentHost,
