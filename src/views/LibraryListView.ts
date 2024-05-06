@@ -4,7 +4,7 @@ import { instance } from "../instantiate";
 import { t } from "../locale";
 import { WithLibrary } from "../typings";
 
-export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode>{
+export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode> {
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
   readonly onDidChangeTreeData: vscode.Event<LibraryListNode | undefined | null | void> = this._emitter.event;;
 
@@ -312,7 +312,7 @@ async function changeCurrentLibrary(library: string) {
   const config = instance.getConfig();
   const storage = instance.getStorage();
   if (connection && config && storage) {
-    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${library}` });
+    const commandResult = await connection.runCommand({ command: `CHGCURLIB ${library}`, noLibList: true });
     if (commandResult.code === 0) {
       const currentLibrary = connection.upperCaseName(config.currentLibrary);
       config.currentLibrary = library;
