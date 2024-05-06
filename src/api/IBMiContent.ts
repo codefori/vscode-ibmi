@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import util from 'util';
 import { window } from 'vscode';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
-import { CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
@@ -530,12 +530,8 @@ export default class IBMiContent {
         `  'PF'                as ATTRIBUTE,`,
         `  t.TABLE_TEXT        as TEXT,`,
         `  1                   as IS_SOURCE,`,
-        `  p.NUMBER_PARTITIONS as NB_MBR,`,
-        `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
-        `  c.CCSID             as CCSID`,
+        `  t.ROW_LENGTH        as SOURCE_LENGTH`,
         `from QSYS2.SYSTABLES as t`,
-        `     join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
-        `     join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
         `where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
       ];
     } else if (!withSourceFiles) {
@@ -565,12 +561,8 @@ export default class IBMiContent {
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
         `    1                   as IS_SOURCE,`,
-        `    p.NUMBER_PARTITIONS as NB_MBR,`,
-        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
-        `    c.CCSID             as CCSID`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
-        `       join QSYS2.SYSTABLESTAT as p on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME ) = ( p.SYSTEM_TABLE_SCHEMA, p.SYSTEM_TABLE_NAME )`,
-        `       join QSYS2.SYSCOLUMNS as c on ( t.SYSTEM_TABLE_SCHEMA, t.SYSTEM_TABLE_NAME, 3 ) = ( c.SYSTEM_TABLE_SCHEMA, c.SYSTEM_TABLE_NAME, c.ORDINAL_POSITION )`,
         `  where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
         `), OBJD as (`,
         `  select `,
@@ -592,9 +584,7 @@ export default class IBMiContent {
         `  o.ATTRIBUTE,`,
         `  o.TEXT,`,
         `  case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,`,
-        `  s.NB_MBR,`,
         `  s.SOURCE_LENGTH,`,
-        `  s.CCSID,`,
         `  o.SIZE,`,
         `  o.CREATED,`,
         `  o.CHANGED,`,
@@ -612,10 +602,8 @@ export default class IBMiContent {
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT || ""),
-      memberCount: object.NB_MBR !== undefined ? Number(object.NB_MBR) : undefined,
       sourceFile: Boolean(object.IS_SOURCE),
       sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
-      CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined,
       size: Number(object.SIZE),
       created: new Date(Number(object.CREATED)),
       changed: new Date(Number(object.CHANGED)),
@@ -978,5 +966,27 @@ export default class IBMiContent {
     }
 
     return cl;
+  }
+
+  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
+    const target = (path = typeof path === 'string' ? path : Tools.qualifyPath(path.library, path.name, path.member, path.asp));
+    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
+    if (result.code === 0) {
+      return result.stdout
+        .split('\n')
+        .map(line => line.split('='))
+        .reduce((attributes, [key, value]) => {
+          attributes[key] = value;
+          return attributes;
+        }, {} as Record<string, string>)
+    }
+  }
+
+  async countMembers(path: QsysPath) {
+    return this.countFiles(Tools.qualifyPath(path.library, path.name, undefined, path.asp))
+  }
+
+  async countFiles(directory: string) {
+    return Number((await this.ibmi.sendCommand({ command: `ls | wc -l`, directory })).stdout.trim());
   }
 }

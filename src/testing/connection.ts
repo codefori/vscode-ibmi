@@ -272,14 +272,10 @@ export const ConnectionSuite: TestSuite = {
       }
     },
     {
-      name: `Test withTempDirectory`, test: async () => {
+      name: `Test withTempDirectory and countFiles`, test: async () => {
         const connection = instance.getConnection()!;
-        let temp;
-        const countFiles = async (dir: string) => {
-          const countResult = await connection.sendCommand({ command: `find ${dir} -type f | wc -l` });
-          assert.strictEqual(countResult.code, 0);
-          return Number(countResult.stdout);
-        };
+        const content = instance.getContent()!;
+        let temp;        
 
         await connection.withTempDirectory(async tempDir => {
           temp = tempDir;
@@ -287,16 +283,14 @@ export const ConnectionSuite: TestSuite = {
           assert.strictEqual((await connection.sendCommand({ command: `[ -d ${tempDir} ]` })).code, 0);
 
           //Directory must be empty
-          assert.strictEqual(await countFiles(tempDir), 0);
+          assert.strictEqual(await content.countFiles(tempDir), 0);
 
           const toCreate = 10;
           for (let i = 0; i < toCreate; i++) {
             assert.strictEqual((await connection.sendCommand({ command: `echo "Test ${i}" >> ${tempDir}/file${i}` })).code, 0);
           }
 
-          const newCountResult = await connection.sendCommand({ command: `ls -l ${tempDir} | wc -l` });
-          assert.strictEqual(newCountResult.code, 0);
-          assert.strictEqual(await countFiles(tempDir), toCreate);
+          assert.strictEqual(await content.countFiles(tempDir), toCreate);
         });
 
         if (temp) {
@@ -309,8 +303,8 @@ export const ConnectionSuite: TestSuite = {
       name: `Test upperCaseName`, test: async () => {
         const connection = instance.getConnection()!;
         const variantsBackup = connection.variantChars.local;
-                
-        try{
+
+        try {
           const checkVariants = () => connection.variantChars.local !== connection.variantChars.local.toLocaleUpperCase();
           //CCSID 297 variants
           connection.variantChars.local = '£à$';
@@ -326,7 +320,7 @@ export const ConnectionSuite: TestSuite = {
           assert.strictEqual(connection.upperCaseName("@TesT#ye$"), "@TEST#YE$");
           assert.strictEqual(connection.upperCaseName("test_cAsE"), "TEST_CASE");
         }
-        finally{
+        finally {
           connection.variantChars.local = variantsBackup;
         }
       }
