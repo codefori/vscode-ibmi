@@ -19,7 +19,6 @@ import { Deployment } from "./api/local/deployment";
 import { IFSFS } from "./filesystems/ifsFs";
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { updateLocale } from "./locale";
-import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
 import { CodeForIBMi, ConnectionData } from "./typings";
 import { initializeConnectionBrowser } from "./views/ConnectionBrowser";
@@ -30,6 +29,8 @@ import { HelpView } from "./views/helpView";
 import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { SettingsUI } from "./webviews/settings";
+import { registerUriHandler } from "./uri";
+import { handleSandboxStartup } from "./sandbox";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -101,8 +102,8 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   Deployment.initialize(context);
   checkLastConnections();
 
-  Sandbox.handleStartup();
-  Sandbox.registerUriHandler(context);
+  handleSandboxStartup();
+  registerUriHandler(context);
 
   console.log(`Developer environment: ${process.env.DEV}`);
   if (process.env.DEV) {
