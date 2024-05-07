@@ -6,6 +6,7 @@
 		"lib": [
 			"ES2022"
 		],
+		"resolveJsonModule": true,
 		"forceConsistentCasingInFileNames": true,
 		"allowJs": true,
 		"esModuleInterop": true,
