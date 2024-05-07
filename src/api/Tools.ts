@@ -133,12 +133,12 @@ export namespace Tools {
           let realValue: string | number | null = strValue.trimEnd();
 
           // is value a number?
-          if (strValue.startsWith(` `)) {
+          if (realValue.startsWith(` `)) {
             const asNumber = Number(strValue.trim());
             if (!isNaN(asNumber)) {
               realValue = asNumber;
             }
-          } else if (strValue === `-`) {
+          } else if (realValue === `-`) {
             realValue = null; //null?
           }
 
@@ -164,18 +164,19 @@ export namespace Tools {
   }
 
   /**
-   * Build the IFS path string to a member
+   * Build the IFS path string to an object or member
    * @param library
    * @param object
-   * @param member
+   * @param member Optional
    * @param iasp Optional: an iASP name
    */
-  export function qualifyPath(library: string, object: string, member: string, iasp?: string, sanitise?: boolean) {
+  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, sanitise?: boolean) {
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
-    const memberPath = `${object}.FILE/${member}.MBR`
-    const memberSubpath = sanitise ? Tools.escapePath(memberPath) : memberPath;
+    const filePath = `${object}.FILE`;
+    const memberPath = member ? `/${member}.MBR` : '';
+    const subPath = `${filePath}${memberPath}`;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${memberSubpath}`;
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${sanitise ? subPath : Tools.escapePath(subPath)}`;
     return result;
   }
 
@@ -361,7 +362,7 @@ export namespace Tools {
         await vscode.commands.executeCommand(`setContext`, context, true);
         activeContexts.set(context, 0);
       }
-      else{
+      else {
         activeContexts.set(context, stack++);
       }
       return await task();
@@ -369,13 +370,13 @@ export namespace Tools {
     finally {
       let stack = activeContexts.get(context);
       if (stack !== undefined) {
-        if(stack){
+        if (stack) {
           activeContexts.set(context, stack--);
         }
-        else{
+        else {
           await vscode.commands.executeCommand(`setContext`, context, undefined);
           activeContexts.delete(context);
-        }        
+        }
       }
     }
   }

@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.9.3-dev.0",
+	"version": "2.10.1",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1364,7 +1364,7 @@
 			{
 				"command": "code-for-ibmi.removeIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Remove",
+				"title": "Remove Shortcut",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
@@ -1623,6 +1623,13 @@
 				"category": "IBM i",
 				"icon": "$(debug-stop)",
 				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.debug.open.service.config",
+				"title": "Open configuration",
+				"category": "IBM i",
+				"icon": "$(settings-gear)",
+				"enablement": "!code-for-ibmi:debugWorking"
 			}
 		],
 		"keybindings": [
@@ -1702,7 +1709,7 @@
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
-					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
+					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled"
 				},
 				{
 					"id": "profilesView",
@@ -2159,6 +2166,10 @@
 				},
 				{
 					"command": "code-for-ibmi.debug.refresh",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.open.service.config",
 					"when": "never"
 				}
 			],
@@ -2733,13 +2744,18 @@
 					"group": "inline"
 				},
 				{
+					"command": "code-for-ibmi.debug.open.service.config",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_service.*$/",
+					"group": "inline"
+				},
+				{
 					"command": "code-for-ibmi.debug.setup.remote",
 					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem === certificateIssue_noremote",
 					"group": "inline"
 				},
 				{
 					"command": "code-for-ibmi.debug.setup.local",
-					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_(nolocal|dontmatch)$/",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_localissue$/",
 					"group": "inline"
 				}
 			]

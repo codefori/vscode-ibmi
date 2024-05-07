@@ -85,6 +85,47 @@ export const ToolsSuite: TestSuite = {
       }
     },
     {
+      name: `EN result set, empty columns`, test: async () => {
+        const lines = [
+          `DB2>`,
+          `DB20000I  THE SQL COMMAND COMPLETED SUCCESSFULLY.`,
+          `DB2>`,
+          `DB20000I  THE SQL COMMAND COMPLETED SUCCESSFULLY.`,
+          `DB2>`,
+          ``,
+          `NAME       TYPE  ATTRIBUTE  TEXT                                               IS_SOURCE   NB_MBR  SOURCE_LENGTH  CCSID  `,
+          `---------- ----- ---------- -------------------------------------------------- ----------- ------- -------------- -------`,
+          `CMD        *FILE *PHY                                                                    1      3     112             37 `,
+          `EVFTEMPF01 *FILE *PHY                                                                    1      2     112             37 `,
+          `EVFTEMPF02 *FILE *PHY                                                                    1      2     112             37 `,
+          `HEBREW     *FILE *PHY                                                                    1      1      92            424 `,
+          `QCPYSRC    *FILE *PHY                                                                    1      1     112             37 `,
+          `QDDSSRC    *FILE *PHY                                                                    1      3     112             37 `,
+          `QRPGLEREF  *FILE *PHY                                                                    1      1     112             37 `,
+          `QRPGLESRC  *FILE *PHY       cool mate                                                    1     11     112             37 `,
+          `QSQDSRC    *FILE *PHY       SQL PROCEDURES                                               1      4     160             37 `,
+          `VSCODE     *FILE *PHY                                                                    1      1     112             37 `,
+          ``,
+          ` 10 RECORD(S) SELECTED.`,
+          ``,
+          `DB2>`,
+        ]
+
+        const rows = Tools.db2Parse(lines.join(`\n`));
+
+        assert.strictEqual(rows.length, 10);
+
+        assert.strictEqual(rows[0].NAME, `CMD`);
+        assert.strictEqual(rows[0].TYPE, `*FILE`);
+        assert.strictEqual(rows[0].ATTRIBUTE, `*PHY`);
+        assert.strictEqual(rows[0].TEXT, ``);
+        assert.strictEqual(rows[0].IS_SOURCE, 1);
+        assert.strictEqual(rows[0].NB_MBR, 3);
+        assert.strictEqual(rows[0].SOURCE_LENGTH, 112);
+        assert.strictEqual(rows[0].CCSID, 37);
+      }
+    },
+    {
       name: `FR result set test`, test: async () => {
         const lines = [
           `DB2>`,

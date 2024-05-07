@@ -396,5 +396,7 @@ export const da: Locale = {
   'remote.certificate.not.found': 'Værtens certifikat er ikke fundet',
   'remote.certificate.not.found.detail': '{0} er ikke fundet under {1}',
   'local.certificate.not.found': 'Lokalt certifikat er ikke fundet',
-  'local.dont.match.remote': 'Lokalt certifikat matcher ikke værtens'
+  'local.dont.match.remote': 'Lokalt certifikat matcher ikke værtens',  
+  'debug.service.submit.options':'Debug Service submit options',
+  'debug.service.submit.options.prompt':'Valid parameters for SBMJOB'
 };

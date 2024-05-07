@@ -174,27 +174,40 @@ export class SettingsUI {
 
         const debuggerTab = new Section();
         if (connection && connection.remoteFeatures[`startDebugService.sh`]) {
-          debuggerTab
-            .addInput(`debugPort`, `Debug port`, `Default secure port is <code>8005</code>. Tells the client which port the debug service is running on.`, { default: config.debugPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` });
+          debuggerTab.addParagraph(`The following values have been read from the debug service configuration.`);
+          const debugServiceConfig: Map<string, string> = new Map()
+            .set("Debug port", config.debugPort);
 
           if (await isSEPSupported()) {
-            debuggerTab.addInput(`debugSepPort`, `SEP debug port`, `Default secure port is <code>8008</code>. Tells the client which port the debug service for SEP is running on.`, { default: config.debugSepPort, minlength: 1, maxlength: 5, regexTest: `^\\d+$` });
+            debugServiceConfig.set("SEP debug port", config.debugSepPort)
           }
-          
+          debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);
+
           debuggerTab.addCheckbox(`debugUpdateProductionFiles`, `Update production files`, `Determines whether the job being debugged can update objects in production (<code>*PROD</code>) libraries.`, config.debugUpdateProductionFiles)
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {
             debuggerTab
               .addHorizontalRule()
-              .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure)
-              .addInput(`debugCertDirectory`, `Certificate directory`, `This remote path is only used when starting the Debug Service and or for downloading an existing client certificate. This directory must be accessible to all users who wish to start the Debug Service (<code>debug_service.pfx</code>) or download an existing client certificate (<code>debug_service.crt</code>). Optionally, you can import one below.`, { default: config.debugCertDirectory });
-
-            const localCertExists = await certificates.localClientCertExists(connection);
-
-            debuggerTab
-              .addParagraph(`<b>${localCertExists ? `Client certificate for server has been imported.` : `No local client certificate exists. Debugging securely will not function correctly.`}</b>` + ` To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
-              .addButtons({ id: `import`, label: `Import new certificate` })
+              .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure);
+            if (await certificates.remoteCertificatesExists()) {
+              let localCertificateIssue;
+              try {
+                await certificates.checkClientCertificate(connection);
+              }
+              catch (error) {
+                localCertificateIssue = `${String(error)}. Debugging securely will not function correctly.`;
+              }
+              debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
+                .addParagraph(`To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`);
+              if (!localCertificateIssue) {
+                debuggerTab.addButtons({ id: `import`, label: `Download client certificate` })
+              }
+            }
+            else {
+              debuggerTab.addParagraph(`The service certificate doesn't exist or is incomplete; it must be generated before the debug service can be started.`)
+                .addButtons({ id: `generate`, label: `Generate service certificate` })
+            }
           }
         } else if (connection) {
           debuggerTab.addParagraph('Enable the debug service to change these settings');
@@ -241,6 +254,10 @@ export class SettingsUI {
             switch (button) {
               case `import`:
                 vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                break;
+
+              case `generate`:
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
                 break;
 
               case `clearAllowedExts`:
