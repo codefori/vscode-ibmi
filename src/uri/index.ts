@@ -1,8 +1,6 @@
-import { env } from "process";
 import querystring from "querystring";
 import { commands, ExtensionContext, Uri, window } from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
-import { Tools } from "../api/Tools";
+import { GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
 import { ConnectionData } from "../typings";
@@ -12,15 +10,35 @@ export async function registerUriHandler(context: ExtensionContext) {
   context.subscriptions.push(
     window.registerUriHandler({
       async handleUri(uri: Uri) {
-        console.log(uri);
+        const queryData = querystring.parse(uri.query);
 
         const connection = instance.getConnection();
 
         switch (uri.path) {
+          case '/open':
+            if (connection) {
+              if (queryData.path) {
+                if (queryData.host) {
+                  const host = Array.isArray(queryData.host) ? queryData.host[0] : queryData.host;
+                  if (host !== connection.currentHost) {
+                    // TODO: host does not match requested host, do you still want to open?
+                    return;
+                  }
+                }
+
+                const paths = Array.isArray(queryData.path) ? queryData.path : [queryData.path];
+                for (const path of paths) {
+                  commands.executeCommand(`code-for-ibmi.openEditable`, path);
+                }
+              } else {
+                // TODO: error message: missing path
+              }
+            } else {
+              // TODO: error message: no connection
+            }
+            break;
           case `/connect`:
             if (connection === undefined) {
-              const queryData = querystring.parse(uri.query);
-
               const save = queryData.save === `true`;
               const server = String(queryData.server);
               let user: string | string[] | undefined = queryData.user;
