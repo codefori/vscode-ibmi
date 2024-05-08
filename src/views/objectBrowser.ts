@@ -317,7 +317,8 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
       text: this.object.text,
       members: await content.countMembers(this.object),
       length: this.object.sourceLength,
-      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?'
+      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?',
+      iasp: this.object.asp
     }));
 
     tooltip.supportHtml = true;
@@ -350,6 +351,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
       changed: object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
       created_by: object.created_by,
       owner: object.owner,
+      iasp: object.asp
     }));
     this.tooltip.supportHtml = true;
 
