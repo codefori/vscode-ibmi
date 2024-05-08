@@ -1630,7 +1630,13 @@
 				"category": "IBM i",
 				"icon": "$(settings-gear)",
 				"enablement": "!code-for-ibmi:debugWorking"
-			}
+			},
+            {
+                "command": "workbench.action.files.revert",
+                "title": "Refresh File",
+                "category": "IBM i",
+                "icon": "$(refresh)"
+            }
 		],
 		"keybindings": [
 			{
@@ -2325,6 +2331,11 @@
 					"command": "code-for-ibmi.clearDiagnostics",
 					"when": "code-for-ibmi:connected",
 					"group": "navigation@3"
+				},
+				{
+					"command": "workbench.action.files.revert",
+					"when": "code-for-ibmi:connected && resourceScheme == streamfile",
+					"group": "navigation@4"
 				}
 			],
 			"view/item/context": [
