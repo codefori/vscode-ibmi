@@ -132,6 +132,7 @@
   "helpView.officialForum": "Open official Forum",
   "helpView.reportIssue": "Report an Issue",
   "helpView.reviewIssues": "Review Issues",
+  "iasp": "IASP",
   "ifsBrowser.addIFSShortcut.error": "{0} is not a directory.",
   "ifsBrowser.addIFSShortcut.errorMessage": "Error creating IFS shortcut! {0}",
   "ifsBrowser.addIFSShortcut.prompt": "Path to IFS directory",

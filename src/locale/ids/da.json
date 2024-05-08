@@ -132,6 +132,7 @@
   "helpView.officialForum": "Forum",
   "helpView.reportIssue": "Opret en fejlrapport",
   "helpView.reviewIssues": "Se fejlrapporter",
+  "iasp": "IASP",
   "ifsBrowser.addIFSShortcut.error": "{0} er ikke en mappe.",
   "ifsBrowser.addIFSShortcut.errorMessage": "Fejl ved oprettelse af IFS genvej! {0}",
   "ifsBrowser.addIFSShortcut.prompt": "Sti til IFS mappe",

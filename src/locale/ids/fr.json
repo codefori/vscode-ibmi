@@ -132,6 +132,7 @@
   "helpView.officialForum": "Forum officiel",
   "helpView.reportIssue": "Déclarer un incident",
   "helpView.reviewIssues": "Voir les incidents",
+  "iasp": "IASP",
   "ifsBrowser.addIFSShortcut.error": "{0} n'est pas un répertoire.",
   "ifsBrowser.addIFSShortcut.errorMessage": "Erreur lors de la création du raccourci IFS! {0}",
   "ifsBrowser.addIFSShortcut.prompt": "Chemin du répertoire IFS",
