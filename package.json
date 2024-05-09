@@ -2334,7 +2334,7 @@
 				},
 				{
 					"command": "workbench.action.files.revert",
-					"when": "code-for-ibmi:connected && resourceScheme == streamfile",
+					"when": "code-for-ibmi:connected && (resourceScheme == streamfile || resourceScheme == member)",
 					"group": "navigation@4"
 				}
 			],
