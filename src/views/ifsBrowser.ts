@@ -470,6 +470,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           try {
             vscode.window.showInformationMessage(t(`ifsBrowser.createStreamfile.infoMessage`, fullName));
             await content.createStreamFile(fullName);
+            vscode.commands.executeCommand("code-for-ibmi.clearIFSStats", fullName);
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
@@ -591,6 +592,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 const removeResult = await vscode.window.withProgress({ title: t('ifsBrowser.deleteIFS.progress', toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
                   return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
                 });
+                toBeDeleted.forEach(file => vscode.commands.executeCommand("code-for-ibmi.clearIFSStats", file));
                 if (removeResult.code !== 0) {
                   throw removeResult.stderr;
                 }
@@ -629,6 +631,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
           try {
             await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            vscode.commands.executeCommand("code-for-ibmi.clearIFSStats", node.path);
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }

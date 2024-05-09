@@ -1,18 +1,20 @@
 import vscode, { FileSystemError, FileType } from "vscode";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
+import { FileStatCache } from "./fileStatCache";
 import { getFilePermission } from "./qsys/QSysFs";
 
 export class IFSFS implements vscode.FileSystemProvider {
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
 
-  private readonly statCache: Map<string, vscode.FileStat> = new Map;
+  private readonly statCache = new FileStatCache();
 
   constructor(context: vscode.ExtensionContext) {
     instance.onEvent("disconnected", () => { this.statCache.clear() });
     context.subscriptions.push(
-      vscode.workspace.onDidCloseTextDocument(() => this.statCache.clear())
+      vscode.workspace.onDidCloseTextDocument((doc) => this.statCache.clear(doc.uri)),
+      vscode.commands.registerCommand("code-for-ibmi.clearIFSStats", (uri?: vscode.Uri | string) => this.statCache.clear(uri))
     );
   }
 
@@ -38,11 +40,11 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    const path = uri.path;
-    let currentStat = this.statCache.get(path);
-    if (!currentStat) {
+    let currentStat = this.statCache.get(uri);
+    if (currentStat === undefined) {
       const content = instance.getContent();
       if (content) {
+        const path = uri.path;
         if (await content.testStreamFile(path, "e")) {
           const attributes = await content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE", "OBJTYPE");
           if (attributes) {
@@ -56,6 +58,7 @@ export class IFSFS implements vscode.FileSystemProvider {
           }
         }
         if (!currentStat) {
+          this.statCache.set(uri, null);
           throw FileSystemError.FileNotFound(uri);
         }
       }
@@ -68,7 +71,10 @@ export class IFSFS implements vscode.FileSystemProvider {
           permissions: getFilePermission(uri)
         }
       }
-      this.statCache.set(path, currentStat);
+      this.statCache.set(uri, currentStat);
+    }
+    else if (currentStat === null) {
+      throw FileSystemError.FileNotFound(uri);
     }
 
     return currentStat;
@@ -76,10 +82,21 @@ export class IFSFS implements vscode.FileSystemProvider {
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
     console.log(options);
-    this.statCache.delete(uri.path);
+    const path = uri.path;
+    const exists = this.statCache.get(path);
+    this.statCache.clear(path);
     const contentApi = instance.getContent();
     if (contentApi) {
-      await contentApi.writeStreamfileRaw(uri.path, content);
+      if (!content.length) {
+        //Coming from "Save as"; we await so the next call to stat finds the new file
+        await contentApi.createStreamFile(path);
+      }
+      else {
+        contentApi.writeStreamfileRaw(path, content);
+      }
+      if (!exists) {
+        vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
+      }
     }
     else {
       throw new Error("Not connected to IBM i");
@@ -88,13 +105,13 @@ export class IFSFS implements vscode.FileSystemProvider {
 
   copy(source: vscode.Uri, destination: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
     console.log(source, destination, options);
-    this.statCache.delete(destination.path);
+    this.statCache.clear(destination);
   }
 
   rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
     console.log({ oldUri, newUri, options });
-    this.statCache.delete(oldUri.path);
-    this.statCache.delete(newUri.path);
+    this.statCache.clear(oldUri);
+    this.statCache.clear(newUri);
   }
 
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
@@ -112,7 +129,7 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
-    this.statCache.delete(uri.path);
+    this.statCache.clear(uri);
     throw new Error(`delete not implemented in IFSFS.`);
   }
 }
