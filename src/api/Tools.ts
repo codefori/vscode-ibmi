@@ -164,18 +164,19 @@ export namespace Tools {
   }
 
   /**
-   * Build the IFS path string to a member
+   * Build the IFS path string to an object or member
    * @param library
    * @param object
-   * @param member
+   * @param member Optional
    * @param iasp Optional: an iASP name
    */
-  export function qualifyPath(library: string, object: string, member: string, iasp?: string, sanitise?: boolean) {
+  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, sanitise?: boolean) {
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
-    const memberPath = `${object}.FILE/${member}.MBR`
-    const memberSubpath = sanitise ? Tools.escapePath(memberPath) : memberPath;
+    const filePath = `${object}.FILE`;
+    const memberPath = member ? `/${member}.MBR` : '';
+    const subPath = `${filePath}${memberPath}`;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${memberSubpath}`;
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${sanitise ? subPath : Tools.escapePath(subPath)}`;
     return result;
   }
 

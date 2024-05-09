@@ -1,16 +1,16 @@
 import assert from "assert";
 import { existsSync } from "fs";
-import { TestSuite } from ".";
-import { instance } from "../instantiate";
 import vscode from "vscode";
-import { File, Folder, createFolder } from "./deployTools";
+import { TestSuite } from ".";
+import { CompileTools } from "../api/CompileTools";
 import { Tools } from "../api/Tools";
 import { LocalLanguageActions } from "../api/local/LocalLanguageActions";
 import { DeployTools } from "../api/local/deployTools";
 import { getEnvConfig } from "../api/local/env";
 import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
-import { Action } from "../typings";
-import { CompileTools } from "../api/CompileTools";
+import { instance } from "../instantiate";
+import { Action, IBMiObject } from "../typings";
+import { File, Folder, createFolder } from "./deployTools";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,
@@ -155,9 +155,8 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
     type: '*PGM',
     text: '',
     attribute: 'RPGLE',
-    sourceFile: false,
-    memberCount: undefined,
-  }));
+    sourceFile: false
+  } as IBMiObject));
 
   const connection = instance.getConnection();
   await connection?.runCommand({ command: `DLTOBJ OBJ(${library}/HELLO) OBJTYPE(*PGM)` });
