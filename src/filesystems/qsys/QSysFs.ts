@@ -1,6 +1,7 @@
 import { ParsedUrlQueryInput, parse, stringify } from "querystring";
-import vscode, { FilePermission } from "vscode";
+import vscode, { FilePermission, FileSystemError } from "vscode";
 import { onCodeForIBMiConfigurationChange } from "../../api/Configuration";
+import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
@@ -40,6 +41,7 @@ export function isProtectedFilter(filter?: string): boolean {
 }
 
 export class QSysFS implements vscode.FileSystemProvider {
+    private readonly statCache: Map<string, vscode.FileStat> = new Map;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
     private extendedMemberSupport = false;
@@ -53,7 +55,10 @@ export class QSysFS implements vscode.FileSystemProvider {
         context.subscriptions.push(onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()));
 
         instance.onEvent("connected", () => this.updateMemberSupport());
-        instance.onEvent("disconnected", () => this.updateMemberSupport());
+        instance.onEvent("disconnected", () => {
+            this.updateMemberSupport();
+            this.statCache.clear();
+        });
     }
 
     private updateMemberSupport() {
@@ -77,16 +82,40 @@ export class QSysFS implements vscode.FileSystemProvider {
         this.sourceDateHandler.setEnabled(this.extendedMemberSupport);
     }
 
-    stat(uri: vscode.Uri): vscode.FileStat {
-        let type = uri.path.split(`/`).length > 3 ? vscode.FileType.File : vscode.FileType.Directory;
+    async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
+        const type = uri.path.split(`/`).length > 3 ? vscode.FileType.File : vscode.FileType.Directory;
+        const path = uri.path;
+        let currentStat = this.statCache.get(path);
+        if (!currentStat) {
+            const content = instance.getContent();
+            if (content) {
+                const attributes = await content.getAttributes(Tools.parseQSysPath(path), "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+                if (attributes) {
+                    currentStat = {
+                        ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
+                        mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
+                        size: Number(attributes.DATA_SIZE),
+                        type,
+                        permissions: getFilePermission(uri)
+                    }
+                }
 
-        return {
-            ctime: 0,
-            mtime: 0,
-            size: 0,
-            type,
-            permissions: getFilePermission(uri)
+                if (!currentStat) {
+                    throw FileSystemError.FileNotFound(uri);
+                }
+            }
+            else {
+                currentStat = {
+                    ctime: 0,
+                    mtime: 0,
+                    size: 0,
+                    type,
+                    permissions: getFilePermission(uri)
+                }
+            }
+            this.statCache.set(path, currentStat);
         }
+        return currentStat;
     }
 
     async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
@@ -116,6 +145,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
+        this.statCache.delete(uri.path);
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
@@ -131,6 +161,8 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
         console.log({ oldUri, newUri, options });
+        this.statCache.delete(oldUri.path);
+        this.statCache.delete(newUri.path);
     }
 
     watch(uri: vscode.Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[]; }): vscode.Disposable {
@@ -146,6 +178,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
+        this.statCache.delete(uri.path);
         throw new Error("Method not implemented.");
     }
 }
