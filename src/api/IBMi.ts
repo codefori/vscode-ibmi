@@ -1317,7 +1317,6 @@ export default class IBMi {
       let returningAsCsv: WrapResult | undefined;
 
       if (this.qccsid === 65535) {
-        // TODO: only do the wrap if QCCSID is 65535
         let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
         const lastStmt = list.pop()?.trim();
         const asUpper = lastStmt?.toUpperCase();
