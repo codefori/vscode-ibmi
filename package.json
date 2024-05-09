@@ -1630,6 +1630,20 @@
 				"category": "IBM i",
 				"icon": "$(settings-gear)",
 				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.searchObjectBrowser",
+				"title": "Search",
+				"category": "IBM i",
+				"icon": "$(search)",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.searchIFSBrowser",
+				"title": "Search",
+				"category": "IBM i",
+				"icon": "$(search)",
+				"enablement": "code-for-ibmi:connected"
 			}
 		],
 		"keybindings": [
@@ -2171,6 +2185,14 @@
 				{
 					"command": "code-for-ibmi.debug.open.service.config",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchIFSBrowser",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2270,8 +2292,13 @@
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshIFSBrowser",
+					"command": "code-for-ibmi.searchIFSBrowser",
 					"group": "navigation@1",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"group": "navigation@2",
 					"when": "view == ifsBrowser"
 				},
 				{
@@ -2281,12 +2308,17 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
-					"group": "navigation@6",
+					"group": "navigation@7",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.sortFilters",
 					"group": "navigation@5",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"group": "navigation@6",
 					"when": "view == objectBrowser"
 				},
 				{
