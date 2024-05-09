@@ -1,6 +1,6 @@
-import vscode from "vscode";
-import { getFilePermission } from "./qsys/QSysFs";
+import vscode, { FileSystemError } from "vscode";
 import { instance } from "../instantiate";
+import { getFilePermission } from "./qsys/QSysFs";
 
 export class IFSFS implements vscode.FileSystemProvider {
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
@@ -27,13 +27,27 @@ export class IFSFS implements vscode.FileSystemProvider {
     }
   }
 
-  stat(uri: vscode.Uri): vscode.FileStat {
-    return {
-      ctime: 0,
-      mtime: 0,
-      size: 0,
-      type: vscode.FileType.File,
-      permissions: getFilePermission(uri)
+  async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
+    const content = instance.getContent();
+    if (content) {
+      const path = uri.path;
+      if (await content.testStreamFile(path, "e")) {
+        const attributes = await content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+        if (attributes) {
+          return {
+            ctime: 0,
+            mtime: 0,
+            size: Number(attributes.DATA_SIZE),
+            type: vscode.FileType.File,
+            permissions: getFilePermission(uri)
+          }
+        }
+      }
+
+      throw FileSystemError.FileNotFound(uri);
+    }
+    else {
+      throw new Error("Not connected to IBM i");
     }
   }
 
