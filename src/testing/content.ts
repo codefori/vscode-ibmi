@@ -803,6 +803,21 @@ export const ContentSuite: TestSuite = {
           throw new Error("No temporary library defined in configuration");
         }
       }
+    },
+    {
+      name: "Test streamfile creation", test: async () => {
+        const content = instance.getContent()!;
+        await instance.getConnection()!.withTempDirectory(async dir => {
+          const file = posix.join(dir, Tools.makeid());
+          const fileExists = async () => content.testStreamFile(file, "f");
+          assert.strictEqual(await fileExists(), false);
+          await content.createStreamFile(file);
+          assert.strictEqual(await fileExists(), true);
+          const attributes = await content.getAttributes(file, "CCSID");
+          assert.ok(attributes);
+          assert.strictEqual(attributes.CCSID, "1208");
+        });
+      }
     }
   ]
 };

@@ -139,11 +139,11 @@ class IFSFileItem extends IFSItem {
     this.iconPath = vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
-    
+
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [{path: this.path}]
+      arguments: [{ path: this.path }]
     };
   }
 
@@ -456,8 +456,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createStreamfile`, async (node?: IFSDirectoryItem) => {
       const config = instance.getConfig();
-      const connection = instance.getConnection();
-      if (config && connection) {
+      const content = instance.getContent();
+      if (config && content) {
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
@@ -469,15 +469,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (fullName) {
           try {
             vscode.window.showInformationMessage(t(`ifsBrowser.createStreamfile.infoMessage`, fullName));
-
-            await connection.sendCommand({ command: `echo "" > ${Tools.escapePath(fullName)}` });
-
+            await content.createStreamFile(fullName);
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
-
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
             }
-
+            else {
+              throw new Error("")
+            }
           } catch (e) {
             vscode.window.showErrorMessage(t(`ifsBrowser.createStreamfile.errorMessage`, e));
           }
