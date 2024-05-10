@@ -1755,7 +1755,7 @@
 				{
 					"id": "ibmiDebugBrowser",
 					"name": "IBM i debugger",
-					"when": "code-for-ibmi:connected && code-for-ibmi:debug",
+					"when": "code-for-ibmi:connected && code-for-ibmi:debug && !code-for-ibmi:debugManaged",
 					"visibility": "collapsed"
 				}
 			]
