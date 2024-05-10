@@ -6,7 +6,7 @@ import { ComponentState, ComponentT } from "./component";
 export class IfsWrite implements ComponentT {
   public readonly name = 'IFS_WRITE';
   public state: ComponentState = ComponentState.NotInstalled;
-  public currentVersion: number = 2;
+  public currentVersion: number = 3;
 
   constructor(public connection: IBMi) { }
 
@@ -15,7 +15,7 @@ export class IfsWrite implements ComponentT {
     const lib = config.tempLibrary!;
     const sql = `select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${lib.toUpperCase()}' and routine_name = '${this.name}'`
     const [result] = await this.connection.runSQL(sql);
-    if (result) {
+    if (result && result.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
       const dash = comment.indexOf('-');
       if (dash > -1) {
@@ -67,31 +67,43 @@ export class IfsWrite implements ComponentT {
 function getSource(library: string, name: string, version: number) {
   return Buffer.from(`
 call qcmdexc ('addlible qsysinc');
-call qcmdexc ('crtsrcpf FILE(QTEMP/C) MBR(C)');
-delete  from qtemp.c;
+call qcmdexc ('crtsrcpf FILE(QTEMP/C) MBR(C) RCDLEN(200)');
 insert into qtemp.c (srcdta) values 
     ('{'),
     ('#include <sys/types.h>'),
     ('#include <sys/stat.h>'),
-    ('#include <fcntl.h>'), 
-    ('int f,l,o;'),
+    ('#include <QSYSINC/H/fcntl>'), 
+    ('#include <QSYSINC/H/SQLUDF>'),
+    ('long chunk, offset, inputLen = 0, len, rc,outfile,l;'),
+    ('unsigned char buf [32760];'),
     ('mode_t mode = S_IRUSR | S_IWUSR | S_IXUSR;'),
-    ('o = O_WRONLY | O_CREAT | O_TRUNC | O_CCSID ;'),
+    ('long option = O_WRONLY | O_CREAT | O_TRUNC | O_CCSID ;'),
     ('IFS_WRITE.NAME.DAT[IFS_WRITE.NAME.LEN] =0;'),
-    ('f = open(IFS_WRITE.NAME.DAT, o, mode, 1208);'),
-    ('l = write(f, IFS_WRITE.BUF.DAT,IFS_WRITE.BUF.LEN);'),
-    ('close (f);'),
+    ('outfile = open(IFS_WRITE.NAME.DAT, option, mode, 1208);'),
+    ('rc = sqludf_length(&IFS_WRITE.BUFFER,&inputLen);'),
+    ('for (offset = 1; offset <=  inputLen; offset += sizeof(buf) ) { '),
+    ('    chunk = inputLen - offset + 1;'),
+    ('    if (chunk > sizeof(buf)) chunk = sizeof(buf); '),
+    ('    rc = sqludf_substr ('),
+    ('         &IFS_WRITE.BUFFER, '),
+    ('         offset,'),
+    ('         chunk,'),
+    ('         buf,'),
+    ('         &len'),
+    ('    );'),
+    ('    l = write(outfile, buf , len);'),
+    ('}'),
+    ('close (outfile);'),
     ('}')
 ;
 
-create or replace procedure ${library}.${name}(name varchar(256), buf varchar(32700) ccsid 1208 )
+create or replace procedure ${library}.${name}(name varchar(256), buffer clob (16m) ccsid 1208 )
 external action 
 modifies sql data
-set option output=*print, commit=*none, dbgview = *source
+specific IFS_WRT
+set option output=*print, commit=*ur, dbgview = *source
 begin 
-    if buf is not null then 
-        include qtemp/c(c);
-    end if;
+    include qtemp/c(c);
 end;
 
 comment on procedure ${library}.${name} is '${version} - Write UTF8 contents to streamfile';
