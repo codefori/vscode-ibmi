@@ -1323,8 +1323,10 @@ export default class IBMi {
       
         if (lastStmt && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
           const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
-          const sqlToCsv = this.getComponent<SqlToCsv>(`SqlToCsv`);
+          // Currently disabled due to performance concerns
+          //const sqlToCsv = this.getComponent<SqlToCsv>(`SqlToCsv`);
           const isSimple = CopyToImport.isSimple(lastStmt);
+          let sqlToCsv: SqlToCsv|undefined;
 
           // If the statement is simple, then we can just use copy to import.
           if (sqlToCsv && !isSimple) {
@@ -1346,7 +1348,7 @@ export default class IBMi {
       })
 
       if (output.stdout) {
-        Tools.db2Parse(output.stdout);
+        Tools.db2Parse(output.stdout, input);
         
         if (returningAsCsv) {
           // Will throw an error if stdout contains an error
