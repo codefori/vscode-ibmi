@@ -1,5 +1,6 @@
 import IBMi from "../api/IBMi";
 import { CopyToImport } from "./copyToImport";
+import { Db2iExt } from "./db2iExt";
 import { GetMemberInfo } from "./getMemberInfo";
 import { GetNewLibl } from "./getNewLibl";
 import { IfsWrite } from "./ifsWrite";
@@ -17,6 +18,7 @@ interface ComponentRegistry {
   IfsWrite?: IfsWrite;
   CopyToImport?: CopyToImport;
   GetMemberInfo?: GetMemberInfo;
+  Db2iExt?: Db2iExt;
 }
 
 export type ComponentId = keyof ComponentRegistry;
@@ -50,6 +52,9 @@ export class ComponentManager {
 
     this.registered.GetMemberInfo = new GetMemberInfo(connection);
     await ComponentManager.checkState(this.registered.GetMemberInfo);
+
+    this.registered.Db2iExt = new Db2iExt(connection);
+    await ComponentManager.checkState(this.registered.Db2iExt);
   }
 
   // TODO: return type based on ComponentIds
