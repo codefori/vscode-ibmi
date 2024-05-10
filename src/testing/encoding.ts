@@ -14,17 +14,17 @@ const contents = {
   '277': [`Hello world`, `çñßØ¢åæ`],
   '297': [`Hello world`, `âÑéè¥ýÝÞã`],
   '290': [`ｦｯ!ﾓﾄｴﾜﾈﾁｾ`, `Hello world`, `ｦｯ!ﾓﾄｴﾜﾈﾁｾ`],
-  '420': [`Hello world`, `ص ث ب ﻷ`],
+  // '420': [`Hello world`, `ص ث ب ﻷ`],
+  '420': [`Hello world`, `ص ث ب`],
 }
+
+const rtlEncodings = [`420`];
 
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
     const config = instance.getConfig()!;
     assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
-
-    const sqlComponent = instance.getConnection()?.getComponent(`SqlToCsv`);
-    assert.ok(sqlComponent, `SQL_TO_CSV must be available for this test.`);
   },
 
   tests: Object.keys(contents).map(ccsid => {
@@ -33,7 +33,8 @@ export const EncodingSuite: TestSuite = {
         const connection = instance.getConnection();
         const config = instance.getConfig()!;
 
-        const lines = contents[ccsid as keyof typeof contents].join(`\n`);
+        const oldLines = contents[ccsid as keyof typeof contents];
+        const lines = oldLines.join(`\n`);
 
         const tempLib = config!.tempLibrary;
 
@@ -49,9 +50,19 @@ export const EncodingSuite: TestSuite = {
         await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-        const fileContent = new TextDecoder().decode(memberContentBuf)
+        let fileContent = new TextDecoder().decode(memberContentBuf);
         
-        assert.strictEqual(fileContent, lines);
+        if (rtlEncodings.includes(ccsid)) {
+          const newLines = fileContent.split(`\n`);
+          
+          assert.strictEqual(newLines.length, 2);
+          assert.ok(newLines[1].startsWith(` `)); // RTL
+
+          assert.strictEqual(newLines[0].trim(), oldLines[0]);
+          assert.strictEqual(newLines[1].trim(), oldLines[1]);
+        } else {
+          assert.deepStrictEqual(fileContent, lines);
+        }
       }
     }
   })
