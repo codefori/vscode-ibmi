@@ -363,7 +363,9 @@ export async function initialize(context: ExtensionContext) {
       //Enable service entry points related commands
       vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
 
-      if (!isManaged()) {
+      const isDebugManaged = isManaged();
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
+      if (!isDebugManaged) {
         const isSecure = connection.config!.debugIsSecure;
 
         if (validateIPv4address(connection.currentHost) && isSecure) {
@@ -379,8 +381,6 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.executeCommand(`setContext`, debugContext, false);
     vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
   });
-
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());
 }
 
 function validateIPv4address(ipaddress: string) {
