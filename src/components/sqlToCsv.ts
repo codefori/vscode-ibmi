@@ -31,42 +31,43 @@ export class SqlToCsv implements ComponentT {
   }
 
   async checkState(): Promise<boolean> {
-    const ifsWriteComponent = this.connection.getComponent<IfsWrite>(`IfsWrite`);
+    return false;
+    // const ifsWriteComponent = this.connection.getComponent<IfsWrite>(`IfsWrite`);
 
-    if (!ifsWriteComponent) {
-      // This procedure will depend on IfsWrite
-      this.state = ComponentState.Error;
-      return false;
-    }
+    // if (!ifsWriteComponent) {
+    //   // This procedure will depend on IfsWrite
+    //   this.state = ComponentState.Error;
+    //   return false;
+    // }
 
-    const installedVersion = await this.getInstalledVersion();
+    // const installedVersion = await this.getInstalledVersion();
 
-    if (installedVersion === this.currentVersion) {
-      this.state = ComponentState.Installed;
-      return true;
-    }
+    // if (installedVersion === this.currentVersion) {
+    //   this.state = ComponentState.Installed;
+    //   return true;
+    // }
 
-    const config = this.connection.config!
-    const content = instance.getContent();
+    // const config = this.connection.config!
+    // const content = instance.getContent();
 
-    return this.connection.withTempDirectory(async tempDir => {
-      const tempSourcePath = posix.join(tempDir, `csvToSql.sql`);
+    // return this.connection.withTempDirectory(async tempDir => {
+    //   const tempSourcePath = posix.join(tempDir, `csvToSql.sql`);
 
-      await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.name, ifsWriteComponent.name, this.currentVersion));
-      const result = await this.connection.runCommand({
-        command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
-        cwd: `/`,
-        noLibList: true
-      });
+    //   await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.name, ifsWriteComponent.name, this.currentVersion));
+    //   const result = await this.connection.runCommand({
+    //     command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
+    //     cwd: `/`,
+    //     noLibList: true
+    //   });
 
-      if (result.code === 0) {
-        this.state = ComponentState.Installed;
-      } else {
-        this.state = ComponentState.Error;
-      }
+    //   if (result.code === 0) {
+    //     this.state = ComponentState.Installed;
+    //   } else {
+    //     this.state = ComponentState.Error;
+    //   }
 
-      return this.state === ComponentState.Installed;
-    });
+    //   return this.state === ComponentState.Installed;
+    // });
   }
 
   getState(): ComponentState {

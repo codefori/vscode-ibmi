@@ -28,6 +28,7 @@ export class IfsWrite implements ComponentT {
   }
 
   async checkState(): Promise<boolean> {
+    return false;
     const installedVersion = await this.getInstalledVersion();
 
     if (installedVersion === this.currentVersion) {
