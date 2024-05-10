@@ -18,14 +18,12 @@ export class SqlToCsv implements ComponentT {
     const lib = config.tempLibrary!;
     const sql = `select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${lib.toUpperCase()}' and routine_name = '${this.name}'`
     const [result] = await this.connection.runSQL(sql);
-    if (result) {
+    if (result && result.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
-      if (comment) {
-        const dash = comment.indexOf('-');
-        if (dash > -1) {
-          const version = comment.substring(0, dash).trim();
-          return parseInt(version);
-        }
+      const dash = comment.indexOf('-');
+      if (dash > -1) {
+        const version = comment.substring(0, dash).trim();
+        return parseInt(version);
       }
     }
 

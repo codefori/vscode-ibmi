@@ -17,7 +17,7 @@ export class GetMemberInfo implements ComponentT {
     const lib = config.tempLibrary!;
     const sql = `select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${lib.toUpperCase()}' and routine_name = '${this.name}'`
     const [result] = await this.connection.runSQL(sql);
-    if (result) {
+    if (result && result.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
       const dash = comment.indexOf('-');
       if (dash > -1) {

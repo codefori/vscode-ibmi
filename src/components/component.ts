@@ -37,19 +37,19 @@ export class ComponentManager {
 
   public async startup(connection: IBMi) {
     this.registered.GetNewLibl = new GetNewLibl(connection);
-    await this.registered.GetNewLibl.checkState();
+    await ComponentManager.checkState(this.registered.GetNewLibl);
 
     this.registered.IfsWrite = new IfsWrite(connection);
-    await this.registered.IfsWrite.checkState();
+    await ComponentManager.checkState(this.registered.IfsWrite);
 
     this.registered.SqlToCsv = new SqlToCsv(connection);
-    await this.registered.SqlToCsv.checkState();
+    await ComponentManager.checkState(this.registered.SqlToCsv);
 
     this.registered.CopyToImport = new CopyToImport(connection);
-    await this.registered.CopyToImport.checkState();
+    await ComponentManager.checkState(this.registered.CopyToImport);
 
     this.registered.GetMemberInfo = new GetMemberInfo(connection);
-    await this.registered.GetMemberInfo.checkState();
+    await ComponentManager.checkState(this.registered.GetMemberInfo);
   }
 
   // TODO: return type based on ComponentIds
@@ -57,6 +57,15 @@ export class ComponentManager {
     const component = this.registered[id];
     if (component && component.getState() === ComponentState.Installed) {
       return component as T;
+    }
+  }
+
+  private static async checkState(component: ComponentT) {
+    try {
+      await component.checkState(); 
+    } catch (e) {
+      console.log(component);
+      console.log(`Error checking state for ${component.constructor.name}`, e);
     }
   }
 }
