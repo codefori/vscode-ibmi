@@ -67,7 +67,8 @@ export namespace Tools {
           }
 
           if (!SQLSTATE.startsWith(`01`)) {
-            let sqlError = new SqlError(`${data[index + 3]} (${SQLSTATE})`);
+            const errorMessage = data[index + 3] ? data[index + 3].trim() : `Unknown error`;
+            let sqlError = new SqlError(`${errorMessage} (${SQLSTATE})`);
             sqlError.sqlstate = SQLSTATE;
             sqlError.cause = input;
             throw sqlError;
