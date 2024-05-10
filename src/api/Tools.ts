@@ -29,7 +29,7 @@ export namespace Tools {
    * @param output /usr/bin/db2's output
    * @returns rows
    */
-  export function db2Parse(output: string): DB2Row[] {
+  export function db2Parse(output: string, input?: string): DB2Row[] {
     let gotHeaders = false;
     let figuredLengths = false;
     let iiErrorMessage = false;
@@ -69,6 +69,7 @@ export namespace Tools {
           if (!SQLSTATE.startsWith(`01`)) {
             let sqlError = new SqlError(`${data[index + 3]} (${SQLSTATE})`);
             sqlError.sqlstate = SQLSTATE;
+            sqlError.cause = input;
             throw sqlError;
           }
         }

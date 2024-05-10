@@ -63,8 +63,8 @@ export class CopyToImport implements ComponentT {
 
     if (requiresQtempTable) {
       library = `QTEMP`;
-      table = Tools.makeid(5);
-      newStatements.push(`CREATE TABLE ${library}/${table} AS (${statement}) WITH DATA`);
+      table = Tools.makeid(5).toUpperCase();
+      newStatements.push(`CREATE TABLE ${library}.${table} AS (${statement}) WITH DATA`);
     }
 
     newStatements.push(`Call QSYS2.QCMDEXC('` + this.connection.content.toCl(`CPYTOIMPF`, {
