@@ -18,6 +18,7 @@ import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
 import { CopyToImport } from "../components/copyToImport";
+import { Db2iExt } from "../components/db2iExt";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1315,6 +1316,12 @@ export default class IBMi {
       let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
 
       let returningAsCsv: WrapResult | undefined;
+
+      const db2iExt = this.getComponent<Db2iExt>(`Db2iExt`);
+      if (db2iExt && db2iExt.isReady()) {
+        const list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
+        return await db2iExt.executeMany(list);
+      }
 
       if (this.qccsid === 65535) {
         let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
