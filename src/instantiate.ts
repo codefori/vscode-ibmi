@@ -700,7 +700,20 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-  );
+    
+    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (editor?.document.isDirty) {
+            vscode.window
+                .showWarningMessage(`Your changes will be discarded`, `Continue`, `Cancel`)
+                .then(result => {
+                    if (result === `Continue`) {
+                        vscode.commands.executeCommand(`workbench.action.files.revert`);
+                    }
+                });
+        }
+    }),
+);
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);

@@ -1632,7 +1632,7 @@
 				"enablement": "!code-for-ibmi:debugWorking"
 			},
             {
-                "command": "workbench.action.files.revert",
+                "command": "code-for-ibmi.refreshFile",
                 "title": "Refresh File",
                 "category": "IBM i",
                 "icon": "$(refresh)"
@@ -2333,7 +2333,7 @@
 					"group": "navigation@3"
 				},
 				{
-					"command": "workbench.action.files.revert",
+					"command": "code-for-ibmi.refreshFile",
 					"when": "code-for-ibmi:connected && (resourceScheme == streamfile || resourceScheme == member)",
 					"group": "navigation@4"
 				}
