@@ -1633,9 +1633,9 @@
 			},
 			{
 				"command": "code-for-ibmi.searchObjectBrowser",
-				"title": "Search",
+				"title": "Highlight",
 				"category": "IBM i",
-				"icon": "$(search)",
+				"icon": "$(search-fuzzy)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
