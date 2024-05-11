@@ -1084,6 +1084,18 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.compareCurrentFileWithStream",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with IFS file...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareCurrentFileWithLocal",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with local file...",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.changeCurrentLibrary",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Current Library...",
@@ -1881,6 +1893,14 @@
 					"when": "code-for-ibmi:connected"
 				},
 				{
+					"command": "code-for-ibmi.compareCurrentFileWithStream",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"when": "code-for-ibmi:connected"
+				},
+				{
 					"command": "code-for-ibmi.goToFileReadOnly",
 					"when": "code-for-ibmi:connected"
 				},
@@ -2478,6 +2498,16 @@
 					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@2"
 				},
+                {
+					"command": "code-for-ibmi.compareCurrentFileWithStream",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"group": "2_compare@3"
+				},
+                {
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"group": "2_compare@4"
+				},
 				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == objectBrowser && viewItem == SPF",
@@ -2758,7 +2788,14 @@
 					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_localissue$/",
 					"group": "inline"
 				}
-			]
+			],
+            "explorer/context" : [
+                {
+					"command": "code-for-ibmi.compareCurrentFileWithStream",
+					"when": "code-for-ibmi:connected",
+					"group": "3_compare@40"
+				}
+            ]
 		},
 		"viewsWelcome": [
 			{

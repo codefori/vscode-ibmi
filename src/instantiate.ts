@@ -184,6 +184,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Nothing selected to compare.`);
       }
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithStream`, async (node) => {
+        compareCurrentFile(node, `streamfile`);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithLocal`, async (node) => {
+        compareCurrentFile(node, `file`);
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
       const LOADING_LABEL = `Please wait`;
@@ -801,4 +809,37 @@ async function createQuickPickItemsList(
     ...(cached.length != 0 ? clearCachedArray : [])
   ];
   return returnedList;
+}
+
+async function compareCurrentFile(node: any, scheme: `streamfile` | `file`) {
+    let currentFile;
+    // If we are comparing with an already targeted node
+    if (node) {
+        if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem`) {
+            currentFile = node.resourceUri;
+        } else if (node.scheme === `file`) {
+            currentFile = node
+        }
+    } else {
+        // If we are comparing with the currently open file
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            currentFile = editor.document.uri;
+        }
+    }
+
+    if (currentFile) {
+        const compareWith = await vscode.window.showInputBox({
+            prompt: `Enter the path to compare selected with`,
+            title: `Compare with`, 
+            value: currentFile.path
+        });
+        
+        if (compareWith) {
+            let uri = vscode.Uri.parse(`${scheme}:${compareWith}`);
+            vscode.commands.executeCommand(`vscode.diff`, currentFile, uri);
+        }
+    } else {
+        vscode.window.showInformationMessage(`No file is open or selected`);
+    }
 }
