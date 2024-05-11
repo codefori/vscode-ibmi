@@ -815,7 +815,7 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file`) {
     let currentFile;
     // If we are comparing with an already targeted node
     if (node) {
-        if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem`) {
+        if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem` || node.constructor.name === `ObjectBrowserItem`) {
             currentFile = node.resourceUri;
         } else if (node.scheme === `file`) {
             currentFile = node
