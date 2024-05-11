@@ -1091,7 +1091,6 @@
 			},
 			{
 				"command": "code-for-ibmi.compareCurrentFileWithLocal",
-				"enablement": "code-for-ibmi:connected",
 				"title": "Compare with local file...",
 				"category": "IBM i"
 			},
@@ -1894,10 +1893,6 @@
 				},
 				{
 					"command": "code-for-ibmi.compareCurrentFileWithStream",
-					"when": "code-for-ibmi:connected"
-				},
-				{
-					"command": "code-for-ibmi.compareCurrentFileWithLocal",
 					"when": "code-for-ibmi:connected"
 				},
 				{
@@ -2794,6 +2789,10 @@
 					"command": "code-for-ibmi.compareCurrentFileWithStream",
 					"when": "code-for-ibmi:connected",
 					"group": "3_compare@40"
+				},
+                {
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"group": "3_compare@41"
 				}
             ]
 		},
