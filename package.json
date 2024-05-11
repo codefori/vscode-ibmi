@@ -2493,12 +2493,12 @@
 					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@2"
 				},
-                {
+				{
 					"command": "code-for-ibmi.compareCurrentFileWithStream",
 					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@3"
 				},
-                {
+				{
 					"command": "code-for-ibmi.compareCurrentFileWithLocal",
 					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@4"
@@ -2784,18 +2784,18 @@
 					"group": "inline"
 				}
 			],
-            "explorer/context" : [
-                {
+			"explorer/context" : [
+				{
 					"command": "code-for-ibmi.compareCurrentFileWithStream",
 					"when": "code-for-ibmi:connected",
 					"group": "3_compare@40"
 				},
-                {
+				{
 					"command": "code-for-ibmi.compareCurrentFileWithLocal",
 					"when": "!explorerResourceIsFolder",
 					"group": "3_compare@41"
 				}
-            ]
+			]
 		},
 		"viewsWelcome": [
 			{
