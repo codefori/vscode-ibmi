@@ -2792,6 +2792,7 @@
 				},
                 {
 					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"when": "ResourceContextKey.IsFileSystemResource",
 					"group": "3_compare@41"
 				}
             ]
