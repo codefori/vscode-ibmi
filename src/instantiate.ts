@@ -701,17 +701,26 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
     
-    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async () => {
+    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
+      let doc: vscode.TextDocument | undefined;
+      if (uri) {
+        doc = Tools.findExistingDocument(uri);
+      } else {
         const editor = vscode.window.activeTextEditor;
-        if (editor?.document.isDirty) {
-            vscode.window
-                .showWarningMessage(`Your changes will be discarded`, `Continue`, `Cancel`)
-                .then(result => {
-                    if (result === `Continue`) {
-                        vscode.commands.executeCommand(`workbench.action.files.revert`);
-                    }
-                });
-        }
+        doc = editor?.document;
+      }
+
+      if (doc?.isDirty) {
+        vscode.window
+          .showWarningMessage(`Your changes will be discarded`, `Continue`, `Cancel`)
+          .then(result => {
+              if (result === `Continue`) {
+                vscode.commands.executeCommand(`workbench.action.files.revert`);
+              }
+        });
+      } else {
+        vscode.commands.executeCommand(`workbench.action.files.revert`);
+      }
     }),
 );
 
