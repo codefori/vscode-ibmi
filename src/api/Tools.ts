@@ -363,7 +363,8 @@ export namespace Tools {
         activeContexts.set(context, 0);
       }
       else {
-        activeContexts.set(context, stack++);
+        stack++;
+        activeContexts.set(context, stack);
       }
       return await task();
     }
@@ -371,7 +372,8 @@ export namespace Tools {
       let stack = activeContexts.get(context);
       if (stack !== undefined) {
         if (stack) {
-          activeContexts.set(context, stack--);
+          stack--;
+          activeContexts.set(context, stack);
         }
         else {
           await vscode.commands.executeCommand(`setContext`, context, undefined);
