@@ -801,6 +801,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.ifs.copyPath`, async (node: IFSItem) => {
       await vscode.env.clipboard.writeText(node.path);
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async() => {
+        vscode.commands.executeCommand('ifsBrowser.focus');
+        vscode.commands.executeCommand('list.find');
+    })
   )
 }
 

@@ -1636,6 +1636,20 @@
                 "title": "Refresh File",
                 "category": "IBM i",
                 "icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.searchObjectBrowser",
+				"title": "Highlight",
+				"category": "IBM i",
+				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.searchIFSBrowser",
+				"title": "Highlight",
+				"category": "IBM i",
+				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
             }
 		],
 		"keybindings": [
@@ -1761,7 +1775,7 @@
 				{
 					"id": "ibmiDebugBrowser",
 					"name": "IBM i debugger",
-					"when": "code-for-ibmi:connected && code-for-ibmi:debug",
+					"when": "code-for-ibmi:connected && code-for-ibmi:debug && !code-for-ibmi:debugManaged",
 					"visibility": "collapsed"
 				}
 			]
@@ -2177,6 +2191,14 @@
 				{
 					"command": "code-for-ibmi.debug.open.service.config",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchIFSBrowser",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2276,8 +2298,13 @@
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshIFSBrowser",
+					"command": "code-for-ibmi.searchIFSBrowser",
 					"group": "navigation@1",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"group": "navigation@2",
 					"when": "view == ifsBrowser"
 				},
 				{
@@ -2287,12 +2314,17 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
-					"group": "navigation@6",
+					"group": "navigation@7",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.sortFilters",
 					"group": "navigation@5",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"group": "navigation@6",
 					"when": "view == objectBrowser"
 				},
 				{

@@ -1294,6 +1294,11 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
         }
       }
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async() => {
+        vscode.commands.executeCommand('objectBrowser.focus');
+        vscode.commands.executeCommand('list.find');
     })
   );
 }
