@@ -1631,11 +1631,11 @@
 				"icon": "$(settings-gear)",
 				"enablement": "!code-for-ibmi:debugWorking"
 			},
-            {
-                "command": "code-for-ibmi.refreshFile",
-                "title": "Refresh File",
-                "category": "IBM i",
-                "icon": "$(refresh)"
+			{
+				"command": "code-for-ibmi.refreshFile",
+				"title": "Refresh File",
+				"category": "IBM i",
+				"icon": "$(refresh)"
 			},
 			{
 				"command": "code-for-ibmi.searchObjectBrowser",
@@ -1650,7 +1650,7 @@
 				"category": "IBM i",
 				"icon": "$(search-fuzzy)",
 				"enablement": "code-for-ibmi:connected"
-            }
+			}
 		],
 		"keybindings": [
 			{
