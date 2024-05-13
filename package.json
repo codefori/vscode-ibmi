@@ -971,7 +971,8 @@
 				"command": "code-for-ibmi.connectTo",
 				"title": "Connect to IBM i",
 				"category": "IBM i",
-				"icon": "$(debug-start)"
+				"icon": "$(debug-start)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectToPrevious",
@@ -983,7 +984,8 @@
 			{
 				"command": "code-for-ibmi.connectToAndReload",
 				"title": "Connect and Reload Server Settings",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
@@ -1002,27 +1004,32 @@
 			{
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"title": "Connection Settings",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login Settings",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.renameConnection",
 				"title": "Rename...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.copyConnection",
 				"title": "Copy...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.disconnect",
