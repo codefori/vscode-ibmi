@@ -339,7 +339,7 @@ export class SettingsUI {
             const storedPassword = await ConnectionManager.getStoredPassword(context, name);
             let { data: stored, index } = connection;
 
-            const ui = await new CustomUI()
+            const ui = new CustomUI()
               .addInput(`host`, t(`login.host`), undefined, { default: stored.host, minlength: 1 })
               .addInput(`port`, t(`login.port`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
               .addInput(`username`, t(`username`), undefined, { default: stored.username, minlength: 1 })
