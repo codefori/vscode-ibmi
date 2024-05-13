@@ -7,7 +7,6 @@ import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
 import { ComponentId, ComponentManager } from "../components/component";
-import { SqlToCsv } from "../components/sqlToCsv";
 import { instance } from "../instantiate";
 import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
@@ -1321,22 +1320,18 @@ export default class IBMi {
         const lastStmt = list.pop()?.trim();
         const asUpper = lastStmt?.toUpperCase();
       
-        if (lastStmt && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-          const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
-          // Currently disabled due to performance concerns
-          const sqlToCsv = this.getComponent<SqlToCsv>(`SqlToCsv`);
-          const isSimple = CopyToImport.isSimple(lastStmt);
+        if (lastStmt) {
+          if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
+            const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
+            if (copyToImport) {
+              returningAsCsv = copyToImport.wrap(lastStmt);
+              list.push(...returningAsCsv.newStatements);
+              input = list.join(`;\n`);
+            }
+          }
 
-          // If the statement is simple, then we can just use copy to import.
-          if (sqlToCsv && !isSimple) {
-            returningAsCsv = sqlToCsv.wrap(lastStmt);
-            list.push(...returningAsCsv.newStatements);
-            input = list.join(`;\n`);
-
-          } else if (copyToImport) {
-            returningAsCsv = copyToImport.wrap(lastStmt);
-            list.push(...returningAsCsv.newStatements);
-            input = list.join(`;\n`);
+          if (!returningAsCsv) {
+            list.push(lastStmt);
           }
         }
       }

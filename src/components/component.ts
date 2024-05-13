@@ -2,8 +2,6 @@ import IBMi from "../api/IBMi";
 import { CopyToImport } from "./copyToImport";
 import { GetMemberInfo } from "./getMemberInfo";
 import { GetNewLibl } from "./getNewLibl";
-import { IfsWrite } from "./ifsWrite";
-import { SqlToCsv } from "./sqlToCsv";
 
 export enum ComponentState {
   NotChecked = `NotChecked`,
@@ -13,8 +11,6 @@ export enum ComponentState {
 }
 interface ComponentRegistry {
   GetNewLibl?: GetNewLibl;
-  SqlToCsv?: SqlToCsv;
-  IfsWrite?: IfsWrite;
   CopyToImport?: CopyToImport;
   GetMemberInfo?: GetMemberInfo;
 }
@@ -38,12 +34,6 @@ export class ComponentManager {
   public async startup(connection: IBMi) {
     this.registered.GetNewLibl = new GetNewLibl(connection);
     await ComponentManager.checkState(this.registered.GetNewLibl);
-
-    this.registered.IfsWrite = new IfsWrite(connection);
-    await ComponentManager.checkState(this.registered.IfsWrite);
-
-    this.registered.SqlToCsv = new SqlToCsv(connection);
-    await ComponentManager.checkState(this.registered.SqlToCsv);
 
     this.registered.CopyToImport = new CopyToImport(connection);
     await ComponentManager.checkState(this.registered.CopyToImport);
