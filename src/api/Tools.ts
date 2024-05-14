@@ -29,7 +29,7 @@ export namespace Tools {
    * @param output /usr/bin/db2's output
    * @returns rows
    */
-  export function db2Parse(output: string): DB2Row[] {
+  export function db2Parse(output: string, input?: string): DB2Row[] {
     let gotHeaders = false;
     let figuredLengths = false;
     let iiErrorMessage = false;
@@ -67,8 +67,10 @@ export namespace Tools {
           }
 
           if (!SQLSTATE.startsWith(`01`)) {
-            let sqlError = new SqlError(`${data[index + 3]} (${SQLSTATE})`);
+            const errorMessage = data[index + 3] ? data[index + 3].trim() : `Unknown error`;
+            let sqlError = new SqlError(`${errorMessage} (${SQLSTATE})`);
             sqlError.sqlstate = SQLSTATE;
+            sqlError.cause = input;
             throw sqlError;
           }
         }
@@ -314,8 +316,8 @@ export namespace Tools {
    * @param statement the statement to fix
    * @returns statement compatible with QZDFMDB2
    */
-  export function fixSQL(statement: string) {
-    return statement.split("\n").map(line => {
+  export function fixSQL(statement: string, removeComments = false): string {
+    let statements = statement.split("\n").map(line => {
       if (line.startsWith('@')) {
         //- Escape all '
         //- Remove any trailing ;
@@ -325,8 +327,13 @@ export namespace Tools {
 
       //Make each comment start on a new line
       return line.replaceAll("--", "\n--");
+    }).join(`\n`);
+
+    if (removeComments) {
+      statements = statements.split(`\n`).filter(l => !l.trim().startsWith(`--`)).join(`\n`);
     }
-    ).join("\n");
+
+    return statements;
   }
 
   export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {

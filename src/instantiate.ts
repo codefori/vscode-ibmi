@@ -11,10 +11,9 @@ import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
+import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
-import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { initGetMemberInfo } from "./languages/sql/getmbrinfo";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
@@ -426,13 +425,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
 
+              const infoComponent = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`);
+
               // When selection is QSYS path
-              if (!selection.startsWith(`/`)) {
+              if (!selection.startsWith(`/`) && infoComponent) {
                 const lib = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const memberInfo = await content!.getMemberInfo(lib, file, member.name);
+                const memberInfo = await infoComponent.getMemberInfo(lib, file, member.name);
                 if (!memberInfo) {
                   vscode.window.showWarningMessage(`Source member ${lib}/${file}/${member.base} does not exist.`);
                   return;
@@ -735,7 +736,7 @@ async function updateConnectedBar() {
     `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
     `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
     `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
-    debugPTFInstalled() ? 
+    debugPTFInstalled() ?
       `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
       :
       `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
@@ -752,8 +753,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-  initGetNewLibl(instance);
-  initGetMemberInfo(instance);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
