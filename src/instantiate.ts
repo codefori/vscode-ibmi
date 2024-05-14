@@ -19,6 +19,7 @@ import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions,
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { t } from './locale';
 
 export let instance: Instance;
 
@@ -713,11 +714,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (doc?.isDirty) {
         vscode.window
           .showWarningMessage(
-            `Your changes will be discarded`, 
+            t(`discard.changes`), 
             { modal: true }, 
-            `Continue`)
+            t(`Continue`))
           .then(result => {
-              if (result === `Continue`) {
+              if (result === t(`Continue`)) {
                 vscode.commands.executeCommand(`workbench.action.files.revert`);
               }
         });
