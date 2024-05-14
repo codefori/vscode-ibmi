@@ -1004,14 +1004,12 @@
 			{
 				"command": "code-for-ibmi.showAdditionalSettings",
 				"title": "Connection Settings",
-				"category": "IBM i",
-				"enablement": "code-for-ibmi:editingConnection !== true"
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.showLoginSettings",
 				"title": "Login Settings",
-				"category": "IBM i",
-				"enablement": "code-for-ibmi:editingConnection !== true"
+				"category": "IBM i"
 			},
 			{
 				"command": "code-for-ibmi.renameConnection",
