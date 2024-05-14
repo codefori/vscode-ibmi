@@ -1,5 +1,6 @@
 import assert from "assert";
 import { TestSuite } from ".";
+import { Tools } from "../api/Tools";
 import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { instance } from "../instantiate";
@@ -50,8 +51,13 @@ export const ComponentSuite: TestSuite = {
         assert.strictEqual(memberInfoB?.extension === `CPP`, true);
         assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
 
-        const memberInfoC = await component.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`);
-        assert.ok(!memberInfoC);
+        try{
+          await component.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`)
+        }
+        catch(error: any){
+          assert.ok(error instanceof Tools.SqlError);
+          assert.strictEqual(error.sqlstate, "38501");
+        }
       }
     },
   ]
