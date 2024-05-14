@@ -7,8 +7,9 @@ import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
 import { ComponentId, ComponentManager } from "../components/component";
+import { CopyToImport } from "../components/copyToImport";
 import { instance } from "../instantiate";
-import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
@@ -16,7 +17,6 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
-import { CopyToImport } from "../components/copyToImport";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -618,36 +618,36 @@ export default class IBMi {
               }
             }
 
-          // Fetch conversion values?
-          if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
-            this.jobCcsid = cachedServerSettings.jobCcsid;
-            this.variantChars = cachedServerSettings.variantChars;
-            this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
-          } else {
-            progress.report({
-              message: `Fetching conversion values.`
-            });
+            // Fetch conversion values?
+            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+              this.jobCcsid = cachedServerSettings.jobCcsid;
+              this.variantChars = cachedServerSettings.variantChars;
+              this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
+            } else {
+              progress.report({
+                message: `Fetching conversion values.`
+              });
 
-            // Next, we're going to see if we can get the CCSID from the user or the system.
-            // Some things don't work without it!!!
-            try {
+              // Next, we're going to see if we can get the CCSID from the user or the system.
+              // Some things don't work without it!!!
+              try {
 
-              // we need to grab the system CCSID (QCCSID)
-              const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-              if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-                this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-              }
+                // we need to grab the system CCSID (QCCSID)
+                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
+                }
 
-              // we grab the users default CCSID
-              const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-              if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
-              }
+                // we grab the users default CCSID
+                const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+                  this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
+                }
 
-              // if the job ccsid is *SYSVAL, then assign it to sysval
-              if (this.jobCcsid === CCSID_SYSVAL) {
-                this.jobCcsid = this.qccsid;
-              }
+                // if the job ccsid is *SYSVAL, then assign it to sysval
+                if (this.jobCcsid === CCSID_SYSVAL) {
+                  this.jobCcsid = this.qccsid;
+                }
 
                 // Let's also get the user's default CCSID
                 try {
@@ -694,13 +694,13 @@ export default class IBMi {
             }
           }
 
-        if (!this.enableSQL) {
-          const encoding = this.getEncoding();
-          // Show a message if the system CCSID is bad
-          const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
+          if (!this.enableSQL) {
+            const encoding = this.getEncoding();
+            // Show a message if the system CCSID is bad
+            const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
 
-          // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
-          const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
+            // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
+            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
 
             vscode.window.showErrorMessage([
               ccsidMessage,
@@ -894,8 +894,8 @@ export default class IBMi {
             }
           }
 
-        progress.report({ message: `Checking Code for IBM i components.` });
-        await this.components.startup(this);
+          progress.report({ message: `Checking Code for IBM i components.` });
+          await this.components.startup(this);
 
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
@@ -1319,7 +1319,7 @@ export default class IBMi {
         let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
         const lastStmt = list.pop()?.trim();
         const asUpper = lastStmt?.toUpperCase();
-      
+
         if (lastStmt) {
           if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
             const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
@@ -1343,7 +1343,7 @@ export default class IBMi {
 
       if (output.stdout) {
         Tools.db2Parse(output.stdout, input);
-        
+
         if (returningAsCsv) {
           // Will throw an error if stdout contains an error
 

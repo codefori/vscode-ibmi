@@ -1,9 +1,7 @@
-import { posix } from "path";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { instance } from "../instantiate";
-import { ComponentState, ComponentT } from "./component";
 import { WrapResult } from "../typings";
+import { ComponentState, ComponentT } from "./component";
 
 export class CopyToImport implements ComponentT {
   private readonly name = 'CPYTOIMPF';

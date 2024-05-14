@@ -1,8 +1,8 @@
 import assert from "assert";
 import { TestSuite } from ".";
+import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { instance } from "../instantiate";
-import { GetMemberInfo } from "../components/getMemberInfo";
 
 export const ComponentSuite: TestSuite = {
   name: `Component tests`,
@@ -34,7 +34,7 @@ export const ComponentSuite: TestSuite = {
 
         assert.ok(component);
 
-        const memberInfoA = await component.getMemberInfo(`QSYSINC`, `H`, `MATH` );
+        const memberInfoA = await component.getMemberInfo(`QSYSINC`, `H`, `MATH`);
         assert.ok(memberInfoA);
         assert.strictEqual(memberInfoA?.library === `QSYSINC`, true);
         assert.strictEqual(memberInfoA?.file === `H`, true);
@@ -42,7 +42,7 @@ export const ComponentSuite: TestSuite = {
         assert.strictEqual(memberInfoA?.extension === `C`, true);
         assert.strictEqual(memberInfoA?.text === `STANDARD HEADER FILE MATH`, true);
 
-        const memberInfoB = await component.getMemberInfo(`QSYSINC`, `H`, `MEMORY` );
+        const memberInfoB = await component.getMemberInfo(`QSYSINC`, `H`, `MEMORY`);
         assert.ok(memberInfoB);
         assert.strictEqual(memberInfoB?.library === `QSYSINC`, true);
         assert.strictEqual(memberInfoB?.file === `H`, true);
@@ -50,7 +50,7 @@ export const ComponentSuite: TestSuite = {
         assert.strictEqual(memberInfoB?.extension === `CPP`, true);
         assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
 
-        const memberInfoC = await component.getMemberInfo(`QSYSINC`, `H`, `OH_NONO` );
+        const memberInfoC = await component.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`);
         assert.ok(!memberInfoC);
       }
     },

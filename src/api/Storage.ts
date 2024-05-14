@@ -55,7 +55,7 @@ export type CachedServerSettings = {
   libraryListValidated: boolean | null
   pathChecked?: boolean
   userDefaultCCSID: number | null
-  debugConfigLoaded : boolean
+  debugConfigLoaded: boolean
 } | undefined;
 
 export class GlobalStorage extends Storage {

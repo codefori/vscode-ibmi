@@ -11,13 +11,13 @@ import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
+import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import { GetMemberInfo } from './components/getMemberInfo';
 
 export let instance: Instance;
 
@@ -737,7 +737,7 @@ async function updateConnectedBar() {
     `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
     `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
     `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
-    debugPTFInstalled() ? 
+    debugPTFInstalled() ?
       `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
       :
       `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`

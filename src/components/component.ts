@@ -43,7 +43,7 @@ export class ComponentManager {
   }
 
   // TODO: return type based on ComponentIds
-  get<T>(id: ComponentId): T|undefined {
+  get<T>(id: ComponentId): T | undefined {
     const component = this.registered[id];
     if (component && component.getState() === ComponentState.Installed) {
       return component as T;
@@ -52,7 +52,7 @@ export class ComponentManager {
 
   private static async checkState(component: ComponentT) {
     try {
-      await component.checkState(); 
+      await component.checkState();
     } catch (e) {
       console.log(component);
       console.log(`Error checking state for ${component.constructor.name}`, e);

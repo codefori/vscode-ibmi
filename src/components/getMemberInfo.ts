@@ -1,9 +1,9 @@
 import { posix } from "path";
 import IBMi from "../api/IBMi";
-import { instance } from "../instantiate";
-import { ComponentState, ComponentT } from "./component";
 import { Tools } from "../api/Tools";
+import { instance } from "../instantiate";
 import { IBMiMember } from "../typings";
+import { ComponentState, ComponentT } from "./component";
 
 export class GetMemberInfo implements ComponentT {
   public readonly name = 'GETMBRINFO';
@@ -80,7 +80,7 @@ export class GetMemberInfo implements ComponentT {
       if (config.enableSQL) {
         try {
           results = await this.connection.runSQL(statement);
-        } catch (e) {}; // Ignore errors, will return undefined.
+        } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
         results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");

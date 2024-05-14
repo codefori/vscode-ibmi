@@ -90,5 +90,5 @@ function getSource(library: string) {
     `END;`,
     ``,
     `call QSYS2.QCMDEXC( 'grtobjaut ${library}/GETNEWLIBL *PGM *PUBLIC *ALL' );`
-].join(`\n`), "utf8");
+  ].join(`\n`), "utf8");
 }

@@ -5,10 +5,10 @@ import tmp from 'tmp';
 import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
+import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
-import { Tools } from "../api/Tools";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,

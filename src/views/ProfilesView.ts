@@ -1,12 +1,11 @@
 
 import vscode, { window } from 'vscode';
-import { Profile } from '../typings';
 import { ConnectionConfiguration } from '../api/Configuration';
-
-import { instance } from '../instantiate';
-import { CommandProfile } from '../webviews/commandProfile';
-import { t } from "../locale";
 import { GetNewLibl } from '../components/getNewLibl';
+import { instance } from '../instantiate';
+import { t } from "../locale";
+import { Profile } from '../typings';
+import { CommandProfile } from '../webviews/commandProfile';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();

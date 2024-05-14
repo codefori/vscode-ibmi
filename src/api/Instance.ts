@@ -1,9 +1,8 @@
 import * as vscode from "vscode";
-import IBMi from "./IBMi";
-import IBMiContent from "./IBMiContent";
-import { ConnectionStorage, GlobalStorage } from "./Storage";
-import { ConnectionConfiguration } from "./Configuration";
 import { IBMiEvent } from "../typings";
+import { ConnectionConfiguration } from "./Configuration";
+import IBMi from "./IBMi";
+import { ConnectionStorage, GlobalStorage } from "./Storage";
 
 export default class Instance {
   private connection: IBMi | undefined;
