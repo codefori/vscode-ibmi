@@ -964,36 +964,42 @@
 				"command": "code-for-ibmi.connect",
 				"title": "New Connection",
 				"category": "IBM i",
-				"icon": "$(add)"
+				"icon": "$(add)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectTo",
 				"title": "Connect to IBM i",
 				"category": "IBM i",
-				"icon": "$(debug-start)"
+				"icon": "$(debug-start)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectToPrevious",
 				"title": "Connect to Previous IBM i",
 				"category": "IBM i",
-				"icon": "$(remote)"
+				"icon": "$(remote)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectToAndReload",
 				"title": "Connect and Reload Server Settings",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
 				"title": "Refresh",
 				"category": "IBM i",
-				"icon": "$(refresh)"
+				"icon": "$(refresh)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.sortConnections",
 				"title": "Sort",
 				"category": "IBM i",
-				"icon": "$(list-ordered)"
+				"icon": "$(list-ordered)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.showAdditionalSettings",
@@ -1008,17 +1014,20 @@
 			{
 				"command": "code-for-ibmi.renameConnection",
 				"title": "Rename...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.copyConnection",
 				"title": "Copy...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.disconnect",

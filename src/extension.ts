@@ -8,7 +8,7 @@ import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 
 import { CompileTools } from "./api/CompileTools";
-import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
@@ -38,7 +38,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
 
   await loadAllofExtension(context);
   const checkLastConnections = () => {
-    const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
+    const connections = ConnectionManager.getAll();
     const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
     GlobalStorage.get().setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
@@ -72,7 +72,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         }
 
         if (savePassword && connectionData.password) {
-          await context.secrets.store(`${connectionData.name}_password`, `${connectionData.password}`);
+          await ConnectionManager.setStoredPassword(context, connectionData.name, connectionData.password);
         }
 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
@@ -118,8 +118,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView")
     ]);
   });
-
-  await fixLoginSettings();
 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
