@@ -298,38 +298,7 @@ export default class IBMiContent {
   }
 
   /**
-   * @param ileCommand Command that would change the library list, like CHGLIBL
-   */
-  async getLibraryListFromCommand(ileCommand: string): Promise<{ currentLibrary: string; libraryList: string[]; } | undefined> {
-    if (this.ibmi.remoteFeatures[`GETNEWLIBL.PGM`]) {
-      const tempLib = this.config.tempLibrary;
-      const resultSet = await this.ibmi.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
-
-      let result = {
-        currentLibrary: `QGPL`,
-        libraryList: [] as string[]
-      };
-
-      resultSet.forEach(row => {
-        const libraryName = String(row.SYSTEM_SCHEMA_NAME);
-        switch (row.PORTION) {
-          case `CURRENT`:
-            result.currentLibrary = libraryName;
-            break;
-          case `USER`:
-            result.libraryList.push(libraryName);
-            break;
-        }
-      })
-
-      return result;
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Download the contents of a table.
+   * Download the contents of a member from a table.
    * @param library
    * @param file
    * @param member Will default to file provided
@@ -338,52 +307,38 @@ export default class IBMiContent {
   async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
-    if (file === member && this.ibmi.enableSQL) {
-      const data = await this.ibmi.runSQL(`SELECT * FROM ${library}.${file}`);
+    const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
+    const copyResult = await this.ibmi.runCommand({
+      command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
+        `TOSTMF('${tempRmt}') ` +
+        `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
+      noLibList: true
+    });
 
-      if (deleteTable && this.config.autoClearTempData) {
-        await this.ibmi.runCommand({
-          command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`,
-          noLibList: true
-        });
+    if (copyResult.code === 0) {
+      let result = await this.downloadStreamfile(tempRmt);
+
+      if (this.config.autoClearTempData) {
+        Promise.allSettled([
+          this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
+          deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
+        ]);
       }
 
-      return data;
-
-    } else {
-      const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
-      const copyResult = await this.ibmi.runCommand({
-        command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
-          `TOSTMF('${tempRmt}') ` +
-          `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
-        noLibList: true
+      return parse(result, {
+        columns: true,
+        skip_empty_lines: true,
+        cast: true,
+        onRecord(record) {
+          for (const key of Object.keys(record)) {
+            record[key] = record[key] === ` ` ? `` : record[key];
+          }
+          return record;
+        }
       });
 
-      if (copyResult.code === 0) {
-        let result = await this.downloadStreamfile(tempRmt);
-
-        if (this.config.autoClearTempData) {
-          Promise.allSettled([
-            this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
-            deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
-          ]);
-        }
-
-        return parse(result, {
-          columns: true,
-          skip_empty_lines: true,
-          cast: true,
-          onRecord(record) {
-            for (const key of Object.keys(record)) {
-              record[key] = record[key] === ` ` ? `` : record[key];
-            }
-            return record;
-          }
-        });
-
-      } else {
-        throw new Error(`Failed fetching table: ${copyResult.stderr}`);
-      }
+    } else {
+      throw new Error(`Failed fetching table: ${copyResult.stderr}`);
     }
 
   }

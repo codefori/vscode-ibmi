@@ -12,6 +12,7 @@ import { getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";
+import { ConnectionManager } from "../Configuration";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -176,7 +177,7 @@ export async function initialize(context: ExtensionContext) {
   const getPassword = async () => {
     const connection = instance.getConnection();
 
-    let password = await context.secrets.get(`${connection!.currentConnectionName}_password`);
+    let password = await ConnectionManager.getStoredPassword(context, connection!.currentConnectionName);
 
     if (!password) {
       password = temporaryPassword;
@@ -363,7 +364,9 @@ export async function initialize(context: ExtensionContext) {
       //Enable service entry points related commands
       vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
 
-      if (!isManaged()) {
+      const isDebugManaged = isManaged();
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
+      if (!isDebugManaged) {
         const isSecure = connection.config!.debugIsSecure;
 
         if (validateIPv4address(connection.currentHost) && isSecure) {
@@ -379,8 +382,6 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.executeCommand(`setContext`, debugContext, false);
     vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
   });
-
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());
 }
 
 function validateIPv4address(ipaddress: string) {
@@ -471,7 +472,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       const debugConfig = {
         "type": `IBMiDebug`,
         "request": `launch`,
-        "name": `Remote debug: Launch a batch debug session`,
+        "name": `IBM i batch debug: program ${options.library.toUpperCase()}/${options.object.toUpperCase()}`,
         "user": connection!.currentUser.toUpperCase(),
         "password": options.password,
         "host": connection!.currentHost,

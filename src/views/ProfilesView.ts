@@ -1,11 +1,11 @@
 
 import vscode, { window } from 'vscode';
-import { Profile } from '../typings';
 import { ConnectionConfiguration } from '../api/Configuration';
-
+import { GetNewLibl } from '../components/getNewLibl';
 import { instance } from '../instantiate';
-import { CommandProfile } from '../webviews/commandProfile';
 import { t } from "../locale";
+import { Profile } from '../typings';
+import { CommandProfile } from '../webviews/commandProfile';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -113,7 +113,7 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.loadCommandProfile`, async (commandProfile?: CommandProfileItem) => {
-        const content = instance.getContent();
+        const connection = instance.getConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
         if (commandProfile && config && storage) {
@@ -121,7 +121,8 @@ export class ProfilesView {
 
           if (storedProfile) {
             try {
-              const newSettings = await content?.getLibraryListFromCommand(storedProfile.command);
+              const component = connection?.getComponent<GetNewLibl>(`GetNewLibl`)
+              const newSettings = await component?.getLibraryListFromCommand(storedProfile.command);
 
               if (newSettings) {
                 config.libraryList = newSettings.libraryList;
