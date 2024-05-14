@@ -1095,6 +1095,11 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.compareWithActiveFile",
+				"title": "Compare with Active File",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.changeCurrentLibrary",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Change Current Library...",
@@ -2186,6 +2191,10 @@
 				{
 					"command": "code-for-ibmi.debug.open.service.config",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2504,6 +2513,11 @@
 					"group": "2_compare@4"
 				},
 				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"group": "2_compare@5"
+				},
+				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == objectBrowser && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
@@ -2794,6 +2808,11 @@
 					"command": "code-for-ibmi.compareCurrentFileWithLocal",
 					"when": "!explorerResourceIsFolder",
 					"group": "3_compare@41"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "!explorerResourceIsFolder",
+					"group": "3_compare@42"
 				}
 			]
 		},
