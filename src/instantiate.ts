@@ -712,7 +712,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       if (doc?.isDirty) {
         vscode.window
-          .showWarningMessage(`Your changes will be discarded`, `Continue`, `Cancel`)
+          .showWarningMessage(
+            `Your changes will be discarded`, 
+            { modal: true }, 
+            `Continue`)
           .then(result => {
               if (result === `Continue`) {
                 vscode.commands.executeCommand(`workbench.action.files.revert`);
