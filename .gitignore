@@ -3,4 +3,3 @@ node_modules
 *.vsix
 dist
 .DS_Store
-.vscode/
