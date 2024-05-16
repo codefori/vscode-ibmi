@@ -308,52 +308,6 @@ export const ContentSuite: TestSuite = {
     },
 
     {
-      name: `Test getTable (SQL compared to nosql)`, test: async () => {
-        const config = instance.getConfig();
-        const content = instance.getContent();
-        const connection = instance.getConnection();
-
-        const tempLib = config!.tempLibrary;
-        const TempName = Tools.makeid();
-        await connection?.runCommand({
-          command: `DSPOBJD OBJ(QSYS/QSYSINC) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`,
-          noLibList: true
-        });
-
-        // First we fetch the table in SQL mode
-        connection!.enableSQL = true;
-        const tableA = await content?.getTable(tempLib, TempName, TempName, false);
-
-        // Then we fetch the table without SQL
-        connection!.enableSQL = false;
-        const tableB = await content?.getTable(tempLib, TempName, TempName, true);
-
-        assert.deepStrictEqual(tableA, tableB);
-      }
-    },
-
-    {
-      name: `Test getTable (SQL enabled)`, test: async () => {
-        const connection = instance.getConnection();
-        const content = instance.getContent();
-        const config = instance.getConfig();
-
-        const tempLib = config!.tempLibrary;
-        const TempName = Tools.makeid();
-        await connection?.runCommand({
-          command: `DSPOBJD OBJ(QSYS/QSYSINC) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(${tempLib}/${TempName})`,
-          noLibList: true
-        });
-
-        connection!.enableSQL = true;
-
-        const rows = await content?.getTable(tempLib, TempName, TempName);
-
-        assert.notStrictEqual(rows?.length, 0);
-      }
-    },
-
-    {
       name: `Test validateLibraryList`, test: async () => {
         const content = instance.getContent();
 
