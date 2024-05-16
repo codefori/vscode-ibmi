@@ -57,7 +57,9 @@ export class IFSFS implements vscode.FileSystemProvider {
             }
           }
         }
-        if (!currentStat) {
+        if (currentStat) {
+          this.statCache.set(uri, currentStat);
+        } else {
           this.statCache.set(uri, null);
           throw FileSystemError.FileNotFound(uri);
         }
@@ -71,7 +73,6 @@ export class IFSFS implements vscode.FileSystemProvider {
           permissions: getFilePermission(uri)
         }
       }
-      this.statCache.set(uri, currentStat);
     }
     else if (currentStat === null) {
       throw FileSystemError.FileNotFound(uri);
@@ -81,18 +82,16 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
-    console.log(options);
     const path = uri.path;
     const exists = this.statCache.get(path);
     this.statCache.clear(path);
     const contentApi = instance.getContent();
     if (contentApi) {
-      if (!content.length) {
-        //Coming from "Save as"; we await so the next call to stat finds the new file
+      if (!content.length) { //Coming from "Save as"        
         await contentApi.createStreamFile(path);
       }
       else {
-        contentApi.writeStreamfileRaw(path, content);
+        await contentApi.writeStreamfileRaw(path, content);
       }
       if (!exists) {
         vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
@@ -104,7 +103,6 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   copy(source: vscode.Uri, destination: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
-    console.log(source, destination, options);
     this.statCache.clear(destination);
   }
 
@@ -117,15 +115,30 @@ export class IFSFS implements vscode.FileSystemProvider {
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
     const content = instance.getContent();
     if (content) {
-      return (await content.getFileList(uri.path)).map(ifsFile => ([ifsFile.path, ifsFile.type === "directory" ? FileType.Directory : FileType.File]));
+      return (await content.getFileList(uri.path)).map(ifsFile => ([ifsFile.name, ifsFile.type === "directory" ? FileType.Directory : FileType.File]));
     }
     else {
       throw new Error("Not connected to IBM i");
     }
   }
 
-  createDirectory(uri: vscode.Uri): void | Thenable<void> {
-    throw new Error(`createDirectory not implemented in IFSFS.`);
+  async createDirectory(uri: vscode.Uri) {
+    const connection = instance.getConnection();
+    if (connection) {
+      const path = uri.path;
+      if (await connection.content.testStreamFile(path, "d")) {
+        throw FileSystemError.FileExists(uri);
+      }
+      else {
+        const result = await connection.sendCommand({ command: `mkdir -p ${path}` });
+        if (result.code === 0) {
+          this.statCache.clear(uri);
+        }
+        else {
+          throw FileSystemError.NoPermissions(result.stderr);
+        }
+      }
+    }
   }
 
   delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
