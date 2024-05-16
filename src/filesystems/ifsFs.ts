@@ -30,7 +30,7 @@ export class IFSFS implements vscode.FileSystemProvider {
     }
     else {
       if (retrying) {
-        throw new Error("Not connected to IBM i");
+        throw new FileSystemError("Not connected to IBM i");
       }
       else {
         await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
@@ -98,7 +98,7 @@ export class IFSFS implements vscode.FileSystemProvider {
       }
     }
     else {
-      throw new Error("Not connected to IBM i");
+      throw new FileSystemError("Not connected to IBM i");
     }
   }
 
@@ -118,7 +118,7 @@ export class IFSFS implements vscode.FileSystemProvider {
       return (await content.getFileList(uri.path)).map(ifsFile => ([ifsFile.name, ifsFile.type === "directory" ? FileType.Directory : FileType.File]));
     }
     else {
-      throw new Error("Not connected to IBM i");
+      throw new FileSystemError("Not connected to IBM i");
     }
   }
 
@@ -143,6 +143,6 @@ export class IFSFS implements vscode.FileSystemProvider {
 
   delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
     this.statCache.clear(uri);
-    throw new Error(`delete not implemented in IFSFS.`);
+    throw new FileSystemError(`delete not implemented in IFSFS.`);
   }
 }

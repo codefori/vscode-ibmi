@@ -146,12 +146,12 @@ export class QSysFS implements vscode.FileSystemProvider {
                 return new Uint8Array(Buffer.from(memberContent, `utf8`));
             }
             else {
-                throw new Error(`Couldn't read ${uri}; check IBM i connection.`);
+                throw new FileSystemError(`Couldn't read ${uri}; check IBM i connection.`);
             }
         }
         else {
             if (retrying) {
-                throw new Error("Not connected to IBM i");
+                throw new FileSystemError("Not connected to IBM i");
             }
             else {
                 await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
@@ -173,7 +173,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                     noLibList: true
                 });
                 if (addMember.code !== 0) {
-                    throw new Error(addMember.stderr);
+                    throw new FileSystemError(addMember.stderr);
                 }
             }
             else {
@@ -187,7 +187,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             }
         }
         else {
-            throw new Error("Not connected to IBM i");
+            throw new FileSystemError("Not connected to IBM i");
         }
     }
 
@@ -252,6 +252,6 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
         this.statCache.clear(uri.path);
-        throw new Error("Method not implemented.");
+        throw new FileSystemError("Method not implemented.");
     }
 }
