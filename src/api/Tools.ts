@@ -177,11 +177,11 @@ export namespace Tools {
    */
   export function qualifyPath(library: string, object: string, member?: string, iasp?: string, sanitise?: boolean) {
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
-    const filePath = `${object}.FILE`;
+    const filePath = object ? `/${object}.FILE` : '';
     const memberPath = member ? `/${member}.MBR` : '';
     const subPath = `${filePath}${memberPath}`;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${sanitise ? subPath : Tools.escapePath(subPath)}`;
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}${subPath && sanitise ? subPath : Tools.escapePath(subPath)}`;
     return result;
   }
 
@@ -275,7 +275,7 @@ export namespace Tools {
   }
 
   export function parseQSysPath(path: string): QsysPath {
-    const parts = path.split('/');
+    const parts = path.split('/').filter(Boolean);
     if (parts.length > 3) {
       return {
         asp: parts[0],
