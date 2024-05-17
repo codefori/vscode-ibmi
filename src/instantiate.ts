@@ -521,8 +521,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       quickPick.onDidTriggerItemButton((event: vscode.QuickPickItemButtonEvent<vscode.QuickPickItem>) => {
         if (event.button.iconPath == compareIcon) {
-          let path = vscode.Uri.parse(`streamfile:${event.item.label}`);
-          let currentFile;
+          let path: vscode.Uri;
+          let currentFile: vscode.Uri;
+          if (event.item.label.startsWith('/')) {
+            path = vscode.Uri.parse(`streamfile:${event.item.label}`);
+          } else {
+            path = vscode.Uri.parse(`member:/${event.item.label}`);
+          }
+
           const editor = vscode.window.activeTextEditor;
           if (editor) {
               currentFile = editor.document.uri;
