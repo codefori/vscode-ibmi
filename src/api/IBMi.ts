@@ -1125,7 +1125,7 @@ export default class IBMi {
     const upperCasedString = this.upperCaseName(string);
     const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
 
-    const parsedPath = parsePath(string);
+    const parsedPath = parsePath(upperCasedString);
     const name = parsedPath.name;
     const file = path[path.length - 2];
     const library = path[path.length - 3];
