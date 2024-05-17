@@ -798,7 +798,7 @@ export default class IBMiContent {
 
           // This can error if the path format is wrong for some reason.
           // Not that this would ever happen, but better to be safe than sorry
-          return this.ibmi.parserMemberPath(simplePath);
+          return this.ibmi.parserMemberPath(simplePath, true);
         } catch (e) {
           console.log(e);
         }

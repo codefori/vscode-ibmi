@@ -93,8 +93,8 @@ export class QSysFS implements vscode.FileSystemProvider {
         const pathLength = path.split(`/`).length;
         if (pathLength > 4 || !path.startsWith('/')) {
             throw new vscode.FileSystemError("Invalid member path");
-        }        
-        const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
+        }
+        const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;        
         let currentStat = this.statCache.get(path);
         if (currentStat === undefined) {
             const content = instance.getContent();
@@ -161,12 +161,13 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
-        const exists = this.statCache.get(uri.path);
-        this.statCache.clear(uri);
+        const path = uri.path;
+        const exists = this.statCache.get(path);
+        this.statCache.clear(path);
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, name: member, extension } = connection.parserMemberPath(uri.path);
+            const { asp, library, file, name: member, extension } = connection.parserMemberPath(path);
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({
                     command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
