@@ -185,6 +185,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithMember`, async (node) => {
+      compareCurrentFile(node, `member`);
+    }),
     vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithStream`, async (node) => {
         compareCurrentFile(node, `streamfile`);
     }),
@@ -866,11 +869,11 @@ async function createQuickPickItemsList(
   return returnedList;
 }
 
-async function compareCurrentFile(node: any, scheme: `streamfile` | `file`) {
-  let currentFile;
+async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `member`) {
+  let currentFile: vscode.Uri | undefined;
   // If we are comparing with an already targeted node
   if (node) {
-    if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem` || node.constructor.name === `ObjectBrowserItem`) {
+    if (node.resourceUri) {
       currentFile = node.resourceUri;
     } else if (node.scheme === `file`) {
       currentFile = node

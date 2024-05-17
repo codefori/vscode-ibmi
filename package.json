@@ -1093,6 +1093,12 @@
 				"category": "IBM i"
 			},
 			{
+				"command": "code-for-ibmi.compareCurrentFileWithMember",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with member...",
+				"category": "IBM i"
+			},
+			{
 				"command": "code-for-ibmi.compareCurrentFileWithStream",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Compare with IFS file...",
@@ -1924,6 +1930,10 @@
 					"when": "code-for-ibmi:connected"
 				},
 				{
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
+					"when": "code-for-ibmi:connected"
+				},
+				{
 					"command": "code-for-ibmi.goToFileReadOnly",
 					"when": "code-for-ibmi:connected"
 				},
@@ -2544,19 +2554,24 @@
 					"group": "2_compare@2"
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithStream",
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
 					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@3"
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"command": "code-for-ibmi.compareCurrentFileWithStream",
 					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@4"
 				},
 				{
-					"command": "code-for-ibmi.compareWithActiveFile",
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
 					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
 					"group": "2_compare@5"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"group": "2_compare@6"
 				},
 				{
 					"command": "code-for-ibmi.createMember",
@@ -2841,19 +2856,24 @@
 			],
 			"explorer/context" : [
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithStream",
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
 					"when": "code-for-ibmi:connected",
 					"group": "3_compare@40"
 				},
 				{
+					"command": "code-for-ibmi.compareCurrentFileWithStream",
+					"when": "code-for-ibmi:connected",
+					"group": "3_compare@41"
+				},
+                {
 					"command": "code-for-ibmi.compareCurrentFileWithLocal",
 					"when": "!explorerResourceIsFolder",
-					"group": "3_compare@41"
+					"group": "3_compare@42"
 				},
 				{
 					"command": "code-for-ibmi.compareWithActiveFile",
 					"when": "!explorerResourceIsFolder",
-					"group": "3_compare@42"
+					"group": "3_compare@43"
 				}
 			]
 		},
