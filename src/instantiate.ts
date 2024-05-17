@@ -893,13 +893,16 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `me
   }
 
   if (currentFile) {
-    const compareWith = await vscode.window.showInputBox({
+    let compareWith = await vscode.window.showInputBox({
       prompt: t(`compare.prompt`),
       title: t(`compare.title`), 
       value: currentFile.path
     });
     
     if (compareWith) {
+      if (scheme == 'member' && !compareWith.startsWith('/')) {
+        compareWith = `/${compareWith}`;
+      }
       let uri = vscode.Uri.parse(`${scheme}:${compareWith}`);
       vscode.commands.executeCommand(`vscode.diff`, currentFile, uri);
     }
