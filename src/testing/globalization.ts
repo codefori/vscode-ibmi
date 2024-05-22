@@ -4,7 +4,7 @@ import { instance } from "../instantiate";
 
 const testData = {
   '273': {
-    library: '"Ü§#$%Ä"',
+    library: '"AÜ§#$%Ä"',
     libraryText: '"§#$öße"',
     object: '"àáãÄ£ø"',
     objectText: '"Üä$öß"',
