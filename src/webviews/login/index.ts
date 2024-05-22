@@ -1,9 +1,10 @@
 import vscode from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
 import { ConnectionData } from '../../typings';
+import { t } from "../../locale";
 
 type NewLoginSettings = ConnectionData & {
   savePassword: boolean
@@ -24,17 +25,15 @@ export class Login {
       if (!disconnect()) return;
     }
 
-    const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-
     const connectionTab = new Section()
       .addInput(`name`, `Connection Name`, undefined, { minlength: 1 })
-      .addInput(`host`, `Host or IP Address`, undefined, { minlength: 1 })
-      .addInput(`port`, `Port (SSH)`, ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-      .addInput(`username`, `Username`, undefined, { minlength: 1, maxlength: 10 })
-      .addParagraph(`Only provide either the password or a private key - not both.`)
-      .addPassword(`password`, `Password`)
-      .addCheckbox(`savePassword`, `Save Password`)
-      .addFile(`privateKeyPath`, `Private Key`, `OpenSSH, RFC4716, or PPK formats are supported.`);
+      .addInput(`host`, t(`login.host`), undefined, { minlength: 1 })
+      .addInput(`port`, t(`login.port`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+      .addInput(`username`, t(`username`), undefined, { minlength: 1, maxlength: 10 })
+      .addParagraph(t(`login.authDecision`))
+      .addPassword(`password`, t(`password`))
+      .addCheckbox(`savePassword`, t(`login.savePassword`))
+      .addFile(`privateKeyPath`, t(`privateKey`), t(`login.privateKey.support`));
 
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
@@ -58,34 +57,31 @@ export class Login {
       data.port = Number(data.port);
       data.privateKeyPath = data.privateKeyPath?.trim() ? data.privateKeyPath : undefined;
       if (data.name) {
-        const existingConnection = existingConnections.find(item => item.name === data.name);
+        const existingConnection = ConnectionManager.getByName(data.name);
 
         if (existingConnection) {
           vscode.window.showErrorMessage(`Connection with name ${data.name} already exists.`);
         } else {
-          const newConnection = (!existingConnections.some(item => item.name === data.name));
-          if (newConnection) {
-            // New connection!
-            existingConnections.push({
-              name: data.name,
-              host: data.host,
-              port: data.port,
-              username: data.username,
-              privateKeyPath: data.privateKeyPath
-            });
+          // New connection!
+          const newConnection: ConnectionData = {
+            name: data.name,
+            host: data.host,
+            port: data.port,
+            username: data.username,
+            privateKeyPath: data.privateKeyPath
+          };
 
-            if (data.savePassword) {
-              await context.secrets.store(`${data.name}_password`, `${data.password}`);
-            }
-
-            await GlobalConfiguration.set(`connections`, existingConnections);
-
-            const config = await ConnectionConfiguration.load(data.name)
-            config.tempLibrary = data.tempLibrary;
-            config.tempDir = data.tempDir;
-            ConnectionConfiguration.update(config);
-            vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+          if (data.savePassword && data.password) {
+            await ConnectionManager.setStoredPassword(context, data.name, data.password);
           }
+
+          await ConnectionManager.storeNew(newConnection);
+
+          const config = await ConnectionConfiguration.load(data.name)
+          config.tempLibrary = data.tempLibrary;
+          config.tempDir = data.tempDir;
+          ConnectionConfiguration.update(config);
+          vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
 
           switch (data.buttons) {
             case `saveExit`:
@@ -140,25 +136,25 @@ export class Login {
    * @param context
    */
   static async LoginToPrevious(name: string, context: vscode.ExtensionContext, reloadServerSettings?: boolean) {
-    const connection = instance.getConnection();
-    if (connection) {
+    const existingConnection = instance.getConnection();
+    if (existingConnection) {
       // If the user is already connected and trying to connect to a different system, disconnect them first
-      if (name !== connection.currentConnectionName) {
-        vscode.window.showInformationMessage(`Disconnecting from ${connection.currentHost}.`);
-        if (!disconnect()) return false;
+      if (name !== existingConnection.currentConnectionName) {
+        vscode.window.showInformationMessage(`Disconnecting from ${existingConnection.currentHost}.`);
+        if (!await disconnect()) return false;
       }
     }
 
-    const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-    let connectionConfig = existingConnections.find(item => item.name === name);
-    if (connectionConfig) {
+    const connection = ConnectionManager.getByName(name);
+    if (connection) {
+      const connectionConfig = connection.data;
       if (connectionConfig.privateKeyPath) {
         // If connecting with a private key, remove the password
-        await context.secrets.delete(`${connectionConfig.name}_password`);
+        await ConnectionManager.deleteStoredPassword(context, connectionConfig.name);
 
       } else {
         // Assume connection with a password, but prompt if we don't have one
-        connectionConfig.password = await context.secrets.get(`${connectionConfig.name}_password`);
+        connectionConfig.password = await ConnectionManager.getStoredPassword(context, connectionConfig.name);
         if (!connectionConfig.password) {
           connectionConfig.password = await vscode.window.showInputBox({
             prompt: `Password for ${connectionConfig.name}`,

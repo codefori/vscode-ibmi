@@ -172,6 +172,8 @@ export class CustomUI extends Section {
 
     let didSubmit = false;
 
+    openedWebviews.set(title, panel);
+
     if (callback) {
       panel.webview.onDidReceiveMessage(
         message => {
@@ -184,9 +186,7 @@ export class CustomUI extends Section {
         openedWebviews.delete(title);
         if (!didSubmit) {
           callback({ panel });
-        }
-
-        openedWebviews.set(title, panel);
+        }        
       });
     } else {
       const page = new Promise<Page<T>>((resolve) => {
@@ -205,7 +205,6 @@ export class CustomUI extends Section {
         });
       });
 
-      openedWebviews.set(title, panel);
       return page;
     }
   }
