@@ -290,11 +290,6 @@ export class SettingsUI {
                           .filter(Tools.distinct);
                         break;
                     }
-
-                    //Refresh connection browser if not connected
-                    if (!instance.getConnection()) {
-                      vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
-                    }
                   }
 
                   if (restartFields.some(item => data[item] && data[item] !== config[item])) {
@@ -322,6 +317,11 @@ export class SettingsUI {
                       vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
                       vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
                     }
+                  }
+
+                  //Refresh connection browser if not connected
+                  else {
+                    vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
                   }
                   break;
               }
