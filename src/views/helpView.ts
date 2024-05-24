@@ -154,7 +154,7 @@ async function getRemoteSection() {
           '|-|-|',
           `|IBM i OS|${osVersion?.OS || '?'}|`,
           `|Tech Refresh|${osVersion?.TR || '?'}|`,
-          `|CCSID Origin|${ccsids.origin}|`,
+          `|CCSID Origin|${ccsids.qccsid}|`,
           `|Runtime CCSID|${ccsids.runtimeCcsid || '?'}|`,
           `|Default CCSID|${ccsids.userDefaultCCSID || '?'}|`,
           `|SQL|${connection.enableSQL ? 'Enabled' : 'Disabled'}`,
