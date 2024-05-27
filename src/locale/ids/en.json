@@ -197,6 +197,8 @@
   "JOB_STATUS": "Job status",
   "JOB_USER": "Job user",
   "jvm.info": "JVM information",
+  "keepaliveInterval":"Keepalive interval",
+  "keepaliveInterval.description":"How often (in milliseconds) to send SSH-level keepalive packets to the server. Set to 0 to disable.",
   "length": "Length",
   "LibraryListView.addToLibraryList.addedLib": "Library {0} was added to the library list.",
   "LibraryListView.addToLibraryList.alreadyInList": "Library {0} was already in the library list.",

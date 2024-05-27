@@ -197,6 +197,8 @@
   "JOB_STATUS": "Status du job",
   "JOB_USER": "Utilisateur",
   "jvm.info": "Information JVM",
+  "keepaliveInterval":"Intervalle keepalive",
+  "keepaliveInterval.description":"Définit l'intervalle (en millisecondes) entre deux envois au serveur SSH du signal keepalive. Mettre 0 pour désactiver.",
   "length": "Longueur",
   "LibraryListView.addToLibraryList.addedLib": "La bibliohtèque {0} a été ajoutée à la liste des bibliothèques.",
   "LibraryListView.addToLibraryList.alreadyInList": "La bibliohtèque {0} est déjà dans la liste des bibliothèques.",

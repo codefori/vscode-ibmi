@@ -1,10 +1,10 @@
 import vscode from "vscode";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
-import { ConnectionData } from '../../typings';
 import { t } from "../../locale";
+import { ConnectionData } from '../../typings';
 
 type NewLoginSettings = ConnectionData & {
   savePassword: boolean
@@ -30,6 +30,7 @@ export class Login {
       .addInput(`host`, t(`login.host`), undefined, { minlength: 1 })
       .addInput(`port`, t(`login.port`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
       .addInput(`username`, t(`username`), undefined, { minlength: 1, maxlength: 10 })
+      .addInput(`keepaliveInterval`, t('keepaliveInterval'), t('keepaliveInterval.description'), { default: '35000', regexTest: `^\\d*$` })
       .addParagraph(t(`login.authDecision`))
       .addPassword(`password`, t(`password`))
       .addCheckbox(`savePassword`, t(`login.savePassword`))
@@ -55,6 +56,7 @@ export class Login {
       page.panel.dispose();
 
       data.port = Number(data.port);
+      data.keepaliveInterval = Number(data.keepaliveInterval);
       data.privateKeyPath = data.privateKeyPath?.trim() ? data.privateKeyPath : undefined;
       if (data.name) {
         const existingConnection = ConnectionManager.getByName(data.name);

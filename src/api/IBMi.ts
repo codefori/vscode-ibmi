@@ -123,7 +123,7 @@ export default class IBMi {
   async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
     return await Tools.withContext("code-for-ibmi:connecting", async () => {
       try {
-        connectionObject.keepaliveInterval = 35000;
+        connectionObject.keepaliveInterval = connectionObject.keepaliveInterval === undefined ? 35000 : connectionObject.keepaliveInterval;
 
         configVars.replaceAll(connectionObject);
 

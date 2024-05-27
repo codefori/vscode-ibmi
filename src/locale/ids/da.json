@@ -197,6 +197,8 @@
   "JOB_STATUS": "Job status",
   "JOB_USER": "Job bruger",
   "jvm.info": "JVM information",
+  "keepaliveInterval":"Keepalive interval",
+  "keepaliveInterval.description":"How often (in milliseconds) to send SSH-level keepalive packets to the server. Set to 0 to disable.",
   "length": "Længde",
   "LibraryListView.addToLibraryList.addedLib": "Bibliotek {0} blev tilføjet til bibliotekslisten.",
   "LibraryListView.addToLibraryList.alreadyInList": "Bibliotek {0} er allerede i bibliotekslisten.",
