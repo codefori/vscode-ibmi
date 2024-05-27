@@ -69,6 +69,7 @@ export class Login {
             name: data.name,
             host: data.host,
             port: data.port,
+            keepaliveInterval: data.keepaliveInterval,
             username: data.username,
             privateKeyPath: data.privateKeyPath
           };
