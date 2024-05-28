@@ -748,7 +748,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.
       if(oldMemberTabs.find(tab => tab.isDirty)){
-        vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", "The member has unsaved changes."));
+        vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", t("member.has.unsaved.changes")));
         return;
       }
 
