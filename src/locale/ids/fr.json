@@ -240,7 +240,7 @@
   "login.title.create": "Connect to IBM i",
   "login.title.edit": "paramètres d'authentification: \"{0}\"",
   "MAX_HEAP_SIZE": "Mémoire maximum allouée",
-  "member.has.unsaved.changes": "The member has unsaved changes.",
+  "member.has.unsaved.changes": "Le membre a des changements non sauvegardés.",
   "members": "Membres",
   "MEMORY_POOL": "Pool mémoire",
   "modified": "Modifié",
