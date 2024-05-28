@@ -128,7 +128,7 @@
   "error": "erreur",
   "errors": "erreurs",
   "file.path.not.parsed": "Le chemin du fichier n'a pas pu être analysé.",
-  "file.unsaved.changes": "The file has unsaved changes.",
+  "file.unsaved.changes": "Le fichier a des changements non sauvegardés.",
   "generate.certificate": "Generer le certificat du service",
   "helpView.getStarted": "Pour commencer",
   "helpView.officialForum": "Forum officiel",
