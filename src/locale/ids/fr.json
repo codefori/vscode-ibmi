@@ -127,7 +127,7 @@
   "enddbgsvr.succeeded": "Serveur de débogage arrêté.",
   "error": "erreur",
   "errors": "erreurs",
-  "file.path.not.parsed": "The file path could not be parsed.",
+  "file.path.not.parsed": "Le chemin du fichier n'a pas pu être analysé.",
   "file.unsaved.changes": "The file has unsaved changes.",
   "generate.certificate": "Generer le certificat du service",
   "helpView.getStarted": "Pour commencer",
