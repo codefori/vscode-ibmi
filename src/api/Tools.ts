@@ -288,6 +288,12 @@ export namespace Tools {
     }
   }
 
+  /**
+   * Check whether two given uris point to the same file/member
+   */
+  export function areEquivalentUris(uriA: vscode.Uri, uriB: vscode.Uri) {
+    return uriStringWithoutFragment(uriA) === uriStringWithoutFragment(uriB);
+  }
 
   /**
    * We do this to find previously opened files with the same path, but different case OR readonly flags.
@@ -312,6 +318,23 @@ export namespace Tools {
     const baseUri = uri.scheme + `:` + uri.path;
     const isCaseSensitive = (uri.scheme === `streamfile` && /^\/QOpenSys\//i.test(uri.path));
     return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
+  }
+
+  /**
+   * Given the uri of a member or other resource, find all
+   * (if any) open tabs where that resource is being edited.
+  */
+  export function findUriTabs(uriToFind: vscode.Uri): vscode.Tab[] {
+    let resourceTabs: vscode.Tab[] = [];
+    for (const group of vscode.window.tabGroups.all) {
+      group.tabs.filter(tab =>
+        (tab.input instanceof vscode.TabInputText)
+        && areEquivalentUris(tab.input.uri, uriToFind)
+      ).forEach(tab => {
+        resourceTabs.push(tab);
+      });
+    }
+    return resourceTabs;
   }
 
   /**
