@@ -120,6 +120,7 @@
   "delete": "Slet",
   "detail.reading.error": "Fejl ved læsning af debug service detail fil {0}: {1}",
   "directory": "mappe",
+  "discard.changes": "Dine ændringer vil blive kasseret",
   "download.certificate": "Hent certifikat",
   "duplicate": "Kopier",
   "enddbgsvr.failed": "Fejl ved stop af debug server: {0}",
