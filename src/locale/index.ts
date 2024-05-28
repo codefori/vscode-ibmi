@@ -1,8 +1,8 @@
 import { env } from "vscode";
 import { GlobalConfiguration } from "../api/Configuration";
-import { da } from "./ids/da";
-import { en } from "./ids/en";
-import { fr } from "./ids/fr";
+import da from "./ids/da.json";
+import en from "./ids/en.json";
+import fr from "./ids/fr.json";
 
 export type Locale = {[id: string]: string};
 

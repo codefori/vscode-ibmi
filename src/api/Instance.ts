@@ -1,13 +1,11 @@
 import * as vscode from "vscode";
-import IBMi from "./IBMi";
-import IBMiContent from "./IBMiContent";
-import { ConnectionStorage, GlobalStorage } from "./Storage";
-import { ConnectionConfiguration } from "./Configuration";
 import { IBMiEvent } from "../typings";
+import { ConnectionConfiguration } from "./Configuration";
+import IBMi from "./IBMi";
+import { ConnectionStorage, GlobalStorage } from "./Storage";
 
 export default class Instance {
   private connection: IBMi | undefined;
-  private content: IBMiContent | undefined;
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
   private events: { event: IBMiEvent, func: Function }[] = [];
@@ -25,12 +23,10 @@ export default class Instance {
     if (connection) {
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
-      this.content = new IBMiContent(connection);
       await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
     }
     else {
       this.connection = undefined;
-      this.content = undefined;
       this.storage.setConnectionName("");
     }
   }
@@ -40,8 +36,10 @@ export default class Instance {
   }
 
   async setConfig(newConfig: ConnectionConfiguration.Parameters) {
+    if (this.connection) {
+      this.connection.config = newConfig;
+    }
     await ConnectionConfiguration.update(newConfig);
-    if (this.connection) this.connection.config = newConfig;
   }
 
   getConfig() {
@@ -49,7 +47,7 @@ export default class Instance {
   }
 
   getContent() {
-    return this.content;
+    return this.connection?.content;
   }
 
   getStorage() {

@@ -14,8 +14,8 @@ import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_
 
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";
-const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
-const ALWAYS_SHOW_FILES = /^(\.gitignore|\.vscode)$/i;
+const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFileSvr\.400|\/QIBM|\/QSR|\/QTCPTMM|\/bin|\/dev|\/home|\/tmp|\/usr|\/var)$/i;
+const ALWAYS_SHOW_FILES = /^(\.gitignore|\.vscode|\.deployignore)$/i;
 type DragNDropAction = "move" | "copy";
 type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => GlobalConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
@@ -138,10 +138,12 @@ class IFSFileItem extends IFSItem {
     this.contextValue = "streamfile";
     this.iconPath = vscode.ThemeIcon.File;
 
-    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` }); this.command = {
+    this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
+    
+    this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [this]
+      arguments: [{path: this.path}]
     };
   }
 
@@ -820,6 +822,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.ifs.copyPath`, async (node: IFSItem) => {
       await vscode.env.clipboard.writeText(node.path);
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async() => {
+        vscode.commands.executeCommand('ifsBrowser.focus');
+        vscode.commands.executeCommand('list.find');
+    })
   )
 }
 

@@ -2,11 +2,14 @@ import { env } from "process";
 import vscode from "vscode";
 import { instance } from "../instantiate";
 import { ActionSuite } from "./action";
+import { ComponentSuite } from "./components";
 import { ConnectionSuite } from "./connection";
 import { ContentSuite } from "./content";
 import { DeployToolsSuite } from "./deployTools";
+import { EncodingSuite } from "./encoding";
 import { FilterSuite } from "./filter";
 import { ILEErrorSuite } from "./ileErrors";
+import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
 
@@ -17,7 +20,10 @@ const suites: TestSuite[] = [
   DeployToolsSuite,
   ToolsSuite,
   ILEErrorSuite,
-  FilterSuite
+  FilterSuite,
+  StorageSuite,
+  EncodingSuite,
+  ComponentSuite
 ]
 
 export type TestSuite = {
@@ -44,7 +50,7 @@ let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
   if (testingEnabled) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
-    
+
     if (!testIndividually) {
       instance.onEvent(`connected`, runTests);
     }
@@ -110,11 +116,15 @@ async function runTests() {
 }
 
 async function runTest(test: TestCase) {
+  const connection = instance.getConnection();
+
   console.log(`\tRunning ${test.name}`);
   test.status = "running";
   testSuitesTreeProvider.refresh(test);
   const start = +(new Date());
   try {
+    connection!.enableSQL = true;
+
     await test.test();
     test.status = "pass";
   }

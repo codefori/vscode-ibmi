@@ -1,148 +1,309 @@
-import path from "path";
-import {promises as fs} from "fs";
-import * as os from "os";
-import IBMi from "../IBMi";
 import * as dns from 'dns';
-import {window} from "vscode";
+import { existsSync, readFileSync } from "fs";
+import * as os from "os";
+import path, { dirname, posix } from "path";
+import { promisify } from 'util';
+import vscode from "vscode";
+import { instance } from '../../instantiate';
+import { t } from '../../locale';
+import IBMi from "../IBMi";
+import IBMiContent from '../IBMiContent';
+import { Tools } from '../Tools';
+import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaHome } from './config';
 
-const serverCertName = `debug_service.pfx`;
-const clientCertName = `debug_service.crt`;
-
-function getRemoteCertDirectory(connection: IBMi) {
-  return connection.config?.debugCertDirectory!;
+type HostInfo = {
+  ip: string
+  hostName: string
 }
 
-function resolveHostnameToIP(hostName: string): Promise<string | undefined> {
-  return new Promise<string | undefined>((resolve) => {
-    dns.lookup(hostName, (err, res) => {
-      if (err) {
-        resolve(undefined);
-      } else {
-        resolve(res);
-      }
-    });
-  });
+export type ImportedCertificate = {
+  localFile?: vscode.Uri
+  remoteFile?: string
+  password: string
 }
 
-async function getExtFileConent(host: string, connection: IBMi) {
-  const ipRegexExp = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
-  let hostname = undefined;
-  let ipAddr = undefined;
+const ENCRYPTION_KEY = ".code4i.debug";
+const IP_REGEX = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
+const dnsLookup = promisify(dns.lookup);
+export const SERVICE_CERTIFICATE = `debug_service.pfx`;
+export const CLIENT_CERTIFICATE = `debug_service.crt`;
 
-  if (ipRegexExp.test(host)) {
-    ipAddr = host;
-    const hostnameResult = await connection.sendCommand({
-      command: `hostname`
-    });
+export const LEGACY_CERT_DIRECTORY = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
 
-    if (hostnameResult.stdout) {
-      hostname = hostnameResult.stdout;
-    } else {
-      window.showWarningMessage(`Hostname cannot be retrieved from IBM i, certificate will be created only using the IP address!`);
-    }
-  } else {
-    hostname = host;
-    ipAddr = await resolveHostnameToIP(host);
+async function getHostInfo(connection: IBMi): Promise<HostInfo> {
+  const hostName = (await connection.sendCommand({ command: `hostname` })).stdout;
+  if (!hostName) {
+    throw new Error(`Hostname is undefined on ${connection.currentHost}; please fix the TCP/IP configuration.`);
   }
 
+  let ip;
+  try {
+    ip = (await dnsLookup(hostName)).address
+  }
+  catch (error) {
+    if (IP_REGEX.test(connection.currentHost)) {
+      ip = connection.currentHost;
+    }
+    else {
+      throw new Error(`IP address for ${hostName} could not be resolved: ${error}`);
+    }
+  }
+
+  return { hostName, ip };
+}
+
+async function getExtFileContent(hostInfo: HostInfo) {
   let extFileContent;
-  if (hostname && ipAddr) {
-    extFileContent = `subjectAltName=DNS:${hostname},IP:${ipAddr}`;
-  } else if (hostname) {
-    extFileContent = `subjectAltName=DNS:${hostname}`;
+  if (hostInfo.ip && hostInfo.hostName) {
+    extFileContent = `subjectAltName=DNS:${hostInfo.hostName},IP:${hostInfo.ip}`;
+  } else if (hostInfo.hostName) {
+    extFileContent = `subjectAltName=DNS:${hostInfo.hostName}`;
   } else {
-    extFileContent = `subjectAltName=IP:${ipAddr}`;
+    extFileContent = `subjectAltName=IP:${hostInfo.ip}`;
   }
 
   return extFileContent;
 }
 
-export function getRemoteServerCertPath(connection: IBMi) {
-  return path.posix.join(getRemoteCertDirectory(connection), serverCertName);
-}
-
-export function getRemoteClientCertPath(connection: IBMi) {
-  return path.posix.join(getRemoteCertDirectory(connection), clientCertName);
-}
-
-export async function remoteServerCertExists(connection: IBMi) {
-  const pfxPath = getRemoteServerCertPath(connection);
-
-  const dirList = await connection.sendCommand({
-    command: `ls -p ${pfxPath}`
-  });
-
-  const list = dirList.stdout.split(`\n`);
-
-  return list.includes(pfxPath);
-}
-
-export async function remoteClientCertExists(connection: IBMi) {
-  const crtPath = getRemoteClientCertPath(connection);
-
-  const dirList = await connection.sendCommand({
-    command: `ls -p ${crtPath}`
-  });
-
-  const list = dirList.stdout.split(`\n`);
-
-  return list.includes(crtPath);
-}
-
 /**
- * Generate all certifcates on the server
+ * Generates or imports the debug service server certificate and generates the client certificate from it.
+ * The keystore containing the certificate and its key must use the PKCS12 format.
+ * 
+ * @param connection the IBM i where the certificate must be generated/imported
+ * @param imported if defined, gives the location and password of a local or remote (i.e. on the IFS) service certificate to import
  */
-export async function setup(connection: IBMi) {
-  const host = connection.currentHost;
-  const extFileContent = await getExtFileConent(host, connection);
-
-  const commands = [
-    `openssl genrsa -out debug_service_ca.key 2048`,
-    `openssl req -x509 -new -nodes -key debug_service_ca.key -sha256 -days 1825 -out debug_service_ca.pem -subj '/CN=${host}'`,
-    `openssl genrsa -out debug_service.key 2048`,
-    `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${host}'`,
-    `openssl x509 -req -in debug_service.csr -CA debug_service_ca.pem -CAkey debug_service_ca.key -CAcreateserial -out debug_service.crt -days 1095 -sha256 -sha256 -req -extfile <(printf "${extFileContent}")`,
-    `openssl pkcs12 -export -out debug_service.pfx -inkey debug_service.key -in debug_service.crt -password pass:${host}`
-  ];
-
-  const directory = getRemoteCertDirectory(connection);
-
-  const mkdirResult = await connection.sendCommand({
-    command: `mkdir -p ${directory}`
-  });
-
-  if (mkdirResult.code && mkdirResult.code > 0) {
-    throw new Error(`Failed to create certificate directory: ${directory}`);
+export async function setup(connection: IBMi, imported?: ImportedCertificate) {
+  if (!(await connection.checkUserSpecialAuthorities(["*ALLOBJ"])).valid) {
+    throw new Error(`User ${connection.currentUser} doesn't have *ALLOBJ special authority`);
   }
+  await vscode.window.withProgress({ title: "Setup debug service", location: vscode.ProgressLocation.Window }, async (task) => {
+    const setProgress = (message: string) => task.report({ message: `${message}...` });
 
-  const creationResults = await connection.sendCommand({
-    command: commands.join(` && `),
-    directory
+    if (!connection.usingBash()) {
+      if (connection.remoteFeatures[`bash`]) {
+        throw new Error(`Bash is installed on the IBM i, but it is not your default shell. Please switch to bash to setup the debug service.`);
+      } else {
+        throw new Error(`The debug service setup requires bash to be installed on the IBM i. Please install bash and try again.`);
+      }
+    }
+
+    const debugConfig = await new DebugConfiguration().load();
+
+    const certificatePath = debugConfig.getRemoteServiceCertificatePath();
+    const directory = dirname(certificatePath);
+    const mkdirResult = await connection.sendCommand({
+      command: `mkdir -p ${directory} && chmod 755 ${directory}` //Certificates folder needs to be accessible by everyone
+    });
+
+    if (mkdirResult.code && mkdirResult.code > 0) {
+      throw new Error(`Failed to create server certificate directory ${directory}: ${mkdirResult.stderr}`);
+    }
+
+    let password;
+    if (imported) {
+      password = imported.password;
+      if (imported.localFile) {
+        setProgress("importing local certificate");
+        await connection.uploadFiles([{ local: imported.localFile, remote: debugConfig.getRemoteServiceCertificatePath() }]);
+      }
+      else if (imported.remoteFile) {
+        setProgress("importing remote certificate");
+        const copy = await connection.sendCommand({ command: `cp ${imported.remoteFile} ${debugConfig.getRemoteServiceCertificatePath()}` });
+        if (copy.code) {
+          throw copy.stderr;
+        }
+      }
+
+      setProgress("generating client certificate");
+      const clientCertificate = await connection.sendCommand({
+        command: `openssl pkcs12 -in ${debugConfig.getRemoteServiceCertificatePath()} -passin pass:${password} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
+      });
+      try {
+        if (!clientCertificate.code) {
+          instance.getContent()!.writeStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), Buffer.from(clientCertificate.stdout), "utf-8");
+        }
+        else {
+          throw clientCertificate.stderr;
+        }
+      }
+      catch (error) {
+        await connection.sendCommand({ command: `rm ${SERVICE_CERTIFICATE}`, directory });
+        throw new Error(`Failed to import service certificate: ${error}`);
+      }
+    }
+    else {
+      setProgress("generating server and client certificates");
+      password = Tools.makeid(50); //We generate a random password that will be stored encrypted; we don't need to know it after the configuration is done.
+      const hostInfo = await getHostInfo(connection);
+      const extFileContent = await getExtFileContent(hostInfo);
+      //This will generate everything at once and keep only the .pfx (keystore) and .crt (client certificate) files.
+      const commands = [
+        `openssl genrsa -out debug_service.key 2048`,
+        `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostName}'`,
+        `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out ${CLIENT_CERTIFICATE} -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
+        `openssl pkcs12 -export -out ${SERVICE_CERTIFICATE} -inkey debug_service.key -in ${CLIENT_CERTIFICATE} -password pass:${password}`,
+        `rm debug_service.key debug_service.csr`
+      ];
+
+      const creationResults = await connection.sendCommand({
+        command: commands.join(` && `),
+        directory
+      });
+
+      if (creationResults.code && creationResults.code > 0) {
+        throw new Error(`Failed to create server and client certificate: ${creationResults.stderr}`);
+      }
+    }
+
+    await connection.sendCommand({ command: "chmod 400 debug_service.pfx && chmod 444 debug_service.crt", directory });
+
+    try {
+      setProgress("encrypting server certificate password");
+      if (debugConfig.get("DEBUG_SERVICE_KEYSTORE_PASSWORD") !== undefined) {
+        debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
+        await debugConfig.save();
+      }
+      const javaHome = getJavaHome((await getDebugServiceDetails()).java);
+      const encryptResult = await connection.sendCommand({
+        command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
+        env: {
+          MY_JAVA_HOME: javaHome,
+          DEBUG_SERVICE_KEYSTORE_PASSWORD: password
+        }
+      });
+
+      //Check if encryption key exists too...because the encryption script can return 0 and an error in stdout in some cases.
+      if (!encryptResult.code && await instance.getContent()?.testStreamFile(posix.join(debugConfig.getRemoteServiceWorkDir(), "key.properties"), "r")) {
+        //After the certificates are generated/imported and the password is encrypted, we make a copy of the encryption key
+        //because it gets deleted each time the service starts. The CODE4IDEBUG variable is here to run the script that will restore the key
+        //when the service starts.
+        //The certificate path and password are recored in the configuration too, so the service can start only by running the startDebugService.sh script.
+        setProgress("updating service configuration");
+        const backupKey = await connection.sendCommand({ command: `mv key.properties ${ENCRYPTION_KEY} && chmod 400 ${ENCRYPTION_KEY}`, directory: debugConfig.getRemoteServiceWorkDir() });
+        if (!backupKey.code) {
+          debugConfig.set("JAVA_HOME", javaHome);
+          debugConfig.set("DEBUG_SERVICE_KEYSTORE_FILE", certificatePath);
+          debugConfig.set("DEBUG_SERVICE_KEYSTORE_PASSWORD", encryptResult.stdout);
+          debugConfig.set("CODE4IDEBUG", `$([ -f $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} ] && cp $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} $DBGSRV_WRK_DIR/key.properties)`);
+          debugConfig.save();
+        }
+        else {
+          throw new Error(`Failed to backup encryption key: ${backupKey.stderr || backupKey.stdout}`);
+        }
+      }
+      else {
+        throw new Error(`Failed to encrypt service certificate password: ${encryptResult.stdout || encryptResult.stderr}`);
+      }
+    }
+    catch (error) {
+      //At this point, the certificate is deemed unusable and must be removed
+      await connection.sendCommand({ command: `rm ${SERVICE_CERTIFICATE}`, directory });
+      throw error;
+    }
   });
+}
 
-  if (creationResults.code && creationResults.code > 0) {
-    throw new Error(`Failed to create certificates.`);
+export async function remoteCertificatesExists(debugConfig?: DebugConfiguration) {
+  const content = instance.getContent();
+  if (content) {
+    debugConfig = debugConfig || await new DebugConfiguration().load();
+    return await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f") && await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
+  }
+  else {
+    throw new Error("Not connected to an IBM i");
   }
 }
 
-export function downloadClientCert(connection: IBMi) {
-  const remotePath = getRemoteClientCertPath(connection);
-  const localPath = getLocalCertPath(connection);
-
-  return connection.downloadFile(localPath, remotePath);
+export async function downloadClientCert(connection: IBMi) {
+  const content = instance.getContent();
+  if (content) {
+    await content.downloadStreamfileRaw((await new DebugConfiguration().load()).getRemoteClientCertificatePath(), getLocalCertPath(connection));
+  }
+  else {
+    throw new Error("Not connected to an IBM i");
+  }
 }
 
 export function getLocalCertPath(connection: IBMi) {
   const host = connection.currentHost;
-  return path.join(os.homedir(), `${host}_${clientCertName}`);
+  return path.join(os.homedir(), `${host}_${CLIENT_CERTIFICATE}`);
 }
 
-export async function localClientCertExists(connection: IBMi) {
-  try {
-    await fs.stat(getLocalCertPath(connection));
-    // TODO: if local exists, but it's out of date with the server? e.g. md5 is different for example
-    return true;
-  } catch (e) {
-    return false;
+export async function checkClientCertificate(connection: IBMi, debugConfig?: DebugConfiguration) {
+  const locaCertificatePath = getLocalCertPath(connection);
+  if (existsSync(locaCertificatePath)) {
+    debugConfig = debugConfig || await new DebugConfiguration().load();
+    const remote = (await connection.sendCommand({ command: `cat ${debugConfig.getRemoteClientCertificatePath()}` }));
+    if (!remote.code) {
+      const localCertificate = readFileSync(locaCertificatePath).toString("utf-8");
+      if (localCertificate.trim() !== remote.stdout.trim()) {
+        throw new Error(t('local.dont.match.remote'));
+      }
+    }
+    else {
+      throw new Error(`Could not read client certificate on host: ${remote.stderr}`);
+    }
+  }
+  else {
+    throw new Error(t('local.certificate.not.found'));
+  }
+}
+
+export async function sanityCheck(connection: IBMi, content: IBMiContent) {
+  //Since Code for IBM i v2.10.0, the debug configuration is managed from the debug service .env file
+  //The encryption key is backed up since it's destroyed every time the service starts up
+  //The remote certificate is only valid if the client certificate is found too
+  const debugConfig = await new DebugConfiguration().load();
+
+  //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
+  const javaHome = debugConfig.get("JAVA_HOME");
+  const expectedJavaHome = getJavaHome((await getDebugServiceDetails()).java);
+  if (javaHome && javaHome !== expectedJavaHome) {
+    if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
+      //Automatically make the change if possible
+      debugConfig.set("JAVA_HOME", expectedJavaHome);
+      await debugConfig.save();
+    }
+    else {
+      //No write access: we warn about the required change
+      vscode.window.showWarningMessage(`JAVA_HOME should be set to ${expectedJavaHome} in the Debug Service configuration file (${DEBUG_CONFIG_FILE}).`);
+    }
+  }
+
+  const remoteCertExists = await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f");
+  const remoteClientCertExists = await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
+  const encryptionKeyExists = await content.testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/${ENCRYPTION_KEY}`, "f");
+  const legacyCertExists = await content.testStreamFile(`${LEGACY_CERT_DIRECTORY}/${SERVICE_CERTIFICATE}`, "f");
+
+  if ((encryptionKeyExists && remoteCertExists && remoteClientCertExists) || (!legacyCertExists && !remoteCertExists)) {
+    //We're good! Let's clean up the legacy certificate if needed
+    if (legacyCertExists) {
+      await connection.sendCommand({
+        command: `rm -rf ${LEGACY_CERT_DIRECTORY}`,
+      })
+    }
+  }
+  else {
+    try {
+      if (legacyCertExists && !remoteCertExists) {
+        //import legacy
+        await setup(connection, { remoteFile: `${LEGACY_CERT_DIRECTORY}/${SERVICE_CERTIFICATE}`, password: connection.currentHost });
+        await connection.sendCommand({
+          command: `rm -rf ${LEGACY_CERT_DIRECTORY}`,
+        });
+      }
+      else if (remoteCertExists && !(remoteClientCertExists && encryptionKeyExists)) {
+        //This is probably a certificate whose password was the connection's hostname; we can reimport it to set everything right
+        await setup(connection, { password: connection.currentHost });
+      }
+    }
+    catch (error) {
+      vscode.window.showWarningMessage(`Debug service sanity check failed (${error}); the debug service certificate should be re-generated`, "Regenerate")
+        .then(regen => {
+          if (regen) {
+            vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
+          }
+        });
+    }
   }
 }

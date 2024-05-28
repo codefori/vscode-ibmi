@@ -30,12 +30,12 @@ export class ExtendedIBMiContent {
   async downloadMemberContentWithDates(asp: string | undefined, lib: string, spf: string, mbr: string) {
     const content = instance.getContent();
     const config = instance.getConfig();
+    const connection = instance.getConnection();
+    if (connection && config && content) {
+      lib = connection.upperCaseName(lib);
+      spf = connection.upperCaseName(spf);
+      mbr = connection.upperCaseName(mbr);
 
-    lib = lib.toUpperCase();
-    spf = spf.toUpperCase();
-    mbr = mbr.toUpperCase();
-
-    if (config && content) {
       const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;
       const alias = getAliasName(lib, spf, mbr);
@@ -224,8 +224,6 @@ function escapeString(val: string): string {
         return ``;
       case `\b`:
         return `\\b`;
-      case `\t`:
-        return `\\t`;
       case `\x1a`:
         return `\\Z`;
       case `'`:
