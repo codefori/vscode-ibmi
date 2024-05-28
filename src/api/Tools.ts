@@ -294,9 +294,14 @@ export namespace Tools {
    * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
    */
   export function findExistingDocumentUri(uri: vscode.Uri) {
+    const possibleDoc = findExistingDocument(uri);
+    return possibleDoc?.uri || uri;
+  }
+
+  export function findExistingDocument(uri: vscode.Uri) {
     const baseUriString = uriStringWithoutFragment(uri);
     const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === baseUriString);
-    return possibleDoc?.uri || uri;
+    return possibleDoc;
   }
 
   /**

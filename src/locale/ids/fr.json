@@ -120,6 +120,7 @@
   "delete": "Supprimer",
   "detail.reading.error": "Erreur de lecture du fichier détail du service de débogage {0}: {1}",
   "directory": "Répertoire",
+  "discard.changes": "Vos modifications vont être perdues",
   "download.certificate": "Télécharger le certificat",
   "duplicate": "Dupliquer",
   "enddbgsvr.failed": "Échec de l\"arrêt du serveur de débogage: {0}",

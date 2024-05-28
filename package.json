@@ -1641,6 +1641,12 @@
 				"enablement": "!code-for-ibmi:debugWorking"
 			},
 			{
+				"command": "code-for-ibmi.refreshFile",
+				"title": "Refresh File",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
 				"command": "code-for-ibmi.searchObjectBrowser",
 				"title": "Highlight",
 				"category": "IBM i",
@@ -2366,6 +2372,11 @@
 					"command": "code-for-ibmi.clearDiagnostics",
 					"when": "code-for-ibmi:connected",
 					"group": "navigation@3"
+				},
+				{
+					"command": "code-for-ibmi.refreshFile",
+					"when": "code-for-ibmi:connected && (resourceScheme == streamfile || resourceScheme == member)",
+					"group": "navigation@4"
 				}
 			],
 			"view/item/context": [
