@@ -368,7 +368,7 @@ export class SettingsUI {
 
                   default:
                     if (data.password) {
-                      data.privateKeyPath = undefined;
+                      delete data.privateKeyPath;
                       if (data.password !== storedPassword) {
                         // New password was entered, so store the password
                         // and remove the private key path from the data
@@ -381,6 +381,9 @@ export class SettingsUI {
                       // use the keypath instead
                       await ConnectionManager.deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
+                    }
+                    else{
+                      delete data.privateKeyPath;
                     }
                     break;
                 }
