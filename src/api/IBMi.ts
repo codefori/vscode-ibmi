@@ -25,6 +25,8 @@ export interface MemberParts extends IBMiMember {
 const CCSID_SYSVAL = -2;
 const bashShellPath = '/QOpenSys/pkgs/bin/bash';
 
+const SERVER_SETTINGS_PATH = `/etc/code4i/settings.json`;
+
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
@@ -74,12 +76,13 @@ export default class IBMi {
   aspInfo: { [id: number]: string } = {};
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
-
   /** 
    * Strictly for storing errors from sendCommand.
    * Used when creating issues on GitHub.
    * */
   lastErrors: object[] = [];
+
+  loadedServerSettings: string[] = [];
   config?: ConnectionConfiguration.Parameters;
   content = new IBMiContent(this);
   shell?: string;
@@ -171,6 +174,9 @@ export default class IBMi {
 
           //Load existing config
           this.config = await ConnectionConfiguration.load(this.currentConnectionName);
+
+          //Check and load server settings
+          await this.loadServerSettings();
 
           // Load cached server settings.
           const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
@@ -1077,6 +1083,40 @@ export default class IBMi {
     instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
     vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
+  }
+
+  async loadServerSettings() {
+    const content = this.content;
+
+    const exists = await content?.testStreamFile(SERVER_SETTINGS_PATH, `r`);
+    if (exists) {
+      const settings = await content?.downloadStreamfile(SERVER_SETTINGS_PATH);
+      if (settings) {
+        try {
+          // Ready in the new settings
+          const asJson = JSON.parse(settings);
+
+          // Apply the settings over the top
+          this.config = {
+            ...this.config,
+            ...asJson
+          }
+
+          // Store the changes locally to be nice
+          await ConnectionConfiguration.update(this.config!);
+
+          // Mark which config is managed by the server
+          this.loadedServerSettings = Object.keys(asJson);
+
+        } catch (e) {
+          this.appendOutput(`Was not able to read server settings as JSON.\n`);
+        }
+      } else {
+        this.appendOutput(`Failed to load server settings.\n`);
+      }
+    } else {
+      this.appendOutput(`Server settings not found.\n`);
+    }
   }
 
   /**
