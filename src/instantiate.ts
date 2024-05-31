@@ -18,6 +18,7 @@ import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions,
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { t } from './locale';
 
 export let instance: Instance;
 
@@ -700,7 +701,32 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-  );
+    
+    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
+      let doc: vscode.TextDocument | undefined;
+      if (uri) {
+        doc = Tools.findExistingDocument(uri);
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        doc = editor?.document;
+      }
+
+      if (doc?.isDirty) {
+        vscode.window
+          .showWarningMessage(
+            t(`discard.changes`), 
+            { modal: true }, 
+            t(`Continue`))
+          .then(result => {
+              if (result === t(`Continue`)) {
+                vscode.commands.executeCommand(`workbench.action.files.revert`);
+              }
+        });
+      } else {
+        vscode.commands.executeCommand(`workbench.action.files.revert`);
+      }
+    }),
+);
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);

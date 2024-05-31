@@ -52,13 +52,8 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
   const currentList = ileDiagnostics.get(uri);
 
   if (currentList) {
-    const existing = currentList.findIndex(d => d.range.contains(changeRange));
-
-    if (existing >= 0) {
-      const newList = [...currentList.slice(0, existing), ...currentList.slice(existing + 1)];
-
-      ileDiagnostics.set(uri, newList);
-    }
+    const newList = currentList.filter(d => !d.range.contains(changeRange));
+    ileDiagnostics.set(uri, newList);
   }
 }
 
