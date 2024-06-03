@@ -1,22 +1,11 @@
 import vscode, { FileSystemError, FileType } from "vscode";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
-import { FileStatCache } from "./fileStatCache";
 import { getFilePermission } from "./qsys/QSysFs";
 
 export class IFSFS implements vscode.FileSystemProvider {
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
-
-  private readonly statCache = new FileStatCache();
-
-  constructor(context: vscode.ExtensionContext) {
-    instance.onEvent("disconnected", () => { this.statCache.clear() });
-    context.subscriptions.push(
-      vscode.workspace.onDidCloseTextDocument((doc) => this.statCache.clear(doc.uri)),
-      vscode.commands.registerCommand("code-for-ibmi.clearIFSStats", (uri?: vscode.Uri | string) => this.statCache.clear(uri))
-    );
-  }
 
   watch(uri: vscode.Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[]; }): vscode.Disposable {
     return { dispose: () => { } };
@@ -40,61 +29,44 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-    let currentStat = this.statCache.get(uri);
-    if (currentStat === undefined) {
-      const content = instance.getContent();
-      if (content) {
-        const path = uri.path;
-        if (await content.testStreamFile(path, "e")) {
-          const attributes = await content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE", "OBJTYPE");
-          if (attributes) {
-            currentStat = {
-              ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
-              mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
-              size: Number(attributes.DATA_SIZE),
-              type: String(attributes.OBJTYPE) === "*DIR" ? vscode.FileType.Directory : vscode.FileType.File,
-              permissions: getFilePermission(uri)
-            }
+    const content = instance.getContent();
+    if (content) {
+      const path = uri.path;
+      if (await content.testStreamFile(path, "e")) {
+        const attributes = await content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE", "OBJTYPE");
+        if (attributes) {
+          return {
+            ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
+            mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
+            size: Number(attributes.DATA_SIZE),
+            type: String(attributes.OBJTYPE) === "*DIR" ? vscode.FileType.Directory : vscode.FileType.File,
+            permissions: getFilePermission(uri)
           }
         }
-        if (currentStat) {
-          this.statCache.set(uri, currentStat);
-        } else {
-          this.statCache.set(uri, null);
-          throw FileSystemError.FileNotFound(uri);
-        }
       }
-      else {
-        currentStat = {
-          ctime: 0,
-          mtime: 0,
-          size: 0,
-          type: vscode.FileType.File,
-          permissions: getFilePermission(uri)
-        }
-      }
-    }
-    else if (currentStat === null) {
       throw FileSystemError.FileNotFound(uri);
     }
-
-    return currentStat;
+    else {
+      return {
+        ctime: 0,
+        mtime: 0,
+        size: 0,
+        type: vscode.FileType.File,
+        permissions: getFilePermission(uri)
+      }
+    }
   }
 
   async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
     const path = uri.path;
-    const exists = this.statCache.get(path);
-    this.statCache.clear(path);
     const contentApi = instance.getContent();
     if (contentApi) {
       if (!content.length) { //Coming from "Save as"        
         await contentApi.createStreamFile(path);
+        vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
       }
       else {
         await contentApi.writeStreamfileRaw(path, content);
-      }
-      if (!exists) {
-        vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
       }
     }
     else {
@@ -103,13 +75,11 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   copy(source: vscode.Uri, destination: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
-    this.statCache.clear(destination);
+    //not used at the moment
   }
 
   rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
-    console.log({ oldUri, newUri, options });
-    this.statCache.clear(oldUri);
-    this.statCache.clear(newUri);
+    //not used at the moment
   }
 
   async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
@@ -131,10 +101,7 @@ export class IFSFS implements vscode.FileSystemProvider {
       }
       else {
         const result = await connection.sendCommand({ command: `mkdir -p ${path}` });
-        if (result.code === 0) {
-          this.statCache.clear(uri);
-        }
-        else {
+        if (result.code !== 0) {
           throw FileSystemError.NoPermissions(result.stderr);
         }
       }
@@ -142,7 +109,6 @@ export class IFSFS implements vscode.FileSystemProvider {
   }
 
   delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
-    this.statCache.clear(uri);
     throw new FileSystemError(`delete not implemented in IFSFS.`);
   }
 }

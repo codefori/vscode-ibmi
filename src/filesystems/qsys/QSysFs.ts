@@ -5,7 +5,6 @@ import { onCodeForIBMiConfigurationChange } from "../../api/Configuration";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions } from "../../typings";
-import { FileStatCache } from "../fileStatCache";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { SourceDateHandler } from "./sourceDateHandler";
 
@@ -43,7 +42,6 @@ export function isProtectedFilter(filter?: string): boolean {
 }
 
 export class QSysFS implements vscode.FileSystemProvider {
-    private readonly statCache = new FileStatCache();
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
     private extendedMemberSupport = false;
@@ -56,14 +54,11 @@ export class QSysFS implements vscode.FileSystemProvider {
 
         context.subscriptions.push(
             onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()),
-            vscode.workspace.onDidCloseTextDocument((doc) => this.statCache.clear(doc.uri)),
-            vscode.commands.registerCommand("code-for-ibmi.clearQSYSStats", (uri?: vscode.Uri | string) => this.statCache.clear(uri))
         );
 
         instance.onEvent("connected", () => this.updateMemberSupport());
         instance.onEvent("disconnected", () => {
             this.updateMemberSupport();
-            this.statCache.clear();
         });
     }
 
@@ -94,44 +89,32 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (pathLength > 4 || !path.startsWith('/')) {
             throw new vscode.FileSystemError("Invalid member path");
         }
-        const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;        
-        let currentStat = this.statCache.get(path);
-        if (currentStat === undefined) {
-            const content = instance.getContent();
-            if (path !== '/' && content) {
-                const member = type === vscode.FileType.File ? parsePath(path).name : undefined;
-                const attributes = await content.getAttributes({ ...Tools.parseQSysPath(path), member }, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
-                if (attributes) {
-                    currentStat = {
-                        ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
-                        mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
-                        size: Number(attributes.DATA_SIZE),
-                        type,
-                        permissions: getFilePermission(uri)
-                    }
-                }
-
-                if (currentStat) {
-                    this.statCache.set(uri, currentStat);
-                } else {
-                    this.statCache.set(path, null);
-                    throw FileSystemError.FileNotFound(uri);
-                }
-            }
-            else {
-                currentStat = {
-                    ctime: 0,
-                    mtime: 0,
-                    size: 0,
+        const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
+        const content = instance.getContent();
+        if (path !== '/' && content) {
+            const member = type === vscode.FileType.File ? parsePath(path).name : undefined;
+            const attributes = await content.getAttributes({ ...Tools.parseQSysPath(path), member }, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+            if (attributes) {
+                return {
+                    ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
+                    mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
+                    size: Number(attributes.DATA_SIZE),
                     type,
                     permissions: getFilePermission(uri)
                 }
+            } else {
+                throw FileSystemError.FileNotFound(uri);
             }
         }
-        else if (currentStat === null) {
-            throw FileSystemError.FileNotFound(uri);
+        else {
+            return {
+                ctime: 0,
+                mtime: 0,
+                size: 0,
+                type,
+                permissions: getFilePermission(uri)
+            }
         }
-        return currentStat;
     }
 
     async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
@@ -162,8 +145,6 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
         const path = uri.path;
-        const exists = this.statCache.get(path);
-        this.statCache.clear(path);
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
@@ -173,7 +154,9 @@ export class QSysFS implements vscode.FileSystemProvider {
                     command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
                     noLibList: true
                 });
-                if (addMember.code !== 0) {
+                if (addMember.code === 0) {
+                    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+                } else {
                     throw new FileSystemError(addMember.stderr);
                 }
             }
@@ -182,10 +165,6 @@ export class QSysFS implements vscode.FileSystemProvider {
                     await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
                     await contentApi.uploadMemberContent(asp, library, file, member, content);
             }
-
-            if (!exists) {
-                vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
-            }
         }
         else {
             throw new FileSystemError("Not connected to IBM i");
@@ -193,8 +172,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
-        this.statCache.clear(oldUri.path);
-        this.statCache.clear(newUri.path);
+        //Not used at the moment
     }
 
     watch(uri: vscode.Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[]; }): vscode.Disposable {
@@ -229,10 +207,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                     command: `CRTLIB LIB(${qsysPath.library})`,
                     noLibList: true
                 });
-                if (createLibrary.code === 0) {
-                    this.statCache.clear(uri);
-                }
-                else {
+                if (createLibrary.code !== 0) {
                     throw FileSystemError.NoPermissions(createLibrary.stderr);
                 }
             }
@@ -241,10 +216,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                     command: `CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`,
                     noLibList: true
                 });
-                if (createFile.code === 0) {
-                    this.statCache.clear(uri);
-                }
-                else {
+                if (createFile.code !== 0) {
                     throw FileSystemError.NoPermissions(createFile.stderr);
                 }
             }
@@ -252,7 +224,6 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
-        this.statCache.clear(uri.path);
         throw new FileSystemError("Method not implemented.");
     }
 }

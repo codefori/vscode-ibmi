@@ -89,7 +89,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         }
       }
     }),
-    workspace.registerFileSystemProvider(`streamfile`, new IFSFS(context), {
+    workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
     }),
     languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&")
