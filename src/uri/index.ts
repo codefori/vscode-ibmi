@@ -21,8 +21,14 @@ export async function registerUriHandler(context: ExtensionContext) {
                 if (queryData.host) {
                   const host = Array.isArray(queryData.host) ? queryData.host[0] : queryData.host;
                   if (host !== connection.currentHost) {
-                    // TODO: host does not match requested host, do you still want to open?
-                    return;
+                    const chosen = await window.showInformationMessage(t(`uriOpen.openError`), {
+                      detail: t(`uriOpen.hostMismatch`),
+                      modal: true
+                    }, `Open`);
+
+                    if (chosen !== `Open`) {
+                      return;
+                    }
                   }
                 }
 
@@ -31,12 +37,13 @@ export async function registerUriHandler(context: ExtensionContext) {
                   commands.executeCommand(`code-for-ibmi.openEditable`, path);
                 }
               } else {
-                // TODO: error message: missing path
+                window.showWarningMessage(t(`uriOpen.missingPath`));
               }
             } else {
-              // TODO: error message: no connection
+              window.showWarningMessage(t(`uriOpen.noConnection`));
             }
             break;
+
           case `/connect`:
             if (connection === undefined) {
               const save = queryData.save === `true`;
