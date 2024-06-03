@@ -395,8 +395,8 @@ export class SettingsUI {
 
                 stored = Object.assign(stored, data);
                 await ConnectionManager.updateByIndex(index, stored);
+                GlobalStorage.get().deleteServerSettingsCache(server.name);
                 vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
-
               }
             });
           }
