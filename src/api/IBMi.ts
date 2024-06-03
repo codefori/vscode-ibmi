@@ -619,6 +619,7 @@ export default class IBMi {
 
             // Fetch conversion values?
             if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+              this.qccsid = cachedServerSettings.qccsid;
               this.jobCcsid = cachedServerSettings.jobCcsid;
               this.variantChars = cachedServerSettings.variantChars;
               this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;

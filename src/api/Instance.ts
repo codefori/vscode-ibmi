@@ -36,8 +36,10 @@ export default class Instance {
   }
 
   async setConfig(newConfig: ConnectionConfiguration.Parameters) {
+    if (this.connection) {
+      this.connection.config = newConfig;
+    }
     await ConnectionConfiguration.update(newConfig);
-    if (this.connection) this.connection.config = newConfig;
   }
 
   getConfig() {
