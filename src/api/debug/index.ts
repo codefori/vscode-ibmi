@@ -7,8 +7,9 @@ import * as vscode from 'vscode';
 import { instance } from "../../instantiate";
 import { ObjectItem } from "../../typings";
 import { ILELibrarySettings } from "../CompileTools";
+import { ConnectionManager } from "../Configuration";
 import { Tools } from "../Tools";
-import { getEnvConfig } from "../local/env";
+import { Env, getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";
@@ -42,7 +43,7 @@ const debugExtensionAvailable = () => {
 
 export async function initialize(context: ExtensionContext) {
 
-  const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, workspaceFolder?: vscode.WorkspaceFolder) => {
+  const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, env?: Env) => {
     if (debugExtensionAvailable()) {
       const connection = instance.getConnection();
       const config = instance.getConfig();
@@ -57,8 +58,7 @@ export async function initialize(context: ExtensionContext) {
 
           // If we are debugging from a workspace, perhaps
           // the user has a custom CURLIB and LIBL setup.
-          if (workspaceFolder) {
-            const env = await getEnvConfig(workspaceFolder);
+          if (env) {
             if (env[`CURLIB`]) {
               objectLibrary = env[`CURLIB`];
               libraries.currentLibrary = env[`CURLIB`];
@@ -132,9 +132,8 @@ export async function initialize(context: ExtensionContext) {
     }
   }
 
-  const getObjectFromUri = (uri: Uri) => {
+  const getObjectFromUri = (uri: Uri, env?: Env) => {
     const connection = instance.getConnection();
-
     const configuration = instance.getConfig();
 
     const qualifiedPath: {
@@ -152,12 +151,12 @@ export async function initialize(context: ExtensionContext) {
           break;
         case `streamfile`:
           const streamfilePath = path.parse(uri.path);
-          qualifiedPath.library = configuration.currentLibrary;
+          qualifiedPath.library = env?.CURLIB || configuration.currentLibrary;
           qualifiedPath.object = streamfilePath.name;
           break;
         case `file`:
           const localPath = path.parse(uri.path);
-          qualifiedPath.library = configuration.currentLibrary;
+          qualifiedPath.library = env?.CURLIB || configuration.currentLibrary;
           qualifiedPath.object = localPath.name;
           break;
       }
@@ -176,7 +175,7 @@ export async function initialize(context: ExtensionContext) {
   const getPassword = async () => {
     const connection = instance.getConnection();
 
-    let password = await context.secrets.get(`${connection!.currentConnectionName}_password`);
+    let password = await ConnectionManager.getStoredPassword(context, connection!.currentConnectionName);
 
     if (!password) {
       password = temporaryPassword;
@@ -193,6 +192,12 @@ export async function initialize(context: ExtensionContext) {
     }
 
     return password;
+  }
+
+  const validateWorkspaceFolder = (maybeFolder?: vscode.WorkspaceFolder) => {
+    if (maybeFolder && "uri" in maybeFolder && "name" in maybeFolder && "index" in maybeFolder) {
+      return maybeFolder;
+    }
   }
 
   context.subscriptions.push(
@@ -220,32 +225,31 @@ export async function initialize(context: ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.batch`, (node?: ObjectItem | Uri) => {
-      vscode.commands.executeCommand(`code-for-ibmi.debug`, `batch`, node);
+    vscode.commands.registerCommand(`code-for-ibmi.debug.batch`, (node?: ObjectItem | Uri, wsFolder?: vscode.WorkspaceFolder) => {
+      vscode.commands.executeCommand(`code-for-ibmi.debug`, `batch`, node, validateWorkspaceFolder(wsFolder));
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.sep`, (node?: ObjectItem | Uri) => {
-      vscode.commands.executeCommand(`code-for-ibmi.debug`, `sep`, node);
+    vscode.commands.registerCommand(`code-for-ibmi.debug.sep`, (node?: ObjectItem | Uri, wsFolder?: vscode.WorkspaceFolder) => {
+      vscode.commands.executeCommand(`code-for-ibmi.debug`, `sep`, node, validateWorkspaceFolder(wsFolder));
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug`, async (debugType?: DebugType, node?: ObjectItem | Uri) => {
+    vscode.commands.registerCommand(`code-for-ibmi.debug`, async (debugType?: DebugType, node?: ObjectItem | Uri, wsFolder?: vscode.WorkspaceFolder) => {
       if (debugType && node) {
+        const workspaceFolder = wsFolder || (node instanceof Uri ? vscode.workspace.getWorkspaceFolder(node) : undefined);
+        const env = workspaceFolder ? await getEnvConfig(workspaceFolder) : undefined;
         if (node instanceof Uri) {
-          const workspaceFolder = [`member`, `streamfile`].includes(node.scheme) ? undefined : vscode.workspace.getWorkspaceFolder(node);
-
-          const qualifiedObject = getObjectFromUri(node);
-
+          const qualifiedObject = getObjectFromUri(node, env);
           if (qualifiedObject.library && qualifiedObject.object) {
             const objectType = await getObjectType(qualifiedObject.library, qualifiedObject.object);
             if (objectType) {
-              startDebugging(debugType, objectType, qualifiedObject.library, qualifiedObject.object, workspaceFolder);
+              startDebugging(debugType, objectType, qualifiedObject.library, qualifiedObject.object, env);
             } else {
               vscode.window.showErrorMessage(`Failed to determine object type. Ensure the object exists and is a program (*PGM)${debugType === "sep" ? " or service program (*SRVPGM)" : ""}.`);
             }
           }
         } else {
           const { library, name, type } = node.object
-          startDebugging(debugType, type as DebugObjectType, library, name);
+          startDebugging(debugType, type as DebugObjectType, library, name, env);
         }
       }
     }),
@@ -363,7 +367,9 @@ export async function initialize(context: ExtensionContext) {
       //Enable service entry points related commands
       vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
 
-      if (!isManaged()) {
+      const isDebugManaged = isManaged();
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
+      if (!isDebugManaged) {
         const isSecure = connection.config!.debugIsSecure;
 
         if (validateIPv4address(connection.currentHost) && isSecure) {
@@ -379,8 +385,6 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.executeCommand(`setContext`, debugContext, false);
     vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
   });
-
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isManaged());
 }
 
 function validateIPv4address(ipaddress: string) {
@@ -471,7 +475,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
       const debugConfig = {
         "type": `IBMiDebug`,
         "request": `launch`,
-        "name": `Remote debug: Launch a batch debug session`,
+        "name": `IBM i batch debug: program ${options.library.toUpperCase()}/${options.object.toUpperCase()}`,
         "user": connection!.currentUser.toUpperCase(),
         "password": options.password,
         "host": connection!.currentHost,

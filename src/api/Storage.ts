@@ -46,7 +46,8 @@ export type LastConnection = {
 
 export type CachedServerSettings = {
   aspInfo: { [id: number]: string }
-  runtimeCcsid: number | null
+  qccsid: number | null;
+  jobCcsid: number | null
   remoteFeatures: { [name: string]: string | undefined }
   remoteFeaturesKeys: string | null
   variantChars: { american: string, local: string }
@@ -54,7 +55,7 @@ export type CachedServerSettings = {
   libraryListValidated: boolean | null
   pathChecked?: boolean
   userDefaultCCSID: number | null
-  debugConfigLoaded : boolean
+  debugConfigLoaded: boolean
 } | undefined;
 
 export class GlobalStorage extends Storage {

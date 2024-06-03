@@ -3,7 +3,7 @@ import { Tools } from './api/Tools';
 import path, { dirname } from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
-import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
@@ -11,14 +11,14 @@ import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
+import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
-import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { initGetMemberInfo } from "./languages/sql/getmbrinfo";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { t } from './locale';
 
 export let instance: Instance;
 
@@ -426,13 +426,15 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
 
+              const infoComponent = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`);
+
               // When selection is QSYS path
-              if (!selection.startsWith(`/`)) {
+              if (!selection.startsWith(`/`) && infoComponent) {
                 const lib = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const memberInfo = await content!.getMemberInfo(lib, file, member.name);
+                const memberInfo = await infoComponent.getMemberInfo(lib, file, member.name);
                 if (!memberInfo) {
                   vscode.window.showWarningMessage(`Source member ${lib}/${file}/${member.base} does not exist.`);
                   return;
@@ -625,8 +627,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
-            const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
-            const storedPassword = await context.secrets.get(connectionKey);
+            const storedPassword = await ConnectionManager.getStoredPassword(context, instance.getConnection()!.currentConnectionName);
 
             if (storedPassword) {
               let isAuthed = storage.getExtensionAuthorisation(extension) !== undefined;
@@ -700,7 +701,32 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-  );
+    
+    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
+      let doc: vscode.TextDocument | undefined;
+      if (uri) {
+        doc = Tools.findExistingDocument(uri);
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        doc = editor?.document;
+      }
+
+      if (doc?.isDirty) {
+        vscode.window
+          .showWarningMessage(
+            t(`discard.changes`), 
+            { modal: true }, 
+            t(`Continue`))
+          .then(result => {
+              if (result === t(`Continue`)) {
+                vscode.commands.executeCommand(`workbench.action.files.revert`);
+              }
+        });
+      } else {
+        vscode.commands.executeCommand(`workbench.action.files.revert`);
+      }
+    }),
+);
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);
@@ -736,7 +762,7 @@ async function updateConnectedBar() {
     `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
     `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
     `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
-    debugPTFInstalled() ? 
+    debugPTFInstalled() ?
       `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
       :
       `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
@@ -753,8 +779,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-  initGetNewLibl(instance);
-  initGetMemberInfo(instance);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);

@@ -1,5 +1,5 @@
 import vscode from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
 import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
@@ -9,6 +9,8 @@ import { isSEPSupported } from "../../api/debug/server";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import { ConnectionData, Server } from '../../typings';
+
+const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
 const ENCODINGS = [`37`, `256`, `273`, `277`, `278`, `280`, `284`, `285`, `297`, `500`, `871`, `870`, `905`, `880`, `420`, `875`, `424`, `1026`, `290`, `win37`, `win256`, `win273`, `win277`, `win278`, `win280`, `win284`, `win285`, `win297`, `win500`, `win871`, `win870`, `win905`, `win880`, `win420`, `win875`, `win424`, `win1026`];
 
@@ -243,169 +245,160 @@ export class SettingsUI {
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
 
-        const page = await ui.loadPage<any>(`Settings: ${config.name}`);
-        if (page) {
-          page.panel.dispose();
+        await Tools.withContext(EDITING_CONTEXT, async () => {
+          const page = await ui.loadPage<any>(`Settings: ${config.name}`);
+          if (page) {
+            page.panel.dispose();
 
-          if (page.data) {
-            const data = page.data;
-            const button = data.buttons;
+            if (page.data) {
+              const data = page.data;
+              const button = data.buttons;
 
-            switch (button) {
-              case `import`:
-                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
-                break;
+              switch (button) {
+                case `import`:
+                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
+                  break;
 
-              case `generate`:
-                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
-                break;
+                case `generate`:
+                  vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`);
+                  break;
 
-              case `clearAllowedExts`:
-                instance.getStorage()?.revokeAllExtensionAuthorisations();
-                break;
+                case `clearAllowedExts`:
+                  instance.getStorage()?.revokeAllExtensionAuthorisations();
+                  break;
 
-              default:
-                const data = page.data;
-                for (const key in data) {
+                default:
+                  const data = page.data;
+                  for (const key in data) {
 
-                  //In case we need to play with the data
-                  switch (key) {
-                    case `sourceASP`:
-                      if (data[key].trim() === ``) data[key] = null;
-                      break;
-                    case `hideCompileErrors`:
-                      data[key] = String(data[key]).split(`,`)
-                        .map(item => item.toUpperCase().trim())
-                        .filter(item => item !== ``)
-                        .filter(Tools.distinct);
-                      break;
-                    case `protectedPaths`:
-                      data[key] = String(data[key]).split(`,`)
-                        .map(item => item.trim())
-                        .map(item => item.startsWith('/') ? item : connection?.upperCaseName(item) || item.toUpperCase())
-                        .filter(item => item !== ``)
-                        .filter(Tools.distinct);
-                      break;
+                    //In case we need to play with the data
+                    switch (key) {
+                      case `sourceASP`:
+                        if (data[key].trim() === ``) data[key] = null;
+                        break;
+                      case `hideCompileErrors`:
+                        data[key] = String(data[key]).split(`,`)
+                          .map(item => item.toUpperCase().trim())
+                          .filter(item => item !== ``)
+                          .filter(Tools.distinct);
+                        break;
+                      case `protectedPaths`:
+                        data[key] = String(data[key]).split(`,`)
+                          .map(item => item.trim())
+                          .map(item => item.startsWith('/') ? item : connection?.upperCaseName(item) || item.toUpperCase())
+                          .filter(item => item !== ``)
+                          .filter(Tools.distinct);
+                        break;
+                    }
+                  }
+
+                  if (restartFields.some(item => data[item] && data[item] !== config[item])) {
+                    restart = true;
+                  }
+
+                  const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
+                  const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
+
+                  Object.assign(config, data);
+                  await instance.setConfig(config);
+                  if (removeCachedSettings)
+                    GlobalStorage.get().deleteServerSettingsCache(config.name);
+
+                  if (connection) {
+                    if (restart) {
+                      vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
+                        .then(async (value) => {
+                          if (value === `Reload`) {
+                            await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
+                          }
+                        });
+                    }
+                    else if (reloadBrowsers) {
+                      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+                      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+                    }
                   }
 
                   //Refresh connection browser if not connected
-                  if (!instance.getConnection()) {
+                  else {
                     vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
                   }
-                }
-
-                if (restartFields.some(item => data[item] && data[item] !== config[item])) {
-                  restart = true;
-                }
-
-                const reloadBrowsers = config.protectedPaths.join(",") !== data.protectedPaths.join(",");
-                const removeCachedSettings = (!data.quickConnect && data.quickConnect !== config.quickConnect);
-
-                Object.assign(config, data);
-                await instance.setConfig(config);
-                if (removeCachedSettings)
-                  GlobalStorage.get().deleteServerSettingsCache(config.name);
-
-                if (connection) {
-                  if (restart) {
-                    vscode.window.showInformationMessage(`Some settings require a restart to take effect. Reload workspace now?`, `Reload`, `No`)
-                      .then(async (value) => {
-                        if (value === `Reload`) {
-                          await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
-                        }
-                      });
-                  }
-                  else if (reloadBrowsers) {
-                    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
-                    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
-                  }
-                }
-                break;
+                  break;
+              }
             }
           }
-        }
+        })
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.showLoginSettings`, async (server?: Server) => {
         if (server) {
-          const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`);
           const name = server.name;
 
-          if (connections) {
-            const connectionIdx = connections.findIndex(item => item.name === name);
-            let connection = connections[connectionIdx];
-            const storedPassword = await context.secrets.get(`${name}_password`);
+          const connection = ConnectionManager.getByName(name);
+          if (connection) {
+            const storedPassword = await ConnectionManager.getStoredPassword(context, name);
+            let { data: stored, index } = connection;
 
-            const page = await new CustomUI()
-              .addInput(`host`, t(`login.host`), undefined, { default: connection.host, minlength: 1 })
-              .addInput(`port`, t(`login.port`), undefined, { default: String(connection.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-              .addInput(`username`, t(`username`), undefined, { default: connection.username, minlength: 1 })
+            const ui = new CustomUI()
+              .addInput(`host`, t(`login.host`), undefined, { default: stored.host, minlength: 1 })
+              .addInput(`port`, t(`login.port`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`username`, t(`username`), undefined, { default: stored.username, minlength: 1 })
               .addParagraph(t(`login.authDecision`))
               .addPassword(`password`, `${t(`password`)}${storedPassword ? ` (${t(`stored`)})` : ``}`, t(`login.password.label`))
-              .addFile(`privateKeyPath`, `${t(`privateKey`)}${connection.privateKeyPath ? ` (${t(`current`)}: ${connection.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
+              .addFile(`privateKeyPath`, `${t(`privateKey`)}${stored.privateKeyPath ? ` (${t(`current`)}: ${stored.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
               .addButtons(
                 { id: `submitButton`, label: t(`save`), requiresValidation: true },
                 { id: `removeAuth`, label: t(`login.removeAuth`) }
-              )
-              .loadPage<LoginSettings>(t(`login.title.edit`, name));
+              );
 
-            if (page && page.data) {
-              page.panel.dispose();
+            await Tools.withContext(EDITING_CONTEXT, async () => {
+              const page = await ui.loadPage<LoginSettings>(t(`login.title.edit`, name));
+              if (page && page.data) {
+                page.panel.dispose();
 
-              const data = page.data;
+                const data = page.data;
+                const chosenButton = data.buttons as "submitButton" | "removeAuth";
 
-              let doUpdate = false;
-
-              const chosenButton = data.buttons as "submitButton" | "removeAuth";
-
-              switch (chosenButton) {
-                case `submitButton`:
-                  if (data.password) {
-                    // New password was entered, so store the password
-                    // and remove the private key path from the data
-                    await context.secrets.store(`${name}_password`, `${data.password}`);
+                switch (chosenButton) {
+                  case `removeAuth`:
+                    await ConnectionManager.deleteStoredPassword(context, name);
                     data.privateKeyPath = undefined;
+                    vscode.window.showInformationMessage(t(`login.authRemoved`, name));
+                    break;
 
-                    vscode.window.showInformationMessage(t(`login.password.updated`, name));
-
-                    doUpdate = true;
-
-                  } else {
-                    // If no password was entered, but a keypath exists
-                    // then remove the password from the data and
-                    // use the keypath instead
-                    if (data.privateKeyPath?.trim()) {
-                      await context.secrets.delete(`${name}_password`);
-
+                  default:
+                    if (data.password) {
+                      delete data.privateKeyPath;
+                      if (data.password !== storedPassword) {
+                        // New password was entered, so store the password
+                        // and remove the private key path from the data
+                        await ConnectionManager.setStoredPassword(context, name, data.password);
+                        vscode.window.showInformationMessage(t(`login.password.updated`, name));
+                      }
+                    } else if (data.privateKeyPath?.trim()) {
+                      // If no password was entered, but a keypath exists
+                      // then remove the password from the data and
+                      // use the keypath instead
+                      await ConnectionManager.deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
-
-                      doUpdate = true;
                     }
-                  }
-                  break;
+                    else{
+                      delete data.privateKeyPath;
+                    }
+                    break;
+                }
 
-                case `removeAuth`:
-                  await context.secrets.delete(`${name}_password`);
-                  data.password = undefined;
-                  data.privateKeyPath = undefined;
-
-                  vscode.window.showInformationMessage(t(`login.authRemoved`, name));
-
-                  doUpdate = true;
-                  break;
-              }
-
-
-              if (doUpdate) {
                 //Fix values before assigning the data
                 data.port = Number(data.port);
                 delete data.password;
                 delete data.buttons;
 
-                connections[connectionIdx] = Object.assign(connection, data);
-                await GlobalConfiguration.set(`connections`, connections);
+                stored = Object.assign(stored, data);
+                await ConnectionManager.updateByIndex(index, stored);
+                vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
+
               }
-            }
+            });
           }
         }
       })

@@ -1,6 +1,7 @@
 import { env } from "process";
-import { commands, window } from "vscode";
-import { ConnectionConfiguration } from "./api/Configuration";
+import querystring from "querystring";
+import { commands, ExtensionContext, Uri, window } from "vscode";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "./api/Configuration";
 import { Tools } from "./api/Tools";
 import { instance } from "./instantiate";
 import { t } from "./locale";

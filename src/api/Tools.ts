@@ -29,7 +29,7 @@ export namespace Tools {
    * @param output /usr/bin/db2's output
    * @returns rows
    */
-  export function db2Parse(output: string): DB2Row[] {
+  export function db2Parse(output: string, input?: string): DB2Row[] {
     let gotHeaders = false;
     let figuredLengths = false;
     let iiErrorMessage = false;
@@ -67,8 +67,10 @@ export namespace Tools {
           }
 
           if (!SQLSTATE.startsWith(`01`)) {
-            let sqlError = new SqlError(`${data[index + 3]} (${SQLSTATE})`);
+            const errorMessage = data[index + 3] ? data[index + 3].trim() : `Unknown error`;
+            let sqlError = new SqlError(`${errorMessage} (${SQLSTATE})`);
             sqlError.sqlstate = SQLSTATE;
+            sqlError.cause = input;
             throw sqlError;
           }
         }
@@ -286,15 +288,26 @@ export namespace Tools {
     }
   }
 
+  /**
+   * Check whether two given uris point to the same file/member
+   */
+  export function areEquivalentUris(uriA: vscode.Uri, uriB: vscode.Uri) {
+    return uriStringWithoutFragment(uriA) === uriStringWithoutFragment(uriB);
+  }
 
   /**
    * We do this to find previously opened files with the same path, but different case OR readonly flags.
    * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
    */
   export function findExistingDocumentUri(uri: vscode.Uri) {
+    const possibleDoc = findExistingDocument(uri);
+    return possibleDoc?.uri || uri;
+  }
+
+  export function findExistingDocument(uri: vscode.Uri) {
     const baseUriString = uriStringWithoutFragment(uri);
     const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === baseUriString);
-    return possibleDoc?.uri || uri;
+    return possibleDoc;
   }
 
   /**
@@ -308,14 +321,31 @@ export namespace Tools {
   }
 
   /**
+   * Given the uri of a member or other resource, find all
+   * (if any) open tabs where that resource is being edited.
+  */
+  export function findUriTabs(uriToFind: vscode.Uri): vscode.Tab[] {
+    let resourceTabs: vscode.Tab[] = [];
+    for (const group of vscode.window.tabGroups.all) {
+      group.tabs.filter(tab =>
+        (tab.input instanceof vscode.TabInputText)
+        && areEquivalentUris(tab.input.uri, uriToFind)
+      ).forEach(tab => {
+        resourceTabs.push(tab);
+      });
+    }
+    return resourceTabs;
+  }
+
+  /**
    * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
    * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
    * - Makes sure each comment (`--`) starts on a new line
    * @param statement the statement to fix
    * @returns statement compatible with QZDFMDB2
    */
-  export function fixSQL(statement: string) {
-    return statement.split("\n").map(line => {
+  export function fixSQL(statement: string, removeComments = false): string {
+    let statements = statement.split("\n").map(line => {
       if (line.startsWith('@')) {
         //- Escape all '
         //- Remove any trailing ;
@@ -325,14 +355,19 @@ export namespace Tools {
 
       //Make each comment start on a new line
       return line.replaceAll("--", "\n--");
+    }).join(`\n`);
+
+    if (removeComments) {
+      statements = statements.split(`\n`).filter(l => !l.trim().startsWith(`--`)).join(`\n`);
     }
-    ).join("\n");
+
+    return statements;
   }
 
   export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {
     return `<table>`
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
-      .concat(`${Object.entries(rows).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
+      .concat(`${Object.entries(rows).filter(([key, value]) => value !== undefined).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
       .concat(`</table>`);
   }
 
@@ -363,7 +398,8 @@ export namespace Tools {
         activeContexts.set(context, 0);
       }
       else {
-        activeContexts.set(context, stack++);
+        stack++;
+        activeContexts.set(context, stack);
       }
       return await task();
     }
@@ -371,7 +407,8 @@ export namespace Tools {
       let stack = activeContexts.get(context);
       if (stack !== undefined) {
         if (stack) {
-          activeContexts.set(context, stack--);
+          stack--;
+          activeContexts.set(context, stack);
         }
         else {
           await vscode.commands.executeCommand(`setContext`, context, undefined);

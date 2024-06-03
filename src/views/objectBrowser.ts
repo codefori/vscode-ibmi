@@ -9,7 +9,7 @@ import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
 import { Tools } from "../api/Tools";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
+import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { instance, setSearchResults } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
@@ -317,7 +317,8 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
       text: this.object.text,
       members: await content.countMembers(this.object),
       length: this.object.sourceLength,
-      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?'
+      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?',
+      iasp: this.object.asp
     }));
 
     tooltip.supportHtml = true;
@@ -350,6 +351,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
       changed: object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
       created_by: object.created_by,
       owner: object.owner,
+      iasp: object.asp
     }));
     this.tooltip.supportHtml = true;
 
@@ -734,11 +736,23 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: ObjectBrowserMemberItem) => {
       const connection = getConnection();
       const oldMember = connection.parserMemberPath(node.path);
+      const oldUri = node.resourceUri as vscode.Uri;
       const library = oldMember.library;
       const sourceFile = oldMember.file;
       let newBasename: string | undefined = oldMember.basename;
       let newMember: MemberParts | undefined;
+      let newMemberPath: string | undefined;
       let newNameOK;
+
+      // Check if the member is currently open in an editor tab.
+      const oldMemberTabs = Tools.findUriTabs(oldUri);
+
+      // If the member is currently open in an editor tab, and 
+      // the member has unsaved changes, then prevent the renaming operation.
+      if(oldMemberTabs.find(tab => tab.isDirty)){
+        vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", t("member.has.unsaved.changes")));
+        return;
+      }
 
       do {
         newBasename = await vscode.window.showInputBox({
@@ -749,8 +763,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         if (newBasename) {
           newNameOK = true;
+          newMemberPath = library + `/` + sourceFile + `/` + newBasename;
           try {
-            newMember = connection.parserMemberPath(library + `/` + sourceFile + `/` + newBasename);
+            newMember = connection.parserMemberPath(newMemberPath);
           } catch (e: any) {
             newNameOK = false;
             vscode.window.showErrorMessage(e);
@@ -786,6 +801,19 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
         }
       } while (newBasename && !newNameOK)
+
+      // If the member was open in an editor tab prior to the renaming,
+      // refresh those tabs to reflect the new member path/name.
+      // (Directly modifying the label or uri of an open tab is apparently not
+      // possible with the current VS Code API, so refresh the tab by closing
+      // it and then opening a new one at the new uri.)
+      if (newNameOK && newMemberPath) {
+        oldMemberTabs.forEach((tab) => {
+          vscode.window.tabGroups.close(tab).then(() => {
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+          });
+        })
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node: MemberItem) => {
@@ -1294,6 +1322,11 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
         }
       }
+    }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async() => {
+        vscode.commands.executeCommand('objectBrowser.focus');
+        vscode.commands.executeCommand('list.find');
     })
   );
 }

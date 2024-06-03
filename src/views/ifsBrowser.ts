@@ -616,6 +616,17 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
+      // Ensure that the file has a defined uri
+      if (!node.resourceUri) {
+        vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.path.not.parsed")));
+        return;
+      }
+      // Check if the streamfile is currently open in an editor tab
+      const oldFileTabs = Tools.findUriTabs(node.resourceUri);
+      if (oldFileTabs.find(tab => tab.isDirty)) {
+        vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.unsaved.changes")));
+        return;
+      }
       const connection = instance.getConnection();
       const config = instance.getConfig();
       if (config && connection) {
@@ -637,6 +648,16 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               Tools.escapePath(node.path),
               Tools.escapePath(targetPath)
             ));
+            // If the file was open in any editor tabs prior to the renaming/movement,
+            // refresh those tabs to reflect the new file path/name.
+            // (Directly modifying the label or uri of an open tab is apparently not
+            // possible with the current VS Code API, so refresh the tab by closing
+            // it and then opening a new one at the new uri.)
+            oldFileTabs.forEach((tab) => {
+              vscode.window.tabGroups.close(tab).then(() => {
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, targetPath);
+              })
+            })
 
           } catch (e) {
             vscode.window.showErrorMessage(t(`ifsBrowser.moveIFS.errorMessage`, t(String(node.contextValue)), e));
@@ -801,6 +822,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.ifs.copyPath`, async (node: IFSItem) => {
       await vscode.env.clipboard.writeText(node.path);
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async() => {
+        vscode.commands.executeCommand('ifsBrowser.focus');
+        vscode.commands.executeCommand('list.find');
+    })
   )
 }
 

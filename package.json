@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.10.2-dev.0",
+	"version": "2.10.5-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -964,36 +964,42 @@
 				"command": "code-for-ibmi.connect",
 				"title": "New Connection",
 				"category": "IBM i",
-				"icon": "$(add)"
+				"icon": "$(add)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectTo",
 				"title": "Connect to IBM i",
 				"category": "IBM i",
-				"icon": "$(debug-start)"
+				"icon": "$(debug-start)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectToPrevious",
 				"title": "Connect to Previous IBM i",
 				"category": "IBM i",
-				"icon": "$(remote)"
+				"icon": "$(remote)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectToAndReload",
 				"title": "Connect and Reload Server Settings",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
 				"title": "Refresh",
 				"category": "IBM i",
-				"icon": "$(refresh)"
+				"icon": "$(refresh)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.sortConnections",
 				"title": "Sort",
 				"category": "IBM i",
-				"icon": "$(list-ordered)"
+				"icon": "$(list-ordered)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.showAdditionalSettings",
@@ -1008,17 +1014,20 @@
 			{
 				"command": "code-for-ibmi.renameConnection",
 				"title": "Rename...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.copyConnection",
 				"title": "Copy...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.disconnect",
@@ -1630,6 +1639,26 @@
 				"category": "IBM i",
 				"icon": "$(settings-gear)",
 				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.refreshFile",
+				"title": "Refresh File",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.searchObjectBrowser",
+				"title": "Highlight",
+				"category": "IBM i",
+				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.searchIFSBrowser",
+				"title": "Highlight",
+				"category": "IBM i",
+				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
 			}
 		],
 		"keybindings": [
@@ -1755,7 +1784,7 @@
 				{
 					"id": "ibmiDebugBrowser",
 					"name": "IBM i debugger",
-					"when": "code-for-ibmi:connected && code-for-ibmi:debug",
+					"when": "code-for-ibmi:connected && code-for-ibmi:debug && !code-for-ibmi:debugManaged",
 					"visibility": "collapsed"
 				}
 			]
@@ -2171,6 +2200,14 @@
 				{
 					"command": "code-for-ibmi.debug.open.service.config",
 					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchIFSBrowser",
+					"when": "never"
 				}
 			],
 			"view/title": [
@@ -2270,8 +2307,13 @@
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshIFSBrowser",
+					"command": "code-for-ibmi.searchIFSBrowser",
 					"group": "navigation@1",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"group": "navigation@2",
 					"when": "view == ifsBrowser"
 				},
 				{
@@ -2281,12 +2323,17 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
-					"group": "navigation@6",
+					"group": "navigation@7",
 					"when": "view == objectBrowser"
 				},
 				{
 					"command": "code-for-ibmi.sortFilters",
 					"group": "navigation@5",
+					"when": "view == objectBrowser"
+				},
+				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"group": "navigation@6",
 					"when": "view == objectBrowser"
 				},
 				{
@@ -2325,6 +2372,11 @@
 					"command": "code-for-ibmi.clearDiagnostics",
 					"when": "code-for-ibmi:connected",
 					"group": "navigation@3"
+				},
+				{
+					"command": "code-for-ibmi.refreshFile",
+					"when": "code-for-ibmi:connected && (resourceScheme == streamfile || resourceScheme == member)",
+					"group": "navigation@4"
 				}
 			],
 			"view/item/context": [
@@ -2779,7 +2831,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",

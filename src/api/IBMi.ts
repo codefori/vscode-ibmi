@@ -2,12 +2,16 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
+import { parse } from 'csv-parse/sync';
 import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
+import { ComponentId, ComponentManager } from "../components/component";
+import { CopyToImport } from "../components/copyToImport";
 import { instance } from "../instantiate";
-import { CcsidOrigin, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
+import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
@@ -46,11 +50,12 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
-  private runtimeCcsidOrigin = CcsidOrigin.User;
-  /** Runtime CCSID is either job CCSID or QCCSID */
-  private runtimeCcsid: number = CCSID_SYSVAL;
+  private qccsid: number = 65535;
+  private jobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
+
+  private components: ComponentManager = new ComponentManager();
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -76,6 +81,7 @@ export default class IBMi {
    * */
   lastErrors: object[] = [];
   config?: ConnectionConfiguration.Parameters;
+  content = new IBMiContent(this);
   shell?: string;
 
   commandsExecuted: number = 0;
@@ -613,8 +619,8 @@ export default class IBMi {
             }
 
             // Fetch conversion values?
-            if (quickConnect === true && cachedServerSettings?.runtimeCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID) {
-              this.runtimeCcsid = cachedServerSettings.runtimeCcsid;
+            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+              this.jobCcsid = cachedServerSettings.jobCcsid;
               this.variantChars = cachedServerSettings.variantChars;
               this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
             } else {
@@ -625,20 +631,22 @@ export default class IBMi {
               // Next, we're going to see if we can get the CCSID from the user or the system.
               // Some things don't work without it!!!
               try {
-                // First we grab the users default CCSID
-                const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                  this.runtimeCcsid = userInfo.CHARACTER_CODE_SET_ID;
-                  this.runtimeCcsidOrigin = CcsidOrigin.User;
+
+                // we need to grab the system CCSID (QCCSID)
+                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
                 }
 
-                // But if that CCSID is *SYSVAL, then we need to grab the system CCSID (QCCSID)
-                if (!this.runtimeCcsid || this.runtimeCcsid === CCSID_SYSVAL) {
-                  const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-                  if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-                    this.runtimeCcsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-                    this.runtimeCcsidOrigin = CcsidOrigin.System;
-                  }
+                // we grab the users default CCSID
+                const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+                  this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
+                }
+
+                // if the job ccsid is *SYSVAL, then assign it to sysval
+                if (this.jobCcsid === CCSID_SYSVAL) {
+                  this.jobCcsid = this.qccsid;
                 }
 
                 // Let's also get the user's default CCSID
@@ -689,10 +697,10 @@ export default class IBMi {
           if (!this.enableSQL) {
             const encoding = this.getEncoding();
             // Show a message if the system CCSID is bad
-            const ccsidMessage = this.runtimeCcsidOrigin === CcsidOrigin.System && this.runtimeCcsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile.` : undefined;
+            const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
 
             // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
-            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID in your user profile.` : undefined;
+            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
 
             vscode.window.showErrorMessage([
               ccsidMessage,
@@ -765,7 +773,7 @@ export default class IBMi {
                         }
                         else {
                           try {
-                            const content = instance.getContent();
+                            const content = this.content;
                             if (content) {
                               const bashrcContent = (await content.downloadStreamfile(bashrcFile)).split("\n");
                               let replaced = false;
@@ -886,6 +894,9 @@ export default class IBMi {
             }
           }
 
+          progress.report({ message: `Checking Code for IBM i components.` });
+          await this.components.startup(this);
+
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
             await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
@@ -895,7 +906,8 @@ export default class IBMi {
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
             aspInfo: this.aspInfo,
-            runtimeCcsid: this.runtimeCcsid,
+            qccsid: this.qccsid,
+            jobCcsid: this.jobCcsid,
             remoteFeatures: this.remoteFeatures,
             remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
             variantChars: {
@@ -1240,12 +1252,12 @@ export default class IBMi {
    * The directory is guaranteed to be empty when created and deleted after the `process` is done.
    * @param process the process that will run on the empty directory
    */
-  async withTempDirectory(process: (directory: string) => Promise<void>) {
+  async withTempDirectory<T>(process: (directory: string) => Promise<T>) {
     const tempDirectory = `${this.config?.tempDir || '/tmp'}/code4itemp${Tools.makeid(20)}`;
     const prepareDirectory = await this.sendCommand({ command: `rm -rf ${tempDirectory} && mkdir -p ${tempDirectory}` });
     if (prepareDirectory.code === 0) {
       try {
-        await process(tempDirectory);
+        return await process(tempDirectory);
       }
       finally {
         await this.sendCommand({ command: `rm -rf ${tempDirectory}` });
@@ -1279,6 +1291,9 @@ export default class IBMi {
     }
   }
 
+  getComponent<T>(id: ComponentId) {
+    return this.components.get<T>(id);
+  }
 
   /**
    * Run SQL statements.
@@ -1288,35 +1303,82 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, opts: { userCcsid?: number } = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
       const ccsidDetail = this.getEncoding();
-      const useCcsid = opts.userCcsid || (ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined);
+      const useCcsid = ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined;
       const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
+
+      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
+
+      let returningAsCsv: WrapResult | undefined;
+
+      if (this.qccsid === 65535) {
+        let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
+        const lastStmt = list.pop()?.trim();
+        const asUpper = lastStmt?.toUpperCase();
+
+        if (lastStmt) {
+          if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
+            const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
+            if (copyToImport) {
+              returningAsCsv = copyToImport.wrap(lastStmt);
+              list.push(...returningAsCsv.newStatements);
+              input = list.join(`;\n`);
+            }
+          }
+
+          if (!returningAsCsv) {
+            list.push(lastStmt);
+          }
+        }
+      }
 
       const output = await this.sendCommand({
         command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: Tools.fixSQL(`${possibleChangeCommand}${statements}`)
+        stdin: input
       })
 
       if (output.stdout) {
-        return Tools.db2Parse(output.stdout);
-      } else {
-        throw new Error(`There was an error running the SQL statement.`);
-      }
+        Tools.db2Parse(output.stdout, input);
 
-    } else {
-      throw new Error(`There is no way to run SQL on this system.`);
+        if (returningAsCsv) {
+          // Will throw an error if stdout contains an error
+
+          const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
+          if (csvContent) {
+            this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
+
+            return parse(csvContent, {
+              columns: true,
+              skip_empty_lines: true,
+              cast: true,
+              onRecord(record) {
+                for (const key of Object.keys(record)) {
+                  record[key] = record[key] === ` ` ? `` : record[key];
+                }
+                return record;
+              }
+            }) as Tools.DB2Row[];
+          }
+
+          throw new Error(`There was an error fetching the SQL result set.`)
+        } else {
+          return Tools.db2Parse(output.stdout);
+        }
+      }
     }
+
+    throw new Error(`There is no way to run SQL on this system.`);
   }
 
   getEncoding() {
-    const fallback = ((this.runtimeCcsid < 1 || this.runtimeCcsid === 65535) && this.userDefaultCCSID > 0);
-    const ccsid = fallback ? (this.userDefaultCCSID) : this.runtimeCcsid;
+    const fallbackToDefault = ((this.jobCcsid < 1 || this.jobCcsid === 65535) && this.userDefaultCCSID > 0);
+    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.jobCcsid;
     return {
-      fallback,
+      fallback: fallbackToDefault,
       ccsid,
       invalid: (ccsid < 1 || ccsid === 65535)
     };
@@ -1324,8 +1386,8 @@ export default class IBMi {
 
   getCcsids() {
     return {
-      origin: this.runtimeCcsidOrigin,
-      runtimeCcsid: this.runtimeCcsid,
+      qccsid: this.qccsid,
+      runtimeCcsid: this.jobCcsid,
       userDefaultCCSID: this.userDefaultCCSID,
     };
   }

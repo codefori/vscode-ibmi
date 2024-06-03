@@ -8,6 +8,18 @@ import { instance } from "../instantiate";
 import { CommandResult } from "../typings";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 
+const contents = {
+  '37': [`Hello world`],
+  '273': [`Hello world`, `àáãÄÜö£øß`],
+  '277': [`Hello world`, `çñßØ¢åæ`],
+  '297': [`Hello world`, `âÑéè¥ýÝÞã`],
+  '290': [`ｦｯ!ﾓﾄｴﾜﾈﾁｾ`, `Hello world`, `ｦｯ!ﾓﾄｴﾜﾈﾁｾ`],
+  // '420': [`Hello world`, `ص ث ب ﻷ`],
+  '420': [`Hello world`, `ص ث ب`],
+}
+
+const rtlEncodings = [`420`];
+
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
@@ -15,65 +27,43 @@ export const EncodingSuite: TestSuite = {
     assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
   },
 
-  tests: [
-    {
-      name: `Encoding 37`, test: async () => {
+  tests: Object.keys(contents).map(ccsid => {
+    return {
+      name: `Encoding ${ccsid}`, test: async () => {
         const connection = instance.getConnection();
         const config = instance.getConfig()!;
 
-        const lines = [
-          `Hello world`
-        ].join(`\n`);
+        const oldLines = contents[ccsid as keyof typeof contents];
+        const lines = oldLines.join(`\n`);
 
         const tempLib = config!.tempLibrary;
 
-        const file = `TEST37`;
+        const file = `TEST${ccsid}`;
 
-        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(37)`, noLibList: true });
+        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
 
-        const theBadOneUri = getMemberUri({library: tempLib, file, name: `THEMEMBER`, extension: `TXT`});
+        const theBadOneUri = getMemberUri({ library: tempLib, file, name: `THEMEMBER`, extension: `TXT` });
 
         await workspace.fs.readFile(theBadOneUri);
 
         await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-        const fileContent = new TextDecoder().decode(memberContentBuf)
+        let fileContent = new TextDecoder().decode(memberContentBuf);
         
-        assert.strictEqual(fileContent, lines);
-      },
-    },
-    // {
-    //   name: `Encoding 273`, test: async () => {
-    //     const connection = instance.getConnection();
-    //     const config = instance.getConfig()!;
+        if (rtlEncodings.includes(ccsid)) {
+          const newLines = fileContent.split(`\n`);
+          
+          assert.strictEqual(newLines.length, 2);
+          assert.ok(newLines[1].startsWith(` `)); // RTL
 
-    //     const lines = [
-    //       `Hello world`,
-    //       `àáãÄÜö£øß`
-    //     ].join(`\n`);
-
-    //     const tempLib = config!.tempLibrary;
-
-    //     connection?.setOverrideCcsid(37);
-
-    //     const file = `TEST273`;
-
-    //     await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(273)`, noLibList: true });
-    //     await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
-
-    //     const theBadOneUri = getMemberUri({library: tempLib, file, name: `THEMEMBER`, extension: `TXT`});
-
-    //     await workspace.fs.readFile(theBadOneUri);
-
-    //     await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
-
-    //     const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-    //     const fileContent = new TextDecoder().decode(memberContentBuf)
-        
-    //     assert.strictEqual(fileContent, lines);
-    //   }
-    // }
-  ]
+          assert.strictEqual(newLines[0].trim(), oldLines[0]);
+          assert.strictEqual(newLines[1].trim(), oldLines[1]);
+        } else {
+          assert.deepStrictEqual(fileContent, lines);
+        }
+      }
+    }
+  })
 };
