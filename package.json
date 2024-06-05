@@ -514,12 +514,14 @@
 						"inherit",
 						"en",
 						"da",
+						"de",
 						"fr"
 					],
 					"enumDescriptions": [
 						"Inherit from VS Code settings",
 						"English",
 						"Danish",
+						"German",
 						"French"
 					],
 					"description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."

@@ -3,12 +3,14 @@ import { GlobalConfiguration } from "../api/Configuration";
 import da from "./ids/da.json";
 import en from "./ids/en.json";
 import fr from "./ids/fr.json";
+import de from "./ids/de.json";
 
 export type Locale = {[id: string]: string};
 
 const locales: {[locale: string]: Locale} = {
   en,
   da,
+  de,
   fr
 }
 
