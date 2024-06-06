@@ -515,6 +515,7 @@
 						"en",
 						"da",
 						"de",
+						"no",
 						"fr"
 					],
 					"enumDescriptions": [
@@ -522,6 +523,7 @@
 						"English",
 						"Danish",
 						"German",
+						"Norwegian",
 						"French"
 					],
 					"description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."
