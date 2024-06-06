@@ -2,6 +2,7 @@ import { env } from "vscode";
 import { GlobalConfiguration } from "../api/Configuration";
 import da from "./ids/da.json";
 import en from "./ids/en.json";
+import no from "./ids/no.json";
 import fr from "./ids/fr.json";
 
 export type Locale = {[id: string]: string};
@@ -9,6 +10,7 @@ export type Locale = {[id: string]: string};
 const locales: {[locale: string]: Locale} = {
   en,
   da,
+  no,
   fr
 }
 
