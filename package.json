@@ -514,6 +514,7 @@
 						"inherit",
 						"en",
 						"da",
+						"de",
 						"no",
 						"fr"
 					],
@@ -521,6 +522,7 @@
 						"Inherit from VS Code settings",
 						"English",
 						"Danish",
+						"German",
 						"Norwegian",
 						"French"
 					],

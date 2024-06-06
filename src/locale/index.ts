@@ -4,12 +4,14 @@ import da from "./ids/da.json";
 import en from "./ids/en.json";
 import no from "./ids/no.json";
 import fr from "./ids/fr.json";
+import de from "./ids/de.json";
 
 export type Locale = {[id: string]: string};
 
 const locales: {[locale: string]: Locale} = {
   en,
   da,
+  de,
   no,
   fr
 }
