@@ -616,16 +616,19 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
-      // Ensure that the file has a defined uri
-      if (!node.resourceUri) {
-        vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.path.not.parsed")));
-        return;
-      }
-      // Check if the streamfile is currently open in an editor tab
-      const oldFileTabs = Tools.findUriTabs(node.resourceUri);
-      if (oldFileTabs.find(tab => tab.isDirty)) {
-        vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.unsaved.changes")));
-        return;
+      const oldFileTabs: vscode.Tab[] = [];
+      if (node.contextValue?.startsWith(`streamfile`)) {
+        // Ensure that the file has a defined uri
+        if (!node.resourceUri) {
+          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.path.not.parsed")));
+          return;
+        }
+        // Check if the streamfile is currently open in an editor tab
+        oldFileTabs.push(...Tools.findUriTabs(node.resourceUri));
+        if (oldFileTabs.find(tab => tab.isDirty)) {
+          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.unsaved.changes")));
+          return;
+        }
       }
       const connection = instance.getConnection();
       const config = instance.getConfig();
