@@ -617,7 +617,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
       const oldFileTabs: vscode.Tab[] = [];
-      if (node.contextValue?.startsWith(`streamfile`)) {
+      if (node.file.type === "streamfile") {
         // Ensure that the file has a defined uri
         if (!node.resourceUri) {
           vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.path.not.parsed")));
