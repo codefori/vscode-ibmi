@@ -120,6 +120,7 @@
   "delete": "Delete",
   "detail.reading.error": "Failed to read debug service detail file {0}: {1}",
   "directory": "directory",
+  "directory.unsaved.changes": "The directory has file(s) with unsaved changes.",
   "discard.changes": "Your changes will be discarded",
   "download.certificate": "Download certificate",
   "duplicate": "Duplicate",
