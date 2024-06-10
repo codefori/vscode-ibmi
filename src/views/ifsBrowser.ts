@@ -629,6 +629,13 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.unsaved.changes")));
           return;
         }
+      } else {
+        // Check if there are streamfiles in the directory which are currently open in an editor tab
+        oldFileTabs.push(...Tools.findUriTabs(node.file.path));
+        if (oldFileTabs.find(tab => tab.isDirty)) {
+          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("directory.unsaved.changes")));
+          return;
+        }
       }
       const connection = instance.getConnection();
       const config = instance.getConfig();
