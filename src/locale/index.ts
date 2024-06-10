@@ -5,6 +5,7 @@ import en from "./ids/en.json";
 import no from "./ids/no.json";
 import fr from "./ids/fr.json";
 import de from "./ids/de.json";
+import pl from "./ids/pl.json";
 
 export type Locale = {[id: string]: string};
 
@@ -13,6 +14,7 @@ const locales: {[locale: string]: Locale} = {
   da,
   de,
   no,
+  pl,
   fr
 }
 
