@@ -120,6 +120,7 @@
   "delete": "Supprimer",
   "detail.reading.error": "Erreur de lecture du fichier détail du service de débogage {0}: {1}",
   "directory": "Répertoire",
+  "directory.unsaved.changes": "Le répertoire a des fichiers ouverts non sauvegardés.",
   "discard.changes": "Vos modifications vont être perdues",
   "download.certificate": "Télécharger le certificat",
   "duplicate": "Dupliquer",
