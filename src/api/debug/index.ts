@@ -60,7 +60,6 @@ export async function initialize(context: ExtensionContext) {
           // the user has a custom CURLIB and LIBL setup.
           if (env) {
             if (env[`CURLIB`]) {
-              objectLibrary = env[`CURLIB`];
               libraries.currentLibrary = env[`CURLIB`];
             }
 
