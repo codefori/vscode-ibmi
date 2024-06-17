@@ -3,19 +3,22 @@ import { Tools } from './api/Tools';
 import path, { dirname } from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
-import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
+import { getDebugServiceDetails } from './api/debug/config';
+import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
 import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
+import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
-import { initGetNewLibl } from "./languages/clle/getnewlibl";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { t } from './locale';
 
 export let instance: Instance;
 
@@ -37,12 +40,6 @@ connectedBarItem.command = {
   command: `code-for-ibmi.showAdditionalSettings`,
   title: `Show connection settings`
 };
-connectedBarItem.tooltip = new vscode.MarkdownString([
-  `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-  `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
-  `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`
-].join(`\n\n---\n\n`), true);
-connectedBarItem.tooltip.isTrusted = true;
 
 let selectedForCompare: vscode.Uri;
 let searchViewContext: SearchView;
@@ -192,7 +189,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const LOADING_LABEL = `Please wait`;
       const storage = instance.getStorage();
       const content = instance.getContent();
-      const config = instance.getConfig();
       const connection = instance.getConnection();
       let starRemoved: boolean = false;
 
@@ -237,11 +233,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.show();
 
       // Create a cache for Schema if autosuggest enabled
-      if (schemaItems.length === 0 && config && config.enableSQL) {
+      if (schemaItems.length === 0 && connection?.enableSQL) {
         content!.runSQL(`
           select cast( SYSTEM_SCHEMA_NAME as char( 10 ) for bit data ) as SYSTEM_SCHEMA_NAME
-               , ifnull( cast( SCHEMA_TEXT as char( 50 ) for bit data ), '' ) as SCHEMA_TEXT 
-            from QSYS2.SYSSCHEMAS 
+               , ifnull( cast( SCHEMA_TEXT as char( 50 ) for bit data ), '' ) as SCHEMA_TEXT
+            from QSYS2.SYSSCHEMAS
            order by 1`
         ).then(resultSetLibrary => {
           schemaItems = resultSetLibrary.map(row => ({
@@ -271,7 +267,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         }
 
         // autosuggest
-        if (config && config.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
+        if (connection && connection.enableSQL && (!quickPick.value.startsWith(`/`)) && quickPick.value.endsWith(`*`)) {
           const selectionSplit = connection!.upperCaseName(quickPick.value).split('/');
           const lastPart = selectionSplit[selectionSplit.length - 1];
           let filterText = lastPart.substring(0, lastPart.indexOf(`*`));
@@ -307,10 +303,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
               resultSet = await content!.runSQL(`
                 select ifnull( cast( SYSTEM_TABLE_NAME as char( 10 ) for bit data ), '' ) as SYSTEM_TABLE_NAME
-                     , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT 
-                  from QSYS2.SYSTABLES 
-                 where SYSTEM_TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}' 
-                       and FILE_TYPE = 'S' 
+                     , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT
+                  from QSYS2.SYSTABLES
+                 where SYSTEM_TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
+                       and FILE_TYPE = 'S'
                   ${filterText ? `and SYSTEM_TABLE_NAME like '${filterText}%'` : ``}
                  order by 1
               `);
@@ -402,7 +398,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       })
 
       quickPick.onDidAccept(async () => {
-        let selection = quickPick.selectedItems[0].label;
+        let selection = quickPick.selectedItems.length === 1 ? quickPick.selectedItems[0].label : undefined;
         if (selection && selection !== LOADING_LABEL) {
           if (selection === CLEAR_RECENT) {
             recentItems.length = 0;
@@ -429,37 +425,29 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           } else {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
-              if (config && config.enableSQL && !selection.startsWith(`/`)) {
-                const libUS = connection!.sysNameInAmerican(selectionSplit[0]);
-                const fileUS = connection!.sysNameInAmerican(selectionSplit[1]);
-                const memberUS = path.parse(connection!.sysNameInAmerican(selectionSplit[2]));
+
+              const infoComponent = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`);
+
+              // When selection is QSYS path
+              if (!selection.startsWith(`/`) && infoComponent) {
                 const lib = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const fullMember = await content!.runSQL(`
-                  select rtrim( cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) ) as MEMBER
-                       , rtrim( coalesce( SOURCE_TYPE, '' ) ) as TYPE
-                    from QSYS2.SYSPARTITIONSTAT
-                   where ( SYSTEM_TABLE_SCHEMA, SYSTEM_TABLE_NAME, SYSTEM_TABLE_MEMBER ) = ( '${libUS}', '${fileUS}', '${memberUS.name}' )
-                   limit 1
-                `).then((resultSet) => {
-                  return resultSet.length !== 1 ? {} :
-                    {
-                      base: `${resultSet[0].MEMBER}.${resultSet[0].TYPE}`,
-                      name: `${resultSet[0].MEMBER}`,
-                      ext: `${resultSet[0].TYPE}`,
-                    }
-                });
-                if (!fullMember) {
-                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.base} does not exist.`);
+                const memberInfo = await infoComponent.getMemberInfo(lib, file, member.name);
+                if (!memberInfo) {
+                  vscode.window.showWarningMessage(`Source member ${lib}/${file}/${member.base} does not exist.`);
                   return;
-                } else if (fullMember.name !== member.name || (member.ext && fullMember.ext !== member.ext)) {
+                } else if (memberInfo.name !== member.name || (member.ext && memberInfo.extension !== member.ext)) {
                   vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.name} of type ${member.ext} does not exist.`);
                   return;
                 }
-                selection = `${lib}/${file}/${fullMember.base}`;
+
+                member.base = `${member.name}.${member.ext || memberInfo.extension}`;
+                selection = `${lib}/${file}/${member.base}`;
               };
+
+              // When select is IFS path
               if (selection.startsWith(`/`)) {
                 const streamFile = await content!.streamfileResolve([selection.substring(1)], [`/`]);
                 if (!streamFile) {
@@ -639,8 +627,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
-            const connectionKey = `${instance.getConnection()!.currentConnectionName}_password`;
-            const storedPassword = await context.secrets.get(connectionKey);
+            const storedPassword = await ConnectionManager.getStoredPassword(context, instance.getConnection()!.currentConnectionName);
 
             if (storedPassword) {
               let isAuthed = storage.getExtensionAuthorisation(extension) !== undefined;
@@ -712,8 +699,34 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode) => {
       const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
-    })
-  );
+    }),
+    vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
+    
+    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
+      let doc: vscode.TextDocument | undefined;
+      if (uri) {
+        doc = Tools.findExistingDocument(uri);
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        doc = editor?.document;
+      }
+
+      if (doc?.isDirty) {
+        vscode.window
+          .showWarningMessage(
+            t(`discard.changes`), 
+            { modal: true }, 
+            t(`Continue`))
+          .then(result => {
+              if (result === t(`Continue`)) {
+                vscode.commands.executeCommand(`workbench.action.files.revert`);
+              }
+        });
+      } else {
+        vscode.commands.executeCommand(`workbench.action.files.revert`);
+      }
+    }),
+);
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);
@@ -736,14 +749,25 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   if (vscode.workspace.workspaceFolders) {
     setupGitEventHandler(context);
   }
-
 }
 
-function updateConnectedBar() {
+async function updateConnectedBar() {
   const config = instance.getConfig();
   if (config) {
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
   }
+
+  const debugRunning = await isDebugEngineRunning();
+  connectedBarItem.tooltip = new vscode.MarkdownString([
+    `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
+    `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
+    `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
+    debugPTFInstalled() ?
+      `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
+      :
+      `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
+  ].join(`\n\n---\n\n`), true);
+  connectedBarItem.tooltip.isTrusted = true;
 }
 
 async function onConnected(context: vscode.ExtensionContext) {
@@ -755,8 +779,6 @@ async function onConnected(context: vscode.ExtensionContext) {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
-  initGetNewLibl(instance);
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);

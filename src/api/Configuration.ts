@@ -1,8 +1,7 @@
 import os from "os";
 import * as vscode from 'vscode';
-import { DeploymentMethod } from '../typings';
+import { ConnectionData, DeploymentMethod } from '../typings';
 import { FilterType } from './Filter';
-import { DEFAULT_CERT_DIRECTORY } from "./debug/certificates";
 
 export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";
@@ -30,6 +29,79 @@ export namespace GlobalConfiguration {
   }  
 }
 
+export interface StoredConnection {
+  index: number,
+  data: ConnectionData
+};
+
+const getPasswordKey = (connectionName:string) => `${connectionName}_password`;  
+
+export namespace ConnectionManager {
+  export function getByName(name: string): StoredConnection | undefined {
+    const connections = getAll();
+    const index = connections.findIndex(conn => conn.name === name);
+    if (index !== -1) {
+      return { index, data: connections[index] };
+    }
+  }
+
+  export function sort() {
+    const connections = getAll();
+    connections.sort((a, b) => a.name.localeCompare(b.name));
+    return GlobalConfiguration.set(`connections`, connections);
+  }
+
+  export function getAll(): ConnectionData[] {
+    return GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+  }
+
+  function setAll(connections: ConnectionData[]) {
+    return GlobalConfiguration.set(`connections`, connections);
+  }
+
+  export async function storeNew(data: ConnectionData): Promise<StoredConnection> {
+    const connections = getAll();
+    const newId = connections.length;
+    connections.push(data);
+    await setAll(connections);
+    return { index: newId, data };
+  }
+
+  export function deleteByName(name: string) {
+    const connections = getAll();
+    const index = connections.findIndex(conn => conn.name === name);
+    if (index !== -1) {
+      connections.splice(index, 1);
+      return setAll(connections);
+    }
+  }
+
+  export function updateByIndex(index: number, data: ConnectionData) {
+    const connections = getAll();
+    connections[index] = data;
+
+    // Remove possible password from any connection
+    connections.forEach(conn => delete conn.password);
+
+    return GlobalConfiguration.set(`connections`, connections);
+  }
+
+  export function getStoredPassword(context: vscode.ExtensionContext, connectionName: string) {
+    const connectionKey = getPasswordKey(connectionName);
+    return context.secrets.get(connectionKey);
+  }
+
+  export function setStoredPassword(context: vscode.ExtensionContext, connectionName: string, password: string) {
+    const connectionKey = getPasswordKey(connectionName);
+    return context.secrets.store(connectionKey, password);
+  }
+
+  export function deleteStoredPassword(context: vscode.ExtensionContext, connectionName: string) {
+    const connectionKey = getPasswordKey(connectionName);
+    return context.secrets.delete(connectionKey);
+  }
+}
+
 export namespace ConnectionConfiguration {
   export interface Parameters extends ConnectionProfile {
     host: string;
@@ -37,7 +109,6 @@ export namespace ConnectionConfiguration {
     connectionProfiles: ConnectionProfile[];
     commandProfiles: CommandProfile[];
     autoSortIFSShortcuts: boolean;
-    enableSQL: boolean;
     tempLibrary: string;
     tempDir: string;
     sourceASP: string;
@@ -53,7 +124,6 @@ export namespace ConnectionConfiguration {
     connectringStringFor5250: string;
     autoSaveBeforeAction: boolean;
     showDescInLibList: boolean;
-    debugCertDirectory: string;
     debugPort: string;
     debugSepPort: string;
     debugIsSecure: boolean;
@@ -119,7 +189,6 @@ export namespace ConnectionConfiguration {
       autoSortIFSShortcuts: parameters.autoSortIFSShortcuts || false,
       homeDirectory: parameters.homeDirectory || `.`,
       /** Undefined means not created, so default to on */
-      enableSQL: (parameters.enableSQL === true || parameters.enableSQL === undefined),
       tempLibrary: parameters.tempLibrary || `ILEDITOR`,
       tempDir: parameters.tempDir || `/tmp`,
       currentLibrary: parameters.currentLibrary || ``,
@@ -136,7 +205,6 @@ export namespace ConnectionConfiguration {
       connectringStringFor5250: parameters.connectringStringFor5250 || `localhost`,
       autoSaveBeforeAction: (parameters.autoSaveBeforeAction === true),
       showDescInLibList: (parameters.showDescInLibList === true),
-      debugCertDirectory: (parameters.debugCertDirectory || DEFAULT_CERT_DIRECTORY),
       debugPort: (parameters.debugPort || "8005"),
       debugSepPort: (parameters.debugSepPort || "8008"),
       debugIsSecure: (parameters.debugIsSecure === true),

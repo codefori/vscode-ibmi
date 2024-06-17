@@ -1,7 +1,7 @@
 import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
-import { ConnectionConfiguration, GlobalConfiguration } from '../api/Configuration';
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from '../api/Configuration';
 import { GlobalStorage } from '../api/Storage';
 import { instance } from '../instantiate';
 import { t } from "../locale";
@@ -80,7 +80,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.renameConnection`, async (server: Server) => {
       if (!connectionBrowser.attemptingConnection && server) {
-        const existingConnections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+        const existingConnections = ConnectionManager.getAll();
         const newName = await vscode.window.showInputBox({
           prompt: t(`connectionBrowser.renameConnection.prompt`, server.name),
           value: server.name,
@@ -95,12 +95,11 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 
         if (newName) {
           try {
-            let index;
             // First rename the connection details
-            const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-            index = connections.findIndex(connection => connection.name === server.name);
+            let { index, data } = ConnectionManager.getByName(server.name)!
             if (index === -1) throw (t(`connectionBrowser.renameConnection.noConnectionFound`, server.name));
-            connections[index].name = newName;
+            data.name = newName;
+            await ConnectionManager.updateByIndex(index, data);
 
             // Then rename the connection settings
             const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
@@ -112,18 +111,17 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             const cachedConnectionSettings = GlobalStorage.get().getServerSettingsCache(server.name);
 
             // Then get the password key
-            const secret = await context.secrets.get(`${server.name}_password`);
+            const secret = await ConnectionManager.getStoredPassword(context, server.name);
 
             // No errors - update the settings.
             await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
-            await GlobalConfiguration.set(`connections`, connections);
             if (cachedConnectionSettings) {
               GlobalStorage.get().setServerSettingsCache(newName, cachedConnectionSettings);
               GlobalStorage.get().deleteServerSettingsCache(server.name);
             }
             if (secret) {
-              await context.secrets.store(`${newName}_password`, secret);
-              await context.secrets.delete(`${server.name}_password`);
+              await ConnectionManager.setStoredPassword(context, newName, secret);
+              await ConnectionManager.deleteStoredPassword(context, server.name);
             }
 
             connectionBrowser.refresh();
@@ -136,9 +134,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.sortConnections`, async () => {
-      const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-      connections.sort((conn1, conn2) => conn1.name.localeCompare(conn2.name));
-      await GlobalConfiguration.set(`connections`, connections);
+      await ConnectionManager.sort();
       connectionBrowser.refresh();
     }),
 
@@ -160,9 +156,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
           for (const server of toBeDeleted) {
             // First remove the connection details
-            const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
-            const newConnections = connections.filter(connection => connection.name !== server.name);
-            await GlobalConfiguration.set(`connections`, newConnections);
+            await ConnectionManager.deleteByName(server.name);
 
             // Also remove the connection settings
             const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
@@ -173,7 +167,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             GlobalStorage.get().deleteServerSettingsCache(server.name);
 
             // Then remove the password
-            await context.secrets.delete(`${server.name}_password`);
+            await ConnectionManager.deleteStoredPassword(context, server.name);
           }
 
           connectionBrowser.refresh();
@@ -181,10 +175,9 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.copyConnection`, async (server: Server) => {
-      const connections = GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
       const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
 
-      const connection = connections.find(connection => server.name === connection.name);
+      const connection = ConnectionManager.getByName(server.name);
       const connectionSetting = connectionSettings.find(connection => server.name === connection.name);
 
       if (connection && connectionSetting) {
@@ -195,7 +188,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             prompt: t("connectionBrowser.copyConnection.prompt", server.name),
             placeHolder: t('connectionBrowser.copyConnection.placeholder'),
             value: newConnectionName,
-            validateInput: value => connections.some(connection => connection.name === value) ?
+            validateInput: value => ConnectionManager.getByName(value) ?
               t('connectionBrowser.copyConnection.already.exists', value) :
               undefined
           });
@@ -218,10 +211,9 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         } while (newConnectionName && !copyOperations);
 
         if (newConnectionName && copyOperations) {
-          const newConnection = Object.assign({}, connection);
+          const newConnection = Object.assign({}, connection.data);
           newConnection.name = newConnectionName;
-          connections.push(newConnection);
-          await GlobalConfiguration.set(`connections`, connections);
+          await ConnectionManager.storeNew(newConnection);
 
           const newConnectionSetting = Object.assign({}, connectionSetting);
           newConnectionSetting.name = newConnectionName;
@@ -237,9 +229,9 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           connectionSettings.push(newConnectionSetting);
           await GlobalConfiguration.set(`connectionSettings`, connectionSettings);
 
-          const password = await context.secrets.get(`${server.name}_password`);
+          const password = await ConnectionManager.getStoredPassword(context, server.name);
           if (password) {
-            await context.secrets.store(`${newConnectionName}_password`, password);
+            await ConnectionManager.setStoredPassword(context, newConnectionName, password);
           }
 
           connectionBrowser.refresh();
@@ -268,7 +260,7 @@ class ConnectionBrowser implements vscode.TreeDataProvider<ServerItem> {
 
   async getChildren(): Promise<ServerItem[]> {
     const lastConnection = GlobalStorage.get().getLastConnections()?.[0];
-    return (GlobalConfiguration.get<ConnectionData[]>(`connections`) || [])
+    return ConnectionManager.getAll()
       .map(connection => new ServerItem(connection, connection.name === lastConnection?.name));
   }
 }
