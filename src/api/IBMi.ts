@@ -1320,24 +1320,22 @@ export default class IBMi {
 
       let returningAsCsv: WrapResult | undefined;
 
-      if (this.qccsid === 65535) {
-        let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
-        const lastStmt = list.pop()?.trim();
-        const asUpper = lastStmt?.toUpperCase();
+      let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
+      const lastStmt = list.pop()?.trim();
+      const asUpper = lastStmt?.toUpperCase();
 
-        if (lastStmt) {
-          if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-            const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
-            if (copyToImport) {
-              returningAsCsv = copyToImport.wrap(lastStmt);
-              list.push(...returningAsCsv.newStatements);
-              input = list.join(`;\n`);
-            }
+      if (lastStmt) {
+        if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
+          const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
+          if (copyToImport) {
+            returningAsCsv = copyToImport.wrap(lastStmt);
+            list.push(...returningAsCsv.newStatements);
+            input = list.join(`;\n`);
           }
+        }
 
-          if (!returningAsCsv) {
-            list.push(lastStmt);
-          }
+        if (!returningAsCsv) {
+          list.push(lastStmt);
         }
       }
 
