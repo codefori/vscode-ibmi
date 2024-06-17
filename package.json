@@ -1663,6 +1663,13 @@
 				"category": "IBM i",
 				"icon": "$(search-fuzzy)",
 				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.term5250.systemRequest",
+				"title": "5250 System Request",
+				"category": "IBM i",
+				"icon": "$(warning)",
+				"enablement": "code-for-ibmi:connected"
 			}
 		],
 		"keybindings": [
@@ -2354,6 +2361,11 @@
 					"command": "code-for-ibmi.debug.refresh",
 					"group": "navigation@99",
 					"when": "view == ibmiDebugBrowser"
+				},
+				{
+					"command": "code-for-ibmi.term5250.systemRequest",
+					"group": "navigation",
+					"when": "code-for-ibmi:term5250Halted"
 				}
 			],
 			"editor/title": [
