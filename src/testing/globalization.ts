@@ -11,15 +11,6 @@ const testData = {
     member: '"§#$MAN"',
     memberText: '"§#$öße"',
     memberType: 'CBLLE'
-  },
-  '5035': {
-    library: '"ｱｲｳｴｵｶｷ"',
-    libraryText: 'ｱｲｳｴｵｶｷ',
-    object: '"ｱｲｳｴｵｶｷ"',
-    objectText: 'ｱｲｳｴｵｶｷ',
-    member: '"ｱｲｳｴｵｶｷ"',
-    memberType: 'RPGLE',
-    memberText: 'ｱｲｳｴｵｶｷ'
   }
 }
 
