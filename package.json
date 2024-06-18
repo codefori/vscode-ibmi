@@ -1665,10 +1665,10 @@
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
-				"command": "code-for-ibmi.term5250.systemAttention",
+				"command": "code-for-ibmi.term5250.resetPosition",
 				"title": "Reset keyboard",
 				"category": "IBM i",
-				"icon": "$(warning)",
+				"icon": "$(keyboard)",
 				"enablement": "code-for-ibmi:connected"
 			}
 		],
@@ -2363,7 +2363,7 @@
 					"when": "view == ibmiDebugBrowser"
 				},
 				{
-					"command": "code-for-ibmi.term5250.systemAttention",
+					"command": "code-for-ibmi.term5250.resetPosition",
 					"group": "navigation",
 					"when": "code-for-ibmi:term5250Halted"
 				}

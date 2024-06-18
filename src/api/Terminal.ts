@@ -36,7 +36,7 @@ export namespace Terminal {
     commands.executeCommand(`setContext`, `code-for-ibmi:term5250Halted`, state);
   }
 
-  const CONTROL_A = 1;
+  const RESET = 18;
   const TAB = 9;
 
   export function registerTerminalCommands() {
@@ -54,10 +54,10 @@ export namespace Terminal {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.term5250.systemAttention`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.term5250.resetPosition`, () => {
         const term = vscode.window.activeTerminal;
         if (term) {
-          term.sendText(Buffer.from([CONTROL_A, TAB]).toString(), false);
+          term.sendText(Buffer.from([RESET, TAB]).toString(), false);
           setHalted(false);
         }
       })
@@ -104,8 +104,7 @@ export namespace Terminal {
     }
   }
 
-  const HALT_START = `[24;2H(B[0;1m[37m[40m`;
-  const HALT_END = `[38X[5;53H(B[m[39;49m[37m[40m`;
+  const HALTED = `II`;
 
   async function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
@@ -115,7 +114,7 @@ export namespace Terminal {
     channel.stdout.on(`data`, (data: any) => {
       const dataString: string = data.toString();
       if (dataString.trim().indexOf(paseWelcomeMessage) === -1) {
-        if (dataString.startsWith(HALT_START) && dataString.endsWith(HALT_END)) {
+        if (dataString.includes(HALTED)) {
           setHalted(true);
         }
         writeEmitter.fire(String(data));
