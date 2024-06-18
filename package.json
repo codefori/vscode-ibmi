@@ -1665,8 +1665,8 @@
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
-				"command": "code-for-ibmi.term5250.systemRequest",
-				"title": "5250 System Request",
+				"command": "code-for-ibmi.term5250.systemAttention",
+				"title": "5250 Attention Request",
 				"category": "IBM i",
 				"icon": "$(warning)",
 				"enablement": "code-for-ibmi:connected"
@@ -2363,7 +2363,7 @@
 					"when": "view == ibmiDebugBrowser"
 				},
 				{
-					"command": "code-for-ibmi.term5250.systemRequest",
+					"command": "code-for-ibmi.term5250.systemAttention",
 					"group": "navigation",
 					"when": "code-for-ibmi:term5250Halted"
 				}

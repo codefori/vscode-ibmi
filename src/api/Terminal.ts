@@ -51,7 +51,7 @@ export namespace Terminal {
         }
       }),
 
-      vscode.commands.registerCommand(`code-for-ibmi.term5250.systemRequest`, () => {
+      vscode.commands.registerCommand(`code-for-ibmi.term5250.systemAttention`, () => {
         const term = vscode.window.activeTerminal;
         if (term) {
           term.sendText(Buffer.from([1, 9]).toString(), false);
