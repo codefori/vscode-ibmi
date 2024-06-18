@@ -36,7 +36,9 @@ export namespace Terminal {
     commands.executeCommand(`setContext`, `code-for-ibmi:term5250Halted`, state);
   }
 
+  const BACKSPACE = 127;
   const RESET = 18;
+  const ATTENTION = 1;
   const TAB = 9;
 
   export function registerTerminalCommands() {
@@ -135,14 +137,19 @@ export namespace Terminal {
             const buffer = Buffer.from(data);
 
             switch (buffer[0]) {
-              case 127: //Backspace
+              case BACKSPACE: //Backspace
                 //Move back one, space, move back again - deletes a character
                 channel.stdin.write(Buffer.from([
                   27, 79, 68, //Move back one
                   27, 91, 51, 126 //Delete character
                 ]));
                 break;
+
               default:
+                if (buffer[0] === RESET || buffer[0] === ATTENTION) {
+                  setHalted(false);
+                }
+
                 channel.stdin.write(data);
                 break;
             }
