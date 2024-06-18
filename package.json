@@ -1666,7 +1666,7 @@
 			},
 			{
 				"command": "code-for-ibmi.term5250.systemAttention",
-				"title": "5250 Attention Request",
+				"title": "Reset keyboard",
 				"category": "IBM i",
 				"icon": "$(warning)",
 				"enablement": "code-for-ibmi:connected"
