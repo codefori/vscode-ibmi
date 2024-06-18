@@ -1214,13 +1214,6 @@
 				"icon": "$(arrow-circle-right)"
 			},
 			{
-				"command": "code-for-ibmi.refreshMemberBrowser",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh",
-				"category": "IBM i",
-				"icon": "$(refresh)"
-			},
-			{
 				"command": "code-for-ibmi.searchSourceFile",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Search Source File...",
@@ -2171,10 +2164,6 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshLibraryListView",
-					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.refreshMemberBrowser",
 					"when": "never"
 				},
 				{
