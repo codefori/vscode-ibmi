@@ -101,12 +101,7 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      size: file.size,
-      modified: file.modified ? new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
-      owner: file.owner ? file.owner.toUpperCase() : ``
-    }));
-    this.tooltip.supportHtml = true;
+    this.tooltip = instance.getContent()?.ifsFileToToolTip(this.path, file);
   }
 
   sortBy(sort: SortOptions) {
@@ -139,11 +134,11 @@ class IFSFileItem extends IFSItem {
     this.iconPath = vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
-    
+
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [{path: this.path}]
+      arguments: [{ path: this.path }]
     };
   }
 
@@ -823,9 +818,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       await vscode.env.clipboard.writeText(node.path);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async() => {
-        vscode.commands.executeCommand('ifsBrowser.focus');
-        vscode.commands.executeCommand('list.find');
+    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async () => {
+      vscode.commands.executeCommand('ifsBrowser.focus');
+      vscode.commands.executeCommand('list.find');
     })
   )
 }

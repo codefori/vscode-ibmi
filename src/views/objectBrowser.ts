@@ -312,18 +312,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
   }
 
   async getToolTip() {
-    const content = getContent();
-    const tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      text: this.object.text,
-      members: await content.countMembers(this.object),
-      length: this.object.sourceLength,
-      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?',
-      iasp: this.object.asp
-    }));
-
-    tooltip.supportHtml = true;
-
-    return tooltip;
+    return await getContent().sourcePhysicalFileToToolTip(this.path, this.object);
   }
 }
 
@@ -342,18 +331,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
     this.updateDescription();
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isLibrary ? '_library' : ''}${this.isProtected() ? `_readonly` : ``}`;
-    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      type: object.type,
-      attribute: object.attribute,
-      text: object.text,
-      size: object.size,
-      created: object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      changed: object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
-      created_by: object.created_by,
-      owner: object.owner,
-      iasp: object.asp
-    }));
-    this.tooltip.supportHtml = true;
+    this.tooltip = getContent().objectToToolTip(this.path, object);
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -405,13 +383,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
-    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      text: member.text,
-      lines: member.lines,
-      created: member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      changed: member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
-    }));
-    this.tooltip.supportHtml = true;
+    this.tooltip = getContent().memberToToolTip(this.path, member);
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
@@ -749,7 +721,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.
-      if(oldMemberTabs.find(tab => tab.isDirty)){
+      if (oldMemberTabs.find(tab => tab.isDirty)) {
         vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", t("member.has.unsaved.changes")));
         return;
       }
@@ -1324,9 +1296,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async() => {
-        vscode.commands.executeCommand('objectBrowser.focus');
-        vscode.commands.executeCommand('list.find');
+    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async () => {
+      vscode.commands.executeCommand('objectBrowser.focus');
+      vscode.commands.executeCommand('list.find');
     })
   );
 }

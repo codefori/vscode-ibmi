@@ -2,7 +2,7 @@ import vscode, { commands } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
-import { WithLibrary } from "../typings";
+import { IBMiObject, WithLibrary } from "../typings";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode> {
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -282,14 +282,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       if (connection && content && config) {
         const currentLibrary = connection.upperCaseName(config.currentLibrary);
 
-        const libraries = [];
-        if (config.showDescInLibList === true) {
-          libraries.push(...await content.getLibraryList([currentLibrary, ...config.libraryList]));
-        } else {
-          libraries.push(...[currentLibrary, ...config.libraryList].map(lib => { return { name: lib, text: ``, attribute: `` } }));
-        }
+        const libraries = await content.getLibraryList([currentLibrary, ...config.libraryList]);
+
         items.push(...libraries.map((lib, index) => {
-          return new LibraryListNode(connection.upperCaseName(lib.name), lib.text, lib.attribute, (index === 0 ? `currentLibrary` : `library`));
+          return new LibraryListNode(connection.upperCaseName(lib.name), lib, (index === 0 ? `currentLibrary` : `library`), config.showDescInLibList);
         }));
       }
     }
@@ -298,12 +294,15 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 }
 
 class LibraryListNode extends vscode.TreeItem implements WithLibrary {
-  constructor(readonly library: string, text: string = ``, attribute: string = ``, context: 'currentLibrary' | 'library' = `library`) {
+  constructor(readonly library: string, readonly object: IBMiObject, context: 'currentLibrary' | 'library' = `library`, showDescInLibList: boolean) {
     super(library, vscode.TreeItemCollapsibleState.None);
 
     this.contextValue = context;
-    this.description = (context === `currentLibrary` ? `${t(`currentLibrary`)} ${text}` : `${text}`) + (attribute !== `` ? ` (*${attribute})` : ``);
-    this.tooltip = ``;
+    this.description =
+      ((context === `currentLibrary` ? `${t(`currentLibrary`)}` : ``)
+        + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
+        + (object.attribute !== `` ? ` (*${object.attribute})` : ``)).trim();
+    this.tooltip = instance.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
   }
 }
 
