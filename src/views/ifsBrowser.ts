@@ -101,12 +101,7 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      size: file.size,
-      modified: file.modified ? new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
-      owner: file.owner ? file.owner.toUpperCase() : ``
-    }));
-    this.tooltip.supportHtml = true;
+    this.tooltip = instance.getContent()?.ifsFileToToolTip(this.path, file);
   }
 
   sortBy(sort: SortOptions) {
