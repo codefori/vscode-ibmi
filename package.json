@@ -2600,7 +2600,7 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",
-					"when": "view == objectBrowser",
+					"when": "view == objectBrowser && viewItem =~ /^(filter|object.*library|SPF).*$/",
 					"group": "99_objectBrowserAction@1"
 				},
 				{
@@ -2740,7 +2740,7 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshIFSBrowserItem",
-					"when": "view == ifsBrowser && viewItem =~ /^(directory|shortcut).*$/",
+					"when": "view == ifsBrowser && viewItem =~ /^(shortcut|directory).*$/",
 					"group": "99_ifsBrowserAction@1"
 				},
 				{
