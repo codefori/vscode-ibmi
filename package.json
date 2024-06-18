@@ -2739,6 +2739,11 @@
 					"group": "3_ifsTransfer@3"
 				},
 				{
+					"command": "code-for-ibmi.refreshIFSBrowserItem",
+					"when": "view == ifsBrowser && viewItem =~ /^(directory|shortcut).*$/",
+					"group": "99_ifsBrowserAction@1"
+				},
+				{
 					"command": "code-for-ibmi.changeObjectDesc",
 					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@1"
