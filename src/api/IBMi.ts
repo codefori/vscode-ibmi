@@ -760,6 +760,7 @@ export default class IBMi {
                       if (!currentPaths.includes(requiredPath)) {
                         reason = `Your $PATH shell environment variable does not include ${requiredPath}`;
                         missingPath = requiredPath
+                        break;
                       } 
                     }
                     // If reason is still undefined, then we know the user has all the required paths. Then we don't 
