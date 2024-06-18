@@ -36,6 +36,9 @@ export namespace Terminal {
     commands.executeCommand(`setContext`, `code-for-ibmi:term5250Halted`, state);
   }
 
+  const CONTROL_A = 1;
+  const TAB = 9;
+
   export function registerTerminalCommands() {
     return [
       vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
@@ -54,7 +57,7 @@ export namespace Terminal {
       vscode.commands.registerCommand(`code-for-ibmi.term5250.systemAttention`, () => {
         const term = vscode.window.activeTerminal;
         if (term) {
-          term.sendText(Buffer.from([1, 9]).toString(), false);
+          term.sendText(Buffer.from([CONTROL_A, TAB]).toString(), false);
           setHalted(false);
         }
       })
