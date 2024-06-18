@@ -104,7 +104,7 @@ export namespace Terminal {
     }
   }
 
-  const HALTED = `II`;
+  const HALTED = ` II`;
 
   async function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
