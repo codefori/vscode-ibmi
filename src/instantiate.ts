@@ -4,9 +4,9 @@ import path from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
 import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { Find } from "./api/Find";
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
-import { Find } from "./api/Find";
 import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
@@ -15,12 +15,12 @@ import { setupGitEventHandler } from './api/local/git';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+import { t } from './locale';
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
-import { SearchView } from "./views/searchView";
 import { FindView } from "./views/findView";
+import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import { t } from './locale';
 
 export let instance: Instance;
 
@@ -90,6 +90,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
   instance = new Instance(context);
   searchViewContext = new SearchView(context);
+  findViewContext = new FindView(context);
 
   context.subscriptions.push(
     connectedBarItem,
@@ -105,6 +106,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider(
       `searchView`,
       searchViewContext
+    ),
+    vscode.window.registerTreeDataProvider(
+      `findView`,
+      findViewContext
     ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
       console.log(path);

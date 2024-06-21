@@ -52,7 +52,7 @@ class HitSource extends vscode.TreeItem {
   private readonly _readonly?: boolean;
 
   constructor(readonly result: Find.Result, readonly term: string, readonly?: boolean) {
-    super(path.posix.basename(result.path), vscode.TreeItemCollapsibleState.Expanded);
+    super(path.posix.basename(result.path), vscode.TreeItemCollapsibleState.None);
 
     const openOptions: OpenEditableOptions = { readonly };
 
