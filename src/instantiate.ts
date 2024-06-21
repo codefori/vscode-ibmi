@@ -6,6 +6,7 @@ import { CompileTools } from './api/CompileTools';
 import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Search } from "./api/Search";
+import { Find } from "./api/Find";
 import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
@@ -16,6 +17,7 @@ import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysF
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { SearchView } from "./views/searchView";
+import { FindView } from "./views/findView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 import { t } from './locale';
@@ -43,9 +45,14 @@ connectedBarItem.command = {
 
 let selectedForCompare: vscode.Uri;
 let searchViewContext: SearchView;
+let findViewContext: FindView;
 
 export function setSearchResults(term: string, results: Search.Result[]) {
   searchViewContext.setResults(term, results);
+}
+
+export function setFindResults(term: string, results: Find.Result[]) {
+  findViewContext.setResults(term, results);
 }
 
 export async function disconnect(): Promise<boolean> {

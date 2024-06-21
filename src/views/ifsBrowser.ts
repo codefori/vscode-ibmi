@@ -6,9 +6,10 @@ import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
+import { Find } from "../api/Find";
 import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
-import { instance, setSearchResults } from "../instantiate";
+import { instance, setSearchResults, setFindResults } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
 
@@ -753,6 +754,66 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
+    vscode.commands.registerCommand(`code-for-ibmi.ifs.find`, async (node?: IFSItem) => {
+      const connection = instance.getConnection();
+      const config = instance.getConfig();
+
+      if (connection?.remoteFeatures.find && config) {
+        const findPath = node?.path || await vscode.window.showInputBox({
+          value: config.homeDirectory,
+          prompt: t(`ifsBrowser.ifs.find.prompt`),
+          title: t(`ifsBrowser.ifs.find.title`)
+        });
+
+        if (findPath) {
+          const list = GlobalStorage.get().getPreviousSearchTerms();
+          const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
+          const listHeader = [
+            { label: t(`ifsBrowser.ifs.find.previousFinds`), kind: vscode.QuickPickItemKind.Separator }
+          ];
+          const clearList = t(`clearList`);
+          const clearListArray: vscode.QuickPickItem[] = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
+
+          const quickPick = vscode.window.createQuickPick();
+          quickPick.items = items.length ? [...items, ...clearListArray] : [];
+          quickPick.placeholder = items.length ? t(`ifsBrowser.ifs.find.placeholder`) : t(`ifsBrowser.ifs.find.placeholder2`);
+          quickPick.title = t(`ifsBrowser.ifs.find.title2`, findPath);
+
+          quickPick.onDidChangeValue(() => {
+            if (!quickPick.value) {
+              quickPick.items = [...listHeader, ...items, ...clearListArray];
+            } else if (!list.includes(quickPick.value)) {
+              quickPick.items = [{ label: quickPick.value },
+              ...listHeader,
+              ...items]
+            }
+          })
+
+          quickPick.onDidAccept(async () => {
+            const findTerm = quickPick.activeItems[0].label;
+            if (findTerm) {
+              if (findTerm === clearList) {
+                GlobalStorage.get().setPreviousFindTerms([]);
+                quickPick.items = [];
+                quickPick.placeholder = t(`ifsBrowser.ifs.find.placeholder2`);
+                vscode.window.showInformationMessage(t(`clearedList`));
+                quickPick.show();
+              } else {
+                quickPick.hide();
+                GlobalStorage.get().setPreviousFindTerms(list.filter(term => term !== findTerm).splice(0, 0, findTerm));
+                await doFindStreamfiles(findTerm, findPath);
+              }
+            }
+          });
+
+          quickPick.onDidHide(() => quickPick.dispose());
+          quickPick.show();
+        }
+      } else {
+        vscode.window.showErrorMessage(t(`ifsBrowser.ifs.find.noFind`));
+      }
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.downloadStreamfile`, async (node: IFSItem, nodes?: IFSItem[]) => {
       const ibmi = instance.getConnection();
       if (ibmi) {
@@ -876,6 +937,32 @@ async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
 
   } catch (e) {
     vscode.window.showErrorMessage(t(`ifsBrowser.doSearchInStreamfiles.errorMessage`));
+  }
+}
+
+async function doFindStreamfiles(findTerm: string, findPath: string) {
+  try {
+    await vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: t(`ifsBrowser.doFindStreamfiles.title`),
+    }, async progress => {
+      progress.report({
+        message: t(`ifsBrowser.doFindStreamfiles.progressMessage`, findTerm, findPath)
+      });
+
+      let results = (await Find.findIFS(instance, findPath, findTerm))
+        .map(a => ({ ...a, label: path.posix.relative(findPath, a.path) }))
+        .sort((a, b) => a.path.localeCompare(b.path));
+
+      if (results.length > 0) {
+        setFindResults(findTerm, results);
+      } else {
+        vscode.window.showInformationMessage(t(`ifsBrowser.doFindStreamfiles.noResults`, findTerm, findPath));
+      }
+    });
+
+  } catch (e) {
+    vscode.window.showErrorMessage(t(`ifsBrowser.doFindStreamfiles.errorMessage`));
   }
 }
 

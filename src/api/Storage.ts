@@ -7,6 +7,7 @@ const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
 const SERVER_SETTINGS_CACHE_KEY = (name: string) => `serverSettingsCache_${name}`;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
+const PREVIOUS_FIND_TERMS_KEY = `prevFindTerms`;
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
 
@@ -124,6 +125,14 @@ export class GlobalStorage extends Storage {
 
   async setPreviousSearchTerms(previousSearchTerms: string[]) {
     await this.set(PREVIOUS_SEARCH_TERMS_KEY, previousSearchTerms);
+  }
+
+  getPreviousFindTerms() {
+    return this.get<string[]>(PREVIOUS_FIND_TERMS_KEY) || [];
+  }
+
+  async setPreviousFindTerms(previousSearchTerms: string[]) {
+    await this.set(PREVIOUS_FIND_TERMS_KEY, previousSearchTerms);
   }
 }
 
