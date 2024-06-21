@@ -32,7 +32,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -109,6 +109,7 @@ export default class IBMi {
       iconv: undefined,
       tar: undefined,
       ls: undefined,
+      find: undefined,
     };
 
     this.variantChars = {
