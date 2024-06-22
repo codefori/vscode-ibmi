@@ -22,7 +22,9 @@ console.log(`Checking for missing keys in locales...`);
 const baseLocale = require(`./src/locale/ids/en.json`);
 const locales = {
   da: require(`./src/locale/ids/da.json`),
+  de: require(`./src/locale/ids/de.json`),
   fr: require(`./src/locale/ids/fr.json`),
+  no: require(`./src/locale/ids/no.json`),
 };
 
 let localeIsBad = false;
