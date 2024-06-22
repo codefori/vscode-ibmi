@@ -1,6 +1,6 @@
 import { Tools } from './api/Tools';
 
-import path, { dirname } from 'path';
+import path from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
 import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
@@ -18,6 +18,7 @@ import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions,
 import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { t } from './locale';
 
 export let instance: Instance;
 
@@ -597,18 +598,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-      return Terminal.selectAndOpen(instance);
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
-      const content = instance.getContent();
-      if (content) {
-        const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
-        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
-        terminal?.sendText(`cd ${path}`);
-      }
-    }),
+    ...Terminal.registerTerminalCommands(),
 
     vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
       if (extensionId) {
@@ -700,7 +690,32 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-  );
+    
+    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
+      let doc: vscode.TextDocument | undefined;
+      if (uri) {
+        doc = Tools.findExistingDocument(uri);
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        doc = editor?.document;
+      }
+
+      if (doc?.isDirty) {
+        vscode.window
+          .showWarningMessage(
+            t(`discard.changes`), 
+            { modal: true }, 
+            t(`Continue`))
+          .then(result => {
+              if (result === t(`Continue`)) {
+                vscode.commands.executeCommand(`workbench.action.files.revert`);
+              }
+        });
+      } else {
+        vscode.commands.executeCommand(`workbench.action.files.revert`);
+      }
+    }),
+);
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);

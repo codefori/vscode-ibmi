@@ -288,15 +288,26 @@ export namespace Tools {
     }
   }
 
+  /**
+   * Check whether two given uris point to the same file/member
+   */
+  export function areEquivalentUris(uriA: vscode.Uri, uriB: vscode.Uri) {
+    return uriStringWithoutFragment(uriA) === uriStringWithoutFragment(uriB);
+  }
 
   /**
    * We do this to find previously opened files with the same path, but different case OR readonly flags.
    * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
    */
   export function findExistingDocumentUri(uri: vscode.Uri) {
+    const possibleDoc = findExistingDocument(uri);
+    return possibleDoc?.uri || uri;
+  }
+
+  export function findExistingDocument(uri: vscode.Uri) {
     const baseUriString = uriStringWithoutFragment(uri);
     const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === baseUriString);
-    return possibleDoc?.uri || uri;
+    return possibleDoc;
   }
 
   /**
@@ -307,6 +318,23 @@ export namespace Tools {
     const baseUri = uri.scheme + `:` + uri.path;
     const isCaseSensitive = (uri.scheme === `streamfile` && /^\/QOpenSys\//i.test(uri.path));
     return (isCaseSensitive ? baseUri : baseUri.toLowerCase());
+  }
+
+  /**
+   * Given the uri of a member or other resource, find all
+   * (if any) open tabs where that resource is being edited.
+  */
+  export function findUriTabs(uriToFind: vscode.Uri): vscode.Tab[] {
+    let resourceTabs: vscode.Tab[] = [];
+    for (const group of vscode.window.tabGroups.all) {
+      group.tabs.filter(tab =>
+        (tab.input instanceof vscode.TabInputText)
+        && areEquivalentUris(tab.input.uri, uriToFind)
+      ).forEach(tab => {
+        resourceTabs.push(tab);
+      });
+    }
+    return resourceTabs;
   }
 
   /**
@@ -339,7 +367,7 @@ export namespace Tools {
   export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {
     return `<table>`
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
-      .concat(`${Object.entries(rows).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
+      .concat(`${Object.entries(rows).filter(([key, value]) => value !== undefined).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
       .concat(`</table>`);
   }
 

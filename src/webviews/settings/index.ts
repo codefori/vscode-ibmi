@@ -290,11 +290,6 @@ export class SettingsUI {
                           .filter(Tools.distinct);
                         break;
                     }
-
-                    //Refresh connection browser if not connected
-                    if (!instance.getConnection()) {
-                      vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
-                    }
                   }
 
                   if (restartFields.some(item => data[item] && data[item] !== config[item])) {
@@ -322,6 +317,11 @@ export class SettingsUI {
                       vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
                       vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
                     }
+                  }
+
+                  //Refresh connection browser if not connected
+                  else {
+                    vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
                   }
                   break;
               }
@@ -368,7 +368,7 @@ export class SettingsUI {
 
                   default:
                     if (data.password) {
-                      data.privateKeyPath = undefined;
+                      delete data.privateKeyPath;
                       if (data.password !== storedPassword) {
                         // New password was entered, so store the password
                         // and remove the private key path from the data
@@ -382,6 +382,9 @@ export class SettingsUI {
                       await ConnectionManager.deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
                     }
+                    else{
+                      delete data.privateKeyPath;
+                    }
                     break;
                 }
 
@@ -392,8 +395,8 @@ export class SettingsUI {
 
                 stored = Object.assign(stored, data);
                 await ConnectionManager.updateByIndex(index, stored);
+                GlobalStorage.get().deleteServerSettingsCache(server.name);
                 vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
-
               }
             });
           }
