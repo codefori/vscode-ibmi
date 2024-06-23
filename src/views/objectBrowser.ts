@@ -9,8 +9,8 @@ import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
 import { Tools } from "../api/Tools";
-import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
-import { instance, setSearchResults } from "../instantiate";
+import { getMemberUri } from "../filesystems/qsys/QSysFs";
+import { instance } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
 import { editFilter } from "../webviews/filters";
@@ -749,7 +749,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.
-      if(oldMemberTabs.find(tab => tab.isDirty)){
+      if (oldMemberTabs.find(tab => tab.isDirty)) {
         vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", t("member.has.unsaved.changes")));
         return;
       }
@@ -1324,9 +1324,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async() => {
-        vscode.commands.executeCommand('objectBrowser.focus');
-        vscode.commands.executeCommand('list.find');
+    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async () => {
+      vscode.commands.executeCommand('objectBrowser.focus');
+      vscode.commands.executeCommand('list.find');
     })
   );
 }
@@ -1410,12 +1410,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           }
         }, timeoutInternal);
 
-        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected || content.isProtectedPath(pathParts[0]));
-
+        const results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected || content.isProtectedPath(pathParts[0]));
         // Filter search result by member type filter.
-        if (results.length > 0 && filter?.member) {
+        if (results.hits.length && filter?.member) {
           const patternExt = new RegExp(`^` + filter?.member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
-          results = results.filter(result => {
+          results.hits = results.hits.filter(result => {
             const resultPath = result.path.split(`/`);
             const resultName = resultPath[resultPath.length - 1];
             const member = members.find(member => member.name === resultName);
@@ -1423,11 +1422,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           })
         }
 
-        if (results.length > 0) {
+        if (results.hits.length) {
           const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
           // Format result to include member type.
-          results.forEach(result => {
+          results.hits.forEach(result => {
             const resultPath = result.path.split(`/`);
             const resultName = resultPath[resultPath.length - 1];
             result.path += `.${members.find(member => member.name === resultName)?.extension || ''}`;
@@ -1436,12 +1435,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
             }
           });
 
-          results = results.sort((a, b) => {
+          results.hits = results.hits.sort((a, b) => {
             return a.path.localeCompare(b.path);
           });
 
-          setSearchResults(searchTerm, results);
-
+          vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, results);
         } else {
           vscode.window.showInformationMessage(t(`objectBrowser.doSearchInSourceFile.notFound`, searchTerm, path));
         }

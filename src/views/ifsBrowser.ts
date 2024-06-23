@@ -6,12 +6,11 @@ import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
-import { Find } from "../api/Find";
 import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
-import { instance, setSearchResults, setFindResults } from "../instantiate";
+import { instance } from "../instantiate";
 import { t } from "../locale";
-import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, WithPath } from "../typings";
+import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../typings";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";
@@ -140,11 +139,11 @@ class IFSFileItem extends IFSItem {
     this.iconPath = vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
-    
+
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [{path: this.path}]
+      arguments: [{ path: this.path }]
     };
   }
 
@@ -884,9 +883,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       await vscode.env.clipboard.writeText(node.path);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async() => {
-        vscode.commands.executeCommand('ifsBrowser.focus');
-        vscode.commands.executeCommand('list.find');
+    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async () => {
+      vscode.commands.executeCommand('ifsBrowser.focus');
+      vscode.commands.executeCommand('list.find');
     })
   )
 }
@@ -923,13 +922,9 @@ async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
       progress.report({
         message: t(`ifsBrowser.doSearchInStreamfiles.progressMessage`, searchTerm, searchPath)
       });
-
-      let results = (await Search.searchIFS(instance, searchPath, searchTerm))
-        .map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }))
-        .sort((a, b) => a.path.localeCompare(b.path));
-
-      if (results.length > 0) {
-        setSearchResults(searchTerm, results);
+      const results = await Search.searchIFS(instance, searchPath, searchTerm);
+      if (results?.hits.length) {
+        openIFSSearchResults(searchPath, results);
       } else {
         vscode.window.showInformationMessage(t(`ifsBrowser.doSearchInStreamfiles.noResults`, searchTerm, searchPath));
       }
@@ -949,13 +944,9 @@ async function doFindStreamfiles(findTerm: string, findPath: string) {
       progress.report({
         message: t(`ifsBrowser.doFindStreamfiles.progressMessage`, findTerm, findPath)
       });
-
-      let results = (await Find.findIFS(instance, findPath, findTerm))
-        .map(a => ({ ...a, label: path.posix.relative(findPath, a.path) }))
-        .sort((a, b) => a.path.localeCompare(b.path));
-
-      if (results.length > 0) {
-        setFindResults(findTerm, results);
+      const results = (await Search.findIFS(instance, findPath, findTerm));
+      if (results?.hits.length) {
+        openIFSSearchResults(findPath, results);
       } else {
         vscode.window.showInformationMessage(t(`ifsBrowser.doFindStreamfiles.noResults`, findTerm, findPath));
       }
@@ -964,6 +955,13 @@ async function doFindStreamfiles(findTerm: string, findPath: string) {
   } catch (e) {
     vscode.window.showErrorMessage(t(`ifsBrowser.doFindStreamfiles.errorMessage`));
   }
+}
+
+function openIFSSearchResults(searchPath: string, searchResults: SearchResults) {
+  searchResults.hits =
+    searchResults.hits.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }) as SearchHit)
+      .sort((a, b) => a.path.localeCompare(b.path));
+  vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, searchResults);
 }
 
 async function showOpenDialog() {
