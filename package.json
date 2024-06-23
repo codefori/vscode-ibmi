@@ -1562,13 +1562,6 @@
 				"icon": "$(collapse-all)"
 			},
 			{
-				"command": "code-for-ibmi.closeFindView",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Close",
-				"category": "IBM i",
-				"icon": "$(close)"
-			},
-			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
 				"title": "Date",
 				"category": "IBM i"
@@ -1750,11 +1743,6 @@
 					"id": "ibmi-search",
 					"title": "IBM i Search",
 					"icon": "$(search)"
-				},
-				{
-					"id": "ibmi-find",
-					"title": "IBM i Find",
-					"icon": "$(search)"
 				}
 			]
 		},
@@ -1808,13 +1796,6 @@
 					"id": "searchView",
 					"name": "Results",
 					"when": "code-for-ibmi:searchViewVisible"
-				}
-			],
-			"ibmi-find": [
-				{
-					"id": "findView",
-					"name": "Results",
-					"when": "code-for-ibmi:findViewVisible"
 				}
 			],
 			"debug": [
@@ -2151,10 +2132,6 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.closeFindView",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.removeFromLibraryList",
 					"when": "never"
 				},
@@ -2390,11 +2367,6 @@
 					"command": "code-for-ibmi.collapseSearchView",
 					"group": "navigation@1",
 					"when": "view == searchView"
-				},
-				{
-					"command": "code-for-ibmi.closeFindView",
-					"group": "navigation@1",
-					"when": "view == findView"
 				},
 				{
 					"command": "code-for-ibmi.debug.refresh",

@@ -1,4 +1,5 @@
 
+import { SearchHit, SearchResults } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
 import { Tools } from './Tools';
@@ -6,19 +7,7 @@ import { Tools } from './Tools';
 export namespace Search {
   const QSYS_PATTERN = /(?:\/\w{1,10}\/QSYS\.LIB\/)|(?:\/QSYS\.LIB\/)|(?:\.LIB)|(?:\.FILE)|(?:\.MBR)/g;
 
-  export interface Result {
-    path: string
-    lines: Line[]
-    readonly?: boolean
-    label?: string
-  }
-
-  export interface Line {
-    number: number
-    content: string
-  }
-
-  export async function searchMembers(instance: Instance, library: string, sourceFile: string, memberFilter: string, searchTerm: string, readOnly?:boolean): Promise<Result[]> {
+  export async function searchMembers(instance: Instance, library: string, sourceFile: string, memberFilter: string, searchTerm: string, readOnly?: boolean): Promise<SearchResults> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
@@ -42,8 +31,11 @@ export namespace Search {
       });
 
       if (!result.stderr) {
-        return parseGrepOutput(result.stdout || '', readOnly,
-          path => connection.sysNameInLocal(path.replace(QSYS_PATTERN, ''))); //Transform QSYS path to URI 'member:' compatible path
+        return {
+          term: searchTerm,
+          hits: parseGrepOutput(result.stdout || '', readOnly,
+            path => connection.sysNameInLocal(path.replace(QSYS_PATTERN, ''))) //Transform QSYS path to URI 'member:' compatible path
+        }
       }
       else {
         throw new Error(result.stderr);
@@ -54,7 +46,7 @@ export namespace Search {
     }
   }
 
-  export async function searchIFS(instance: Instance, path: string, searchTerm: string): Promise<Result[]> {
+  export async function searchIFS(instance: Instance, path: string, searchTerm: string): Promise<SearchResults | undefined> {
     const connection = instance.getConnection();
     if (connection) {
       const grep = connection.remoteFeatures.grep;
@@ -73,10 +65,10 @@ export namespace Search {
         });
 
         if (grepRes.code == 0) {
-          return parseGrepOutput(grepRes.stdout);
-        }
-        else {
-          return [];
+          return {
+            term: searchTerm,
+            hits: parseGrepOutput(grepRes.stdout)
+          }
         }
       } else {
         throw new Error(`Grep must be installed on the remote system.`);
@@ -87,8 +79,49 @@ export namespace Search {
     }
   }
 
-  function parseGrepOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): Result[] {
-    const results: Result[] = [];
+  export async function findIFS(instance: Instance, path: string, findTerm: string): Promise<SearchResults | undefined> {
+    const connection = instance.getConnection();
+    if (connection) {
+      const find = connection.remoteFeatures.find;
+
+      if (find) {
+        const dirsToIgnore = GlobalConfiguration.get<string[]>(`grepIgnoreDirs`) || [];
+        let ignoreString = ``;
+
+        if (dirsToIgnore.length > 0) {
+          ignoreString = dirsToIgnore.map(dir => `-type d -path '*/${dir}' -prune -o`).join(` `);
+        }
+
+        const findRes = await connection.sendCommand({
+          command: `${find} ${Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' -print`
+        });
+
+        if (findRes.code == 0 && findRes.stdout) {
+          return {
+            term: findTerm,
+            hits: parseFindOutput(findRes.stdout)
+          }
+        }
+      } else {
+        throw new Error(`Find must be installed on the remote system.`);
+      }
+    }
+    else {
+      throw new Error("Please connect to an IBM i");
+    }
+  }
+
+  function parseFindOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): SearchHit[] {
+    const results: SearchHit[] = [];
+    for (const line of output.split('\n')) {
+      const path = pathTransformer?.(line) || line;
+      results.push(results.find(r => r.path === path) || { path, readonly, lines: [] });
+    }
+    return results;
+  }
+
+  function parseGrepOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): SearchHit[] {
+    const results: SearchHit[] = [];
     for (const line of output.split('\n')) {
       if (!line.startsWith(`Binary`)) {
         const parts = line.split(`:`); //path:line
@@ -106,7 +139,6 @@ export namespace Search {
         const contentIndex = nthIndex(line, `:`, 2);
         if (contentIndex >= 0) {
           const curContent = line.substring(contentIndex + 1);
-
           result.lines.push({
             number: Number(parts[1]),
             content: curContent
@@ -117,17 +149,17 @@ export namespace Search {
 
     return results;
   }
-}
 
-function sanitizeSearchTerm(searchTerm: string): string {
-  return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\"`);
-}
-
-function nthIndex(aString: string, pattern: string, n: number) {
-  let index = -1;
-  while (n-- && index++ < aString.length) {
-    index = aString.indexOf(pattern, index);
-    if (index < 0) break;
+  function sanitizeSearchTerm(searchTerm: string): string {
+    return searchTerm.replace(/\\/g, `\\\\`).replace(/"/g, `\\"`);
   }
-  return index;
+
+  function nthIndex(aString: string, pattern: string, n: number) {
+    let index = -1;
+    while (n-- && index++ < aString.length) {
+      index = aString.indexOf(pattern, index);
+      if (index < 0) break;
+    }
+    return index;
+  }
 }
