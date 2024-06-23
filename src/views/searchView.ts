@@ -1,20 +1,38 @@
 import path from 'path';
-import vscode, { TreeDataProvider } from "vscode";
+import vscode from "vscode";
+import { t } from '../locale';
 import { OpenEditableOptions, SearchHit, SearchHitLine, SearchResults } from "../typings";
 
-export class SearchView implements TreeDataProvider<any> {
+export function initializeSearchView(context: vscode.ExtensionContext) {
+  const searchView = new SearchView();
+  const searchViewViewer = vscode.window.createTreeView(
+    `searchView`, {
+    treeDataProvider: searchView,
+    showCollapseAll: true,
+    canSelectMany: false
+  });
+
+  context.subscriptions.push(
+    searchViewViewer,
+    vscode.commands.registerCommand(`code-for-ibmi.refreshSearchView`, async () => searchView.refresh()),
+    vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false)),
+    vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => searchView.collapse()),
+    vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults) => {
+      if (searchResults.hits.some(hit => hit.lines.length)) {
+        searchViewViewer.message = t("searchView.search.message", searchResults.hits.length, searchResults.term);
+      }
+      else {
+        searchViewViewer.message = t("searchView.find.message", searchResults.hits.length, searchResults.term);
+      }
+      searchView.setResults(searchResults);
+    })
+  )
+}
+
+class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
   private _results: SearchResults = { term: "", hits: [] };
   private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
-
-  constructor(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.refreshSearchView`, async () => this.refresh()),
-      vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false)),
-      vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => this.collapse()),
-      vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults) => this.setResults(searchResults))
-    )
-  }
 
   setViewVisible(visible: boolean) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, visible);

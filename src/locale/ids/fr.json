@@ -375,6 +375,8 @@
   "sandbox.noconnection.modal.title": "Aïe aïe aïe, le bac à sable est en panne!",
   "sandbox.noPassword": "Connexion à {0} interrompue car aucun mot de passe n'a été fourni.",
   "save": "Enregistrer",
+  "searchView.find.message":"{0} fichier(s) nommé(s) '{1}'",
+  "searchView.search.message":"{0} file(s) contenant '{1}'",
   "service.certificate.exists": "Certificat du service existe",
   "shortcut": "raccourci",
   "size": "Taille",
