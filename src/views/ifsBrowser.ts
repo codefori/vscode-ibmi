@@ -765,7 +765,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         });
 
         if (findPath) {
-          const list = GlobalStorage.get().getPreviousSearchTerms();
+          const list = GlobalStorage.get().getPreviousFindTerms();
           const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
           const listHeader = [
             { label: t(`ifsBrowser.ifs.find.previousFinds`), kind: vscode.QuickPickItemKind.Separator }
