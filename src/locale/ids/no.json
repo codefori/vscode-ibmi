@@ -364,6 +364,8 @@
     "sandbox.noconnection.modal.title": "Åh nei! \"Sandkassen\" er ikke tilgjengelig.",
     "sandbox.noPassword": "Forbindelsen til {0} er avsluttet, da ikke noe passord ble agitt.",
     "save": "Lagre",
+    "searchView.find.message":"{0} file(s) named '{1}'",
+    "searchView.search.message":"{0} file(s) contain(s) '{1}'",
     "service.certificate.exists": "Remote service sertifikat eksisterer",
     "shortcut": "snarvei",
     "size": "Størrelse",

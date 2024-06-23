@@ -29,6 +29,7 @@ import { initializeDebugBrowser } from "./views/debugView";
 import { HelpView } from "./views/helpView";
 import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
+import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
@@ -51,6 +52,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
   initializeDebugBrowser(context);
+  initializeSearchView(context);
 
   context.subscriptions.push(
     window.registerTreeDataProvider(

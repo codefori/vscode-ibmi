@@ -364,6 +364,8 @@
   "sandbox.noconnection.modal.title": "Ach nein! Die Sandbox ist ausgefallen.",
   "sandbox.noPassword": "Die Verbindung zu {0} wurde beendet, da kein Passwort angegeben wurde.",
   "save": "Speichern",
+  "searchView.find.message":"{0} file(s) named '{1}'",
+  "searchView.search.message":"{0} file(s) contain(s) '{1}'",
   "service.certificate.exists": "Remote-Service-Zertifikat vorhanden",
   "shortcut": "Abkürzung",
   "size": "Größe",

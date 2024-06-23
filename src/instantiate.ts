@@ -15,7 +15,6 @@ import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysF
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { t } from './locale';
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
-import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 
@@ -41,7 +40,6 @@ connectedBarItem.command = {
 };
 
 let selectedForCompare: vscode.Uri;
-let searchViewContext: SearchView;
 
 export async function disconnect(): Promise<boolean> {
   let doDisconnect = true;
@@ -77,8 +75,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
 
   instance = new Instance(context);
-  searchViewContext = new SearchView(context);
-
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
@@ -90,10 +86,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
     onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
-    vscode.window.registerTreeDataProvider(
-      `searchView`,
-      searchViewContext
-    ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
       console.log(path);
       options = options || {};

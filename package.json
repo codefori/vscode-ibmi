@@ -1550,13 +1550,6 @@
 				"icon": "$(close)"
 			},
 			{
-				"command": "code-for-ibmi.collapseSearchView",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Collapse All",
-				"category": "IBM i",
-				"icon": "$(collapse-all)"
-			},
-			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
 				"title": "Date",
 				"category": "IBM i"
@@ -2119,10 +2112,6 @@
 					"when": "!code-for-ibmi:connected"
 				},
 				{
-					"command": "code-for-ibmi.collapseSearchView",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.closeSearchView",
 					"when": "never"
 				},
@@ -2352,11 +2341,6 @@
 				{
 					"command": "code-for-ibmi.closeSearchView",
 					"group": "navigation@2",
-					"when": "view == searchView"
-				},
-				{
-					"command": "code-for-ibmi.collapseSearchView",
-					"group": "navigation@1",
 					"when": "view == searchView"
 				},
 				{
