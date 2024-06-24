@@ -139,11 +139,11 @@ class IFSFileItem extends IFSItem {
     this.iconPath = vscode.ThemeIcon.File;
 
     this.resourceUri = vscode.Uri.parse(this.path).with({ scheme: `streamfile` });
-    
+
     this.command = {
       command: "code-for-ibmi.openWithDefaultMode",
       title: `Open Streamfile`,
-      arguments: [{path: this.path}]
+      arguments: [{ path: this.path }]
     };
   }
 
@@ -650,7 +650,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (target) {
           const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
           try {
-            await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            if (moveResult.code !== 0) {
+              throw moveResult.stderr;
+            }
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
@@ -833,9 +836,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       await vscode.env.clipboard.writeText(node.path);
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async() => {
-        vscode.commands.executeCommand('ifsBrowser.focus');
-        vscode.commands.executeCommand('list.find');
+    vscode.commands.registerCommand(`code-for-ibmi.searchIFSBrowser`, async () => {
+      vscode.commands.executeCommand('ifsBrowser.focus');
+      vscode.commands.executeCommand('list.find');
     })
   )
 }
