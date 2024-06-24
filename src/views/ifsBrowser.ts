@@ -668,7 +668,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             // it and then opening a new one at the new uri.)
             oldFileTabs.forEach((tab) => {
               vscode.window.tabGroups.close(tab).then(() => {
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, targetPath);
+                const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
               })
             })
 
