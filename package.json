@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.10.8-dev.0",
+	"version": "2.11.1-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -1214,13 +1214,6 @@
 				"icon": "$(arrow-circle-right)"
 			},
 			{
-				"command": "code-for-ibmi.refreshMemberBrowser",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh",
-				"category": "IBM i",
-				"icon": "$(refresh)"
-			},
-			{
 				"command": "code-for-ibmi.searchSourceFile",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Search Source File...",
@@ -1662,6 +1655,13 @@
 				"title": "Highlight",
 				"category": "IBM i",
 				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.term5250.resetPosition",
+				"title": "Reset keyboard",
+				"category": "IBM i",
+				"icon": "$(keyboard)",
 				"enablement": "code-for-ibmi:connected"
 			}
 		],
@@ -2174,10 +2174,6 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.refreshMemberBrowser",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.refreshIFSBrowserItem",
 					"when": "never"
 				},
@@ -2354,6 +2350,11 @@
 					"command": "code-for-ibmi.debug.refresh",
 					"group": "navigation@99",
 					"when": "view == ibmiDebugBrowser"
+				},
+				{
+					"command": "code-for-ibmi.term5250.resetPosition",
+					"group": "navigation",
+					"when": "code-for-ibmi:term5250Halted"
 				}
 			],
 			"editor/title": [
@@ -2611,7 +2612,7 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",
-					"when": "view == objectBrowser",
+					"when": "view == objectBrowser && viewItem =~ /^(filter|object.*library|SPF).*$/",
 					"group": "99_objectBrowserAction@1"
 				},
 				{
@@ -2748,6 +2749,11 @@
 					"command": "code-for-ibmi.setDeployLocation",
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem == shortcut && workspaceFolderCount >= 1",
 					"group": "3_ifsTransfer@3"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowserItem",
+					"when": "view == ifsBrowser && viewItem =~ /^(shortcut|directory).*$/",
+					"group": "99_ifsBrowserAction@1"
 				},
 				{
 					"command": "code-for-ibmi.changeObjectDesc",

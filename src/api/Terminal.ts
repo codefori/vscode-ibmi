@@ -1,8 +1,9 @@
 
-import vscode from 'vscode';
+import vscode, { commands, window } from 'vscode';
 import { instance } from '../instantiate';
 import IBMi from './IBMi';
 import Instance from './Instance';
+import path from 'path';
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
@@ -29,6 +30,40 @@ export namespace Terminal {
     terminal?: string
     name?: string
     connectionString?: string
+  }
+
+  function setHalted(state: boolean) {
+    commands.executeCommand(`setContext`, `code-for-ibmi:term5250Halted`, state);
+  }
+
+  const BACKSPACE = 127;
+  const RESET = 18;
+  const ATTENTION = 1;
+  const TAB = 9;
+
+  export function registerTerminalCommands() {
+    return [
+      vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
+        return selectAndOpen(instance);
+      }),
+  
+      vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
+        const content = instance.getContent();
+        if (content) {
+          const ifsPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : path.dirname(ifsNode.path);
+          const terminal = await selectAndOpen(instance, TerminalType.PASE);
+          terminal?.sendText(`cd ${ifsPath}`);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.term5250.resetPosition`, () => {
+        const term = vscode.window.activeTerminal;
+        if (term) {
+          term.sendText(Buffer.from([RESET, TAB]).toString(), false);
+          setHalted(false);
+        }
+      })
+    ];
   }
 
   export async function selectAndOpen(instance: Instance, openType?: TerminalType) {
@@ -71,13 +106,19 @@ export namespace Terminal {
     }
   }
 
+  const HALTED = ` II`;
+
   async function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
     const paseWelcomeMessage = 'echo "Terminal started. Thanks for using Code for IBM i"';
 
     const channel = await connection.client.requestShell();
     channel.stdout.on(`data`, (data: any) => {
-      if (data.toString().trim().indexOf(paseWelcomeMessage) === -1) {
+      const dataString: string = data.toString();
+      if (dataString.trim().indexOf(paseWelcomeMessage) === -1) {
+        if (dataString.includes(HALTED)) {
+          setHalted(true);
+        }
         writeEmitter.fire(String(data));
       }
     });
@@ -96,14 +137,19 @@ export namespace Terminal {
             const buffer = Buffer.from(data);
 
             switch (buffer[0]) {
-              case 127: //Backspace
+              case BACKSPACE: //Backspace
                 //Move back one, space, move back again - deletes a character
                 channel.stdin.write(Buffer.from([
                   27, 79, 68, //Move back one
                   27, 91, 51, 126 //Delete character
                 ]));
                 break;
+
               default:
+                if (buffer[0] === RESET || buffer[0] === ATTENTION) {
+                  setHalted(false);
+                }
+
                 channel.stdin.write(data);
                 break;
             }

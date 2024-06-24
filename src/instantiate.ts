@@ -1,6 +1,6 @@
 import { Tools } from './api/Tools';
 
-import path, { dirname } from 'path';
+import path from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
 import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
@@ -598,18 +598,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-      return Terminal.selectAndOpen(instance);
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
-      const content = instance.getContent();
-      if (content) {
-        const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
-        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
-        terminal?.sendText(`cd ${path}`);
-      }
-    }),
+    ...Terminal.registerTerminalCommands(),
 
     vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
       if (extensionId) {

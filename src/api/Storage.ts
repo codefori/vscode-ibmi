@@ -1,11 +1,13 @@
 import vscode from 'vscode';
+import { ConnectionData } from '../typings';
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
 const SOURCE_LIST_KEY = `sourceList`;
 const DEPLOYMENT_KEY = `deployment`;
 const DEBUG_KEY = `debug`;
-const SERVER_SETTINGS_CACHE_KEY = (name: string) => `serverSettingsCache_${name}`;
+const SERVER_SETTINGS_CACHE_PREFIX = `serverSettingsCache_`;
+const SERVER_SETTINGS_CACHE_KEY = (name: string) => SERVER_SETTINGS_CACHE_PREFIX + name;
 const PREVIOUS_SEARCH_TERMS_KEY = `prevSearchTerms`;
 const RECENTLY_OPENED_FILES_KEY = `recentlyOpenedFiles`;
 const AUTHORISED_EXTENSIONS_KEY = `authorisedExtensions`
@@ -26,6 +28,10 @@ abstract class Storage {
 
   constructor(context: vscode.ExtensionContext) {
     this.globalState = context.globalState;
+  }
+
+  protected keys(): readonly string[] {
+    return this.globalState.keys();
   }
 
   protected get<T>(key: string): T | undefined {
@@ -116,6 +122,15 @@ export class GlobalStorage extends Storage {
 
   async deleteServerSettingsCache(name: string) {
     await this.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
+  }
+
+  async deleteStaleServerSettingsCache(connections: ConnectionData[]) {
+    const validKeys = connections.map(connection => SERVER_SETTINGS_CACHE_KEY(connection.name));
+    const currentKeys = this.keys();
+    const keysToDelete = currentKeys.filter(key => key.startsWith(SERVER_SETTINGS_CACHE_PREFIX) && !validKeys.includes(key));
+    for await (const key of keysToDelete) {
+      await this.set(key, undefined);
+    }
   }
 
   getPreviousSearchTerms() {
