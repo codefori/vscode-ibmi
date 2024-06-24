@@ -172,7 +172,7 @@
   "ifsBrowser.downloadStreamfile.errorMessage": "Error downloading file(s): {0}",
   "ifsBrowser.getChildren.errorMessage": "Error loading objects.",
   "ifsBrowser.handleFileListErrors.errorMessage": "{0} {1} occurred while listing files.",
-  "ifsBrowser.ifs.find.noFind": "\"find\" must be installed on the remote system.",
+  "ifsBrowser.ifs.find.noFind": "\"findutils\" must be installed on the remote system.",
   "ifsBrowser.ifs.find.placeholder": "Enter find term or select one of the previous find terms.",
   "ifsBrowser.ifs.find.placeholder2": "Enter find term.",
   "ifsBrowser.ifs.find.previousSearches": "Previous find terms",

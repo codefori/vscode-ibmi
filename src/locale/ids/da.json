@@ -172,7 +172,7 @@
   "ifsBrowser.downloadStreamfile.errorMessage": "Fejl under hentning: {0}",
   "ifsBrowser.getChildren.errorMessage": "Fejl ved læsning af objekter.",
   "ifsBrowser.handleFileListErrors.errorMessage": "{0} {1} opstod ved visning af filer.",
-  "ifsBrowser.ifs.find.noFind": "\"find\" skal være installeret på systemet for søgning efter filnavne.",
+  "ifsBrowser.ifs.find.noFind": "\"findutils\" skal være installeret på systemet for søgning efter filnavne.",
   "ifsBrowser.ifs.find.placeholder": "Indtast søgetekst eller vælg en af de tidligere søgninger.",
   "ifsBrowser.ifs.find.placeholder2": "Indtast søgetekst.",
   "ifsBrowser.ifs.find.previousSearches": "Forrige søgninger",
