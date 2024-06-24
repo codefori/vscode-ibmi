@@ -25,6 +25,7 @@ const locales = {
   de: require(`./src/locale/ids/de.json`),
   fr: require(`./src/locale/ids/fr.json`),
   no: require(`./src/locale/ids/no.json`),
+  pl: require(`./src/locale/ids/pl.json`),
 };
 
 let localeIsBad = false;
