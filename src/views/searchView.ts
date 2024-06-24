@@ -147,7 +147,7 @@ function computeSearchHitLabel(term: string, result: SearchHit) {
     return label;
   }
   else {
-    const position = label.indexOf(term);
+    const position = label.toLocaleLowerCase().lastIndexOf(term.toLocaleLowerCase());
     return {
       label,
       highlights: position > -1 ? [[position, term.length + position]] : undefined
