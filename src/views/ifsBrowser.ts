@@ -650,7 +650,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (target) {
           const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
           try {
-            await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            if (moveResult.code !== 0) {
+              throw moveResult.stderr;
+            }
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
