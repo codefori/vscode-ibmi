@@ -138,16 +138,24 @@ export class GlobalStorage extends Storage {
     return this.get<string[]>(PREVIOUS_SEARCH_TERMS_KEY) || [];
   }
 
-  async setPreviousSearchTerms(previousSearchTerms: string[]) {
-    await this.set(PREVIOUS_SEARCH_TERMS_KEY, previousSearchTerms);
+  async addPreviousSearchTerm(term: string) {    
+    await this.set(PREVIOUS_SEARCH_TERMS_KEY, [term].concat(this.getPreviousSearchTerms().filter(t => t !== term)));
+  }
+
+  async clearPreviousSearchTerms(){
+    await this.set(PREVIOUS_SEARCH_TERMS_KEY, undefined);
   }
 
   getPreviousFindTerms() {
     return this.get<string[]>(PREVIOUS_FIND_TERMS_KEY) || [];
   }
 
-  async setPreviousFindTerms(previousSearchTerms: string[]) {
-    await this.set(PREVIOUS_FIND_TERMS_KEY, previousSearchTerms);
+  async addPreviousFindTerm(term: string) {
+    await this.set(PREVIOUS_FIND_TERMS_KEY, [term].concat(this.getPreviousFindTerms().filter(t => t !== term)));
+  }
+
+  async clearPreviousFindTerms(){
+    await this.set(PREVIOUS_FIND_TERMS_KEY, undefined);
   }
 }
 

@@ -979,13 +979,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       if (parameters.path) {
         const config = getConfig();
-        const storage = instance.getStorage();
 
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
           const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? t(`objectBrowser.searchSourceFile.aspText`, config.sourceASP) : ``);
 
-          let list = GlobalStorage.get().getPreviousSearchTerms();
+          const list = GlobalStorage.get().getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [
             { label: t(`objectBrowser.searchSourceFile.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
           ];
@@ -1010,17 +1009,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             const searchTerm = quickPick.activeItems[0].label;
             if (searchTerm) {
               if (searchTerm === clearList) {
-                GlobalStorage.get().setPreviousSearchTerms([]);
-                list = [];
+                GlobalStorage.get().clearPreviousSearchTerms();
                 quickPick.items = [];
                 quickPick.placeholder = t(`objectBrowser.searchSourceFile.placeholder2`);
                 vscode.window.showInformationMessage(t(`clearedList`));
                 quickPick.show();
               } else {
                 quickPick.hide();
-                list = list.filter(term => term !== searchTerm);
-                list.splice(0, 0, searchTerm);
-                GlobalStorage.get().setPreviousSearchTerms(list);
+                GlobalStorage.get().addPreviousSearchTerm(searchTerm);
                 await doSearchInSourceFile(searchTerm, parameters.path, parameters.filter);
               }
             }

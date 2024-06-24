@@ -732,14 +732,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             const searchTerm = quickPick.activeItems[0].label;
             if (searchTerm) {
               if (searchTerm === clearList) {
-                GlobalStorage.get().setPreviousSearchTerms([]);
+                GlobalStorage.get().clearPreviousSearchTerms();
                 quickPick.items = [];
                 quickPick.placeholder = t(`ifsBrowser.searchIFS.placeholder2`);
                 vscode.window.showInformationMessage(t(`clearedList`));
                 quickPick.show();
               } else {
                 quickPick.hide();
-                GlobalStorage.get().setPreviousSearchTerms(list.filter(term => term !== searchTerm).splice(0, 0, searchTerm));
+                GlobalStorage.get().addPreviousSearchTerm(searchTerm);
                 await doSearchInStreamfiles(searchTerm, searchPath);
               }
             }
@@ -792,14 +792,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             const findTerm = quickPick.activeItems[0].label;
             if (findTerm) {
               if (findTerm === clearList) {
-                GlobalStorage.get().setPreviousFindTerms([]);
+                GlobalStorage.get().clearPreviousFindTerms();
                 quickPick.items = [];
                 quickPick.placeholder = t(`ifsBrowser.ifs.find.placeholder2`);
                 vscode.window.showInformationMessage(t(`clearedList`));
                 quickPick.show();
               } else {
-                quickPick.hide();
-                GlobalStorage.get().setPreviousFindTerms(list.filter(term => term !== findTerm).splice(0, 0, findTerm));
+                quickPick.hide();                
+                GlobalStorage.get().addPreviousFindTerm(findTerm);
                 await doFindStreamfiles(findTerm, findPath);
               }
             }
