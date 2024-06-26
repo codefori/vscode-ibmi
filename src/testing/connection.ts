@@ -1,6 +1,7 @@
 import assert from "assert";
 import { TestSuite } from ".";
 import { instance } from "../instantiate";
+import { Tools } from "../api/Tools";
 
 export const ConnectionSuite: TestSuite = {
   name: `Connection tests`,
@@ -275,7 +276,7 @@ export const ConnectionSuite: TestSuite = {
       name: `Test withTempDirectory and countFiles`, test: async () => {
         const connection = instance.getConnection()!;
         const content = instance.getContent()!;
-        let temp;        
+        let temp;
 
         await connection.withTempDirectory(async tempDir => {
           temp = tempDir;
@@ -291,6 +292,9 @@ export const ConnectionSuite: TestSuite = {
           }
 
           assert.strictEqual(await content.countFiles(tempDir), toCreate);
+
+          //Directory does not exist
+          assert.strictEqual(await content.countFiles(`${tempDir}/${Tools.makeid(20)}`), 0);
         });
 
         if (temp) {

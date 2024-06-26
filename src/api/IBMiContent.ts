@@ -947,6 +947,6 @@ export default class IBMiContent {
   }
 
   async countFiles(directory: string) {
-    return Number((await this.ibmi.sendCommand({ command: `ls | wc -l`, directory })).stdout.trim());
+    return Number((await this.ibmi.sendCommand({ command: `cd ${directory} && (ls | wc -l)` })).stdout.trim());
   }
 }
