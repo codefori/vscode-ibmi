@@ -1089,7 +1089,7 @@
 			{
 				"command": "code-for-ibmi.compareWithSelected",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Compare with Selected",
+				"title": "Compare with selected",
 				"category": "IBM i"
 			},
 			{
@@ -1099,7 +1099,7 @@
 				"category": "IBM i"
 			},
 			{
-				"command": "code-for-ibmi.compareCurrentFileWithStream",
+				"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Compare with IFS file...",
 				"category": "IBM i"
@@ -1111,7 +1111,7 @@
 			},
 			{
 				"command": "code-for-ibmi.compareWithActiveFile",
-				"title": "Compare with Active File",
+				"title": "Compare with active file",
 				"category": "IBM i"
 			},
 			{
@@ -1826,6 +1826,14 @@
 				"id": "code-for-ibmi.debug.group",
 				"label": "Start Debugging",
 				"icon": "$(debug-start)"
+			},
+			{
+				"id": "code-for-ibmi.compareWith",
+				"label": "Compare with..."
+			},
+			{
+				"id": "code-for-ibmi.compareWithLocal",
+				"label": "Compare with..."
 			}
 		],
 		"menus": {
@@ -1870,6 +1878,46 @@
 				{
 					"command": "code-for-ibmi.debug.sep",
 					"when": "code-for-ibmi:debug.SEP"
+				}
+			],
+			"code-for-ibmi.compareWith": [
+				{
+					"command": "code-for-ibmi.compareWithSelected",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				}
+			],
+			"code-for-ibmi.compareWithLocal": [
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"when": "!explorerResourceIsFolder"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "!explorerResourceIsFolder"
 				}
 			],
 			"commandPalette": [
@@ -1926,7 +1974,7 @@
 					"when": "code-for-ibmi:connected"
 				},
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithStream",
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
 					"when": "code-for-ibmi:connected"
 				},
 				{
@@ -2227,10 +2275,10 @@
 				},
 				{
 					"command": "code-for-ibmi.compareWithActiveFile",
-          "when": "never"
+					"when": "never"
 				},
 				{
-          "command": "code-for-ibmi.searchObjectBrowser",
+					"command": "code-for-ibmi.searchObjectBrowser",
 					"when": "never"
 				},
 				{
@@ -2544,36 +2592,6 @@
 					"group": "5_filters@2"
 				},
 				{
-					"command": "code-for-ibmi.selectForCompare",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@1"
-				},
-				{
-					"command": "code-for-ibmi.compareWithSelected",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@2"
-				},
-				{
-					"command": "code-for-ibmi.compareCurrentFileWithMember",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@3"
-				},
-				{
-					"command": "code-for-ibmi.compareCurrentFileWithStream",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@4"
-				},
-				{
-					"command": "code-for-ibmi.compareCurrentFileWithLocal",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@5"
-				},
-				{
-					"command": "code-for-ibmi.compareWithActiveFile",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@6"
-				},
-				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == objectBrowser && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
@@ -2592,6 +2610,15 @@
 					"submenu": "code-for-ibmi.sortMembers",
 					"when": "view == objectBrowser && (viewItem =~ /^SPF/ || viewItem =~ /^member/)",
 					"group": "6_sourceFileStuff@1"
+				},
+				{
+					"command": "code-for-ibmi.selectForCompare",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"group": "7_sourceFileStuff@1"
+				},
+				{
+					"submenu": "code-for-ibmi.compareWith",
+					"group": "7_sourceFileStuff@2"
 				},
 				{
 					"submenu": "code-for-ibmi.openMember",
@@ -2854,27 +2881,12 @@
 					"group": "inline"
 				}
 			],
-			"explorer/context" : [
+			"explorer/context": [
 				{
-					"command": "code-for-ibmi.compareCurrentFileWithMember",
-					"when": "code-for-ibmi:connected",
+					"submenu": "code-for-ibmi.compareWithLocal",
 					"group": "3_compare@40"
-				},
-				{
-					"command": "code-for-ibmi.compareCurrentFileWithStream",
-					"when": "code-for-ibmi:connected",
-					"group": "3_compare@41"
-				},
-                {
-					"command": "code-for-ibmi.compareCurrentFileWithLocal",
-					"when": "!explorerResourceIsFolder",
-					"group": "3_compare@42"
-				},
-				{
-					"command": "code-for-ibmi.compareWithActiveFile",
-					"when": "!explorerResourceIsFolder",
-					"group": "3_compare@43"
 				}
+				
 			]
 		},
 		"viewsWelcome": [

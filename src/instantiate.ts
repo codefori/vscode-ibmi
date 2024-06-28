@@ -188,7 +188,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithMember`, async (node) => {
       compareCurrentFile(node, `member`);
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithStream`, async (node) => {
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithStreamFile`, async (node) => {
         compareCurrentFile(node, `streamfile`);
     }),
     vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithLocal`, async (node) => {
@@ -292,8 +292,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         ).then(resultSetLibrary => {
           schemaItems = resultSetLibrary.map(row => ({
             label: String(row.SYSTEM_SCHEMA_NAME),
-            description: String(row.SCHEMA_TEXT),
-            buttons: [compareButton]
+            description: String(row.SCHEMA_TEXT)
           }))
         });
       }
