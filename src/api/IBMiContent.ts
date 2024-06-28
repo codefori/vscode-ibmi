@@ -485,7 +485,8 @@ export default class IBMiContent {
         `  'PF'                as ATTRIBUTE,`,
         `  t.TABLE_TEXT        as TEXT,`,
         `  1                   as IS_SOURCE,`,
-        `  t.ROW_LENGTH        as SOURCE_LENGTH`,
+        `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `  t.IASP_NUMBER       as IASP_NUMBER`,
         `from QSYS2.SYSTABLES as t`,
         `where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
       ];
@@ -498,6 +499,7 @@ export default class IBMiContent {
         `  OBJATTRIBUTE     as ATTRIBUTE,`,
         `  OBJTEXT          as TEXT,`,
         `  0                as IS_SOURCE,`,
+        `  IASP_NUMBER      as IASP_NUMBER,`,
         `  OBJSIZE          as SIZE,`,
         `  extract(epoch from (OBJCREATED))*1000       as CREATED,`,
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
@@ -526,6 +528,7 @@ export default class IBMiContent {
         `    OBJATTRIBUTE      as ATTRIBUTE,`,
         `    OBJTEXT           as TEXT,`,
         `    0                 as IS_SOURCE,`,
+        `    IASP_NUMBER       as IASP_NUMBER,`,
         `    OBJSIZE           as SIZE,`,
         `    extract(epoch from (OBJCREATED))*1000       as CREATED,`,
         `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
@@ -540,6 +543,7 @@ export default class IBMiContent {
         `  o.TEXT,`,
         `  case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,`,
         `  s.SOURCE_LENGTH,`,
+        `  o.IASP_NUMBER,`,
         `  o.SIZE,`,
         `  o.CREATED,`,
         `  o.CHANGED,`,
@@ -564,6 +568,7 @@ export default class IBMiContent {
       changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
+      asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
     } as IBMiObject))
       .filter(object => !typeFilter || typeFilter(object.type))
       .filter(object => objectFilter || nameFilter.test(object.name))

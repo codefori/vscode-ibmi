@@ -10,12 +10,41 @@ const npm_runner = process.env[`npm_lifecycle_script`];
 const isProduction = (npm_runner && npm_runner.includes(`production`));
 
 console.log(`Is production build: ${isProduction}`);
+console.log();
 
 let exclude = undefined;
 
 if (isProduction) {
   exclude = path.resolve(__dirname, `src`, `testing`)
 }
+
+console.log(`Checking for missing keys in locales...`);
+const baseLocale = require(`./src/locale/ids/en.json`);
+const locales = {
+  da: require(`./src/locale/ids/da.json`),
+  de: require(`./src/locale/ids/de.json`),
+  fr: require(`./src/locale/ids/fr.json`),
+  no: require(`./src/locale/ids/no.json`),
+  pl: require(`./src/locale/ids/pl.json`),
+};
+
+let localeIsBad = false;
+
+for (const locale in locales) {
+  for (const key in baseLocale) {
+    if (!locales[locale][key]) {
+      localeIsBad = true;
+      console.error(`\tmissing key '${key}' in locale ${locale}`);
+    }
+  }
+}
+
+if (localeIsBad && isProduction) {
+  console.error(`\n\nMissing keys in locales. Aborting build.`);
+  process.exit(1);
+}
+
+console.log();
 
 /**@type {webpack.Configuration}*/
 const config = {
@@ -68,4 +97,5 @@ const config = {
     ]
   }
 };
+
 module.exports = config;

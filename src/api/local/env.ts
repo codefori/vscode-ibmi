@@ -1,7 +1,9 @@
-import { workspace, WorkspaceFolder } from "vscode";
 import * as path from "path";
+import { workspace, WorkspaceFolder } from "vscode";
 
 import { str } from "crc-32/crc32c";
+
+export type Env = Record<string, string>;
 
 async function envExists(currentWorkspace: WorkspaceFolder) {
   const folderUri = currentWorkspace.uri;
@@ -16,7 +18,7 @@ async function envExists(currentWorkspace: WorkspaceFolder) {
 }
 
 export async function getEnvConfig(currentWorkspace: WorkspaceFolder) {
-  let env: {[key: string]: string} = {};
+  const env: Env = {};
 
   if (await envExists(currentWorkspace)) {
     const folderUri = currentWorkspace.uri;
@@ -40,10 +42,9 @@ export async function getEnvConfig(currentWorkspace: WorkspaceFolder) {
     });
   }
 
-  // @ts-ignore
   return env;
 }
 
 export function getBranchLibraryName(currentBranch: string) {
-  return `VS${(str(currentBranch, 0)>>>0).toString(16).toUpperCase()}`;
+  return `VS${(str(currentBranch, 0) >>> 0).toString(16).toUpperCase()}`;
 }

@@ -1,11 +1,10 @@
 import { Tools } from './api/Tools';
 
-import path, { dirname } from 'path';
+import path from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
 import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
-import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
@@ -14,8 +13,8 @@ import { setupGitEventHandler } from './api/local/git';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+import { t } from './locale';
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
-import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 import { t } from './locale';
@@ -42,11 +41,6 @@ connectedBarItem.command = {
 };
 
 let selectedForCompare: vscode.Uri;
-let searchViewContext: SearchView;
-
-export function setSearchResults(term: string, results: Search.Result[]) {
-  searchViewContext.setResults(term, results);
-}
 
 export async function disconnect(): Promise<boolean> {
   let doDisconnect = true;
@@ -82,8 +76,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
 
   instance = new Instance(context);
-  searchViewContext = new SearchView(context);
-
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
@@ -95,10 +87,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
     onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
-    vscode.window.registerTreeDataProvider(
-      `searchView`,
-      searchViewContext
-    ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
       console.log(path);
       options = options || {};
@@ -670,18 +658,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-      return Terminal.selectAndOpen(instance);
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
-      const content = instance.getContent();
-      if (content) {
-        const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
-        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
-        terminal?.sendText(`cd ${path}`);
-      }
-    }),
+    ...Terminal.registerTerminalCommands(),
 
     vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
       if (extensionId) {
@@ -773,7 +750,32 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-  );
+    
+    vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
+      let doc: vscode.TextDocument | undefined;
+      if (uri) {
+        doc = Tools.findExistingDocument(uri);
+      } else {
+        const editor = vscode.window.activeTextEditor;
+        doc = editor?.document;
+      }
+
+      if (doc?.isDirty) {
+        vscode.window
+          .showWarningMessage(
+            t(`discard.changes`), 
+            { modal: true }, 
+            t(`Continue`))
+          .then(result => {
+              if (result === t(`Continue`)) {
+                vscode.commands.executeCommand(`workbench.action.files.revert`);
+              }
+        });
+      } else {
+        vscode.commands.executeCommand(`workbench.action.files.revert`);
+      }
+    }),
+);
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);

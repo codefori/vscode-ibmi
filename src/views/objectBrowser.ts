@@ -10,7 +10,7 @@ import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
-import { instance, setSearchResults } from "../instantiate";
+import { instance } from "../instantiate";
 import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
 import { editFilter } from "../webviews/filters";
@@ -317,7 +317,8 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
       text: this.object.text,
       members: await content.countMembers(this.object),
       length: this.object.sourceLength,
-      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?'
+      CCSID: (await content.getAttributes(this.object, "CCSID"))?.CCSID || '?',
+      iasp: this.object.asp
     }));
 
     tooltip.supportHtml = true;
@@ -350,6 +351,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
       changed: object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
       created_by: object.created_by,
       owner: object.owner,
+      iasp: object.asp
     }));
     this.tooltip.supportHtml = true;
 
@@ -734,11 +736,23 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.renameMember`, async (node: ObjectBrowserMemberItem) => {
       const connection = getConnection();
       const oldMember = connection.parserMemberPath(node.path);
+      const oldUri = node.resourceUri as vscode.Uri;
       const library = oldMember.library;
       const sourceFile = oldMember.file;
       let newBasename: string | undefined = oldMember.basename;
       let newMember: MemberParts | undefined;
+      let newMemberPath: string | undefined;
       let newNameOK;
+
+      // Check if the member is currently open in an editor tab.
+      const oldMemberTabs = Tools.findUriTabs(oldUri);
+
+      // If the member is currently open in an editor tab, and 
+      // the member has unsaved changes, then prevent the renaming operation.
+      if (oldMemberTabs.find(tab => tab.isDirty)) {
+        vscode.window.showErrorMessage(t("objectBrowser.renameMember.errorMessage", t("member.has.unsaved.changes")));
+        return;
+      }
 
       do {
         newBasename = await vscode.window.showInputBox({
@@ -749,8 +763,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
         if (newBasename) {
           newNameOK = true;
+          newMemberPath = library + `/` + sourceFile + `/` + newBasename;
           try {
-            newMember = connection.parserMemberPath(library + `/` + sourceFile + `/` + newBasename);
+            newMember = connection.parserMemberPath(newMemberPath);
           } catch (e: any) {
             newNameOK = false;
             vscode.window.showErrorMessage(e);
@@ -786,6 +801,19 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           }
         }
       } while (newBasename && !newNameOK)
+
+      // If the member was open in an editor tab prior to the renaming,
+      // refresh those tabs to reflect the new member path/name.
+      // (Directly modifying the label or uri of an open tab is apparently not
+      // possible with the current VS Code API, so refresh the tab by closing
+      // it and then opening a new one at the new uri.)
+      if (newNameOK && newMemberPath) {
+        oldMemberTabs.forEach((tab) => {
+          vscode.window.tabGroups.close(tab).then(() => {
+            vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newMemberPath);
+          });
+        })
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.uploadAndReplaceMemberAsFile`, async (node: MemberItem) => {
@@ -951,13 +979,12 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
       if (parameters.path) {
         const config = getConfig();
-        const storage = instance.getStorage();
 
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
           const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? t(`objectBrowser.searchSourceFile.aspText`, config.sourceASP) : ``);
 
-          let list = GlobalStorage.get().getPreviousSearchTerms();
+          const list = GlobalStorage.get().getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [
             { label: t(`objectBrowser.searchSourceFile.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
           ];
@@ -982,17 +1009,14 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             const searchTerm = quickPick.activeItems[0].label;
             if (searchTerm) {
               if (searchTerm === clearList) {
-                GlobalStorage.get().setPreviousSearchTerms([]);
-                list = [];
+                GlobalStorage.get().clearPreviousSearchTerms();
                 quickPick.items = [];
                 quickPick.placeholder = t(`objectBrowser.searchSourceFile.placeholder2`);
                 vscode.window.showInformationMessage(t(`clearedList`));
                 quickPick.show();
               } else {
                 quickPick.hide();
-                list = list.filter(term => term !== searchTerm);
-                list.splice(0, 0, searchTerm);
-                GlobalStorage.get().setPreviousSearchTerms(list);
+                GlobalStorage.get().addPreviousSearchTerm(searchTerm);
                 await doSearchInSourceFile(searchTerm, parameters.path, parameters.filter);
               }
             }
@@ -1296,9 +1320,9 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async() => {
-        vscode.commands.executeCommand('objectBrowser.focus');
-        vscode.commands.executeCommand('list.find');
+    vscode.commands.registerCommand(`code-for-ibmi.searchObjectBrowser`, async () => {
+      vscode.commands.executeCommand('objectBrowser.focus');
+      vscode.commands.executeCommand('list.find');
     })
   );
 }
@@ -1382,12 +1406,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           }
         }, timeoutInternal);
 
-        let results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected || content.isProtectedPath(pathParts[0]));
-
+        const results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected || content.isProtectedPath(pathParts[0]));
         // Filter search result by member type filter.
-        if (results.length > 0 && filter?.member) {
+        if (results.hits.length && filter?.member) {
           const patternExt = new RegExp(`^` + filter?.member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
-          results = results.filter(result => {
+          results.hits = results.hits.filter(result => {
             const resultPath = result.path.split(`/`);
             const resultName = resultPath[resultPath.length - 1];
             const member = members.find(member => member.name === resultName);
@@ -1395,11 +1418,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           })
         }
 
-        if (results.length > 0) {
+        if (results.hits.length) {
           const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
           // Format result to include member type.
-          results.forEach(result => {
+          results.hits.forEach(result => {
             const resultPath = result.path.split(`/`);
             const resultName = resultPath[resultPath.length - 1];
             result.path += `.${members.find(member => member.name === resultName)?.extension || ''}`;
@@ -1408,12 +1431,11 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
             }
           });
 
-          results = results.sort((a, b) => {
+          results.hits = results.hits.sort((a, b) => {
             return a.path.localeCompare(b.path);
           });
 
-          setSearchResults(searchTerm, results);
-
+          vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, results);
         } else {
           vscode.window.showInformationMessage(t(`objectBrowser.doSearchInSourceFile.notFound`, searchTerm, path));
         }

@@ -1,36 +1,44 @@
 import path from 'path';
-import vscode, { TreeDataProvider } from "vscode";
-import { Search } from "../api/Search";
-import { OpenEditableOptions } from "../typings";
+import vscode from "vscode";
+import { t } from '../locale';
+import { OpenEditableOptions, SearchHit, SearchHitLine, SearchResults } from "../typings";
 
-export class SearchView implements TreeDataProvider<any> {
-  private _term = ``;
-  private _results: Search.Result[] = [];
+export function initializeSearchView(context: vscode.ExtensionContext) {
+  const searchView = new SearchView();
+  const searchViewViewer = vscode.window.createTreeView(
+    `searchView`, {
+    treeDataProvider: searchView,
+    showCollapseAll: true,
+    canSelectMany: false
+  });
+
+  context.subscriptions.push(
+    searchViewViewer,
+    vscode.commands.registerCommand(`code-for-ibmi.refreshSearchView`, async () => searchView.refresh()),
+    vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false)),
+    vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => searchView.collapse()),
+    vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults) => {
+      if (searchResults.hits.some(hit => hit.lines.length)) {
+        searchViewViewer.message = t("searchView.search.message", searchResults.hits.length, searchResults.term);
+      }
+      else {
+        searchViewViewer.message = t("searchView.find.message", searchResults.hits.length, searchResults.term);
+      }
+      searchView.setResults(searchResults);
+    })
+  )
+}
+
+class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
+  private _results: SearchResults = { term: "", hits: [] };
   private _onDidChangeTreeData: vscode.EventEmitter<vscode.TreeItem | undefined | null | void> = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData: vscode.Event<vscode.TreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
-
-  constructor(context: vscode.ExtensionContext) {
-    context.subscriptions.push(
-      vscode.commands.registerCommand(`code-for-ibmi.refreshSearchView`, async () => {
-        this.refresh();
-      }),
-
-      vscode.commands.registerCommand(`code-for-ibmi.closeSearchView`, async () => {
-        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, false);
-      }),
-
-      vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => {
-        this.collapse();
-      }),
-    )
-  }
 
   setViewVisible(visible: boolean) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:searchViewVisible`, visible);
   }
 
-  setResults(term: string, results: Search.Result[]) {
-    this._term = term;
+  setResults(results: SearchResults) {
     this._results = results;
     this.refresh();
     this.setViewVisible(true);
@@ -52,7 +60,7 @@ export class SearchView implements TreeDataProvider<any> {
 
   async getChildren(hitSource: HitSource): Promise<vscode.TreeItem[]> {
     if (!hitSource) {
-      return this._results.map(result => new HitSource(result, this._term));
+      return this._results.hits.map(hit => new HitSource(this._results.term, hit));
     } else {
       return hitSource.getChildren();
     }
@@ -63,16 +71,27 @@ class HitSource extends vscode.TreeItem {
   private readonly _path: string;
   private readonly _readonly?: boolean;
 
-  constructor(readonly result: Search.Result, readonly term: string) {
-    super(result.label ? result.label : path.posix.basename(result.path), vscode.TreeItemCollapsibleState.Expanded);
-
+  constructor(readonly term: string, readonly result: SearchHit) {
     const hits = result.lines.length;
+    super(computeSearchHitLabel(term, result), hits ? vscode.TreeItemCollapsibleState.Expanded : vscode.TreeItemCollapsibleState.None);
+
     this.contextValue = `hitSource`;
     this.iconPath = vscode.ThemeIcon.File;
-    this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
     this._path = result.path;
     this._readonly = result.readonly;
     this.tooltip = result.path;
+
+    if (hits) {
+      this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
+    }
+    else {
+      this.description = result.path;
+      this.command = {
+        command: `code-for-ibmi.openEditable`,
+        title: `Open`,
+        arguments: [this._path, { readonly: result.readonly } as OpenEditableOptions]
+      };
+    }
   }
 
   async getChildren(): Promise<LineHit[]> {
@@ -81,7 +100,7 @@ class HitSource extends vscode.TreeItem {
 }
 
 class LineHit extends vscode.TreeItem {
-  constructor(term: string, readonly path: string, line: Search.Line, readonly?: boolean) {
+  constructor(readonly term: string, readonly path: string, line: SearchHitLine, readonly?: boolean) {
     const highlights: [number, number][] = [];
 
     const upperContent = line.content.trim().toUpperCase();
@@ -112,12 +131,26 @@ class LineHit extends vscode.TreeItem {
     this.contextValue = `lineHit`;
     this.collapsibleState = vscode.TreeItemCollapsibleState.None;
 
-    this.description = String(line.number);
+    this.description = `line ${line.number}`;
 
     this.command = {
       command: `code-for-ibmi.openEditable`,
       title: `Open`,
       arguments: [this.path, openOptions]
     };
+  }
+}
+
+function computeSearchHitLabel(term: string, result: SearchHit) {
+  const label = result.label || path.posix.basename(result.path);
+  if (result.lines.length) {
+    return label;
+  }
+  else {
+    const position = label.toLocaleLowerCase().lastIndexOf(term.toLocaleLowerCase());
+    return {
+      label,
+      highlights: position > -1 ? [[position, term.length + position]] : undefined
+    } as vscode.TreeItemLabel;
   }
 }
