@@ -3,7 +3,7 @@ import path, { dirname, extname } from "path";
 import vscode, { FileType, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
-import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
+import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from "../api/Storage";
@@ -967,8 +967,9 @@ async function doFindStreamfiles(findTerm: string, findPath: string) {
 }
 
 function openIFSSearchResults(searchPath: string, searchResults: SearchResults) {
+  const readonly = GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode") === "browse";
   searchResults.hits =
-    searchResults.hits.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path) }) as SearchHit)
+    searchResults.hits.map(a => ({ ...a, label: path.posix.relative(searchPath, a.path), readonly: readonly }) as SearchHit)
       .sort((a, b) => a.path.localeCompare(b.path));
   vscode.commands.executeCommand(`code-for-ibmi.setSearchResults`, searchResults);
 }
