@@ -1,5 +1,6 @@
 import path from 'path';
 import vscode from "vscode";
+import { DefaultOpenMode } from "../api/Configuration";
 import { t } from '../locale';
 import { OpenEditableOptions, SearchHit, SearchHitLine, SearchResults } from "../typings";
 
@@ -68,7 +69,7 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
 }
 
 class HitSource extends vscode.TreeItem {
-  private readonly _path: string;
+  private readonly path: string;
   private readonly _readonly?: boolean;
 
   constructor(readonly term: string, readonly result: SearchHit) {
@@ -77,7 +78,7 @@ class HitSource extends vscode.TreeItem {
 
     this.contextValue = `hitSource`;
     this.iconPath = vscode.ThemeIcon.File;
-    this._path = result.path;
+    this.path = result.path;
     this._readonly = result.readonly;
     this.tooltip = result.path;
 
@@ -87,15 +88,15 @@ class HitSource extends vscode.TreeItem {
     else {
       this.description = result.path;
       this.command = {
-        command: `code-for-ibmi.openEditable`,
+        command: `code-for-ibmi.openWithDefaultMode`,
         title: `Open`,
-        arguments: [this._path, { readonly: result.readonly } as OpenEditableOptions]
+        arguments: [this, this._readonly ? "browse" as DefaultOpenMode : undefined]
       };
     }
   }
 
   async getChildren(): Promise<LineHit[]> {
-    return this.result.lines.map(line => new LineHit(this.term, this._path, line, this._readonly));
+    return this.result.lines.map(line => new LineHit(this.term, this.path, line, this._readonly));
   }
 }
 
