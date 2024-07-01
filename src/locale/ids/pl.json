@@ -120,6 +120,7 @@
     "delete": "Usuń",
     "detail.reading.error": "Nie udało się odczytać pliku szczegółów usługi debugowania {0}: {1}",
     "directory": "katalog",
+    "directory.unsaved.changes": "The directory has file(s) with unsaved changes.",
     "discard.changes": "Twoje zmiany zostaną usunięte",
     "download.certificate": "Pobierz certyfikat",
     "duplicate": "Duplikuj",
