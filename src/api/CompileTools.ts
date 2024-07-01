@@ -640,16 +640,29 @@ export namespace CompileTools {
           case `ile`:
           default:
             // escape $ and # in commands
-            commandResult = await connection.sendQsh({
-              command: [
-                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"`}`,
-                )
-              ].join(` && `),
-              directory: cwd,
-              ...callbacks
-            });
+            if (options.noLibList) {
+              // when we sendCommands, the encoding is entact
+              commandResult = await connection.sendCommand({
+                command: [
+                  ...commands.map(command =>
+                    `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$"]/g, `\\$&`)}"`}`,
+                  )
+                ].join(` && `),
+                directory: cwd,
+                ...callbacks
+              });
+            } else {
+              commandResult = await connection.sendQsh({
+                command: [
+                  buildLiblistCommands(connection, ileSetup),
+                  ...commands.map(command =>
+                    `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$"]/g, `\\$&`)}"`}`,
+                  )
+                ].join(` && `),
+                directory: cwd,
+                ...callbacks
+              });
+            }
             break;
         }
 
