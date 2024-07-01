@@ -259,6 +259,29 @@ export const ToolsSuite: TestSuite = {
         assert.strictEqual(rows[0].CREATED, 1713451802000);
         assert.strictEqual(rows[0].CHANGED, 1713453741000);
       }
+    },
+    {
+      name: "Date attr parsing", test: async () => {
+        const date1Epoch = Tools.parseAttrDate(`Fri Apr  5 09:00:10 2024`);
+        assert.strictEqual(date1Epoch, 1712307610000);
+        const date1 = new Date(date1Epoch);
+        assert.strictEqual(date1.getUTCDay(), 5);
+        assert.strictEqual(date1.getUTCMonth(), 3);
+        assert.strictEqual(date1.getUTCFullYear(), 2024);
+        assert.strictEqual(date1.getUTCHours(), 9);
+        assert.strictEqual(date1.getUTCMinutes(), 0);
+        assert.strictEqual(date1.getUTCSeconds(), 10);
+
+        const date2Epoch = Tools.parseAttrDate(`Thu Dec 21 21:47:02 2023`);
+        assert.strictEqual(date2Epoch, 1703195222000);
+        const date2 = new Date(date2Epoch);
+        assert.strictEqual(date2.getUTCDay(), 4);
+        assert.strictEqual(date2.getUTCMonth(), 11);
+        assert.strictEqual(date2.getUTCFullYear(), 2023);
+        assert.strictEqual(date2.getUTCHours(), 21);
+        assert.strictEqual(date2.getUTCMinutes(), 47);
+        assert.strictEqual(date2.getUTCSeconds(), 2);
+      }
     }
   ]
 };

@@ -25,7 +25,6 @@ export type SortOptions = {
 }
 
 export default class IBMiContent {
-  private chgJobCCSID: string | undefined = undefined;
   constructor(readonly ibmi: IBMi) { }
 
   private get config(): ConnectionConfiguration.Parameters {
@@ -804,7 +803,7 @@ export default class IBMiContent {
 
           // This can error if the path format is wrong for some reason.
           // Not that this would ever happen, but better to be safe than sorry
-          return this.ibmi.parserMemberPath(simplePath);
+          return this.ibmi.parserMemberPath(simplePath, true);
         } catch (e) {
           console.log(e);
         }
@@ -883,7 +882,7 @@ export default class IBMiContent {
     })).code === 0;
   }
 
-  async testStreamFile(path: string, right: "f" | "d" | "r" | "w" | "x") {
+  async testStreamFile(path: string, right: "e" | "f" | "d" | "r" | "w" | "x") {
     return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
   }
 
@@ -948,5 +947,18 @@ export default class IBMiContent {
 
   async countFiles(directory: string) {
     return Number((await this.ibmi.sendCommand({ command: `cd ${directory} && (ls | wc -l)` })).stdout.trim());
+  }
+
+  /**
+   * Creates an empty unicode streamfile
+   * @param path the full path to the streamfile
+   * @throws an Error if the file could not be correctly created
+   */
+  async createStreamFile(path: string) {
+    path = Tools.escapePath(path);
+    const result = (await this.ibmi.sendCommand({ command: `echo "" > ${path} && ${this.ibmi.remoteFeatures.attr} ${path} CCSID=1208` }));
+    if (result.code !== 0) {
+      throw new Error(result.stderr);
+    }
   }
 }

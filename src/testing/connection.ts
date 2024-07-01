@@ -129,7 +129,7 @@ export const ConnectionSuite: TestSuite = {
         const connection = instance.getConnection();
 
         try {
-          const memberA = connection?.parserMemberPath(`thelib/thespf/thembr`);
+          connection?.parserMemberPath(`thelib/thespf/thembr`, true);
         } catch (e: any) {
           assert.strictEqual(e.message, `Source Type extension is required.`);
         }
