@@ -324,15 +324,15 @@ export namespace Tools {
    * Given the uri of a member or other resource, find all
    * (if any) open tabs where that resource is being edited.
   */
-  export function findUriTabs(uriToFind: vscode.Uri): vscode.Tab[] {
+  export function findUriTabs(uriToFind: vscode.Uri | string): vscode.Tab[] {
     let resourceTabs: vscode.Tab[] = [];
     for (const group of vscode.window.tabGroups.all) {
       group.tabs.filter(tab =>
         (tab.input instanceof vscode.TabInputText)
-        && areEquivalentUris(tab.input.uri, uriToFind)
-      ).forEach(tab => {
-        resourceTabs.push(tab);
-      });
+        && (uriToFind instanceof vscode.Uri ? areEquivalentUris(tab.input.uri, uriToFind) : tab.input.uri.path.startsWith(`${uriToFind}/`))
+        ).forEach(tab => {
+          resourceTabs.push(tab);
+        });
     }
     return resourceTabs;
   }
@@ -367,7 +367,11 @@ export namespace Tools {
   export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {
     return `<table>`
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
-      .concat(`${Object.entries(rows).filter(([key, value]) => value !== undefined).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
+      .concat(`${Object.entries(rows)
+        .filter(([key, value]) => value !== undefined && value !== '')
+        .map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`)
+        .join(``)}`
+      )
       .concat(`</table>`);
   }
 

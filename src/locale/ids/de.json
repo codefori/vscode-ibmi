@@ -120,6 +120,7 @@
   "delete": "Löschen",
   "detail.reading.error": "Fehler beim Lesen der Debug-Service-Detaildatei {0}: {1}",
   "directory": "Verzeichnis",
+  "directory.unsaved.changes": "Das Verzeichnis beinhaltet Datei(en) mit nicht gespeicherten Änderungen.",
   "discard.changes": "Ihre Änderungen werden verworfen",
   "download.certificate": "Zertifikat herunterladen",
   "duplicate": "Duplikat",

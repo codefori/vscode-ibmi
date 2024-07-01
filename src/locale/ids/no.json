@@ -120,6 +120,7 @@
     "delete": "Slett",
     "detail.reading.error": "Feil ved lesning av debug service detail fil {0}: {1}",
     "directory": "mappe",
+    "directory.unsaved.changes": "The directory has file(s) with unsaved changes.",
     "discard.changes": "Dine endringer vil bli slettet",
     "download.certificate": "Hent sertifikat",
     "duplicate": "Kopier",

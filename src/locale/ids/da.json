@@ -120,6 +120,7 @@
   "delete": "Slet",
   "detail.reading.error": "Fejl ved læsning af debug service detail fil {0}: {1}",
   "directory": "mappe",
+  "directory.unsaved.changes": "Mappen har filer med ikke-gemte ændringer.",
   "discard.changes": "Dine ændringer vil blive kasseret",
   "download.certificate": "Hent certifikat",
   "duplicate": "Kopier",

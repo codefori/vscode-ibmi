@@ -101,12 +101,7 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip = new vscode.MarkdownString(Tools.generateTooltipHtmlTable(this.path, {
-      size: file.size,
-      modified: file.modified ? new Date(file.modified.getTime() - file.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
-      owner: file.owner ? file.owner.toUpperCase() : ``
-    }));
-    this.tooltip.supportHtml = true;
+    this.tooltip = instance.getContent()?.ifsFileToToolTip(this.path, file);
   }
 
   sortBy(sort: SortOptions) {
@@ -616,16 +611,26 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
-      // Ensure that the file has a defined uri
-      if (!node.resourceUri) {
-        vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.path.not.parsed")));
-        return;
-      }
-      // Check if the streamfile is currently open in an editor tab
-      const oldFileTabs = Tools.findUriTabs(node.resourceUri);
-      if (oldFileTabs.find(tab => tab.isDirty)) {
-        vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.unsaved.changes")));
-        return;
+      const oldFileTabs: vscode.Tab[] = [];
+      if (node.file.type === "streamfile") {
+        // Ensure that the file has a defined uri
+        if (!node.resourceUri) {
+          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.path.not.parsed")));
+          return;
+        }
+        // Check if the streamfile is currently open in an editor tab
+        oldFileTabs.push(...Tools.findUriTabs(node.resourceUri));
+        if (oldFileTabs.find(tab => tab.isDirty)) {
+          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.unsaved.changes")));
+          return;
+        }
+      } else {
+        // Check if there are streamfiles in the directory which are currently open in an editor tab
+        oldFileTabs.push(...Tools.findUriTabs(node.file.path));
+        if (oldFileTabs.find(tab => tab.isDirty)) {
+          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("directory.unsaved.changes")));
+          return;
+        }
       }
       const connection = instance.getConnection();
       const config = instance.getConfig();
@@ -640,7 +645,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (target) {
           const targetPath = path.posix.isAbsolute(target) ? target : path.posix.join(homeDirectory, target);
           try {
-            await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            const moveResult = await connection.sendCommand({ command: `mv ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
+            if (moveResult.code !== 0) {
+              throw moveResult.stderr;
+            }
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
@@ -655,7 +663,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             // it and then opening a new one at the new uri.)
             oldFileTabs.forEach((tab) => {
               vscode.window.tabGroups.close(tab).then(() => {
-                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, targetPath);
+                const newTargetPath = (tab.input as vscode.TabInputText).uri.path.replace(node.file.path, targetPath);
+                vscode.commands.executeCommand(`code-for-ibmi.openEditable`, newTargetPath);
               })
             })
 

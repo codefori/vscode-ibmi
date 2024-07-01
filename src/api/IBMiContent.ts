@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { window } from 'vscode';
+import { MarkdownString, window } from 'vscode';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
@@ -359,32 +359,55 @@ export default class IBMiContent {
    * @returns an array of libraries as IBMiObject
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
-    let results: Tools.DB2Row[];
-
+    let objects: IBMiObject[];
     if (this.ibmi.enableSQL) {
       const statement = `
-        select os.OBJNAME as ODOBNM
-             , coalesce(os.OBJTEXT, '') as ODOBTX
-             , os.OBJATTRIBUTE as ODOBAT
-          from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs
-             , table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
+        SELECT
+          os.OBJNAME AS NAME,
+          os.OBJTYPE AS TYPE,
+          os.OBJATTRIBUTE AS ATTRIBUTE,
+          OBJTEXT AS TEXT,
+          os.IASP_NUMBER AS IASP_NUMBER,
+          os.OBJSIZE AS SIZE,
+          EXTRACT(EPOCH FROM (os.OBJCREATED)) * 1000 AS CREATED,
+          EXTRACT(EPOCH FROM (os.CHANGE_TIMESTAMP)) * 1000 AS CHANGED,
+          os.OBJOWNER AS OWNER,
+          os.OBJDEFINER AS CREATED_BY
+        from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs,
+        table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
       `;
-      results = await this.ibmi.runSQL(statement);
+      const results = await this.ibmi.runSQL(statement);
+
+      objects = results.map(object => ({
+        library: 'QSYS',
+        name: this.ibmi.sysNameInLocal(String(object.NAME)),
+        type: String(object.TYPE),
+        attribute: String(object.ATTRIBUTE),
+        text: String(object.TEXT || ""),
+        sourceFile: Boolean(object.IS_SOURCE),
+        sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+        size: Number(object.SIZE),
+        created: new Date(Number(object.CREATED)),
+        changed: new Date(Number(object.CHANGED)),
+        created_by: object.CREATED_BY,
+        owner: object.OWNER,
+        asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
+      } as IBMiObject));
     } else {
-      results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
+      let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
       if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
         return [];
       }
       results = results.filter(object => libraries.includes(this.ibmi.sysNameInLocal(String(object.ODOBNM))));
-    };
 
-    const objects = results.map(object => ({
-      library: 'QSYS',
-      type: '*LIB',
-      name: this.ibmi.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(String(object.ODOBNM)),
-      attribute: object.ODOBAT,
-      text: object.ODOBTX
-    } as IBMiObject));
+      objects = results.map(object => ({
+        library: 'QSYS',
+        type: '*LIB',
+        name: this.ibmi.sysNameInLocal(String(object.ODOBNM)),
+        attribute: object.ODOBAT,
+        text: object.ODOBTX
+      } as IBMiObject));
+    };
 
     return libraries.map(library => {
       return objects.find(info => info.name === library) ||
@@ -947,6 +970,55 @@ export default class IBMiContent {
   }
 
   async countFiles(directory: string) {
-    return Number((await this.ibmi.sendCommand({ command: `ls | wc -l`, directory })).stdout.trim());
+    return Number((await this.ibmi.sendCommand({ command: `cd ${directory} && (ls | wc -l)` })).stdout.trim());
+  }
+
+  objectToToolTip(path: string, object: IBMiObject) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      type: object.type,
+      attribute: object.attribute,
+      text: object.text,
+      size: object.size,
+      created: object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+      changed: object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
+      created_by: object.created_by,
+      owner: object.owner,
+      iasp: object.asp
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      text: object.text,
+      members: await this.countMembers(object),
+      length: object.sourceLength,
+      CCSID: (await this.getAttributes(object, "CCSID"))?.CCSID || '?',
+      iasp: object.asp
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  memberToToolTip(path: string, member: IBMiMember) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      text: member.text,
+      lines: member.lines,
+      created: member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+      changed: member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  ifsFileToToolTip(path: string, ifsFile: IFSFile) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      size: ifsFile.size,
+      modified: ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
+      owner: ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
   }
 }
