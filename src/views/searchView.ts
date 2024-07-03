@@ -2,7 +2,7 @@ import path from 'path';
 import vscode from "vscode";
 import { DefaultOpenMode } from "../api/Configuration";
 import { t } from '../locale';
-import { OpenEditableOptions, SearchHit, SearchHitLine, SearchResults } from "../typings";
+import { SearchHit, SearchHitLine, SearchResults } from "../typings";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {
   const searchView = new SearchView();
@@ -106,18 +106,18 @@ class LineHit extends vscode.TreeItem {
 
     const upperContent = line.content.trim().toUpperCase();
     const upperTerm = term.toUpperCase();
-    const openOptions: OpenEditableOptions = { readonly };
     let index = 0;
 
     // Calculate the highlights
+    let position;
     if (term.length > 0) {
       const positionLine = line.number - 1;
       while (index >= 0) {
         index = upperContent.indexOf(upperTerm, index);
         if (index >= 0) {
           highlights.push([index, index + term.length]);
-          if (!openOptions.position) {
-            openOptions.position = new vscode.Range(positionLine, index, positionLine, index + term.length)
+          if (!position) {
+            position = new vscode.Range(positionLine, index, positionLine, index + term.length)
           }
           index += term.length;
         }
@@ -135,9 +135,9 @@ class LineHit extends vscode.TreeItem {
     this.description = `line ${line.number}`;
 
     this.command = {
-      command: `code-for-ibmi.openEditable`,
+      command: `code-for-ibmi.openWithDefaultMode`,
       title: `Open`,
-      arguments: [this.path, openOptions]
+      arguments: [this, readonly ? "browse" as DefaultOpenMode : undefined, position]
     };
   }
 }
