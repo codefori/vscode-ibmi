@@ -48,39 +48,39 @@ export async function startService(connection: IBMi) {
         if (submitMessage) {
           const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
           if (job) {
-            return await new Promise<boolean>(async (done, failed) => {
-              let tries = 0;
-              const intervalId = setInterval(async () => {
-                if (tries++ < 30) {
-                  const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
-                  if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
-                    if (await getDebugServiceJob()) {
-                      clearInterval(intervalId);
-                      window.showInformationMessage(t("start.debug.service.succeeded"));
-                      refreshDebugSensitiveItems();
-                      done(true);
-                    }
-                  } else {
-                    clearInterval(intervalId);
-                    let reason;
-                    if (typeof jobDetail === "object") {
-                      reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
-                    }
-                    else if (jobDetail) {
-                      reason = jobDetail;
-                    }
-                    else {
-                      reason = "job has ended";
-                    }
-                    failed(`Debug Service job ${job} failed: ${reason}.`);
+            let tries = 0;
+            const checkJob = async (done: (started: boolean) => void, failed: (reason: string) => void) => {
+              if (tries++ < 30) {
+                const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
+                if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+                  if (await getDebugServiceJob()) {
+                    window.showInformationMessage(t("start.debug.service.succeeded"));
+                    refreshDebugSensitiveItems();
+                    done(true);
                   }
+                  else {
+                    setTimeout(() => checkJob(done, failed), 1000);
+                  }
+                } else {
+                  let reason;
+                  if (typeof jobDetail === "object") {
+                    reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
+                  }
+                  else if (jobDetail) {
+                    reason = jobDetail;
+                  }
+                  else {
+                    reason = "job has ended";
+                  }
+                  failed(`Debug Service job ${job} failed: ${reason}.`);
                 }
-                else {
-                  clearInterval(intervalId);
-                  done(false);
-                }
-              }, 1000);
-            });
+              }
+              else {
+                done(false);
+              }
+            };
+
+            return await new Promise<boolean>(checkJob);
           }
         }
       }
