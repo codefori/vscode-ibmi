@@ -288,7 +288,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
       })
     }
   }
-  else {
+  else if ((await connection.checkUserSpecialAuthorities(["*ALLOBJ"])).valid) {
     try {
       if (legacyCertExists && !remoteCertExists) {
         //import legacy
