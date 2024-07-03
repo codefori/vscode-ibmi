@@ -376,7 +376,6 @@ export async function initialize(context: ExtensionContext) {
   // Run during startup:
   instance.onEvent("connected", async () => {
     activateDebugExtension();
-    resetDebugServiceDetails();
     const connection = instance.getConnection();
     const content = instance.getContent();
     if (connection && content && server.debugPTFInstalled()) {
@@ -403,6 +402,7 @@ export async function initialize(context: ExtensionContext) {
   });
 
   instance.onEvent("disconnected", () => {
+    resetDebugServiceDetails();
     vscode.commands.executeCommand(`setContext`, debugContext, false);
     vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
   });
