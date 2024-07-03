@@ -2,6 +2,7 @@ import path from "path";
 import { commands, window } from "vscode";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
+import { CustomUI } from "../CustomUI";
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
 import { DebugConfiguration, getDebugServiceDetails } from "./config";
@@ -49,7 +50,7 @@ export async function startService(connection: IBMi) {
           const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
           if (job) {
             let tries = 0;
-            const checkJob = async (done: (started: boolean) => void, failed: (reason: string) => void) => {
+            const checkJob = async (done: (started: boolean) => void) => {
               if (tries++ < 30) {
                 const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
                 if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
@@ -59,7 +60,7 @@ export async function startService(connection: IBMi) {
                     done(true);
                   }
                   else {
-                    setTimeout(() => checkJob(done, failed), 1000);
+                    setTimeout(() => checkJob(done), 1000);
                   }
                 } else {
                   let reason;
@@ -72,7 +73,8 @@ export async function startService(connection: IBMi) {
                   else {
                     reason = "job has ended";
                   }
-                  failed(`Debug Service job ${job} failed: ${reason}.`);
+                  window.showErrorMessage(`Debug Service job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
+                  done(false);
                 }
               }
               else {
@@ -215,5 +217,20 @@ export async function readJVMInfo(connection: IBMi, job: DebugJob) {
       fetch first row only`)).at(0);
   } catch (error) {
     return String(error);
+  }
+}
+
+async function openQPRINT(connection: IBMi, job: string) {
+  const lines = (await connection.runSQL(`select SPOOLED_DATA from table (systools.spooled_file_data(job_name => '${job}', spooled_file_name => 'QPRINT')) order by ORDINAL_POSITION`))
+    .map(row => String(row.SPOOLED_DATA));
+
+  if (lines.length) {
+    new CustomUI()
+      .addParagraph(`<pre><code>${lines.join("<br/>")}</code></pre>`)
+      .setOptions({ fullWidth: true })
+      .loadPage(`${job} QPRINT`);
+  }
+  else{
+    window.showWarningMessage(`No QPRINT spooled file found for job ${job}!`);
   }
 }
