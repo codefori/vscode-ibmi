@@ -487,7 +487,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
         "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF) CPYENVVAR(*YES)`,
         "updateProductionFiles": updateProductionFiles,
         "trace": enableDebugTracing,
-      };
+      } as vscode.DebugConfiguration;
 
       const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
 
