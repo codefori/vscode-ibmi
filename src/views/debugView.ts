@@ -81,32 +81,34 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
         remoteCertificatePath: debugConfig.getRemoteServiceCertificatePath()
       };
 
-      if (certificates.remoteCertificate) {
-        if (certificates.secureDebug) {
-          try {
-            await checkClientCertificate(connection, debugConfig);
-          }
-          catch (error) {
-            certificates.localCertificateIssue = String(error);
-          }
+      if (certificates.remoteCertificate && certificates.secureDebug) {
+        try {
+          await checkClientCertificate(connection, debugConfig);
+        }
+        catch (error) {
+          certificates.localCertificateIssue = String(error);
         }
       }
 
-      return [
-        new DebugJobItem("server",
-          t("debug.server"),
-          startServer,
-          stopServer,
-          await getDebugServerJob()
+      return Promise.all([
+        getDebugServerJob().then(job =>
+          new DebugJobItem("server",
+            t("debug.server"),
+            startServer,
+            stopServer,
+            job
+          )
         ),
-        new DebugJobItem("service",
-          t("debug.service"),
-          () => startService(connection),
-          () => stopService(connection),
-          await getDebugServiceJob(),
-          certificates
+        getDebugServiceJob().then(job =>
+          new DebugJobItem("service",
+            t("debug.service"),
+            () => startService(connection),
+            () => stopService(connection),
+            job,
+            certificates
+          )
         )
-      ];
+      ]);
     }
     else {
       return [];
