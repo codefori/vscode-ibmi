@@ -672,12 +672,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "edit" as DefaultOpenMode);
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode) => {
+    vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode, position?: vscode.Range) => {
       const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
-      vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
+      vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly, position } as OpenEditableOptions);
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-    
+
     vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
       let doc: vscode.TextDocument | undefined;
       if (uri) {
@@ -690,19 +690,19 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (doc?.isDirty) {
         vscode.window
           .showWarningMessage(
-            t(`discard.changes`), 
-            { modal: true }, 
+            t(`discard.changes`),
+            { modal: true },
             t(`Continue`))
           .then(result => {
-              if (result === t(`Continue`)) {
-                vscode.commands.executeCommand(`workbench.action.files.revert`);
-              }
-        });
+            if (result === t(`Continue`)) {
+              vscode.commands.executeCommand(`workbench.action.files.revert`);
+            }
+          });
       } else {
         vscode.commands.executeCommand(`workbench.action.files.revert`);
       }
     }),
-);
+  );
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);
