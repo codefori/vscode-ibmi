@@ -939,6 +939,13 @@
 				"icon": "$(file-binary)"
 			},
 			{
+				"command": "code-for-ibmi.debug.redo.setup",
+				"title": "Regenerate Service Certificate",
+				"category": "IBM i Debug",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
+				"icon": "$(file-binary)"
+			},
+			{
 				"command": "code-for-ibmi.debug.setup.local",
 				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
@@ -2262,6 +2269,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.debug.redo.setup",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.debug.setup.local",
 					"when": "never"
 				},
@@ -2889,14 +2900,19 @@
 					"group": "inline"
 				},
 				{
-					"command": "code-for-ibmi.debug.open.service.config",
-					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_service.*$/",
-					"group": "inline"
-				},
-				{
 					"command": "code-for-ibmi.debug.setup.remote",
 					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem === certificateIssue_noremote",
 					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.open.service.config",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_service.*$/",
+					"group": "01_debugServiceJob01"
+				},
+				{
+					"command": "code-for-ibmi.debug.redo.setup",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_service_.*$/",
+					"group": "02_debugServiceJob01"
 				},
 				{
 					"command": "code-for-ibmi.debug.setup.local",
