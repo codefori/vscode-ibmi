@@ -111,44 +111,54 @@ export function resetDebugServiceDetails() {
 
 export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
   const content = instance.getContent()!;
-  if (debugServiceDetails) {
-    return debugServiceDetails;
-  }
+  if (!debugServiceDetails) {
+    let details = {
+      version: `1.0.0`,
+      java: `8`,
+      semanticVersion: () => ({
+        major: 1,
+        minor: 0,
+        patch: 0
+      })
+    };
 
-  debugServiceDetails = {
-    version: `1.0.0`,
-    java: `8`,
-    semanticVersion: () => ({
-      major: 1,
-      minor: 0,
-      patch: 0
-    })
-  };
-
-  const detailFilePath = path.posix.join((await new DebugConfiguration().load()).getRemoteServiceRoot(), `package.json`);
-  const detailExists = await content.testStreamFile(detailFilePath, "r");
-  if (detailExists) {
-    try {
-      const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
-      const parsed = JSON.parse(fileContents);
-      debugServiceDetails = {
-        ...parsed as DebugServiceDetails,
-        semanticVersion: () => {
-          const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
-          return {
-            major: parts[0],
-            minor: parts[1],
-            patch: parts[2]
-          };
+    const detailFilePath = path.posix.join((await new DebugConfiguration().load()).getRemoteServiceRoot(), `package.json`);
+    const detailExists = await content.testStreamFile(detailFilePath, "r");
+    if (detailExists) {
+      try {
+        const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
+        const parsed = JSON.parse(fileContents);
+        details = {
+          ...parsed as DebugServiceDetails,
+          semanticVersion: () => {
+            const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
+            return {
+              major: parts[0],
+              minor: parts[1],
+              patch: parts[2]
+            };
+          }
         }
+      } catch (e) {
+        // Something very very bad has happened
+        vscode.window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
+        console.log(e);
       }
-    } catch (e) {
-      // Something very very bad has happened
-      vscode.window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
-      console.log(e);
     }
-  }
+    else{
+      details = {
+        version: `1.0.0`,
+        java: `8`,
+        semanticVersion: () => ({
+          major: 1,
+          minor: 0,
+          patch: 0
+        })
+      };
+    }
 
+    debugServiceDetails = details;
+  }
   return debugServiceDetails;
 }
 
