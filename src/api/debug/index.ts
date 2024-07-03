@@ -11,7 +11,7 @@ import { ConnectionManager } from "../Configuration";
 import { Tools } from "../Tools";
 import { Env, getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
-import { DEBUG_CONFIG_FILE, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
+import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";
 
 const debugExtensionId = `IBM.ibmidebug`;
@@ -252,8 +252,30 @@ export async function initialize(context: ExtensionContext) {
         }
       }
     }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, () =>
+    vscode.commands.registerCommand(`code-for-ibmi.debug.redo.setup`, async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const doSetup = await vscode.window.showWarningMessage(`Do you confirm you want to generate or import a new certificate for the Debug Service?`, { modal: true }, 'Generate' , 'Import');
+        if (doSetup) {
+          Tools.withContext("code-for-ibmi:debugWorking", async () => {
+            if (!(await server.getDebugServiceJob()) || await server.stopService(connection)) {
+              const debugConfig = await new DebugConfiguration().load();
+              const clearResult = await connection.sendCommand({ command: `rm -f ${debugConfig.getRemoteServiceCertificatePath()} ${debugConfig.getRemoteClientCertificatePath()}` });
+              if (clearResult.code) {
+                vscode.window.showErrorMessage(`Failed to clear existing certificate: ${clearResult.stderr}`);
+              }
+              else {
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`, doSetup);
+              }
+            }
+            else {
+              vscode.window.showErrorMessage(`Debug Service could not be stopped; new certificate cannot be generated.`);
+            }
+          });
+        }
+      }
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, (doSetup?: 'Generate' | 'Import') =>
       Tools.withContext("code-for-ibmi:debugWorking", async () => {
         const connection = instance.getConnection();
         const content = instance.getContent();
@@ -267,7 +289,7 @@ export async function initialize(context: ExtensionContext) {
               vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable secure debugging.`);
             }
             else {
-              const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
+              doSetup = doSetup || await vscode.window.showInformationMessage(`Debug setup`, {
                 modal: true,
                 detail: `Debug service server and client certificates do not exist on the system or they need to be re-created. You can either import an existing server certificate or generate one. Then the client certificate will be generated and downloaded to your device.`
               }, `Generate`, `Import`);
