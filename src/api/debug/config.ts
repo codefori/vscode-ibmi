@@ -167,4 +167,4 @@ export function getJavaHome(version: string) {
     case "11": return `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`;
     default: return `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`;
   }
-}
+}///QOpensys/pkgs/lib/jvm/openjdk-11
