@@ -105,7 +105,6 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
     }
 
     let password;
-    const openssl = "/QOpenSys/usr/bin/openssl";
     if (imported) {
       password = imported.password;
       if (imported.localFile) {
@@ -121,9 +120,8 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       }
 
       setProgress("generating client certificate");
-
       const clientCertificate = await connection.sendCommand({
-        command: `${openssl} pkcs12 -in ${debugConfig.getRemoteServiceCertificatePath()} -passin pass:${password} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
+        command: `openssl pkcs12 -in ${debugConfig.getRemoteServiceCertificatePath()} -passin pass:${password} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
       });
       try {
         if (!clientCertificate.code) {
@@ -145,10 +143,10 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       const extFileContent = await getExtFileContent(hostInfo);
       //This will generate everything at once and keep only the .pfx (keystore) and .crt (client certificate) files.
       const commands = [
-        `${openssl} genrsa -out debug_service.key 2048`,
-        `${openssl} req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostNames[0]}'`,
-        `${openssl} x509 -req -in debug_service.csr -signkey debug_service.key -out ${CLIENT_CERTIFICATE} -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
-        `${openssl} pkcs12 -export -out ${SERVICE_CERTIFICATE} -inkey debug_service.key -in ${CLIENT_CERTIFICATE} -password pass:${password}`,
+        `openssl genrsa -out debug_service.key 2048`,
+        `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostNames[0]}'`,
+        `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out ${CLIENT_CERTIFICATE} -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
+        `openssl pkcs12 -export -out ${SERVICE_CERTIFICATE} -inkey debug_service.key -in ${CLIENT_CERTIFICATE} -password pass:${password}`,
         `rm debug_service.key debug_service.csr`
       ];
 
