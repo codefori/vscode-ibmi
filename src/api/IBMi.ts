@@ -110,6 +110,9 @@ export default class IBMi {
       tar: undefined,
       ls: undefined,
       find: undefined,
+      jdk80: undefined,
+      jdk11: undefined,
+      'openjdk-11': undefined
     };
 
     this.variantChars = {
@@ -575,6 +578,15 @@ export default class IBMi {
               }
             }
           }
+
+          //Specific Java installations check
+          progress.report({
+            message: `Checking installed components on host IBM i: Java`
+          });
+          const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? `${root}/bin/java` : undefined;
+          this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
+          this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
+          this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
 
           if (this.sqlRunnerAvailable()) {
             //Temporary function to run SQL
