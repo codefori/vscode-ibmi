@@ -113,7 +113,7 @@ export default class IBMi {
       jdk80: undefined,
       jdk11: undefined,
       jdk17: undefined,
-      'openjdk-11': undefined
+      openjdk11: undefined
     };
 
     this.variantChars = {
