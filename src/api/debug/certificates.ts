@@ -168,11 +168,11 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
         await debugConfig.save();
       }
-      const javaHome = getJavaHome((await getDebugServiceDetails()).java);
+      const java = getJavaHome(connection, (await getDebugServiceDetails()).java);
       const encryptResult = await connection.sendCommand({
         command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
         env: {
-          MY_JAVA_HOME: javaHome,
+          MY_JAVA_HOME: java.javaHome,
           DEBUG_SERVICE_KEYSTORE_PASSWORD: password
         }
       });
@@ -186,7 +186,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         setProgress("updating service configuration");
         const backupKey = await connection.sendCommand({ command: `mv key.properties ${ENCRYPTION_KEY} && chmod 400 ${ENCRYPTION_KEY}`, directory: debugConfig.getRemoteServiceWorkDir() });
         if (!backupKey.code) {
-          debugConfig.set("JAVA_HOME", javaHome);
+          debugConfig.set("JAVA_HOME", java.javaHome);
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_FILE", certificatePath);
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_PASSWORD", encryptResult.stdout);
           debugConfig.set("CODE4IDEBUG", `$([ -f $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} ] && cp $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} $DBGSRV_WRK_DIR/key.properties)`);
@@ -262,17 +262,22 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
 
   //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
   const javaHome = debugConfig.get("JAVA_HOME");
-  const expectedJavaHome = getJavaHome((await getDebugServiceDetails()).java);
-  if (javaHome && javaHome !== expectedJavaHome) {
-    if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
-      //Automatically make the change if possible
-      debugConfig.set("JAVA_HOME", expectedJavaHome);
-      await debugConfig.save();
+  try {
+    const expectedJava = getJavaHome(connection, (await getDebugServiceDetails()).java);
+    if (javaHome && javaHome !== expectedJava.javaHome) {
+      if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
+        //Automatically make the change if possible
+        debugConfig.set("JAVA_HOME", expectedJava.javaHome);
+        await debugConfig.save();
+      }
+      else {
+        //No write access: we warn about the required change
+        vscode.window.showWarningMessage(`JAVA_HOME should be set to ${expectedJava.javaHome} in the Debug Service configuration file (${DEBUG_CONFIG_FILE}).`);
+      }
     }
-    else {
-      //No write access: we warn about the required change
-      vscode.window.showWarningMessage(`JAVA_HOME should be set to ${expectedJavaHome} in the Debug Service configuration file (${DEBUG_CONFIG_FILE}).`);
-    }
+  }
+  catch (error) {
+    connection.outputChannel?.appendLine(String(error));
   }
 
   const remoteCertExists = await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f");
