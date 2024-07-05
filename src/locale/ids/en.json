@@ -242,7 +242,7 @@
   "loading.debugger.info": "Loading debugger information...",
   "local.certificate": "Local certificate",
   "local.certificate.not.found": "Local certificate not found",
-  "local.dont.match.remote": "Local certificate doesn\"t match remote",
+  "local.dont.match.remote": "Local certificate doesn't match remote",
   "login.authDecision": "Only provide either the password or a private key - not both.",
   "login.authRemoved": "Authentication methods removed for \"{0}\".",
   "login.host": "Host or IP Address",
