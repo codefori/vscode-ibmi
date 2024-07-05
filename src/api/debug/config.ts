@@ -2,6 +2,7 @@ import path from "path";
 import vscode from "vscode";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
+import IBMi from "../IBMi";
 import { SERVICE_CERTIFICATE } from "./certificates";
 
 type ConfigLine = {
@@ -152,9 +153,18 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
   return debugServiceDetails;
 }
 
-export function getJavaHome(version: string) {
-  switch (version) {
-    case "11": return `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`;
-    default: return `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`;
+export function getJavaHome(connection: IBMi, version: string) {
+  version = version.padEnd(2, '0');
+  let javaHome = connection.remoteFeatures[`jdk${version}`];
+  let isOpenJDK = false;
+  if (!javaHome) {
+    javaHome = connection.remoteFeatures[`openjdk${version}`];
+    isOpenJDK = true;
   }
-}///QOpensys/pkgs/lib/jvm/openjdk-11
+
+  if (!javaHome) {
+    throw new Error(t('java.not.found', version));
+  }
+
+  return { javaHome, isOpenJDK };
+}

@@ -206,6 +206,7 @@
   "ifsBrowser.uploadStreamfile.select.type.folders": "Ordner",
   "ifsBrowser.uploadStreamfile.select.type.title": "Was möchten Sie hochladen?",
   "ifsBrowser.uploadStreamfile.uploadedFiles": "Hochladen abgeschlossen.",
+  "java.not.found":"Java version {0} is not installed.",
   "JAVA_HOME": "Java-Home Pfad",
   "job": "Job",
   "JOB_NAME_SHORT": "Job Name",

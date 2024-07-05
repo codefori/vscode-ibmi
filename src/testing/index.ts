@@ -5,6 +5,7 @@ import { ActionSuite } from "./action";
 import { ComponentSuite } from "./components";
 import { ConnectionSuite } from "./connection";
 import { ContentSuite } from "./content";
+import { DebugSuite } from "./debug";
 import { DeployToolsSuite } from "./deployTools";
 import { EncodingSuite } from "./encoding";
 import { FilterSuite } from "./filter";
@@ -17,6 +18,7 @@ const suites: TestSuite[] = [
   ActionSuite,
   ConnectionSuite,
   ContentSuite,
+  DebugSuite,
   DeployToolsSuite,
   ToolsSuite,
   ILEErrorSuite,
