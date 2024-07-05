@@ -584,7 +584,7 @@ export default class IBMi {
           progress.report({
             message: `Checking installed components on host IBM i: Java`
           });
-          const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? `${root}/bin/java` : undefined;
+          const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? `${root}` : undefined;
           this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
           this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);          
           this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
