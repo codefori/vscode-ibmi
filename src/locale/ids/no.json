@@ -210,6 +210,7 @@
     "ifsBrowser.uploadStreamfile.select.type.folders": "Mapper",
     "ifsBrowser.uploadStreamfile.select.type.title": "Hva ønsker du å uploade?",
     "ifsBrowser.uploadStreamfile.uploadedFiles": "Upload er utført.",
+    "java.not.found":"Java version {0} is not installed.",
     "JAVA_HOME": "Java Home",
     "job": "Jobb",
     "JOB_NAME_SHORT": "Jobb navn",
