@@ -5,7 +5,7 @@ import tmp from 'tmp';
 import util from 'util';
 import { MarkdownString, window } from 'vscode';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SearchHit } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
@@ -1017,6 +1017,16 @@ export default class IBMiContent {
       size: ifsFile.size,
       modified: ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
       owner: ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  searchHitToToolTip(path: string, hit: SearchHit) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      size: hit.size,
+      modified: hit.modified ? new Date(hit.modified.getTime() - hit.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
+      owner: hit.owner ? hit.owner.toUpperCase() : ``
     }));
     tooltip.supportHtml = true;
     return tooltip;
