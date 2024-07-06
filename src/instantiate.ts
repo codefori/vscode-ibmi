@@ -177,10 +177,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       compareCurrentFile(node, `member`);
     }),
     vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithStreamFile`, async (node) => {
-        compareCurrentFile(node, `streamfile`);
+      compareCurrentFile(node, `streamfile`);
     }),
     vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithLocal`, async (node) => {
-        compareCurrentFile(node, `file`);
+      compareCurrentFile(node, `file`);
     }),
     vscode.commands.registerCommand(`code-for-ibmi.compareWithActiveFile`, async (node) => {
       let selectedFile;
