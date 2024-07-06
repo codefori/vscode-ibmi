@@ -171,8 +171,52 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Nothing selected to compare.`);
       }
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithMember`, async (node) => {
+      compareCurrentFile(node, `member`);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithStreamFile`, async (node) => {
+      compareCurrentFile(node, `streamfile`);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithLocal`, async (node) => {
+      compareCurrentFile(node, `file`);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.compareWithActiveFile`, async (node) => {
+      let selectedFile;
+      if (node) {
+        if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem` || node.constructor.name === `ObjectBrowserItem`) {
+          selectedFile = node.resourceUri;
+        } else if (node.scheme === `file`) {
+          selectedFile = node
+        } else {
+          vscode.window.showInformationMessage(t(`compare.no.file`));
+        }
+
+        let activeFile;
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          activeFile = editor.document.uri;
+          if (activeFile) {
+            vscode.commands.executeCommand(`vscode.diff`, activeFile, selectedFile);
+          } else {
+            vscode.window.showInformationMessage(t(`compare.no.file`));
+          }
+        } else {
+          vscode.window.showInformationMessage(t(`compare.no.file`));
+        }
+    } else {
+      vscode.window.showInformationMessage(t(`compare.no.file`));
+    }
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
+      const compareIcon = new vscode.ThemeIcon('split-horizontal');
+      const compareButton: vscode.QuickInputButton = {
+        iconPath: compareIcon,
+        tooltip: t(`compare.active.file`)
+      };
+
       const LOADING_LABEL = `Please wait`;
       const storage = instance.getStorage();
       const content = instance.getContent();
@@ -201,8 +245,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         });
       });
 
-      const recentItems: vscode.QuickPickItem[] = recent.map(item => ({ label: item }));
-      const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }));
+      const recentItems: vscode.QuickPickItem[] = recent.map(item => ({ 
+        label: item,
+        buttons: [compareButton]
+      }));
+      const listItems: vscode.QuickPickItem[] = list.map(item => ({ 
+        label: item,
+        buttons: [compareButton]
+      }));
 
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = await createQuickPickItemsList(
@@ -249,7 +299,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           filteredItems = [];
         } else {
           if (!starRemoved && !list.includes(connection!.upperCaseName(quickPick.value))) {
-            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({ label }));
+            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({ 
+              label: label,
+              buttons: [compareButton]
+            }));
           }
         }
 
@@ -382,7 +435,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
         }
         starRemoved = false;
-      })
+      });
 
       quickPick.onDidAccept(async () => {
         let selection = quickPick.selectedItems.length === 1 ? quickPick.selectedItems[0].label : undefined;
@@ -450,7 +503,26 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             }
           }
         }
-      })
+      });
+
+      quickPick.onDidTriggerItemButton((event: vscode.QuickPickItemButtonEvent<vscode.QuickPickItem>) => {
+        if (event.button.iconPath == compareIcon) {
+          let path: vscode.Uri;
+          let currentFile: vscode.Uri;
+          if (event.item.label.startsWith('/')) {
+            path = vscode.Uri.parse(`streamfile:${event.item.label}`);
+          } else {
+            path = vscode.Uri.parse(`member:/${event.item.label}`);
+          }
+
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+              currentFile = editor.document.uri;
+              vscode.commands.executeCommand(`vscode.diff`, currentFile, path);
+              quickPick.hide();
+          }
+        }
+      });
 
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
@@ -801,4 +873,40 @@ async function createQuickPickItemsList(
     ...(cached.length != 0 ? clearCachedArray : [])
   ];
   return returnedList;
+}
+
+async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `member`) {
+  let currentFile: vscode.Uri | undefined;
+  // If we are comparing with an already targeted node
+  if (node) {
+    if (node.resourceUri) {
+      currentFile = node.resourceUri;
+    } else if (node.scheme === `file`) {
+      currentFile = node
+    }
+  } else {
+    // If we are comparing with the currently open file
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      currentFile = editor.document.uri;
+    }
+  }
+
+  if (currentFile) {
+    let compareWith = await vscode.window.showInputBox({
+      prompt: t(`compare.prompt`),
+      title: t(`compare.title`), 
+      value: currentFile.path
+    });
+    
+    if (compareWith) {
+      if (scheme == 'member' && !compareWith.startsWith('/')) {
+        compareWith = `/${compareWith}`;
+      }
+      let uri = vscode.Uri.parse(`${scheme}:${compareWith}`);
+      vscode.commands.executeCommand(`vscode.diff`, currentFile, uri);
+    }
+  } else {
+    vscode.window.showInformationMessage(t(`compare.no.file`));
+  }
 }
