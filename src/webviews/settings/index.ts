@@ -343,6 +343,7 @@ export class SettingsUI {
               .addInput(`host`, t(`login.host`), undefined, { default: stored.host, minlength: 1 })
               .addInput(`port`, t(`login.port`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
               .addInput(`username`, t(`username`), undefined, { default: stored.username, minlength: 1 })
+              .addInput(`keepaliveInterval`, t('keepaliveInterval'), t('keepaliveInterval.description'), { default: String(stored.keepaliveInterval !== undefined ? stored.keepaliveInterval : 35000), regexTest: `^\\d*$` })
               .addParagraph(t(`login.authDecision`))
               .addPassword(`password`, `${t(`password`)}${storedPassword ? ` (${t(`stored`)})` : ``}`, t(`login.password.label`))
               .addFile(`privateKeyPath`, `${t(`privateKey`)}${stored.privateKeyPath ? ` (${t(`current`)}: ${stored.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
@@ -390,6 +391,7 @@ export class SettingsUI {
 
                 //Fix values before assigning the data
                 data.port = Number(data.port);
+                data.keepaliveInterval = Number(data.keepaliveInterval);
                 delete data.password;
                 delete data.buttons;
 
