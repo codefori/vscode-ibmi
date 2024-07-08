@@ -165,12 +165,30 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
     await connection.sendCommand({ command: "chmod 400 debug_service.pfx && chmod 444 debug_service.crt", directory });
 
     try {
+      const java = getJavaHome(connection, (await getDebugServiceDetails()).java);
+      const backupFolder = `${debugConfig.getRemoteServiceWorkDir()}/c4ibackup01`;
+      if (java.isOpenJDK && !await connection.content.testStreamFile(backupFolder, "d")) {
+        setProgress("updating scripts for OpenJDK");
+        const backupResult = await connection.sendCommand({
+          command: [
+            `mkdir -p ${backupFolder}`,
+            `cp -r ${debugConfig.getRemoteServiceBin()}/*.sh ${backupFolder}`,
+            `for file in ${debugConfig.getRemoteServiceBin()}/*.sh; do touch $file && attr $file ccsid=1208 && chmod +x $file && sed 's/grep "java version/grep " version/g' >> $file; done`
+          ].join(" && ")
+        });
+
+        if (backupResult.code) {
+          throw new Error(`Failed to backup and update debug service scripts: ${backupResult.stderr || backupResult.stdout}`);
+        }
+      }
+
+      //touch encrypt.sh && attr encrypt.sh ccsid=1208 && chmod +x encrypt.sh && sed 's/grep "java version/grep "version/g' >> encrypt.sh
       setProgress("encrypting server certificate password");
       if (debugConfig.get("DEBUG_SERVICE_KEYSTORE_PASSWORD") !== undefined) {
         debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
         await debugConfig.save();
       }
-      const java = getJavaHome(connection, (await getDebugServiceDetails()).java);
+
       const encryptResult = await connection.sendCommand({
         command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
         env: {
