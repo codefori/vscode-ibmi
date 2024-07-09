@@ -93,7 +93,7 @@ export namespace Search {
           ignoreString = dirsToIgnore.map(dir => `-type d -path '*/${dir}' -prune -o`).join(` `);
         }
 
-        const findExec = stat ? `-exec stat --printf="%A\t%h\t%U\t%G\t%s\t%Y\t%n\n" {} +` : `-print`;
+        const findExec = stat ? `-exec stat --printf="%U\t%s\t%Y\t%n\n" {} +` : `-print`;
         const findRes = await connection.sendCommand({
           command: `${find} ${Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' ${findExec}`
         });
@@ -117,8 +117,8 @@ export namespace Search {
     const results: SearchHit[] = [];
     for (const line of output.split('\n')) {
       if (statOutput) {
-        let auth: string, hardLinks: string, owner: string, group: string, size: string, modified: string, name: string;
-        [auth, hardLinks, owner, group, size, modified, name] = line.split(`\t`);
+        let owner: string, size: string, modified: string, name: string;
+        [owner, size, modified, name] = line.split(`\t`);
         results.push({
           path: name,
           lines: [],
