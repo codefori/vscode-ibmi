@@ -334,36 +334,38 @@ export async function initialize(context: ExtensionContext) {
       })
     ),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, async () =>
-      await Tools.withContext("code-for-ibmi:debugWorking", async () => {
-        const connection = instance.getConnection();
-        if (connection) {
-          const ptfInstalled = server.debugPTFInstalled();
-          if (ptfInstalled) {
-            try {
-              const remoteCertExists = await certificates.remoteCertificatesExists();
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, () =>
+      vscode.window.withProgress({ title: "Downloading Debug Service Certificate", location: vscode.ProgressLocation.Window }, async () =>
+        await Tools.withContext("code-for-ibmi:debugWorking", async () => {
+          const connection = instance.getConnection();
+          if (connection) {
+            const ptfInstalled = server.debugPTFInstalled();
+            if (ptfInstalled) {
+              try {
+                const remoteCertExists = await certificates.remoteCertificatesExists();
 
-              // If the client certificate exists on the server, download it
-              if (remoteCertExists) {
-                await certificates.downloadClientCert(connection);
-                vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
+                // If the client certificate exists on the server, download it
+                if (remoteCertExists) {
+                  await certificates.downloadClientCert(connection);
+                  vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
+                }
+              } catch (e) {
+                vscode.window.showErrorMessage(`Failed to work with debug client certificate. See Code for IBM i logs. (${e})`);
               }
-            } catch (e) {
-              vscode.window.showErrorMessage(`Failed to work with debug client certificate. See Code for IBM i logs. (${e})`);
+            } else {
+              vscode.window.showInformationMessage(`Import of debug client certificate skipped as not required in current mode.`, `Open configuration`).then(result => {
+                if (result) {
+                  vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
+                }
+              });
             }
-          } else {
-            vscode.window.showInformationMessage(`Import of debug client certificate skipped as not required in current mode.`, `Open configuration`).then(result => {
-              if (result) {
-                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
-              }
-            });
-          }
 
-          server.refreshDebugSensitiveItems();
-        } else {
-          vscode.window.showErrorMessage(`Debug PTF not installed.`);
-        }
-      })
+            server.refreshDebugSensitiveItems();
+          } else {
+            vscode.window.showErrorMessage(`Debug PTF not installed.`);
+          }
+        })
+      )
     ),
     vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", DEBUG_CONFIG_FILE))
   );
