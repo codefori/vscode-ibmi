@@ -4,19 +4,21 @@ import { ConnectionConfiguration } from "./Configuration";
 import IBMi from "./IBMi";
 import { ConnectionStorage, GlobalStorage } from "./Storage";
 
+type IBMiEventSubscription = {
+  event: IBMiEvent,
+  func: Function
+};
+
 export default class Instance {
   private connection: IBMi | undefined;
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
-  private events: { event: IBMiEvent, func: Function }[] = [];
+  private subscribers: IBMiEventSubscription[] = [];
 
   constructor(context: vscode.ExtensionContext) {
-    this.events = [];
+    this.subscribers = [];
     this.storage = new ConnectionStorage(context);
-    this.emitter.event(e => {
-      this.events.filter(event => event.event === e)
-        .forEach(event => event.func());
-    })
+    this.emitter.event(e => this.processEvent(e));
   }
 
   async setConnection(connection?: IBMi) {
@@ -55,10 +57,16 @@ export default class Instance {
   }
 
   onEvent(event: IBMiEvent, func: Function): void {
-    this.events.push({ event, func });
+    this.subscribers.push({ event, func });
   }
 
   fire(event: IBMiEvent) {
     this.emitter?.fire(event);
+  }
+
+  async processEvent(event: IBMiEvent) {
+    for (const subscriber of this.subscribers.filter(s => s.event === event)) {
+      await subscriber.func();
+    }
   }
 }
