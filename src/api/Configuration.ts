@@ -126,7 +126,6 @@ export namespace ConnectionConfiguration {
     showDescInLibList: boolean;
     debugPort: string;
     debugSepPort: string;
-    debugIsSecure: boolean;
     debugUpdateProductionFiles: boolean;
     debugEnableDebugTracing: boolean;
     readOnlyMode: boolean;
@@ -207,7 +206,6 @@ export namespace ConnectionConfiguration {
       showDescInLibList: (parameters.showDescInLibList === true),
       debugPort: (parameters.debugPort || "8005"),
       debugSepPort: (parameters.debugSepPort || "8008"),
-      debugIsSecure: (parameters.debugIsSecure === true),
       debugUpdateProductionFiles: (parameters.debugUpdateProductionFiles === true),
       debugEnableDebugTracing: (parameters.debugEnableDebugTracing === true),
       readOnlyMode: (parameters.readOnlyMode === true),

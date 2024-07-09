@@ -9,7 +9,6 @@ import { BrowserItem } from "../typings";
 
 const title = "IBM i debugger";
 type Certificates = {
-  secureDebug: boolean
   remoteCertificate: boolean
   remoteCertificatePath?: string
   localCertificateIssue?: string
@@ -76,12 +75,11 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
     if (connection) {
       const debugConfig = await new DebugConfiguration().load();
       const certificates: Certificates = {
-        secureDebug: connection.config?.debugIsSecure || false,
         remoteCertificate: await remoteCertificatesExists(debugConfig),
         remoteCertificatePath: debugConfig.getRemoteServiceCertificatePath()
       };
 
-      if (certificates.remoteCertificate && certificates.secureDebug) {
+      if (certificates.remoteCertificate) {
         try {
           await checkClientCertificate(connection, debugConfig);
         }
@@ -158,7 +156,7 @@ class DebugJobItem extends DebugItem {
           detail: t('remote.certificate.not.found.detail', "debug_service.pfx", certificates.remoteCertificatePath)
         }
       }
-      else if (certificates.secureDebug && certificates.localCertificateIssue) {
+      else if (certificates.localCertificateIssue) {
         problem = {
           context: "localissue",
           label: certificates.localCertificateIssue

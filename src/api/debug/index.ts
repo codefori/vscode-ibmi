@@ -68,7 +68,7 @@ export async function initialize(context: ExtensionContext) {
             }
           }
 
-          if (config.debugIsSecure && !isManaged()) {
+          if (!isManaged()) {
             try {
               await certificates.checkClientCertificate(connection)
             }
@@ -255,7 +255,7 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.redo.setup`, async () => {
       const connection = instance.getConnection();
       if (connection) {
-        const doSetup = await vscode.window.showWarningMessage(`Do you confirm you want to generate or import a new certificate for the Debug Service?`, { modal: true }, 'Generate' , 'Import');
+        const doSetup = await vscode.window.showWarningMessage(`Do you confirm you want to generate or import a new certificate for the Debug Service?`, { modal: true }, 'Generate', 'Import');
         if (doSetup) {
           Tools.withContext("code-for-ibmi:debugWorking", async () => {
             if (!(await server.getDebugServiceJob()) || await server.stopService(connection)) {
@@ -286,7 +286,7 @@ export async function initialize(context: ExtensionContext) {
             const remoteCertsExists = await certificates.remoteCertificatesExists();
             if (remoteCertsExists) {
               await certificates.downloadClientCert(connection);
-              vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable secure debugging.`);
+              vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable debugging.`);
             }
             else {
               doSetup = doSetup || await vscode.window.showInformationMessage(`Debug setup`, {
@@ -340,34 +340,29 @@ export async function initialize(context: ExtensionContext) {
         if (connection) {
           const ptfInstalled = server.debugPTFInstalled();
           if (ptfInstalled) {
-            let localCertsOk = false;
-            if (connection.config!.debugIsSecure) {
-              try {
-                const remoteCertExists = await certificates.remoteCertificatesExists();
+            try {
+              const remoteCertExists = await certificates.remoteCertificatesExists();
 
-                // If the client certificate exists on the server, download it
-                if (remoteCertExists) {
-                  await certificates.downloadClientCert(connection);
-                  localCertsOk = true;
-                  vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
-                }
-              } catch (e) {
-                vscode.window.showErrorMessage(`Failed to work with debug client certificate. See Code for IBM i logs. (${e})`);
+              // If the client certificate exists on the server, download it
+              if (remoteCertExists) {
+                await certificates.downloadClientCert(connection);
+                vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
               }
-            } else {
-              vscode.window.showInformationMessage(`Import of debug client certificate skipped as not required in current mode.`, `Open configuration`).then(result => {
-                if (result) {
-                  vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
-                }
-              });
+            } catch (e) {
+              vscode.window.showErrorMessage(`Failed to work with debug client certificate. See Code for IBM i logs. (${e})`);
             }
-
-            server.refreshDebugSensitiveItems();
           } else {
-            vscode.window.showErrorMessage(`Debug PTF not installed.`);
+            vscode.window.showInformationMessage(`Import of debug client certificate skipped as not required in current mode.`, `Open configuration`).then(result => {
+              if (result) {
+                vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Debugger`);
+              }
+            });
           }
+
+          server.refreshDebugSensitiveItems();
+        } else {
+          vscode.window.showErrorMessage(`Debug PTF not installed.`);
         }
-        return false;
       })
     ),
     vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", DEBUG_CONFIG_FILE))
@@ -390,10 +385,8 @@ export async function initialize(context: ExtensionContext) {
       const isDebugManaged = isManaged();
       vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
       if (!isDebugManaged) {
-        const isSecure = connection.config!.debugIsSecure;
-
-        if (validateIPv4address(connection.currentHost) && isSecure) {
-          vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with secure debugging. Please use a hostname in the Login Settings instead.`);
+        if (validateIPv4address(connection.currentHost)) {
+          vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
         }
 
         certificates.sanityCheck(connection, content);
@@ -447,13 +440,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     // If we're in a managed environment, only set secure if a cert is set
     secure = process.env[`DEBUG_CA_PATH`] ? true : false;
   } else {
-    secure = config?.debugIsSecure || false;
-    if (secure) {
-      process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
-    } else {
-      // Environment variable must be deleted otherwise cert issues will happen
-      delete process.env[`DEBUG_CA_PATH`];
-    }
+    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
   }
 
   if (options.sep) {
