@@ -1,10 +1,10 @@
-import vscode from "vscode";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
+import vscode, { ThemeIcon } from "vscode";
+import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
-import { ConnectionData } from '../../typings';
 import { t } from "../../locale";
+import { ConnectionData } from '../../typings';
 
 type NewLoginSettings = ConnectionData & {
   savePassword: boolean
@@ -89,33 +89,38 @@ export class Login {
               break;
             case `connect`:
               vscode.window.showInformationMessage(`Connecting to ${data.host}.`);
-              const connection = new IBMi();
+              const toDoOnConnected: Function[] = [];
+              if (!data.password && !data.privateKeyPath && await promptPassword(context, data)) {
+                toDoOnConnected.push(() => ConnectionManager.setStoredPassword(context, data.name, data.password!));
+              }
 
-              try {
-                const connected = await connection.connect(data);
-                if (connected.success) {
-                  if (newConnection) {
-                    vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
-                      if (selectionA === `Open configuration`) {
-                        vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+              if (data.password || data.privateKeyPath) {
+                try {
+                  const connected = await new IBMi().connect(data, false, false, toDoOnConnected);
+                  if (connected.success) {
+                    if (newConnection) {
+                      vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
+                        if (selectionA === `Open configuration`) {
+                          vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
 
-                      } else {
-                        vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
-                          if (selectionB === `Open configuration`) {
-                            vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Source Code`);
-                          }
-                        });
-                      }
-                    });
+                        } else {
+                          vscode.window.showInformationMessage(`Source dates are disabled by default. Enable them in the connection settings.`, `Open configuration`).then(async (selectionB) => {
+                            if (selectionB === `Open configuration`) {
+                              vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`, undefined, `Source Code`);
+                            }
+                          });
+                        }
+                      });
+                    } else {
+                      vscode.window.showInformationMessage(`Connected to ${data.host}!`);
+                    }
+
                   } else {
-                    vscode.window.showInformationMessage(`Connected to ${data.host}!`);
+                    vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
                   }
-
-                } else {
-                  vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
+                } catch (e) {
+                  vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
                 }
-              } catch (e) {
-                vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
               }
               break;
           }
@@ -147,19 +152,18 @@ export class Login {
 
     const connection = ConnectionManager.getByName(name);
     if (connection) {
+      const toDoOnConnected: Function[] = [];
       const connectionConfig = connection.data;
       if (connectionConfig.privateKeyPath) {
         // If connecting with a private key, remove the password
         await ConnectionManager.deleteStoredPassword(context, connectionConfig.name);
-
       } else {
-        // Assume connection with a password, but prompt if we don't have one
+        // Assume connection with a password, but prompt if we don't have one        
         connectionConfig.password = await ConnectionManager.getStoredPassword(context, connectionConfig.name);
         if (!connectionConfig.password) {
-          connectionConfig.password = await vscode.window.showInputBox({
-            prompt: `Password for ${connectionConfig.name}`,
-            password: true
-          });
+          if (await promptPassword(context, connectionConfig)) {
+            toDoOnConnected.push(() => ConnectionManager.setStoredPassword(context, connectionConfig.name, connectionConfig.password!));
+          }
         }
 
         if (!connectionConfig.password) {
@@ -168,7 +172,7 @@ export class Login {
       }
 
       try {
-        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings);
+        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings, toDoOnConnected);
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
@@ -184,4 +188,30 @@ export class Login {
     return false;
   }
 
+}
+
+async function promptPassword(context: vscode.ExtensionContext, connection: ConnectionData) {
+  let savePassword = false;
+  const savePasswordLabel = "Save password and connect"
+  const passwordBox = vscode.window.createInputBox();
+  passwordBox.prompt = `Password for ${connection.name}`;
+  passwordBox.password = true;
+  passwordBox.buttons = [{
+    iconPath: new ThemeIcon("save"),
+    tooltip: savePasswordLabel
+  }];
+
+  const onClose = (button?: vscode.QuickInputButton | void) => {
+    if (button?.tooltip === savePasswordLabel) {
+      savePassword = true;
+    }
+    connection.password = passwordBox.value;
+    passwordBox.dispose();
+  };
+  passwordBox.onDidTriggerButton(onClose);
+  passwordBox.onDidAccept(onClose);
+
+  passwordBox.show();
+  await new Promise(resolve => passwordBox.onDidHide(resolve));
+  return savePassword;
 }

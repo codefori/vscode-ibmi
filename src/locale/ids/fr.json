@@ -246,7 +246,7 @@
   "login.authDecision": "Renseignez soit le mot de passe, soit la clé privée - pas les deux.",
   "login.authRemoved": "Authentification supprimée pour \"{0}\".",
   "login.host": "Nom d'Hôte ou Adresse IP",
-  "login.password.label": "Rensignez un mot de passe seulement si vous souhaitez le changer.",
+  "login.password.label": "Renseignez un mot de passe seulement si vous souhaitez le changer.",
   "login.password.updated": "Mot de passe mis à jour et utilisé pour se connecter à \"{0}\".",
   "login.port": "Port (SSH)",
   "login.privateKey.label": "Sélectionnez une clé privée seulement si vous souhaitez en changer.",

@@ -121,7 +121,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations : Function[] = []): Promise<{ success: boolean, error?: any }> {
     return await Tools.withContext("code-for-ibmi:connecting", async () => {
       try {
         connectionObject.keepaliveInterval = 35000;
@@ -135,7 +135,7 @@ export default class IBMi {
           progress.report({
             message: `Connecting via SSH.`
           });
-          const delayedOperations: Function[] = [];
+          const delayedOperations: Function[] = [...onConnectedOperations];
 
           await this.client.connect(connectionObject as node_ssh.Config);
 
