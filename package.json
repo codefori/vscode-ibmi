@@ -369,11 +369,6 @@
 								"default": "8008",
 								"description": "Port to connect to IBM i Debug Service for SEP."
 							},
-							"debugIsSecure": {
-								"type": "boolean",
-								"default": true,
-								"description": "Used to determine if the client should connect securely or not."
-							},
 							"debugUpdateProductionFiles": {
 								"type": "boolean",
 								"default": false,
