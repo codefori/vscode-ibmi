@@ -127,7 +127,7 @@ export namespace Terminal {
     });
 
     const emulatorTerminal = vscode.window.createTerminal({
-      name: `IBM i ${terminalSettings.type}`,
+      name: `IBM i ${terminalSettings.type}: ${connection.config?.name}`,
       location: terminalSettings.location,
       pty: {
         onDidWrite: writeEmitter.event,
