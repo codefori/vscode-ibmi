@@ -1,9 +1,10 @@
 
-import vscode, { commands, window } from 'vscode';
+import path from 'path';
+import vscode, { commands } from 'vscode';
 import { instance } from '../instantiate';
+import { GlobalConfiguration } from './Configuration';
 import IBMi from './IBMi';
 import Instance from './Instance';
-import path from 'path';
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
@@ -26,6 +27,7 @@ export namespace Terminal {
 
   interface TerminalSettings {
     type: TerminalType
+    location: vscode.TerminalLocation
     encoding?: string
     terminal?: string
     name?: string
@@ -46,7 +48,7 @@ export namespace Terminal {
       vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
         return selectAndOpen(instance);
       }),
-  
+
       vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
         const content = instance.getContent();
         if (content) {
@@ -77,6 +79,7 @@ export namespace Terminal {
       if (type) {
         const terminalSettings: TerminalSettings = {
           type,
+          location: GlobalConfiguration.get<boolean>(`terminals.${type.toLowerCase()}.openInEditorArea`) ? vscode.TerminalLocation.Editor : vscode.TerminalLocation.Panel,
           connectionString: configuration.connectringStringFor5250
         };
 
@@ -125,7 +128,7 @@ export namespace Terminal {
 
     const emulatorTerminal = vscode.window.createTerminal({
       name: `IBM i ${terminalSettings.type}`,
-      
+      location: terminalSettings.location,
       pty: {
         onDidWrite: writeEmitter.event,
         open: () => { },

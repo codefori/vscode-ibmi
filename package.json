@@ -530,6 +530,16 @@
 					"default": true,
 					"description": "If enabled, will show the 'Date search' button in the status bar when source dates with diff mode is enabled."
 				},
+				"code-for-ibmi.terminals.5250.openInEditorArea": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, 5250 terminals will open in the editor area as tabs instead of panels."
+				},
+				"code-for-ibmi.terminals.pase.openInEditorArea": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, PASE terminals will open in the editor area as tabs instead of panels."
+				},
 				"code-for-ibmi.connections": {
 					"type": "array",
 					"items": {
