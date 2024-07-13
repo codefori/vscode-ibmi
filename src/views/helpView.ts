@@ -145,35 +145,34 @@ async function downloadLogs() {
           label: t(`helpView.downloadLogs.codeForIBMiLog`),
           detail: `${connection?.currentUser}@${connection?.currentHost}`,
           picked: true,
-          fileName: 'codeForIBMi.txt',
+          fileName: 'CodeForIBMi.txt',
           fileContent: Buffer.from(codeForIBMiLog, 'utf8')
         });
       }
 
       try {
-        const debugServiceLogPath = '/QIBM/UserData/IBMIDEBUGSERVICE/startDebugService_workspace/.metadata/.log';
+        const debugServiceLogPath = '/QIBM/UserData/IBMIDEBUGSERVICE/DebugService_log.txt';
         const debugServiceLog = (await content.downloadStreamfileRaw(debugServiceLogPath));
-
         if (debugServiceLog) {
           logs.push({
             label: t(`helpView.downloadLogs.debugServiceLog`),
             detail: debugServiceLogPath,
             picked: true,
-            fileName: 'debugService.txt',
+            fileName: 'DebugService.txt',
             fileContent: debugServiceLog
           });
         }
       } catch (err) { }
 
       try {
-        const debugServiceEclipseInstancePath = '/QIBM/UserData/IBMIDEBUGSERVICE/DebugService_log.txt';
+        const debugServiceEclipseInstancePath = '/QIBM/UserData/IBMIDEBUGSERVICE/startDebugService_workspace/.metadata/.log';
         const debugServiceEclipseInstanceLog = (await content.downloadStreamfileRaw(debugServiceEclipseInstancePath));
         if (debugServiceEclipseInstanceLog) {
           logs.push({
             label: t(`helpView.downloadLogs.debugServiceEclipseInstanceLog`),
             detail: debugServiceEclipseInstancePath,
             picked: true,
-            fileName: 'debugServiceEclipseInstance.txt',
+            fileName: 'DebugServiceEclipseInstance.txt',
             fileContent: debugServiceEclipseInstanceLog
           });
         }
