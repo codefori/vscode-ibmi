@@ -2975,7 +2975,6 @@
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.12.0",
 		"@ibm/ibmi-eventf-parser": "^1.0.2",
-		"@types/tmp": "^0.2.3",
 		"adm-zip": "^0.5.14",
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
