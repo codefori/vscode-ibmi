@@ -6,6 +6,7 @@ import { instance } from '../instantiate';
 import path from 'path';
 import { t } from "../locale";
 import AdmZip from 'adm-zip';
+import { DebugConfiguration } from '../api/debug/config';
 
 export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
