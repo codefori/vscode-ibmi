@@ -150,8 +150,9 @@ async function downloadLogs() {
         });
       }
 
+      const debugConfig = await new DebugConfiguration().load();
       try {
-        const debugServiceLogPath = '/QIBM/UserData/IBMIDEBUGSERVICE/DebugService_log.txt';
+        const debugServiceLogPath = `${debugConfig.getRemoteServiceWorkDir()}/DebugService_log.txt`;
         const debugServiceLog = (await content.downloadStreamfileRaw(debugServiceLogPath));
         if (debugServiceLog) {
           logs.push({
@@ -165,7 +166,7 @@ async function downloadLogs() {
       } catch (err) { }
 
       try {
-        const debugServiceEclipseInstancePath = '/QIBM/UserData/IBMIDEBUGSERVICE/startDebugService_workspace/.metadata/.log';
+        const debugServiceEclipseInstancePath = `${debugConfig.getRemoteServiceWorkDir()}/startDebugService_workspace/.metadata/.log`;
         const debugServiceEclipseInstanceLog = (await content.downloadStreamfileRaw(debugServiceEclipseInstancePath));
         if (debugServiceEclipseInstanceLog) {
           logs.push({
