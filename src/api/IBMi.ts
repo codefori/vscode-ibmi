@@ -65,6 +65,7 @@ export default class IBMi {
   tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
   outputChannel?: vscode.OutputChannel;
+  outputChannelContent?: string;
 
   /**
    * Used to store ASP numbers and their names
@@ -146,6 +147,7 @@ export default class IBMi {
 
           if (!reconnecting) {
             this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+            this.outputChannelContent = '';
           }
 
           let tempLibrarySet = false;
@@ -1051,6 +1053,9 @@ export default class IBMi {
     if (this.outputChannel) {
       this.outputChannel.append(content);
     }
+    if(this.outputChannelContent !== undefined) {      
+      this.outputChannelContent += content;
+    }
   }
 
   private determineClear() {
@@ -1069,6 +1074,10 @@ export default class IBMi {
     if (this.outputChannel) {
       this.outputChannel.hide();
       this.outputChannel.dispose();
+    }
+
+    if(this.outputChannelContent !== undefined) {
+      this.outputChannelContent = undefined;
     }
 
     await Promise.all([
