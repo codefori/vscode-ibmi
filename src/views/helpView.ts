@@ -220,10 +220,10 @@ async function downloadLogs() {
                 vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
               }
             } else {
-              await vscode.window.showInformationMessage(t(`helpView.downloadLogs.failed`, zipFile));
+              await vscode.window.showErrorMessage(t(`helpView.downloadLogs.failed`, zipFile));
             }
           } catch (error) {
-            await vscode.window.showInformationMessage(t(`helpView.downloadLogs.failed`, zipFile));
+            await vscode.window.showErrorMessage(t(`helpView.downloadLogs.failedMessage`, zipFile, error));
           }
         }
       }
