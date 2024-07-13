@@ -122,7 +122,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations : Function[] = []): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []): Promise<{ success: boolean, error?: any }> {
     return await Tools.withContext("code-for-ibmi:connecting", async () => {
       try {
         connectionObject.keepaliveInterval = 35000;
@@ -1053,14 +1053,19 @@ export default class IBMi {
     if (this.outputChannel) {
       this.outputChannel.append(content);
     }
-    if(this.outputChannelContent !== undefined) {      
+    if (this.outputChannelContent !== undefined) {
       this.outputChannelContent += content;
     }
   }
 
   private determineClear() {
     if (this.commandsExecuted > 150) {
-      if (this.outputChannel) this.outputChannel.clear();
+      if (this.outputChannel) {
+        this.outputChannel.clear();
+      }
+      if (this.outputChannelContent !== undefined) {
+        this.outputChannelContent = '';
+      }
       this.commandsExecuted = 0;
     }
 
@@ -1076,7 +1081,7 @@ export default class IBMi {
       this.outputChannel.dispose();
     }
 
-    if(this.outputChannelContent !== undefined) {
+    if (this.outputChannelContent !== undefined) {
       this.outputChannelContent = undefined;
     }
 
