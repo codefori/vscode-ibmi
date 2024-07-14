@@ -65,6 +65,7 @@ export default class IBMi {
   tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
   outputChannel?: vscode.OutputChannel;
+  outputChannelContent?: string;
 
   /**
    * Used to store ASP numbers and their names
@@ -121,7 +122,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations : Function[] = []): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []): Promise<{ success: boolean, error?: any }> {
     return await Tools.withContext("code-for-ibmi:connecting", async () => {
       try {
         connectionObject.keepaliveInterval = 35000;
@@ -146,6 +147,7 @@ export default class IBMi {
 
           if (!reconnecting) {
             this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+            this.outputChannelContent = '';
           }
 
           let tempLibrarySet = false;
@@ -1051,11 +1053,19 @@ export default class IBMi {
     if (this.outputChannel) {
       this.outputChannel.append(content);
     }
+    if (this.outputChannelContent !== undefined) {
+      this.outputChannelContent += content;
+    }
   }
 
   private determineClear() {
     if (this.commandsExecuted > 150) {
-      if (this.outputChannel) this.outputChannel.clear();
+      if (this.outputChannel) {
+        this.outputChannel.clear();
+      }
+      if (this.outputChannelContent !== undefined) {
+        this.outputChannelContent = '';
+      }
       this.commandsExecuted = 0;
     }
 
@@ -1069,6 +1079,10 @@ export default class IBMi {
     if (this.outputChannel) {
       this.outputChannel.hide();
       this.outputChannel.dispose();
+    }
+
+    if (this.outputChannelContent !== undefined) {
+      this.outputChannelContent = undefined;
     }
 
     await Promise.all([

@@ -72,7 +72,7 @@ const config = {
     }),
 
     // We do this so we don't ship the optional binaries provided by ssh2
-    new webpack.IgnorePlugin({ resourceRegExp: /(cpu-features|sshcrypto\.node)/u })
+    new webpack.IgnorePlugin({ resourceRegExp: /(original-fs|cpu-features|sshcrypto\.node)/u })
   ],
   module: {
     rules: [
