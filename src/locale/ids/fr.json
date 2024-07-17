@@ -143,6 +143,7 @@
   "helpView.downloadLogs.debugServiceLog": "Log du Debug Service",
   "helpView.downloadLogs.downloadTo": "Télécharger les logs",
   "helpView.downloadLogs.failed": "Échec du téléchargement des logs vers {0}",
+  "helpView.downloadLogs.failedMessage": "Failed to download logs to {0}. {1}",
   "helpView.downloadLogs.noConnection": "Connection requise à un IBM i",
   "helpView.downloadLogs.noLogs": "Aucun log disponible au téléchargement",
   "helpView.downloadLogs.open": "Ouvrir",
