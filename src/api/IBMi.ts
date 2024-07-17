@@ -1046,7 +1046,10 @@ export default class IBMi {
 
     this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
-    return result;
+    return {
+      ...result,
+      code: result.code || 0,
+    };
   }
 
   private appendOutput(content: string) {
