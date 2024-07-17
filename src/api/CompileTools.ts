@@ -225,7 +225,7 @@ export namespace CompileTools {
               evfeventInfo.object = name.toUpperCase();
               evfeventInfo.extension = ext;
 
-              if (chosenAction.command.includes(`SRCFILE`)) {
+              if (chosenAction.command.includes(`&SRCFILE`)) {
                 variables[`&SRCLIB`] = evfeventInfo.library;
                 variables[`&SRCPF`] = `QTMPSRC`;
                 variables[`&SRCFILE`] =  `${evfeventInfo.library}/QTMPSRC`;
@@ -341,13 +341,12 @@ export namespace CompileTools {
 
                         const createSourceFile = content.toCl(`CRTSRCPF`, {
                           rcdlen: 112, //NICE: this configurable in a VS Code setting?
-                          file: srcpf,
-                          lib,
+                          file: `${lib}/${srcpf}`,
                         });
 
                         const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
                           fromstmf: variables[`&FULLPATH`],
-                          tombr: Tools.qualifyPath(lib, srcpf, evfeventInfo.object),
+                          tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
                           mbropt: `*REPLACE`,
                           dbfccsid: `*FILE`,
                           stmfccsid: 1208,
@@ -356,6 +355,7 @@ export namespace CompileTools {
                         // We don't care if this fails. Usually it's because the source file already exists.
                         await runCommand(instance, {command: createSourceFile, environment: `ile`, noLibList: true});
 
+                        // Attempt to copy to member
                         const copyResult = await runCommand(instance, {command: copyFromStreamfile, environment: `ile`, noLibList: true});
 
                         if (copyResult.code !== 0) {
