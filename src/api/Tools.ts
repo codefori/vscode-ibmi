@@ -310,6 +310,11 @@ export namespace Tools {
     return possibleDoc;
   }
 
+  export function findExistingDocumentByName(nameAndExt: string) {
+    const possibleDoc = vscode.workspace.textDocuments.find(document => document.fileName.toLowerCase().endsWith(nameAndExt.toLowerCase()));
+    return possibleDoc ? possibleDoc.uri : undefined;
+  }
+
   /**
    * We convert member to lowercase as members are case insensitive.
    */
