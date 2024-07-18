@@ -202,7 +202,7 @@ async function promptPassword(context: vscode.ExtensionContext, connection: Conn
   }];
 
   const onClose = (button?: vscode.QuickInputButton | void) => {
-    if (button?.tooltip === savePasswordLabel) {
+    if (button && button.tooltip === savePasswordLabel) {
       savePassword = true;
     }
     connection.password = passwordBox.value;
