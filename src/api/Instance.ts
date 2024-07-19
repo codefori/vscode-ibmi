@@ -66,7 +66,13 @@ export default class Instance {
 
   async processEvent(event: IBMiEvent) {
     for (const subscriber of this.subscribers.filter(s => s.event === event)) {
-      await subscriber.func();
+      try{
+        await subscriber.func();
+      }
+      catch(error){
+        const name = subscriber.func.name ? `Event function ${subscriber.func.name}` : `Anonymous event function`;
+        vscode.window.showWarningMessage(`${name} failed: ${error}`)
+      }
     }
   }
 }
