@@ -797,7 +797,7 @@ export default class IBMi {
                                   if (pathRegex) {
                                     bashrcContent[index] = `${pathRegex[1]}/QOpenSys/pkgs/bin:${pathRegex[2]
                                       .replace("/QOpenSys/pkgs/bin", "") //Removes /QOpenSys/pkgs/bin wherever it is
-                                      .replace("::", ":")}/QOpenSys/usr/bin:/usr/bin`; //Removes double : in case /QOpenSys/pkgs/bin wasn't at the end
+                                      .replace("::", ":")}:/QOpenSys/usr/bin:/usr/bin`; //Removes double : in case /QOpenSys/pkgs/bin wasn't at the end
                                     replaced = true;
                                   }
                                 }
