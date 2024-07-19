@@ -779,7 +779,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);
 
-  instance.onEvent("connected", () => onConnected(context));
+  instance.onEvent("connected", onConnected);
   instance.onEvent("disconnected", onDisconnected);
 
   context.subscriptions.push(
@@ -818,7 +818,7 @@ async function updateConnectedBar() {
   connectedBarItem.tooltip.isTrusted = true;
 }
 
-async function onConnected(context: vscode.ExtensionContext) {
+async function onConnected() {
   const config = instance.getConfig();
 
   [
