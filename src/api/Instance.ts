@@ -70,8 +70,8 @@ export default class Instance {
         await subscriber.func();
       }
       catch(error){
-        const name = subscriber.func.name ? `Event function ${subscriber.func.name}` : `Anonymous event function`;
-        vscode.window.showWarningMessage(`${name} failed: ${error}`)
+        const name = subscriber.func.name ? `Event function ${subscriber.func.name}` : `Anonymous event function`;        
+        console.log(`${name} failed`, error);
       }
     }
   }
