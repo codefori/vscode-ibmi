@@ -96,7 +96,9 @@ export default class Instance {
     const eventSubscribers = this.getSubscribers(event)
     for (const [identity, callable] of eventSubscribers.entries()) {
       try {
+        console.time(identity);
         await callable.func();
+        console.timeEnd(identity);
       }
       catch (error) {
         console.log(`Event function ${identity} failed`, error);
