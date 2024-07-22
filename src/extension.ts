@@ -118,12 +118,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     context,
     'connected',
     `Refresh views`,
-    () => {
-      commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
-      commands.executeCommand("code-for-ibmi.refreshLibraryListView");
-      commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
-      commands.executeCommand("code-for-ibmi.refreshProfileView");
-    });
+    () => Promise.all([
+      commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
+      commands.executeCommand("code-for-ibmi.refreshProfileView")
+    ]));
 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
