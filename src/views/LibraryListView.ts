@@ -254,7 +254,6 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         }
       })
     )
-    instance.onEvent(`connected`, () => this.refresh());
   }
 
   private async updateConfig(config: ConnectionConfiguration.Parameters) {

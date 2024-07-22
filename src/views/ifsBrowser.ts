@@ -307,8 +307,6 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new IFSBrowserDragAndDrop()
   });
 
-  instance.onEvent(`connected`, () => ifsBrowser.refresh());
-
   context.subscriptions.push(
     ifsTreeViewer,
     vscode.commands.registerCommand(`code-for-ibmi.refreshIFSBrowser`, () => ifsBrowser.refresh()),

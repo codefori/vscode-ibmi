@@ -442,8 +442,6 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new ObjectBrowserMemberItemDragAndDrop()
   });
 
-  instance.onEvent(`connected`, () => objectBrowser.refresh());
-
   context.subscriptions.push(
     objectTreeViewer,
 
