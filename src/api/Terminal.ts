@@ -34,6 +34,8 @@ export namespace Terminal {
     connectionString?: string
   }
 
+  let terminalCount = 0;
+
   function setHalted(state: boolean) {
     commands.executeCommand(`setContext`, `code-for-ibmi:term5250Halted`, state);
   }
@@ -43,17 +45,17 @@ export namespace Terminal {
   const ATTENTION = 1;
   const TAB = 9;
 
-  export function registerTerminalCommands() {
+  export function registerTerminalCommands(context: vscode.ExtensionContext) {
     return [
       vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-        return selectAndOpen(instance);
+        return selectAndOpen(context, instance);
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
         const content = instance.getContent();
         if (content) {
           const ifsPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : path.dirname(ifsNode.path);
-          const terminal = await selectAndOpen(instance, TerminalType.PASE);
+          const terminal = await selectAndOpen(context, instance, TerminalType.PASE);
           terminal?.sendText(`cd ${ifsPath}`);
         }
       }),
@@ -68,7 +70,7 @@ export namespace Terminal {
     ];
   }
 
-  export async function selectAndOpen(instance: Instance, openType?: TerminalType) {
+  async function selectAndOpen(context: vscode.ExtensionContext, instance: Instance, openType?: TerminalType) {
     const connection = instance.getConnection();
     const configuration = instance.getConfig();
     if (connection && configuration) {
@@ -104,14 +106,14 @@ export namespace Terminal {
           vscode.workspace.getConfiguration().update(`terminal.integrated.sendKeybindingsToShell`, true, true);
         }
 
-        return createTerminal(connection, terminalSettings);
+        return createTerminal(context, connection, terminalSettings);
       }
     }
   }
 
   const HALTED = ` II`;
 
-  async function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
+  async function createTerminal(context: vscode.ExtensionContext, connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
     const paseWelcomeMessage = 'echo "Terminal started. Thanks for using Code for IBM i"';
 
@@ -201,7 +203,12 @@ export namespace Terminal {
       channel.stdin.write(`${paseWelcomeMessage}\n`);
     }
 
-    instance.onEvent('disconnected', () => emulatorTerminal.dispose());
+    instance.subscribe(
+      context,
+      'disconnected',
+      `Dispose Terminal ${terminalCount++}`,
+      () => emulatorTerminal.dispose(),
+      true);
 
     return emulatorTerminal;
   }
