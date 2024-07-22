@@ -94,6 +94,7 @@ export default class Instance {
 
   async processEvent(event: IBMiEvent) {
     const eventSubscribers = this.getSubscribers(event)
+    console.time(event);
     for (const [identity, callable] of eventSubscribers.entries()) {
       try {
         console.time(identity);
@@ -101,7 +102,7 @@ export default class Instance {
         console.timeEnd(identity);
       }
       catch (error) {
-        console.log(`Event function ${identity} failed`, error);
+        console.log(`${event} event function ${identity} failed`, error);
       }
       finally {
         if (callable.transient) {
@@ -109,5 +110,6 @@ export default class Instance {
         }
       }
     }
+    console.timeEnd(event);
   }
 }
