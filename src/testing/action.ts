@@ -16,7 +16,15 @@ export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,
   files: [
     new File("hello.pgm.rpgle", ['**free', 'dsply \'Hello World\';', 'return;']),
-    new File("thebadone.pgm.rpgle", ['**free', 'dsply Hello world;', 'return;'])
+    new File("thebadone.pgm.rpgle", ['**free', 'dsply Hello world;', 'return;']),
+    new File("ugly.dspf", [
+      `     A                                      INDARA`,
+      `     A                                      CA12(12)`,
+      `     A          R DETAIL                    `,
+      `     A                                  6 10'ID'`,
+      `     A                                      DSPATR(HI)`,
+      `     A                                      DSPATR(UL)`,
+    ])
   ],
 }
 
@@ -70,6 +78,21 @@ export const ActionSuite: TestSuite = {
         action.deployFirst = false;
         const uri = helloWorldProject.files![0].localPath!;
         await testHelloWorldProgram(uri, action, currentLibrary);
+      }
+    },
+    {
+      name: `Create display file (from local, custom action)`, test: async () => {
+        const uri = helloWorldProject.files![2].localPath!;
+        const action: Action = {
+          command: `CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) TEXT('DSPF from local')`,
+          environment: `ile`,
+          type: `file`,
+          name: `Create Display File (CRTDSPF)`,
+        };
+
+        const success = await CompileTools.runAction(instance, uri, action, `all`);
+        console.log(success);
+        assert.ok(success);
       }
     },
     {

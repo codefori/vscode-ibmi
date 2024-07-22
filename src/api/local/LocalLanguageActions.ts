@@ -129,6 +129,17 @@ export const LocalLanguageActions: Record<string, Action[]> = {
       environment: `ile`,
     }
   ],
+  DSPF: [
+    {
+      "name": "Create DSPF",
+      "command": "CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) RSTDSP(*NO) OPTION(*EVENTF)",
+      "environment": "ile",
+      "deployFirst": true,
+      "extensions": [
+        "dspf"
+      ]
+    }
+  ],
   "Service Programs": [
     {
       "extensions": [
