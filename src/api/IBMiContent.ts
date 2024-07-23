@@ -149,7 +149,7 @@ export default class IBMiContent {
     member = this.ibmi.upperCaseName(member);
 
     let retry = false;
-    let path = Tools.qualifyPath(library, sourceFile, member, asp);
+    let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = this.getTempRemote(path);
     while (true) {
       let copyResult: CommandResult;
@@ -222,7 +222,7 @@ export default class IBMiContent {
     let retry = false;
     try {
       await writeFileAsync(tmpobj, content, `utf8`);
-      let path = Tools.qualifyPath(library, sourceFile, member, asp);
+      let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
 
@@ -261,7 +261,6 @@ export default class IBMiContent {
               //The member may be located on SYSBAS
               if (asp) {
                 path = Tools.qualifyPath(library, sourceFile, member);
-                retry = true;
               }
             }
             else {

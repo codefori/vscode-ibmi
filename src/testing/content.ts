@@ -250,6 +250,35 @@ export const ContentSuite: TestSuite = {
     },
 
     {
+      name: `Test downloadMemberContent with dollar`, test: async () => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+        const tempLib = config!.tempLibrary,
+          tempSPF = `TESTINGS`,
+          tempMbr = Tools.makeid(2) + `$` + Tools.makeid(2);
+
+        await connection!.runCommand({
+          command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
+          environment: `ile`
+        });
+
+        await connection!.runCommand({
+          command: `ADDPFM FILE(${tempLib}/${tempSPF}) MBR(${tempMbr}) `,
+          environment: `ile`
+        });
+
+        const baseContent = `Hello world\r\n`;
+
+        const uploadResult = await content?.uploadMemberContent(undefined, tempLib, tempSPF, tempMbr, baseContent);
+        assert.ok(uploadResult);
+
+        const memberContent = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
+        assert.strictEqual(memberContent, baseContent);
+      },
+    },
+
+    {
       name: `Test runSQL (basic select)`, test: async () => {
         const content = instance.getContent();
 
