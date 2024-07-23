@@ -12,7 +12,6 @@ import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
-import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { t } from './locale';
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { ActionsUI } from './webviews/actions';
@@ -787,11 +786,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       isCaseSensitive: false
     })
   );
-
-  // Color provider
-  if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
-    SEUColorProvider.intitialize(context);
-  }
 
   // Register git events based on workspace folders
   if (vscode.workspace.workspaceFolders) {
