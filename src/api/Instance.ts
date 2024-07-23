@@ -102,7 +102,7 @@ export default class Instance {
         console.timeEnd(identity);
       }
       catch (error) {
-        console.log(`${event} event function ${identity} failed`, error);
+        console.error(`${event} event function ${identity} failed`, error);
       }
       finally {
         if (callable.transient) {
