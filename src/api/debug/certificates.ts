@@ -170,15 +170,16 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       if (java.isOpenJDK && !await connection.content.testStreamFile(backupFolder, "d")) {
         setProgress("updating scripts for OpenJDK");
         const backupResult = await connection.sendCommand({
-          command: [
-            `mkdir -p ${backupFolder}`,
-            `cp -r ${debugConfig.getRemoteServiceBin()}/*.sh ${backupFolder}`,
-            `for file in ${debugConfig.getRemoteServiceBin()}/*.sh; do touch $file && attr $file ccsid=1208 && chmod +x $file && sed 's/grep "java version/grep " version/g' >> $file; done`
-          ].join(" && ")
+          command: `mkdir -p ${backupFolder} && cp -r ${debugConfig.getRemoteServiceBin()}/*.sh ${backupFolder}`
         });
-
+        //
         if (backupResult.code) {
-          throw new Error(`Failed to backup and update debug service scripts: ${backupResult.stderr || backupResult.stdout}`);
+          throw new Error(`Failed to backup debug service scripts: ${backupResult.stderr || backupResult.stdout}`);
+        }
+
+        for (const script of (await connection.content.getFileList(debugConfig.getRemoteServiceBin())).filter(f => f.name.endsWith('.sh'))) {
+          const content = (await connection.content.downloadStreamfileRaw(script.path)).toString("utf-8");
+          await connection.content.writeStreamfileRaw(script.path, Buffer.from(content.replaceAll('grep "java version', 'grep " version')), "utf8");
         }
       }
 
