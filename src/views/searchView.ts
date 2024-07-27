@@ -3,6 +3,7 @@ import vscode from "vscode";
 import { DefaultOpenMode } from "../api/Configuration";
 import { t } from '../locale';
 import { SearchHit, SearchHitLine, SearchResults } from "../typings";
+import { instance } from "../instantiate";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {
   const searchView = new SearchView();
@@ -80,13 +81,13 @@ class HitSource extends vscode.TreeItem {
     this.iconPath = vscode.ThemeIcon.File;
     this.path = result.path;
     this._readonly = result.readonly;
-    this.tooltip = result.path;
+    this.tooltip = instance.getContent()?.searchHitToToolTip(this.path, result);
 
     if (hits) {
       this.description = `${hits} hit${hits === 1 ? `` : `s`}`;
     }
     else {
-      this.description = result.path;
+      this.description = !result.size ? result.path : ``;
       this.command = {
         command: `code-for-ibmi.openWithDefaultMode`,
         title: `Open`,

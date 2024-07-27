@@ -233,6 +233,9 @@ export type SearchHit = {
   lines: SearchHitLine[]
   readonly?: boolean
   label?: string
+  size?: Number
+  modified?: Date
+  owner?: string
 }
 
 export type SearchHitLine = {
