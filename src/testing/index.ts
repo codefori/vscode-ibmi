@@ -52,10 +52,10 @@ export function initialise(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
 
     if (!testIndividually) {
-      instance.onEvent(`connected`, runTests);
+      instance.subscribe(context, 'connected', 'Run tests', runTests);
     }
 
-    instance.onEvent(`disconnected`, resetTests);
+    instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
     testSuitesTreeProvider = new TestSuitesTreeProvider(suites);
     context.subscriptions.push(
       vscode.window.createTreeView("testingView", { treeDataProvider: testSuitesTreeProvider, showCollapseAll: true }),

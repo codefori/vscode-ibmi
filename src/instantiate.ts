@@ -204,9 +204,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         } else {
           vscode.window.showInformationMessage(t(`compare.no.file`));
         }
-    } else {
-      vscode.window.showInformationMessage(t(`compare.no.file`));
-    }
+      } else {
+        vscode.window.showInformationMessage(t(`compare.no.file`));
+      }
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
@@ -245,11 +245,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         });
       });
 
-      const recentItems: vscode.QuickPickItem[] = recent.map(item => ({ 
+      const recentItems: vscode.QuickPickItem[] = recent.map(item => ({
         label: item,
         buttons: [compareButton]
       }));
-      const listItems: vscode.QuickPickItem[] = list.map(item => ({ 
+      const listItems: vscode.QuickPickItem[] = list.map(item => ({
         label: item,
         buttons: [compareButton]
       }));
@@ -299,7 +299,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           filteredItems = [];
         } else {
           if (!starRemoved && !list.includes(connection!.upperCaseName(quickPick.value))) {
-            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({ 
+            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({
               label: label,
               buttons: [compareButton]
             }));
@@ -517,9 +517,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
           const editor = vscode.window.activeTextEditor;
           if (editor) {
-              currentFile = editor.document.uri;
-              vscode.commands.executeCommand(`vscode.diff`, currentFile, path);
-              quickPick.hide();
+            currentFile = editor.document.uri;
+            vscode.commands.executeCommand(`vscode.diff`, currentFile, path);
+            quickPick.hide();
           }
         }
       });
@@ -657,7 +657,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    ...Terminal.registerTerminalCommands(),
+    ...Terminal.registerTerminalCommands(context),
 
     vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
       if (extensionId) {
@@ -778,9 +778,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);
-
-  instance.onEvent("connected", () => onConnected(context));
-  instance.onEvent("disconnected", onDisconnected);
+  instance.subscribe(context, 'connected', 'Load status bars', onConnected);
+  instance.subscribe(context, 'disconnected', 'Unload status bars', onDisconnected);
 
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
@@ -818,7 +817,7 @@ async function updateConnectedBar() {
   connectedBarItem.tooltip.isTrusted = true;
 }
 
-async function onConnected(context: vscode.ExtensionContext) {
+async function onConnected() {
   const config = instance.getConfig();
 
   [
@@ -895,10 +894,10 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `me
   if (currentFile) {
     let compareWith = await vscode.window.showInputBox({
       prompt: t(`compare.prompt`),
-      title: t(`compare.title`), 
+      title: t(`compare.title`),
       value: currentFile.path
     });
-    
+
     if (compareWith) {
       if (scheme == 'member' && !compareWith.startsWith('/')) {
         compareWith = `/${compareWith}`;

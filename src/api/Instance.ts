@@ -5,18 +5,21 @@ import IBMi from "./IBMi";
 import { ConnectionStorage, GlobalStorage } from "./Storage";
 
 type IBMiEventSubscription = {
-  event: IBMiEvent,
-  func: Function
+  func: Function,
+  transient?: boolean
 };
+
+type SubscriptionMap = Map<string, IBMiEventSubscription>
 
 export default class Instance {
   private connection: IBMi | undefined;
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
-  private subscribers: IBMiEventSubscription[] = [];
+  private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
+
+  private deprecationCount = 0; //TODO: remove in v3.0.0
 
   constructor(context: vscode.ExtensionContext) {
-    this.subscribers = [];
     this.storage = new ConnectionStorage(context);
     this.emitter.event(e => this.processEvent(e));
   }
@@ -56,8 +59,34 @@ export default class Instance {
     return this.storage.ready ? this.storage : undefined;
   }
 
+  /**
+   * Subscribe to an {@link IBMiEvent}. When the event is triggerred, the `func` function gets executed.
+   * 
+   * Each `context`/`name` couple must be unique.
+   * @param context the extension subscribing to the event
+   * @param event the {@link IBMiEvent} to subscribe to 
+   * @param name a human-readable name summarizing the function   
+   * @param func the function to execute when the {@link IBMiEvent} is triggerred
+   * @param transient if `true`, the function will only be executed once during the lifetime of a connection
+   */
+  subscribe(context: vscode.ExtensionContext, event: IBMiEvent, name: string, func: Function, transient?: boolean) {
+    this.getSubscribers(event).set(`${context.extension.id} - ${name}`, { func, transient });
+  }
+
+  private getSubscribers(event: IBMiEvent) {
+    let eventSubscribers: SubscriptionMap = this.subscribers.get(event) || new Map;
+    if (!this.subscribers.has(event)) {
+      this.subscribers.set(event, eventSubscribers);
+    }
+    return eventSubscribers;
+  }
+
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link subscribe} instead
+   */
   onEvent(event: IBMiEvent, func: Function): void {
-    this.subscribers.push({ event, func });
+    this.getSubscribers(event).set(`deprecated - ${func.name || "unknown"}_${this.deprecationCount++}`, { func });
+    console.warn("[Code for IBM i] Deprecation warning: you are using Instance::onEvent which is deprecated and will be removed in v3.0.0. Please use Instance::subscribe instead.");
   }
 
   fire(event: IBMiEvent) {
@@ -65,8 +94,23 @@ export default class Instance {
   }
 
   async processEvent(event: IBMiEvent) {
-    for (const subscriber of this.subscribers.filter(s => s.event === event)) {
-      await subscriber.func();
+    const eventSubscribers = this.getSubscribers(event)
+    console.time(event);
+    for (const [identity, callable] of eventSubscribers.entries()) {
+      try {
+        console.time(identity);
+        await callable.func();
+        console.timeEnd(identity);
+      }
+      catch (error) {
+        console.error(`${event} event function ${identity} failed`, error);
+      }
+      finally {
+        if (callable.transient) {
+          eventSubscribers.delete(identity);
+        }
+      }
     }
+    console.timeEnd(event);
   }
 }

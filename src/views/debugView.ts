@@ -41,8 +41,8 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
     debugBrowser.refresh();
   }
 
-  instance.onEvent("connected", updateDebugBrowser);
-  instance.onEvent("disconnected", updateDebugBrowser);
+  instance.subscribe(context, "connected", "Update Debug Browser", updateDebugBrowser);
+  instance.subscribe(context, "disconnected", "Update Debug Browser", updateDebugBrowser);
 
   context.subscriptions.push(
     debugTreeViewer,
