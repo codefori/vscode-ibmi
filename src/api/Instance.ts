@@ -86,6 +86,7 @@ export default class Instance {
    */
   onEvent(event: IBMiEvent, func: Function): void {
     this.getSubscribers(event).set(`deprecated - ${func.name || "unknown"}_${this.deprecationCount++}`, { func });
+    console.warn("[Code for IBM i] Deprecation warning: you are using Instance::onEvent which is deprecated and will be removed in v3.0.0. Please use Instance::subscribe instead.");
   }
 
   fire(event: IBMiEvent) {
