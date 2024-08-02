@@ -16,6 +16,7 @@ import { t } from './locale';
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { initialiseColourChecker } from './languages/colour';
 
 export let instance: Instance;
 
@@ -786,6 +787,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       isCaseSensitive: false
     })
   );
+
+  // Colour fixer
+  initialiseColourChecker(context);
 
   // Register git events based on workspace folders
   if (vscode.workspace.workspaceFolders) {

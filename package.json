@@ -378,6 +378,11 @@
 								"type": "boolean",
 								"default": false,
 								"description": "Tells the debug service to send more data to the client. Only useful for debugging issues in the service."
+							},
+							"autoFixInvalidCharacters": {
+								"type": "boolean",
+								"default": false,
+								"description": "Automatically fix invalid characters in source members when opened."
 							}
 						}
 					}
