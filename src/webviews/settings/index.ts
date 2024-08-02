@@ -78,6 +78,7 @@ export class SettingsUI {
         sourceTab
           .addInput(`sourceASP`, `Source ASP`, `If source files live within a specific ASP, please specify it here. Leave blank otherwise. You can ignore this if you have access to <code>QSYS2.ASP_INFO</code> as Code for IBM i will fetch ASP information automatically.`, { default: config.sourceASP })
           .addInput(`sourceFileCCSID`, `Source file CCSID`, `The CCSID of source files on your system. You should only change this setting from <code>*FILE</code> if you have a source file that is 65535 - otherwise use <code>*FILE</code>. Note that this config is used to fetch all members. If you have any source files using 65535, you have bigger problems.`, { default: config.sourceFileCCSID, minlength: 1, maxlength: 5 })
+          .addCheckbox(`autoFixInvalidCharacters`, `Member cleanup`, `Legacy editors used to support invalid ASCII/unicode printable characters and sometimes members still contain them. Enable this to automatically cleanup members as they are opened.`, config.autoFixInvalidCharacters)
           .addHorizontalRule()
           .addCheckbox(`enableSourceDates`, `Enable Source Dates`, `When enabled, source dates will be retained and updated when editing source members. Requires restart when changed.`, config.enableSourceDates)
           .addSelect(`sourceDateMode`, `Source date tracking mode`, [
