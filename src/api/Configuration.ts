@@ -134,7 +134,7 @@ export namespace ConnectionConfiguration {
     protectedPaths: string[];
     showHiddenFiles: boolean;
     lastDownloadLocation:string;
-    autoFixInvalidCharacters?: boolean;
+    autoFixInvalidCharacters: boolean;
     [name: string]: any;
   }  
 
