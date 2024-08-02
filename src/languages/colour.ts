@@ -6,7 +6,7 @@ const NEW_LINE_NUMBERS = [10, 13];
 export function initialiseColourChecker(context: ExtensionContext) {
   context.subscriptions.push(
     workspace.onDidOpenTextDocument(async (document) => {
-      if (document.uri.scheme === `member`) {
+      if (document.uri.scheme === `member` && !document.isClosed) {
         const content = document.getText();
         let hasInvalidCharacters = false;
         for (let i = 0; i < content.length; i++) {
@@ -16,12 +16,14 @@ export function initialiseColourChecker(context: ExtensionContext) {
           }
         }
 
-        const shouldFix = await shouldInitiateCleanup();
+        if (hasInvalidCharacters) {
+          const shouldFix = await shouldInitiateCleanup();
 
-        if (shouldFix) {
-          const fixedContent = replaceInvalidCharacters(content);
-          const edit = new WorkspaceEdit();
-          edit.replace(document.uri, new Range(0, 0, document.lineCount, 0), fixedContent);
+          if (shouldFix) {
+            const fixedContent = replaceInvalidCharacters(content);
+            const edit = new WorkspaceEdit();
+            edit.replace(document.uri, new Range(0, 0, document.lineCount, 0), fixedContent);
+          }
         }
       }
     })
