@@ -136,7 +136,7 @@ export namespace Search {
   function parseGrepOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): SearchHit[] {
     const results: SearchHit[] = [];
     for (const line of output.split('\n')) {
-      if (!line.startsWith(`Binary`)) {
+      if (line && !line.startsWith(`Binary`)) {
         const parts = line.split(`:`); //path:line
         const path = pathTransformer?.(parts[0]) || parts[0];
         let result = results.find(r => r.path === path);
