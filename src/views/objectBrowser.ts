@@ -1355,11 +1355,13 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
         extensions: filter?.memberType,
         filterType: filter?.filterType
       });
+
       if (members.length > 0) {
+        progress.report({ message: t(`objectBrowser.doSearchInSourceFile.searchMessage1`, searchTerm, path) });
+
         // NOTE: if more messages are added, lower the timeout interval
         const timeoutInternal = 9000;
         const searchMessages = [
-          t(`objectBrowser.doSearchInSourceFile.searchMessage1`, searchTerm, path),
           t(`objectBrowser.doSearchInSourceFile.searchMessage2`, members.length, searchTerm, path),
           t(`objectBrowser.doSearchInSourceFile.searchMessage3`, searchTerm),
           t(`objectBrowser.doSearchInSourceFile.searchMessage4`, searchTerm, path),
