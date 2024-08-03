@@ -2,7 +2,7 @@ import path from 'path';
 import vscode from "vscode";
 import { DefaultOpenMode } from "../api/Configuration";
 import { t } from '../locale';
-import { SearchHit, SearchHitLine, SearchResults } from "../typings";
+import { SearchHit, SearchHitLine, SearchResults, WithPath } from "../typings";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {
   const searchView = new SearchView();
@@ -68,9 +68,9 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
   }
 }
 
-class HitSource extends vscode.TreeItem {
-  private readonly path: string;
+class HitSource extends vscode.TreeItem implements WithPath {  
   private readonly _readonly?: boolean;
+  readonly path: string;
 
   constructor(readonly term: string, readonly result: SearchHit) {
     const hits = result.lines.length;
