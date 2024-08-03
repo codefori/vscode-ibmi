@@ -68,7 +68,7 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
   }
 }
 
-class HitSource extends vscode.TreeItem implements WithPath {  
+class HitSource extends vscode.TreeItem implements WithPath {
   private readonly _readonly?: boolean;
   readonly path: string;
 
@@ -117,7 +117,8 @@ class LineHit extends vscode.TreeItem {
         if (index >= 0) {
           highlights.push([index, index + term.length]);
           if (!position) {
-            position = new vscode.Range(positionLine, index, positionLine, index + term.length)
+            const offset = index + (line.content.length - line.content.trimStart().length);
+            position = new vscode.Range(positionLine, offset, positionLine, offset + term.length)
           }
           index += term.length;
         }
