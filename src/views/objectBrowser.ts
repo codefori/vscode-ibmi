@@ -1393,6 +1393,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
         }
 
         const results = await Search.searchMembers(instance, library, sourceFile, searchTerm, memberFilter, filter?.protected);
+        clearInterval(messageTimeout)
         if (results.hits.length) {
           const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
