@@ -86,6 +86,7 @@ export default class IBMi {
 
   commandsExecuted = 0;
 
+  //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
 
   dangerousVariants = false;
@@ -913,8 +914,8 @@ export default class IBMi {
           }
 
           if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
-            //Compute the maximum length of arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
-            this.maximumArgsLength = Number((await this.sendCommand({ command: "expr `getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
+            //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
+            this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
           }
           else{
             this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
