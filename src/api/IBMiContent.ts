@@ -654,8 +654,8 @@ export default class IBMiContent {
       return results.map(result => ({
         asp,
         library,
-        file: String(result.SOURCE_FILE),
-        name: String(result.NAME),
+        file: String(result.SOURCE_FILE),        
+        name: this.ibmi.sysNameInLocal(String(result.NAME)),
         extension: String(result.TYPE),
         recordLength: Number(result.RECORD_LENGTH) - 12,
         text: `${result.TEXT || ``}${sourceFile === `*ALL` ? ` (${result.SOURCE_FILE})` : ``}`.trim(),
