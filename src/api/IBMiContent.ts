@@ -261,6 +261,7 @@ export default class IBMiContent {
               //The member may be located on SYSBAS
               if (asp) {
                 path = Tools.qualifyPath(library, sourceFile, member);
+                retry = false;
               }
             }
             else {
