@@ -1,18 +1,29 @@
 
-import { SearchHit, SearchResults } from '../typings';
+import { IBMiMember, SearchHit, SearchResults } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
 import { Tools } from './Tools';
 
 export namespace Search {
-  const QSYS_PATTERN = /(?:\/\w{1,10}\/QSYS\.LIB\/)|(?:\/QSYS\.LIB\/)|(?:\.LIB)|(?:\.FILE)|(?:\.MBR)/g;
-
-  export async function searchMembers(instance: Instance, library: string, sourceFile: string, memberFilter: string, searchTerm: string, readOnly?: boolean): Promise<SearchResults> {
+  export async function searchMembers(instance: Instance, library: string, sourceFile: string, searchTerm: string, members: IBMiMember[] | string, readOnly?: boolean,): Promise<SearchResults> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
     if (connection && config && content) {
+      let memberFilter = connection.sysNameInAmerican(typeof members === 'string' ? `${members}.MBR` : members.map(member => `${member.name}.MBR`).join(" "));
+
+      let postSearchFilter = (hit: SearchHit) => true;
+      if (Array.isArray(members) && memberFilter.length > connection.maximumArgsLength) {
+        //Failsafe: when searching on a complex filter, the member list may exceed the maximum admited arguments length (which is around 4.180.000 characters, roughly 298500 members),
+        //          in this case, we fall back to a global search and manually filter the results afterwards/
+        memberFilter = "*.MBR";
+        postSearchFilter = (hit) => {
+          const memberName = hit.path.split("/").at(-1);
+          return members.find(member => member.name === memberName) !== undefined;
+        }
+      }
+
       let asp = ``;
       if (config.sourceASP) {
         asp = `/${config.sourceASP}`;
@@ -27,14 +38,16 @@ export namespace Search {
       }
 
       const result = await connection.sendQsh({
-        command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${asp}/QSYS.LIB/${connection.sysNameInAmerican(library)}.LIB/${connection.sysNameInAmerican(sourceFile)}.FILE/${memberFilter ? connection.sysNameInAmerican(memberFilter) : `*`}`,
+        command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`,
+        directory: connection.sysNameInAmerican(`${asp}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
       });
 
       if (!result.stderr) {
         return {
           term: searchTerm,
-          hits: parseGrepOutput(result.stdout || '', readOnly,
-            path => connection.sysNameInLocal(path.replace(QSYS_PATTERN, ''))) //Transform QSYS path to URI 'member:' compatible path
+          hits: (parseGrepOutput(result.stdout || '', readOnly || content.isProtectedPath(library),
+            path => connection.sysNameInLocal(`${library}/${sourceFile}/${path.replace(/\.MBR$/, '')}`)))
+            .filter(postSearchFilter)
         }
       }
       else {
@@ -123,7 +136,7 @@ export namespace Search {
   function parseGrepOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): SearchHit[] {
     const results: SearchHit[] = [];
     for (const line of output.split('\n')) {
-      if (!line.startsWith(`Binary`)) {
+      if (line && !line.startsWith(`Binary`)) {
         const parts = line.split(`:`); //path:line
         const path = pathTransformer?.(parts[0]) || parts[0];
         let result = results.find(r => r.path === path);

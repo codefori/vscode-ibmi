@@ -63,6 +63,7 @@ export type CachedServerSettings = {
   pathChecked?: boolean
   userDefaultCCSID: number | null
   debugConfigLoaded: boolean
+  maximumArgsLength: number
 } | undefined;
 
 export class GlobalStorage extends Storage {
