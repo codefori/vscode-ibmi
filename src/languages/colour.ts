@@ -10,7 +10,7 @@ export function initialiseColourChecker(context: ExtensionContext) {
         const content = document.getText();
         let hasInvalidCharacters = false;
         for (let i = 0; i < content.length; i++) {
-          if (content.charCodeAt(i) < 32 && !NEW_LINE_NUMBERS.includes(content.charCodeAt(i))) {
+          if (replaceCharCode(content.charCodeAt(i))) {
             hasInvalidCharacters = true;
             break;
           }
@@ -23,11 +23,19 @@ export function initialiseColourChecker(context: ExtensionContext) {
             const fixedContent = replaceInvalidCharacters(content);
             const edit = new WorkspaceEdit();
             edit.replace(document.uri, new Range(0, 0, document.lineCount, 0), fixedContent);
+            workspace.applyEdit(edit);
           }
         }
       }
     })
   )
+}
+
+function replaceCharCode(charCode: number) {
+  if ((charCode < 32 && !NEW_LINE_NUMBERS.includes(charCode)) || (charCode >= 128 && charCode <= 157)) {
+    return true;
+  }
+  return false;
 }
 
 async function shouldInitiateCleanup() {
@@ -56,7 +64,7 @@ function replaceInvalidCharacters(content: string) {
 
   // return content.replace(/[\x00-\x1F]/g, ``); // This almost works, but we want to keep line feed / carriage return
   for (let i = 0; i < content.length; i++) {
-    if (content.charCodeAt(i) < 32 && !NEW_LINE_NUMBERS.includes(content.charCodeAt(i))) {
+    if (replaceCharCode(content.charCodeAt(i))) {
       chars[i] = ` `;
     }
   }
