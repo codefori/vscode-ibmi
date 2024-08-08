@@ -42,7 +42,7 @@ export async function startService(connection: IBMi) {
       if (submitUser && submitUser !== "*CURRENT") {
         await checkAuthority(submitUser);
       }
-      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh')) JOB(DBGSVCE) ${submitOptions}`
+      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures.bash} -c /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh')) JOB(DBGSVCE) ${submitOptions}`
       const submitResult = await connection.runCommand({ command, cwd: debugConfig.getRemoteServiceWorkDir(), noLibList: true });
       if (submitResult.code === 0) {
         const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
