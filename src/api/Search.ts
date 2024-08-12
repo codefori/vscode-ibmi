@@ -83,6 +83,7 @@ export namespace Search {
     const connection = instance.getConnection();
     if (connection) {
       const find = connection.remoteFeatures.find;
+      const stat = connection.remoteFeatures.stat;
 
       if (find) {
         const dirsToIgnore = GlobalConfiguration.get<string[]>(`grepIgnoreDirs`) || [];
@@ -92,14 +93,15 @@ export namespace Search {
           ignoreString = dirsToIgnore.map(dir => `-type d -path '*/${dir}' -prune -o`).join(` `);
         }
 
+        const findExec = stat ? `-exec ${stat} --printf="%U\t%s\t%Y\t%n\n" {} +` : `-print`;
         const findRes = await connection.sendCommand({
-          command: `${find} ${Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' -print`
+          command: `${find} ${Tools.escapePath(path)} ${ignoreString} -type f -iname '*${findTerm}*' ${findExec}`
         });
 
         if (findRes.code == 0 && findRes.stdout) {
           return {
             term: findTerm,
-            hits: parseFindOutput(findRes.stdout)
+            hits: parseFindOutput(findRes.stdout, undefined, (stat !== undefined))
           }
         }
       } else {
@@ -111,11 +113,23 @@ export namespace Search {
     }
   }
 
-  function parseFindOutput(output: string, readonly?: boolean, pathTransformer?: (path: string) => string): SearchHit[] {
+  function parseFindOutput(output: string, readonly?: boolean, statOutput?: boolean, pathTransformer?: (path: string) => string): SearchHit[] {
     const results: SearchHit[] = [];
     for (const line of output.split('\n')) {
-      const path = pathTransformer?.(line) || line;
-      results.push(results.find(r => r.path === path) || { path, readonly, lines: [] });
+      if (statOutput) {
+        let owner: string, size: string, modified: string, name: string;
+        [owner, size, modified, name] = line.split(`\t`);
+        results.push({
+          path: name,
+          lines: [],
+          size: Number(size),
+          modified: new Date(Number(modified) * 1000),
+          owner: owner
+        });
+      } else {
+        const path = pathTransformer?.(line) || line;
+        results.push(results.find(r => r.path === path) || { path, readonly, lines: [] });
+      }
     }
     return results;
   }
