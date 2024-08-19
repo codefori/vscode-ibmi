@@ -104,7 +104,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection && contentApi) {
             const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             const memberContent = this.extendedMemberSupport ?
-                await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
+                await this.extendedContent.downloadMemberContentWithDates(uri) :
                 await contentApi.downloadMemberContent(asp, library, file, member);
             if (memberContent !== undefined) {
                 return new Uint8Array(Buffer.from(memberContent, `utf8`));
@@ -130,7 +130,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         if (connection && contentApi) {
             const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
             this.extendedMemberSupport ?
-                await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
+                await this.extendedContent.uploadMemberContentWithDates(uri, content.toString()) :
                 await contentApi.uploadMemberContent(asp, library, file, member, content);
         }
         else {
