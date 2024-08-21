@@ -66,7 +66,6 @@ export default class IBMi {
   defaultUserLibraries: string[] = [];
   outputChannel?: vscode.OutputChannel;
   outputChannelContent?: string;
-
   /**
    * Used to store ASP numbers and their names
    * Their names usually maps up to a directory in
@@ -85,7 +84,10 @@ export default class IBMi {
   content = new IBMiContent(this);
   shell?: string;
 
-  commandsExecuted: number = 0;
+  commandsExecuted = 0;
+
+  //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
+  maximumArgsLength = 0;
 
   dangerousVariants = false;
 
@@ -759,18 +761,18 @@ export default class IBMi {
                     let reason;
                     const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
                     let missingPath;
-                    for (const requiredPath of requiredPaths){
+                    for (const requiredPath of requiredPaths) {
                       if (!currentPaths.includes(requiredPath)) {
                         reason = `Your $PATH shell environment variable does not include ${requiredPath}`;
                         missingPath = requiredPath
                         break;
-                      } 
+                      }
                     }
                     // If reason is still undefined, then we know the user has all the required paths. Then we don't 
                     // need to check for their existence before checking the order of the required paths.
-                    if (!reason && 
+                    if (!reason &&
                       (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
-                   || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
+                        || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
                       reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
                       missingPath = "/QOpenSys/pkgs/bin"
                     }
@@ -911,6 +913,14 @@ export default class IBMi {
             }
           }
 
+          if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
+            //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
+            this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
+          }
+          else{
+            this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
+          }
+
           progress.report({ message: `Checking Code for IBM i components.` });
           await this.components.startup(this);
 
@@ -937,7 +947,8 @@ export default class IBMi {
             libraryListValidated: true,
             pathChecked: true,
             userDefaultCCSID: this.userDefaultCCSID,
-            debugConfigLoaded
+            debugConfigLoaded,
+            maximumArgsLength: this.maximumArgsLength
           });
 
           //Keep track of variant characters that can be uppercased
