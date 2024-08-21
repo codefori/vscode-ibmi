@@ -482,6 +482,7 @@ export default class IBMiContent {
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const library = this.ibmi.upperCaseName(filters.library);
+    const americanLibrary = this.ibmi.sysNameInAmerican(library);
     if (!await this.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
       throw new Error(`Library ${library} does not exist.`);
     }
@@ -489,7 +490,7 @@ export default class IBMiContent {
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
-    const objectNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
+    const objectNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
@@ -511,7 +512,7 @@ export default class IBMiContent {
         `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
         `  t.IASP_NUMBER       as IASP_NUMBER`,
         `from QSYS2.SYSTABLES as t`,
-        `where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
+        `where t.table_schema = '${americanLibrary}' and t.file_type = 'S'${objectNameLike()}`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
@@ -536,14 +537,14 @@ export default class IBMiContent {
       createOBJLIST = [
         `with SRCPF as (`,
         `  select `,
-        `    t.SYSTEM_TABLE_NAME as NAME,`,
+        `    Replace(Replace(Replace(t.SYSTEM_TABLE_NAME, '${this.ibmi.variantChars.american[2]}','${this.ibmi.variantChars.local[2]}'), '${this.ibmi.variantChars.american[1]}', '${this.ibmi.variantChars.local[1]}'), '${this.ibmi.variantChars.american[0]}', '${this.ibmi.variantChars.local[0]}') as NAME,`,
         `    '*FILE'             as TYPE,`,
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
         `    1                   as IS_SOURCE,`,
         `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
-        `  where t.table_schema = '${library}' and t.file_type = 'S'${objectNameLike()}`,
+        `  where t.table_schema = '${americanLibrary}' and t.file_type = 'S'${objectNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -580,7 +581,7 @@ export default class IBMiContent {
 
     return objects.map(object => ({
       library,
-      name: this.ibmi.sysNameInLocal(String(object.NAME)),
+      name: sourceFilesOnly ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT || ""),
@@ -643,10 +644,10 @@ export default class IBMiContent {
               b.table_name = a.table_name
       )
       Select * From MEMBERS
-      Where LIBRARY = '${library}'
-        ${sourceFile !== `*ALL` ? `And SOURCE_FILE = '${sourceFile}'` : ``}
-        ${singleMember ? `And NAME Like '${singleMember}'` : ''}
-        ${singleMemberExtension ? `And TYPE Like '${singleMemberExtension}'` : ''}
+      Where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
+        ${sourceFile !== `*ALL` ? `And SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+        ${singleMember ? `And NAME Like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
+        ${singleMemberExtension ? `And TYPE Like '${this.ibmi.sysNameInAmerican(singleMemberExtension)}'` : ''}
       Order By ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
@@ -655,9 +656,9 @@ export default class IBMiContent {
       return results.map(result => ({
         asp,
         library,
-        file: String(result.SOURCE_FILE),
-        name: String(result.NAME),
-        extension: String(result.TYPE),
+        file: this.ibmi.sysNameInLocal(String(result.SOURCE_FILE)),
+        name: this.ibmi.sysNameInLocal(String(result.NAME)),
+        extension: this.ibmi.sysNameInLocal(String(result.TYPE)),
         recordLength: Number(result.RECORD_LENGTH) - 12,
         text: `${result.TEXT || ``}${sourceFile === `*ALL` ? ` (${result.SOURCE_FILE})` : ``}`.trim(),
         lines: Number(result.LINES),
