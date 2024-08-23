@@ -360,6 +360,7 @@
   "objectBrowser.uploadAndReplaceMemberAsFile.infoMessage": "Fil blev sendt til member.",
   "offline": "Offline",
   "online": "Online",
+  "open":"Open",
   "open.service.configuration": "Åbn konfiguration",
   "overview": "Overblik",
   "overwrite": "Erstat",
