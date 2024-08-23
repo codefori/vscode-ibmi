@@ -225,6 +225,11 @@ export namespace CompileTools {
               evfeventInfo.object = name.toUpperCase();
               evfeventInfo.extension = ext;
 
+              if (chosenAction.command.includes(`&SRCFILE`)) {
+                variables[`&SRCLIB`] = evfeventInfo.library;
+                variables[`&SRCPF`] = `QTMPSRC`;
+                variables[`&SRCFILE`] =  `${evfeventInfo.library}/QTMPSRC`;
+              }
 
               switch (chosenAction.type) {
                 case `file`:
@@ -329,6 +334,35 @@ export namespace CompileTools {
 
                     try {
                       writeEmitter.fire(`Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + NEWLINE);
+
+                      // If &SRCFILE is set, we need to copy the file to a temporary source file from the IFS
+                      if (variables[`&FULLPATH`] && variables[`&SRCFILE`] && evfeventInfo.object) {
+                        const [lib, srcpf] = variables[`&SRCFILE`].split(`/`);
+
+                        const createSourceFile = content.toCl(`CRTSRCPF`, {
+                          rcdlen: 112, //NICE: this configurable in a VS Code setting?
+                          file: `${lib}/${srcpf}`,
+                        });
+
+                        const copyFromStreamfile = content.toCl(`CPYFRMSTMF`, {
+                          fromstmf: variables[`&FULLPATH`],
+                          tombr: `'${Tools.qualifyPath(lib, srcpf, evfeventInfo.object)}'`,
+                          mbropt: `*REPLACE`,
+                          dbfccsid: `*FILE`,
+                          stmfccsid: 1208,
+                        });
+ 
+                        // We don't care if this fails. Usually it's because the source file already exists.
+                        await runCommand(instance, {command: createSourceFile, environment: `ile`, noLibList: true});
+
+                        // Attempt to copy to member
+                        const copyResult = await runCommand(instance, {command: copyFromStreamfile, environment: `ile`, noLibList: true});
+
+                        if (copyResult.code !== 0) {
+                          writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
+                          closeEmitter.fire(copyResult.code || 1);
+                        }
+                      }
 
                       const commandResult = await runCommand(instance, {
                         title: chosenAction.name,

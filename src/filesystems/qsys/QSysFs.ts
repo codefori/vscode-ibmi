@@ -56,10 +56,17 @@ export class QSysFS implements vscode.FileSystemProvider {
             onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()),
         );
 
-        instance.onEvent("connected", () => this.updateMemberSupport());
-        instance.onEvent("disconnected", () => {
-            this.updateMemberSupport();
-        });
+        instance.subscribe(
+            context,
+            'connected',
+            `Update member support`,
+            () => this.updateMemberSupport());
+
+        instance.subscribe(
+            context,
+            'disconnected',
+            `Update member support`,
+            () => this.updateMemberSupport());
     }
 
     private updateMemberSupport() {

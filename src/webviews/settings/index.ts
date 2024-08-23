@@ -189,19 +189,17 @@ export class SettingsUI {
             .addCheckbox(`debugEnableDebugTracing`, `Debug trace`, `Tells the debug service to send more data to the client. Only useful for debugging issues in the service. Not recommended for general debugging.`, config.debugEnableDebugTracing);
 
           if (!isManaged()) {
-            debuggerTab
-              .addHorizontalRule()
-              .addCheckbox(`debugIsSecure`, `Debug securely`, `Tells the debug service to authenticate by server and client certificates. Ensure that the client certificate is imported when enabled.`, config.debugIsSecure);
+            debuggerTab.addHorizontalRule();
             if (await certificates.remoteCertificatesExists()) {
               let localCertificateIssue;
               try {
                 await certificates.checkClientCertificate(connection);
               }
               catch (error) {
-                localCertificateIssue = `${String(error)}. Debugging securely will not function correctly.`;
+                localCertificateIssue = `${String(error)}. Debugging will not function correctly.`;
               }
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
-                .addParagraph(`To debug securely, Visual Studio Code needs access to a certificate to connect to the Debug Service. Each server can have unique certificates. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`);
+                .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`);
               if (!localCertificateIssue) {
                 debuggerTab.addButtons({ id: `import`, label: `Download client certificate` })
               }
@@ -395,8 +393,8 @@ export class SettingsUI {
 
                 stored = Object.assign(stored, data);
                 await ConnectionManager.updateByIndex(index, stored);
+                GlobalStorage.get().deleteServerSettingsCache(server.name);
                 vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
-
               }
             });
           }

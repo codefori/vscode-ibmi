@@ -13,7 +13,7 @@ import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaH
 
 type HostInfo = {
   ip: string
-  hostName: string
+  hostNames: string[]
 }
 
 export type ImportedCertificate = {
@@ -31,35 +31,40 @@ export const CLIENT_CERTIFICATE = `debug_service.crt`;
 export const LEGACY_CERT_DIRECTORY = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
 
 async function getHostInfo(connection: IBMi): Promise<HostInfo> {
-  const hostName = (await connection.sendCommand({ command: `hostname` })).stdout;
-  if (!hostName) {
+  const hostNames = [
+    (await connection.sendCommand({ command: `hostname` })).stdout,
+    (await connection.sendCommand({ command: `hostname -s` })).stdout
+  ]
+    .filter(Tools.distinct)
+    .filter(Boolean);
+
+  if (!hostNames.length) {
     throw new Error(`Hostname is undefined on ${connection.currentHost}; please fix the TCP/IP configuration.`);
   }
 
   let ip;
   try {
-    ip = (await dnsLookup(hostName)).address
+    ip = (await dnsLookup(hostNames[0])).address
   }
   catch (error) {
     if (IP_REGEX.test(connection.currentHost)) {
       ip = connection.currentHost;
     }
     else {
-      throw new Error(`IP address for ${hostName} could not be resolved: ${error}`);
+      throw new Error(`IP address for ${hostNames[0]} could not be resolved: ${error}`);
     }
   }
 
-  return { hostName, ip };
+  return { hostNames, ip };
 }
 
 async function getExtFileContent(hostInfo: HostInfo) {
   let extFileContent;
-  if (hostInfo.ip && hostInfo.hostName) {
-    extFileContent = `subjectAltName=DNS:${hostInfo.hostName},IP:${hostInfo.ip}`;
-  } else if (hostInfo.hostName) {
-    extFileContent = `subjectAltName=DNS:${hostInfo.hostName}`;
+  const dns = hostInfo.hostNames.map(hostName => `DNS:${hostName}`).join(',');
+  if (hostInfo.ip) {
+    extFileContent = `subjectAltName=${dns},IP:${hostInfo.ip}`;
   } else {
-    extFileContent = `subjectAltName=IP:${hostInfo.ip}`;
+    extFileContent = `subjectAltName=${dns}`;
   }
 
   return extFileContent;
@@ -100,6 +105,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
     }
 
     let password;
+    const openssl = "/QOpenSys/usr/bin/openssl";
     if (imported) {
       password = imported.password;
       if (imported.localFile) {
@@ -115,8 +121,9 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       }
 
       setProgress("generating client certificate");
+
       const clientCertificate = await connection.sendCommand({
-        command: `openssl pkcs12 -in ${debugConfig.getRemoteServiceCertificatePath()} -passin pass:${password} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
+        command: `${openssl} pkcs12 -in ${debugConfig.getRemoteServiceCertificatePath()} -passin pass:${password} -info -nokeys -clcerts 2>/dev/null | openssl x509 -outform PEM`,
       });
       try {
         if (!clientCertificate.code) {
@@ -138,10 +145,10 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       const extFileContent = await getExtFileContent(hostInfo);
       //This will generate everything at once and keep only the .pfx (keystore) and .crt (client certificate) files.
       const commands = [
-        `openssl genrsa -out debug_service.key 2048`,
-        `openssl req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostName}'`,
-        `openssl x509 -req -in debug_service.csr -signkey debug_service.key -out ${CLIENT_CERTIFICATE} -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
-        `openssl pkcs12 -export -out ${SERVICE_CERTIFICATE} -inkey debug_service.key -in ${CLIENT_CERTIFICATE} -password pass:${password}`,
+        `${openssl} genrsa -out debug_service.key 2048`,
+        `${openssl} req -new -key debug_service.key -out debug_service.csr -subj '/CN=${hostInfo.hostNames[0]}'`,
+        `${openssl} x509 -req -in debug_service.csr -signkey debug_service.key -out ${CLIENT_CERTIFICATE} -days 1095 -sha256 -req -extfile <(printf "${extFileContent}")`,
+        `${openssl} pkcs12 -export -out ${SERVICE_CERTIFICATE} -inkey debug_service.key -in ${CLIENT_CERTIFICATE} -password pass:${password}`,
         `rm debug_service.key debug_service.csr`
       ];
 
@@ -283,7 +290,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
       })
     }
   }
-  else {
+  else if ((await connection.checkUserSpecialAuthorities(["*ALLOBJ"])).valid) {
     try {
       if (legacyCertExists && !remoteCertExists) {
         //import legacy

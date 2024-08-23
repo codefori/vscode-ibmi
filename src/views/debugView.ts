@@ -9,7 +9,6 @@ import { BrowserItem } from "../typings";
 
 const title = "IBM i debugger";
 type Certificates = {
-  secureDebug: boolean
   remoteCertificate: boolean
   remoteCertificatePath?: string
   localCertificateIssue?: string
@@ -42,8 +41,8 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
     debugBrowser.refresh();
   }
 
-  instance.onEvent("connected", updateDebugBrowser);
-  instance.onEvent("disconnected", updateDebugBrowser);
+  instance.subscribe(context, "connected", "Update Debug Browser", updateDebugBrowser);
+  instance.subscribe(context, "disconnected", "Update Debug Browser", updateDebugBrowser);
 
   context.subscriptions.push(
     debugTreeViewer,
@@ -76,37 +75,38 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
     if (connection) {
       const debugConfig = await new DebugConfiguration().load();
       const certificates: Certificates = {
-        secureDebug: connection.config?.debugIsSecure || false,
         remoteCertificate: await remoteCertificatesExists(debugConfig),
         remoteCertificatePath: debugConfig.getRemoteServiceCertificatePath()
       };
 
       if (certificates.remoteCertificate) {
-        if (certificates.secureDebug) {
-          try {
-            await checkClientCertificate(connection, debugConfig);
-          }
-          catch (error) {
-            certificates.localCertificateIssue = String(error);
-          }
+        try {
+          await checkClientCertificate(connection, debugConfig);
+        }
+        catch (error) {
+          certificates.localCertificateIssue = String(error);
         }
       }
 
-      return [
-        new DebugJobItem("server",
-          t("debug.server"),
-          startServer,
-          stopServer,
-          await getDebugServerJob()
+      return Promise.all([
+        getDebugServerJob().then(job =>
+          new DebugJobItem("server",
+            t("debug.server"),
+            startServer,
+            stopServer,
+            job
+          )
         ),
-        new DebugJobItem("service",
-          t("debug.service"),
-          () => startService(connection),
-          () => stopService(connection),
-          await getDebugServiceJob(),
-          certificates
+        getDebugServiceJob().then(job =>
+          new DebugJobItem("service",
+            t("debug.service"),
+            () => startService(connection),
+            () => stopService(connection),
+            job,
+            certificates
+          )
         )
-      ];
+      ]);
     }
     else {
       return [];
@@ -156,7 +156,7 @@ class DebugJobItem extends DebugItem {
           detail: t('remote.certificate.not.found.detail', "debug_service.pfx", certificates.remoteCertificatePath)
         }
       }
-      else if (certificates.secureDebug && certificates.localCertificateIssue) {
+      else if (certificates.localCertificateIssue) {
         problem = {
           context: "localissue",
           label: certificates.localCertificateIssue
