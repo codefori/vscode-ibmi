@@ -823,23 +823,23 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
 
       const saveIntoDirectory = members.length > 1;
-      let downloadLocation: string | undefined;
+      let downloadLocationURI: vscode.Uri | undefined;
       if (saveIntoDirectory) {
-        downloadLocation = (await vscode.window.showOpenDialog({
+        downloadLocationURI = (await vscode.window.showOpenDialog({
           canSelectMany: false,
           canSelectFiles: false,
           canSelectFolders: true,
           defaultUri: vscode.Uri.file(connection.getLastDownloadLocation())
-        }))?.[0]?.path;
+        }))?.[0];
       }
       else {
-        downloadLocation = (await vscode.window.showSaveDialog({
+        downloadLocationURI = (await vscode.window.showSaveDialog({
           defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), members[0].name)),
           filters: { 'Source member': [members[0].extension || '*'] }
-        }))?.path;
+        }));
       }
 
-      if (downloadLocation) {
+      if (downloadLocationURI) {
         //Remove double entries and map to { path, copy } object
         const toBeDownloaded = members
           .filter((member, index, list) => list.findIndex(m => m.library === member.library && m.file === member.file && m.name === member.name) === index)
@@ -847,10 +847,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           .map(member => ({ path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
 
         if (!saveIntoDirectory) {
-          toBeDownloaded[0].name = basename(downloadLocation);
-          downloadLocation = dirname(downloadLocation);
+          toBeDownloaded[0].name = basename(downloadLocationURI.path);
         }
 
+        const downloadLocation = saveIntoDirectory ? downloadLocationURI.path : dirname(downloadLocationURI.path);
         await connection.setLastDownloadLocation(downloadLocation);
 
         //Ask what do to with existing files in the target directory
@@ -896,7 +896,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
               task.report({ message: t('objectBrowser.downloadMemberContent.download.streamfiles'), increment: 33 })
               await connection.downloadDirectory(downloadLocation!, directory);
-              vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
+              vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`), t("open"))
+                .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, toBeDownloaded[0].name) : downloadLocationURI) : undefined);
             });
           } catch (e) {
             vscode.window.showErrorMessage(t(`objectBrowser.downloadMemberContent.errorMessage`, e));
