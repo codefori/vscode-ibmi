@@ -283,8 +283,9 @@ export async function initialize(context: ExtensionContext) {
           const ptfInstalled = server.debugPTFInstalled();
 
           if (ptfInstalled) {
-            const remoteCertsExists = await certificates.remoteCertificatesExists();
-            if (remoteCertsExists) {
+            const debugConfig = await new DebugConfiguration().load()
+            const remoteCertsExists = await certificates.remoteCertificatesExists(debugConfig);
+            if (remoteCertsExists && await certificates.debugKeyFileExists(connection, debugConfig) && debugConfig.getCode4iDebug()) {
               await certificates.downloadClientCert(connection);
               vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable debugging.`);
             }
