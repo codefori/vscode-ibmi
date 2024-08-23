@@ -4,6 +4,7 @@ import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 
 export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters, copy = false) {
+  const connection = instance.getConnection();
   const config = instance.getConfig();
   if (config) {
     const objectFilters = config.objectFilters;
@@ -76,7 +77,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
           case `object`:
             data[key] = (String(data[key].trim()) || `*`)
               .split(',')
-              .map(o => useRegexFilters ? o : o.toLocaleUpperCase())
+              .map(o => useRegexFilters ? o : connection?.upperCaseName(o))
               .filter(Tools.distinct)
               .join(",");
             break;

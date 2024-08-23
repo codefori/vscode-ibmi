@@ -2,13 +2,12 @@ import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
-import { LocalLanguageActions } from './LocalLanguageActions';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
-import { ConnectionConfiguration } from '../Configuration';
 import { Tools } from '../Tools';
+import { LocalLanguageActions } from './LocalLanguageActions';
 import { Deployment } from './deployment';
 
-type ServerFileChanges = {uploads: Uri[], relativeRemoteDeletes: string[]};
+type ServerFileChanges = { uploads: Uri[], relativeRemoteDeletes: string[] };
 
 export namespace DeployTools {
   export async function launchActionsSetup(workspaceFolder?: WorkspaceFolder) {
@@ -40,7 +39,7 @@ export namespace DeployTools {
     }
   }
 
-  export function getRemoteDeployDirectory(workspaceFolder: WorkspaceFolder): string|undefined {
+  export function getRemoteDeployDirectory(workspaceFolder: WorkspaceFolder): string | undefined {
     const storage = instance.getStorage();
     const existingPaths = storage?.getDeployment();
     return existingPaths ? existingPaths[workspaceFolder.uri.fsPath] : undefined;
@@ -53,7 +52,7 @@ export namespace DeployTools {
    * @param method if no method is provided, a prompt will be shown to pick the deployment method.
    * @returns the index of the deployed workspace or `undefined` if the deployment failed
    */
-  export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod): Promise<{remoteDirectory: string, workspaceId: number} | undefined> {
+  export async function launchDeploy(workspaceIndex?: number, method?: DeploymentMethod): Promise<{ remoteDirectory: string, workspaceId: number } | undefined> {
     const folder = await Deployment.getWorkspaceFolder(workspaceIndex);
     if (folder) {
       const remotePath = getRemoteDeployDirectory(folder);
@@ -81,8 +80,8 @@ export namespace DeployTools {
 
           if (methods.find((element) => element.method === defaultDeploymentMethod)) { // default deploy method is usable
             method = defaultDeploymentMethod
-          
-          } else { 
+
+          } else {
             if (defaultDeploymentMethod as string !== '') {
               vscode.window.showWarningMessage('Default deployment method is set but not usable in your environment.')
             }
@@ -152,7 +151,7 @@ export namespace DeployTools {
               break;
 
             case "compare":
-              const {uploads, relativeRemoteDeletes} = await getDeployCompareFiles(parameters, progress)
+              const { uploads, relativeRemoteDeletes } = await getDeployCompareFiles(parameters, progress)
               files.push(...uploads);
               deletes.push(...relativeRemoteDeletes);
               break;
@@ -250,11 +249,11 @@ export namespace DeployTools {
 
   export async function getDeployCompareFiles(parameters: DeploymentParameters, progress?: vscode.Progress<{ message?: string }>): Promise<ServerFileChanges> {
     if (Deployment.getConnection().remoteFeatures.md5sum) {
-      const isEmpty = (await Deployment.getConnection().sendCommand({ directory: parameters.remotePath, command: `ls | wc -l` })).stdout === "0";
+      const isEmpty = await Deployment.getContent().countFiles(parameters.remotePath) === 0;
       if (isEmpty) {
         Deployment.deploymentLog.appendLine("Remote directory is empty; switching to 'deploy all'");
         const allFiles = await getDeployAllFiles(parameters);
-        return {uploads: allFiles, relativeRemoteDeletes: []};
+        return { uploads: allFiles, relativeRemoteDeletes: [] };
       }
       else {
         Deployment.deploymentLog.appendLine("Starting MD5 synchronization transfer");
@@ -337,13 +336,18 @@ export namespace DeployTools {
 
   export async function getDefaultIgnoreRules(workspaceFolder: vscode.WorkspaceFolder): Promise<Ignore> {
     const ignoreRules = createIgnore({ ignorecase: true }).add(`.git`);
-    // get the .gitignore file from workspace
-    const gitignores = await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.gitignore`), ``, 1);
-    if (gitignores.length > 0) {
+    // get the .deployignore file or .gitignore file from workspace with priority to .deployignore
+    const ignoreFile = [
+      ...await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.deployignore`), ``, 1),
+      ...await vscode.workspace.findFiles(new vscode.RelativePattern(workspaceFolder, `.gitignore`), ``, 1)
+    ].at(0);
+
+    if (ignoreFile) {
       // get the content from the file
-      const gitignoreContent = (await vscode.workspace.fs.readFile(gitignores[0])).toString().replace(new RegExp(`\\\r`, `g`), ``);
+      const gitignoreContent = (await vscode.workspace.fs.readFile(ignoreFile)).toString().replace(new RegExp(`\\\r`, `g`), ``);
       ignoreRules.add(gitignoreContent.split(`\n`));
       ignoreRules.add('**/.gitignore');
+      ignoreRules.add('**/.deployignore');
     }
 
     return ignoreRules;

@@ -1,5 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, commands, window, workspace } from "vscode";
+import { ExtensionContext, commands, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -8,7 +8,7 @@ import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 
 import { CompileTools } from "./api/CompileTools";
-import { ConnectionConfiguration, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
@@ -17,6 +17,7 @@ import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
 import { IFSFS } from "./filesystems/ifsFs";
+import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { updateLocale } from "./locale";
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
@@ -24,9 +25,11 @@ import { CodeForIBMi, ConnectionData } from "./typings";
 import { initializeConnectionBrowser } from "./views/ConnectionBrowser";
 import { LibraryListProvider } from "./views/LibraryListView";
 import { ProfilesView } from "./views/ProfilesView";
+import { initializeDebugBrowser } from "./views/debugView";
 import { HelpView } from "./views/helpView";
 import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
+import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
@@ -35,22 +38,26 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   await loadAllofExtension(context);
-  const checkLastConnections = () => {
-    const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
+  const updateLastConnectionAndServerCache = () => {
+    const connections = ConnectionManager.getAll();
     const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
     GlobalStorage.get().setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
+    GlobalStorage.get().deleteStaleServerSettingsCache(connections);
+    commands.executeCommand(`code-for-ibmi.refreshConnections`);
   };
-  
+
   SettingsUI.init(context);
   initializeConnectionBrowser(context);
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
-  
-  context.subscriptions.push(    
+  initializeDebugBrowser(context);
+  initializeSearchView(context);
+
+  context.subscriptions.push(
     window.registerTreeDataProvider(
       `helpView`,
-      new HelpView()
+      new HelpView(context)
     ),
     window.registerTreeDataProvider(
       `libraryListView`,
@@ -69,14 +76,14 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         }
 
         if (savePassword && connectionData.password) {
-          await context.secrets.store(`${connectionData.name}_password`, `${connectionData.password}`);
+          await ConnectionManager.setStoredPassword(context, connectionData.name, connectionData.password);
         }
 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
     onCodeForIBMiConfigurationChange("locale", updateLocale),
-    onCodeForIBMiConfigurationChange("connections", checkLastConnections),
+    onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
       if (connection) {
@@ -88,14 +95,15 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     }),
     workspace.registerFileSystemProvider(`streamfile`, new IFSFS(), {
       isCaseSensitive: false
-    })
+    }),
+    languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&")
   );
 
   CompileTools.register(context);
   GlobalStorage.initialize(context);
   Debug.initialize(context);
   Deployment.initialize(context);
-  checkLastConnections();
+  updateLastConnectionAndServerCache();
 
   Sandbox.handleStartup();
   Sandbox.registerUriHandler(context);
@@ -106,28 +114,28 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     initialise(context);
   }
 
-  instance.onEvent(`connected`, () => {
-    Promise.all([
-      commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
-      commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-      commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
-      commands.executeCommand("code-for-ibmi.refreshProfileView")
-    ]);
-  });
-
-  await fixLoginSettings();
+  instance.subscribe(
+    context,
+    'connected',
+    `Refresh views`,
+    () => {
+      commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+      commands.executeCommand("code-for-ibmi.refreshLibraryListView");
+      commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+      commands.executeCommand("code-for-ibmi.refreshProfileView");
+    });
 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
 
-async function fixLoginSettings(){
+async function fixLoginSettings() {
   const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
   let update = false;
-  for(const connection of connections){
+  for (const connection of connections) {
     //privateKey was used to hold privateKeyPath 
-    if('privateKey' in connection){
+    if ('privateKey' in connection) {
       const privateKey = connection["privateKey"] as string;
-      if(privateKey){
+      if (privateKey) {
         connection.privateKeyPath = privateKey;
       }
       delete connection["privateKey"];
@@ -135,19 +143,19 @@ async function fixLoginSettings(){
     }
 
     //An empty privateKeyPath will crash the connection
-    if(!connection.privateKeyPath?.trim()) {
+    if (!connection.privateKeyPath?.trim()) {
       connection.privateKeyPath = undefined;
       update = true;
     }
-    
+
     //buttons were added by the login settings page
-    if(`buttons` in connection) {
+    if (`buttons` in connection) {
       delete connection["buttons"];
       update = true;
     }
   }
 
-  if(update){
+  if (update) {
     await GlobalConfiguration.set(`connections`, connections);
   }
 }

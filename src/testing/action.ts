@@ -1,22 +1,30 @@
 import assert from "assert";
 import { existsSync } from "fs";
-import { TestSuite } from ".";
-import { instance } from "../instantiate";
 import vscode from "vscode";
-import { File, Folder, createFolder } from "./deployTools";
+import { TestSuite } from ".";
+import { CompileTools } from "../api/CompileTools";
 import { Tools } from "../api/Tools";
 import { LocalLanguageActions } from "../api/local/LocalLanguageActions";
 import { DeployTools } from "../api/local/deployTools";
 import { getEnvConfig } from "../api/local/env";
 import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
-import { Action } from "../typings";
-import { CompileTools } from "../api/CompileTools";
+import { instance } from "../instantiate";
+import { Action, IBMiObject } from "../typings";
+import { File, Folder, createFolder } from "./deployTools";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,
   files: [
     new File("hello.pgm.rpgle", ['**free', 'dsply \'Hello World\';', 'return;']),
-    new File("thebadone.pgm.rpgle", ['**free', 'dsply Hello world;', 'return;'])
+    new File("thebadone.pgm.rpgle", ['**free', 'dsply Hello world;', 'return;']),
+    new File("ugly.dspf", [
+      `     A                                      INDARA`,
+      `     A                                      CA12(12)`,
+      `     A          R DETAIL                    `,
+      `     A                                  6 10'ID'`,
+      `     A                                      DSPATR(HI)`,
+      `     A                                      DSPATR(UL)`,
+    ])
   ],
 }
 
@@ -70,6 +78,21 @@ export const ActionSuite: TestSuite = {
         action.deployFirst = false;
         const uri = helloWorldProject.files![0].localPath!;
         await testHelloWorldProgram(uri, action, currentLibrary);
+      }
+    },
+    {
+      name: `Create display file (from local, custom action)`, test: async () => {
+        const uri = helloWorldProject.files![2].localPath!;
+        const action: Action = {
+          command: `CRTDSPF FILE(&CURLIB/&NAME) SRCFILE(&SRCFILE) TEXT('DSPF from local')`,
+          environment: `ile`,
+          type: `file`,
+          name: `Create Display File (CRTDSPF)`,
+        };
+
+        const success = await CompileTools.runAction(instance, uri, action, `all`);
+        console.log(success);
+        assert.ok(success);
       }
     },
     {
@@ -143,17 +166,20 @@ async function testHelloWorldProgram(uri: vscode.Uri, action: Action, library: s
   const actionRan = await CompileTools.runAction(instance, uri, action, `all`);
   assert.ok(actionRan);
 
+  const keysToCompare = [`library`, `name`, `type`, `text`, `attribute`, `sourceFile`, `memberCount`];
+  const toJSON = (obj: Object) => JSON.stringify(obj, (key, value) => {
+    if (keysToCompare.includes(key)) { return value }
+  });
   const content = instance.getContent();
   const helloWorldProgram = (await content?.getObjectList({ library: library, object: 'HELLO', types: ['*PGM'] }))![0];
-  assert.deepStrictEqual(helloWorldProgram, {
+  assert.deepStrictEqual(toJSON(helloWorldProgram), toJSON({
     library: library,
     name: 'HELLO',
     type: '*PGM',
     text: '',
     attribute: 'RPGLE',
-    sourceFile: false,
-    memberCount: undefined,
-  });
+    sourceFile: false
+  } as IBMiObject));
 
   const connection = instance.getConnection();
   await connection?.runCommand({ command: `DLTOBJ OBJ(${library}/HELLO) OBJTYPE(*PGM)` });

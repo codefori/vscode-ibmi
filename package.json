@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.12.1",
+	"version": "2.12.3-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -41,16 +41,6 @@
 		"taskDefinitions": [
 			{
 				"type": "ibmi"
-			}
-		],
-		"snippets": [
-			{
-				"path": "./schemas/cl.code-snippets",
-				"language": "cl"
-			},
-			{
-				"path": "./schemas/local-variables.code-snippets",
-				"language": "json"
 			}
 		],
 		"jsonValidation": [
@@ -213,11 +203,6 @@
 								"default": true,
 								"description": "Automatically delete temporary objects from the temporary library on startup."
 							},
-							"enableSQL": {
-								"type": "boolean",
-								"default": true,
-								"description": "Must be enabled to make the use of SQL and is enabled by default. If you find SQL isn't working for some reason, disable this. If this config is changed, you must reconnect to the system."
-							},
 							"currentLibrary": {
 								"type": "string",
 								"default": "QTEMP",
@@ -379,10 +364,10 @@
 								"default": "8005",
 								"description": "Port to connect to IBM i Debug Service."
 							},
-							"debugIsSecure": {
-								"type": "boolean",
-								"default": false,
-								"description": "Used to determine if the client should connect securely or not."
+							"debugSepPort": {
+								"type": "string",
+								"default": "8008",
+								"description": "Port to connect to IBM i Debug Service for SEP."
 							},
 							"debugUpdateProductionFiles": {
 								"type": "boolean",
@@ -524,12 +509,18 @@
 						"inherit",
 						"en",
 						"da",
+						"de",
+						"no",
+						"pl",
 						"fr"
 					],
 					"enumDescriptions": [
 						"Inherit from VS Code settings",
 						"English",
 						"Danish",
+						"German",
+						"Norwegian",
+						"Polish",
 						"French"
 					],
 					"description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."
@@ -538,6 +529,16 @@
 					"type": "boolean",
 					"default": true,
 					"description": "If enabled, will show the 'Date search' button in the status bar when source dates with diff mode is enabled."
+				},
+				"code-for-ibmi.terminals.5250.openInEditorArea": {
+					"type": "boolean",
+					"default": true,
+					"description": "If enabled, 5250 terminals will open in the editor area as tabs instead of panels."
+				},
+				"code-for-ibmi.terminals.pase.openInEditorArea": {
+					"type": "boolean",
+					"default": false,
+					"description": "If enabled, PASE terminals will open in the editor area as tabs instead of panels."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
@@ -937,39 +938,37 @@
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.remote",
-				"title": "Setup Remote Certificates",
+				"title": "Setup Service Certificate",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
+				"icon": "$(file-binary)"
+			},
+			{
+				"command": "code-for-ibmi.debug.redo.setup",
+				"title": "Regenerate Service Certificate",
+				"category": "IBM i Debug",
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
+				"icon": "$(file-binary)"
 			},
 			{
 				"command": "code-for-ibmi.debug.setup.local",
-				"title": "Import Local Certificate",
+				"title": "Import Client Certificate",
 				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
+				"enablement": "code-for-ibmi:connected && !code-for-ibmi:debugManaged && !code-for-ibmi:debugWorking",
+				"icon": "$(desktop-download)"
 			},
 			{
-				"command": "code-for-ibmi.debug.start",
-				"title": "Start Debug Service",
-				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
-			},
-			{
-				"command": "code-for-ibmi.debug.stop",
-				"title": "Stop Debug Service",
-				"category": "IBM i Debug",
-				"enablement": "code-for-ibmi:connected && code-for-ibmi:debugManaged != true"
-			},
-			{
-				"command": "code-for-ibmi.debug.activeEditor",
-				"title": "Start Debugging Active Source",
+				"command": "code-for-ibmi.debug.batch",
+				"title": "Debug as Batch",
 				"category": "IBM i",
 				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
-				"command": "code-for-ibmi.debug.program",
-				"title": "Debug Program",
+				"command": "code-for-ibmi.debug.sep",
+				"title": "Set Service Entry Point",
 				"category": "IBM i",
+				"icon": "$(debug-alt)",
 				"enablement": "code-for-ibmi:connected"
 			},
 			{
@@ -983,36 +982,42 @@
 				"command": "code-for-ibmi.connect",
 				"title": "New Connection",
 				"category": "IBM i",
-				"icon": "$(add)"
+				"icon": "$(add)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectTo",
 				"title": "Connect to IBM i",
 				"category": "IBM i",
-				"icon": "$(debug-start)"
+				"icon": "$(debug-start)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectToPrevious",
 				"title": "Connect to Previous IBM i",
 				"category": "IBM i",
-				"icon": "$(remote)"
+				"icon": "$(remote)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.connectToAndReload",
 				"title": "Connect and Reload Server Settings",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.refreshConnections",
 				"title": "Refresh",
 				"category": "IBM i",
-				"icon": "$(refresh)"
+				"icon": "$(refresh)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.sortConnections",
 				"title": "Sort",
 				"category": "IBM i",
-				"icon": "$(list-ordered)"
+				"icon": "$(list-ordered)",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.showAdditionalSettings",
@@ -1027,12 +1032,20 @@
 			{
 				"command": "code-for-ibmi.renameConnection",
 				"title": "Rename...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
 				"title": "Delete...",
-				"category": "IBM i"
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
+			},
+			{
+				"command": "code-for-ibmi.copyConnection",
+				"title": "Copy...",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:editingConnection !== true"
 			},
 			{
 				"command": "code-for-ibmi.disconnect",
@@ -1094,7 +1107,29 @@
 			{
 				"command": "code-for-ibmi.compareWithSelected",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Compare with Selected",
+				"title": "Compare with selected",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareCurrentFileWithMember",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with member...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Compare with IFS file...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareCurrentFileWithLocal",
+				"title": "Compare with local file...",
+				"category": "IBM i"
+			},
+			{
+				"command": "code-for-ibmi.compareWithActiveFile",
+				"title": "Compare with active file",
 				"category": "IBM i"
 			},
 			{
@@ -1213,13 +1248,6 @@
 				"title": "Set Active Profile",
 				"category": "IBM i",
 				"icon": "$(arrow-circle-right)"
-			},
-			{
-				"command": "code-for-ibmi.refreshMemberBrowser",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Refresh",
-				"category": "IBM i",
-				"icon": "$(refresh)"
 			},
 			{
 				"command": "code-for-ibmi.searchSourceFile",
@@ -1378,7 +1406,7 @@
 			{
 				"command": "code-for-ibmi.removeIFSShortcut",
 				"enablement": "code-for-ibmi:connected",
-				"title": "Remove",
+				"title": "Remove Shortcut",
 				"category": "IBM i",
 				"icon": "$(remove)"
 			},
@@ -1556,13 +1584,6 @@
 				"icon": "$(close)"
 			},
 			{
-				"command": "code-for-ibmi.collapseSearchView",
-				"enablement": "code-for-ibmi:connected",
-				"title": "Collapse All",
-				"category": "IBM i",
-				"icon": "$(collapse-all)"
-			},
-			{
 				"command": "code-for-ibmi.sortIFSFilesByDate",
 				"title": "Date",
 				"category": "IBM i"
@@ -1580,11 +1601,6 @@
 			{
 				"command": "code-for-ibmi.sortMembersByName",
 				"title": "Name",
-				"category": "IBM i"
-			},
-			{
-				"command": "code-for-ibmi.cl.runSelected",
-				"title": "Run selected CL command",
 				"category": "IBM i"
 			},
 			{
@@ -1615,6 +1631,74 @@
 				"enablement": "code-for-ibmi:connected",
 				"category": "IBM i",
 				"icon": "$(shield)"
+			},
+			{
+				"command": "code-for-ibmi.debug.refresh",
+				"title": "Refresh",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.debug.job.start",
+				"title": "Start",
+				"category": "IBM i",
+				"icon": "$(debug-start)",
+				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.debug.job.restart",
+				"title": "Restart",
+				"category": "IBM i",
+				"icon": "$(debug-restart)",
+				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.debug.job.stop",
+				"title": "Stop",
+				"category": "IBM i",
+				"icon": "$(debug-stop)",
+				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.debug.open.service.config",
+				"title": "Open configuration",
+				"category": "IBM i",
+				"icon": "$(settings-gear)",
+				"enablement": "!code-for-ibmi:debugWorking"
+			},
+			{
+				"command": "code-for-ibmi.refreshFile",
+				"title": "Refresh File",
+				"category": "IBM i",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "code-for-ibmi.searchObjectBrowser",
+				"title": "Highlight",
+				"category": "IBM i",
+				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.searchIFSBrowser",
+				"title": "Highlight",
+				"category": "IBM i",
+				"icon": "$(search-fuzzy)",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.ifs.find",
+				"title": "Find...",
+				"category": "IBM i",
+				"icon": "$(search)",
+				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.term5250.resetPosition",
+				"title": "Reset keyboard",
+				"category": "IBM i",
+				"icon": "$(keyboard)",
+				"enablement": "code-for-ibmi:connected"
 			}
 		],
 		"keybindings": [
@@ -1653,12 +1737,6 @@
 				"command": "code-for-ibmi.connectTo",
 				"key": "ctrl+alt+c",
 				"mac": "cmd+alt+c"
-			},
-			{
-				"command": "code-for-ibmi.cl.runSelected",
-				"key": "ctrl+r",
-				"mac": "cmd+r",
-				"when": "editorLangId == cl"
 			},
 			{
 				"command": "code-for-ibmi.deleteConnection",
@@ -1700,7 +1778,7 @@
 				{
 					"id": "connectionBrowser",
 					"name": "Servers",
-					"when": "code-for-ibmi:connected == false && code-for-ibmi:connectionBrowserDisabled !== true"
+					"when": "!code-for-ibmi:connecting && !code-for-ibmi:connected && !code-for-ibmi:connectionBrowserDisabled"
 				},
 				{
 					"id": "profilesView",
@@ -1741,6 +1819,14 @@
 					"name": "Results",
 					"when": "code-for-ibmi:searchViewVisible"
 				}
+			],
+			"debug": [
+				{
+					"id": "ibmiDebugBrowser",
+					"name": "IBM i debugger",
+					"when": "code-for-ibmi:connected && code-for-ibmi:debug && !code-for-ibmi:debugManaged",
+					"visibility": "collapsed"
+				}
 			]
 		},
 		"submenus": [
@@ -1759,6 +1845,19 @@
 			{
 				"id": "code-for-ibmi.openMember",
 				"label": "Open"
+			},
+			{
+				"id": "code-for-ibmi.debug.group",
+				"label": "Start Debugging",
+				"icon": "$(debug-start)"
+			},
+			{
+				"id": "code-for-ibmi.compareWith",
+				"label": "Compare with..."
+			},
+			{
+				"id": "code-for-ibmi.compareWithLocal",
+				"label": "Compare with..."
 			}
 		],
 		"menus": {
@@ -1795,6 +1894,56 @@
 					"when": "viewItem == member"
 				}
 			],
+			"code-for-ibmi.debug.group": [
+				{
+					"command": "code-for-ibmi.debug.batch",
+					"when": "code-for-ibmi:debug && (viewItem =~ /^object.pgm.*/ || editorFocus)"
+				},
+				{
+					"command": "code-for-ibmi.debug.sep",
+					"when": "code-for-ibmi:debug.SEP"
+				}
+			],
+			"code-for-ibmi.compareWith": [
+				{
+					"command": "code-for-ibmi.compareWithSelected",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)"
+				}
+			],
+			"code-for-ibmi.compareWithLocal": [
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithLocal",
+					"when": "!explorerResourceIsFolder"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "!explorerResourceIsFolder"
+				}
+			],
 			"commandPalette": [
 				{
 					"command": "code-for-ibmi.userLibraryList.enable",
@@ -1829,6 +1978,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.copyConnection",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.disconnect",
 					"when": "code-for-ibmi:connected"
 				},
@@ -1842,6 +1995,14 @@
 				},
 				{
 					"command": "code-for-ibmi.compareWithSelected",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithStreamFile",
+					"when": "code-for-ibmi:connected"
+				},
+				{
+					"command": "code-for-ibmi.compareCurrentFileWithMember",
 					"when": "code-for-ibmi:connected"
 				},
 				{
@@ -1887,10 +2048,6 @@
 				{
 					"command": "code-for-ibmi.sortMembersByName",
 					"when": "never"
-				},
-				{
-					"command": "code-for-ibmi.cl.runSelected",
-					"when": "code-for-ibmi:connected && editorLangId === cl"
 				},
 				{
 					"command": "code-for-ibmi.openTerminalHere",
@@ -2045,10 +2202,6 @@
 					"when": "!code-for-ibmi:connected"
 				},
 				{
-					"command": "code-for-ibmi.collapseSearchView",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.closeSearchView",
 					"when": "never"
 				},
@@ -2057,7 +2210,11 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.debug.program",
+					"command": "code-for-ibmi.debug.batch",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.sep",
 					"when": "never"
 				},
 				{
@@ -2105,15 +2262,51 @@
 					"when": "never"
 				},
 				{
-					"command": "code-for-ibmi.refreshMemberBrowser",
-					"when": "never"
-				},
-				{
 					"command": "code-for-ibmi.refreshIFSBrowserItem",
 					"when": "never"
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.remote",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.redo.setup",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.local",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.endDebug",
+					"when": "code-for-ibmi:debug"
+				},
+				{
+					"command": "code-for-ibmi.debug.refresh",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.debug.open.service.config",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.compareWithActiveFile",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.ifs.find",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"when": "never"
+				},
+				{
+					"command": "code-for-ibmi.searchIFSBrowser",
 					"when": "never"
 				}
 			],
@@ -2214,8 +2407,13 @@
 					"when": "view == ifsBrowser"
 				},
 				{
-					"command": "code-for-ibmi.refreshIFSBrowser",
+					"command": "code-for-ibmi.searchIFSBrowser",
 					"group": "navigation@1",
+					"when": "view == ifsBrowser"
+				},
+				{
+					"command": "code-for-ibmi.refreshIFSBrowser",
+					"group": "navigation@2",
 					"when": "view == ifsBrowser"
 				},
 				{
@@ -2225,7 +2423,7 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowser",
-					"group": "navigation@6",
+					"group": "navigation@7",
 					"when": "view == objectBrowser"
 				},
 				{
@@ -2234,20 +2432,30 @@
 					"when": "view == objectBrowser"
 				},
 				{
+					"command": "code-for-ibmi.searchObjectBrowser",
+					"group": "navigation@6",
+					"when": "view == objectBrowser"
+				},
+				{
 					"command": "code-for-ibmi.closeSearchView",
 					"group": "navigation@2",
 					"when": "view == searchView"
 				},
 				{
-					"command": "code-for-ibmi.collapseSearchView",
-					"group": "navigation@1",
-					"when": "view == searchView"
+					"command": "code-for-ibmi.debug.refresh",
+					"group": "navigation@99",
+					"when": "view == ibmiDebugBrowser"
+				},
+				{
+					"command": "code-for-ibmi.term5250.resetPosition",
+					"group": "navigation",
+					"when": "code-for-ibmi:term5250Halted"
 				}
 			],
 			"editor/title": [
 				{
-					"command": "code-for-ibmi.debug.activeEditor",
-					"when": "code-for-ibmi:connected && !inDebugMode && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
+					"submenu": "code-for-ibmi.debug.group",
+					"when": "code-for-ibmi:connected && editorLangId =~ /^rpgle$|^rpg$|^cobol$|^cl$/i",
 					"group": "navigation@1"
 				},
 				{
@@ -2264,18 +2472,28 @@
 					"command": "code-for-ibmi.clearDiagnostics",
 					"when": "code-for-ibmi:connected",
 					"group": "navigation@3"
+				},
+				{
+					"command": "code-for-ibmi.refreshFile",
+					"when": "code-for-ibmi:connected && (resourceScheme == streamfile || resourceScheme == member)",
+					"group": "navigation@4"
 				}
 			],
 			"view/item/context": [
 				{
-					"command": "code-for-ibmi.renameConnection",
+					"command": "code-for-ibmi.copyConnection",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "2_delete@1"
 				},
 				{
+					"command": "code-for-ibmi.renameConnection",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
+					"group": "2_delete@2"
+				},
+				{
 					"command": "code-for-ibmi.deleteConnection",
 					"when": "view == connectionBrowser && viewItem == server",
-					"group": "2_delete@2"
+					"group": "2_delete@3"
 				},
 				{
 					"command": "code-for-ibmi.showAdditionalSettings",
@@ -2403,16 +2621,6 @@
 					"group": "5_filters@2"
 				},
 				{
-					"command": "code-for-ibmi.selectForCompare",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@1"
-				},
-				{
-					"command": "code-for-ibmi.compareWithSelected",
-					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
-					"group": "2_compare@2"
-				},
-				{
 					"command": "code-for-ibmi.createMember",
 					"when": "view == objectBrowser && viewItem == SPF",
 					"group": "3_sourceFileStuff@1"
@@ -2433,6 +2641,15 @@
 					"group": "6_sourceFileStuff@1"
 				},
 				{
+					"command": "code-for-ibmi.selectForCompare",
+					"when": "view =~ /^(object|ifs)Browser$/ && (viewItem =~ /^member.*$/ || viewItem == streamfile)",
+					"group": "7_sourceFileStuff@1"
+				},
+				{
+					"submenu": "code-for-ibmi.compareWith",
+					"group": "7_sourceFileStuff@2"
+				},
+				{
 					"submenu": "code-for-ibmi.openMember",
 					"when": "view == objectBrowser && viewItem =~ /^member.*$/",
 					"group": "0_open@1"
@@ -2443,8 +2660,8 @@
 					"group": "1_workspace@1"
 				},
 				{
-					"command": "code-for-ibmi.debug.program",
-					"when": "view == objectBrowser && !inDebugMode && viewItem =~ /^object.pgm.*/",
+					"submenu": "code-for-ibmi.debug.group",
+					"when": "view == objectBrowser && viewItem =~ /^object.(pgm|srvpgm).*/",
 					"group": "2_debug@1"
 				},
 				{
@@ -2489,7 +2706,7 @@
 				},
 				{
 					"command": "code-for-ibmi.refreshObjectBrowserItem",
-					"when": "view == objectBrowser",
+					"when": "view == objectBrowser && viewItem =~ /^(filter|object.*library|SPF).*$/",
 					"group": "99_objectBrowserAction@1"
 				},
 				{
@@ -2548,14 +2765,19 @@
 					"group": "3_ifsStuff@1"
 				},
 				{
+					"command": "code-for-ibmi.ifs.find",
+					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^(directory|shortcut).*$/",
+					"group": "3_ifsStuff@2"
+				},
+				{
 					"command": "code-for-ibmi.addIFSShortcut",
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
-					"group": "3_ifsStuff@2"
+					"group": "3_ifsStuff@3"
 				},
 				{
 					"command": "code-for-ibmi.changeWorkingDirectory",
 					"when": "view == ifsBrowser && !listMultiSelection && viewItem =~ /^directory.*$/",
-					"group": "3_ifsStuff@3"
+					"group": "3_ifsStuff@4"
 				},
 				{
 					"command": "code-for-ibmi.createStreamfile",
@@ -2628,6 +2850,11 @@
 					"group": "3_ifsTransfer@3"
 				},
 				{
+					"command": "code-for-ibmi.refreshIFSBrowserItem",
+					"when": "view == ifsBrowser && viewItem =~ /^(shortcut|directory).*$/",
+					"group": "99_ifsBrowserAction@1"
+				},
+				{
 					"command": "code-for-ibmi.changeObjectDesc",
 					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_objActions@1"
@@ -2661,6 +2888,47 @@
 					"command": "code-for-ibmi.runAction",
 					"when": "view == objectBrowser && (viewItem =~ /^object/ || viewItem == SPF)",
 					"group": "1_workspace@1"
+				},
+				{
+					"command": "code-for-ibmi.debug.job.start",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_off$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.job.restart",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.job.stop",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_.*_on$/",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.remote",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem === certificateIssue_noremote",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.debug.open.service.config",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_service.*$/",
+					"group": "01_debugServiceJob01"
+				},
+				{
+					"command": "code-for-ibmi.debug.redo.setup",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^debugJob_service_.*$/",
+					"group": "02_debugServiceJob01"
+				},
+				{
+					"command": "code-for-ibmi.debug.setup.local",
+					"when": "!code-for-ibmi:debugManaged && view == ibmiDebugBrowser && viewItem =~ /^certificateIssue_localissue$/",
+					"group": "inline"
+				}
+			],
+			"explorer/context": [
+				{
+					"submenu": "code-for-ibmi.compareWithLocal",
+					"group": "3_compare@40"
 				}
 			]
 		},
@@ -2683,9 +2951,10 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule"
 	},
 	"devDependencies": {
+		"@types/adm-zip": "^0.5.5",
 		"@types/glob": "^7.1.3",
 		"@types/node": "^12.20.55",
 		"@types/source-map-support": "^0.5.6",
@@ -2706,11 +2975,11 @@
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.12.0",
 		"@ibm/ibmi-eventf-parser": "^1.0.2",
-		"@types/tmp": "^0.2.3",
+		"adm-zip": "^0.5.14",
 		"csv": "^6.2.1",
 		"ignore": "^5.1.9",
 		"node-ssh": "^13.1.0",
-		"tar": "^6.1.13",
+		"tar": "^6.2.1",
 		"tmp": "^0.2.1",
 		"vscode-diff": "^2.0.2",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",

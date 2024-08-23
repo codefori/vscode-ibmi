@@ -1,5 +1,5 @@
 import { Ignore } from 'ignore';
-import { ProviderResult, Range, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
+import { MarkdownString, ProviderResult, Range, ThemeColor, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
 import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
@@ -36,6 +36,11 @@ export type ActionType = "member" | "streamfile" | "object" | "file";
 export type ActionRefresh = "no" | "parent" | "filter" | "browser";
 export type ActionEnvironment = "ile" | "qsh" | "pase";
 
+export enum CcsidOrigin {
+  User = "user",
+  System = "system",
+};
+
 export interface RemoteCommand {
   title?: string;
   command: string;
@@ -52,7 +57,7 @@ export interface CommandData extends StandardIO {
 }
 
 export interface CommandResult {
-  code: number | null;
+  code: number;
   stdout: string;
   stderr: string;
   command?: string;
@@ -100,9 +105,7 @@ export interface IBMiObject extends QsysPath {
   text: string,
   sourceFile?: boolean
   attribute?: string,
-  memberCount?: number
   sourceLength?: number
-  CCSID?: number
   size?: number
   created?: Date
   changed?: Date
@@ -165,6 +168,7 @@ export type FocusOptions = { select?: boolean; focus?: boolean; expand?: boolean
 
 export type BrowserItemParameters = {
   icon?: string
+  color?: string
   state?: TreeItemCollapsibleState
   parent?: BrowserItem
 }
@@ -172,7 +176,7 @@ export type BrowserItemParameters = {
 export class BrowserItem extends TreeItem {
   constructor(label: string, readonly params?: BrowserItemParameters) {
     super(label, params?.state);
-    this.iconPath = params?.icon ? new ThemeIcon(params.icon) : undefined;
+    this.iconPath = params?.icon ? new ThemeIcon(params.icon, params.color ? new ThemeColor(params.color) : undefined) : undefined;
   }
 
   get parent() {
@@ -182,6 +186,7 @@ export class BrowserItem extends TreeItem {
   getChildren?(): ProviderResult<BrowserItem[]>;
   refresh?(): void;
   reveal?(options?: FocusOptions): Thenable<void>;
+  getToolTip?(): Promise<MarkdownString | undefined>;
 }
 
 export interface FilteredItem {
@@ -209,3 +214,28 @@ export const OBJECT_BROWSER_MIMETYPE = "application/vnd.code.tree.objectbrowser"
 export const IFS_BROWSER_MIMETYPE = "application/vnd.code.tree.ifsbrowser";
 
 export type OpenEditableOptions = QsysFsOptions & { position?: Range };
+
+export interface WrapResult {
+  newStatements: string[];
+  outStmf: string;
+}
+
+export type SpecialAuthorities = "*ALLOBJ" | "*AUDIT" | "*IOSYSCFG" | "*JOBCTL" | "*SAVSYS" | "*SECADM" | "*SERVICE" | "*SPLCTL";
+export type AttrOperands = 'ACCESS_TIME' | 'ALLOC_SIZE' | 'ALLOC_SIZE_64' | 'ALWCKPWR' | 'ALWSAV' | 'ASP' | 'AUDIT' | 'AUTH_GROUP' | 'AUTH_LIST_NAME' | 'AUTH_OWNER' | 'AUTH_USERS' | 'CCSID' | 'CHANGE_TIME' | 'CHECKED_OUT' | 'CHECKED_OUT_USER' | 'CHECKED_OUT_TIME' | 'CODEPAGE' | 'CREATE_TIME' | 'CRTOBJAUD' | 'CRTOBJSCAN' | 'DATA_SIZE' | 'DATA_SIZE_64' | 'DIR_FORMAT' | 'DISK_STG_OPT' | 'EXTENDED_ATTR_SIZE' | 'FILE_FORMAT' | 'FILE_ID' | 'JOURNAL_APPLY_CHANGES' | 'JOURNAL_ID' | 'JOURNAL_LIBRARY' | 'JOURNAL_NAME' | 'JOURNAL_OPTIONS' | 'JOURNAL_RCVR_ASP' | 'JOURNAL_RCVR_LIBRARY' | 'JOURNAL_RCVR_NAME' | 'JOURNAL_ROLLBACK_ENDED' | 'JOURNAL_START_TIME' | 'JOURNAL_STATUS' | 'LOCAL_REMOTE' | 'MAIN_STG_OPT' | 'MODIFY_TIME' | 'MULT_SIGS' | 'OBJTYPE' | 'PC_ARCHIVE' | 'PC_HIDDEN' | 'PC_READ_ONLY' | 'PC_SYSTEM' | 'RSTDRNMUNL' | 'SCAN' | 'SCAN_BINARY' | 'SCAN_CCSID1' | 'SCAN_CCSID2' | 'SCAN_SIGS_DIFF' | 'SCAN_STATUS' | 'SGID' | 'SIGNED' | 'STG_FREE' | 'SUID' | 'SYSTEM_ARCHIVE' | 'SYSTEM_USE' | 'SYS_SIGNED' | 'UDFS_DEFAULT_FORMAT' | 'USAGE_DAYS_USED' | 'USAGE_LAST_USED_TIME' | 'USAGE_RESET_TIME';
+
+export type SearchResults = {
+  term: string,
+  hits: SearchHit[]
+}
+
+export type SearchHit = {
+  path: string
+  lines: SearchHitLine[]
+  readonly?: boolean
+  label?: string
+}
+
+export type SearchHitLine = {
+  number: number
+  content: string
+}

@@ -23,6 +23,8 @@ export namespace Deployment {
   export const button = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 0);
   export const workspaceChanges: Map<vscode.WorkspaceFolder, Map<string, vscode.Uri>> = new Map;
 
+  let fixCCSID: boolean | undefined;
+
   export function initialize(context: vscode.ExtensionContext) {
     button.command = {
       command: `code-for-ibmi.launchDeploy`,
@@ -43,54 +45,63 @@ export namespace Deployment {
       buildWatcher().then(bw => context.subscriptions.push(bw));
     }
 
-    instance.onEvent("connected", () => {
-      const workspaces = vscode.workspace.workspaceFolders;
-      const connection = instance.getConnection();
-      const config = instance.getConfig();
-      const storage = instance.getStorage();
+    instance.subscribe(
+      context,
+      'connected',
+      `Initialize deployment`,
+      () => {
+        const workspaces = vscode.workspace.workspaceFolders;
+        const connection = instance.getConnection();
+        const config = instance.getConfig();
+        const storage = instance.getStorage();
 
-      if (workspaces && connection && storage && config) {
-        if (workspaces.length > 0) {
-          buildWatcher().then(bw => context.subscriptions.push(bw));
-          button.show();
-        }
-
-        const existingPaths = storage.getDeployment();
-
-        if (workspaces.length === 1) {
-          const workspace = workspaces[0];
-
-          if (existingPaths && !existingPaths[workspace.uri.fsPath]) {
-            const possibleDeployDir = DeployTools.buildPossibleDeploymentDirectory(workspace);
-            vscode.window.showInformationMessage(
-              `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`,
-              `Yes`,
-              `Ignore`
-            ).then(async result => {
-              if (result === `Yes`) {
-                DeployTools.setDeployLocation({ path: possibleDeployDir }, workspace);
-              }
-            });
+        if (workspaces && connection && storage && config) {
+          if (workspaces.length > 0) {
+            buildWatcher().then(bw => context.subscriptions.push(bw));
+            button.show();
           }
 
-          getLocalActions(workspace).then(result => {
-            if (result.length === 0) {
+          const existingPaths = storage.getDeployment();
+
+          if (workspaces.length === 1) {
+            const workspace = workspaces[0];
+
+            if (existingPaths && !existingPaths[workspace.uri.fsPath]) {
+              const possibleDeployDir = DeployTools.buildPossibleDeploymentDirectory(workspace);
               vscode.window.showInformationMessage(
-                `There are no local Actions defined for this project.`,
-                `Run Setup`
-              ).then(result => {
-                if (result === `Run Setup`)
-                  vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
+                `Deploy directory for Workspace not setup. Would you like to default to '${possibleDeployDir}'?`,
+                `Yes`,
+                `Ignore`
+              ).then(async result => {
+                if (result === `Yes`) {
+                  DeployTools.setDeployLocation({ path: possibleDeployDir }, workspace);
+                }
               });
             }
-          })
-        }
-      }
-    });
 
-    instance.onEvent("disconnected", () => {
-      button.hide();
-    })
+            getLocalActions(workspace).then(result => {
+              if (result.length === 0) {
+                vscode.window.showInformationMessage(
+                  `There are no local Actions defined for this project.`,
+                  `Run Setup`
+                ).then(result => {
+                  if (result === `Run Setup`)
+                    vscode.commands.executeCommand(`code-for-ibmi.launchActionsSetup`);
+                });
+              }
+            })
+          }
+        }
+      });
+
+    instance.subscribe(
+      context,
+      'disconnected',
+      `Clear deployment`,
+      () => {
+        fixCCSID = undefined;
+        button.hide();
+      })
   }
 
   export function getConnection(): IBMi {
@@ -99,6 +110,14 @@ export namespace Deployment {
       throw new Error("Please connect to an IBM i");
     }
     return connection;
+  }
+
+  export function getContent() {
+    const content = instance.getContent();
+    if (!content) {
+      throw new Error("Please connect to an IBM i");
+    }
+    return content;
   }
 
   export async function createRemoteDirectory(remotePath: string) {
@@ -228,6 +247,17 @@ export namespace Deployment {
       tar.t({ sync: true, file: localTarball.name, onentry: entry => entries.push(entry.path) });
       deploymentLog.appendLine(`${entries.length} file(s) uploaded to ${parameters.remotePath}`);
       entries.sort().map(e => `\t${e}`).forEach(deploymentLog.appendLine);
+
+      if (await mustFixCCSID()) {
+        progress?.report({ message: 'Fixing files CCSID...' });
+        const fix = await connection.sendCommand({ command: `${connection.remoteFeatures.setccsid} -R 1208 ${parameters.remotePath}` });
+        if (fix.code === 0) {
+          deploymentLog.appendLine(`Deployed files' CCSID set to 1208`);
+        }
+        else {
+          deploymentLog.appendLine(`Failed to set deployed files' CCSID to 1208: ${fix.stderr}`);
+        }
+      }
     }
     finally {
       deploymentLog.appendLine('');
@@ -237,5 +267,21 @@ export namespace Deployment {
       localTarball.removeCallback();
       deploymentLog.appendLine(`${localTarball.name} deleted`);
     }
+  }
+
+  /**
+   * Check if default CCSID of created/deployed files is not 1208 (utf-8).
+   * 
+   * @returns `true` if the default CCSID of IFS files is not 1208.
+   */
+  async function mustFixCCSID() {
+    if (fixCCSID === undefined) {
+      const connection = getConnection();
+      fixCCSID = Boolean(connection.remoteFeatures.attr) &&
+        Boolean(connection.remoteFeatures.setccsid) &&
+        (await connection.sendCommand({ command: `touch codeforiccsidtest && ${connection.remoteFeatures.attr} codeforiccsidtest CCSID && rm codeforiccsidtest` })).stdout !== "1208";
+    }
+
+    return fixCCSID;
   }
 }

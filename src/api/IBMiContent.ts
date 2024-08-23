@@ -3,9 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { window } from 'vscode';
+import { MarkdownString, window } from 'vscode';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
-import { CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
@@ -144,18 +144,33 @@ export default class IBMiContent {
    */
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
     asp = asp || this.config.sourceASP;
-    library = library.toUpperCase();
-    sourceFile = sourceFile.toUpperCase();
-    member = member.toUpperCase();
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     let retry = false;
-    let path = Tools.qualifyPath(library, sourceFile, member, asp);
+    let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
     const tempRmt = this.getTempRemote(path);
     while (true) {
-      const copyResult = await this.ibmi.runCommand({
-        command: `CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-        noLibList: true
-      });
+      let copyResult: CommandResult;
+      if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+        copyResult = { code: 0, stdout: '', stderr: '' };
+        try {
+          await this.ibmi.runSQL([
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
+          ].join("\n"));
+        } catch (error: any) {
+          copyResult.code = -1;
+          copyResult.stderr = String(error);
+        }
+      }
+      else {
+        copyResult = await this.ibmi.runCommand({
+          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          noLibList: true
+        });
+      }
 
       if (copyResult.code === 0) {
         if (!localPath) {
@@ -197,9 +212,9 @@ export default class IBMiContent {
    */
   async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array) {
     asp = asp || this.config.sourceASP;
-    library = library.toUpperCase();
-    sourceFile = sourceFile.toUpperCase();
-    member = member.toUpperCase();
+    library = this.ibmi.upperCaseName(library);
+    sourceFile = this.ibmi.upperCaseName(sourceFile);
+    member = this.ibmi.upperCaseName(member);
 
     const client = this.ibmi.client;
     const tmpobj = await tmpFile();
@@ -207,15 +222,31 @@ export default class IBMiContent {
     let retry = false;
     try {
       await writeFileAsync(tmpobj, content, `utf8`);
-      let path = Tools.qualifyPath(library, sourceFile, member, asp);
+      let path = Tools.qualifyPath(library, sourceFile, member, asp, true);
       const tempRmt = this.getTempRemote(path);
       await client.putFile(tmpobj, tempRmt);
 
       while (true) {
-        const copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-          noLibList: true
-        });
+        let copyResult: CommandResult;
+        if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+          copyResult = { code: 0, stdout: '', stderr: '' };
+          try {
+            await this.ibmi.runSQL([
+              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
+            ].join("\n"));
+          } catch (error: any) {
+            copyResult.code = -1;
+            copyResult.stderr = String(error);
+          }
+        }
+        else {
+          copyResult = await this.ibmi.runCommand({
+            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            noLibList: true
+          });
+        }
 
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
@@ -246,70 +277,28 @@ export default class IBMiContent {
   }
 
   /**
+   * @param statements Either an SQL statement or CL statement. CL statements start with @
+   * @returns result set
+   */
+  runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
+    return this.ibmi.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
+  }
+
+  /**
    * Run SQL statements.
    * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
    * If a statement starts with @, it will be run as a CL command.
    *
    * @param statements
    * @returns a Result set
+   * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
    */
-  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
-    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.ibmi.remoteFeatures;
-
-    if (QZDFMDB2) {
-      if (this.chgJobCCSID === undefined) {
-        this.chgJobCCSID = (this.ibmi.qccsid < 1 || this.ibmi.qccsid === 65535) && this.ibmi.defaultCCSID > 0 ? `@CHGJOB CCSID(${this.ibmi.defaultCCSID});\n` : '';
-      }
-
-      const output = await this.ibmi.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: Tools.fixSQL(`${this.chgJobCCSID}${statements}`)
-      })
-
-      if (output.stdout) {
-        return Tools.db2Parse(output.stdout);
-      } else {
-        throw new Error(`There was an error running the SQL statement.`);
-      }
-
-    } else {
-      throw new Error(`There is no way to run SQL on this system.`);
-    }
+  runSQL(statements: string) {
+    return this.ibmi.runSQL(statements);
   }
 
   /**
-   * @param ileCommand Command that would change the library list, like CHGLIBL
-   */
-  async getLibraryListFromCommand(ileCommand: string): Promise<{ currentLibrary: string; libraryList: string[]; } | undefined> {
-    if (this.ibmi.remoteFeatures[`GETNEWLIBL.PGM`]) {
-      const tempLib = this.config.tempLibrary;
-      const resultSet = await this.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
-
-      let result = {
-        currentLibrary: `QGPL`,
-        libraryList: [] as string[]
-      };
-
-      resultSet.forEach(row => {
-        const libraryName = String(row.SYSTEM_SCHEMA_NAME);
-        switch (row.PORTION) {
-          case `CURRENT`:
-            result.currentLibrary = libraryName;
-            break;
-          case `USER`:
-            result.libraryList.push(libraryName);
-            break;
-        }
-      })
-
-      return result;
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Download the contents of a table.
+   * Download the contents of a member from a table.
    * @param library
    * @param file
    * @param member Will default to file provided
@@ -318,52 +307,38 @@ export default class IBMiContent {
   async getTable(library: string, file: string, member?: string, deleteTable?: boolean): Promise<Tools.DB2Row[]> {
     if (!member) member = file; //Incase mbr is the same file
 
-    if (file === member && this.config.enableSQL) {
-      const data = await this.runSQL(`SELECT * FROM ${library}.${file}`);
+    const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
+    const copyResult = await this.ibmi.runCommand({
+      command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
+        `TOSTMF('${tempRmt}') ` +
+        `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
+      noLibList: true
+    });
 
-      if (deleteTable && this.config.autoClearTempData) {
-        await this.ibmi.runCommand({
-          command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`,
-          noLibList: true
-        });
+    if (copyResult.code === 0) {
+      let result = await this.downloadStreamfile(tempRmt);
+
+      if (this.config.autoClearTempData) {
+        Promise.allSettled([
+          this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
+          deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
+        ]);
       }
 
-      return data;
-
-    } else {
-      const tempRmt = this.getTempRemote(Tools.qualifyPath(library, file, member));
-      const copyResult = await this.ibmi.runCommand({
-        command: `QSYS/CPYTOIMPF FROMFILE(${library}/${file} ${member}) ` +
-          `TOSTMF('${tempRmt}') ` +
-          `MBROPT(*REPLACE) STMFCCSID(1208) RCDDLM(*CRLF) DTAFMT(*DLM) RMVBLANK(*TRAILING) ADDCOLNAM(*SQL) FLDDLM(',') DECPNT(*PERIOD)`,
-        noLibList: true
+      return parse(result, {
+        columns: true,
+        skip_empty_lines: true,
+        cast: true,
+        onRecord(record) {
+          for (const key of Object.keys(record)) {
+            record[key] = record[key] === ` ` ? `` : record[key];
+          }
+          return record;
+        }
       });
 
-      if (copyResult.code === 0) {
-        let result = await this.downloadStreamfile(tempRmt);
-
-        if (this.config.autoClearTempData) {
-          Promise.allSettled([
-            this.ibmi.sendCommand({ command: `rm -rf ${tempRmt}`, directory: `.` }),
-            deleteTable ? this.ibmi.runCommand({ command: `DLTOBJ OBJ(${library}/${file}) OBJTYPE(*FILE)`, noLibList: true }) : Promise.resolve()
-          ]);
-        }
-
-        return parse(result, {
-          columns: true,
-          skip_empty_lines: true,
-          cast: true,
-          onRecord(record) {
-            for (const key of Object.keys(record)) {
-              record[key] = record[key] === ` ` ? `` : record[key];
-            }
-            return record;
-          }
-        });
-
-      } else {
-        throw new Error(`Failed fetching table: ${copyResult.stderr}`);
-      }
+    } else {
+      throw new Error(`Failed fetching table: ${copyResult.stderr}`);
     }
 
   }
@@ -374,10 +349,8 @@ export default class IBMiContent {
    * @param table : the name of the table expected to be found in QTEMP
    * @returns : the table's content
    */
-  async getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
-    prepareQueries.push(`Select * From QTEMP.${table}`);
-    const fullQuery = prepareQueries.map(query => query.endsWith(';') ? query : `${query};`).join("\n");
-    return await this.runSQL(fullQuery);
+  getQTempTable(prepareQueries: string[], table: string): Promise<Tools.DB2Row[]> {
+    return this.runStatements(...prepareQueries, `select * from QTEMP.${table}`);
   }
 
   /**
@@ -386,32 +359,55 @@ export default class IBMiContent {
    * @returns an array of libraries as IBMiObject
    */
   async getLibraryList(libraries: string[]): Promise<IBMiObject[]> {
-    let results: Tools.DB2Row[];
-
-    if (this.config.enableSQL) {
+    let objects: IBMiObject[];
+    if (this.ibmi.enableSQL) {
       const statement = `
-        select os.OBJNAME as ODOBNM
-             , coalesce(os.OBJTEXT, '') as ODOBTX
-             , os.OBJATTRIBUTE as ODOBAT
-          from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs
-             , table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
+        SELECT
+          os.OBJNAME AS NAME,
+          os.OBJTYPE AS TYPE,
+          os.OBJATTRIBUTE AS ATTRIBUTE,
+          OBJTEXT AS TEXT,
+          os.IASP_NUMBER AS IASP_NUMBER,
+          os.OBJSIZE AS SIZE,
+          EXTRACT(EPOCH FROM (os.OBJCREATED)) * 1000 AS CREATED,
+          EXTRACT(EPOCH FROM (os.CHANGE_TIMESTAMP)) * 1000 AS CHANGED,
+          os.OBJOWNER AS OWNER,
+          os.OBJDEFINER AS CREATED_BY
+        from table( SYSTOOLS.SPLIT( INPUT_LIST => '${libraries.toString()}', DELIMITER => ',' ) ) libs,
+        table( QSYS2.OBJECT_STATISTICS( OBJECT_SCHEMA => 'QSYS', OBJTYPELIST => '*LIB', OBJECT_NAME => libs.ELEMENT ) ) os
       `;
-      results = await this.runSQL(statement);
+      const results = await this.ibmi.runSQL(statement);
+
+      objects = results.map(object => ({
+        library: 'QSYS',
+        name: this.ibmi.sysNameInLocal(String(object.NAME)),
+        type: String(object.TYPE),
+        attribute: String(object.ATTRIBUTE),
+        text: String(object.TEXT || ""),
+        sourceFile: Boolean(object.IS_SOURCE),
+        sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
+        size: Number(object.SIZE),
+        created: new Date(Number(object.CREATED)),
+        changed: new Date(Number(object.CHANGED)),
+        created_by: object.CREATED_BY,
+        owner: object.OWNER,
+        asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
+      } as IBMiObject));
     } else {
-      results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
+      let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
       if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
         return [];
       }
       results = results.filter(object => libraries.includes(this.ibmi.sysNameInLocal(String(object.ODOBNM))));
-    };
 
-    const objects = results.map(object => ({
-      library: 'QSYS',
-      type: '*LIB',
-      name: this.config.enableSQL ? object.ODOBNM : this.ibmi.sysNameInLocal(String(object.ODOBNM)),
-      attribute: object.ODOBAT,
-      text: object.ODOBTX
-    } as IBMiObject));
+      objects = results.map(object => ({
+        library: 'QSYS',
+        type: '*LIB',
+        name: this.ibmi.sysNameInLocal(String(object.ODOBNM)),
+        attribute: object.ODOBAT,
+        text: object.ODOBTX
+      } as IBMiObject));
+    };
 
     return libraries.map(library => {
       return objects.find(info => info.name === library) ||
@@ -447,10 +443,12 @@ export default class IBMiContent {
       return true;
     });
 
+    const sanitized = Tools.sanitizeLibraryNames(newLibl);
+
     const result = await this.ibmi.sendQsh({
       command: [
         `liblist -d ` + Tools.sanitizeLibraryNames(this.ibmi.defaultUserLibraries).join(` `),
-        ...newLibl.map(lib => `liblist -a ` + Tools.sanitizeLibraryNames([lib]))
+        ...sanitized.map(lib => `liblist -a ` + lib)
       ].join(`; `)
     });
 
@@ -458,10 +456,15 @@ export default class IBMiContent {
       const lines = result.stderr.split(`\n`);
 
       lines.forEach(line => {
-        const badLib = newLibl.find(lib => line.includes(`ibrary ${lib} `) || line.includes(`ibrary ${Tools.sanitizeLibraryNames([lib])} `));
+        const isNotFound = line.includes(`CPF2110`);
+        if (isNotFound) {
+          const libraryReference = sanitized.find(lib => line.includes(lib));
 
-        // If there is an error about the library, remove it
-        if (badLib) badLibs.push(badLib);
+          // If there is an error about the library, remove it
+          if (libraryReference) {
+            badLibs.push(libraryReference);
+          }
+        }
       });
     }
 
@@ -478,14 +481,17 @@ export default class IBMiContent {
    * @returns an array of IBMiObject
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
-    const library = filters.library.toUpperCase();
+    const library = this.ibmi.upperCaseName(filters.library);
+    const americanLibrary = this.ibmi.sysNameInAmerican(library);
     if (!await this.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
       throw new Error(`Library ${library} does not exist.`);
     }
 
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
-    const object = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? filters.object.toUpperCase() : `*ALL`;
+    const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
+    const objectNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
+    const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
@@ -493,94 +499,103 @@ export default class IBMiContent {
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
-    const queries: string[] = [];
-
-    if (!sourceFilesOnly) {
-      queries.push(`@DSPOBJD OBJ(${library}/${object}) OBJTYPE(${type}) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IOBJD)`);
-    }
-
-    if (withSourceFiles) {
-      queries.push(`@DSPFD FILE(${library}/${object}) TYPE(*ATR) FILEATR(*PF) OUTPUT(*OUTFILE) OUTFILE(QTEMP/CODE4IFD)`);
-    }
-
-    let createOBJLIST;
+    let createOBJLIST: string[];
     if (sourceFilesOnly) {
       //DSPFD only
-      createOBJLIST = `select PHFILE as NAME, ` +
-        `'*FILE' as TYPE, ` +
-        `PHFILA as ATTRIBUTE, ` +
-        `PHTXT as TEXT, ` +
-        `1 as IS_SOURCE, ` +
-        `PHNOMB as NB_MBR, ` +
-        'PHMXRL as SOURCE_LENGTH, ' +
-        'PHCSID as CCSID ' +
-        `from QTEMP.CODE4IFD where PHDTAT = 'S'`;
+      createOBJLIST = [
+        `select `,
+        `  t.SYSTEM_TABLE_NAME as NAME,`,
+        `  '*FILE'             as TYPE,`,
+        `  'PF'                as ATTRIBUTE,`,
+        `  t.TABLE_TEXT        as TEXT,`,
+        `  1                   as IS_SOURCE,`,
+        `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `  t.IASP_NUMBER       as IASP_NUMBER`,
+        `from QSYS2.SYSTABLES as t`,
+        `where t.table_schema = '${americanLibrary}' and t.file_type = 'S'${objectNameLike()}`,
+      ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
-      createOBJLIST = `select ODOBNM as NAME, ` +
-        `ODOBTP as TYPE, ` +
-        `ODOBAT as ATTRIBUTE, ` +
-        `ODOBTX as TEXT, ` +
-        `0 as IS_SOURCE, ` +
-        `ODOBSZ as SIZE, ` +
-        `ODCCEN, ` +
-        `ODCDAT, ` +
-        `ODCTIM, ` +
-        `ODLCEN, ` +
-        `ODLDAT, ` +
-        `ODLTIM, ` +
-        `ODOBOW as OWNER, ` +
-        `ODCRTU as CREATED_BY, ` +
-        `ODSIZU as SIZE_IN_UNITS, ` +
-        `ODBPUN as BYTES_PER_UNIT ` +
-        `from QTEMP.CODE4IOBJD`;
+      createOBJLIST = [
+        `select `,
+        `  OBJNAME          as NAME,`,
+        `  OBJTYPE          as TYPE,`,
+        `  OBJATTRIBUTE     as ATTRIBUTE,`,
+        `  OBJTEXT          as TEXT,`,
+        `  0                as IS_SOURCE,`,
+        `  IASP_NUMBER      as IASP_NUMBER,`,
+        `  OBJSIZE          as SIZE,`,
+        `  extract(epoch from (OBJCREATED))*1000       as CREATED,`,
+        `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
+        `  OBJOWNER         as OWNER,`,
+        `  OBJDEFINER       as CREATED_BY`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
+      ];
     }
     else {
       //Both DSPOBJD and DSPFD
-      createOBJLIST = `select ODOBNM as NAME, ` +
-        `ODOBTP as TYPE, ` +
-        `ODOBAT as ATTRIBUTE, ` +
-        `ODOBTX as TEXT, ` +
-        `Case When PHDTAT = 'S' Then 1 Else 0 End as IS_SOURCE, ` +
-        `PHNOMB as NB_MBR, ` +
-        'PHMXRL as SOURCE_LENGTH, ' +
-        'PHCSID as CCSID, ' +
-        `ODOBSZ as SIZE, ` +
-        `ODCCEN, ` +
-        `ODCDAT, ` +
-        `ODCTIM, ` +
-        `ODLCEN, ` +
-        `ODLDAT, ` +
-        `ODLTIM, ` +
-        `ODOBOW as OWNER, ` +
-        `ODCRTU as CREATED_BY, ` +
-        `ODSIZU as SIZE_IN_UNITS, ` +
-        `ODBPUN as BYTES_PER_UNIT ` +
-        `from QTEMP.CODE4IOBJD  ` +
-        `left join QTEMP.CODE4IFD on PHFILE = ODOBNM And PHDTAT = 'S'`;
+      createOBJLIST = [
+        `with SRCPF as (`,
+        `  select `,
+        `    Replace(Replace(Replace(t.SYSTEM_TABLE_NAME, '${this.ibmi.variantChars.american[2]}','${this.ibmi.variantChars.local[2]}'), '${this.ibmi.variantChars.american[1]}', '${this.ibmi.variantChars.local[1]}'), '${this.ibmi.variantChars.american[0]}', '${this.ibmi.variantChars.local[0]}') as NAME,`,
+        `    '*FILE'             as TYPE,`,
+        `    'PF'                as ATTRIBUTE,`,
+        `    t.TABLE_TEXT        as TEXT,`,
+        `    1                   as IS_SOURCE,`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH`,
+        `  from QSYS2.SYSTABLES as t`,
+        `  where t.table_schema = '${americanLibrary}' and t.file_type = 'S'${objectNameLike()}`,
+        `), OBJD as (`,
+        `  select `,
+        `    OBJNAME           as NAME,`,
+        `    OBJTYPE           as TYPE,`,
+        `    OBJATTRIBUTE      as ATTRIBUTE,`,
+        `    OBJTEXT           as TEXT,`,
+        `    0                 as IS_SOURCE,`,
+        `    IASP_NUMBER       as IASP_NUMBER,`,
+        `    OBJSIZE           as SIZE,`,
+        `    extract(epoch from (OBJCREATED))*1000       as CREATED,`,
+        `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
+        `    OBJOWNER          as OWNER,`,
+        `    OBJDEFINER        as CREATED_BY`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `  )`,
+        `select`,
+        `  o.NAME,`,
+        `  o.TYPE,`,
+        `  o.ATTRIBUTE,`,
+        `  o.TEXT,`,
+        `  case when s.IS_SOURCE is not null then s.IS_SOURCE else o.IS_SOURCE end as IS_SOURCE,`,
+        `  s.SOURCE_LENGTH,`,
+        `  o.IASP_NUMBER,`,
+        `  o.SIZE,`,
+        `  o.CREATED,`,
+        `  o.CHANGED,`,
+        `  o.OWNER,`,
+        `  o.CREATED_BY`,
+        `from OBJD o left join SRCPF s on o.NAME = s.NAME`,
+      ];
     }
 
-    queries.push(`create table QTEMP.OBJLIST as (${createOBJLIST}) with data`);
+    const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
 
-    const objects = (await this.getQTempTable(queries, "OBJLIST"));
     return objects.map(object => ({
       library,
-      name: this.ibmi.sysNameInLocal(String(object.NAME)),
+      name: sourceFilesOnly ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
-      text: String(object.TEXT),
-      memberCount: object.NB_MBR !== undefined ? Number(object.NB_MBR) : undefined,
+      text: String(object.TEXT || ""),
       sourceFile: Boolean(object.IS_SOURCE),
       sourceLength: object.SOURCE_LENGTH !== undefined ? Number(object.SOURCE_LENGTH) : undefined,
-      CCSID: object.CCSID !== undefined ? Number(object.CCSID) : undefined,
-      size: Number(object.SIZE) !== 9999999999 ? Number(object.SIZE) : Number(object.SIZE_IN_UNITS) * Number(object.BYTES_PER_UNIT),
-      created: this.getDspObjDdDate(String(object.ODCCEN), String(object.ODCDAT), String(object.ODCTIM)),
-      changed: this.getDspObjDdDate(String(object.ODLCEN), String(object.ODLDAT), String(object.ODLTIM)),
+      size: Number(object.SIZE),
+      created: new Date(Number(object.CREATED)),
+      changed: new Date(Number(object.CHANGED)),
       created_by: object.CREATED_BY,
       owner: object.OWNER,
+      asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
     } as IBMiObject))
       .filter(object => !typeFilter || typeFilter(object.type))
-      .filter(object => nameFilter.test(object.name))
+      .filter(object => objectFilter || nameFilter.test(object.name))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
           return a.library.localeCompare(b.library)
@@ -601,14 +616,14 @@ export default class IBMiContent {
    */
   async getMemberList(filter: { library: string, sourceFile: string, members?: string, extensions?: string, sort?: SortOptions, filterType?: FilterType }): Promise<IBMiMember[]> {
     const sort = filter.sort || { order: 'name' };
-    const library = filter.library.toUpperCase();
-    const sourceFile = filter.sourceFile.toUpperCase();
+    const library = this.ibmi.upperCaseName(filter.library);
+    const sourceFile = this.ibmi.upperCaseName(filter.sourceFile);
 
     const memberFilter = parseFilter(filter.members, filter.filterType);
-    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? filter.members.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMember = memberFilter.noFilter && filter.members && !filter.members.includes(",") ? this.ibmi.upperCaseName(filter.members).replace(/[*]/g, `%`) : undefined;
 
     const memberExtensionFilter = parseFilter(filter.extensions, filter.filterType);
-    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? filter.extensions.toLocaleUpperCase().replace(/[*]/g, `%`) : undefined;
+    const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
 
     const statement =
       `With MEMBERS As (
@@ -629,21 +644,21 @@ export default class IBMiContent {
               b.table_name = a.table_name
       )
       Select * From MEMBERS
-      Where LIBRARY = '${library}'
-        ${sourceFile !== `*ALL` ? `And SOURCE_FILE = '${sourceFile}'` : ``}
-        ${singleMember ? `And NAME Like '${singleMember}'` : ''}
-        ${singleMemberExtension ? `And TYPE Like '${singleMemberExtension}'` : ''}
+      Where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
+        ${sourceFile !== `*ALL` ? `And SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+        ${singleMember ? `And NAME Like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
+        ${singleMemberExtension ? `And TYPE Like '${this.ibmi.sysNameInAmerican(singleMemberExtension)}'` : ''}
       Order By ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
-    const results = await this.runSQL(statement);
+    const results = await this.ibmi.runSQL(statement);
     if (results.length) {
       const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
       return results.map(result => ({
         asp,
         library,
-        file: String(result.SOURCE_FILE),
-        name: String(result.NAME),
-        extension: String(result.TYPE),
+        file: this.ibmi.sysNameInLocal(String(result.SOURCE_FILE)),
+        name: this.ibmi.sysNameInLocal(String(result.NAME)),
+        extension: this.ibmi.sysNameInLocal(String(result.TYPE)),
         recordLength: Number(result.RECORD_LENGTH) - 12,
         text: `${result.TEXT || ``}${sourceFile === `*ALL` ? ` (${result.SOURCE_FILE})` : ``}`.trim(),
         lines: Number(result.LINES),
@@ -655,6 +670,45 @@ export default class IBMiContent {
     }
     else {
       return [];
+    }
+  }
+
+  /**
+   *
+   * @param filter: the criterias used to list the members
+   * @returns
+   */
+  async getMemberInfo(library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
+    if (this.ibmi.remoteFeatures[`GETMBRINFO.SQL`]) {
+      const tempLib = this.config.tempLibrary;
+      const statement = `select * from table(${tempLib}.GETMBRINFO('${library}', '${sourceFile}', '${member}'))`;
+
+      let results: Tools.DB2Row[] = [];
+      if (this.config.enableSQL) {
+        try {
+          results = await this.runSQL(statement);
+        } catch (e) { }; // Ignore errors, will return undefined.
+      }
+      else {
+        results = await this.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      }
+
+      if (results.length === 1 && results[0].ISSOURCE === 'Y') {
+        const result = results[0];
+        const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
+        return {
+          library: result.LIBRARY,
+          file: result.FILE,
+          name: result.MEMBER,
+          extension: result.EXTENSION,
+          text: result.DESCRIPTION,
+          created: new Date(result.CREATED ? Number(result.CREATED) : 0),
+          changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+        } as IBMiMember
+      }
+      else {
+        return undefined;
+      }
     }
   }
 
@@ -741,17 +795,20 @@ export default class IBMiContent {
   }
 
   async memberResolve(member: string, files: QsysPath[]): Promise<IBMiMember | undefined> {
+    const inAmerican = (s: string) => { return this.ibmi.sysNameInAmerican(s) };
+    const inLocal = (s: string) => { return this.ibmi.sysNameInLocal(s) };
+
     // Escape names for shell
     const pathList = files
       .map(file => {
         const asp = file.asp || this.config.sourceASP;
         if (asp && asp.length > 0) {
           return [
-            Tools.qualifyPath(file.library, file.name, member, asp, true),
-            Tools.qualifyPath(file.library, file.name, member, undefined, true)
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), asp, true),
+            Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true)
           ].join(` `);
         } else {
-          return Tools.qualifyPath(file.library, file.name, member, undefined, true);
+          return Tools.qualifyPath(inAmerican(file.library), inAmerican(file.name), inAmerican(member), undefined, true);
         }
       })
       .join(` `)
@@ -767,7 +824,7 @@ export default class IBMiContent {
 
       if (firstMost) {
         try {
-          const simplePath = Tools.unqualifyPath(firstMost);
+          const simplePath = inLocal(Tools.unqualifyPath(firstMost));
 
           // This can error if the path format is wrong for some reason.
           // Not that this would ever happen, but better to be safe than sorry
@@ -782,7 +839,7 @@ export default class IBMiContent {
   }
 
   async objectResolve(object: string, libraries: string[]): Promise<string | undefined> {
-    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${lib.toUpperCase()}.LIB/${object.toUpperCase()}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
+    const command = `for f in ${libraries.map(lib => `/QSYS.LIB/${this.ibmi.sysNameInAmerican(lib)}.LIB/${this.ibmi.sysNameInAmerican(object)}.*`).join(` `)}; do if [ -f $f ] || [ -d $f ]; then echo $f; break; fi; done`;
 
     const result = await this.ibmi.sendCommand({
       command,
@@ -792,7 +849,7 @@ export default class IBMiContent {
       const firstMost = result.stdout;
 
       if (firstMost) {
-        const lib = Tools.unqualifyPath(firstMost);
+        const lib = this.ibmi.sysNameInLocal(Tools.unqualifyPath(firstMost));
 
         return lib.split('/')[1];
       }
@@ -828,20 +885,6 @@ export default class IBMiContent {
   }
 
   /**
-   * @param century; century code (1=20xx, 0=19xx)
-   * @param dateString: string in YYMMDD
-   * @param timeString: string in HHMMSS
-   * @returns date
-   */
-  getDspObjDdDate(century: string = `0`, MMDDYY: string = `010101`, HHMMSS: string = `000000`): Date {
-    let year: string, month: string, day: string, hours: string, minutes: string, seconds: string;
-    let YYMMDD: string = MMDDYY.slice(4,).concat(MMDDYY.slice(0, 4));
-    let dateString: string = (century === `1` ? `20` : `19`).concat(YYMMDD.padStart(6, `0`)).concat(HHMMSS.padStart(6, `0`));
-    [, year, month, day, hours, minutes, seconds] = /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/.exec(dateString) || [];
-    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes), Number(seconds)));
-  }
-
-  /**
    * Return `true` if `remotePath` denotes a directory
    *
    * @param remotePath: a remote IFS path
@@ -854,8 +897,8 @@ export default class IBMiContent {
 
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
-      command: IBMiContent.toCl(`CHKOBJ`, {
-        obj: `${object.library.toLocaleUpperCase()}/${object.name.toLocaleUpperCase()}`,
+      command: this.toCl(`CHKOBJ`, {
+        obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
         objtype: object.type.toLocaleUpperCase(),
         aut: authorities.join(" "),
         mbr: object.member
@@ -864,7 +907,7 @@ export default class IBMiContent {
     })).code === 0;
   }
 
-  async testStreamFile(path: string, right: "r" | "w" | "x") {
+  async testStreamFile(path: string, right: "f" | "d" | "r" | "w" | "x") {
     return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
   }
 
@@ -874,7 +917,7 @@ export default class IBMiContent {
     }
     else { //QSYS path
       const qsysObject = Tools.parseQSysPath(path);
-      return this.config.protectedPaths.includes(qsysObject.library.toLocaleUpperCase());
+      return this.config.protectedPaths.includes(this.ibmi.upperCaseName(qsysObject.library));
     }
   }
 
@@ -884,7 +927,7 @@ export default class IBMiContent {
    * @param parameters A key/value object of parameters
    * @returns Formatted CL string
    */
-  static toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
+  toCl(command: string, parameters: { [parameter: string]: string | number | undefined }) {
     let cl = command;
 
     for (const [key, value] of Object.entries(parameters)) {
@@ -892,7 +935,7 @@ export default class IBMiContent {
 
       if (value !== undefined) {
         if (typeof value === 'string') {
-          if (value === value.toLocaleUpperCase()) {
+          if (value === this.ibmi.upperCaseName(value)) {
             parmValue = value;
           } else {
             parmValue = value.replace(/'/g, `''`);
@@ -907,5 +950,76 @@ export default class IBMiContent {
     }
 
     return cl;
+  }
+
+  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
+    const target = (path = typeof path === 'string' ? path : Tools.qualifyPath(path.library, path.name, path.member, path.asp));
+    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
+    if (result.code === 0) {
+      return result.stdout
+        .split('\n')
+        .map(line => line.split('='))
+        .reduce((attributes, [key, value]) => {
+          attributes[key] = value;
+          return attributes;
+        }, {} as Record<string, string>)
+    }
+  }
+
+  async countMembers(path: QsysPath) {
+    return this.countFiles(Tools.qualifyPath(path.library, path.name, undefined, path.asp))
+  }
+
+  async countFiles(directory: string) {
+    return Number((await this.ibmi.sendCommand({ command: `cd ${directory} && (ls | wc -l)` })).stdout.trim());
+  }
+
+  objectToToolTip(path: string, object: IBMiObject) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      type: object.type,
+      attribute: object.attribute,
+      text: object.text,
+      size: object.size,
+      created: object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+      changed: object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
+      created_by: object.created_by,
+      owner: object.owner,
+      iasp: object.asp
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      text: object.text,
+      members: await this.countMembers(object),
+      length: object.sourceLength,
+      CCSID: (await this.getAttributes(object, "CCSID"))?.CCSID || '?',
+      iasp: object.asp
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  memberToToolTip(path: string, member: IBMiMember) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      text: member.text,
+      lines: member.lines,
+      created: member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+      changed: member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
+  }
+
+  ifsFileToToolTip(path: string, ifsFile: IFSFile) {
+    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+      size: ifsFile.size,
+      modified: ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
+      owner: ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
+    }));
+    tooltip.supportHtml = true;
+    return tooltip;
   }
 }

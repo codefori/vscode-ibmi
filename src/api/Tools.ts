@@ -29,7 +29,7 @@ export namespace Tools {
    * @param output /usr/bin/db2's output
    * @returns rows
    */
-  export function db2Parse(output: string): DB2Row[] {
+  export function db2Parse(output: string, input?: string): DB2Row[] {
     let gotHeaders = false;
     let figuredLengths = false;
     let iiErrorMessage = false;
@@ -67,8 +67,10 @@ export namespace Tools {
           }
 
           if (!SQLSTATE.startsWith(`01`)) {
-            let sqlError = new SqlError(`${data[index + 3]} (${SQLSTATE})`);
+            const errorMessage = data[index + 3] ? data[index + 3].trim() : `Unknown error`;
+            let sqlError = new SqlError(`${errorMessage} (${SQLSTATE})`);
             sqlError.sqlstate = SQLSTATE;
+            sqlError.cause = input;
             throw sqlError;
           }
         }
@@ -101,19 +103,44 @@ export namespace Tools {
         figuredLengths = true;
       } else {
         let row: DB2Row = {};
+        let slideBytesBy = 0;
 
         headers.forEach(header => {
-          const strValue = line.substring(header.from, header.from + header.length).trimEnd();
+          const fromPos = header.from - slideBytesBy;
+          let strValue = line.substring(fromPos, fromPos + header.length);
 
-          let realValue: string | number | null = strValue;
+          /* For each DBCS character, add 1
+          Since we are reading characters as UTF8 here, we assume any UTF8 character made up of more than 2 bytes is DBCS
+
+          https://stackoverflow.com/a/14495321/4763757
+
+          Look at a list of Unicode blocks and their code point ranges, e.g. 
+          the browsable http://www.fileformat.info/info/unicode/block/index.htm or 
+          the official http://www.unicode.org/Public/UNIDATA/Blocks.txt :
+
+          Anything up to U+007F takes 1 byte: Basic Latin
+          Then up to U+07FF it takes 2 bytes: Greek, Arabic, Cyrillic, Hebrew, etc
+          Then up to U+FFFF it takes 3 bytes: Chinese, Japanese, Korean, Devanagari, etc
+          Beyond that it takes 4 bytes
+
+          */
+
+          const extendedBytes = strValue.split(``).map(c => Buffer.byteLength(c) < 3 ? 0 : 1).reduce((a: number, b: number) => a + b, 0);
+
+          slideBytesBy += extendedBytes;
+          if (extendedBytes > 0) {
+            strValue = strValue.substring(0, strValue.length - extendedBytes);
+          }
+
+          let realValue: string | number | null = strValue.trimEnd();
 
           // is value a number?
-          if (strValue.startsWith(` `)) {
+          if (realValue.startsWith(` `)) {
             const asNumber = Number(strValue.trim());
             if (!isNaN(asNumber)) {
               realValue = asNumber;
             }
-          } else if (strValue === `-`) {
+          } else if (realValue === `-`) {
             realValue = null; //null?
           }
 
@@ -139,19 +166,19 @@ export namespace Tools {
   }
 
   /**
-   * Build the IFS path string to a member
+   * Build the IFS path string to an object or member
    * @param library
    * @param object
-   * @param member
+   * @param member Optional
    * @param iasp Optional: an iASP name
    */
-  export function qualifyPath(library: string, object: string, member: string, iasp?: string, sanitise?: boolean) {
-    library = library.toUpperCase();
+  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
-    const memberPath = `${object.toUpperCase()}.FILE/${member.toUpperCase()}.MBR`
-    const memberSubpath = sanitise ? Tools.escapePath(memberPath) : memberPath;
+    const filePath = `${object}.FILE`;
+    const memberPath = member ? `/${member}.MBR` : '';
+    const subPath = `${filePath}${memberPath}`;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${memberSubpath}`;
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${noEscape ? subPath : Tools.escapePath(subPath)}`;
     return result;
   }
 
@@ -261,15 +288,31 @@ export namespace Tools {
     }
   }
 
+  /**
+   * Check whether two given uris point to the same file/member
+   */
+  export function areEquivalentUris(uriA: vscode.Uri, uriB: vscode.Uri) {
+    return uriStringWithoutFragment(uriA) === uriStringWithoutFragment(uriB);
+  }
 
   /**
    * We do this to find previously opened files with the same path, but different case OR readonly flags.
    * Without this, it's possible for the same document to be opened twice simply due to the readonly flag.
    */
   export function findExistingDocumentUri(uri: vscode.Uri) {
+    const possibleDoc = findExistingDocument(uri);
+    return possibleDoc?.uri || uri;
+  }
+
+  export function findExistingDocument(uri: vscode.Uri) {
     const baseUriString = uriStringWithoutFragment(uri);
     const possibleDoc = vscode.workspace.textDocuments.find(document => uriStringWithoutFragment(document.uri) === baseUriString);
-    return possibleDoc?.uri || uri;
+    return possibleDoc;
+  }
+
+  export function findExistingDocumentByName(nameAndExt: string) {
+    const possibleDoc = vscode.workspace.textDocuments.find(document => document.fileName.toLowerCase().endsWith(nameAndExt.toLowerCase()));
+    return possibleDoc ? possibleDoc.uri : undefined;
   }
 
   /**
@@ -283,14 +326,31 @@ export namespace Tools {
   }
 
   /**
+   * Given the uri of a member or other resource, find all
+   * (if any) open tabs where that resource is being edited.
+  */
+  export function findUriTabs(uriToFind: vscode.Uri | string): vscode.Tab[] {
+    let resourceTabs: vscode.Tab[] = [];
+    for (const group of vscode.window.tabGroups.all) {
+      group.tabs.filter(tab =>
+        (tab.input instanceof vscode.TabInputText)
+        && (uriToFind instanceof vscode.Uri ? areEquivalentUris(tab.input.uri, uriToFind) : tab.input.uri.path.startsWith(`${uriToFind}/`))
+        ).forEach(tab => {
+          resourceTabs.push(tab);
+        });
+    }
+    return resourceTabs;
+  }
+
+  /**
    * Fixes an SQL statement to make it compatible with db2 CLI program QZDFMDB2.
    * - Changes `@clCommand` statements into Call `QSYS2.QCMDEX('clCommand')` procedure calls
    * - Makes sure each comment (`--`) starts on a new line
    * @param statement the statement to fix
    * @returns statement compatible with QZDFMDB2
    */
-  export function fixSQL(statement: string) {
-    return statement.split("\n").map(line => {
+  export function fixSQL(statement: string, removeComments = false): string {
+    let statements = statement.split("\n").map(line => {
       if (line.startsWith('@')) {
         //- Escape all '
         //- Remove any trailing ;
@@ -300,24 +360,70 @@ export namespace Tools {
 
       //Make each comment start on a new line
       return line.replaceAll("--", "\n--");
+    }).join(`\n`);
+
+    if (removeComments) {
+      statements = statements.split(`\n`).filter(l => !l.trim().startsWith(`--`)).join(`\n`);
     }
-    ).join("\n");
+
+    return statements;
   }
 
   export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {
     return `<table>`
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
-      .concat(`${Object.entries(rows).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
+      .concat(`${Object.entries(rows)
+        .filter(([key, value]) => value !== undefined && value !== '')
+        .map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`)
+        .join(``)}`
+      )
       .concat(`</table>`);
   }
 
-  export function fixWindowsPath(path:string){
+  export function fixWindowsPath(path: string) {
     if (process.platform === `win32` && path[0] === `/`) {
       //Issue with getFile not working propertly on Windows
       //when there was a / at the start.
       return path.substring(1);
     } else {
       return path;
+    }
+  }
+
+  const activeContexts: Map<string, number> = new Map;
+  /**
+   * Runs a function while a context value is set to true.
+   * 
+   * If multiple callers call this function with the same context, only the last one returning will unset the context value.
+   * 
+   * @param context the context value that will be set to `true` during `task` execution
+   * @param task the function to run while the context value is `true`
+   */
+  export async function withContext<T>(context: string, task: () => Promise<T>) {
+    try {
+      let stack = activeContexts.get(context);
+      if (stack === undefined) {
+        await vscode.commands.executeCommand(`setContext`, context, true);
+        activeContexts.set(context, 0);
+      }
+      else {
+        stack++;
+        activeContexts.set(context, stack);
+      }
+      return await task();
+    }
+    finally {
+      let stack = activeContexts.get(context);
+      if (stack !== undefined) {
+        if (stack) {
+          stack--;
+          activeContexts.set(context, stack);
+        }
+        else {
+          await vscode.commands.executeCommand(`setContext`, context, undefined);
+          activeContexts.delete(context);
+        }
+      }
     }
   }
 }
