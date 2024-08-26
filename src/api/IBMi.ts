@@ -134,13 +134,18 @@ export default class IBMi {
         return await vscode.window.withProgress({
           location: vscode.ProgressLocation.Notification,
           title: `Connecting`,
-        }, async progress => {
+          cancellable: true
+        }, async (progress, cancelToken) => {
           progress.report({
             message: `Connecting via SSH.`
           });
           const delayedOperations: Function[] = [...onConnectedOperations];
 
           await this.client.connect(connectionObject as node_ssh.Config);
+
+          cancelToken.onCancellationRequested(() => {
+            this.end();
+          });
 
           this.currentConnectionName = connectionObject.name;
           this.currentHost = connectionObject.host;
@@ -917,7 +922,7 @@ export default class IBMi {
             //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
             this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
           }
-          else{
+          else {
             this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
           }
 
