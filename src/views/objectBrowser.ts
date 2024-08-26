@@ -1349,27 +1349,18 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
         message: t(`objectBrowser.doSearchInSourceFile.progressMessage`, path)
       });
 
-      const members = await content.getMemberList({
-        library,
-        sourceFile,
-        members: filter?.member,
-        extensions: filter?.memberType,
-        filterType: filter?.filterType
-      });
-
-      if (members.length > 0) {
         progress.report({ message: t(`objectBrowser.doSearchInSourceFile.searchMessage1`, searchTerm, path) });
 
         // NOTE: if more messages are added, lower the timeout interval
         const timeoutInternal = 9000;
         const searchMessages = [
-          t(`objectBrowser.doSearchInSourceFile.searchMessage2`, members.length, searchTerm, path),
+          // t(`objectBrowser.doSearchInSourceFile.searchMessage2`, members.length, searchTerm, path),
           t(`objectBrowser.doSearchInSourceFile.searchMessage3`, searchTerm),
           t(`objectBrowser.doSearchInSourceFile.searchMessage4`, searchTerm, path),
           t(`objectBrowser.doSearchInSourceFile.searchMessage5`),
           t(`objectBrowser.doSearchInSourceFile.searchMessage6`),
           t(`objectBrowser.doSearchInSourceFile.searchMessage7`),
-          t(`objectBrowser.doSearchInSourceFile.searchMessage8`, members.length),
+          // t(`objectBrowser.doSearchInSourceFile.searchMessage8`, members.length),
           t(`objectBrowser.doSearchInSourceFile.searchMessage9`, searchTerm, path),
         ];
 
@@ -1385,12 +1376,9 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
           }
         }, timeoutInternal);
 
-        let memberFilter: string | IBMiMember[] = '*';
+        let memberFilter: string = '*';
         if (filter?.member && filter?.filterType !== "regex" && singleGenericName(filter.member)) {
           memberFilter = filter?.member;
-        }
-        else if (!parseFilter(filter?.member, filter?.filterType).noFilter) {
-          memberFilter = members;
         }
 
         const results = await Search.searchMembers(instance, library, sourceFile, searchTerm, memberFilter, filter?.protected);
@@ -1398,10 +1386,8 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
         if (results.hits.length) {
           const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
-          // Format result to include member type.
+          // Format result to be lowercase if the setting is enabled
           results.hits.forEach(result => {
-            const memberName = result.path.split("/").at(-1);
-            result.path += `.${members.find(member => member.name === memberName)?.extension || ''}`;
             if (objectNamesLower === true) {
               result.path = result.path.toLowerCase();
             }
@@ -1415,10 +1401,6 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
         } else {
           vscode.window.showInformationMessage(t(`objectBrowser.doSearchInSourceFile.notFound`, searchTerm, path));
         }
-
-      } else {
-        vscode.window.showErrorMessage(t(`objectBrowser.doSearchInSourceFile.noMembers`));
-      }
 
     });
 
