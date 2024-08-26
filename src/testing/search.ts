@@ -31,6 +31,7 @@ export const SearchSuite: TestSuite = {
         const filter = parseFilter(memberFilter);
         const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", memberFilter);
         assert.ok(result.hits.every(hit => filter.test(hit.path.split("/").at(-1)!)));
+        assert.ok(result.hits.every(hit => !hit.path.endsWith(`MBR`)));
       }
     },
     {
@@ -42,11 +43,12 @@ export const SearchSuite: TestSuite = {
         const checkNames = (names: string[]) => names.every(filter.test);
 
         const members = await getConnection().content.getMemberList({ library, sourceFile, members: memberFilter });
-        checkNames(members.map(member => member.name));
+        assert.ok(checkNames(members.map(member => member.name)));
 
         const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "SQL", members);
         assert.strictEqual(result.hits.length, 6);
-        checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!));
+        assert.ok(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!)));
+        assert.ok(result.hits.every(hit => !hit.path.endsWith(`MBR`)));
       }
     }
   ]
