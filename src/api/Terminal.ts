@@ -5,6 +5,7 @@ import { instance } from '../instantiate';
 import { GlobalConfiguration } from './Configuration';
 import IBMi from './IBMi';
 import Instance from './Instance';
+import { Tools } from './Tools';
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
@@ -56,7 +57,7 @@ export namespace Terminal {
         if (content) {
           const ifsPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : path.dirname(ifsNode.path);
           const terminal = await selectAndOpen(context, instance, TerminalType.PASE);
-          terminal?.sendText(`cd ${ifsPath}`);
+          terminal?.sendText(`cd ${Tools.escapePath(ifsPath)}`);
         }
       }),
 

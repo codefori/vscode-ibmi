@@ -58,7 +58,7 @@ export default class IBMiContent {
   }
 
   private async convertToUTF8(iconv: string, from: string, to: string, ccsid: string) {
-    const result = await this.ibmi.sendCommand({ command: `${iconv} -f IBM-${ccsid} -t UTF-8 "${from}" > ${to}` });
+    const result = await this.ibmi.sendCommand({ command: `${iconv} -f IBM-${ccsid} -t UTF-8 ${Tools.escapePath(from)} > ${Tools.escapePath(to)}` });
     if (result.code === 0) {
       return result.stdout;
     }
@@ -891,7 +891,7 @@ export default class IBMiContent {
    */
   async isDirectory(remotePath: string) {
     return (await this.ibmi.sendCommand({
-      command: `cd ${remotePath}`
+      command: `cd ${Tools.escapePath(remotePath)}`
     })).code === 0;
   }
 
@@ -953,7 +953,7 @@ export default class IBMiContent {
   }
 
   async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
-    const target = (path = typeof path === 'string' ? path : Tools.qualifyPath(path.library, path.name, path.member, path.asp));
+    const target = (path = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(path.library, path.name, path.member, path.asp));
     const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
     if (result.code === 0) {
       return result.stdout
@@ -971,7 +971,7 @@ export default class IBMiContent {
   }
 
   async countFiles(directory: string) {
-    return Number((await this.ibmi.sendCommand({ command: `cd ${directory} && (ls | wc -l)` })).stdout.trim());
+    return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
   }
 
   objectToToolTip(path: string, object: IBMiObject) {
