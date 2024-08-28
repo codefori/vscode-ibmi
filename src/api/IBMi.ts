@@ -159,7 +159,7 @@ export default class IBMi {
 
           let tempLibrarySet = false;
 
-          const timeoutHandleer = async () => {
+          const timeoutHandler = async () => {
             if (!cancelToken.isCancellationRequested) {
               this.disconnect();
 
@@ -221,9 +221,9 @@ export default class IBMi {
           }
 
           // Register handlers after we might have to abort due to bad configuration.
-          this.client.connection!.once(`timeout`, timeoutHandleer);
-          this.client.connection!.once(`end`, timeoutHandleer);
-          this.client.connection!.once(`error`, timeoutHandleer);
+          this.client.connection!.once(`timeout`, timeoutHandler);
+          this.client.connection!.once(`end`, timeoutHandler);
+          this.client.connection!.once(`error`, timeoutHandler);
 
           if (!reconnecting) {
             instance.setConnection(this);
