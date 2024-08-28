@@ -1,7 +1,7 @@
 import assert from "assert";
 import vscode from "vscode";
-import { TestSuite } from ".";
-import { instance } from "../instantiate";
+import { TestSuite } from "..";
+import { instance } from "../../instantiate";
 
 export const StorageSuite: TestSuite = {
   name: `Extension storage tests`,

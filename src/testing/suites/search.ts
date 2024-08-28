@@ -1,8 +1,8 @@
 import assert from "assert";
-import { TestSuite } from ".";
-import { parseFilter } from "../api/Filter";
-import { Search } from "../api/Search";
-import { instance } from "../instantiate";
+import { TestSuite } from "..";
+import { parseFilter } from "../../api/Filter";
+import { Search } from "../../api/Search";
+import { instance } from "../../instantiate";
 
 export const SearchSuite: TestSuite = {
   name: `Search API tests`,

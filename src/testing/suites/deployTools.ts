@@ -5,12 +5,12 @@ import ignore from "ignore";
 import { EOL } from "os";
 import { basename, posix } from "path";
 import vscode from "vscode";
-import { TestSuite } from ".";
-import { CompileTools } from "../api/CompileTools";
-import { Tools } from "../api/Tools";
-import { DeployTools } from "../api/local/deployTools";
-import { instance } from "../instantiate";
-import { Action, DeploymentMethod } from "../typings";
+import { TestSuite } from "..";
+import { CompileTools } from "../../api/CompileTools";
+import { Tools } from "../../api/Tools";
+import { DeployTools } from "../../api/local/deployTools";
+import { instance } from "../../instantiate";
+import { Action, DeploymentMethod } from "../../typings";
 
 type FileInfo = {
     md5: string
