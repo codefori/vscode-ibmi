@@ -5,13 +5,15 @@ import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
 import { Tools } from "./api/Tools";
 import { DeployTools } from "./api/local/deployTools";
+import { ComponentRegistry } from './components/manager';
 
 export interface CodeForIBMi {
   instance: Instance,
   customUI: () => CustomUI,
   deployTools: typeof DeployTools,
   evfeventParser: (lines: string[]) => Map<string, FileError[]>,
-  tools: typeof Tools
+  tools: typeof Tools,
+  componentRegistry: ComponentRegistry
 }
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";

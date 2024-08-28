@@ -6,7 +6,6 @@ import { parse } from 'csv-parse/sync';
 import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
-import { ComponentId, ComponentManager } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
@@ -17,6 +16,7 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import { ComponentManager } from "../components/manager";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1341,7 +1341,7 @@ export default class IBMi {
     }
   }
 
-  getComponent<T>(id: ComponentId) {
+  getComponent<T>(id: string) {
     return this.components.get<T>(id);
   }
 

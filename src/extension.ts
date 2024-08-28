@@ -31,6 +31,7 @@ import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
+import { ExtensionComponentRegistry } from "./components/manager";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -125,7 +126,13 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
+  return { 
+    instance, customUI: () => new CustomUI(), 
+    deployTools: DeployTools, 
+    evfeventParser: parseErrors, 
+    tools: Tools, 
+    componentRegistry: ExtensionComponentRegistry 
+  };
 }
 
 async function fixLoginSettings() {
