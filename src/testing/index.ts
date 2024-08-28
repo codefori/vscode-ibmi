@@ -13,6 +13,7 @@ import { SearchSuite } from "./suites/search";
 import { StorageSuite } from "./suites/storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./suites/tools";
+import { formatLog, parseOutput } from "./outputTools";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -59,6 +60,7 @@ export function initialise(context: vscode.ExtensionContext) {
 
     instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
     testSuitesTreeProvider = new TestSuitesTreeProvider(suites);
+
     context.subscriptions.push(
       vscode.window.createTreeView("testingView", { treeDataProvider: testSuitesTreeProvider, showCollapseAll: true }),
       vscode.commands.registerCommand(`code-for-ibmi.testing.specific`, (suiteName: string, testName: string) => {
@@ -73,7 +75,17 @@ export function initialise(context: vscode.ExtensionContext) {
             }
           }
         }
-      })
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.testing.parseOutput`, async () => {
+        const input = await vscode.env.clipboard.readText();
+
+        const logs = parseOutput(input);
+
+        const newDoc = logs.map(log => formatLog(log)).join(`\n\n`);
+
+        const doc = await vscode.workspace.openTextDocument({ content: newDoc, language: `plaintext` });
+        await vscode.window.showTextDocument(doc);
+      }),
     );
   }
 }

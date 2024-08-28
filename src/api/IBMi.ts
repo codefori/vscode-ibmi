@@ -3,13 +3,13 @@ import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
 import { parse } from 'csv-parse/sync';
-import { existsSync } from "fs";
+import { existsSync, write } from "fs";
 import os from "os";
 import path from 'path';
 import { ComponentId, ComponentManager } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { instance } from "../instantiate";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, OutputLog, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
@@ -1059,12 +1059,16 @@ export default class IBMi {
     // Some simplification
     if (result.code === null) result.code = 0;
 
-    this.appendOutput(JSON.stringify({...result, setup: {command, stdin: options.stdin, cwd: directory}}) + `\n\n`);
-
-    return {
+    const outResult = {
       ...result,
       code: result.code || 0,
-    };
+    }
+
+    const writeThis: OutputLog = {result: outResult, setup: {command, stdin: options.stdin, directory, env: options.env}};
+    
+    this.appendOutput(JSON.stringify(writeThis) + `\n\n`);
+
+    return outResult;
   }
 
   private appendOutput(content: string) {
