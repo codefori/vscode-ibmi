@@ -1,18 +1,19 @@
 import { env } from "process";
 import vscode from "vscode";
 import { instance } from "../instantiate";
-import { ActionSuite } from "./action";
-import { ComponentSuite } from "./components";
-import { ConnectionSuite } from "./connection";
-import { ContentSuite } from "./content";
-import { DeployToolsSuite } from "./deployTools";
-import { EncodingSuite } from "./encoding";
-import { FilterSuite } from "./filter";
-import { ILEErrorSuite } from "./ileErrors";
-import { SearchSuite } from "./search";
-import { StorageSuite } from "./storage";
+import { ActionSuite } from "./suites/action";
+import { ComponentSuite } from "./suites/components";
+import { ConnectionSuite } from "./suites/connection";
+import { ContentSuite } from "./suites/content";
+import { DeployToolsSuite } from "./suites/deployTools";
+import { EncodingSuite } from "./suites/encoding";
+import { FilterSuite } from "./suites/filter";
+import { ILEErrorSuite } from "./suites/ileErrors";
+import { SearchSuite } from "./suites/search";
+import { StorageSuite } from "./suites/storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
-import { ToolsSuite } from "./tools";
+import { ToolsSuite } from "./suites/tools";
+import { formatLog, parseOutput } from "./outputTools";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -45,8 +46,8 @@ export interface TestCase {
   duration?: number
 }
 
-const testingEnabled = env.testing === `true`;
-const testIndividually = env.individual === `true`;
+const testingEnabled = env.base_testing === `true`;
+const testIndividually = env.base_individual === `true`;
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
@@ -59,6 +60,7 @@ export function initialise(context: vscode.ExtensionContext) {
 
     instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
     testSuitesTreeProvider = new TestSuitesTreeProvider(suites);
+
     context.subscriptions.push(
       vscode.window.createTreeView("testingView", { treeDataProvider: testSuitesTreeProvider, showCollapseAll: true }),
       vscode.commands.registerCommand(`code-for-ibmi.testing.specific`, (suiteName: string, testName: string) => {
@@ -73,7 +75,17 @@ export function initialise(context: vscode.ExtensionContext) {
             }
           }
         }
-      })
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.testing.parseOutput`, async () => {
+        const input = await vscode.env.clipboard.readText();
+
+        const logs = parseOutput(input);
+
+        const newDoc = logs.map(log => formatLog(log)).join(`\n\n`);
+
+        const doc = await vscode.workspace.openTextDocument({ content: newDoc, language: `plaintext` });
+        await vscode.window.showTextDocument(doc);
+      }),
     );
   }
 }

@@ -1,6 +1,6 @@
 import assert from "assert";
-import { TestSuite } from ".";
-import { Tools } from "../api/Tools";
+import { TestSuite } from "..";
+import { Tools } from "../../api/Tools";
 
 export const ToolsSuite: TestSuite = {
   name: `Tools API tests`,

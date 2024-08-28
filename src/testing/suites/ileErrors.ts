@@ -1,6 +1,6 @@
 import assert from "assert";
-import { TestSuite } from ".";
-import { parseErrors } from "../api/errors/parser";
+import { TestSuite } from "..";
+import { parseErrors } from "../../api/errors/parser";
 
 export const ILEErrorSuite: TestSuite = {
   name: `ILE Error API tests`,

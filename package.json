@@ -909,6 +909,12 @@
 		},
 		"commands": [
 			{
+				"command": "code-for-ibmi.testing.parseOutput",
+				"title": "Parse Output Channel logs",
+				"category": "IBM i",
+				"enablement": "code-for-ibmi:testing"
+			},
+			{
 				"command": "code-for-ibmi.setToDefault",
 				"title": "Reset to Default Profile",
 				"category": "IBM i",

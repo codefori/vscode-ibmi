@@ -2,11 +2,11 @@ import assert from "assert";
 import tmp from 'tmp';
 import util, { TextDecoder } from 'util';
 import { Uri, workspace } from "vscode";
-import { TestSuite } from ".";
-import { Tools } from "../api/Tools";
-import { instance } from "../instantiate";
-import { CommandResult } from "../typings";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
+import { TestSuite } from "..";
+import { Tools } from "../../api/Tools";
+import { instance } from "../../instantiate";
+import { CommandResult } from "../../typings";
+import { getMemberUri } from "../../filesystems/qsys/QSysFs";
 
 const contents = {
   '37': [`Hello world`],

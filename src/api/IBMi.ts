@@ -3,13 +3,13 @@ import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
 import { parse } from 'csv-parse/sync';
-import { existsSync } from "fs";
+import { existsSync, write } from "fs";
 import os from "os";
 import path from 'path';
 import { ComponentId, ComponentManager } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { instance } from "../instantiate";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, OutputLog, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
@@ -75,11 +75,6 @@ export default class IBMi {
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
 
-  /** 
-   * Strictly for storing errors from sendCommand.
-   * Used when creating issues on GitHub.
-   * */
-  lastErrors: object[] = [];
   config?: ConnectionConfiguration.Parameters;
   content = new IBMiContent(this);
   shell?: string;
@@ -1064,26 +1059,16 @@ export default class IBMi {
     // Some simplification
     if (result.code === null) result.code = 0;
 
-    // Store the error
-    if (result.code && result.stderr) {
-      this.lastErrors.push({
-        command,
-        code: result.code,
-        stderr: result.stderr,
-        cwd: directory
-      });
-
-      // We don't want it to fill up too much.
-      if (this.lastErrors.length > 3)
-        this.lastErrors.shift();
-    }
-
-    this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
-
-    return {
+    const outResult = {
       ...result,
       code: result.code || 0,
-    };
+    }
+
+    const writeThis: OutputLog = {result: outResult, setup: {command, stdin: options.stdin, directory, env: options.env}};
+    
+    this.appendOutput(JSON.stringify(writeThis) + `\n\n`);
+
+    return outResult;
   }
 
   private appendOutput(content: string) {

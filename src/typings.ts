@@ -63,6 +63,8 @@ export interface CommandResult {
   command?: string;
 }
 
+export interface OutputLog {result: CommandResult, setup: CommandData};
+
 export interface Action {
   name: string;
   command: string;

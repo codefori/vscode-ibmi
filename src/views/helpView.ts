@@ -308,11 +308,6 @@ async function getRemoteSection() {
           `\`\`\`json`,
           JSON.stringify(connection?.variantChars || {}, null, 2),
           `\`\`\``),
-        ``,
-        createSection(`Errors`,
-          `\`\`\`json`,
-          JSON.stringify(connection?.lastErrors || [], null, 2),
-          `\`\`\``)
       ].join("\n");
     });
   }

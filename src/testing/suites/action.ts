@@ -1,16 +1,16 @@
 import assert from "assert";
 import { existsSync } from "fs";
 import vscode from "vscode";
-import { TestSuite } from ".";
-import { CompileTools } from "../api/CompileTools";
-import { Tools } from "../api/Tools";
-import { LocalLanguageActions } from "../api/local/LocalLanguageActions";
-import { DeployTools } from "../api/local/deployTools";
-import { getEnvConfig } from "../api/local/env";
-import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
-import { instance } from "../instantiate";
-import { Action, IBMiObject } from "../typings";
-import { File, Folder, createFolder } from "./deployTools";
+import { TestSuite } from "..";
+import { CompileTools } from "../../api/CompileTools";
+import { Tools } from "../../api/Tools";
+import { LocalLanguageActions } from "../../api/local/LocalLanguageActions";
+import { DeployTools } from "../../api/local/deployTools";
+import { getEnvConfig } from "../../api/local/env";
+import { getMemberUri, getUriFromPath } from "../../filesystems/qsys/QSysFs";
+import { instance } from "../../instantiate";
+import { Action, IBMiObject } from "../../typings";
+import { createFolder, File, Folder } from "./deployTools";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,
