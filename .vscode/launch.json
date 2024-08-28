@@ -47,8 +47,8 @@
 			"sourceMaps": true,
 			"preLaunchTask": "${defaultBuildTask}",
 			"env": {
-				"testing": "true",
-				"individual": "true"
+				"base_testing": "true",
+				"base_individual": "true"
 			}
 		},
 	]

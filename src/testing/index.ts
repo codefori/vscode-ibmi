@@ -46,8 +46,8 @@ export interface TestCase {
   duration?: number
 }
 
-const testingEnabled = env.testing === `true`;
-const testIndividually = env.individual === `true`;
+const testingEnabled = env.base_testing === `true`;
+const testIndividually = env.base_individual === `true`;
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
