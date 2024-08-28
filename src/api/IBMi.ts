@@ -159,20 +159,24 @@ export default class IBMi {
 
           let tempLibrarySet = false;
 
-          const disconnected = async () => {
-            const choice = await vscode.window.showWarningMessage(`Connection lost`, {
-              modal: true,
-              detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
-            }, `Yes`);
+          const timeoutHandler = async () => {
+            if (!cancelToken.isCancellationRequested) {
+              this.disconnect();
 
-            let disconnect = true;
-            if (choice === `Yes`) {
-              disconnect = !(await this.connect(connectionObject, true)).success;
+              const choice = await vscode.window.showWarningMessage(`Connection lost`, {
+                modal: true,
+                detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
+              }, `Yes`);
+
+              let disconnect = true;
+              if (choice === `Yes`) {
+                disconnect = !(await this.connect(connectionObject, true)).success;
+              }
+
+              if (disconnect) {
+                this.end();
+              };
             }
-
-            if (disconnect) {
-              this.end();
-            };
           };
 
           progress.report({
@@ -217,9 +221,9 @@ export default class IBMi {
           }
 
           // Register handlers after we might have to abort due to bad configuration.
-          this.client.connection!.once(`timeout`, disconnected);
-          this.client.connection!.once(`end`, disconnected);
-          this.client.connection!.once(`error`, disconnected);
+          this.client.connection!.once(`timeout`, timeoutHandler);
+          this.client.connection!.once(`end`, timeoutHandler);
+          this.client.connection!.once(`error`, timeoutHandler);
 
           if (!reconnecting) {
             instance.setConnection(this);
@@ -935,8 +939,9 @@ export default class IBMi {
             for (const operation of delayedOperations) {
               await operation();
             }
-            instance.fire("connected");
           }
+
+          instance.fire(`connected`);
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
             aspInfo: this.aspInfo,
@@ -1104,9 +1109,17 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  async end() {
+  private async disconnect() {
     this.client.connection?.removeAllListeners();
     this.client.dispose();
+    this.client.connection = null;
+    instance.fire(`disconnected`);
+  }
+
+  async end() {
+    if (this.client.connection) {
+      this.disconnect();
+    }
 
     if (this.outputChannel) {
       this.outputChannel.hide();
@@ -1124,7 +1137,6 @@ export default class IBMi {
     ]);
 
     instance.setConnection(undefined);
-    instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
     vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }
