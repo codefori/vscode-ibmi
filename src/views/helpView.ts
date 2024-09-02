@@ -1,28 +1,22 @@
 
-import { parse } from 'path';
+import AdmZip from 'adm-zip';
+import path, { parse } from 'path';
 import vscode from 'vscode';
+import { DebugConfiguration } from '../api/debug/config';
 import IBMi from '../api/IBMi';
 import { instance } from '../instantiate';
-import path from 'path';
 import { t } from "../locale";
-import AdmZip from 'adm-zip';
-import { DebugConfiguration } from '../api/debug/config';
 
 export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
-  constructor() {
+  constructor(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.openNewIssue", openNewIssue)
     vscode.commands.registerCommand("code-for-ibmi.downloadLogs", downloadLogs)
 
-    instance.onEvent(`connected`, () => {
-      this.refresh();
-    });
-
-    instance.onEvent(`disconnected`, () => {
-      this.refresh();
-    });
+    instance.subscribe(context, `connected`, 'Refresh Help View', () => this.refresh());
+    instance.subscribe(context, `disconnected`, 'Refresh Help View', () => this.refresh());
   }
 
   refresh(element?: vscode.TreeItem) {

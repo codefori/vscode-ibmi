@@ -57,7 +57,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `helpView`,
-      new HelpView()
+      new HelpView(context)
     ),
     window.registerTreeDataProvider(
       `libraryListView`,
@@ -114,14 +114,16 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     initialise(context);
   }
 
-  instance.onEvent(`connected`, () => {
-    Promise.all([
-      commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
-      commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-      commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
-      commands.executeCommand("code-for-ibmi.refreshProfileView")
-    ]);
-  });
+  instance.subscribe(
+    context,
+    'connected',
+    `Refresh views`,
+    () => {
+      commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+      commands.executeCommand("code-for-ibmi.refreshLibraryListView");
+      commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+      commands.executeCommand("code-for-ibmi.refreshProfileView");
+    });
 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }

@@ -8,7 +8,7 @@ import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
-import { CommandResult } from "../typings";
+import { CommandResult, IBMiObject } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -247,6 +247,35 @@ export const ContentSuite: TestSuite = {
 
         assert.strictEqual(tmpFileContent, memberContent);
       }
+    },
+
+    {
+      name: `Test downloadMemberContent with dollar`, test: async () => {
+        const content = instance.getContent();
+        const config = instance.getConfig();
+        const connection = instance.getConnection();
+        const tempLib = config!.tempLibrary,
+          tempSPF = `TESTINGS`,
+          tempMbr = Tools.makeid(2) + `$` + Tools.makeid(2);
+
+        await connection!.runCommand({
+          command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
+          environment: `ile`
+        });
+
+        await connection!.runCommand({
+          command: `ADDPFM FILE(${tempLib}/${tempSPF}) MBR(${tempMbr}) `,
+          environment: `ile`
+        });
+
+        const baseContent = `Hello world\r\n`;
+
+        const uploadResult = await content?.uploadMemberContent(undefined, tempLib, tempSPF, tempMbr, baseContent);
+        assert.ok(uploadResult);
+
+        const memberContent = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
+        assert.strictEqual(memberContent, baseContent);
+      },
     },
 
     {
@@ -755,6 +784,74 @@ export const ContentSuite: TestSuite = {
         }
         else {
           throw new Error("No temporary library defined in configuration");
+        }
+      }
+    },
+    {
+      name: "Listing objects with variants",
+      test: async () => {
+        const connection = instance.getConnection();
+        const content = instance.getConnection()?.content;
+        if (connection && content && connection.getEncoding().ccsid !== 37) {
+          const ccsid = connection.getEncoding().ccsid;
+          let library = `TESTLIB${connection.variantChars.local}`;
+          let skipLibrary = false;
+          const sourceFile = `TESTFIL${connection.variantChars.local}`;
+          const members: string[] = [];
+          for (let i = 0; i < 5; i++) {
+            members.push(`TSTMBR${connection.variantChars.local}${i}`);
+          }
+          try {
+            const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
+            if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
+              //Not authorized: carry on, skip library name test
+              library = connection.config?.tempLibrary!;
+              skipLibrary = true
+            }
+            const crtSrcPF = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
+            if ((crtLib.code === 0 || skipLibrary) && crtSrcPF.code === 0) {
+              for (const member of members) {
+                const addPFM = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
+                if (addPFM.code !== 0) {
+                  throw new Error(`Failed to create member ${member}: ${addPFM.stderr}`);
+                }
+              }
+            }
+            else {
+              throw new Error(`Failed to create library and source file: ${crtLib.stderr || crtLib.stderr}`)
+            }
+
+            if (!skipLibrary) {
+              const [expectedLibrary] = await content.getLibraries({ library });
+              assert.ok(expectedLibrary);
+              assert.strictEqual(library, expectedLibrary.name);
+            }
+
+            const checkFile = (expectedObject: IBMiObject) => {
+              assert.ok(expectedObject);
+              assert.ok(expectedObject.sourceFile, `${expectedObject.name} not a source file`);
+              assert.strictEqual(expectedObject.name, sourceFile);
+              assert.strictEqual(expectedObject.library, library);
+            };
+
+            const [expectedObject] = await content.getObjectList({ library, object: sourceFile, types: ["*ALL"] });
+            checkFile(expectedObject);
+
+            const [expectedSourceFile] = await content.getObjectList({ library, object: sourceFile, types: ["*SRCPF"] });
+            checkFile(expectedSourceFile);
+
+            const expectedMembers = await content.getMemberList({ library, sourceFile });
+            assert.ok(expectedMembers);
+            assert.ok(expectedMembers.every(member => members.find(m => m === member.name)));
+          }
+          finally {
+            if (!skipLibrary && await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
+              await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true })
+            }
+            if (skipLibrary && await content.checkObject({ library, name: sourceFile, type: "*FILE" })) {
+              await connection.runCommand({ command: `DLTF FILE(${library}/${sourceFile})`, noLibList: true })
+            }
+          }
         }
       }
     }

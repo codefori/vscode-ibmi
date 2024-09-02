@@ -283,8 +283,9 @@ export async function initialize(context: ExtensionContext) {
           const ptfInstalled = server.debugPTFInstalled();
 
           if (ptfInstalled) {
-            const remoteCertsExists = await certificates.remoteCertificatesExists();
-            if (remoteCertsExists) {
+            const debugConfig = await new DebugConfiguration().load()
+            const remoteCertsExists = await certificates.remoteCertificatesExists(debugConfig);
+            if (remoteCertsExists && await certificates.debugKeyFileExists(connection, debugConfig) && debugConfig.getCode4iDebug()) {
               await certificates.downloadClientCert(connection);
               vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable debugging.`);
             }
@@ -371,36 +372,44 @@ export async function initialize(context: ExtensionContext) {
   );
 
   // Run during startup:
-  instance.onEvent("connected", async () => {
-    activateDebugExtension();
-    const connection = instance.getConnection();
-    const content = instance.getContent();
-    if (connection && content && server.debugPTFInstalled()) {
-      vscode.commands.executeCommand(`setContext`, ptfContext, true);
+  instance.subscribe(
+    context,
+    'connected',
+    `Load debugger status`,
+    async () => {
+      activateDebugExtension();
+      const connection = instance.getConnection();
+      const content = instance.getContent();
+      if (connection && content && server.debugPTFInstalled()) {
+        vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-      //Enable debug related commands
-      vscode.commands.executeCommand(`setContext`, debugContext, true);
+        //Enable debug related commands
+        vscode.commands.executeCommand(`setContext`, debugContext, true);
 
-      //Enable service entry points related commands
-      vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
+        //Enable service entry points related commands
+        vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
 
-      const isDebugManaged = isManaged();
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
-      if (!isDebugManaged) {
-        if (validateIPv4address(connection.currentHost)) {
-          vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+        const isDebugManaged = isManaged();
+        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
+        if (!isDebugManaged) {
+          if (validateIPv4address(connection.currentHost)) {
+            vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+          }
+
+          certificates.sanityCheck(connection, content);
         }
-
-        certificates.sanityCheck(connection, content);
       }
-    }
-  });
+    });
 
-  instance.onEvent("disconnected", () => {
-    resetDebugServiceDetails();
-    vscode.commands.executeCommand(`setContext`, debugContext, false);
-    vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
-  });
+  instance.subscribe(
+    context,
+    'disconnected',
+    `Clear debugger status`,
+    () => {
+      resetDebugServiceDetails();
+      vscode.commands.executeCommand(`setContext`, debugContext, false);
+      vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
+    });
 }
 
 function validateIPv4address(ipaddress: string) {

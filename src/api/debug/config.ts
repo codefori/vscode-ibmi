@@ -91,6 +91,14 @@ export class DebugConfiguration {
   getRemoteServiceWorkDir() {
     return this.getOrDefault("DBGSRV_WRK_DIR", "/QIBM/UserData/IBMiDebugService");
   }
+
+  getCode4iDebug() {
+    return this.get("CODE4IDEBUG");
+  }
+
+  setCode4iDebug(value: string) {
+    return this.set("CODE4IDEBUG", value);
+  }
 }
 
 interface DebugServiceDetails {
@@ -145,7 +153,7 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
         console.log(e);
       }
     }
-    else{
+    else {
       details = {
         version: `1.0.0`,
         java: `8`,

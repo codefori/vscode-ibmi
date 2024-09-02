@@ -66,7 +66,6 @@ export default class IBMi {
   defaultUserLibraries: string[] = [];
   outputChannel?: vscode.OutputChannel;
   outputChannelContent?: string;
-
   /**
    * Used to store ASP numbers and their names
    * Their names usually maps up to a directory in
@@ -85,7 +84,10 @@ export default class IBMi {
   content = new IBMiContent(this);
   shell?: string;
 
-  commandsExecuted: number = 0;
+  commandsExecuted = 0;
+
+  //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
+  maximumArgsLength = 0;
 
   dangerousVariants = false;
 
@@ -132,13 +134,18 @@ export default class IBMi {
         return await vscode.window.withProgress({
           location: vscode.ProgressLocation.Notification,
           title: `Connecting`,
-        }, async progress => {
+          cancellable: true
+        }, async (progress, cancelToken) => {
           progress.report({
             message: `Connecting via SSH.`
           });
           const delayedOperations: Function[] = [...onConnectedOperations];
 
           await this.client.connect(connectionObject as node_ssh.Config);
+
+          cancelToken.onCancellationRequested(() => {
+            this.end();
+          });
 
           this.currentConnectionName = connectionObject.name;
           this.currentHost = connectionObject.host;
@@ -152,20 +159,24 @@ export default class IBMi {
 
           let tempLibrarySet = false;
 
-          const disconnected = async () => {
-            const choice = await vscode.window.showWarningMessage(`Connection lost`, {
-              modal: true,
-              detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
-            }, `Yes`);
+          const timeoutHandler = async () => {
+            if (!cancelToken.isCancellationRequested) {
+              this.disconnect();
 
-            let disconnect = true;
-            if (choice === `Yes`) {
-              disconnect = !(await this.connect(connectionObject, true)).success;
+              const choice = await vscode.window.showWarningMessage(`Connection lost`, {
+                modal: true,
+                detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
+              }, `Yes`);
+
+              let disconnect = true;
+              if (choice === `Yes`) {
+                disconnect = !(await this.connect(connectionObject, true)).success;
+              }
+
+              if (disconnect) {
+                this.end();
+              };
             }
-
-            if (disconnect) {
-              this.end();
-            };
           };
 
           progress.report({
@@ -210,9 +221,9 @@ export default class IBMi {
           }
 
           // Register handlers after we might have to abort due to bad configuration.
-          this.client.connection!.once(`timeout`, disconnected);
-          this.client.connection!.once(`end`, disconnected);
-          this.client.connection!.once(`error`, disconnected);
+          this.client.connection!.once(`timeout`, timeoutHandler);
+          this.client.connection!.once(`end`, timeoutHandler);
+          this.client.connection!.once(`error`, timeoutHandler);
 
           if (!reconnecting) {
             instance.setConnection(this);
@@ -759,18 +770,18 @@ export default class IBMi {
                     let reason;
                     const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
                     let missingPath;
-                    for (const requiredPath of requiredPaths){
+                    for (const requiredPath of requiredPaths) {
                       if (!currentPaths.includes(requiredPath)) {
                         reason = `Your $PATH shell environment variable does not include ${requiredPath}`;
                         missingPath = requiredPath
                         break;
-                      } 
+                      }
                     }
                     // If reason is still undefined, then we know the user has all the required paths. Then we don't 
                     // need to check for their existence before checking the order of the required paths.
-                    if (!reason && 
+                    if (!reason &&
                       (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
-                   || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
+                        || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
                       reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
                       missingPath = "/QOpenSys/pkgs/bin"
                     }
@@ -911,6 +922,14 @@ export default class IBMi {
             }
           }
 
+          if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
+            //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
+            this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
+          }
+          else {
+            this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
+          }
+
           progress.report({ message: `Checking Code for IBM i components.` });
           await this.components.startup(this);
 
@@ -920,8 +939,9 @@ export default class IBMi {
             for (const operation of delayedOperations) {
               await operation();
             }
-            instance.fire("connected");
           }
+
+          instance.fire(`connected`);
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
             aspInfo: this.aspInfo,
@@ -937,7 +957,8 @@ export default class IBMi {
             libraryListValidated: true,
             pathChecked: true,
             userDefaultCCSID: this.userDefaultCCSID,
-            debugConfigLoaded
+            debugConfigLoaded,
+            maximumArgsLength: this.maximumArgsLength
           });
 
           //Keep track of variant characters that can be uppercased
@@ -1088,9 +1109,17 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  async end() {
+  private async disconnect() {
     this.client.connection?.removeAllListeners();
     this.client.dispose();
+    this.client.connection = null;
+    instance.fire(`disconnected`);
+  }
+
+  async end() {
+    if (this.client.connection) {
+      this.disconnect();
+    }
 
     if (this.outputChannel) {
       this.outputChannel.hide();
@@ -1108,7 +1137,6 @@ export default class IBMi {
     ]);
 
     instance.setConnection(undefined);
-    instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
     vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }

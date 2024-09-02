@@ -360,6 +360,7 @@
   "objectBrowser.uploadAndReplaceMemberAsFile.infoMessage": "Member was uploaded.",
   "offline": "Offline",
   "online": "Online",
+  "open": "Open",
   "open.service.configuration": "Open configuration",
   "overview": "Overview",
   "overwrite": "Overwrite",
@@ -393,8 +394,8 @@
   "sandbox.noconnection.modal.title": "Oh no! The sandbox is down.",
   "sandbox.noPassword": "Connection to {0} ended as no password was provided.",
   "save": "Save",
-  "searchView.find.message":"{0} file(s) named '{1}'",
-  "searchView.search.message":"{0} file(s) contain(s) '{1}'",
+  "searchView.find.message": "{0} file(s) named '{1}'",
+  "searchView.search.message": "{0} file(s) contain(s) '{1}'",
   "service.certificate.exists": "Remote service certificate exists",
   "shortcut": "shortcut",
   "size": "Size",
@@ -421,5 +422,7 @@
   "type": "Type",
   "USER_DIRECTORY": "User directory",
   "username": "Username",
-  "Yes": "Yes"
+  "Yes": "Yes",
+  "debug.service.config.incomplete": "Incomplete configuration",
+  "debug.service.config.incomplete.detail": "Certificate needs to be regenerated"
 }

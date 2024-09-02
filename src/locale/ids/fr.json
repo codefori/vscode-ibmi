@@ -359,7 +359,8 @@
   "objectBrowser.uploadAndReplaceMemberAsFile.errorMessage": "Erreur lors de l'upload du contenu du membre! {0}",
   "objectBrowser.uploadAndReplaceMemberAsFile.infoMessage": "Le membre a été uploadé.",
   "offline": "Hors ligne",
-  "online": "En ligne",
+  "online": "En ligne",  
+  "open":"Ouvrir",
   "open.service.configuration": "Ouvrir la configuration",
   "overview": "Aperçu",
   "overwrite": "Écraser",
@@ -421,5 +422,7 @@
   "type": "Type",
   "USER_DIRECTORY": "Répertoire utilisateur",
   "username": "Utilisateur",
-  "Yes": "Oui"
+  "Yes": "Oui",
+  "debug.service.config.incomplete": "Incomplete configuration",
+  "debug.service.config.incomplete.detail": "Certificate needs to be regenerated"
 }

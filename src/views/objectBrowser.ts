@@ -3,7 +3,7 @@ import os from "os";
 import path, { basename, dirname } from "path";
 import vscode from "vscode";
 import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
-import { parseFilter } from "../api/Filter";
+import { parseFilter, singleGenericName } from "../api/Filter";
 import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
@@ -442,8 +442,6 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     dragAndDropController: new ObjectBrowserMemberItemDragAndDrop()
   });
 
-  instance.onEvent(`connected`, () => objectBrowser.refresh());
-
   context.subscriptions.push(
     objectTreeViewer,
 
@@ -825,23 +823,23 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       }
 
       const saveIntoDirectory = members.length > 1;
-      let downloadLocation: string | undefined;
+      let downloadLocationURI: vscode.Uri | undefined;
       if (saveIntoDirectory) {
-        downloadLocation = (await vscode.window.showOpenDialog({
+        downloadLocationURI = (await vscode.window.showOpenDialog({
           canSelectMany: false,
           canSelectFiles: false,
           canSelectFolders: true,
           defaultUri: vscode.Uri.file(connection.getLastDownloadLocation())
-        }))?.[0]?.path;
+        }))?.[0];
       }
       else {
-        downloadLocation = (await vscode.window.showSaveDialog({
+        downloadLocationURI = (await vscode.window.showSaveDialog({
           defaultUri: vscode.Uri.file(path.join(connection.getLastDownloadLocation(), members[0].name)),
           filters: { 'Source member': [members[0].extension || '*'] }
-        }))?.path;
+        }));
       }
 
-      if (downloadLocation) {
+      if (downloadLocationURI) {
         //Remove double entries and map to { path, copy } object
         const toBeDownloaded = members
           .filter((member, index, list) => list.findIndex(m => m.library === member.library && m.file === member.file && m.name === member.name) === index)
@@ -849,10 +847,10 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           .map(member => ({ path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
 
         if (!saveIntoDirectory) {
-          toBeDownloaded[0].name = basename(downloadLocation);
-          downloadLocation = dirname(downloadLocation);
+          toBeDownloaded[0].name = basename(downloadLocationURI.path);
         }
 
+        const downloadLocation = saveIntoDirectory ? downloadLocationURI.path : dirname(downloadLocationURI.path);
         await connection.setLastDownloadLocation(downloadLocation);
 
         //Ask what do to with existing files in the target directory
@@ -898,7 +896,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
 
               task.report({ message: t('objectBrowser.downloadMemberContent.download.streamfiles'), increment: 33 })
               await connection.downloadDirectory(downloadLocation!, directory);
-              vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`));
+              vscode.window.showInformationMessage(t(`objectBrowser.downloadMemberContent.infoMessage`), t("open"))
+                .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, toBeDownloaded[0].name) : downloadLocationURI) : undefined);
             });
           } catch (e) {
             vscode.window.showErrorMessage(t(`objectBrowser.downloadMemberContent.errorMessage`, e));
@@ -1338,9 +1337,9 @@ function storeMemberList(path: string, list: string[]) {
   }
 }
 
-async function doSearchInSourceFile(searchTerm: string, path: string, filter: ConnectionConfiguration.ObjectFilters | undefined) {
+async function doSearchInSourceFile(searchTerm: string, path: string, filter?: ConnectionConfiguration.ObjectFilters) {
   const content = getContent();
-  const pathParts = path.split(`/`);
+  const [library, sourceFile] = path.split(`/`);
   try {
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
@@ -1350,12 +1349,20 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
         message: t(`objectBrowser.doSearchInSourceFile.progressMessage`, path)
       });
 
-      const members = await content.getMemberList({ library: pathParts[0], sourceFile: pathParts[1], members: filter?.member });
+      const members = await content.getMemberList({
+        library,
+        sourceFile,
+        members: filter?.member,
+        extensions: filter?.memberType,
+        filterType: filter?.filterType
+      });
+
       if (members.length > 0) {
+        progress.report({ message: t(`objectBrowser.doSearchInSourceFile.searchMessage1`, searchTerm, path) });
+
         // NOTE: if more messages are added, lower the timeout interval
         const timeoutInternal = 9000;
         const searchMessages = [
-          t(`objectBrowser.doSearchInSourceFile.searchMessage1`, searchTerm, path),
           t(`objectBrowser.doSearchInSourceFile.searchMessage2`, members.length, searchTerm, path),
           t(`objectBrowser.doSearchInSourceFile.searchMessage3`, searchTerm),
           t(`objectBrowser.doSearchInSourceFile.searchMessage4`, searchTerm, path),
@@ -1378,26 +1385,23 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter: Co
           }
         }, timeoutInternal);
 
-        const results = await Search.searchMembers(instance, pathParts[0], pathParts[1], `${filter?.member || `*`}.MBR`, searchTerm, filter?.protected || content.isProtectedPath(pathParts[0]));
-        // Filter search result by member type filter.
-        if (results.hits.length && filter?.member) {
-          const patternExt = new RegExp(`^` + filter?.member.replace(/[*]/g, `.*`).replace(/[$]/g, `\\$`) + `$`);
-          results.hits = results.hits.filter(result => {
-            const resultPath = result.path.split(`/`);
-            const resultName = resultPath[resultPath.length - 1];
-            const member = members.find(member => member.name === resultName);
-            return (member && patternExt.test(member.extension));
-          })
+        let memberFilter: string | IBMiMember[] = '*';
+        if (filter?.member && filter?.filterType !== "regex" && singleGenericName(filter.member)) {
+          memberFilter = filter?.member;
+        }
+        else if (!parseFilter(filter?.member, filter?.filterType).noFilter) {
+          memberFilter = members;
         }
 
+        const results = await Search.searchMembers(instance, library, sourceFile, searchTerm, memberFilter, filter?.protected);
+        clearInterval(messageTimeout)
         if (results.hits.length) {
           const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
           // Format result to include member type.
           results.hits.forEach(result => {
-            const resultPath = result.path.split(`/`);
-            const resultName = resultPath[resultPath.length - 1];
-            result.path += `.${members.find(member => member.name === resultName)?.extension || ''}`;
+            const memberName = result.path.split("/").at(-1);
+            result.path += `.${members.find(member => member.name === memberName)?.extension || ''}`;
             if (objectNamesLower === true) {
               result.path = result.path.toLowerCase();
             }
