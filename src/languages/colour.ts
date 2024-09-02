@@ -9,16 +9,10 @@ export function initialiseColourChecker(context: ExtensionContext) {
     workspace.onDidOpenTextDocument(async (document) => {
       if (document.uri.scheme === `member` && !document.isClosed) {
         const content = document.getText();
-        let hasInvalidCharacters = false;
-        for (let i = 0; i < content.length; i++) {
-          if (replaceCharCode(content.charCodeAt(i))) {
-            hasInvalidCharacters = true;
-            break;
-          }
-        }
+        let doWork = hasInvalidCharacters(content);
 
-        if (hasInvalidCharacters) {
-          const shouldFix = await shouldInitiateCleanup();
+        if (doWork) {
+          const shouldFix = await askUserToStart();
 
           if (shouldFix) {
             const fixedContent = replaceInvalidCharacters(content);
@@ -32,14 +26,23 @@ export function initialiseColourChecker(context: ExtensionContext) {
   )
 }
 
-function replaceCharCode(charCode: number) {
+export function hasInvalidCharacters(content: string) {
+  for (let i = 0; i < content.length; i++) {
+    if (shouldReplaceCharCode(content.charCodeAt(i))) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function shouldReplaceCharCode(charCode: number) {
   if ((charCode < 32 && !NEW_LINE_NUMBERS.includes(charCode)) || (charCode >= 128 && charCode <= 157)) {
     return true;
   }
   return false;
 }
 
-async function shouldInitiateCleanup() {
+async function askUserToStart() {
   const config = instance.getConfig()
 
   if (config?.autoFixInvalidCharacters) {
@@ -65,12 +68,12 @@ async function shouldInitiateCleanup() {
   return true;
 }
 
-function replaceInvalidCharacters(content: string) {
+export function replaceInvalidCharacters(content: string) {
   const chars = content.split(``);
 
   // return content.replace(/[\x00-\x1F]/g, ``); // This almost works, but we want to keep line feed / carriage return
   for (let i = 0; i < content.length; i++) {
-    if (replaceCharCode(content.charCodeAt(i))) {
+    if (shouldReplaceCharCode(content.charCodeAt(i))) {
       chars[i] = ` `;
     }
   }
