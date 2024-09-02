@@ -423,6 +423,8 @@
   "USER_DIRECTORY": "User directory",
   "username": "Username",
   "Yes": "Yes",
+  "Always": "Always",
   "debug.service.config.incomplete": "Incomplete configuration",
-  "debug.service.config.incomplete.detail": "Certificate needs to be regenerated"
+  "debug.service.config.incomplete.detail": "Certificate needs to be regenerated",
+  "seuColours.warning": "This member contains invalid characters. Would you like to clean it up?"
 }

@@ -1,5 +1,6 @@
 import { ExtensionContext, Range, window, workspace, WorkspaceEdit } from "vscode";
 import { instance } from "../instantiate";
+import { t } from "../locale";
 
 const NEW_LINE_NUMBERS = [10, 13];
 
@@ -44,14 +45,19 @@ async function shouldInitiateCleanup() {
   if (config?.autoFixInvalidCharacters) {
     return true;
   }
-  
-  const chosen = await window.showInformationMessage(`This member contains invalid characters. Would you like to clean it up?`, `Yes`, `Always`, `No`);
 
-  if (chosen === `No`) {
+  const always = t(`Always`);
+  const no = t(`No`);
+  
+  const chosen = await window.showInformationMessage(
+    t(`seuColours.warning`), 
+    t(`Yes`), always, no);
+
+  if (chosen === no) {
     return false;
   }
 
-  if (chosen === `Always` && config) {
+  if (chosen === always && config) {
     config.autoFixInvalidCharacters = true;
     await instance.setConfig(config);
   }
