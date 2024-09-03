@@ -528,7 +528,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       quickPick.show();
 
     }),
-    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | BrowserItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod) => {
+    vscode.commands.registerCommand(`code-for-ibmi.runAction`, async (target: vscode.TreeItem | BrowserItem | vscode.Uri, group?: any, action?: Action, method?: DeploymentMethod, workspaceFolder?: vscode.WorkspaceFolder) => {
       const editor = vscode.window.activeTextEditor;
       let uri;
       let browserItem;
@@ -574,7 +574,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
 
           if (canRun && [`member`, `streamfile`, `file`, 'object'].includes(uri.scheme)) {
-            return await CompileTools.runAction(instance, uri, action, method, browserItem);
+            return await CompileTools.runAction(instance, uri, action, method, browserItem, workspaceFolder);
           }
         }
         else {
