@@ -951,8 +951,8 @@ export default class IBMiContent {
     return cl;
   }
 
-  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
-    const target = (path = typeof path === 'string' ? path : Tools.qualifyPath(path.library, path.name, path.member, path.asp));
+  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {    
+    const target = (path = typeof path === 'string' ? path : this.ibmi.sysNameInAmerican(Tools.qualifyPath(path.library, path.name, path.member, path.asp)));
     const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
     if (result.code === 0) {
       return result.stdout
