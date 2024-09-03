@@ -1416,10 +1416,9 @@ export default class IBMi {
             return parse(csvContent, {
               columns: true,
               skip_empty_lines: true,
-              cast: true,
               onRecord(record) {
                 for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : record[key];
+                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(record[key]);
                 }
                 return record;
               }
