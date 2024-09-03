@@ -191,7 +191,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
           debugConfig.set("JAVA_HOME", javaHome);
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_FILE", certificatePath);
           debugConfig.set("DEBUG_SERVICE_KEYSTORE_PASSWORD", encryptResult.stdout);
-          debugConfig.set("CODE4IDEBUG", `$([ -f $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} ] && cp $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} $DBGSRV_WRK_DIR/key.properties)`);
+          debugConfig.setCode4iDebug(`$([ -f $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} ] && cp $DBGSRV_WRK_DIR/${ENCRYPTION_KEY} $DBGSRV_WRK_DIR/key.properties)`);
           debugConfig.save();
         }
         else {
@@ -208,6 +208,10 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       throw error;
     }
   });
+}
+
+export async function debugKeyFileExists(connection: IBMi, debugConfig: DebugConfiguration) {
+  return await connection.content.testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/.code4i.debug`, "f");
 }
 
 export async function remoteCertificatesExists(debugConfig?: DebugConfiguration) {

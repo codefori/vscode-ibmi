@@ -422,5 +422,7 @@
   "type": "Type",
   "USER_DIRECTORY": "Répertoire utilisateur",
   "username": "Utilisateur",
-  "Yes": "Oui"
+  "Yes": "Oui",
+  "debug.service.config.incomplete": "Incomplete configuration",
+  "debug.service.config.incomplete.detail": "Certificate needs to be regenerated"
 }
