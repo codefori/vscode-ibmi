@@ -42,6 +42,7 @@ export function isProtectedFilter(filter?: string): boolean {
 }
 
 export class QSysFS implements vscode.FileSystemProvider {
+    private readonly savedAsMembers: Set<string> = new Set;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
     private extendedMemberSupport = false;
@@ -107,7 +108,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                     mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
                     size: Number(attributes.DATA_SIZE),
                     type,
-                    permissions: getFilePermission(uri)
+                    permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
                 }
             } else {
                 throw FileSystemError.FileNotFound(uri);
@@ -162,12 +163,14 @@ export class QSysFS implements vscode.FileSystemProvider {
                     noLibList: true
                 });
                 if (addMember.code === 0) {
+                    this.savedAsMembers.add(uri.path);
                     vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
                 } else {
                     throw new FileSystemError(addMember.stderr);
                 }
             }
             else {
+                this.savedAsMembers.delete(uri.path);
                 this.extendedMemberSupport ?
                     await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
                     await contentApi.uploadMemberContent(asp, library, file, member, content);

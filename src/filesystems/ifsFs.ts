@@ -4,6 +4,7 @@ import { instance } from "../instantiate";
 import { getFilePermission } from "./qsys/QSysFs";
 
 export class IFSFS implements vscode.FileSystemProvider {
+  private readonly savedAsFiles: Set<string> = new Set;
   private emitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
   onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.emitter.event;
 
@@ -35,12 +36,13 @@ export class IFSFS implements vscode.FileSystemProvider {
       if (await content.testStreamFile(path, "e")) {
         const attributes = await content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE", "OBJTYPE");
         if (attributes) {
+          const type = String(attributes.OBJTYPE) === "*DIR" ? vscode.FileType.Directory : vscode.FileType.File;
           return {
             ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
             mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
             size: Number(attributes.DATA_SIZE),
-            type: String(attributes.OBJTYPE) === "*DIR" ? vscode.FileType.Directory : vscode.FileType.File,
-            permissions: getFilePermission(uri)
+            type,
+            permissions: !this.savedAsFiles.has(path) && type !== FileType.Directory ? getFilePermission(uri) : undefined
           }
         }
       }
@@ -61,11 +63,13 @@ export class IFSFS implements vscode.FileSystemProvider {
     const path = uri.path;
     const contentApi = instance.getContent();
     if (contentApi) {
-      if (!content.length) { //Coming from "Save as"        
+      if (!content.length) { //Coming from "Save as"    
+        this.savedAsFiles.add(path);
         await contentApi.createStreamFile(path);
         vscode.commands.executeCommand(`code-for-ibmi.refreshIFSBrowser`);
       }
       else {
+        this.savedAsFiles.delete(path);
         await contentApi.writeStreamfileRaw(path, content);
       }
     }
