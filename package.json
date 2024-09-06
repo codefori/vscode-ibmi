@@ -1474,6 +1474,13 @@
 				"icon": "$(filter)"
 			},
 			{
+				"command": "code-for-ibmi.objectBrowser.removeFilter",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Remove Filter",
+				"category": "IBM i",
+				"icon": "$(remove)"
+			},
+			{
 				"command": "code-for-ibmi.objectBrowser.delete",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Delete...",
@@ -2222,6 +2229,10 @@
 					"when": "never"
 				},
 				{
+					"command": "code-for-ibmi.objectBrowser.removeFilter",
+					"when": "never"
+				},
+				{
 					"command": "code-for-ibmi.objectBrowser.delete",
 					"when": "never"
 				},
@@ -2596,9 +2607,9 @@
 					"group": "4_filters@2"
 				},
 				{
-					"command": "code-for-ibmi.objectBrowser.delete",
+					"command": "code-for-ibmi.objectBrowser.removeFilter",
 					"when": "view == objectBrowser && viewItem =~ /^filter.*$/",
-					"group": "4_filters@3"
+					"group": "4_filters@4"
 				},
 				{
 					"command": "code-for-ibmi.moveFilterUp",
