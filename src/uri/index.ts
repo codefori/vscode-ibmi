@@ -1,6 +1,6 @@
 import querystring from "querystring";
 import { commands, ExtensionContext, Uri, window } from "vscode";
-import { GlobalConfiguration } from "../api/Configuration";
+import { ConnectionManager, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { t } from "../locale";
 import { ConnectionData } from "../typings";
@@ -16,10 +16,10 @@ export async function registerUriHandler(context: ExtensionContext) {
 
         switch (uri.path) {
           case '/open':
-            if (connection) {
-              if (queryData.path) {
-                if (queryData.host) {
-                  const host = Array.isArray(queryData.host) ? queryData.host[0] : queryData.host;
+            if (queryData.path) {
+              if (queryData.host) {
+                const host = Array.isArray(queryData.host) ? queryData.host[0] : queryData.host;
+                if (connection) {
                   if (host !== connection.currentHost) {
                     const chosen = await window.showInformationMessage(t(`uriOpen.openError`), {
                       detail: t(`uriOpen.hostMismatch`),
@@ -29,6 +29,32 @@ export async function registerUriHandler(context: ExtensionContext) {
                     if (chosen !== `Open`) {
                       return;
                     }
+                  }
+                } else {
+                  const connection = ConnectionManager.getByHost(host, true) || ConnectionManager.getByName(host, true);
+                  if (connection) {
+                    let password = await ConnectionManager.getStoredPassword(context, connection.data.name);
+
+                    if (!password) {
+                      password = await window.showInputBox({
+                        password: true,
+                        title: t(`sandbox.input.password.title`),
+                        prompt: t(`sandbox.input.password.prompt`, connection.data.username, connection.data.host)
+                      });
+                    }
+
+                    const connected = await commands.executeCommand(`code-for-ibmi.connectDirect`, {
+                      ...connection.data,
+                      password
+                    });
+
+                    if (!connected) {
+                      window.showWarningMessage(t(`uriOpen.noConnection`));
+                      return;
+                    };
+                  } else {
+                    window.showWarningMessage(t(`uriOpen.noConnection`));
+                    return; 
                   }
                 }
 
@@ -88,21 +114,15 @@ export async function registerUriHandler(context: ExtensionContext) {
                     await initialSandboxSetup(connectionData.username);
 
                     if (save) {
-                      let existingConnections: ConnectionData[] | undefined = GlobalConfiguration.get(`connections`);
+                      const existingConnection = ConnectionManager.getByHost(host);
 
-                      if (existingConnections) {
-                        const existingConnection = existingConnections.find(item => item.name === host);
+                      if (!existingConnection) {
+                        await ConnectionManager.storeNew({
+                          ...connectionData,
+                          password: undefined, // Removes the password from the object
+                        });
 
-                        if (!existingConnection) {
-                          // New connection!
-                          existingConnections.push({
-                            ...connectionData,
-                            password: undefined, // Removes the password from the object
-                          });
-
-                          await context.secrets.store(`${host}_password`, pass);
-                          await GlobalConfiguration.set(`connections`, existingConnections);
-                        }
+                        await ConnectionManager.setStoredPassword(context, host, pass);
                       }
                     }
 

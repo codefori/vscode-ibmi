@@ -37,9 +37,17 @@ export interface StoredConnection {
 const getPasswordKey = (connectionName:string) => `${connectionName}_password`;  
 
 export namespace ConnectionManager {
-  export function getByName(name: string): StoredConnection | undefined {
+  export function getByHost(host: string, caseInsensitive = false): StoredConnection | undefined {
     const connections = getAll();
-    const index = connections.findIndex(conn => conn.name === name);
+    const index = connections.findIndex(conn => caseInsensitive ? conn.host.toLowerCase() === host.toLowerCase() : conn.host === host);
+    if (index !== -1) {
+      return { index, data: connections[index] };
+    }
+  }
+  
+  export function getByName(name: string, caseInsensitive = false): StoredConnection | undefined {
+    const connections = getAll();
+    const index = connections.findIndex(conn => caseInsensitive ? conn.name.toLowerCase() === name.toLowerCase() : conn.name === name);
     if (index !== -1) {
       return { index, data: connections[index] };
     }
