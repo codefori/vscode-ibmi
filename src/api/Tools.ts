@@ -172,13 +172,13 @@ export namespace Tools {
    * @param member Optional
    * @param iasp Optional: an iASP name
    */
-  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, sanitise?: boolean) {
+  export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
     const filePath = `${object}.FILE`;
     const memberPath = member ? `/${member}.MBR` : '';
     const subPath = `${filePath}${memberPath}`;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${sanitise ? subPath : Tools.escapePath(subPath)}`;
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${noEscape ? subPath : Tools.escapePath(subPath)}`;
     return result;
   }
 
@@ -310,6 +310,11 @@ export namespace Tools {
     return possibleDoc;
   }
 
+  export function findExistingDocumentByName(nameAndExt: string) {
+    const possibleDoc = vscode.workspace.textDocuments.find(document => document.fileName.toLowerCase().endsWith(nameAndExt.toLowerCase()));
+    return possibleDoc ? possibleDoc.uri : undefined;
+  }
+
   /**
    * We convert member to lowercase as members are case insensitive.
    */
@@ -324,15 +329,15 @@ export namespace Tools {
    * Given the uri of a member or other resource, find all
    * (if any) open tabs where that resource is being edited.
   */
-  export function findUriTabs(uriToFind: vscode.Uri): vscode.Tab[] {
+  export function findUriTabs(uriToFind: vscode.Uri | string): vscode.Tab[] {
     let resourceTabs: vscode.Tab[] = [];
     for (const group of vscode.window.tabGroups.all) {
       group.tabs.filter(tab =>
         (tab.input instanceof vscode.TabInputText)
-        && areEquivalentUris(tab.input.uri, uriToFind)
-      ).forEach(tab => {
-        resourceTabs.push(tab);
-      });
+        && (uriToFind instanceof vscode.Uri ? areEquivalentUris(tab.input.uri, uriToFind) : tab.input.uri.path.startsWith(`${uriToFind}/`))
+        ).forEach(tab => {
+          resourceTabs.push(tab);
+        });
     }
     return resourceTabs;
   }
@@ -367,7 +372,11 @@ export namespace Tools {
   export function generateTooltipHtmlTable(header: string, rows: Record<string, any>) {
     return `<table>`
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
-      .concat(`${Object.entries(rows).filter(([key, value]) => value !== undefined).map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`).join(``)}`)
+      .concat(`${Object.entries(rows)
+        .filter(([key, value]) => value !== undefined && value !== '')
+        .map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`)
+        .join(``)}`
+      )
       .concat(`</table>`);
   }
 

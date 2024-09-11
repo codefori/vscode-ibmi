@@ -14,7 +14,7 @@ type CopyOperationItem = {
 }
 
 export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
-  const connectionBrowser = new ConnectionBrowser();
+  const connectionBrowser = new ConnectionBrowser(context);
   const connectionTreeViewer = vscode.window.createTreeView(
     `connectionBrowser`, {
     treeDataProvider: connectionBrowser,
@@ -246,8 +246,8 @@ class ConnectionBrowser implements vscode.TreeDataProvider<ServerItem> {
   private readonly _emitter: vscode.EventEmitter<ServerItem | undefined | null | void> = new vscode.EventEmitter();
   readonly onDidChangeTreeData: vscode.Event<ServerItem | undefined | null | void> = this._emitter.event;
 
-  constructor() {
-    instance.onEvent("disconnected", () => this.refresh())
+  constructor(context: vscode.ExtensionContext) {
+    instance.subscribe(context, 'disconnected', 'Refresh Connection Browser', () => this.refresh());
   }
 
   refresh() {

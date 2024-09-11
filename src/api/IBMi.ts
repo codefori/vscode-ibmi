@@ -32,7 +32,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
-    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`]
+    names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
   },
   {
     path: `/QSYS.LIB/`,
@@ -65,7 +65,7 @@ export default class IBMi {
   tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
   outputChannel?: vscode.OutputChannel;
-
+  outputChannelContent?: string;
   /**
    * Used to store ASP numbers and their names
    * Their names usually maps up to a directory in
@@ -84,7 +84,10 @@ export default class IBMi {
   content = new IBMiContent(this);
   shell?: string;
 
-  commandsExecuted: number = 0;
+  commandsExecuted = 0;
+
+  //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
+  maximumArgsLength = 0;
 
   dangerousVariants = false;
 
@@ -109,6 +112,7 @@ export default class IBMi {
       iconv: undefined,
       tar: undefined,
       ls: undefined,
+      find: undefined,
     };
 
     this.variantChars = {
@@ -120,7 +124,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []): Promise<{ success: boolean, error?: any }> {
     return await Tools.withContext("code-for-ibmi:connecting", async () => {
       try {
         connectionObject.keepaliveInterval = 35000;
@@ -130,13 +134,18 @@ export default class IBMi {
         return await vscode.window.withProgress({
           location: vscode.ProgressLocation.Notification,
           title: `Connecting`,
-        }, async progress => {
+          cancellable: true
+        }, async (progress, cancelToken) => {
           progress.report({
             message: `Connecting via SSH.`
           });
-          const delayedOperations: Function[] = [];
+          const delayedOperations: Function[] = [...onConnectedOperations];
 
           await this.client.connect(connectionObject as node_ssh.Config);
+
+          cancelToken.onCancellationRequested(() => {
+            this.end();
+          });
 
           this.currentConnectionName = connectionObject.name;
           this.currentHost = connectionObject.host;
@@ -145,24 +154,29 @@ export default class IBMi {
 
           if (!reconnecting) {
             this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+            this.outputChannelContent = '';
           }
 
           let tempLibrarySet = false;
 
-          const disconnected = async () => {
-            const choice = await vscode.window.showWarningMessage(`Connection lost`, {
-              modal: true,
-              detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
-            }, `Yes`);
+          const timeoutHandler = async () => {
+            if (!cancelToken.isCancellationRequested) {
+              this.disconnect();
 
-            let disconnect = true;
-            if (choice === `Yes`) {
-              disconnect = !(await this.connect(connectionObject, true)).success;
+              const choice = await vscode.window.showWarningMessage(`Connection lost`, {
+                modal: true,
+                detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
+              }, `Yes`);
+
+              let disconnect = true;
+              if (choice === `Yes`) {
+                disconnect = !(await this.connect(connectionObject, true)).success;
+              }
+
+              if (disconnect) {
+                this.end();
+              };
             }
-
-            if (disconnect) {
-              this.end();
-            };
           };
 
           progress.report({
@@ -207,9 +221,9 @@ export default class IBMi {
           }
 
           // Register handlers after we might have to abort due to bad configuration.
-          this.client.connection!.once(`timeout`, disconnected);
-          this.client.connection!.once(`end`, disconnected);
-          this.client.connection!.once(`error`, disconnected);
+          this.client.connection!.once(`timeout`, timeoutHandler);
+          this.client.connection!.once(`end`, timeoutHandler);
+          this.client.connection!.once(`error`, timeoutHandler);
 
           if (!reconnecting) {
             instance.setConnection(this);
@@ -620,6 +634,7 @@ export default class IBMi {
 
             // Fetch conversion values?
             if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+              this.qccsid = cachedServerSettings.qccsid;
               this.jobCcsid = cachedServerSettings.jobCcsid;
               this.variantChars = cachedServerSettings.variantChars;
               this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
@@ -753,22 +768,35 @@ export default class IBMi {
                     const bashrcFile = `${defaultHomeDir}/.bashrc`;
                     let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
                     let reason;
-                    if (!currentPaths.includes("/QOpenSys/pkgs/bin")) {
-                      reason = "Your $PATH shell environment variable does not include /QOpenSys/pkgs/bin";
+                    const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
+                    let missingPath;
+                    for (const requiredPath of requiredPaths) {
+                      if (!currentPaths.includes(requiredPath)) {
+                        reason = `Your $PATH shell environment variable does not include ${requiredPath}`;
+                        missingPath = requiredPath
+                        break;
+                      }
                     }
-                    else if (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin") || currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")) {
+                    // If reason is still undefined, then we know the user has all the required paths. Then we don't 
+                    // need to check for their existence before checking the order of the required paths.
+                    if (!reason &&
+                      (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
+                        || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
                       reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
+                      missingPath = "/QOpenSys/pkgs/bin"
                     }
-                    if (reason && await vscode.window.showWarningMessage(`/QOpenSys/pkgs/bin not found in $PATH`, {
+                    if (reason && await vscode.window.showWarningMessage(`${missingPath} not found in $PATH`, {
                       modal: true,
                       detail: `${reason}, so Code for IBM i may not function correctly. Would you like to ${bashrcExists ? "update" : "create"} ${bashrcFile} to fix this now?`,
                     }, `Yes`)) {
                       delayedOperations.push(async () => {
                         this.appendOutput(`${bashrcExists ? "update" : "create"} ${bashrcFile}`);
                         if (!bashrcExists) {
-                          const createBashrc = await this.sendCommand({ command: `echo "# Generated by Code for IBM i\nexport PATH=/QOpenSys/pkgs/bin:\\$PATH" >> ${bashrcFile} && chown ${connectionObject.username.toLowerCase()} ${bashrcFile} && chmod 755 ${bashrcFile}` });
+                          // Add "/usr/bin" and "/QOpenSys/usr/bin" to the end of the path. This way we know that the user has 
+                          // all the required paths, but we don't overwrite the priority of other items on their path.
+                          const createBashrc = await this.sendCommand({ command: `echo "# Generated by Code for IBM i\nexport PATH=/QOpenSys/pkgs/bin:\\$PATH:/QOpenSys/usr/bin:/usr/bin" >> ${bashrcFile} && chown ${connectionObject.username.toLowerCase()} ${bashrcFile} && chmod 755 ${bashrcFile}` });
                           if (createBashrc.code !== 0) {
-                            await vscode.window.showWarningMessage(`Error creating ${bashrcFile}):\n${createBashrc.stderr}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
+                            vscode.window.showWarningMessage(`Error creating ${bashrcFile}):\n${createBashrc.stderr}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
                           }
                         }
                         else {
@@ -783,7 +811,7 @@ export default class IBMi {
                                   if (pathRegex) {
                                     bashrcContent[index] = `${pathRegex[1]}/QOpenSys/pkgs/bin:${pathRegex[2]
                                       .replace("/QOpenSys/pkgs/bin", "") //Removes /QOpenSys/pkgs/bin wherever it is
-                                      .replace("::", ":")}`; //Removes double : in case /QOpenSys/pkgs/bin wasn't at the end
+                                      .replace("::", ":")}:/QOpenSys/usr/bin:/usr/bin`; //Removes double : in case /QOpenSys/pkgs/bin wasn't at the end
                                     replaced = true;
                                   }
                                 }
@@ -793,7 +821,7 @@ export default class IBMi {
                                 bashrcContent.push(
                                   "",
                                   "# Generated by Code for IBM i",
-                                  "export PATH=/QOpenSys/pkgs/bin:$PATH"
+                                  "export PATH=/QOpenSys/pkgs/bin:$PATH:/QOpenSys/usr/bin:/usr/bin"
                                 );
                               }
 
@@ -801,7 +829,7 @@ export default class IBMi {
                             }
                           }
                           catch (error) {
-                            await vscode.window.showWarningMessage(`Error modifying PATH in ${bashrcFile}):\n${error}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
+                            vscode.window.showWarningMessage(`Error modifying PATH in ${bashrcFile}):\n${error}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
                           }
                         }
                       });
@@ -894,15 +922,26 @@ export default class IBMi {
             }
           }
 
+          if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
+            //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
+            this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
+          }
+          else {
+            this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
+          }
+
           progress.report({ message: `Checking Code for IBM i components.` });
           await this.components.startup(this);
 
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
             await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-            delayedOperations.forEach(func => func());
-            instance.fire("connected");
+            for (const operation of delayedOperations) {
+              await operation();
+            }
           }
+
+          instance.fire(`connected`);
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
             aspInfo: this.aspInfo,
@@ -918,7 +957,8 @@ export default class IBMi {
             libraryListValidated: true,
             pathChecked: true,
             userDefaultCCSID: this.userDefaultCCSID,
-            debugConfigLoaded
+            debugConfigLoaded,
+            maximumArgsLength: this.maximumArgsLength
           });
 
           //Keep track of variant characters that can be uppercased
@@ -1040,31 +1080,54 @@ export default class IBMi {
 
     this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
-    return result;
+    return {
+      ...result,
+      code: result.code || 0,
+    };
   }
 
   private appendOutput(content: string) {
     if (this.outputChannel) {
       this.outputChannel.append(content);
     }
+    if (this.outputChannelContent !== undefined) {
+      this.outputChannelContent += content;
+    }
   }
 
   private determineClear() {
     if (this.commandsExecuted > 150) {
-      if (this.outputChannel) this.outputChannel.clear();
+      if (this.outputChannel) {
+        this.outputChannel.clear();
+      }
+      if (this.outputChannelContent !== undefined) {
+        this.outputChannelContent = '';
+      }
       this.commandsExecuted = 0;
     }
 
     this.commandsExecuted += 1;
   }
 
-  async end() {
+  private async disconnect() {
     this.client.connection?.removeAllListeners();
     this.client.dispose();
+    this.client.connection = null;
+    instance.fire(`disconnected`);
+  }
+
+  async end() {
+    if (this.client.connection) {
+      this.disconnect();
+    }
 
     if (this.outputChannel) {
       this.outputChannel.hide();
       this.outputChannel.dispose();
+    }
+
+    if (this.outputChannelContent !== undefined) {
+      this.outputChannelContent = undefined;
     }
 
     await Promise.all([
@@ -1074,7 +1137,6 @@ export default class IBMi {
     ]);
 
     instance.setConnection(undefined);
-    instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
     vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }

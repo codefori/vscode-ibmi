@@ -1,8 +1,11 @@
 
-import vscode from 'vscode';
+import path from 'path';
+import vscode, { commands } from 'vscode';
 import { instance } from '../instantiate';
+import { GlobalConfiguration } from './Configuration';
 import IBMi from './IBMi';
 import Instance from './Instance';
+import { Tools } from './Tools';
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
@@ -25,13 +28,50 @@ export namespace Terminal {
 
   interface TerminalSettings {
     type: TerminalType
+    location: vscode.TerminalLocation
     encoding?: string
     terminal?: string
     name?: string
     connectionString?: string
   }
 
-  export async function selectAndOpen(instance: Instance, openType?: TerminalType) {
+  let terminalCount = 0;
+
+  function setHalted(state: boolean) {
+    commands.executeCommand(`setContext`, `code-for-ibmi:term5250Halted`, state);
+  }
+
+  const BACKSPACE = 127;
+  const RESET = 18;
+  const ATTENTION = 1;
+  const TAB = 9;
+
+  export function registerTerminalCommands(context: vscode.ExtensionContext) {
+    return [
+      vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
+        return selectAndOpen(context, instance);
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
+        const content = instance.getContent();
+        if (content) {
+          const ifsPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : path.dirname(ifsNode.path);
+          const terminal = await selectAndOpen(context, instance, TerminalType.PASE);
+          terminal?.sendText(`cd ${Tools.escapePath(ifsPath)}`);
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.term5250.resetPosition`, () => {
+        const term = vscode.window.activeTerminal;
+        if (term) {
+          term.sendText(Buffer.from([RESET, TAB]).toString(), false);
+          setHalted(false);
+        }
+      })
+    ];
+  }
+
+  async function selectAndOpen(context: vscode.ExtensionContext, instance: Instance, openType?: TerminalType) {
     const connection = instance.getConnection();
     const configuration = instance.getConfig();
     if (connection && configuration) {
@@ -42,6 +82,7 @@ export namespace Terminal {
       if (type) {
         const terminalSettings: TerminalSettings = {
           type,
+          location: GlobalConfiguration.get<boolean>(`terminals.${type.toLowerCase()}.openInEditorArea`) ? vscode.TerminalLocation.Editor : vscode.TerminalLocation.Panel,
           connectionString: configuration.connectringStringFor5250
         };
 
@@ -66,25 +107,31 @@ export namespace Terminal {
           vscode.workspace.getConfiguration().update(`terminal.integrated.sendKeybindingsToShell`, true, true);
         }
 
-        return createTerminal(connection, terminalSettings);
+        return createTerminal(context, connection, terminalSettings);
       }
     }
   }
 
-  async function createTerminal(connection: IBMi, terminalSettings: TerminalSettings) {
+  const HALTED = ` II`;
+
+  async function createTerminal(context: vscode.ExtensionContext, connection: IBMi, terminalSettings: TerminalSettings) {
     const writeEmitter = new vscode.EventEmitter<string>();
     const paseWelcomeMessage = 'echo "Terminal started. Thanks for using Code for IBM i"';
 
     const channel = await connection.client.requestShell();
     channel.stdout.on(`data`, (data: any) => {
-      if (data.toString().trim().indexOf(paseWelcomeMessage) === -1) {
+      const dataString: string = data.toString();
+      if (dataString.trim().indexOf(paseWelcomeMessage) === -1) {
+        if (dataString.includes(HALTED)) {
+          setHalted(true);
+        }
         writeEmitter.fire(String(data));
       }
     });
 
     const emulatorTerminal = vscode.window.createTerminal({
-      name: `IBM i ${terminalSettings.type}`,
-      
+      name: `IBM i ${terminalSettings.type}: ${connection.config?.name}`,
+      location: terminalSettings.location,
       pty: {
         onDidWrite: writeEmitter.event,
         open: () => { },
@@ -96,14 +143,19 @@ export namespace Terminal {
             const buffer = Buffer.from(data);
 
             switch (buffer[0]) {
-              case 127: //Backspace
+              case BACKSPACE: //Backspace
                 //Move back one, space, move back again - deletes a character
                 channel.stdin.write(Buffer.from([
                   27, 79, 68, //Move back one
                   27, 91, 51, 126 //Delete character
                 ]));
                 break;
+
               default:
+                if (buffer[0] === RESET || buffer[0] === ATTENTION) {
+                  setHalted(false);
+                }
+
                 channel.stdin.write(data);
                 break;
             }
@@ -152,7 +204,12 @@ export namespace Terminal {
       channel.stdin.write(`${paseWelcomeMessage}\n`);
     }
 
-    instance.onEvent('disconnected', () => emulatorTerminal.dispose());
+    instance.subscribe(
+      context,
+      'disconnected',
+      `Dispose Terminal ${terminalCount++}`,
+      () => emulatorTerminal.dispose(),
+      true);
 
     return emulatorTerminal;
   }

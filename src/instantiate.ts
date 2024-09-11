@@ -1,11 +1,10 @@
 import { Tools } from './api/Tools';
 
-import path, { dirname } from 'path';
+import path from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
 import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
-import { Search } from "./api/Search";
 import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
@@ -14,11 +13,10 @@ import { setupGitEventHandler } from './api/local/git';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
+import { t } from './locale';
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
-import { SearchView } from "./views/searchView";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import { t } from './locale';
 
 export let instance: Instance;
 
@@ -42,11 +40,6 @@ connectedBarItem.command = {
 };
 
 let selectedForCompare: vscode.Uri;
-let searchViewContext: SearchView;
-
-export function setSearchResults(term: string, results: Search.Result[]) {
-  searchViewContext.setResults(term, results);
-}
 
 export async function disconnect(): Promise<boolean> {
   let doDisconnect = true;
@@ -82,8 +75,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
 
   instance = new Instance(context);
-  searchViewContext = new SearchView(context);
-
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
@@ -95,10 +86,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
     onCodeForIBMiConfigurationChange("connectionSettings", updateConnectedBar),
-    vscode.window.registerTreeDataProvider(
-      `searchView`,
-      searchViewContext
-    ),
     vscode.commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
       console.log(path);
       options = options || {};
@@ -184,8 +171,52 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(`Nothing selected to compare.`);
       }
     }),
+
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithMember`, async (node) => {
+      compareCurrentFile(node, `member`);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithStreamFile`, async (node) => {
+      compareCurrentFile(node, `streamfile`);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.compareCurrentFileWithLocal`, async (node) => {
+      compareCurrentFile(node, `file`);
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.compareWithActiveFile`, async (node) => {
+      let selectedFile;
+      if (node) {
+        if (node.scheme === `streamfile` || node.constructor.name === `IFSFileItem` || node.constructor.name === `ObjectBrowserItem`) {
+          selectedFile = node.resourceUri;
+        } else if (node.scheme === `file`) {
+          selectedFile = node
+        } else {
+          vscode.window.showInformationMessage(t(`compare.no.file`));
+        }
+
+        let activeFile;
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+          activeFile = editor.document.uri;
+          if (activeFile) {
+            vscode.commands.executeCommand(`vscode.diff`, activeFile, selectedFile);
+          } else {
+            vscode.window.showInformationMessage(t(`compare.no.file`));
+          }
+        } else {
+          vscode.window.showInformationMessage(t(`compare.no.file`));
+        }
+      } else {
+        vscode.window.showInformationMessage(t(`compare.no.file`));
+      }
+    }),
+
     vscode.commands.registerCommand(`code-for-ibmi.goToFileReadOnly`, async () => vscode.commands.executeCommand(`code-for-ibmi.goToFile`, true)),
     vscode.commands.registerCommand(`code-for-ibmi.goToFile`, async (readonly?: boolean) => {
+      const compareIcon = new vscode.ThemeIcon('split-horizontal');
+      const compareButton: vscode.QuickInputButton = {
+        iconPath: compareIcon,
+        tooltip: t(`compare.active.file`)
+      };
+
       const LOADING_LABEL = `Please wait`;
       const storage = instance.getStorage();
       const content = instance.getContent();
@@ -214,8 +245,14 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         });
       });
 
-      const recentItems: vscode.QuickPickItem[] = recent.map(item => ({ label: item }));
-      const listItems: vscode.QuickPickItem[] = list.map(item => ({ label: item }));
+      const recentItems: vscode.QuickPickItem[] = recent.map(item => ({
+        label: item,
+        buttons: [compareButton]
+      }));
+      const listItems: vscode.QuickPickItem[] = list.map(item => ({
+        label: item,
+        buttons: [compareButton]
+      }));
 
       const quickPick = vscode.window.createQuickPick();
       quickPick.items = await createQuickPickItemsList(
@@ -262,7 +299,10 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           filteredItems = [];
         } else {
           if (!starRemoved && !list.includes(connection!.upperCaseName(quickPick.value))) {
-            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({ label }));
+            quickPick.items = [connection!.upperCaseName(quickPick.value), ...list].map(label => ({
+              label: label,
+              buttons: [compareButton]
+            }));
           }
         }
 
@@ -395,7 +435,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           }
         }
         starRemoved = false;
-      })
+      });
 
       quickPick.onDidAccept(async () => {
         let selection = quickPick.selectedItems.length === 1 ? quickPick.selectedItems[0].label : undefined;
@@ -463,7 +503,26 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             }
           }
         }
-      })
+      });
+
+      quickPick.onDidTriggerItemButton((event: vscode.QuickPickItemButtonEvent<vscode.QuickPickItem>) => {
+        if (event.button.iconPath == compareIcon) {
+          let path: vscode.Uri;
+          let currentFile: vscode.Uri;
+          if (event.item.label.startsWith('/')) {
+            path = vscode.Uri.parse(`streamfile:${event.item.label}`);
+          } else {
+            path = vscode.Uri.parse(`member:/${event.item.label}`);
+          }
+
+          const editor = vscode.window.activeTextEditor;
+          if (editor) {
+            currentFile = editor.document.uri;
+            vscode.commands.executeCommand(`vscode.diff`, currentFile, path);
+            quickPick.hide();
+          }
+        }
+      });
 
       quickPick.onDidHide(() => quickPick.dispose());
       quickPick.show();
@@ -598,18 +657,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
     }),
 
-    vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-      return Terminal.selectAndOpen(instance);
-    }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
-      const content = instance.getContent();
-      if (content) {
-        const path = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : dirname(ifsNode.path);
-        const terminal = await Terminal.selectAndOpen(instance, Terminal.TerminalType.PASE);
-        terminal?.sendText(`cd ${path}`);
-      }
-    }),
+    ...Terminal.registerTerminalCommands(context),
 
     vscode.commands.registerCommand(`code-for-ibmi.getPassword`, async (extensionId: string, reason?: string) => {
       if (extensionId) {
@@ -696,12 +744,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       return vscode.commands.executeCommand("code-for-ibmi.openWithDefaultMode", item, "edit" as DefaultOpenMode);
     }),
 
-    vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode) => {
+    vscode.commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode, position?: vscode.Range) => {
       const readonly = (overrideMode || GlobalConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
-      vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly });
+      vscode.commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly, position } as OpenEditableOptions);
     }),
     vscode.commands.registerCommand("code-for-ibmi.updateConnectedBar", updateConnectedBar),
-    
+
     vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
       let doc: vscode.TextDocument | undefined;
       if (uri) {
@@ -714,25 +762,24 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (doc?.isDirty) {
         vscode.window
           .showWarningMessage(
-            t(`discard.changes`), 
-            { modal: true }, 
+            t(`discard.changes`),
+            { modal: true },
             t(`Continue`))
           .then(result => {
-              if (result === t(`Continue`)) {
-                vscode.commands.executeCommand(`workbench.action.files.revert`);
-              }
-        });
+            if (result === t(`Continue`)) {
+              vscode.commands.executeCommand(`workbench.action.files.revert`);
+            }
+          });
       } else {
         vscode.commands.executeCommand(`workbench.action.files.revert`);
       }
     }),
-);
+  );
 
   ActionsUI.initialize(context);
   VariablesUI.initialize(context);
-
-  instance.onEvent("connected", () => onConnected(context));
-  instance.onEvent("disconnected", onDisconnected);
+  instance.subscribe(context, 'connected', 'Load status bars', onConnected);
+  instance.subscribe(context, 'disconnected', 'Unload status bars', onDisconnected);
 
   context.subscriptions.push(
     vscode.workspace.registerFileSystemProvider(`member`, new QSysFS(context), {
@@ -770,7 +817,7 @@ async function updateConnectedBar() {
   connectedBarItem.tooltip.isTrusted = true;
 }
 
-async function onConnected(context: vscode.ExtensionContext) {
+async function onConnected() {
   const config = instance.getConfig();
 
   [
@@ -825,4 +872,40 @@ async function createQuickPickItemsList(
     ...(cached.length != 0 ? clearCachedArray : [])
   ];
   return returnedList;
+}
+
+async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `member`) {
+  let currentFile: vscode.Uri | undefined;
+  // If we are comparing with an already targeted node
+  if (node) {
+    if (node.resourceUri) {
+      currentFile = node.resourceUri;
+    } else if (node.scheme === `file`) {
+      currentFile = node
+    }
+  } else {
+    // If we are comparing with the currently open file
+    const editor = vscode.window.activeTextEditor;
+    if (editor) {
+      currentFile = editor.document.uri;
+    }
+  }
+
+  if (currentFile) {
+    let compareWith = await vscode.window.showInputBox({
+      prompt: t(`compare.prompt`),
+      title: t(`compare.title`),
+      value: currentFile.path
+    });
+
+    if (compareWith) {
+      if (scheme == 'member' && !compareWith.startsWith('/')) {
+        compareWith = `/${compareWith}`;
+      }
+      let uri = vscode.Uri.parse(`${scheme}:${compareWith}`);
+      vscode.commands.executeCommand(`vscode.diff`, currentFile, uri);
+    }
+  } else {
+    vscode.window.showInformationMessage(t(`compare.no.file`));
+  }
 }

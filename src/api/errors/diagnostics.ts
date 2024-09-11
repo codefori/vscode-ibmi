@@ -169,6 +169,18 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
             }
             continue;
           }
+
+          // If we get there, that means that even though we compiled from local, we likely had to use a temp member.
+          // We should try to find the file in the workspace. Since we can use findFile (it's async), then we look for open
+          // tabs like we do below.
+          if (evfeventInfo.extension) {
+            const baseName = file.split(`/`).pop();
+            const openFile = Tools.findExistingDocumentByName(`${baseName}.${evfeventInfo.extension}`);
+            if (openFile) {
+              ileDiagnostics.set(openFile, diagnostics);
+              continue;
+            }
+          }
         }
       }
 

@@ -11,7 +11,7 @@ import { ConnectionManager } from "../Configuration";
 import { Tools } from "../Tools";
 import { Env, getEnvConfig } from "../local/env";
 import * as certificates from "./certificates";
-import { DEBUG_CONFIG_FILE, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
+import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";
 
 const debugExtensionId = `IBM.ibmidebug`;
@@ -60,7 +60,6 @@ export async function initialize(context: ExtensionContext) {
           // the user has a custom CURLIB and LIBL setup.
           if (env) {
             if (env[`CURLIB`]) {
-              objectLibrary = env[`CURLIB`];
               libraries.currentLibrary = env[`CURLIB`];
             }
 
@@ -69,7 +68,7 @@ export async function initialize(context: ExtensionContext) {
             }
           }
 
-          if (config.debugIsSecure && !isManaged()) {
+          if (!isManaged()) {
             try {
               await certificates.checkClientCertificate(connection)
             }
@@ -253,8 +252,30 @@ export async function initialize(context: ExtensionContext) {
         }
       }
     }),
-
-    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, () =>
+    vscode.commands.registerCommand(`code-for-ibmi.debug.redo.setup`, async () => {
+      const connection = instance.getConnection();
+      if (connection) {
+        const doSetup = await vscode.window.showWarningMessage(`Do you confirm you want to generate or import a new certificate for the Debug Service?`, { modal: true }, 'Generate', 'Import');
+        if (doSetup) {
+          Tools.withContext("code-for-ibmi:debugWorking", async () => {
+            if (!(await server.getDebugServiceJob()) || await server.stopService(connection)) {
+              const debugConfig = await new DebugConfiguration().load();
+              const clearResult = await connection.sendCommand({ command: `rm -f ${debugConfig.getRemoteServiceCertificatePath()} ${debugConfig.getRemoteClientCertificatePath()}` });
+              if (clearResult.code) {
+                vscode.window.showErrorMessage(`Failed to clear existing certificate: ${clearResult.stderr}`);
+              }
+              else {
+                vscode.commands.executeCommand(`code-for-ibmi.debug.setup.remote`, doSetup);
+              }
+            }
+            else {
+              vscode.window.showErrorMessage(`Debug Service could not be stopped; new certificate cannot be generated.`);
+            }
+          });
+        }
+      }
+    }),
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, (doSetup?: 'Generate' | 'Import') =>
       Tools.withContext("code-for-ibmi:debugWorking", async () => {
         const connection = instance.getConnection();
         const content = instance.getContent();
@@ -262,13 +283,14 @@ export async function initialize(context: ExtensionContext) {
           const ptfInstalled = server.debugPTFInstalled();
 
           if (ptfInstalled) {
-            const remoteCertsExists = await certificates.remoteCertificatesExists();
-            if (remoteCertsExists) {
+            const debugConfig = await new DebugConfiguration().load()
+            const remoteCertsExists = await certificates.remoteCertificatesExists(debugConfig);
+            if (remoteCertsExists && await certificates.debugKeyFileExists(connection, debugConfig) && debugConfig.getCode4iDebug()) {
               await certificates.downloadClientCert(connection);
-              vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable secure debugging.`);
+              vscode.window.showInformationMessage(`Debug Service Certificate already exist on the server. The client certificate has been downloaded to enable debugging.`);
             }
             else {
-              const doSetup = await vscode.window.showInformationMessage(`Debug setup`, {
+              doSetup = doSetup || await vscode.window.showInformationMessage(`Debug setup`, {
                 modal: true,
                 detail: `Debug service server and client certificates do not exist on the system or they need to be re-created. You can either import an existing server certificate or generate one. Then the client certificate will be generated and downloaded to your device.`
               }, `Generate`, `Import`);
@@ -313,21 +335,19 @@ export async function initialize(context: ExtensionContext) {
       })
     ),
 
-    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, async () =>
-      await Tools.withContext("code-for-ibmi:debugWorking", async () => {
-        const connection = instance.getConnection();
-        if (connection) {
-          const ptfInstalled = server.debugPTFInstalled();
-          if (ptfInstalled) {
-            let localCertsOk = false;
-            if (connection.config!.debugIsSecure) {
+    vscode.commands.registerCommand(`code-for-ibmi.debug.setup.local`, () =>
+      vscode.window.withProgress({ title: "Downloading Debug Service Certificate", location: vscode.ProgressLocation.Window }, async () =>
+        await Tools.withContext("code-for-ibmi:debugWorking", async () => {
+          const connection = instance.getConnection();
+          if (connection) {
+            const ptfInstalled = server.debugPTFInstalled();
+            if (ptfInstalled) {
               try {
                 const remoteCertExists = await certificates.remoteCertificatesExists();
 
                 // If the client certificate exists on the server, download it
                 if (remoteCertExists) {
                   await certificates.downloadClientCert(connection);
-                  localCertsOk = true;
                   vscode.window.showInformationMessage(`Debug client certificate downloaded from the server.`);
                 }
               } catch (e) {
@@ -345,46 +365,51 @@ export async function initialize(context: ExtensionContext) {
           } else {
             vscode.window.showErrorMessage(`Debug PTF not installed.`);
           }
-        }
-        return false;
-      })
+        })
+      )
     ),
     vscode.commands.registerCommand("code-for-ibmi.debug.open.service.config", () => vscode.commands.executeCommand("code-for-ibmi.openEditable", DEBUG_CONFIG_FILE))
   );
 
   // Run during startup:
-  instance.onEvent("connected", async () => {
-    activateDebugExtension();
-    resetDebugServiceDetails();
-    const connection = instance.getConnection();
-    const content = instance.getContent();
-    if (connection && content && server.debugPTFInstalled()) {
-      vscode.commands.executeCommand(`setContext`, ptfContext, true);
+  instance.subscribe(
+    context,
+    'connected',
+    `Load debugger status`,
+    async () => {
+      activateDebugExtension();
+      const connection = instance.getConnection();
+      const content = instance.getContent();
+      if (connection && content && server.debugPTFInstalled()) {
+        vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
-      //Enable debug related commands
-      vscode.commands.executeCommand(`setContext`, debugContext, true);
+        //Enable debug related commands
+        vscode.commands.executeCommand(`setContext`, debugContext, true);
 
-      //Enable service entry points related commands
-      vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
+        //Enable service entry points related commands
+        vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
 
-      const isDebugManaged = isManaged();
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
-      if (!isDebugManaged) {
-        const isSecure = connection.config!.debugIsSecure;
+        const isDebugManaged = isManaged();
+        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
+        if (!isDebugManaged) {
+          if (validateIPv4address(connection.currentHost)) {
+            vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with debugging. Please use a hostname in the Login Settings instead.`);
+          }
 
-        if (validateIPv4address(connection.currentHost) && isSecure) {
-          vscode.window.showWarningMessage(`You are using an IPv4 address to connect to this system. This may cause issues with secure debugging. Please use a hostname in the Login Settings instead.`);
+          certificates.sanityCheck(connection, content);
         }
-
-        certificates.sanityCheck(connection, content);
       }
-    }
-  });
+    });
 
-  instance.onEvent("disconnected", () => {
-    vscode.commands.executeCommand(`setContext`, debugContext, false);
-    vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
-  });
+  instance.subscribe(
+    context,
+    'disconnected',
+    `Clear debugger status`,
+    () => {
+      resetDebugServiceDetails();
+      vscode.commands.executeCommand(`setContext`, debugContext, false);
+      vscode.commands.executeCommand(`setContext`, debugSEPContext, false);
+    });
 }
 
 function validateIPv4address(ipaddress: string) {
@@ -426,13 +451,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
     // If we're in a managed environment, only set secure if a cert is set
     secure = process.env[`DEBUG_CA_PATH`] ? true : false;
   } else {
-    secure = config?.debugIsSecure || false;
-    if (secure) {
-      process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
-    } else {
-      // Environment variable must be deleted otherwise cert issues will happen
-      delete process.env[`DEBUG_CA_PATH`];
-    }
+    process.env[`DEBUG_CA_PATH`] = certificates.getLocalCertPath(connection!);
   }
 
   if (options.sep) {
@@ -488,7 +507,7 @@ export async function startDebug(instance: Instance, options: DebugOptions) {
         "startBatchJobCommand": `SBMJOB CMD(${currentCommand}) INLLIBL(${options.libraries.libraryList.join(` `)}) CURLIB(${options.libraries.currentLibrary}) JOBQ(QSYSNOMAX) MSGQ(*USRPRF) CPYENVVAR(*YES)`,
         "updateProductionFiles": updateProductionFiles,
         "trace": enableDebugTracing,
-      };
+      } as vscode.DebugConfiguration;
 
       const debugResult = await vscode.debug.startDebugging(undefined, debugConfig, undefined);
 

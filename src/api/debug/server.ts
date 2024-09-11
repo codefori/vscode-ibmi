@@ -2,6 +2,7 @@ import path from "path";
 import { commands, window } from "vscode";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
+import { CustomUI } from "../CustomUI";
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
 import { DebugConfiguration, getDebugServiceDetails } from "./config";
@@ -48,39 +49,40 @@ export async function startService(connection: IBMi) {
         if (submitMessage) {
           const [job] = /([^\/\s]+)\/([^\/]+)\/([^\/\s]+)/.exec(submitMessage) || [];
           if (job) {
-            return await new Promise<boolean>(async (done, failed) => {
-              let tries = 0;
-              const intervalId = setInterval(async () => {
-                if (tries++ < 30) {
-                  const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
-                  if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
-                    if (await getDebugServiceJob()) {
-                      clearInterval(intervalId);
-                      window.showInformationMessage(t("start.debug.service.succeeded"));
-                      refreshDebugSensitiveItems();
-                      done(true);
-                    }
-                  } else {
-                    clearInterval(intervalId);
-                    let reason;
-                    if (typeof jobDetail === "object") {
-                      reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
-                    }
-                    else if (jobDetail) {
-                      reason = jobDetail;
-                    }
-                    else {
-                      reason = "job has ended";
-                    }
-                    failed(`Debug Service job ${job} failed: ${reason}.`);
+            let tries = 0;
+            const checkJob = async (done: (started: boolean) => void) => {
+              if (tries++ < 30) {
+                const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
+                if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
+                  if (await getDebugServiceJob()) {
+                    window.showInformationMessage(t("start.debug.service.succeeded"));
+                    refreshDebugSensitiveItems();
+                    done(true);
                   }
-                }
-                else {
-                  clearInterval(intervalId);
+                  else {
+                    setTimeout(() => checkJob(done), 1000);
+                  }
+                } else {
+                  let reason;
+                  if (typeof jobDetail === "object") {
+                    reason = `job is in ${String(jobDetail.JOB_STATUS)} status`;
+                  }
+                  else if (jobDetail) {
+                    reason = jobDetail;
+                  }
+                  else {
+                    reason = "job has ended";
+                  }
+                  window.showErrorMessage(`Debug Service job ${job} failed: ${reason}.`, 'Open output').then(() => openQPRINT(connection, job));
                   done(false);
                 }
-              }, 1000);
-            });
+              }
+              else {
+                done(false);
+              }
+            };
+
+            return await new Promise<boolean>(checkJob);
           }
         }
       }
@@ -112,7 +114,7 @@ export async function stopService(connection: IBMi) {
 export async function getDebugServiceJob() {
   const connection = instance.getConnection();
   if (connection) {
-    const rows = await connection.runSQL(`select distinct job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only)`);
+    const rows = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only) and remote_address = '0.0.0.0'`);
     if (rows && rows.length) {
       return {
         name: String(rows[0].JOB_NAME),
@@ -158,7 +160,7 @@ export function endJobs(jobIds: string[], connection: IBMi) {
 }
 
 export async function isDebugEngineRunning() {
-  return Boolean(await getDebugServerJob()) && Boolean(await getDebugServiceJob());
+  return (await Promise.all([getDebugServerJob(), getDebugServiceJob()])).every(Boolean);
 }
 
 export async function startServer() {
@@ -215,5 +217,20 @@ export async function readJVMInfo(connection: IBMi, job: DebugJob) {
       fetch first row only`)).at(0);
   } catch (error) {
     return String(error);
+  }
+}
+
+async function openQPRINT(connection: IBMi, job: string) {
+  const lines = (await connection.runSQL(`select SPOOLED_DATA from table (systools.spooled_file_data(job_name => '${job}', spooled_file_name => 'QPRINT')) order by ORDINAL_POSITION`))
+    .map(row => String(row.SPOOLED_DATA));
+
+  if (lines.length) {
+    new CustomUI()
+      .addParagraph(`<pre><code>${lines.join("<br/>")}</code></pre>`)
+      .setOptions({ fullWidth: true })
+      .loadPage(`${job} QPRINT`);
+  }
+  else{
+    window.showWarningMessage(`No QPRINT spooled file found for job ${job}!`);
   }
 }

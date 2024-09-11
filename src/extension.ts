@@ -28,6 +28,7 @@ import { initializeDebugBrowser } from "./views/debugView";
 import { HelpView } from "./views/helpView";
 import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
+import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
 import { registerUriHandler } from "./uri";
 import { handleSandboxStartup } from "./sandbox";
@@ -38,11 +39,13 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   await loadAllofExtension(context);
-  const checkLastConnections = () => {
+  const updateLastConnectionAndServerCache = () => {
     const connections = ConnectionManager.getAll();
     const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
     GlobalStorage.get().setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
+    GlobalStorage.get().deleteStaleServerSettingsCache(connections);
+    commands.executeCommand(`code-for-ibmi.refreshConnections`);
   };
 
   SettingsUI.init(context);
@@ -50,11 +53,12 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   initializeObjectBrowser(context)
   initializeIFSBrowser(context);
   initializeDebugBrowser(context);
+  initializeSearchView(context);
 
   context.subscriptions.push(
     window.registerTreeDataProvider(
       `helpView`,
-      new HelpView()
+      new HelpView(context)
     ),
     window.registerTreeDataProvider(
       `libraryListView`,
@@ -80,7 +84,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       }
     ),
     onCodeForIBMiConfigurationChange("locale", updateLocale),
-    onCodeForIBMiConfigurationChange("connections", checkLastConnections),
+    onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
       if (connection) {
@@ -100,7 +104,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   GlobalStorage.initialize(context);
   Debug.initialize(context);
   Deployment.initialize(context);
-  checkLastConnections();
+  updateLastConnectionAndServerCache();
 
   handleSandboxStartup();
   registerUriHandler(context);
@@ -111,14 +115,16 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     initialise(context);
   }
 
-  instance.onEvent(`connected`, () => {
-    Promise.all([
-      commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
-      commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-      commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
-      commands.executeCommand("code-for-ibmi.refreshProfileView")
-    ]);
-  });
+  instance.subscribe(
+    context,
+    'connected',
+    `Refresh views`,
+    () => {
+      commands.executeCommand("code-for-ibmi.refreshObjectBrowser");
+      commands.executeCommand("code-for-ibmi.refreshLibraryListView");
+      commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
+      commands.executeCommand("code-for-ibmi.refreshProfileView");
+    });
 
   return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
 }
