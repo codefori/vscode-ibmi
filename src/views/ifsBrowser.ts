@@ -250,11 +250,11 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         let result;
         switch (action) {
           case "copy":
-            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => item.path).join(" ")} ${toDirectory.path}` });
+            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
             break;
 
           case "move":
-            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => item.path).join(" ")} ${toDirectory.path}` });
+            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
             ifsBrowserItems.map(item => item.parent)
               .filter(Tools.distinct)
               .forEach(folder => folder?.refresh?.());
