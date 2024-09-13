@@ -618,12 +618,12 @@ export default class IBMiContent {
     const statement =
       `With MEMBERS As (
         SELECT
-          rtrim(cast(a.system_table_schema as char(10) for bit data)) as LIBRARY,
+          rtrim(cast(a.system_table_schema as char(10))) as LIBRARY,
           b.avgrowsize as RECORD_LENGTH,
           a.iasp_number as ASP,
-          rtrim(cast(a.system_table_name as char(10) for bit data)) AS SOURCE_FILE,
-          rtrim(cast(b.system_table_member as char(10) for bit data)) as NAME,
-          coalesce(rtrim(cast(b.source_type as varchar(10) for bit data)), '') as TYPE,
+          rtrim(cast(a.system_table_name as char(10))) AS SOURCE_FILE,
+          rtrim(cast(b.system_table_member as char(10))) as NAME,
+          coalesce(rtrim(cast(b.source_type as varchar(10))), '') as TYPE,
           coalesce(rtrim(varchar(b.partition_text)), '') as TEXT,
           b.NUMBER_ROWS as LINES,
           extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,

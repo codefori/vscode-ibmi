@@ -176,7 +176,7 @@ function getSource(library: string, name: string, version: number) {
     `specific GETMBRINFO`,
     `modifies sql data`,
     `begin`,
-    `  declare  buffer  char( 135 ) for bit data not null default '';`,
+    `  declare  buffer  char( 135 ) not null default '';`,
     `  declare  BUFLEN  integer     constant 135 ;`,
     `  declare  FORMAT  char(   8 ) constant 'MBRD0100' ;`,
     `  declare  OVR     char(   1 ) constant '0' ;`,

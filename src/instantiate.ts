@@ -272,8 +272,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       // Create a cache for Schema if autosuggest enabled
       if (schemaItems.length === 0 && connection?.enableSQL) {
         content!.runSQL(`
-          select cast( SYSTEM_SCHEMA_NAME as char( 10 ) for bit data ) as SYSTEM_SCHEMA_NAME
-               , ifnull( cast( SCHEMA_TEXT as char( 50 ) for bit data ), '' ) as SCHEMA_TEXT
+          select cast( SYSTEM_SCHEMA_NAME as char( 10 ) ) as SYSTEM_SCHEMA_NAME
+               , ifnull( cast( SCHEMA_TEXT as char( 50 ) ), '' ) as SCHEMA_TEXT
             from QSYS2.SYSSCHEMAS
            order by 1`
         ).then(resultSetLibrary => {
@@ -342,7 +342,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               ]
 
               resultSet = await content!.runSQL(`
-                select ifnull( cast( SYSTEM_TABLE_NAME as char( 10 ) for bit data ), '' ) as SYSTEM_TABLE_NAME
+                select ifnull( cast( SYSTEM_TABLE_NAME as char( 10 ) ), '' ) as SYSTEM_TABLE_NAME
                      , ifnull( TABLE_TEXT, '' ) as TABLE_TEXT
                   from QSYS2.SYSTABLES
                  where SYSTEM_TABLE_SCHEMA = '${connection!.sysNameInAmerican(selectionSplit[0])}'
@@ -384,7 +384,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
               filterText = filterText.endsWith(`.`) ? filterText.substring(0, filterText.length - 1) : filterText;
 
               resultSet = await content!.runSQL(`
-                select cast( SYSTEM_TABLE_MEMBER as char( 10 ) for bit data ) as SYSTEM_TABLE_MEMBER
+                select cast( SYSTEM_TABLE_MEMBER as char( 10 ) ) as SYSTEM_TABLE_MEMBER
                      , ifnull( PARTITION_TEXT, '' ) as PARTITION_TEXT
                      , ifnull( SOURCE_TYPE, '' ) as SOURCE_TYPE
                   from QSYS2.SYSPARTITIONSTAT

@@ -258,7 +258,7 @@ async function getRemoteSection() {
         TR: "n/a"
       };
       try {
-        const [osVersionRow] = await content.runSQL(
+        const [osVersionRow] = await connection.runSQL(
           `SELECT PTF_GROUP_TARGET_RELEASE as OS, PTF_GROUP_LEVEL AS TR ` +
           `FROM QSYS2.GROUP_PTF_INFO ` +
           `WHERE PTF_GROUP_DESCRIPTION = 'TECHNOLOGY REFRESH' AND PTF_GROUP_STATUS = 'INSTALLED' ` +
@@ -270,7 +270,7 @@ async function getRemoteSection() {
       catch (error) {
         console.log(`Couldn't run QSYS2.GROUP_PTF_INFO: ${error}`);
         try {
-          const [osVersionRow] = await content.runSQL(`Select Substring(DATA_AREA_VALUE, 0, 7) as OS ` +
+          const [osVersionRow] = await connection.runSQL(`Select Substring(DATA_AREA_VALUE, 0, 7) as OS ` +
             `From TABLE(QSYS2.DATA_AREA_INFO(` +
             `DATA_AREA_NAME => 'QSS1MRI',` +
             `DATA_AREA_LIBRARY => 'QUSRSYS'))` +

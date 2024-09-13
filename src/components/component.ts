@@ -1,5 +1,4 @@
 import IBMi from "../api/IBMi";
-import { CopyToImport } from "./copyToImport";
 import { GetMemberInfo } from "./getMemberInfo";
 import { GetNewLibl } from "./getNewLibl";
 import { Mapepire } from "./mapepire";
@@ -12,7 +11,6 @@ export enum ComponentState {
 }
 interface ComponentRegistry {
   GetNewLibl?: GetNewLibl;
-  CopyToImport?: CopyToImport;
   GetMemberInfo?: GetMemberInfo;
   Mapepire?: Mapepire;
 }
@@ -39,9 +37,6 @@ export class ComponentManager {
 
     this.registered.GetNewLibl = new GetNewLibl(connection);
     await ComponentManager.checkState(this.registered.GetNewLibl);
-
-    this.registered.CopyToImport = new CopyToImport(connection);
-    await ComponentManager.checkState(this.registered.CopyToImport);
 
     this.registered.GetMemberInfo = new GetMemberInfo(connection);
     await ComponentManager.checkState(this.registered.GetMemberInfo);
