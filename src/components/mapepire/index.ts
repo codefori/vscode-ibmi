@@ -6,7 +6,7 @@ import { instance } from "../../instantiate";
 import { ComponentT, ComponentState } from "../component";
 import { extensions } from "vscode";
 import { promises as fsPromises } from "fs";
-import { OldSQLJob } from "./sqlJob";
+import { SshSqlJob } from "./sqlJob";
 import { JDBCOptions } from "@ibm/mapepire-js/dist/src/types";
 
 const {stat} = fsPromises;
@@ -26,13 +26,23 @@ export class Mapepire implements ComponentT {
 
   constructor(public connection: IBMi) { }
 
-  getInitCommand(): string {
+  getInitCommand() {
     const path = this.getComponentPath();
 
     return `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit/bin/java -Dos400.stdio.convert=N -jar ${path} --single`
   }
 
-  private async getComponentPath(justDir = false) {
+  private getComponentPath(justDir = false) {
+    return posix.join(this.componentPath!, justDir ? '' : SERVER_VERSION_FILE);
+  }
+
+  async getInstalledVersion(): Promise<number> {
+    const exists = await this.connection.content.testStreamFile(this.getComponentPath(), "x")
+
+    return exists ? this.currentVersion : 0;
+  }
+
+  async checkState(): Promise<boolean> {
     if (!this.componentPath) {
       const result = await this.connection.sendCommand({
         command: `echo "${ExecutablePathDir}"`,
@@ -40,37 +50,37 @@ export class Mapepire implements ComponentT {
 
       this.componentPath = result.stdout.trim();
     }
-    return posix.join(this.componentPath, justDir ? '' : SERVER_VERSION_FILE);
-  }
 
-  async getInstalledVersion(): Promise<number> {
-    const exists = await this.connection.sendCommand({
-      command: `ls ${this.getComponentPath()}`
-    });
-
-    return (exists.code === 0 ? VERSION_NUMBER : 0);
-  }
-
-  async checkState(): Promise<boolean> {
     const installedVersion = await this.getInstalledVersion();
 
     if (installedVersion === this.currentVersion) {
       this.state = ComponentState.Installed;
-      return true;
+
+    } else { 
+      const extensionPath = extensions.getExtension(`halcyontechltd.code-for-ibmi`)!.extensionPath;
+
+      const assetPath = path.join(extensionPath, `dist`, SERVER_VERSION_FILE);
+      const assetExistsLocally = await exists(assetPath);
+  
+      if (assetExistsLocally) {
+        const installedFile = this.getComponentPath();
+        await this.connection.uploadFiles([{local: assetPath, remote: installedFile}]);
+
+        this.state = ComponentState.Installed;
+      } else {
+        this.state = ComponentState.Error;
+      }
     }
-    
-    const extensionPath = extensions.getExtension(`halcyontechltd.code-for-ibmi`)!.extensionPath;
 
-    const assetPath = path.join(extensionPath, `dist`, SERVER_VERSION_FILE);
-    const assetExistsLocally = await exists(assetPath);
- 
-    if (assetExistsLocally) {
-      const installedFile = await this.getComponentPath();
-      this.connection.uploadFiles([{local: assetPath, remote: installedFile}]);
+    if (this.state === ComponentState.Installed) {
+      const newJob = this.getJob();
+      const connection = await newJob.connect();
 
-      this.state = ComponentState.Installed;
-    } else {
-      this.state = ComponentState.Error;
+      if (!connection.success) {
+        this.state = ComponentState.Error;
+      }
+
+      this.connection.setSqlJob(newJob);
     }
 
     return this.state === ComponentState.Installed;
@@ -80,8 +90,8 @@ export class Mapepire implements ComponentT {
     return this.state;
   }
 
-  getJob(opts: JDBCOptions = {}): OldSQLJob {
-    return new OldSQLJob(opts, this.connection, this.getInitCommand());
+  getJob(opts: JDBCOptions = {}): SshSqlJob {
+    return new SshSqlJob(opts, this.connection, this.getInitCommand());
   }
 }
 

@@ -285,19 +285,6 @@ export default class IBMiContent {
   }
 
   /**
-   * Run SQL statements.
-   * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
-   * If a statement starts with @, it will be run as a CL command.
-   *
-   * @param statements
-   * @returns a Result set
-   * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
-   */
-  runSQL(statements: string) {
-    return this.ibmi.runSQL(statements);
-  }
-
-  /**
    * Download the contents of a member from a table.
    * @param library
    * @param file
@@ -686,7 +673,7 @@ export default class IBMiContent {
       let results: Tools.DB2Row[] = [];
       if (this.config.enableSQL) {
         try {
-          results = await this.runSQL(statement);
+          results = await this.ibmi.runSQL(statement);
         } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {

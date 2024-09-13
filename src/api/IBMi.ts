@@ -17,6 +17,8 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import { SshSqlJob } from "../components/mapepire/sqlJob";
+import { Mapepire } from "../components/mapepire";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -56,6 +58,7 @@ export default class IBMi {
   private userDefaultCCSID: number = 0;
 
   private components: ComponentManager = new ComponentManager();
+  private sqlJob: SshSqlJob | undefined;
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -119,6 +122,10 @@ export default class IBMi {
       american: `#@$`,
       local: `#@$`
     };
+  }
+
+  setSqlJob(job: SshSqlJob) {
+    this.sqlJob = job;
   }
 
   /**
@@ -316,6 +323,15 @@ export default class IBMi {
             } else {
               this.config.ifsShortcuts = [`/`];
             }
+          }
+
+          progress.report({ message: `Checking Code for IBM i components.` });
+          await this.components.startup(this);
+
+          const mapepire = (this.components.get(`Mapepire`) as Mapepire);
+          if (!mapepire) {
+            throw new Error(`Database component failed to install.`);
+            // TODO: improve this error?
           }
 
           progress.report({
@@ -930,9 +946,6 @@ export default class IBMi {
             this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
           }
 
-          progress.report({ message: `Checking Code for IBM i components.` });
-          await this.components.startup(this);
-
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
             await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
@@ -1366,74 +1379,25 @@ export default class IBMi {
    * @returns a Result set
    */
   async runSQL(statements: string): Promise<Tools.DB2Row[]> {
-    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
+    if (!this.sqlJob) {
+      throw new Error(`SQL job not found. Please check your connection`);
+    }
 
-    if (QZDFMDB2) {
-      const ccsidDetail = this.getEncoding();
-      const useCcsid = ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined;
-      const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
+    let input = Tools.fixSQL(statements, true);
+    const statementList = input.split(`;`).filter(x => x.trim().length > 0);
 
-      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
-
-      let returningAsCsv: WrapResult | undefined;
-
-      if (this.qccsid === 65535) {
-        let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
-        const lastStmt = list.pop()?.trim();
-        const asUpper = lastStmt?.toUpperCase();
-
-        if (lastStmt) {
-          if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-            const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
-            if (copyToImport) {
-              returningAsCsv = copyToImport.wrap(lastStmt);
-              list.push(...returningAsCsv.newStatements);
-              input = list.join(`;\n`);
-            }
-          }
-
-          if (!returningAsCsv) {
-            list.push(lastStmt);
-          }
-        }
-      }
-
-      const output = await this.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: input
-      })
-
-      if (output.stdout) {
-        Tools.db2Parse(output.stdout, input);
-
-        if (returningAsCsv) {
-          // Will throw an error if stdout contains an error
-
-          const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
-          if (csvContent) {
-            this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
-
-            return parse(csvContent, {
-              columns: true,
-              skip_empty_lines: true,
-              cast: true,
-              onRecord(record) {
-                for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : record[key];
-                }
-                return record;
-              }
-            }) as Tools.DB2Row[];
-          }
-
-          throw new Error(`There was an error fetching the SQL result set.`)
-        } else {
-          return Tools.db2Parse(output.stdout);
-        }
+    let rows: Tools.DB2Row[] = []
+    for (const statement of statementList) {
+      const result = await this.sqlJob.execute<Tools.DB2Row>(statement);
+      if (result && result.success) {
+        rows.push(...result.data);
+      } else {
+        console.log(result);
+        throw new Error(`SQL statement failed: ${statement}`);
       }
     }
 
-    throw new Error(`There is no way to run SQL on this system.`);
+    return rows;
   }
 
   getEncoding() {

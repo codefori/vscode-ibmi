@@ -4,7 +4,7 @@ import { ConnectionResult, JDBCOptions, JobStatus, QueryResult, ServerRequest, S
 import IBMi from "../../api/IBMi";
 import { SERVER_VERSION_TAG } from ".";
 
-export class OldSQLJob extends SQLJob {
+export class SshSqlJob extends SQLJob {
   private channel: any;
 
   constructor(opts: JDBCOptions, private connection: IBMi, private initCommand: string) {
@@ -108,6 +108,7 @@ export class OldSQLJob extends SQLJob {
     this.channel.on(`error`, (err: Error) => {
       console.log(err);
       this.dispose();
+      throw err;
     })
 
     this.channel.on(`close`, (code: number) => {
@@ -127,7 +128,7 @@ export class OldSQLJob extends SQLJob {
       .join(`;`)
 
     const connectionObject = {
-      id: OldSQLJob.getNewUniqueId(),
+      id: SshSqlJob.getNewUniqueId(),
       type: `connect`,
       //technique: (getInstance().getConnection().qccsid === 65535 || this.options["database name"]) ? `tcp` : `cli`, //TODO: investigate why QCCSID 65535 breaks CLI and if there is any workaround
       technique: `tcp`, // TODO: DOVE does not work in cli mode
@@ -166,7 +167,7 @@ export class OldSQLJob extends SQLJob {
 
   async close() {
     const exitObject: ServerRequest = {
-      id: OldSQLJob.getNewUniqueId(),
+      id: SshSqlJob.getNewUniqueId(),
       type: `exit`
     };
 
