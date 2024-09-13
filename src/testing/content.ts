@@ -793,8 +793,9 @@ export const ContentSuite: TestSuite = {
       test: async () => {
         const connection = instance.getConnection();
         const content = instance.getConnection()?.content;
-        if (connection && content && connection.getEncoding().ccsid !== 37) {
-          const ccsid = connection.getEncoding().ccsid;
+        const ccsids = connection!.getCcsids();
+        if (connection && content && ccsids.runtimeCcsid !== 37) {
+          const ccsid = ccsids.runtimeCcsid;
           let library = `TESTLIB${connection.variantChars.local}`;
           let skipLibrary = false;
           const sourceFile = `TESTFIL${connection.variantChars.local}`;
