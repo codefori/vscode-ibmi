@@ -4,6 +4,7 @@ import util from "util";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
+import { Tools } from "../../api/Tools";
 
 const tmpFile = util.promisify(tmp.file);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -42,7 +43,7 @@ export class ExtendedIBMiContent {
       const aliasPath = `${tempLib}.${alias}`;
 
       try {
-        await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${lib}"."${spf}"("${mbr}")`);
+        await connection.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${lib}"."${spf}"("${mbr}")`);
       } catch (e) { }
 
       if (!this.sourceDateHandler.recordLengths.has(alias)) {
@@ -52,11 +53,11 @@ export class ExtendedIBMiContent {
 
       let rows;
       if (sourceColourSupport)
-        rows = await content.runSQL(
+        rows = await connection.runSQL(
           `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`
         );
       else
-        rows = await content.runSQL(
+        rows = await connection.runSQL(
           `select srcdat, srcdta from ${aliasPath}`
         );
 
@@ -89,15 +90,15 @@ export class ExtendedIBMiContent {
    * @param {string} spf
    */
   private async getRecordLength(aliasPath: string, lib: string, spf: string): Promise<number> {
-    const content = instance.getContent();
+    const connection = instance.getConnection();
     let recordLength: number = DEFAULT_RECORD_LENGTH;
 
-    if (content) {
-      const result = await content.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
+    if (connection) {
+      const result = await connection.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
       if (result.length > 0) {
         recordLength = Number(result[0].LENGTH);
       } else {
-        const result = await content.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
+        const result = await connection.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
         if (result.length > 0) {
           recordLength = Number(result[0].LENGTH);
         }
@@ -160,7 +161,7 @@ export class ExtendedIBMiContent {
         }
 
         //We assume the alias still exists....
-        const tempTable = `QTEMP.NEWMEMBER`;
+        const tempTable = `QTEMP.${Tools.makeid()}`;
         const query: string[] = [
           `CREATE TABLE ${tempTable} LIKE "${lib}"."${spf}";`,
         ];

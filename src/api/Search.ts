@@ -33,7 +33,7 @@ export namespace Search {
         asp = `/${config.sourceASP}`;
       } else if (connection.enableSQL) {
         try {
-          const [row] = await content.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${library}'))`);
+          const [row] = await connection.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${library}'))`);
           const iaspNumber = row?.IASP_NUMBER;
           if (iaspNumber && typeof iaspNumber === 'number' && connection.aspInfo[iaspNumber]) {
             asp = `/${connection.aspInfo[iaspNumber]}`;

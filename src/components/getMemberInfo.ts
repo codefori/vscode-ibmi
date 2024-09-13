@@ -83,7 +83,8 @@ export class GetMemberInfo implements ComponentT {
         } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
-        results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+        const memberInfoTable = Tools.makeid();
+        results = await this.connection.content.getQTempTable([`create table QTEMP.${memberInfoTable} as (${statement}) with data`], memberInfoTable);
       }
 
       if (results.length === 1 && results[0].ISSOURCE === 'Y') {
@@ -121,7 +122,8 @@ export class GetMemberInfo implements ComponentT {
         } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
-        results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+        const memberInfoTable = Tools.makeid();
+        results = await this.connection.content.getQTempTable([`create table QTEMP.${memberInfoTable} as (${statement}) with data`], memberInfoTable);
       }
 
       return results.filter(row => row.ISSOURCE === 'Y').map(result => {
