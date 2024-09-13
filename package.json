@@ -2952,7 +2952,7 @@
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
 		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule",
-    "dsc": "mkdir -p dist && npx tsx src/dsc"
+		"dsc": "mkdir -p dist && npx tsx src/dsc"
 	},
 	"devDependencies": {
 		"@types/adm-zip": "^0.5.5",
@@ -2967,7 +2967,7 @@
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
 		"node-fetch": "^3.3.2",
-    "octokit": "^3.1.2",
+		"octokit": "^3.1.2",
 		"semver": "^7.5.2",
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
