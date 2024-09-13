@@ -2951,7 +2951,8 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch",
-		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule"
+		"typings": "npx -p typescript tsc ./src/extension.ts --declaration --allowJs --emitDeclarationOnly --outDir types --esModuleInterop -t es2022 --moduleResolution node --resolveJsonModule",
+    "dsc": "mkdir -p dist && npx tsx src/dsc"
 	},
 	"devDependencies": {
 		"@types/adm-zip": "^0.5.5",
@@ -2965,6 +2966,8 @@
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",
 		"glob": "^7.1.6",
+		"node-fetch": "^3.3.2",
+    "octokit": "^3.1.2",
 		"semver": "^7.5.2",
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
@@ -2976,14 +2979,14 @@
 		"@bendera/vscode-webview-elements": "^0.12.0",
 		"@ibm/ibmi-eventf-parser": "^1.0.2",
 		"adm-zip": "^0.5.14",
+		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "^6.2.1",
+		"escape-string-regexp": "^5.0.0",
 		"ignore": "^5.1.9",
 		"node-ssh": "^13.1.0",
 		"tar": "^6.2.1",
 		"tmp": "^0.2.1",
-		"vscode-diff": "^2.0.2",
-		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
-		"escape-string-regexp": "^5.0.0"
+		"vscode-diff": "^2.0.2"
 	},
 	"extensionDependencies": [
 		"barrettotte.ibmi-languages",
