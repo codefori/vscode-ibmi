@@ -1,11 +1,13 @@
 
 import path from "path";
 import {posix} from "path";
-import IBMi from "../api/IBMi";
-import { instance } from "../instantiate";
-import { ComponentT, ComponentState } from "./component";
+import IBMi from "../../api/IBMi";
+import { instance } from "../../instantiate";
+import { ComponentT, ComponentState } from "../component";
 import { extensions } from "vscode";
 import { promises as fsPromises } from "fs";
+import { OldSQLJob } from "./sqlJob";
+import { JDBCOptions } from "@ibm/mapepire-js/dist/src/types";
 
 const {stat} = fsPromises;
 
@@ -24,6 +26,12 @@ export class Mapepire implements ComponentT {
 
   constructor(public connection: IBMi) { }
 
+  getInitCommand(): string {
+    const path = this.getComponentPath();
+
+    return `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit/bin/java -Dos400.stdio.convert=N -jar ${path} --single`
+  }
+
   private async getComponentPath(justDir = false) {
     if (!this.componentPath) {
       const result = await this.connection.sendCommand({
@@ -36,7 +44,6 @@ export class Mapepire implements ComponentT {
   }
 
   async getInstalledVersion(): Promise<number> {
-    const path = this.getComponentPath();
     const exists = await this.connection.sendCommand({
       command: `ls ${this.getComponentPath()}`
     });
@@ -71,6 +78,10 @@ export class Mapepire implements ComponentT {
 
   getState(): ComponentState {
     return this.state;
+  }
+
+  getJob(opts: JDBCOptions = {}): OldSQLJob {
+    return new OldSQLJob(opts, this.connection, this.getInitCommand());
   }
 }
 

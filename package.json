@@ -2978,6 +2978,7 @@
 	"dependencies": {
 		"@bendera/vscode-webview-elements": "^0.12.0",
 		"@ibm/ibmi-eventf-parser": "^1.0.2",
+		"@ibm/mapepire-js": "^0.3.0",
 		"adm-zip": "^0.5.14",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "^6.2.1",
