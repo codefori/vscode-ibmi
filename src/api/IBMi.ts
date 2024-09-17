@@ -2,12 +2,10 @@ import * as node_ssh from "node-ssh";
 import * as vscode from "vscode";
 import { ConnectionConfiguration } from "./Configuration";
 
-import { parse } from 'csv-parse/sync';
 import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
 import { ComponentId, ComponentManager } from "../components/component";
-import { CopyToImport } from "../components/copyToImport";
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
@@ -17,6 +15,8 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import { SshSqlJob } from "../components/mapepire/sqlJob";
+import { Mapepire } from "../components/mapepire";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -35,14 +35,6 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
     names: [`git`, `grep`, `tn5250`, `md5sum`, `bash`, `chsh`, `stat`, `sort`, `tar`, `ls`, `find`]
   },
   {
-    path: `/QSYS.LIB/`,
-    // In the future, we may use a generic specific.
-    // Right now we only need one program
-    // specific: `*.PGM`,
-    specific: `QZDFMDB2.PGM`,
-    names: [`QZDFMDB2.PGM`]
-  },
-  {
     path: `/QIBM/ProdData/IBMiDebugService/bin/`,
     specific: `startDebugService.sh`,
     names: [`startDebugService.sh`]
@@ -56,6 +48,7 @@ export default class IBMi {
   private userDefaultCCSID: number = 0;
 
   private components: ComponentManager = new ComponentManager();
+  private sqlJob: SshSqlJob | undefined;
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -106,7 +99,6 @@ export default class IBMi {
       sort: undefined,
       'GETNEWLIBL.PGM': undefined,
       'GETMBRINFO.SQL': undefined,
-      'QZDFMDB2.PGM': undefined,
       'startDebugService.sh': undefined,
       attr: undefined,
       iconv: undefined,
@@ -119,6 +111,10 @@ export default class IBMi {
       american: `#@$`,
       local: `#@$`
     };
+  }
+
+  setSqlJob(job: SshSqlJob) {
+    this.sqlJob = job;
   }
 
   /**
@@ -316,6 +312,15 @@ export default class IBMi {
             } else {
               this.config.ifsShortcuts = [`/`];
             }
+          }
+
+          progress.report({ message: `Checking Code for IBM i components.` });
+          await this.components.startup(this);
+
+          const mapepire = (this.components.get(`Mapepire`) as Mapepire);
+          if (!mapepire) {
+            throw new Error(`Database component failed to install.`);
+            // TODO: improve this error?
           }
 
           progress.report({
@@ -589,24 +594,8 @@ export default class IBMi {
             }
           }
 
+
           if (this.sqlRunnerAvailable()) {
-            //Temporary function to run SQL
-
-            // TODO: stop using this runSQL function and this.runSql
-            const runSQL = async (statement: string) => {
-              const output = await this.sendCommand({
-                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                stdin: statement
-              });
-
-              if (output.code === 0) {
-                return Tools.db2Parse(output.stdout);
-              }
-              else {
-                throw new Error(output.stdout);
-              }
-            };
-
             // Check for ASP information?
             if (quickConnect === true && cachedServerSettings?.aspInfo) {
               this.aspInfo = cachedServerSettings.aspInfo;
@@ -618,7 +607,7 @@ export default class IBMi {
               //This is mostly a nice to have. We grab the ASP info so user's do
               //not have to provide the ASP in the settings.
               try {
-                const resultSet = await runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+                const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
                 resultSet.forEach(row => {
                   if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
                     this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
@@ -648,13 +637,13 @@ export default class IBMi {
               try {
 
                 // we need to grab the system CCSID (QCCSID)
-                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
                 if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
                   this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
                 }
 
                 // we grab the users default CCSID
-                const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+                const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
                 if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
                   this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
                 }
@@ -666,11 +655,11 @@ export default class IBMi {
 
                 // Let's also get the user's default CCSID
                 try {
-                  const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+                  const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
                   this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
                 }
                 catch (error) {
-                  const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
+                  const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)", noLibList: true }))
                     .stdout
                     .split("\n")
                     .filter(line => line.includes("DFTCCSID"));
@@ -685,7 +674,7 @@ export default class IBMi {
                   message: `Fetching local encoding values.`
                 });
 
-                const [variants] = await runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+                const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
                   + `  values ( cast( x'7B' as varchar(1) )`
                   + `         , cast( x'7C' as varchar(1) )`
                   + `         , cast( x'5B' as varchar(1) ) )`
@@ -707,21 +696,6 @@ export default class IBMi {
                 message: `SQL program not installed. Disabling SQL.`
               });
             }
-          }
-
-          if (!this.enableSQL) {
-            const encoding = this.getEncoding();
-            // Show a message if the system CCSID is bad
-            const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
-
-            // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
-            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
-
-            vscode.window.showErrorMessage([
-              ccsidMessage,
-              encodingMessage,
-              `Using fallback methods to access the IBM i file systems.`
-            ].filter(x => x).join(` `));
           }
 
           // give user option to set bash as default shell.
@@ -929,9 +903,6 @@ export default class IBMi {
           else {
             this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
           }
-
-          progress.report({ message: `Checking Code for IBM i components.` });
-          await this.components.startup(this);
 
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
@@ -1145,9 +1116,7 @@ export default class IBMi {
    * SQL only available when runner is installed and CCSID is valid.
    */
   get enableSQL(): boolean {
-    const sqlRunner = this.sqlRunnerAvailable();
-    const encodings = this.getEncoding();
-    return sqlRunner && encodings.invalid === false;
+    return this.sqlRunnerAvailable();
   }
 
   /**
@@ -1155,12 +1124,10 @@ export default class IBMi {
    * It exists to support some backwards compatability.
    * @deprecated
    */
-  set enableSQL(value: boolean) {
-    this.remoteFeatures[`QZDFMDB2.PGM`] = value ? `/QSYS.LIB/QZDFMDB2.PGM` : undefined;
-  }
+  set enableSQL(value: boolean) {}
 
   public sqlRunnerAvailable() {
-    return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
+    return this.sqlJob !== undefined;
   }
 
   /**
@@ -1366,84 +1333,25 @@ export default class IBMi {
    * @returns a Result set
    */
   async runSQL(statements: string): Promise<Tools.DB2Row[]> {
-    const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
+    if (!this.sqlJob) {
+      throw new Error(`SQL job not found. Please check your connection`);
+    }
 
-    if (QZDFMDB2) {
-      const ccsidDetail = this.getEncoding();
-      const useCcsid = ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined;
-      const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
+    let input = Tools.fixSQL(statements, true);
+    const statementList = input.split(`;`).filter(x => x.trim().length > 0);
 
-      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
-
-      let returningAsCsv: WrapResult | undefined;
-
-      if (this.qccsid === 65535) {
-        let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
-        const lastStmt = list.pop()?.trim();
-        const asUpper = lastStmt?.toUpperCase();
-
-        if (lastStmt) {
-          if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-            const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
-            if (copyToImport) {
-              returningAsCsv = copyToImport.wrap(lastStmt);
-              list.push(...returningAsCsv.newStatements);
-              input = list.join(`;\n`);
-            }
-          }
-
-          if (!returningAsCsv) {
-            list.push(lastStmt);
-          }
-        }
-      }
-
-      const output = await this.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
-        stdin: input
-      })
-
-      if (output.stdout) {
-        Tools.db2Parse(output.stdout, input);
-
-        if (returningAsCsv) {
-          // Will throw an error if stdout contains an error
-
-          const csvContent = await this.content.downloadStreamfile(returningAsCsv.outStmf);
-          if (csvContent) {
-            this.sendCommand({ command: `rm -rf "${returningAsCsv.outStmf}"` });
-
-            return parse(csvContent, {
-              columns: true,
-              skip_empty_lines: true,
-              cast: true,
-              onRecord(record) {
-                for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : record[key];
-                }
-                return record;
-              }
-            }) as Tools.DB2Row[];
-          }
-
-          throw new Error(`There was an error fetching the SQL result set.`)
-        } else {
-          return Tools.db2Parse(output.stdout);
-        }
+    let rows: Tools.DB2Row[] = []
+    for (const statement of statementList) {
+      const result = await this.sqlJob.execute<Tools.DB2Row>(statement);
+      if (result && result.success) {
+        rows.push(...result.data);
+      } else {
+        console.log(result);
+        throw new Error(`SQL statement failed: ${statement}`);
       }
     }
 
-    throw new Error(`There is no way to run SQL on this system.`);
-  }
-
-  getEncoding() {
-    const fallbackToDefault = ((this.jobCcsid < 1 || this.jobCcsid === 65535) && this.userDefaultCCSID > 0);
-    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.jobCcsid;
-    return {
-      fallback: fallbackToDefault,
-      ccsid,
-      invalid: (ccsid < 1 || ccsid === 65535)
-    };
+    return rows;
   }
 
   getCcsids() {

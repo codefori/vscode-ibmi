@@ -83,7 +83,8 @@ export class GetMemberInfo implements ComponentT {
         } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
-        results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+        const memberInfoTable = Tools.makeid();
+        results = await this.connection.content.getQTempTable([`create table QTEMP.${memberInfoTable} as (${statement}) with data`], memberInfoTable);
       }
 
       if (results.length === 1 && results[0].ISSOURCE === 'Y') {
@@ -121,7 +122,8 @@ export class GetMemberInfo implements ComponentT {
         } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
-        results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+        const memberInfoTable = Tools.makeid();
+        results = await this.connection.content.getQTempTable([`create table QTEMP.${memberInfoTable} as (${statement}) with data`], memberInfoTable);
       }
 
       return results.filter(row => row.ISSOURCE === 'Y').map(result => {
@@ -174,7 +176,7 @@ function getSource(library: string, name: string, version: number) {
     `specific GETMBRINFO`,
     `modifies sql data`,
     `begin`,
-    `  declare  buffer  char( 135 ) for bit data not null default '';`,
+    `  declare  buffer  char( 135 ) not null default '';`,
     `  declare  BUFLEN  integer     constant 135 ;`,
     `  declare  FORMAT  char(   8 ) constant 'MBRD0100' ;`,
     `  declare  OVR     char(   1 ) constant '0' ;`,

@@ -1,7 +1,7 @@
 import IBMi from "../api/IBMi";
-import { CopyToImport } from "./copyToImport";
 import { GetMemberInfo } from "./getMemberInfo";
 import { GetNewLibl } from "./getNewLibl";
+import { Mapepire } from "./mapepire";
 
 export enum ComponentState {
   NotChecked = `NotChecked`,
@@ -11,8 +11,8 @@ export enum ComponentState {
 }
 interface ComponentRegistry {
   GetNewLibl?: GetNewLibl;
-  CopyToImport?: CopyToImport;
   GetMemberInfo?: GetMemberInfo;
+  Mapepire?: Mapepire;
 }
 
 export type ComponentId = keyof ComponentRegistry;
@@ -32,11 +32,11 @@ export class ComponentManager {
   private registered: ComponentRegistry = {};
 
   public async startup(connection: IBMi) {
+    this.registered.Mapepire = new Mapepire(connection);
+    await ComponentManager.checkState(this.registered.Mapepire);
+
     this.registered.GetNewLibl = new GetNewLibl(connection);
     await ComponentManager.checkState(this.registered.GetNewLibl);
-
-    this.registered.CopyToImport = new CopyToImport(connection);
-    await ComponentManager.checkState(this.registered.CopyToImport);
 
     this.registered.GetMemberInfo = new GetMemberInfo(connection);
     await ComponentManager.checkState(this.registered.GetMemberInfo);

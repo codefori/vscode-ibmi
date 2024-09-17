@@ -155,11 +155,12 @@ export default class IBMiContent {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
         copyResult = { code: 0, stdout: '', stderr: '' };
+        const tempSrc = Tools.makeid();
         try {
-          await this.ibmi.runSQL([
-            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
-          ].join("\n"));
+          await this.runStatements(
+            `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) TOFILE(QTEMP/${tempSrc}) FROMMBR(${member}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+            `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", tempSrc, "TEMPMEMBER", undefined)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID});`
+          );
         } catch (error: any) {
           copyResult.code = -1;
           copyResult.stderr = String(error);
@@ -230,11 +231,12 @@ export default class IBMiContent {
         let copyResult: CommandResult;
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
+          const tempSrc = Tools.makeid();
           try {
             await this.ibmi.runSQL([
-              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
-              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
-              `@QSYS/CPYF FROMFILE(QTEMP/QTEMPSRC) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
+              `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/${tempSrc}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+              `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", tempSrc, "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+              `@QSYS/CPYF FROMFILE(QTEMP/${tempSrc}) FROMMBR(TEMPMEMBER) TOFILE(${library}/${sourceFile}) TOMBR(${member}) MBROPT(*REPLACE);`
             ].join("\n"));
           } catch (error: any) {
             copyResult.code = -1;
@@ -282,19 +284,6 @@ export default class IBMiContent {
    */
   runStatements(...statements: string[]): Promise<Tools.DB2Row[]> {
     return this.ibmi.runSQL(statements.map(s => s.trimEnd().endsWith(`;`) ? s : `${s};`).join(`\n`));
-  }
-
-  /**
-   * Run SQL statements.
-   * Each statement must be separated by a semi-colon and a new line (i.e. ;\n).
-   * If a statement starts with @, it will be run as a CL command.
-   *
-   * @param statements
-   * @returns a Result set
-   * @deprecated Use {@linkcode IBMi.runSQL IBMi.runSQL} instead
-   */
-  runSQL(statements: string) {
-    return this.ibmi.runSQL(statements);
   }
 
   /**
@@ -394,7 +383,8 @@ export default class IBMiContent {
         asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
       } as IBMiObject));
     } else {
-      let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/LIBLIST) OUTMBR(*FIRST *ADD)`), "LIBLIST");
+      const qtempName = Tools.makeid();
+      let results = await this.getQTempTable(libraries.map(library => `@DSPOBJD OBJ(QSYS/${library}) OBJTYPE(*LIB) DETAIL(*TEXTATR) OUTPUT(*OUTFILE) OUTFILE(QTEMP/${qtempName}) OUTMBR(*FIRST *ADD)`), qtempName);
       if (results.length === 1 && !results[0].ODOBNM?.toString().trim()) {
         return [];
       }
@@ -628,12 +618,12 @@ export default class IBMiContent {
     const statement =
       `With MEMBERS As (
         SELECT
-          rtrim(cast(a.system_table_schema as char(10) for bit data)) as LIBRARY,
+          rtrim(cast(a.system_table_schema as char(10))) as LIBRARY,
           b.avgrowsize as RECORD_LENGTH,
           a.iasp_number as ASP,
-          rtrim(cast(a.system_table_name as char(10) for bit data)) AS SOURCE_FILE,
-          rtrim(cast(b.system_table_member as char(10) for bit data)) as NAME,
-          coalesce(rtrim(cast(b.source_type as varchar(10) for bit data)), '') as TYPE,
+          rtrim(cast(a.system_table_name as char(10))) AS SOURCE_FILE,
+          rtrim(cast(b.system_table_member as char(10))) as NAME,
+          coalesce(rtrim(cast(b.source_type as varchar(10))), '') as TYPE,
           coalesce(rtrim(varchar(b.partition_text)), '') as TEXT,
           b.NUMBER_ROWS as LINES,
           extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
@@ -686,11 +676,12 @@ export default class IBMiContent {
       let results: Tools.DB2Row[] = [];
       if (this.config.enableSQL) {
         try {
-          results = await this.runSQL(statement);
+          results = await this.ibmi.runSQL(statement);
         } catch (e) { }; // Ignore errors, will return undefined.
       }
       else {
-        results = await this.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+        const tempTable = Tools.makeid();
+        results = await this.getQTempTable([`create table QTEMP.${tempTable} as (${statement}) with data`], tempTable);
       }
 
       if (results.length === 1 && results[0].ISSOURCE === 'Y') {

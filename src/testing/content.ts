@@ -280,9 +280,9 @@ export const ContentSuite: TestSuite = {
 
     {
       name: `Test runSQL (basic select)`, test: async () => {
-        const content = instance.getContent();
+        const connection = instance.getConnection();
 
-        const rows = await content?.runSQL(`select * from qiws.qcustcdt`);
+        const rows = await connection?.runSQL(`select * from qiws.qcustcdt`);
         assert.notStrictEqual(rows?.length, 0);
 
         const firstRow = rows![0];
@@ -293,10 +293,10 @@ export const ContentSuite: TestSuite = {
 
     {
       name: `Test runSQL (bad basic select)`, test: async () => {
-        const content = instance.getContent();
+        const connection = instance.getConnection();
 
         try {
-          await content?.runSQL(`select from qiws.qcustcdt`);
+          await connection?.runSQL(`select from qiws.qcustcdt`);
         } catch (e: any) {
           assert.strictEqual(e.message, `Token . was not valid. Valid tokens: , FROM INTO. (42601)`);
           assert.strictEqual(e.sqlstate, `42601`);
@@ -306,9 +306,9 @@ export const ContentSuite: TestSuite = {
 
     {
       name: `Test runSQL (with comments)`, test: async () => {
-        const content = instance.getContent();
+        const connection = instance.getConnection();
 
-        const rows = await content?.runSQL([
+        const rows = await connection?.runSQL([
           `-- myselect`,
           `select *`,
           `from qiws.qcustcdt --my table`,
@@ -670,8 +670,9 @@ export const ContentSuite: TestSuite = {
     {
       name: `Test @clCommand + select statement`, test: async () => {
         const content = instance.getContent()!;
+        const connection = instance.getConnection()!;
 
-        const [resultA] = await content.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
+        const [resultA] = await connection.runSQL(`@CRTSAVF FILE(QTEMP/UNITTEST) TEXT('Code for i test');\nSelect * From Table(QSYS2.OBJECT_STATISTICS('QTEMP', '*FILE')) Where OBJATTRIBUTE = 'SAVF';`);
 
         assert.deepStrictEqual(resultA.OBJNAME, "UNITTEST");
         assert.deepStrictEqual(resultA.OBJTEXT, "Code for i test");
@@ -792,8 +793,9 @@ export const ContentSuite: TestSuite = {
       test: async () => {
         const connection = instance.getConnection();
         const content = instance.getConnection()?.content;
-        if (connection && content && connection.getEncoding().ccsid !== 37) {
-          const ccsid = connection.getEncoding().ccsid;
+        const ccsids = connection!.getCcsids();
+        if (connection && content && ccsids.runtimeCcsid !== 37) {
+          const ccsid = ccsids.runtimeCcsid;
           let library = `TESTLIB${connection.variantChars.local}`;
           let skipLibrary = false;
           const sourceFile = `TESTFIL${connection.variantChars.local}`;
