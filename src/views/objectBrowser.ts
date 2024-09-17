@@ -1246,7 +1246,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         candidates.push(...objectTreeViewer.selection.filter(i => i instanceof ObjectBrowserItem) as ObjectBrowserItem[]);
       }
 
-      const toBeDeleted = candidates.filter(item => !item.isProtected());
+      const toBeDeleted = candidates.filter(item => item instanceof ObjectBrowserFilterItem || !item.isProtected());
       if (toBeDeleted.length) {
         const message = toBeDeleted.length === 1 ? t('objectBrowser.delete.confirm', toBeDeleted[0].toString()) : t('objectBrowser.delete.multiple.confirm', toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(item => `- ${item.toString()}`).join("\n");
