@@ -5,7 +5,7 @@ import { GetMemberInfo } from "./getMemberInfo";
 import { GetNewLibl } from "./getNewLibl";
 
 export class ComponentRegistry {
-  private allComponents: (typeof ComponentT)[] = [GetNewLibl, CopyToImport, GetMemberInfo];
+  private readonly allComponents: (typeof ComponentT)[] = [GetNewLibl, CopyToImport, GetMemberInfo];
 
   public registerComponent(component: typeof ComponentT) {
     this.allComponents.push(component);
@@ -16,23 +16,21 @@ export class ComponentRegistry {
   }
 }
 
-export const ExtensionComponentRegistry = new ComponentRegistry();
-
-interface ComponentList {[name: string]: ComponentT};
+export const extensionComponentRegistry = new ComponentRegistry();
 
 export class ComponentManager {
-  private registered: ComponentList = {};
+  private readonly registered: Map<string, ComponentT> = new Map;
 
   public async startup(connection: IBMi) {
-    for (const Component of ExtensionComponentRegistry.getComponents()) {
+    for (const Component of extensionComponentRegistry.getComponents()) {
       const instance = new Component(connection);
-      this.registered[Component.name] = instance;
+      this.registered.set(Component.name, instance);
       await ComponentManager.checkState(instance);
     }
   }
 
   get<T>(id: string): T | undefined {
-    const component = this.registered[id];
+    const component = this.registered.get(id);
     if (component && component.getState() === ComponentState.Installed) {
       return component as T;
     }

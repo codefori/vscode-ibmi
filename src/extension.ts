@@ -16,6 +16,7 @@ import * as Debug from './api/debug';
 import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
+import { extensionComponentRegistry } from "./components/manager";
 import { IFSFS } from "./filesystems/ifsFs";
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { updateLocale } from "./locale";
@@ -31,7 +32,6 @@ import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
-import { ExtensionComponentRegistry } from "./components/manager";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -131,7 +131,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     deployTools: DeployTools, 
     evfeventParser: parseErrors, 
     tools: Tools, 
-    componentRegistry: ExtensionComponentRegistry 
+    componentRegistry: extensionComponentRegistry 
   };
 }
 
