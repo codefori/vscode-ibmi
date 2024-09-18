@@ -76,6 +76,43 @@ export class GetMemberInfo extends IBMiComponent {
       } as IBMiMember
     }
   }
+
+  async getMultipleMemberInfo(members: IBMiMember[]): Promise<IBMiMember[]|undefined> {
+    if (this.state === ComponentState.Installed) {
+      const config = this.connection.config!;
+      const tempLib = config.tempLibrary;
+      const statement = members
+        .map(member => `select * from table(${this.connection.config!.tempLibrary}.GETMBRINFO('${member.library}', '${member.file}', '${member.name}'))`)
+        .join(' union all ');
+
+      let results: Tools.DB2Row[] = [];
+      if (config.enableSQL) {
+        try {
+          results = await this.connection.runSQL(statement);
+        } catch (e) { }; // Ignore errors, will return undefined.
+      }
+      else {
+        results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      }
+
+      return results.filter(row => row.ISSOURCE === 'Y').map(result => {
+        const asp = this.connection.aspInfo[Number(result.ASP)];
+        return {
+          asp,
+          library: result.LIBRARY,
+          file: result.FILE,
+          name: result.MEMBER,
+          extension: result.EXTENSION,
+          text: result.DESCRIPTION,
+          created: new Date(result.CREATED ? Number(result.CREATED) : 0),
+          changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+        } as IBMiMember
+      });
+
+    } else {
+      return undefined;
+    }
+  }
 }
 
 function getSource(library: string, name: string, version: number) {

@@ -562,6 +562,10 @@ export namespace CompileTools {
         else {
           return false;
         }
+      } else if (isProtected) {
+        //when a member is protected(read only)
+        vscode.window.showErrorMessage(`Action cannot be applied on a read only member.`);
+        return false;
       } else {
         //No compile commands
         vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);

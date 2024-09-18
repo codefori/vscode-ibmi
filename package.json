@@ -3,7 +3,7 @@
 	"icon": "icon.png",
 	"displayName": "Code for IBM i",
 	"description": "Maintain your RPGLE, CL, COBOL, C/CPP on IBM i right from Visual Studio Code.",
-	"version": "2.12.3-dev.0",
+	"version": "2.13.2-dev.0",
 	"keywords": [
 		"ibmi",
 		"rpgle",
@@ -2969,7 +2969,7 @@
 		"ssh2-streams": "^0.4.10",
 		"ts-loader": "^9.3.1",
 		"typescript": "^4.8.2",
-		"webpack": "^5.76.0",
+		"webpack": "^5.94.0",
 		"webpack-cli": "^4.5.0"
 	},
 	"dependencies": {
