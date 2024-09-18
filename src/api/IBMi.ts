@@ -6,7 +6,9 @@ import { parse } from 'csv-parse/sync';
 import { existsSync } from "fs";
 import os from "os";
 import path from 'path';
+import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
+import { ComponentManager } from "../components/manager";
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
@@ -16,7 +18,6 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
-import { ComponentManager } from "../components/manager";
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -55,7 +56,7 @@ export default class IBMi {
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
 
-  private components: ComponentManager = new ComponentManager();
+  private componentManager = new ComponentManager(this);
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -927,7 +928,7 @@ export default class IBMi {
           }
 
           progress.report({ message: `Checking Code for IBM i components.` });
-          await this.components.startup(this);
+          await this.componentManager.startup();
 
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
@@ -1341,8 +1342,8 @@ export default class IBMi {
     }
   }
 
-  getComponent<T>(id: string) {
-    return this.components.get<T>(id);
+  getComponent<T extends IBMiComponent>(type: IBMiComponentType<T>): T | undefined {
+    return this.componentManager.get<T>(type);
   }
 
   /**
@@ -1372,7 +1373,7 @@ export default class IBMi {
 
         if (lastStmt) {
           if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-            const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
+            const copyToImport = this.getComponent<CopyToImport>(CopyToImport);
             if (copyToImport) {
               returningAsCsv = copyToImport.wrap(lastStmt);
               list.push(...returningAsCsv.newStatements);

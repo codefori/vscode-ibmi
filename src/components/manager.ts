@@ -1,13 +1,13 @@
 import IBMi from "../api/IBMi";
-import { ComponentState, ComponentT } from "./component";
+import { ComponentState, IBMiComponent, IBMiComponentType } from "./component";
 import { CopyToImport } from "./copyToImport";
 import { GetMemberInfo } from "./getMemberInfo";
 import { GetNewLibl } from "./getNewLibl";
 
 export class ComponentRegistry {
-  private readonly allComponents: (typeof ComponentT)[] = [GetNewLibl, CopyToImport, GetMemberInfo];
+  private readonly allComponents: (IBMiComponentType<any>)[] = [GetNewLibl, CopyToImport, GetMemberInfo];
 
-  public registerComponent(component: typeof ComponentT) {
+  public registerComponent(component: IBMiComponentType<any>) {
     this.allComponents.push(component);
   }
 
@@ -19,29 +19,22 @@ export class ComponentRegistry {
 export const extensionComponentRegistry = new ComponentRegistry();
 
 export class ComponentManager {
-  private readonly registered: Map<string, ComponentT> = new Map;
+  private readonly registered: Map<IBMiComponentType<any>, IBMiComponent> = new Map;
 
-  public async startup(connection: IBMi) {
+  constructor(private readonly connection: IBMi) {
+
+  }
+
+  public async startup() {
     for (const Component of extensionComponentRegistry.getComponents()) {
-      const instance = new Component(connection);
-      this.registered.set(Component.name, instance);
-      await ComponentManager.checkState(instance);
+      this.registered.set(Component, await new Component(this.connection).check());
     }
   }
 
-  get<T>(id: string): T | undefined {
-    const component = this.registered.get(id);
+  get<T extends IBMiComponent>(type: IBMiComponentType<T>): T | undefined {
+    const component = this.registered.get(type);
     if (component && component.getState() === ComponentState.Installed) {
       return component as T;
-    }
-  }
-
-  private static async checkState(component: ComponentT) {
-    try {
-      await component.checkState();
-    } catch (e) {
-      console.log(component);
-      console.log(`Error checking state for ${component.constructor.name}`, e);
     }
   }
 }
