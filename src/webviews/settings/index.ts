@@ -225,7 +225,7 @@ export class SettingsUI {
             componentsTab.addParagraph(`<p>
               <h3>${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
               <ul>
-              ${components.map(type => connection.getComponent<IBMiComponent>(type, true)).map(component => `<li><code>${component?.getName()}</code>: ${component?.getState()}</li>`).join(``)}
+              ${components.map(type => connection.getComponent<IBMiComponent>(type, true)).map(component => `<li><code>${component?.toString()}</code>: ${component?.getState()}</li>`).join(``)}
               </ul>
               </p>`);
           })

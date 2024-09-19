@@ -13,8 +13,8 @@ export class CopyToImport extends IBMiComponent {
     return parts.length === 4 && parts[0].toUpperCase() === `SELECT` && parts[1] === `*` && parts[2].toUpperCase() === `FROM` && parts[3].includes(`.`);
   }
 
-  getName() {
-    return 'CPYTOIMPF';
+  getIdentification() {
+    return { name: 'CopyToImport', version: 1 };
   }
 
   protected getRemoteState() {

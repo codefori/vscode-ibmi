@@ -7,6 +7,12 @@ export const enum ComponentState {
   NeedUpdate = `Need update`,
   Error = `Error`,
 }
+
+export type ComponentIdentification = {
+  name: string
+  version: number
+}
+
 export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
 
 /**
@@ -51,7 +57,7 @@ export abstract class IBMiComponent {
       }
     }
     catch (error) {
-      console.log(`Error occurred while checking component ${this.getName()}`);
+      console.log(`Error occurred while checking component ${this.toString()}`);
       console.log(error);
       this.state = ComponentState.Error;
     }
@@ -59,12 +65,17 @@ export abstract class IBMiComponent {
     return this;
   }
 
+  toString() {
+    const identification = this.getIdentification();
+    return `${identification.name} (version ${identification.version})`
+  }
+
   /**
    * The name of this component; mainly used for display and logging purposes
    * 
    * @returns a human-readable name
    */
-  abstract getName(): string;
+  abstract getIdentification(): ComponentIdentification;
 
   /**
    * @returns the component's {@link ComponentState state} on the IBM i

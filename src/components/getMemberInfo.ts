@@ -4,23 +4,24 @@ import { IBMiMember } from "../typings";
 import { ComponentState, IBMiComponent } from "./component";
 
 export class GetMemberInfo extends IBMiComponent {
+  private readonly procedureName = 'GETMBRINFO';
   private readonly currentVersion = 1;
+  private installedVersion = 0;
 
-  getName() {
-    return "GETMBRINFO";
+  getIdentification() {
+    return { name: 'GetMemberInfo', version: this.installedVersion };
   }
 
   protected async getRemoteState(): Promise<ComponentState> {
-    let installedVersion = 0;
-    const [result] = await this.connection.runSQL(`select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${this.connection.config?.tempLibrary.toUpperCase()}' and routine_name = 'GETMBRINFO'`);
+    const [result] = await this.connection.runSQL(`select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${this.connection.config?.tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
     if (result.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
       const dash = comment.indexOf('-');
       if (dash > -1) {
-        installedVersion = Number(comment.substring(0, dash).trim());
+        this.installedVersion = Number(comment.substring(0, dash).trim());
       }
     }
-    if (installedVersion < this.currentVersion) {
+    if (this.installedVersion < this.currentVersion) {
       return ComponentState.NeedUpdate;
     }
 
@@ -31,7 +32,7 @@ export class GetMemberInfo extends IBMiComponent {
     const config = this.connection.config!;
     return this.connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);
-      await this.connection.content.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.getName(), this.currentVersion));
+      await this.connection.content.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.procedureName, this.currentVersion));
       const result = await this.connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
@@ -49,7 +50,7 @@ export class GetMemberInfo extends IBMiComponent {
   async getMemberInfo(library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
     const config = this.connection.config!;
     const tempLib = config.tempLibrary;
-    const statement = `select * from table(${tempLib}.${this.getName()}('${library}', '${sourceFile}', '${member}'))`;
+    const statement = `select * from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`;
 
     let results: Tools.DB2Row[] = [];
     if (config.enableSQL) {
@@ -77,41 +78,36 @@ export class GetMemberInfo extends IBMiComponent {
     }
   }
 
-  async getMultipleMemberInfo(members: IBMiMember[]): Promise<IBMiMember[]|undefined> {
-    if (this.state === ComponentState.Installed) {
-      const config = this.connection.config!;
-      const tempLib = config.tempLibrary;
-      const statement = members
-        .map(member => `select * from table(${this.connection.config!.tempLibrary}.GETMBRINFO('${member.library}', '${member.file}', '${member.name}'))`)
-        .join(' union all ');
+  async getMultipleMemberInfo(members: IBMiMember[]): Promise<IBMiMember[] | undefined> {
+    const config = this.connection.config!;
+    const tempLib = config.tempLibrary;
+    const statement = members
+      .map(member => `select * from table(${tempLib}.${this.procedureName}('${member.library}', '${member.file}', '${member.name}'))`)
+      .join(' union all ');
 
-      let results: Tools.DB2Row[] = [];
-      if (config.enableSQL) {
-        try {
-          results = await this.connection.runSQL(statement);
-        } catch (e) { }; // Ignore errors, will return undefined.
-      }
-      else {
-        results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
-      }
-
-      return results.filter(row => row.ISSOURCE === 'Y').map(result => {
-        const asp = this.connection.aspInfo[Number(result.ASP)];
-        return {
-          asp,
-          library: result.LIBRARY,
-          file: result.FILE,
-          name: result.MEMBER,
-          extension: result.EXTENSION,
-          text: result.DESCRIPTION,
-          created: new Date(result.CREATED ? Number(result.CREATED) : 0),
-          changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
-        } as IBMiMember
-      });
-
-    } else {
-      return undefined;
+    let results: Tools.DB2Row[] = [];
+    if (config.enableSQL) {
+      try {
+        results = await this.connection.runSQL(statement);
+      } catch (e) { }; // Ignore errors, will return undefined.
     }
+    else {
+      results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+    }
+
+    return results.filter(row => row.ISSOURCE === 'Y').map(result => {
+      const asp = this.connection.aspInfo[Number(result.ASP)];
+      return {
+        asp,
+        library: result.LIBRARY,
+        file: result.FILE,
+        name: result.MEMBER,
+        extension: result.EXTENSION,
+        text: result.DESCRIPTION,
+        created: new Date(result.CREATED ? Number(result.CREATED) : 0),
+        changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
+      } as IBMiMember
+    });
   }
 }
 
@@ -142,7 +138,7 @@ function getSource(library: string, name: string, version: number) {
     `, Description  varchar( 50 )`,
     `, isSource     char( 1 )`,
     `)`,
-    `specific GETMBRINFO`,
+    `specific ${name}`,
     `modifies sql data`,
     `begin`,
     `  declare  buffer  char( 135 ) for bit data not null default '';`,

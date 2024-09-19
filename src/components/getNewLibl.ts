@@ -3,10 +3,8 @@ import { instance } from "../instantiate";
 import { ComponentState, IBMiComponent } from "./component";
 
 export class GetNewLibl extends IBMiComponent {
-  private readonly currentVersion = 1;
-
-  getName() {
-    return 'GETNEWLIBL';
+  getIdentification() {
+    return { name: 'GetNewLibl', version: 1 };
   }
 
   protected async getRemoteState() {
