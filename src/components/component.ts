@@ -1,10 +1,10 @@
 import IBMi from "../api/IBMi";
 
 export const enum ComponentState {
-  NotChecked = `NotChecked`,
-  NotInstalled = `NotInstalled`,
+  NotChecked = `Not checked`,
+  NotInstalled = `Not installed`,
   Installed = `Installed`,
-  NeedUpdate = `NeedUpdate`,
+  NeedUpdate = `Need update`,
   Error = `Error`,
 }
 export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
@@ -20,12 +20,14 @@ export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
  *  //implements getName(), getRemoteState() and update()
  * }
  * ```
- * Must be registered like this:
+ * Must be registered like this, when the extension providing the component gets activated:
  * ```
- * const codeForIBMiExtension = vscode.extensions.getExtension<CodeForIBMi>('halcyontechltd.code-for-ibmi');
- * if (codeForIBMiExtension) {
- *  codeForIBMi = codeForIBMiExtension.isActive ? codeForIBMiExtension.exports : await codeForIBMiExtension.activate();
- *  codeForIBMi.componentRegistry.registerComponent(MyIBMIComponent);
+ * export async function activate(context: ExtensionContext) {
+ *   const codeForIBMiExtension = vscode.extensions.getExtension<CodeForIBMi>('halcyontechltd.code-for-ibmi');
+ *   if (codeForIBMiExtension) {
+ *     codeForIBMi = codeForIBMiExtension.isActive ? codeForIBMiExtension.exports : await codeForIBMiExtension.activate();
+ *     codeForIBMi.componentRegistry.registerComponent(context, MyIBMIComponent);
+ *   }
  * }
  * ```
  * 

@@ -1354,8 +1354,8 @@ export default class IBMi {
     }
   }
 
-  getComponent<T extends IBMiComponent>(type: IBMiComponentType<T>): T | undefined {
-    return this.componentManager.get<T>(type);
+  getComponent<T extends IBMiComponent>(type: IBMiComponentType<T>, ignoreState?:boolean): T | undefined {
+    return this.componentManager.get<T>(type, ignoreState);
   }
 
   /**
