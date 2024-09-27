@@ -555,7 +555,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         value: fullName,
         validateInput: (value) => {
           try {
-            connection.parserMemberPath(toPath(value));
+            connection.parserMemberPath(toPath(value), true);
           } catch (e: any) {
             return e.toString();
           }
@@ -599,7 +599,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         value: node.path || fullPath,
         validateInput: (value) => {
           try {
-            const memberPath = connection.parserMemberPath(value);
+            const memberPath = connection.parserMemberPath(value, true);
             if (memberPath.library === oldMember.library && memberPath.file === oldMember.file && memberPath.name === oldMember.name) {
               return t(`objectBrowser.copyMember.errorMessage`);
             }
@@ -934,7 +934,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             }
             if (checkPath) {
               try {
-                connection.parserMemberPath(checkPath);
+                connection.parserMemberPath(checkPath, true);
               } catch (e: any) {
                 return e;
               }
