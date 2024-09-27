@@ -239,3 +239,22 @@ export type SearchHitLine = {
   number: number
   content: string
 }
+
+export interface MemberParts extends IBMiMember {
+  basename: string
+}
+
+
+export type RemoteApp = {
+  path: string
+  specific ?: string 
+  names: string[]
+}
+
+export type RemoteApps = RemoteApp[];
+
+export type RemoteFeature = string | undefined;
+
+export type RemoteFeatures = { [name: string]: RemoteFeature };
+
+export type aspInfo = { [id: number]: string };
