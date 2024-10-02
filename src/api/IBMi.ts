@@ -309,12 +309,10 @@ export default class IBMi {
 
           }
 
-          //TO DO: why is this required????
           const commandShellResult = await this.sendCommand({
             command: `echo $SHELL`
           });
 
-          //TO DO: why is this required????
           if (commandShellResult.code === 0) {
             this.shell = commandShellResult.stdout.trim();
           }
