@@ -289,7 +289,7 @@ export default class IBMiSettings {
             }
         } catch (e) {
             //Oh well
-            aspInfo = {};
+            return Promise.reject(e);
         }
 
         return Promise.resolve(aspInfo);
@@ -399,14 +399,12 @@ export default class IBMiSettings {
         }
         // If reason is still undefined, then we know the user has all the required paths. Then we don't 
         // need to check for their existence before checking the order of the required paths.
-        if (!reason) {
-            for (let x = 1; x <= requiredPaths.length; x++) {
-                if (currentPaths.indexOf(requiredPaths[0]) > currentPaths.indexOf(requiredPaths[x])) {
-                    reason = `${requiredPaths[0]} is not in the right position in your $PATH shell environment variable`;
-                    missingPath = requiredPaths[0];
-                    break;
-                }
-            }
+
+        if (!reason &&
+            (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
+                || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
+            reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
+            missingPath = "/QOpenSys/pkgs/bin"
         }
 
         return Promise.resolve({ reason: reason, missingPath: missingPath });
@@ -481,34 +479,34 @@ export default class IBMiSettings {
         return Promise.resolve({ updateBash, updateBashMsg });
     }
 
-    async validateLibraryList(defaultUserLibraries: string[], libraryList: string[]): Promise<{validLibs: string[], badLibs: string[]}> {
-        
-          let validLibs: string[] = [];
-          let badLibs: string[] = [];
+    async validateLibraryList(defaultUserLibraries: string[], libraryList: string[]): Promise<{ validLibs: string[], badLibs: string[] }> {
 
-          const result = await this.connection.sendQsh({
+        let validLibs: string[] = [];
+        let badLibs: string[] = [];
+
+        const result = await this.connection.sendQsh({
             command: [
-              `liblist -d ` + defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-              ...libraryList.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+                `liblist -d ` + defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
+                ...libraryList.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
             ].join(`; `)
-          });
+        });
 
-          if (result.stderr) {
+        if (result.stderr) {
             const lines = result.stderr.split(`\n`);
 
             lines.forEach(line => {
-              const badLib = libraryList.find(lib => line.includes(`ibrary ${lib} `));
+                const badLib = libraryList.find(lib => line.includes(`ibrary ${lib} `));
 
-              // If there is an error about the library, store it
-              if (badLib) badLibs.push(badLib);
+                // If there is an error about the library, store it
+                if (badLib) badLibs.push(badLib);
             });
-          }
+        }
 
-          if (result && badLibs.length > 0) {
+        if (result && badLibs.length > 0) {
             validLibs = libraryList.filter(lib => !badLibs.includes(lib));
-          }
+        }
 
-          return Promise.resolve({validLibs,badLibs});
+        return Promise.resolve({ validLibs, badLibs });
 
     }
 

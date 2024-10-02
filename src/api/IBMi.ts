@@ -243,7 +243,7 @@ export default class IBMi {
 
           let libraryListResult = await connSettings.getLibraryList();
           if (libraryListResult.libStatus) {
-            
+
             this.defaultUserLibraries = libraryListResult.defaultUserLibraries;
 
             //If this is the first time the config is made, then these arrays will be empty
@@ -409,12 +409,14 @@ export default class IBMi {
                 });
 
                 await remoteApps.checkRemoteFeatures(remoteApp, this);
-                this.remoteFeatures = remoteApps.getRemoteFeatures();
 
               } catch (e) {
                 console.log(e);
               }
             }
+
+            this.remoteFeatures = remoteApps.getRemoteFeatures();
+
           }
 
           if (this.sqlRunnerAvailable()) {
@@ -429,9 +431,11 @@ export default class IBMi {
 
               //This is mostly a nice to have. We grab the ASP info so user's do
               //not have to provide the ASP in the settings.
-
-              this.aspInfo = await connSettings.getASPInfo();
-              if (Object.keys(this.aspInfo).length === 0) {
+              try {
+                this.aspInfo = await connSettings.getASPInfo();
+              }
+              catch (e) {
+                //Oh well
                 progress.report({
                   message: `Failed to get ASP information.`
                 });
@@ -541,13 +545,13 @@ export default class IBMi {
                   });
 
                   if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
-                    
+
                     const bashrcFile = `${homeResult.homeDir}/.bashrc`;
-                    
+
                     let bashrcExists = await connSettings.checkBashRCFile(bashrcFile);
-                    
+
                     let checkPathResult = await connSettings.checkPaths(["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]);
-                    
+
                     if (checkPathResult.reason && await vscode.window.showWarningMessage(`${checkPathResult.missingPath} not found in $PATH`, {
                       modal: true,
                       detail: `${checkPathResult.reason}, so Code for IBM i may not function correctly. Would you like to ${bashrcExists ? "update" : "create"} ${bashrcFile} to fix this now?`,
@@ -556,7 +560,7 @@ export default class IBMi {
                         this.appendOutput(`${bashrcExists ? "update" : "create"} ${bashrcFile}`);
                         if (!bashrcExists) {
                           //Create bashrc File
-                          let createBashResult = await connSettings.createBashrcFile(bashrcFile,connectionObject.username);
+                          let createBashResult = await connSettings.createBashrcFile(bashrcFile, connectionObject.username);
                           //Error creating bashrc File
                           if (!createBashResult.createBash) {
                             vscode.window.showWarningMessage(`Error creating ${bashrcFile}):\n${createBashResult.createBashMsg}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
@@ -565,7 +569,7 @@ export default class IBMi {
                         else {
                           //Update bashRC file
                           let updateBashResult = await connSettings.updateBashrcFile(bashrcFile);
-                          if(!updateBashResult.updateBash) {
+                          if (!updateBashResult.updateBash) {
                             vscode.window.showWarningMessage(`Error modifying PATH in ${bashrcFile}):\n${updateBashResult.updateBashMsg}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
                           }
                         }
@@ -611,8 +615,8 @@ export default class IBMi {
                 message: `Validate configured library list`
               });
 
-              let libraryListResult = await connSettings.validateLibraryList(this.defaultUserLibraries,this.config.libraryList);
-              if(libraryListResult.badLibs.length > 0) {
+              let libraryListResult = await connSettings.validateLibraryList(this.defaultUserLibraries, this.config.libraryList);
+              if (libraryListResult.badLibs.length > 0) {
                 const chosen = await vscode.window.showWarningMessage(`The following ${libraryListResult.badLibs.length > 1 ? `libraries` : `library`} does not exist: ${libraryListResult.badLibs.join(`,`)}. Remove ${libraryListResult.badLibs.length > 1 ? `them` : `it`} from the library list?`, `Yes`, `No`);
                 if (chosen === `Yes`) {
                   this.config!.libraryList = libraryListResult.validLibs;
