@@ -1,6 +1,8 @@
+import { parse as parsePath } from "path";
 import { ParsedUrlQueryInput, parse, stringify } from "querystring";
-import vscode, { FilePermission } from "vscode";
+import vscode, { FilePermission, FileSystemError } from "vscode";
 import { onCodeForIBMiConfigurationChange } from "../../api/Configuration";
+import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { IBMiMember, QsysFsOptions } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
@@ -40,6 +42,7 @@ export function isProtectedFilter(filter?: string): boolean {
 }
 
 export class QSysFS implements vscode.FileSystemProvider {
+    private readonly savedAsMembers: Set<string> = new Set;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
     private extendedMemberSupport = false;
@@ -50,7 +53,9 @@ export class QSysFS implements vscode.FileSystemProvider {
         this.sourceDateHandler = new SourceDateHandler(context);
         this.extendedContent = new ExtendedIBMiContent(this.sourceDateHandler);
 
-        context.subscriptions.push(onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()));
+        context.subscriptions.push(
+            onCodeForIBMiConfigurationChange(["connectionSettings", "showDateSearchButton"], () => this.updateMemberSupport()),
+        );
 
         instance.subscribe(
             context,
@@ -86,15 +91,37 @@ export class QSysFS implements vscode.FileSystemProvider {
         this.sourceDateHandler.setEnabled(this.extendedMemberSupport);
     }
 
-    stat(uri: vscode.Uri): vscode.FileStat {
-        let type = uri.path.split(`/`).length > 3 ? vscode.FileType.File : vscode.FileType.Directory;
-
-        return {
-            ctime: 0,
-            mtime: 0,
-            size: 0,
-            type,
-            permissions: getFilePermission(uri)
+    async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
+        const path = uri.path;
+        const pathLength = path.split(`/`).length;
+        if (pathLength > 4 || !path.startsWith('/')) {
+            throw new vscode.FileSystemError("Invalid member path");
+        }
+        const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
+        const content = instance.getContent();
+        if (path !== '/' && content) {
+            const member = type === vscode.FileType.File ? parsePath(path).name : undefined;
+            const attributes = await content.getAttributes({ ...Tools.parseQSysPath(path), member }, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+            if (attributes) {
+                return {
+                    ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
+                    mtime: Tools.parseAttrDate(String(attributes.MODIFY_TIME)),
+                    size: Number(attributes.DATA_SIZE),
+                    type,
+                    permissions: member && !this.savedAsMembers.has(uri.path) ? getFilePermission(uri) : undefined
+                }
+            } else {
+                throw FileSystemError.FileNotFound(uri);
+            }
+        }
+        else {
+            return {
+                ctime: 0,
+                mtime: 0,
+                size: 0,
+                type,
+                permissions: getFilePermission(uri)
+            }
         }
     }
 
@@ -110,12 +137,12 @@ export class QSysFS implements vscode.FileSystemProvider {
                 return new Uint8Array(Buffer.from(memberContent, `utf8`));
             }
             else {
-                throw new Error(`Couldn't read ${uri}; check IBM i connection.`);
+                throw new FileSystemError(`Couldn't read ${uri}; check IBM i connection.`);
             }
         }
         else {
             if (retrying) {
-                throw new Error("Not connected to IBM i");
+                throw new FileSystemError("Not connected to IBM i");
             }
             else {
                 await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
@@ -125,36 +152,88 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
+        const path = uri.path;
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
-            this.extendedMemberSupport ?
-                await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
-                await contentApi.uploadMemberContent(asp, library, file, member, content);
+            const { asp, library, file, name: member, extension } = connection.parserMemberPath(path);
+            if (!content.length) { //Coming from "Save as"
+                const addMember = await connection.runCommand({
+                    command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
+                    noLibList: true
+                });
+                if (addMember.code === 0) {
+                    this.savedAsMembers.add(uri.path);
+                    vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+                } else {
+                    throw new FileSystemError(addMember.stderr);
+                }
+            }
+            else {
+                this.savedAsMembers.delete(uri.path);
+                this.extendedMemberSupport ?
+                    await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
+                    await contentApi.uploadMemberContent(asp, library, file, member, content);
+            }
         }
         else {
-            throw new Error("Not connected to IBM i");
+            throw new FileSystemError("Not connected to IBM i");
         }
     }
 
     rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { readonly overwrite: boolean; }): void | Thenable<void> {
-        console.log({ oldUri, newUri, options });
+        //Not used at the moment
     }
 
     watch(uri: vscode.Uri, options: { readonly recursive: boolean; readonly excludes: readonly string[]; }): vscode.Disposable {
         return { dispose: () => { } };
     }
 
-    readDirectory(uri: vscode.Uri): [string, vscode.FileType][] | Thenable<[string, vscode.FileType][]> {
-        throw new Error("Method not implemented.");
+    async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
+        const content = instance.getConnection()?.content;
+        if (content) {
+            const qsysPath = Tools.parseQSysPath(uri.path);
+            if (qsysPath.name) {
+                return (await content.getMemberList({ library: qsysPath.library, sourceFile: qsysPath.name }))
+                    .map(member => [`${member.name}${member.extension ? `.${member.extension}` : ''}`, vscode.FileType.File]);
+            }
+            else if (qsysPath.library) {
+                return (await content.getObjectList({ library: qsysPath.library, types: ["*SRCPF"] }))
+                    .map(srcPF => [srcPF.name, vscode.FileType.Directory]);
+            }
+            else if (uri.path === '/') {
+                return (await content.getLibraries({ library: '*' })).map(library => [library.name, vscode.FileType.Directory]);
+            }
+        }
+        throw FileSystemError.FileNotFound(uri);
     }
 
-    createDirectory(uri: vscode.Uri): void | Thenable<void> {
-        throw new Error("Method not implemented.");
+    async createDirectory(uri: vscode.Uri) {
+        const connection = instance.getConnection();
+        if (connection) {
+            const qsysPath = Tools.parseQSysPath(uri.path);
+            if (qsysPath.library && !await connection.content.checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
+                const createLibrary = await connection.runCommand({
+                    command: `CRTLIB LIB(${qsysPath.library})`,
+                    noLibList: true
+                });
+                if (createLibrary.code !== 0) {
+                    throw FileSystemError.NoPermissions(createLibrary.stderr);
+                }
+            }
+            if (qsysPath.name) {
+                const createFile = await connection.runCommand({
+                    command: `CRTSRCPF FILE(${qsysPath.library}/${qsysPath.name}) RCDLEN(112)`,
+                    noLibList: true
+                });
+                if (createFile.code !== 0) {
+                    throw FileSystemError.NoPermissions(createFile.stderr);
+                }
+            }
+        }
     }
 
     delete(uri: vscode.Uri, options: { readonly recursive: boolean; }): void | Thenable<void> {
-        throw new Error("Method not implemented.");
+        throw new FileSystemError("Method not implemented.");
     }
 }
