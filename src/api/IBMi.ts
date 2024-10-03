@@ -4,7 +4,7 @@ import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
 import * as vscode from "vscode";
-import { IBMiComponent, IBMiComponentType } from "../components/componen
+import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { ComponentManager } from "../components/manager";
 import { instance } from "../instantiate";
@@ -1353,7 +1353,7 @@ export default class IBMi {
     }
   }
 
-  getComponent<T extends IBMiComponent>(type: IBMiComponentType<T>, ignoreState?:boolean): T | undefined {
+  getComponent<T extends IBMiComponent>(type: IBMiComponentType<T>, ignoreState?: boolean): T | undefined {
     return this.componentManager.get<T>(type, ignoreState);
   }
 
