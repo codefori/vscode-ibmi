@@ -22,13 +22,13 @@ export class GetMemberInfo extends IBMiComponent {
       }
     }
     if (this.installedVersion < this.currentVersion) {
-      return ComponentState.NeedUpdate;
+      return `NeedsUpdate`;
     }
 
-    return ComponentState.Installed;
+    return `Installed`;
   }
 
-  protected async update() {
+  protected async update(): Promise<ComponentState> {
     const config = this.connection.config!;
     return this.connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);
@@ -40,9 +40,9 @@ export class GetMemberInfo extends IBMiComponent {
       });
 
       if (result.code) {
-        return ComponentState.Error;
+        return `Error`;
       } else {
-        return ComponentState.Installed;
+        return `Installed`;
       }
     });
   }

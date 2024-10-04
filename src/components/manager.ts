@@ -39,7 +39,7 @@ export class ComponentManager {
 
   get<T extends IBMiComponent>(type: IBMiComponentType<T>, ignoreState?: boolean): T | undefined {
     const component = this.registered.get(type);
-    if (component && (ignoreState || component.getState() === ComponentState.Installed)) {
+    if (component && (ignoreState || component.getState() === `Installed`)) {
       return component as T;
     }
   }

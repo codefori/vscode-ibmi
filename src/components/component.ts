@@ -1,12 +1,6 @@
 import IBMi from "../api/IBMi";
 
-export const enum ComponentState {
-  NotChecked = `Not checked`,
-  NotInstalled = `Not installed`,
-  Installed = `Installed`,
-  NeedUpdate = `Need update`,
-  Error = `Error`,
-}
+export type ComponentState = `NotChecked` | `NotInstalled` | `Installed` | `NeedsUpdate` | `Error`;
 
 export type ComponentIdentification = {
   name: string
@@ -39,7 +33,7 @@ export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
  * 
  */
 export abstract class IBMiComponent {
-  private state = ComponentState.NotChecked;
+  private state: ComponentState = `NotChecked`;
 
   constructor(protected readonly connection: IBMi) {
 
@@ -52,14 +46,14 @@ export abstract class IBMiComponent {
   async check() {
     try {
       this.state = await this.getRemoteState();
-      if (this.state !== ComponentState.Installed) {
+      if (this.state !== `Installed`) {
         this.state = await this.update();
       }
     }
     catch (error) {
       console.log(`Error occurred while checking component ${this.toString()}`);
       console.log(error);
-      this.state = ComponentState.Error;
+      this.state = `Error`;
     }
 
     return this;

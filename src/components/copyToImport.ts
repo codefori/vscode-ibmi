@@ -17,8 +17,8 @@ export class CopyToImport extends IBMiComponent {
     return { name: 'CopyToImport', version: 1 };
   }
 
-  protected getRemoteState() {
-    return ComponentState.Installed;
+  protected getRemoteState(): ComponentState {
+    return `Installed`;
   }
 
   protected update(): ComponentState | Promise<ComponentState> {
