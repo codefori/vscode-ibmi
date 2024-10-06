@@ -13,6 +13,7 @@ import { SearchSuite } from "./search";
 import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
+import { GlobalizationSuite } from "./globalization";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -25,6 +26,7 @@ const suites: TestSuite[] = [
   SearchSuite,
   StorageSuite,
   EncodingSuite,
+  GlobalizationSuite,
   ComponentSuite
 ]
 
