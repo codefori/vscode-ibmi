@@ -199,10 +199,8 @@ export class SettingsUI {
                 localCertificateIssue = `${String(error)}. Debugging will not function correctly.`;
               }
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
-                .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`);
-              if (!localCertificateIssue) {
-                debuggerTab.addButtons({ id: `import`, label: `Download client certificate` })
-              }
+                .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
+                .addButtons({ id: `import`, label: `Download client certificate` });              
             }
             else {
               debuggerTab.addParagraph(`The service certificate doesn't exist or is incomplete; it must be generated before the debug service can be started.`)
