@@ -170,7 +170,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
         await debugConfig.save();
       }
-      const javaHome = getJavaHome((await getDebugServiceDetails()).java);
+      const javaHome = getJavaHome(connection, (await getDebugServiceDetails()).java);
       const encryptResult = await connection.sendCommand({
         command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
         env: {
@@ -268,7 +268,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
 
   //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
   const javaHome = debugConfig.get("JAVA_HOME");
-  const expectedJavaHome = getJavaHome((await getDebugServiceDetails()).java);
+  const expectedJavaHome = getJavaHome(connection, (await getDebugServiceDetails()).java);
   if (javaHome && javaHome !== expectedJavaHome) {
     if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
       //Automatically make the change if possible

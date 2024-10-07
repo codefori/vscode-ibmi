@@ -224,6 +224,7 @@
     "ifsBrowser.uploadStreamfile.select.type.title": "Hva ønsker du å uploade?",
     "ifsBrowser.uploadStreamfile.uploadedFiles": "Upload er utført.",
     "JAVA_HOME": "Java Home",
+    "java.not.found":"Java version {0} is not installed.",
     "job": "Jobb",
     "JOB_NAME_SHORT": "Jobb navn",
     "JOB_NUMBER": "Jobb nummer",

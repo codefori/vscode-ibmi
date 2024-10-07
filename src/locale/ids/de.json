@@ -224,6 +224,7 @@
   "ifsBrowser.uploadStreamfile.select.type.title": "Was möchten Sie hochladen?",
   "ifsBrowser.uploadStreamfile.uploadedFiles": "Hochladen abgeschlossen.",
   "JAVA_HOME": "Java-Home Pfad",
+  "java.not.found":"Java version {0} is not installed.",
   "job": "Job",
   "JOB_NAME_SHORT": "Job Name",
   "JOB_NUMBER": "Job Nummer",
