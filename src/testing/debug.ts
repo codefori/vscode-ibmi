@@ -21,7 +21,7 @@ export const DebugSuite: TestSuite = {
 
         if(connection.remoteFeatures.jdk17){
           const jdk11 = getJavaHome(connection, '17');
-          assert.strictEqual(jdk11, connection.remoteFeatures.jdk11);
+          assert.strictEqual(jdk11, connection.remoteFeatures.jdk17);
         }
 
         assert.throws(() => getJavaHome(connection, '666'));
