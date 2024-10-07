@@ -16,6 +16,10 @@ import * as Debug from './api/debug';
 import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
+import { CopyToImport } from "./components/copyToImport";
+import { GetMemberInfo } from "./components/getMemberInfo";
+import { GetNewLibl } from "./components/getNewLibl";
+import { extensionComponentRegistry } from "./components/manager";
 import { IFSFS } from "./filesystems/ifsFs";
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
 import { updateLocale } from "./locale";
@@ -125,7 +129,17 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
+  extensionComponentRegistry.registerComponent(context, GetNewLibl);
+  extensionComponentRegistry.registerComponent(context, GetMemberInfo);
+  extensionComponentRegistry.registerComponent(context, CopyToImport);
+
+  return {
+    instance, customUI: () => new CustomUI(),
+    deployTools: DeployTools,
+    evfeventParser: parseErrors,
+    tools: Tools,
+    componentRegistry: extensionComponentRegistry
+  };
 }
 
 async function fixLoginSettings() {

@@ -6,6 +6,8 @@ import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
 import { isSEPSupported } from "../../api/debug/server";
+import { IBMiComponent } from "../../components/component";
+import { extensionComponentRegistry } from "../../components/manager";
 import { instance } from "../../instantiate";
 import { t } from "../../locale";
 import { ConnectionData, Server } from '../../typings';
@@ -199,10 +201,8 @@ export class SettingsUI {
                 localCertificateIssue = `${String(error)}. Debugging will not function correctly.`;
               }
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
-                .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`);
-              if (!localCertificateIssue) {
-                debuggerTab.addButtons({ id: `import`, label: `Download client certificate` })
-              }
+                .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
+                .addButtons({ id: `import`, label: `Download client certificate` });              
             }
             else {
               debuggerTab.addParagraph(`The service certificate doesn't exist or is incomplete; it must be generated before the debug service can be started.`)
@@ -215,12 +215,29 @@ export class SettingsUI {
           debuggerTab.addParagraph('Connect to the server to see these settings.');
         }
 
-        let tabs: ComplexTab[] = [
+        const componentsTab = new Section();
+        if (connection) {
+          componentsTab.addParagraph(`The following extensions contribute these components:`);
+          extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
+            const extension = vscode.extensions.getExtension(extensionId);
+            componentsTab.addParagraph(`<p>
+              <h3>${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
+              <ul>
+              ${components.map(type => connection.getComponent<IBMiComponent>(type, true)).map(component => `<li><code>${component?.toString()}</code>: ${component?.getState()}</li>`).join(``)}
+              </ul>
+              </p>`);
+          })
+        } else {
+          componentsTab.addParagraph('Connect to the server to see these settings.');
+        }
+
+        const tabs: ComplexTab[] = [
           { label: `Features`, fields: featuresTab.fields },
           { label: `Source Code`, fields: sourceTab.fields },
           { label: `Terminals`, fields: terminalsTab.fields },
           { label: `Debugger`, fields: debuggerTab.fields },
           { label: `Temporary Data`, fields: tempDataTab.fields },
+          { label: `Components`, fields: componentsTab.fields },
         ];
 
         const ui = new CustomUI();
@@ -380,7 +397,7 @@ export class SettingsUI {
                       await ConnectionManager.deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
                     }
-                    else{
+                    else {
                       delete data.privateKeyPath;
                     }
                     break;

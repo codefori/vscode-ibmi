@@ -250,11 +250,11 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         let result;
         switch (action) {
           case "copy":
-            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => item.path).join(" ")} ${toDirectory.path}` });
+            result = await connection.sendCommand({ command: `cp -r ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
             break;
 
           case "move":
-            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => item.path).join(" ")} ${toDirectory.path}` });
+            result = await connection.sendCommand({ command: `mv ${ifsBrowserItems.map(item => Tools.escapePath(item.path)).join(" ")} ${Tools.escapePath(toDirectory.path)}` });
             ifsBrowserItems.map(item => item.parent)
               .filter(Tools.distinct)
               .forEach(folder => folder?.refresh?.());
@@ -449,8 +449,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createStreamfile`, async (node?: IFSDirectoryItem) => {
       const config = instance.getConfig();
-      const connection = instance.getConnection();
-      if (config && connection) {
+      const content = instance.getContent();
+      if (config && content) {
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
@@ -462,15 +462,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (fullName) {
           try {
             vscode.window.showInformationMessage(t(`ifsBrowser.createStreamfile.infoMessage`, fullName));
-
-            await connection.sendCommand({ command: `echo "" > ${Tools.escapePath(fullName)}` });
-
+            await content.createStreamFile(fullName);
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
-
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
             }
-
+            else {
+              throw new Error("")
+            }
           } catch (e) {
             vscode.window.showErrorMessage(t(`ifsBrowser.createStreamfile.errorMessage`, e));
           }
@@ -585,6 +584,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 const removeResult = await vscode.window.withProgress({ title: t('ifsBrowser.deleteIFS.progress', toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
                   return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
                 });
+
                 if (removeResult.code !== 0) {
                   throw removeResult.stderr;
                 }
@@ -647,6 +647,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             if (moveResult.code !== 0) {
               throw moveResult.stderr;
             }
+
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }

@@ -1,27 +1,8 @@
-import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { WrapResult } from "../typings";
-import { ComponentState, ComponentT } from "./component";
+import { ComponentState, IBMiComponent } from "./component";
 
-export class CopyToImport implements ComponentT {
-  private readonly name = 'CPYTOIMPF';
-  public state: ComponentState = ComponentState.Installed;
-  public currentVersion: number = 1;
-
-  constructor(public connection: IBMi) { }
-
-  async getInstalledVersion(): Promise<number> {
-    return 1;
-  }
-
-  async checkState(): Promise<boolean> {
-    return true;
-  }
-
-  getState(): ComponentState {
-    return this.state;
-  }
-
+export class CopyToImport extends IBMiComponent {
   static isSimple(statement: string): boolean {
     statement = statement.trim();
     if (statement.endsWith(';')) {
@@ -30,6 +11,18 @@ export class CopyToImport implements ComponentT {
 
     const parts = statement.split(` `);
     return parts.length === 4 && parts[0].toUpperCase() === `SELECT` && parts[1] === `*` && parts[2].toUpperCase() === `FROM` && parts[3].includes(`.`);
+  }
+
+  getIdentification() {
+    return { name: 'CopyToImport', version: 1 };
+  }
+
+  protected getRemoteState(): ComponentState {
+    return `Installed`;
+  }
+
+  protected update(): ComponentState | Promise<ComponentState> {
+    return this.getRemoteState();
   }
 
   wrap(statement: string): WrapResult {
