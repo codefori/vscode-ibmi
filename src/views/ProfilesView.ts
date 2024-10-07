@@ -121,7 +121,7 @@ export class ProfilesView {
 
           if (storedProfile) {
             try {
-              const component = connection?.getComponent<GetNewLibl>(`GetNewLibl`)
+              const component = connection?.getComponent<GetNewLibl>(GetNewLibl)
               const newSettings = await component?.getLibraryListFromCommand(storedProfile.command);
 
               if (newSettings) {

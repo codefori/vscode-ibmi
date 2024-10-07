@@ -466,25 +466,25 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
 
-              const infoComponent = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`);
+              const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo);
 
               // When selection is QSYS path
-              if (!selection.startsWith(`/`) && infoComponent) {
-                const lib = selectionSplit[0];
+              if (!selection.startsWith(`/`) && infoComponent && connection) {
+                const library = selectionSplit[0];
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const memberInfo = await infoComponent.getMemberInfo(lib, file, member.name);
+                const memberInfo = await infoComponent.getMemberInfo(library, file, member.name);
                 if (!memberInfo) {
-                  vscode.window.showWarningMessage(`Source member ${lib}/${file}/${member.base} does not exist.`);
+                  vscode.window.showWarningMessage(`Source member ${library}/${file}/${member.base} does not exist.`);
                   return;
                 } else if (memberInfo.name !== member.name || (member.ext && memberInfo.extension !== member.ext)) {
-                  vscode.window.showWarningMessage(`Member ${lib}/${file}/${member.name} of type ${member.ext} does not exist.`);
+                  vscode.window.showWarningMessage(`Member ${library}/${file}/${member.name} of type ${member.ext} does not exist.`);
                   return;
                 }
 
                 member.base = `${member.name}.${member.ext || memberInfo.extension}`;
-                selection = `${lib}/${file}/${member.base}`;
+                selection = `${library}/${file}/${member.base}`;
               };
 
               // When select is IFS path
