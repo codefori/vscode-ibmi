@@ -1234,6 +1234,15 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         }
       } while (newLibrary && !newLibraryOK)
     }),
+    vscode.commands.registerCommand(`code-for-ibmi.objectBrowser.removeFilter`, async (node?: ObjectBrowserItem) => {
+      if (node && node instanceof ObjectBrowserFilterItem) {
+        const message = t('objectBrowser.delete.confirm', node.toString());
+        if (await vscode.window.showWarningMessage(message, { modal: true }, t(`Yes`))) {
+          await node.delete();
+          vscode.commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
+        }
+      }
+    }),
     vscode.commands.registerCommand("code-for-ibmi.objectBrowser.delete", async (node?: ObjectBrowserItem, nodes?: ObjectBrowserItem[]) => {
       const candidates: ObjectBrowserItem[] = [];
       if (nodes) {
