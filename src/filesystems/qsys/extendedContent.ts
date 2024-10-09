@@ -52,11 +52,11 @@ export class ExtendedIBMiContent {
 
       let rows;
       if (sourceColourSupport)
-        rows = await content.runSQL(
+        rows = await connection.runSQL(
           `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`
         );
       else
-        rows = await content.runSQL(
+        rows = await connection.runSQL(
           `select srcdat, srcdta from ${aliasPath}`
         );
 

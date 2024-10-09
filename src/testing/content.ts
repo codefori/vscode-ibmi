@@ -278,6 +278,52 @@ export const ContentSuite: TestSuite = {
       },
     },
 
+    {name: `Ensure source lines are correct`, test: async () => {
+      const connection = instance.getConnection();
+      const config = instance.getConfig()!;
+
+      assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
+
+      const tempLib = config!.tempLibrary;
+      const file = `LINES`;
+      const member = `THEMEMBER`;
+      
+      await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
+      await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
+
+      const aliasName = `${tempLib}.test_${file}_${member}`;
+      await connection?.runSQL(`CREATE OR REPLACE ALIAS ${aliasName} for "${tempLib}"."${file}"("${member}")`);
+
+      try {
+        await connection?.runSQL(`delete from ${aliasName}`);
+      } catch (e) {}
+
+      const inLines = [
+        `Hello world`,
+        `1`,
+        `001`,
+        `0002`,
+        `00003`,
+      ]
+
+      const lines = [
+        `insert into ${aliasName} (srcseq, srcdat, srcdta)`,
+        `values `,
+        inLines.map((line, index) => `(${index + 1}.00, 0, '${line}')`).join(`, `),
+      ];
+
+      await connection?.runSQL(lines.join(` `));
+
+      const theBadOneUri = getMemberUri({ library: tempLib, file, name: member, extension: `TXT` });
+
+      const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
+      const fileContent = new TextDecoder().decode(memberContentBuf);
+
+      const outLines = fileContent.split(`\n`);
+
+      assert.deepStrictEqual(inLines, outLines);
+    }},
+
     {
       name: `Test runSQL (basic select)`, test: async () => {
         const content = instance.getContent();

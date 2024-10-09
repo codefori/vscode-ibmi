@@ -393,6 +393,13 @@ export namespace Tools {
     }
   }
 
+  export function assumeType(str: string) {
+    // The number is already generated on the server.
+    // So, we assume that if the string starts with a 0, it is a string.
+    if (str[0] === `0` || str.length > 10) return str;
+    return Number(str) || str;
+  }
+
   const activeContexts: Map<string, number> = new Map;
   /**
    * Runs a function while a context value is set to true.
