@@ -224,6 +224,7 @@
   "ifsBrowser.uploadStreamfile.select.type.title": "What do you want to upload?",
   "ifsBrowser.uploadStreamfile.uploadedFiles": "Upload completed.",
   "JAVA_HOME": "Java Home",
+  "java.not.found":"Java version {0} is not installed.",
   "job": "Job",
   "JOB_NAME_SHORT": "Job name",
   "JOB_NUMBER": "Job number",
