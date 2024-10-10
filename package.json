@@ -22,7 +22,7 @@
 	},
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.66.0"
+		"vscode": "^1.90.0"
 	},
 	"categories": [
 		"Other"
@@ -37,6 +37,7 @@
 		"onFileSystem:streamfile"
 	],
 	"main": "./dist/extension.js",
+	"l10n": "./l10n",
 	"contributes": {
 		"taskDefinitions": [
 			{
@@ -2960,7 +2961,7 @@
 		"@types/source-map-support": "^0.5.6",
 		"@types/tar": "^6.1.4",
 		"@types/tmp": "^0.2.3",
-		"@types/vscode": "^1.66.0",
+		"@types/vscode": "^1.90.0",
 		"esbuild": "^0.19.2",
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",
