@@ -63,7 +63,7 @@ export namespace Search {
 
         } else {
           // Else, we need to fetch the member info for each hit so we can display the correct extension
-          const infoComponent = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`);
+          const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo);
           const memberInfos: IBMiMember[] = hits.map(hit => {
             const { name, dir } = path.parse(hit.path);
             const [library, file] = dir.split(`/`);
