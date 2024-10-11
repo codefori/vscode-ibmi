@@ -64,7 +64,7 @@ async function translate() {
             if (!key) {
               console.log(`KEY ${oldKey} NOT FOUND ${file} line ${i + 1}`)
             }
-            return line.replaceAll(/([^\w\.])t\(([^)]+)\)/g, `$1${prefix}l10n.t("${key}"${parts.length ? ',' + parts.join(', ') : ''})`);
+            return line.replaceAll(/([^\w\.])t\(([^)]+)\)/g, `$1${prefix}l10n.t(\`${key}\`${parts.length ? ',' + parts.join(', ') : ''})`);
           }
           else {
             return line;
