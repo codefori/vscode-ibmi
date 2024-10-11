@@ -73,7 +73,6 @@ async function translate() {
 
       if (changed) {
         fs.writeFileSync(file, `${importVscode ? '' : `import vscode from "vscode";\n`}${lines.join("\n")}`, { encoding: "utf8" });
-        console.log(`Changed ${file}`)
       }
     }
   }
