@@ -252,7 +252,7 @@
   "LibraryListView.setCurrentLibrary.failed": "Failed to set {0} as current library: {1}",
   "lines": "Lines",
   "listening.on.port": "Listening on port",
-  "listening.on.ports": "Listening on ports",
+  "listening.on.ports": "Listening on port(s)",
   "loading.debugger.info": "Loading debugger information...",
   "local.certificate": "Local certificate",
   "local.certificate.not.found": "Local certificate not found",

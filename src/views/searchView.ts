@@ -1,7 +1,6 @@
 import path from 'path';
 import vscode from "vscode";
 import { DefaultOpenMode } from "../api/Configuration";
-import { t } from '../locale';
 import { SearchHit, SearchHitLine, SearchResults, WithPath } from "../typings";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {
@@ -20,10 +19,10 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => searchView.collapse()),
     vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults) => {
       if (searchResults.hits.some(hit => hit.lines.length)) {
-        searchViewViewer.message = t("searchView.search.message", searchResults.hits.length, searchResults.term);
+        searchViewViewer.message = vscode.l10n.t(`{0} file(s) contain(s) '{1}'`, searchResults.hits.length,  searchResults.term);
       }
       else {
-        searchViewViewer.message = t("searchView.find.message", searchResults.hits.length, searchResults.term);
+        searchViewViewer.message = vscode.l10n.t(`{0} file(s) named '{1}'`, searchResults.hits.length,  searchResults.term);
       }
       searchView.setResults(searchResults);
     })

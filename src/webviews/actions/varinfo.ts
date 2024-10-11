@@ -1,4 +1,4 @@
-import { t } from "../../locale"
+import vscode from "vscode";
 
 // Used to list info about available variables
 type VariableInfo = {
@@ -13,39 +13,39 @@ type VariableInfoList = {
 }
 
 const generic: () => VariableInfo[] = () => [
-  { name: `&amp;CURLIB`, text: t(`actions.CURLIB`) },
-  { name: `&amp;USERNAME`, text: t("actions.USERNAME")},
-  { name: `&amp;WORKDIR`, text: t("actions.WORKDIR")},
-  { name: `&amp;HOST`, text: t("actions.HOST")},
-  { name: `&amp;BUILDLIB`, text: t("actions.BUILDLIB")},
-  { name: `&amp;LIBLC`, text: t("actions.LIBLC")},
-  { name: `&amp;LIBLS`, text: t("actions.LIBLS") }
+  { name: `&amp;CURLIB`, text: vscode.l10n.t(`Current library, changeable in Library List`) },
+  { name: `&amp;USERNAME`, text: vscode.l10n.t(`Username for connection`)},
+  { name: `&amp;WORKDIR`, text: vscode.l10n.t(`Current working directory, changeable in IFS Browser`)},
+  { name: `&amp;HOST`, text: vscode.l10n.t(`Hostname or IP address from the current connection`)},
+  { name: `&amp;BUILDLIB`, text: vscode.l10n.t(`The same as <code>&amp;CURLIB</code>`)},
+  { name: `&amp;LIBLC`, text: vscode.l10n.t(`Library list delimited by comma`)},
+  { name: `&amp;LIBLS`, text: vscode.l10n.t(`Library list delimited by space`) }
 ];
 
 export function getVariablesInfo(): VariableInfoList {
   return {
     member : [
-      { name: `&amp;OPENLIB`, text: t("actions.OPENLIB")},
-      { name: `&amp;OPENSPF`, text: t("actions.OPENSPF")},
-      { name: `&amp;OPENMBR`, text: t("actions.OPENMBR")},
-      { name: `&amp;EXT`, text: t("actions.member.EXT")},
+      { name: `&amp;OPENLIB`, text: vscode.l10n.t(`Library name where the source member lives (<code>&amp;OPENLIBL</code> for lowercase)`)},
+      { name: `&amp;OPENSPF`, text: vscode.l10n.t(`Source file name where the source member lives (<code>&amp;OPENSPFL</code> for lowercase)`)},
+      { name: `&amp;OPENMBR`, text: vscode.l10n.t(`Name of the source member (<code>&amp;OPENMBRL</code> for lowercase)`)},
+      { name: `&amp;EXT`, text: vscode.l10n.t(`Extension of the source member (<code>&amp;EXTL</code> for lowercase)`)},
       ...generic()
     ],
     streamFile: [
-      { name: `&amp;FULLPATH`, text: t("actions.FULLPATH")},
-      { name: `&amp;FILEDIR`, text: t("actions.FILEDIR")},
-      { name: `&amp;RELATIVEPATH`, text: t("actions.RELATIVEPATH")},
-      { name: `&amp;PARENT`, text: t("actions.PARENT")},
-      { name: `&amp;BASENAME`, text: t("actions.BASENAME")},
-      { name: `&amp;NAME`, text: t("actions.streamfile.NAME")},
-      { name: `&amp;EXT`, text: t("actions.streamfile.EXT")},
+      { name: `&amp;FULLPATH`, text: vscode.l10n.t(`Full path of the file on the remote system`)},
+      { name: `&amp;FILEDIR`, text: vscode.l10n.t(`Directory of the file on the remote system`)},
+      { name: `&amp;RELATIVEPATH`, text: vscode.l10n.t(`Relative path of the streamfile from the working directory or workspace`)},
+      { name: `&amp;PARENT`, text: vscode.l10n.t(`Name of the parent directory or source file`)},
+      { name: `&amp;BASENAME`, text: vscode.l10n.t(`Name of the file, including the extension`)},
+      { name: `&amp;NAME`, text: vscode.l10n.t(`Name of the file (<code>&amp;NAMEL</code> for lowercase)`)},
+      { name: `&amp;EXT`, text: vscode.l10n.t(`Extension of the file (<code>&amp;EXTL</code> for lowercase)`)},
       ...generic()
     ],
     object: [
-      { name: `&amp;LIBRARY`, text: t("actions.LIBRARY")},
-      { name: `&amp;NAME`, text: t("actions.NAME")},
-      { name: `&amp;TYPE`, text: t("actions.object.TYPE")},
-      { name: `&amp;EXT`, text: t("actions.object.EXT")},
+      { name: `&amp;LIBRARY`, text: vscode.l10n.t(`Library name where the object lives (<code>&amp;LIBRARYL</code> for lowercase)`)},
+      { name: `&amp;NAME`, text: vscode.l10n.t(`Name of the object (<code>&amp;NAMEL</code> for lowercase)`)},
+      { name: `&amp;TYPE`, text: vscode.l10n.t(`Type of the object (<code>&amp;TYPEL</code> for lowercase)`)},
+      { name: `&amp;EXT`, text: vscode.l10n.t(`Extension/attribute of the object (<code>&amp;EXTL</code> for lowercase)`)},
       ...generic()
     ]
   }
