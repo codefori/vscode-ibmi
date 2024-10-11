@@ -1,5 +1,5 @@
 import path from "path";
-import { l10n, commands, window } from "vscode";
+import { commands, l10n, window } from "vscode";
 import { instance } from "../../instantiate";
 import { CustomUI } from "../CustomUI";
 import IBMi from "../IBMi";
@@ -200,7 +200,7 @@ export function refreshDebugSensitiveItems() {
 export async function readActiveJob(connection: IBMi, job: DebugJob) {
   try {
     return (await connection.runSQL(
-      `select job_name_short, job_user, job_number, subsystem_library_name concat '/' concat subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
+      `select job_name_short "Job name", job_user "Job user", job_number "Job number", subsystem_library_name concat '/' concat subsystem as "Subsystem",  authorization_name "Current user", job_status "Job status", memory_pool "Memory pool" from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
     )).at(0);
   } catch (error) {
     return String(error);
@@ -210,7 +210,7 @@ export async function readActiveJob(connection: IBMi, job: DebugJob) {
 export async function readJVMInfo(connection: IBMi, job: DebugJob) {
   try {
     return (await connection.runSQL(`
-      select START_TIME, JAVA_HOME, USER_DIRECTORY, CURRENT_HEAP_SIZE, MAX_HEAP_SIZE
+      select START_TIME "Start time", JAVA_HOME "Java Home", USER_DIRECTORY "User directory", CURRENT_HEAP_SIZE "Current memory", MAX_HEAP_SIZE "Maximum allowed memory"
       from QSYS2.JVM_INFO
       where job_name = '${job.name}'
       fetch first row only`)).at(0);
