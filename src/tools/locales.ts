@@ -46,9 +46,9 @@ async function translate() {
       let importVscode = false;
       let prefix = "vscode.";
       const lines = fs.readFileSync(file).toString('utf8').split('\n')
-        .filter(line => !line.startsWith("import { t }"))
+        .filter(line => !/import .* from .*locale/.test(line))
         .map((line, i) => {
-          if (!importVscode && /from "vscode"/.test(line)) {
+          if (!importVscode && /from ['"`]vscode['"`]/.test(line)) {
             importVscode = true;
             if(/\{(.*)\}/.test(line)){
               prefix = '';
