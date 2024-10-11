@@ -22,7 +22,6 @@ import { GetNewLibl } from "./components/getNewLibl";
 import { extensionComponentRegistry } from "./components/manager";
 import { IFSFS } from "./filesystems/ifsFs";
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
-import { updateLocale } from "./locale";
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
 import { CodeForIBMi, ConnectionData } from "./typings";
@@ -86,7 +85,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
-    onCodeForIBMiConfigurationChange("locale", updateLocale),
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
