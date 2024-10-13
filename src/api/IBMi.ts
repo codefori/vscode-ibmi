@@ -413,13 +413,26 @@ export default class IBMi {
                 console.log(e);
               }
             }
-
-            this.remoteFeatures = remoteApps.getRemoteFeatures();
-
           }
 
           if (this.sqlRunnerAvailable()) {
-           
+            //Temporary function to run SQL
+
+            // TODO: stop using this runSQL function and this.runSql
+            const runSQL = async (statement: string) => {
+              const output = await this.sendCommand({
+                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+                stdin: statement
+              });
+
+              if (output.code === 0) {
+                return Tools.db2Parse(output.stdout);
+              }
+              else {
+                throw new Error(output.stdout);
+              }
+            };
+
             // Check for ASP information?
             if (quickConnect === true && cachedServerSettings?.aspInfo) {
               this.aspInfo = cachedServerSettings.aspInfo;
