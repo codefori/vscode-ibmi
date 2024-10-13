@@ -325,7 +325,7 @@ export default class IBMi {
               message: `Checking for bad data areas.`
             });
 
-            const QCPTOIMPF = await connSettings.checkObjectExists('QSYS', 'QCPTOIMPF', '*DTAARA');
+            const QCPTOIMPF = await this.content.checkObject({ library: 'QSYS', name: 'QCPTOIMPF', type: '*DTAARA' });
 
             if (QCPTOIMPF) {
               vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
@@ -334,7 +334,7 @@ export default class IBMi {
               }, `Delete`, `Read more`).then(choice => {
                 switch (choice) {
                   case `Delete`:
-                    connSettings.deleteObject('QSYS', 'QCPTOIMPF', '*DTAARA').then((result) => {
+                    this.content.deleteObject({ library: 'QSYS', name: 'QCPTOIMPF', type: '*DTAARA' }).then((result) => {
                       if (result) {
                         vscode.window.showInformationMessage(`The data
                         area QSYS/QCPTOIMPF has been deleted.`);
@@ -353,7 +353,7 @@ export default class IBMi {
               });
             }
 
-            const QCPFRMIMPF = await connSettings.checkObjectExists('QSYS', 'QCPFRMIMPF', '*DTAARA');
+            const QCPFRMIMPF = await this.content.checkObject({ library: 'QSYS', name: 'QCPFRMIMPF', type: '*DTAARA' });
 
             if (QCPFRMIMPF) {
               vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
@@ -361,7 +361,7 @@ export default class IBMi {
               }, `Delete`, `Read more`).then(choice => {
                 switch (choice) {
                   case `Delete`:
-                    connSettings.deleteObject('QSYS', 'QCPFRMIMPF', '*DTAARA')
+                    this.content.deleteObject({ library: 'QSYS', name: 'QCPFRMIMPF', type: '*DTAARA' })
                       .then((result) => {
                         if (result) {
                           vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
