@@ -906,6 +906,18 @@ export default class IBMiContent {
     })).code === 0;
   }
 
+  async deleteObject(object: { library: string, name: string, type: string }) {
+
+    return (await this.ibmi.runCommand({
+      command: this.toCl(`DLTOBJ`, {
+        obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
+        objtype: object.type.toLocaleUpperCase()
+      }),
+      noLibList: true
+    })).code === 0;
+
+  }
+
   async testStreamFile(path: string, right: "e" | "f" | "d" | "r" | "w" | "x") {
     return (await this.ibmi.sendCommand({ command: `test -${right} ${Tools.escapePath(path)}` })).code === 0;
   }
@@ -951,7 +963,7 @@ export default class IBMiContent {
     return cl;
   }
 
-  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {    
+  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
     const target = (path = typeof path === 'string' ? Tools.escapePath(path) : this.ibmi.sysNameInAmerican(Tools.qualifyPath(path.library, path.name, path.member, path.asp)));
 
     const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
