@@ -94,7 +94,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
         const path = uri.path;
         const pathLength = path.split(`/`).length;
-        if (pathLength > 4 || !path.startsWith('/')) {
+        if (pathLength > 5 || !path.startsWith('/')) {
             throw new vscode.FileSystemError("Invalid member path");
         }
         const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
