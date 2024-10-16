@@ -2,9 +2,10 @@ import { parse as parsePath } from "path";
 import { ParsedUrlQueryInput, parse, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError } from "vscode";
 import { onCodeForIBMiConfigurationChange } from "../../api/Configuration";
+import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import { IBMiMember, QsysFsOptions } from "../../typings";
+import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { SourceDateHandler } from "./sourceDateHandler";
 
@@ -42,6 +43,7 @@ export function isProtectedFilter(filter?: string): boolean {
 }
 
 export class QSysFS implements vscode.FileSystemProvider {
+    private readonly libraryASP: Map<string, string> = new Map;
     private readonly savedAsMembers: Set<string> = new Set;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
@@ -66,8 +68,11 @@ export class QSysFS implements vscode.FileSystemProvider {
         instance.subscribe(
             context,
             'disconnected',
-            `Update member support`,
-            () => this.updateMemberSupport());
+            `Update member support & clear library ASP cache`,
+            () => {
+                this.libraryASP.clear();
+                this.updateMemberSupport();
+            });
     }
 
     private updateMemberSupport() {
@@ -98,10 +103,11 @@ export class QSysFS implements vscode.FileSystemProvider {
             throw new vscode.FileSystemError("Invalid member path");
         }
         const type = pathLength > 3 ? vscode.FileType.File : vscode.FileType.Directory;
-        const content = instance.getContent();
-        if (path !== '/' && content) {
+        const connection = instance.getConnection();
+        if (path !== '/' && connection) {
             const member = type === vscode.FileType.File ? parsePath(path).name : undefined;
-            const attributes = await content.getAttributes({ ...Tools.parseQSysPath(path), member }, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+            const qsysPath = { ...Tools.parseQSysPath(path), member };
+            const attributes = await this.getMemberAttributes(connection, qsysPath);
             if (attributes) {
                 return {
                     ctime: Tools.parseAttrDate(String(attributes.CREATE_TIME)),
@@ -125,15 +131,60 @@ export class QSysFS implements vscode.FileSystemProvider {
         }
     }
 
+    async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
+        const loadAttributes = async () => await connection.content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+
+        path.asp = path.asp || this.getLibraryASP(connection, path.library);
+        let attributes = await loadAttributes();
+        if (!attributes && !path.asp) {
+            for (const asp of Object.values(connection.aspInfo)) {
+                path.asp = asp;
+                attributes = await loadAttributes();
+                if (attributes) {
+                    this.setLibraryASP(connection, path.library, path.asp);
+                    break;
+                }
+            }
+        }
+        return attributes;
+    }
+
+    parseMemberPath(connection: IBMi, path: string) {
+        const memberParts = connection.parserMemberPath(path);
+        memberParts.asp = memberParts.asp || this.getLibraryASP(connection, memberParts.library);
+        return memberParts;
+    }
+
+    setLibraryASP(connection: IBMi, library: string, asp: string) {
+        this.libraryASP.set(connection.upperCaseName(library), asp);
+    }
+
+    getLibraryASP(connection: IBMi, library: string) {
+        return this.libraryASP.get(connection.upperCaseName(library));
+    }
+
     async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, name: member } = connection.parserMemberPath(uri.path);
-            const memberContent = this.extendedMemberSupport ?
-                await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
-                await contentApi.downloadMemberContent(asp, library, file, member);
+            const { asp, library, file, name: member } = this.parseMemberPath(connection, uri.path);
+
+            let memberContent;
+            try {
+                memberContent = this.extendedMemberSupport ?
+                    await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
+                    await contentApi.downloadMemberContent(asp, library, file, member);
+            }
+            catch (error) {
+                if (await this.stat(uri)) { //Check if exists on an iASP and retry if so
+                    return this.readFile(uri);
+                }
+                throw error;
+            }
             if (memberContent !== undefined) {
+                if (asp && !this.getLibraryASP(connection, library)) {
+                    this.setLibraryASP(connection, library, asp);
+                }
                 return new Uint8Array(Buffer.from(memberContent, `utf8`));
             }
             else {
@@ -156,7 +207,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, name: member, extension } = connection.parserMemberPath(path);
+            const { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({
                     command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
