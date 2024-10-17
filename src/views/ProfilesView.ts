@@ -1,9 +1,8 @@
 
-import vscode, { window } from 'vscode';
+import vscode, { l10n, window } from 'vscode';
 import { ConnectionConfiguration } from '../api/Configuration';
 import { GetNewLibl } from '../components/getNewLibl';
 import { instance } from '../instantiate';
-import { t } from "../locale";
 import { Profile } from '../typings';
 import { CommandProfile } from '../webviews/commandProfile';
 
@@ -31,7 +30,7 @@ export class ProfilesView {
 
           const savedProfileName = profileNode?.profile || await vscode.window.showInputBox({
             value: currentProfile,
-            prompt: t(`ProfilesView.saveConnectionProfile.prompt`)
+            prompt: l10n.t(`Name of profile`)
           });
 
           if (savedProfileName) {
@@ -49,7 +48,7 @@ export class ProfilesView {
             ]);
             this.refresh();
 
-            vscode.window.showInformationMessage(t(`ProfilesView.saveConnectionProfile.infoMessage`, savedProfileName));
+            vscode.window.showInformationMessage(l10n.t(`Saved current settings to profile "{0}".`, savedProfileName));
           }
         }
       }),
@@ -60,8 +59,8 @@ export class ProfilesView {
           const currentProfiles = config.connectionProfiles;
           const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
           if (chosenProfile) {
-            vscode.window.showWarningMessage(t(`ProfilesView.deleteConnectionProfile.warningMessage`, chosenProfile.name), t(`Yes`), t(`No`)).then(async result => {
-              if (result === t(`Yes`)) {
+            vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name)).then(async result => {
+              if (result === l10n.t(`Yes`)) {
                 currentProfiles.splice(currentProfiles.findIndex(profile => profile === chosenProfile), 1);
                 config.connectionProfiles = currentProfiles;
                 await ConnectionConfiguration.update(config)
@@ -89,7 +88,7 @@ export class ProfilesView {
               storage.setLastProfile(chosenProfile.name)
             ]);
 
-            vscode.window.showInformationMessage(t(`ProfilesView.loadConnectionProfile.infoMessage`, chosenProfile.name));
+            vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, chosenProfile.name));
             this.refresh();
           }
         }
@@ -134,14 +133,14 @@ export class ProfilesView {
                   vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
                 ]);
 
-                vscode.window.showInformationMessage(t(`ProfilesView.loadCommandProfile.infoMessage`, storedProfile.name));
+                vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, storedProfile.name));
                 this.refresh();
               } else {
-                window.showWarningMessage(t(`ProfilesView.loadCommandProfile.warningMessage`));
+                window.showWarningMessage(l10n.t(`Failed to get library list from command. Feature not installed.`));
               }
 
             } catch (e: any) {
-              window.showErrorMessage(t(`ProfilesView.loadCommandProfile.errorMessage`, e.message));
+              window.showErrorMessage(l10n.t(`Failed to get library list from command: {0}`, e.message));
             }
           }
         }
@@ -153,11 +152,11 @@ export class ProfilesView {
         const storage = instance.getStorage();
 
         if (config && storage) {
-          window.showInformationMessage(t(`ProfilesView.setToDefault.infoMessage`), {
-            detail: t(`ProfilesView.setToDefault.detail`),
+          window.showInformationMessage(l10n.t(`Reset to default`), {
+            detail: l10n.t(`This will reset the User Library List, working directory and Custom Variables back to the defaults.`),
             modal: true
-          }, t(`Continue`)).then(async result => {
-            if (result === t(`Continue`)) {
+          }, l10n.t(`Continue`)).then(async result => {
+            if (result === l10n.t(`Continue`)) {
               const defaultName = `Default`;
 
               assignProfile({

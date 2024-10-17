@@ -1,6 +1,6 @@
 import os from "os";
 import path, { dirname, extname } from "path";
-import vscode, { FileType, window } from "vscode";
+import vscode, { FileType, l10n, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
@@ -9,7 +9,6 @@ import { Search } from "../api/Search";
 import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
-import { t } from "../locale";
 import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../typings";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
@@ -190,7 +189,7 @@ class IFSShortcutItem extends IFSDirectoryItem {
 
 class ErrorItem extends BrowserItem {
   constructor(error: Error) {
-    super(t("ifsBrowser.getChildren.errorMessage"))
+    super(l10n.t(`Error loading objects.`))
     this.description = error.message;
   }
 }
@@ -235,9 +234,9 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
       const dndBehavior = getDragDropBehavior();
       let action: DragNDropAction | undefined;
       if (dndBehavior === "ask") {
-        const copy = t('ifsBrowser.uploadStreamfile.copy');
-        const move = t('ifsBrowser.uploadStreamfile.move');
-        const answer = await vscode.window.showInformationMessage(t('ifsBrowser.uploadStreamfile.ask', toDirectory.path), { modal: true }, copy, move);
+        const copy = l10n.t(`Copy`);
+        const move = l10n.t(`Move`);
+        const answer = await vscode.window.showInformationMessage(l10n.t(`Do you want to copy or move the selection to {0}?`, toDirectory.path), { modal: true }, copy, move);
         if (answer) {
           action = answer === copy ? "copy" : "move";
         }
@@ -265,7 +264,9 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
         if (result.code === 0) {
           toDirectory.refresh();
         } else {
-          vscode.window.showErrorMessage(t(`ifsBrowser.uploadStreamfile.${action}.failed`, toDirectory.path, result.stderr));
+          const error = action === "copy" ? l10n.t("Failed to copy selection to {0}: {1}", toDirectory.path, result.stderr) :
+            l10n.t("Failed to move selection to {0}: {1}", toDirectory.path, result.stderr);
+          vscode.window.showErrorMessage(error);
         }
       }
     }
@@ -284,11 +285,11 @@ class IFSBrowserDragAndDrop implements vscode.TreeDragAndDropController<IFSItem>
             noLibList: true
           });
           if (result.code !== 0) {
-            throw (t(`ifsBrowser.copyToStreamfile.failed`, toDirectory.path, result!.stderr));
+            throw (l10n.t(`Error copying member(s) to {0}: {1}`, toDirectory.path, result!.stderr));
           }
         };
 
-        vscode.window.showInformationMessage(t(`ifsBrowser.copyToStreamfile.infoMessage`, memberUris.length, toDirectory.path));
+        vscode.window.showInformationMessage(l10n.t(`{0} member(s) copied to streamfile(s) in {1}.`, memberUris.length, toDirectory.path));
         toDirectory.refresh();
       } catch (e: any) {
         vscode.window.showErrorMessage(e || e.text);
@@ -325,7 +326,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const homeDirectory = config.homeDirectory;
 
         const newDirectory = node?.path || await vscode.window.showInputBox({
-          prompt: t(`ifsBrowser.changeWorkingDirectory.prompt`),
+          prompt: l10n.t(`Changing working directory`),
           value: homeDirectory
         });
 
@@ -333,7 +334,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           if (newDirectory && newDirectory !== homeDirectory) {
             config.homeDirectory = newDirectory;
             await ConnectionConfiguration.update(config);
-            vscode.window.showInformationMessage(t(`ifsBrowser.changeWorkingDirectory.message`, newDirectory));
+            vscode.window.showInformationMessage(l10n.t(`Working directory changed to {0}.`, newDirectory));
           }
         } catch (e) {
           console.log(e);
@@ -346,7 +347,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       const content = instance.getContent();
       if (config && content) {
         const newDirectory = (await vscode.window.showInputBox({
-          prompt: t(`ifsBrowser.addIFSShortcut.prompt`),
+          prompt: l10n.t(`Path to IFS directory`),
           value: node ? node.path : undefined
         }))?.trim();
 
@@ -354,7 +355,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           if (newDirectory) {
             const shortcuts = config.ifsShortcuts;
             if (await content.isDirectory(newDirectory) !== true) {
-              throw (t(`ifsBrowser.addIFSShortcut.error`, newDirectory));
+              throw (l10n.t(`{0} is not a directory.`, newDirectory));
             } else if (!shortcuts.includes(newDirectory)) {
               shortcuts.push(newDirectory);
               config.ifsShortcuts = shortcuts;
@@ -367,8 +368,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               }
             }
           }
-        } catch (e) {
-          vscode.window.showErrorMessage(t(`ifsBrowser.addIFSShortcut.errorMessage`, e));
+        } catch (e: any) {
+          vscode.window.showErrorMessage(l10n.t(`Error creating IFS shortcut! {0}`, e));
         }
       }
     }),
@@ -378,7 +379,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (config) {
         const shortcuts = config.ifsShortcuts;
         const removeDir = (node.path || (await vscode.window.showQuickPick(shortcuts, {
-          placeHolder: t(`ifsBrowser.removeIFSShortcut.placeHolder`),
+          placeHolder: l10n.t(`Select IFS shortcut to remove`),
         })))?.trim();
 
         try {
@@ -427,7 +428,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
-          prompt: t(`ifsBrowser.createDirectory.prompt`),
+          prompt: l10n.t(`Path of new folder`),
           value: value,
           valueSelection: [selectStart, selectStart]
         });
@@ -440,8 +441,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               ifsBrowser.refresh(node);
             }
 
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.createDirectory.errorMessage`, e));
+          } catch (e: any) {
+            vscode.window.showErrorMessage(l10n.t(`Error creating new directory! {0}`, e));
           }
         }
       }
@@ -454,14 +455,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
-          prompt: t(`ifsBrowser.createStreamfile.prompt`),
+          prompt: l10n.t(`Name of new streamfile`),
           value: value,
           valueSelection: [selectStart, selectStart]
         });
 
         if (fullName) {
           try {
-            vscode.window.showInformationMessage(t(`ifsBrowser.createStreamfile.infoMessage`, fullName));
+            vscode.window.showInformationMessage(l10n.t(`Creating streamfile {0}.`, fullName));
             await content.createStreamFile(fullName);
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
             if (GlobalConfiguration.get(`autoRefresh`)) {
@@ -470,8 +471,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             else {
               throw new Error("")
             }
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.createStreamfile.errorMessage`, e));
+          } catch (e: any) {
+            vscode.window.showErrorMessage(l10n.t(`Error creating new streamfile! {0}`, e));
           }
         }
       }
@@ -505,19 +506,19 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (filesToUpload.length || directoriesToUpload.length) {
           await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
-            title: t('ifsBrowser.uploadStreamfile.process.uploading'),
+            title: l10n.t(`Upload`),
             cancellable: false
           }, async (progress) => {
             try {
               if (filesToUpload.length) {
-                progress.report({ message: t('ifsBrowser.uploadStreamfile.process.uploading.files', filesToUpload.length) });
+                progress.report({ message: l10n.t(`sending {0} file(s)...`, filesToUpload.length) });
                 await connection.uploadFiles(filesToUpload, { concurrency: 5 });
               }
 
               if (directoriesToUpload.length) {
                 for (const directory of directoriesToUpload) {
                   const name = path.basename(directory.fsPath);
-                  progress.report({ message: t('ifsBrowser.uploadStreamfile.process.uploading.directory', name) })
+                  progress.report({ message: l10n.t(`sending {0} directory...`, name) })
                   await connection.uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
                 }
               }
@@ -525,14 +526,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               if (GlobalConfiguration.get(`autoRefresh`)) {
                 ifsBrowser.refresh(node);
               }
-              vscode.window.showInformationMessage(t(`ifsBrowser.uploadStreamfile.uploadedFiles`));
-            } catch (err) {
-              vscode.window.showErrorMessage(t(`ifsBrowser.uploadStreamfile.errorMessage`, err));
+              vscode.window.showInformationMessage(l10n.t(`Upload completed.`));
+            } catch (err: any) {
+              vscode.window.showErrorMessage(l10n.t(`Error uploading files! {0}`, err));
             }
           });
         }
         else {
-          vscode.window.showInformationMessage(t(`ifsBrowser.uploadStreamfile.noFilesSelected`));
+          vscode.window.showInformationMessage(l10n.t(`No files or folders selected for upload.`));
         }
       }
     }),
@@ -551,20 +552,21 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (items && items.length) {
           if (!items.find(n => isProtected(n.path))) {
             let deletionConfirmed = false;
-            const message = items.length === 1 ? t(`ifsBrowser.deleteIFS.warningMessage`, items[0].path) : t(`ifsBrowser.deleteIFS.multi.warningMessage`, items.length);
+            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t(`Are you sure you want to delete {0}?`, items[0].path);
             const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
-            if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
+            if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
               const toBeDeleted: string[] = [];
               for (const item of items) {
                 if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
                   const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
 
-                  const deletionPrompt = t(`ifsBrowser.deleteIFS.deletionPrompt`, dirName);
+                  const deletionPrompt = l10n.t(`Once you delete the directory, it cannot be restored.
+Please type "{0}" to confirm deletion.`, dirName);
                   const input = await vscode.window.showInputBox({
                     placeHolder: dirName,
                     prompt: deletionPrompt,
                     validateInput: text => {
-                      return (text === dirName) ? null : deletionPrompt + t(`ifsBrowser.deleteIFS.deletionPrompt2`);
+                      return (text === dirName) ? null : deletionPrompt + l10n.t(` (Press "Escape" to cancel)`);
                     }
                   });
                   deletionConfirmed = (input === dirName);
@@ -581,7 +583,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               }
 
               try {
-                const removeResult = await vscode.window.withProgress({ title: t('ifsBrowser.deleteIFS.progress', toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
+                const removeResult = await vscode.window.withProgress({ title: l10n.t(`Deleting {0} element(s)...`, toBeDeleted.length), location: vscode.ProgressLocation.Notification }, async () => {
                   return await connection.sendCommand({ command: `rm -rf ${toBeDeleted.map(path => Tools.escapePath(path)).join(" ")}` });
                 });
 
@@ -593,16 +595,17 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                     .filter(Tools.distinct)
                     .forEach(async parent => parent?.refresh?.());
                 }
-              } catch (e) {
-                vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.errorMessage`, e));
+              } catch (e: any) {
+                vscode.window.showErrorMessage(l10n.t(`Error deleting streamfile! {0}`, e));
               }
             }
             else {
-              vscode.window.showInformationMessage(t(`ifsBrowser.deleteIFS.cancelled`));
+              vscode.window.showInformationMessage(l10n.t(`Deletion canceled.`));
             }
           }
           else {
-            vscode.window.showErrorMessage(t(`ifsBrowser.deleteIFS.dirNotAllowed`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
+            vscode.window.showErrorMessage(l10n.t(`Unable to delete protected directories from the IFS Browser!
+{0}`, items.filter(n => isProtected(n.path)).map(n => n.path).join(`\n`)));
           }
         }
       }
@@ -610,23 +613,24 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.moveIFS`, async (node: IFSItem) => {
       const oldFileTabs: vscode.Tab[] = [];
+      const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
       if (node.file.type === "streamfile") {
         // Ensure that the file has a defined uri
         if (!node.resourceUri) {
-          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.path.not.parsed")));
+          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file path could not be parsed.")));
           return;
         }
         // Check if the streamfile is currently open in an editor tab
         oldFileTabs.push(...Tools.findUriTabs(node.resourceUri));
         if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("file.unsaved.changes")));
+          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
           return;
         }
       } else {
         // Check if there are streamfiles in the directory which are currently open in an editor tab
         oldFileTabs.push(...Tools.findUriTabs(node.file.path));
         if (oldFileTabs.find(tab => tab.isDirty)) {
-          vscode.window.showErrorMessage(t("ifsBrowser.moveIFS.errorMessage", t(String(node.contextValue)), t("directory.unsaved.changes")));
+          vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
           return;
         }
       }
@@ -635,7 +639,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (config && connection) {
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
-          prompt: t(`ifsBrowser.moveIFS.prompt`),
+          prompt: l10n.t(`Name of new path`),
           value: node.path,
           valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
         });
@@ -651,10 +655,15 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
-            vscode.window.showInformationMessage(t(path.posix.dirname(node.path) === path.posix.dirname(targetPath) ? `ifsBrowser.moveIFS.renamed` : `ifsBrowser.moveIFS.moved`,
-              Tools.escapePath(node.path),
-              Tools.escapePath(targetPath)
-            ));
+            let label;
+            if (path.posix.dirname(node.path) === path.posix.dirname(targetPath)) {
+              label = l10n.t("{0} was renamed to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+            }
+            else {
+              label = l10n.t("{0} was moved to {1}.", Tools.escapePath(node.path), Tools.escapePath(targetPath));
+            }
+
+            vscode.window.showInformationMessage(label);
             // If the file was open in any editor tabs prior to the renaming/movement,
             // refresh those tabs to reflect the new file path/name.
             // (Directly modifying the label or uri of an open tab is apparently not
@@ -667,8 +676,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               })
             })
 
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.moveIFS.errorMessage`, t(String(node.contextValue)), e));
+          } catch (e: any) {
+            vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, e));
           }
         }
       }
@@ -680,7 +689,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (config && connection) {
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
-          prompt: t(`ifsBrowser.copyIFS.prompt`),
+          prompt: l10n.t(`Name of new path`),
           value: node.path.endsWith(`/`) ? node.path.substring(0, node.path.length - 1) : node.path,
           valueSelection: [path.posix.dirname(node.path).length + 1, node.path.length]
         });
@@ -692,10 +701,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             if (GlobalConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
-            vscode.window.showInformationMessage(t(`ifsBrowser.copyIFS.infoMessage`, Tools.escapePath(node.path), Tools.escapePath(targetPath)));
+            vscode.window.showInformationMessage(l10n.t(`{0} was copied to {1}.`, Tools.escapePath(node.path), Tools.escapePath(targetPath)));
 
-          } catch (e) {
-            vscode.window.showErrorMessage(t(`ifsBrowser.copyIFS.errorMessage`, t(String(node.contextValue)), e));
+          } catch (e: any) {
+            const typeLabel = node.file.type === "streamfile" ? l10n.t("streamfile") : l10n.t("directory");
+            vscode.window.showErrorMessage(l10n.t(`Error copying {0}! {1}`, typeLabel, e));
           }
         }
       }
@@ -708,23 +718,23 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection?.remoteFeatures.grep && config) {
         const searchPath = node?.path || await vscode.window.showInputBox({
           value: config.homeDirectory,
-          prompt: t(`ifsBrowser.searchIFS.prompt`),
-          title: t(`ifsBrowser.searchIFS.title`)
+          prompt: l10n.t(`Enter IFS directory to search`),
+          title: l10n.t(`Search directory`)
         });
 
         if (searchPath) {
           const list = GlobalStorage.get().getPreviousSearchTerms();
           const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
           const listHeader = [
-            { label: t(`ifsBrowser.searchIFS.previousSearches`), kind: vscode.QuickPickItemKind.Separator }
+            { label: l10n.t(`Previous search terms`), kind: vscode.QuickPickItemKind.Separator }
           ];
-          const clearList = t(`clearList`);
+          const clearList = l10n.t(`$(trash) Clear list`);
           const clearListArray: vscode.QuickPickItem[] = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
-          quickPick.placeholder = items.length ? t(`ifsBrowser.searchIFS.placeholder`) : t(`ifsBrowser.searchIFS.placeholder2`);
-          quickPick.title = t(`ifsBrowser.searchIFS.title2`, searchPath);
+          quickPick.placeholder = items.length ? l10n.t(`Enter search term or select one of the previous search terms.`) : l10n.t(`Enter search term or select one of the previous search terms.`);
+          quickPick.title = l10n.t(`Search {0}`, searchPath);
 
           quickPick.onDidChangeValue(() => {
             if (!quickPick.value) {
@@ -742,8 +752,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               if (searchTerm === clearList) {
                 GlobalStorage.get().clearPreviousSearchTerms();
                 quickPick.items = [];
-                quickPick.placeholder = t(`ifsBrowser.searchIFS.placeholder2`);
-                vscode.window.showInformationMessage(t(`clearedList`));
+                quickPick.placeholder = l10n.t(`Enter search term.`);
+                vscode.window.showInformationMessage(l10n.t(`Cleared list.`));
                 quickPick.show();
               } else {
                 quickPick.hide();
@@ -757,7 +767,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           quickPick.show();
         }
       } else {
-        vscode.window.showErrorMessage(t(`ifsBrowser.searchIFS.noGrep`));
+        vscode.window.showErrorMessage(l10n.t(`grep must be installed on the remote system for the IFS search.`));
       }
     }),
 
@@ -768,23 +778,23 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (connection?.remoteFeatures.find && config) {
         const findPath = node?.path || await vscode.window.showInputBox({
           value: config.homeDirectory,
-          prompt: t(`ifsBrowser.ifs.find.prompt`),
-          title: t(`ifsBrowser.ifs.find.title`)
+          prompt: l10n.t(`Enter IFS directory to find files in`),
+          title: l10n.t(`Find in directory`)
         });
 
         if (findPath) {
           const list = GlobalStorage.get().getPreviousFindTerms();
           const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
           const listHeader = [
-            { label: t(`ifsBrowser.ifs.find.previousFinds`), kind: vscode.QuickPickItemKind.Separator }
+            { label: l10n.t("Previous find terms"), kind: vscode.QuickPickItemKind.Separator }
           ];
-          const clearList = t(`clearList`);
+          const clearList = l10n.t(`$(trash) Clear list`);
           const clearListArray: vscode.QuickPickItem[] = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
-          quickPick.placeholder = items.length ? t(`ifsBrowser.ifs.find.placeholder`) : t(`ifsBrowser.ifs.find.placeholder2`);
-          quickPick.title = t(`ifsBrowser.ifs.find.title2`, findPath);
+          quickPick.placeholder = items.length ? l10n.t(`Enter find term or select one of the previous find terms.`) : l10n.t(`Enter find term or select one of the previous find terms.`);
+          quickPick.title = l10n.t(`Find {0}`, findPath);
 
           quickPick.onDidChangeValue(() => {
             if (!quickPick.value) {
@@ -802,8 +812,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               if (findTerm === clearList) {
                 GlobalStorage.get().clearPreviousFindTerms();
                 quickPick.items = [];
-                quickPick.placeholder = t(`ifsBrowser.ifs.find.placeholder2`);
-                vscode.window.showInformationMessage(t(`clearedList`));
+                quickPick.placeholder = l10n.t(`Enter find term.`);
+                vscode.window.showInformationMessage(l10n.t(`Cleared list.`));
                 quickPick.show();
               } else {
                 quickPick.hide();
@@ -817,7 +827,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           quickPick.show();
         }
       } else {
-        vscode.window.showErrorMessage(t(`ifsBrowser.ifs.find.noFind`));
+        vscode.window.showErrorMessage(l10n.t(`"findutils" must be installed on the remote system.`));
       }
     }),
 
@@ -847,7 +857,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           const downloadLocation = downloadLocationURI.path;
           await ibmi.setLastDownloadLocation(saveIntoDirectory ? downloadLocation : dirname(downloadLocation));
           const increment = 100 / items.length;
-          window.withProgress({ title: t('ifsBrowser.downloadStreamfile.downloading'), location: vscode.ProgressLocation.Notification }, async (task) => {
+          window.withProgress({ title: l10n.t(`Downloading`), location: vscode.ProgressLocation.Notification }, async (task) => {
             try {
               for (const item of items) {
                 const targetPath = item.path;
@@ -857,7 +867,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                   if (item.file.type === "directory") {
                     let proceed = !existsSync(target);
                     if (!proceed) {
-                      if (await vscode.window.showWarningMessage(t('ifsBrowser.downloadStreamfile.overwrite', target), { modal: true }, t("Yes"))) {
+                      if (await vscode.window.showWarningMessage(l10n.t("{0} already exists.\nDo you want to replace it?", target), { modal: true }, l10n.t(`Yes`))) {
                         rmdirSync(target, { recursive: true });
                         proceed = true;
                       }
@@ -869,7 +879,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                     }
                   }
                   else {
-                    if (!existsSync(target) || await vscode.window.showWarningMessage(t('ask.overwrite', target), { modal: true }, t("Yes"))) {
+                    if (!existsSync(target) || await vscode.window.showWarningMessage(l10n.t(`{0} already exists.
+Do you want to replace it?`, target), { modal: true }, l10n.t(`{0} already exists.
+Do you want to replace it?`, target))) {
                       await ibmi.downloadFile(target, targetPath);
                     }
                   }
@@ -878,11 +890,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                   await ibmi.downloadFile(downloadLocation!, targetPath);
                 }
               }
-              vscode.window.showInformationMessage(t(`ifsBrowser.downloadStreamfile.complete`), t("open"))
+              vscode.window.showInformationMessage(l10n.t(`Download complete`), l10n.t(`Download complete`))
                 .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, path.basename(items[0].path)) : downloadLocationURI) : undefined);
             }
-            catch (e) {
-              vscode.window.showErrorMessage(t(`ifsBrowser.downloadStreamfile.errorMessage`, e));
+            catch (e: any) {
+              vscode.window.showErrorMessage(l10n.t(`Error downloading file(s): {0}`, e));
             }
           });
         }
@@ -911,7 +923,7 @@ vscode.commands.registerCommand(`code-for-ibmi.ifs.toggleShowHiddenFiles`, async
 
 function handleFileListErrors(errors: string[]) {
   errors.forEach(error => vscode.window.showErrorMessage(error));
-  vscode.window.showErrorMessage(t(`ifsBrowser.handleFileListErrors.errorMessage`, errors.length, errors.length > 1 ? t(`errors`) : t(`error`)));
+  vscode.window.showErrorMessage(l10n.t(`{0} {1} occurred while listing files.`, errors.length, errors.length > 1 ? l10n.t(`errors`) : l10n.t(`error`)));
 }
 
 function storeIFSList(path: string, list: string[]) {
@@ -927,21 +939,21 @@ async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
   try {
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
-      title: t(`ifsBrowser.doSearchInStreamfiles.title`),
+      title: l10n.t(`Searching`),
     }, async progress => {
       progress.report({
-        message: t(`ifsBrowser.doSearchInStreamfiles.progressMessage`, searchTerm, searchPath)
+        message: l10n.t(`"{0}" in {1}.`, searchTerm, searchPath)
       });
       const results = await Search.searchIFS(instance, searchPath, searchTerm);
       if (results?.hits.length) {
         openIFSSearchResults(searchPath, results);
       } else {
-        vscode.window.showInformationMessage(t(`ifsBrowser.doSearchInStreamfiles.noResults`, searchTerm, searchPath));
+        vscode.window.showInformationMessage(l10n.t(`No results found searching for "{0}" in {1}.`, searchTerm, searchPath));
       }
     });
 
   } catch (e) {
-    vscode.window.showErrorMessage(t(`ifsBrowser.doSearchInStreamfiles.errorMessage`));
+    vscode.window.showErrorMessage(l10n.t(`Error searching streamfiles.`));
   }
 }
 
@@ -949,21 +961,21 @@ async function doFindStreamfiles(findTerm: string, findPath: string) {
   try {
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
-      title: t(`ifsBrowser.doFindStreamfiles.title`),
+      title: l10n.t(`Finding`),
     }, async progress => {
       progress.report({
-        message: t(`ifsBrowser.doFindStreamfiles.progressMessage`, findTerm, findPath)
+        message: l10n.t(`Finding filenames with "{0}" in {1}.`, findTerm, findPath)
       });
       const results = (await Search.findIFS(instance, findPath, findTerm));
       if (results?.hits.length) {
         openIFSSearchResults(findPath, results);
       } else {
-        vscode.window.showInformationMessage(t(`ifsBrowser.doFindStreamfiles.noResults`, findTerm, findPath));
+        vscode.window.showInformationMessage(l10n.t(`No results found finding filenames with "{0}" in {1}.`, findTerm, findPath));
       }
     });
 
   } catch (e) {
-    vscode.window.showErrorMessage(t(`ifsBrowser.doFindStreamfiles.errorMessage`));
+    vscode.window.showErrorMessage(l10n.t(`Error finding filenames.`));
   }
 }
 
@@ -975,12 +987,12 @@ function openIFSSearchResults(searchPath: string, searchResults: SearchResults) 
 }
 
 async function showOpenDialog() {
-  const openType = (await vscode.window.showQuickPick([t("ifsBrowser.uploadStreamfile.select.type.folders"), t("ifsBrowser.uploadStreamfile.select.type.files")], { title: t("ifsBrowser.uploadStreamfile.select.type.title") }));
+  const openType = (await vscode.window.showQuickPick([l10n.t(`Folders`), l10n.t(`Folders`)], { title: l10n.t(`Folders`) }));
   if (openType) {
     return vscode.window.showOpenDialog({
       defaultUri: vscode.Uri.file(os.homedir()),
       canSelectMany: true,
-      ...openType === t("ifsBrowser.uploadStreamfile.select.type.folders") ? {
+      ...openType === l10n.t(`Folders`) ? {
         canSelectFolders: true,
         canSelectFiles: false
       } : {

@@ -1,7 +1,6 @@
-import vscode, { commands } from "vscode";
+import vscode, { commands, l10n } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
-import { t } from "../locale";
 import { IBMiObject, WithLibrary } from "../typings";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode> {
@@ -27,17 +26,17 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           let prevCurLibs = storage.getPreviousCurLibs();
           let list = [...prevCurLibs];
           const listHeader = [
-            { label: t(`LibraryListView.changeCurrentLibrary.currentlyActive`), kind: vscode.QuickPickItemKind.Separator },
+            { label: l10n.t(`Currently active`), kind: vscode.QuickPickItemKind.Separator },
             { label: currentLibrary },
-            { label: t(`LibraryListView.changeCurrentLibrary.recentlyUsed`), kind: vscode.QuickPickItemKind.Separator }
+            { label: l10n.t(`Recently used`), kind: vscode.QuickPickItemKind.Separator }
           ];
-          const clearList = t(`clearList`);
+          const clearList = l10n.t(`$(trash) Clear list`);
           const clearListArray = [{ label: ``, kind: vscode.QuickPickItemKind.Separator }, { label: clearList }];
 
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = listHeader.concat(list.map(lib => ({ label: lib }))).concat(clearListArray);
-          quickPick.placeholder = t(`LibraryListView.changeCurrentLibrary.placeholder`);
-          quickPick.title = t(`LibraryListView.changeCurrentLibrary.title`);
+          quickPick.placeholder = l10n.t(`Filter or new library to set as current library`);
+          quickPick.title = l10n.t(`Change current library`);
 
           quickPick.onDidChangeValue(() => {
             if (quickPick.value === ``) {
@@ -55,7 +54,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                 await storage.setPreviousCurLibs([]);
                 list = [];
                 quickPick.items = list.map(lib => ({ label: lib }));
-                vscode.window.showInformationMessage(t(`clearedList`));
+                vscode.window.showInformationMessage(l10n.t(`Cleared list.`));
                 quickPick.show();
               } else {
                 if (newLibrary !== currentLibrary) {
@@ -65,7 +64,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
                   }
                 } else {
                   quickPick.hide();
-                  vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.alreadyCurrent`, newLibrary))
+                  vscode.window.showInformationMessage(l10n.t(`{0} is already current library.`, newLibrary))
                 }
               }
             }
@@ -83,7 +82,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           const libraryList = config.libraryList;
 
           const newLibraryListStr = await vscode.window.showInputBox({
-            prompt: t(`LibraryListView.changeUserLibraryList.prompt`),
+            prompt: l10n.t(`Changing library list (can use "*reset")`),
             value: libraryList.map(lib => connection.upperCaseName(lib)).join(`, `)
           });
 
@@ -103,7 +102,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
               if (badLibs.length > 0) {
                 newLibraryList = newLibraryList.filter(lib => !badLibs.includes(lib));
-                vscode.window.showWarningMessage(t(`LibraryListView.changeUserLibraryList.removedLibs`, badLibs.join(`, `)));
+                vscode.window.showWarningMessage(l10n.t(`The following libraries were removed from the updated library list as they are invalid: {0}`, badLibs.join(', ')));
               }
             }
 
@@ -114,7 +113,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList.prompt`, async () => {
-        vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: await vscode.window.showInputBox({ prompt: t(`LibraryListView.addToLibraryList.prompt`) }) });
+        vscode.commands.executeCommand(`code-for-ibmi.addToLibraryList`, { library: await vscode.window.showInputBox({ prompt: l10n.t(`Library to add`) }) });
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: WithLibrary) => {
@@ -125,14 +124,14 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
           const addingLib = connection.upperCaseName(newLibrary.library);
 
           if (addingLib.length > 10) {
-            vscode.window.showErrorMessage(t(`LibraryListView.addToLibraryList.tooLong`));
+            vscode.window.showErrorMessage(l10n.t(`Library is too long.`));
             return;
           }
 
           let libraryList = [...config.libraryList];
 
           if (libraryList.includes(addingLib)) {
-            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.alreadyInList`, addingLib));
+            vscode.window.showWarningMessage(l10n.t(`Library {0} was already in the library list.`, addingLib));
             return;
           }
 
@@ -140,17 +139,17 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
           if (badLibs.length > 0) {
             libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.invalidLib`, badLibs.join(`, `)));
+            vscode.window.showWarningMessage(l10n.t(`Library {0} does not exist.`, badLibs.join(', ')));
           } else {
             libraryList.push(addingLib);
-            vscode.window.showInformationMessage(t(`LibraryListView.addToLibraryList.addedLib`, addingLib));
+            vscode.window.showInformationMessage(l10n.t(`Library {0} was added to the library list.`, addingLib));
           }
 
           badLibs = await content.validateLibraryList(libraryList);
 
           if (badLibs.length > 0) {
             libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-            vscode.window.showWarningMessage(t(`LibraryListView.addToLibraryList.removedLibs`, badLibs.join(`, `)));
+            vscode.window.showWarningMessage(l10n.t(`The following libraries were removed from the updated library list as they are invalid: {0}`, badLibs.join(', ')));
           }
 
           config.libraryList = libraryList;
@@ -173,7 +172,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
               config.libraryList = libraryList;
               await this.updateConfig(config);
-              vscode.window.showInformationMessage(t(`LibraryListView.removeFromLibraryList.removedLib`, removedLib));
+              vscode.window.showInformationMessage(l10n.t(`Library {0} was removed from the library list.`, removedLib));
             }
           }
         }
@@ -229,11 +228,11 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
           if (badLibs.length > 0) {
             libraryList = libraryList.filter(lib => !badLibs.includes(lib));
-            vscode.window.showWarningMessage(t(`LibraryListView.cleanupLibraryList.removedLibs`, badLibs.join(`, `)));
+            vscode.window.showWarningMessage(l10n.t(`The following libraries were removed from the updated library list as they are invalid: {0}`, badLibs.join(', ')));
             config.libraryList = libraryList;
             await this.updateConfig(config);
           } else {
-            vscode.window.showInformationMessage(t(`LibraryListView.cleanupLibraryList.validated`));
+            vscode.window.showInformationMessage(l10n.t(`Library list were validated without any errors.`));
           }
         }
       }),
@@ -298,7 +297,7 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
 
     this.contextValue = context;
     this.description =
-      ((context === `currentLibrary` ? `${t(`currentLibrary`)}` : ``)
+      ((context === `currentLibrary` ? `${l10n.t(`(current library)`)}` : ``)
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
         + (object.attribute !== `` ? ` (*${object.attribute})` : ``)).trim();
     this.tooltip = instance.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
@@ -314,7 +313,7 @@ async function changeCurrentLibrary(library: string) {
     if (commandResult.code === 0) {
       const currentLibrary = connection.upperCaseName(config.currentLibrary);
       config.currentLibrary = library;
-      vscode.window.showInformationMessage(t(`LibraryListView.changeCurrentLibrary.changedCurrent`, library));
+      vscode.window.showInformationMessage(l10n.t(`Changed current library to {0}.`, library));
       storage.getPreviousCurLibs();
       const previousCurLibs = storage.getPreviousCurLibs().filter(lib => lib !== library);
       previousCurLibs.splice(0, 0, currentLibrary);
@@ -322,7 +321,7 @@ async function changeCurrentLibrary(library: string) {
       await ConnectionConfiguration.update(config);
       return true;
     } else {
-      vscode.window.showErrorMessage(t(`LibraryListView.setCurrentLibrary.failed`, library, commandResult.stderr));
+      vscode.window.showErrorMessage(l10n.t(`Failed to set {0} as current library: {1}`, library,  commandResult.stderr));
       return false;
     }
   }

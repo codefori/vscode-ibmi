@@ -5,7 +5,6 @@ import { CustomUI, Tab } from "../../api/CustomUI";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import { t } from "../../locale";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typings";
 import { getVariablesInfo } from "./varinfo";
 
@@ -45,7 +44,7 @@ export namespace ActionsUI {
       open: `folder-opened`,
     };
     const ui = new CustomUI()
-      .addTree(`actions`, t("actions.mainMenu.workWithActions"),
+      .addTree(`actions`, vscode.l10n.t(`Work with Actions`),
         Array.from(new Set(allActions.map(action => action.type)))
           .map(type => ({
             icons,
@@ -59,13 +58,13 @@ export namespace ActionsUI {
                 value: String(action.index),
               }))
           })),
-        t(`actions.mainMenu.createOrMaintain`))
+        vscode.l10n.t(`Create or maintain Actions. Actions are grouped by the type of file/object they target.`))
       .addButtons(
-        { id: `newAction`, label: t('actions.mainMenu.newAction') },
-        { id: `duplicateAction`, label: t('duplicate') }
+        { id: `newAction`, label: vscode.l10n.t(`New Action`) },
+        { id: `duplicateAction`, label: vscode.l10n.t(`Duplicate`) }
       );
 
-    const page = await ui.loadPage<MainMenuPage>(t("actions.mainMenu.workWithActions"));
+    const page = await ui.loadPage<MainMenuPage>(vscode.l10n.t(`Work with Actions`));
     if (page && page.data) {
       page.panel.dispose();
 
@@ -96,7 +95,7 @@ export namespace ActionsUI {
         action
       })).sort((a, b) => a.label.localeCompare(b.label)),
       {
-        placeHolder: t('actions.duplicate.select')
+        placeHolder: vscode.l10n.t(`Select an action to duplicate`)
       }
     ))?.action;
 
@@ -122,10 +121,10 @@ export namespace ActionsUI {
       if (id >= 0) {
         //Fetch existing action
         currentAction = allActions[id];
-        uiTitle = t('actions.workAction.edit.title', currentAction.name);
+        uiTitle = vscode.l10n.t(`Edit action "{0}"`, currentAction.name);
       } else if (actionDefault) {
         currentAction = actionDefault;
-        uiTitle = t('actions.workAction.duplicate.title', currentAction.name);
+        uiTitle = vscode.l10n.t(`Duplicate action "{0}"`, currentAction.name);
       } else {
         //Otherwise.. prefill with defaults
         currentAction = {
@@ -139,7 +138,7 @@ export namespace ActionsUI {
           command: ``,
           refresh: `no`
         }
-        uiTitle = t('actions.workAction.create.title');
+        uiTitle = vscode.l10n.t(`Create action`);
       }
 
       if (!currentAction.environment) {
@@ -150,12 +149,12 @@ export namespace ActionsUI {
       const custom = config.customVariables.map(variable => `<li><b><code>&amp;${variable.name}</code></b>: <code>${variable.value}</code></li>`).join(``);
 
       const ui = new CustomUI()
-        .addInput(`name`, t('actions.workAction.name'), undefined, { default: currentAction.name })
+        .addInput(`name`, vscode.l10n.t(`Action name`), undefined, { default: currentAction.name })
         .addHorizontalRule()
         .addInput(
           `command`,
-          t("actions.workAction.command"),
-          t('actions.workAction.command.description'),
+          vscode.l10n.t(`Command(s) to run`),
+          vscode.l10n.t(`Below are available variables based on the Type you have select below. You can specify different commands on each line. Each command run is stateless and run in their own job.`),
           { rows: 5, default: currentAction.command }
         )
         .addTabs(
@@ -166,85 +165,85 @@ export namespace ActionsUI {
             } as Tab)), getDefaultTabIndex(currentAction.type)
         )
         .addHorizontalRule()
-        .addInput(`extensions`, t('actions.workAction.extensions'), t('actions.workAction.extensions.description'), { default: currentAction.extensions?.join(`, `) })
-        .addSelect(`type`, t('actions.workAction.types'), [
+        .addInput(`extensions`, vscode.l10n.t(`Extensions`), vscode.l10n.t(`Extensions`), { default: currentAction.extensions?.join(`, `) })
+        .addSelect(`type`, vscode.l10n.t(`Type`), [
           {
             selected: currentAction.type === `member`,
             value: `member`,
-            description: t('actions.workAction.types.member'),
-            text: t('actions.workAction.types.member.description'),
+            description: vscode.l10n.t(`Member`),
+            text: vscode.l10n.t(`Source members in the QSYS file system`),
           },
           {
             selected: currentAction.type === `streamfile`,
             value: `streamfile`,
-            description: t('actions.workAction.types.streamfile'),
-            text: t('actions.workAction.types.streamfile.description')
+            description: vscode.l10n.t(`Streamfile`),
+            text: vscode.l10n.t(`Streamfiles in the IFS`)
           },
           {
             selected: currentAction.type === `object`,
             value: `object`,
-            description: t('actions.workAction.types.object'),
-            text: t('actions.workAction.types.object.description')
+            description: vscode.l10n.t(`Object`),
+            text: vscode.l10n.t(`Objects in the QSYS file system`)
           },
           {
             selected: currentAction.type === `file`,
             value: `file`,
-            description: t('actions.workAction.types.file'),
-            text: t('actions.workAction.types.file.description')
-          }], t('actions.workAction.types.description')
+            description: vscode.l10n.t(`Local File (Workspace)`),
+            text: vscode.l10n.t(`Actions for local files in the VS Code Workspace.`)
+          }], vscode.l10n.t(`The types of files this action can support.`)
         )
-        .addSelect(`environment`, t('actions.workAction.environment'), [
+        .addSelect(`environment`, vscode.l10n.t(`Environment`), [
           {
             selected: currentAction.environment === `ile`,
             value: `ile`,
-            description: t('actions.workAction.environment.ile'),
-            text: t('actions.workAction.environment.ile.description')
+            description: vscode.l10n.t(`ILE`),
+            text: vscode.l10n.t(`Runs as an ILE command`)
           },
           {
             selected: currentAction.environment === `qsh`,
             value: `qsh`,
-            description: t('actions.workAction.environment.qsh'),
-            text: t('actions.workAction.environment.qsh.description')
+            description: vscode.l10n.t(`QShell`),
+            text: vscode.l10n.t(`Runs the command through QShell`)
           },
           {
             selected: currentAction.environment === `pase`,
             value: `pase`,
-            description: t('actions.workAction.environment.pase'),
-            text: t('actions.workAction.environment.pase.description')
-          }], t('actions.workAction.environment.description')
+            description: vscode.l10n.t(`PASE`),
+            text: vscode.l10n.t(`Runs the command in the PASE environment`)
+          }], vscode.l10n.t(`Environment for command to be executed in.`)
         )
-        .addSelect(`refresh`, t('actions.workAction.refresh'), [
+        .addSelect(`refresh`, vscode.l10n.t(`Refresh`), [
           {
             selected: currentAction.refresh === `no`,
             value: `no`,
-            description: t('actions.workAction.refresh.no'),
-            text: t('actions.workAction.refresh.no.description')
+            description: vscode.l10n.t(`No`),
+            text: vscode.l10n.t(`No refresh`)
           },
           {
             selected: currentAction.refresh === `parent`,
             value: `parent`,
-            description: t('actions.workAction.refresh.parent'),
-            text: t('actions.workAction.refresh.parent.description')
+            description: vscode.l10n.t(`Parent`),
+            text: vscode.l10n.t(`The parent container is refreshed`)
           },
           {
             selected: currentAction.refresh === `filter`,
             value: `filter`,
-            description: t('actions.workAction.refresh.filter'),
-            text: t('actions.workAction.refresh.filter.description')
+            description: vscode.l10n.t(`Filter`),
+            text: vscode.l10n.t(`The parent filter is refreshed`)
           },
           {
             selected: currentAction.refresh === `browser`,
             value: `browser`,
-            description: t('actions.workAction.refresh.browser'),
-            text: t('actions.workAction.refresh.browser.description')
-          }], t('actions.workAction.refresh.description')
+            description: vscode.l10n.t(`Browser`),
+            text: vscode.l10n.t(`The entire browser is refreshed`)
+          }], vscode.l10n.t(`The browser level to refresh after the action is done`)
         )        
-        .addCheckbox("runOnProtected", t("actions.workAction.runOnProtected"), t("actions.workAction.runOnProtected.description"), currentAction.runOnProtected)
+        .addCheckbox("runOnProtected", vscode.l10n.t(`Run on protected/read only`), vscode.l10n.t(`Run on protected/read only`), currentAction.runOnProtected)
         .addHorizontalRule()
         .addButtons(
-          { id: `saveAction`, label: t(`save`) },
-          id >= 0 ? { id: `deleteAction`, label: t(`delete`) } : undefined,
-          { id: `cancelAction`, label: t(`cancel`) }
+          { id: `saveAction`, label: vscode.l10n.t(`Save`) },
+          id >= 0 ? { id: `deleteAction`, label: vscode.l10n.t(`Delete`) } : undefined,
+          { id: `cancelAction`, label: vscode.l10n.t(`Cancel`) }
         );
 
       while (stayOnPanel) {
@@ -253,8 +252,8 @@ export namespace ActionsUI {
           const data = page.data;
           switch (data.buttons) {
             case `deleteAction`:
-              const yes = t(`Yes`);
-              const result = await vscode.window.showInformationMessage(t('actions.workAction.delete.confirm', currentAction.name), { modal: true }, yes, t(`No`))
+              const yes = vscode.l10n.t(`Yes`);
+              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Are you sure you want to delete the action "{0}"?`, currentAction.name), { modal: true }, yes, vscode.l10n.t(`Are you sure you want to delete the action "{0}"?`, currentAction.name))
               if (result === yes) {
                 allActions.splice(id, 1);
                 await saveActions(allActions);

@@ -1,7 +1,6 @@
 import path from "path";
-import { commands, window } from "vscode";
+import { commands, l10n, window } from "vscode";
 import { instance } from "../../instantiate";
-import { t } from "../../locale";
 import { CustomUI } from "../CustomUI";
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
@@ -32,8 +31,8 @@ export async function startService(connection: IBMi) {
     const debugConfig = await new DebugConfiguration().load();
 
     const submitOptions = await window.showInputBox({
-      title: t("debug.service.submit.options"),
-      prompt: t("debug.service.submit.options.prompt"),
+      title: l10n.t(`Debug Service submit options`),
+      prompt: l10n.t(`Valid parameters for SBMJOB`),
       value: `JOBQ(QSYS/QUSRNOMAX) JOBD(QSYS/QSYSJOBD) USER(*CURRENT)`
     });
 
@@ -55,7 +54,7 @@ export async function startService(connection: IBMi) {
                 const jobDetail = await readActiveJob(connection, { name: job, ports: [] });
                 if (jobDetail && typeof jobDetail === "object" && !["HLD", "MSGW", "END"].includes(String(jobDetail.JOB_STATUS))) {
                   if (await getDebugServiceJob()) {
-                    window.showInformationMessage(t("start.debug.service.succeeded"));
+                    window.showInformationMessage(l10n.t(`Debug service started.`));
                     refreshDebugSensitiveItems();
                     done(true);
                   }
@@ -102,11 +101,11 @@ export async function stopService(connection: IBMi) {
   });
 
   if (!endResult.code) {
-    window.showInformationMessage(t("stop.debug.service.succeeded"));
+    window.showInformationMessage(l10n.t(`Debug service stopped.`));
     refreshDebugSensitiveItems();
     return true;
   } else {
-    window.showErrorMessage(t("stop.debug.service.failed", endResult.stdout || endResult.stderr));
+    window.showErrorMessage(l10n.t(`Failed to stop debug service: {0}`, endResult.stdout || endResult.stderr));
     return false;
   }
 }
@@ -167,12 +166,12 @@ export async function startServer() {
   const result = await instance.getConnection()?.runCommand({ command: "STRDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
-      window.showErrorMessage(t("strdbgsvr.failed", result.stderr));
+      window.showErrorMessage(l10n.t(`Failed to start debug server: {0}`, result.stderr));
       return false;
     }
     else {
       refreshDebugSensitiveItems();
-      window.showInformationMessage(t("strdbgsvr.succeeded"));
+      window.showInformationMessage(l10n.t(`Debug server started.`));
     }
   }
   return true;
@@ -182,12 +181,12 @@ export async function stopServer() {
   const result = await instance.getConnection()?.runCommand({ command: "ENDDBGSVR", noLibList: true });
   if (result) {
     if (result.code) {
-      window.showErrorMessage(t("enddbgsvr.failed", result.stderr));
+      window.showErrorMessage(l10n.t(`Failed to stop debug server: {0}`, result.stderr));
       return false;
     }
     else {
       refreshDebugSensitiveItems();
-      window.showInformationMessage(t("enddbgsvr.succeeded"));
+      window.showInformationMessage(l10n.t(`Debug server stopped.`));
     }
   }
   return true;
@@ -201,7 +200,7 @@ export function refreshDebugSensitiveItems() {
 export async function readActiveJob(connection: IBMi, job: DebugJob) {
   try {
     return (await connection.runSQL(
-      `select job_name_short, job_user, job_number, subsystem_library_name concat '/' concat subsystem as subsystem, authorization_name, job_status, memory_pool from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
+      `select job_name_short "Job name", job_user "Job user", job_number "Job number", subsystem_library_name concat '/' concat subsystem as "Subsystem",  authorization_name "Current user", job_status "Job status", memory_pool "Memory pool" from table(qsys2.active_job_info(job_name_filter => '${job.name.substring(job.name.lastIndexOf('/') + 1)}')) where job_name = '${job.name}' fetch first row only`
     )).at(0);
   } catch (error) {
     return String(error);
@@ -211,7 +210,7 @@ export async function readActiveJob(connection: IBMi, job: DebugJob) {
 export async function readJVMInfo(connection: IBMi, job: DebugJob) {
   try {
     return (await connection.runSQL(`
-      select START_TIME, JAVA_HOME, USER_DIRECTORY, CURRENT_HEAP_SIZE, MAX_HEAP_SIZE
+      select START_TIME "Start time", JAVA_HOME "Java Home", USER_DIRECTORY "User directory", CURRENT_HEAP_SIZE "Current memory", MAX_HEAP_SIZE "Maximum allowed memory"
       from QSYS2.JVM_INFO
       where job_name = '${job.name}'
       fetch first row only`)).at(0);
