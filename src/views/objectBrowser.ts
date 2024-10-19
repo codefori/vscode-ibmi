@@ -888,10 +888,18 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           try {
             await connection.withTempDirectory(async directory => {
               task.report({ message: t('objectBrowser.downloadMemberContent.download.cpytostmf'), increment: 33 })
-              const copyToStreamFiles = toBeDownloaded
+              let copyToStreamFiles;
+              if(os.platform() === 'win32') {       //Windows --> CRLF
+                copyToStreamFiles = toBeDownloaded
+                .filter(member => member.copy)
+                .map(member => `@CPYTOSTMF FROMMBR('${member.path}') TOSTMF('${directory}/${member.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID}) ENDLINFMT(*CRLF);`)
+                .join("\n");
+              } else {                              //Other OS --> LF
+                copyToStreamFiles = toBeDownloaded
                 .filter(member => member.copy)
                 .map(member => `@CPYTOSTMF FROMMBR('${member.path}') TOSTMF('${directory}/${member.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID}) ENDLINFMT(*LF);`)
                 .join("\n");
+              }
               await contentApi.runSQL(copyToStreamFiles);
 
               task.report({ message: t('objectBrowser.downloadMemberContent.download.streamfiles'), increment: 33 })
