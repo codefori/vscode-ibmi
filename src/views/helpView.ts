@@ -5,7 +5,6 @@ import vscode from 'vscode';
 import { DebugConfiguration } from '../api/debug/config';
 import IBMi from '../api/IBMi';
 import { instance } from '../instantiate';
-import { t } from "../locale";
 
 export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -29,9 +28,9 @@ export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
 
   public async getChildren(): Promise<HelpItem[]> {
     const children = [
-      new HelpOpenUrlItem(`book`, t(`helpView.getStarted`), `https://codefori.github.io/docs/#/`),
-      new HelpOpenUrlItem(`output`, t(`helpView.officialForum`), `https://github.com/codefori/vscode-ibmi/discussions`),
-      new HelpOpenUrlItem(`eye`, t(`helpView.reviewIssues`), `https://github.com/codefori/vscode-ibmi/issues/`),
+      new HelpOpenUrlItem(`book`, vscode.l10n.t(`Get started`), `https://codefori.github.io/docs/#/`),
+      new HelpOpenUrlItem(`output`, vscode.l10n.t(`Open official Forum`), `https://github.com/codefori/vscode-ibmi/discussions`),
+      new HelpOpenUrlItem(`eye`, vscode.l10n.t(`Review Issues`), `https://github.com/codefori/vscode-ibmi/issues/`),
       new HelpIssueItem()
     ];
 
@@ -68,7 +67,7 @@ class HelpOpenUrlItem extends HelpItem {
 
 class HelpIssueItem extends HelpItem {
   constructor() {
-    super(`bug`, t(`helpView.reportIssue`));
+    super(`bug`, vscode.l10n.t(`Report an Issue`));
 
     this.command = {
       command: "code-for-ibmi.openNewIssue",
@@ -79,7 +78,7 @@ class HelpIssueItem extends HelpItem {
 
 class HelpLogItem extends HelpItem {
   constructor() {
-    super(`archive`, t(`helpView.downloadLogs`));
+    super(`archive`, vscode.l10n.t(`Download Logs`));
 
     this.command = {
       command: "code-for-ibmi.downloadLogs",
@@ -132,12 +131,12 @@ async function downloadLogs() {
   if (connection && config && content) {
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
-      title: t(`helpView.downloadLogs.gatheringLogs`),
+      title: vscode.l10n.t(`Gathering logs...`),
     }, async () => {
       const codeForIBMiLog = connection.outputChannelContent;
       if (codeForIBMiLog !== undefined) {
         logs.push({
-          label: t(`helpView.downloadLogs.codeForIBMiLog`),
+          label: vscode.l10n.t(`Code for IBM i Log`),
           detail: `${connection?.currentUser}@${connection?.currentHost}`,
           picked: true,
           fileName: 'CodeForIBMi.txt',
@@ -151,7 +150,7 @@ async function downloadLogs() {
         const debugServiceLog = (await content.downloadStreamfileRaw(debugServiceLogPath));
         if (debugServiceLog) {
           logs.push({
-            label: t(`helpView.downloadLogs.debugServiceLog`),
+            label: vscode.l10n.t(`Debug Service Log`),
             detail: debugServiceLogPath,
             picked: true,
             fileName: 'DebugService.txt',
@@ -165,7 +164,7 @@ async function downloadLogs() {
         const debugServiceEclipseInstanceLog = (await content.downloadStreamfileRaw(debugServiceEclipseInstancePath));
         if (debugServiceEclipseInstanceLog) {
           logs.push({
-            label: t(`helpView.downloadLogs.debugServiceEclipseInstanceLog`),
+            label: vscode.l10n.t(`Debug Service Eclipse Instance Log`),
             detail: debugServiceEclipseInstancePath,
             picked: true,
             fileName: 'DebugServiceEclipseInstance.txt',
@@ -177,14 +176,14 @@ async function downloadLogs() {
 
     if (logs.length > 0) {
       const selectedLogs = await vscode.window.showQuickPick(logs, {
-        title: t(`helpView.downloadLogs.selectLogs`),
+        title: vscode.l10n.t(`Select the logs you would like to download`),
         canPickMany: true,
         matchOnDetail: true
       });
 
       if (selectedLogs && selectedLogs.length > 0) {
         const downloadTo = await vscode.window.showOpenDialog({
-          title: t(`helpView.downloadLogs.downloadTo`),
+          title: vscode.l10n.t(`Download To`),
           canSelectFolders: true,
           canSelectFiles: false,
           canSelectMany: false,
@@ -210,23 +209,23 @@ async function downloadLogs() {
             const result = await zip.writeZipPromise(downloadLocation, { overwrite: false });
 
             if (result) {
-              const result = await vscode.window.showInformationMessage(t(`helpView.downloadLogs.success`, zipFile), t(`helpView.downloadLogs.open`));
-              if (result && result === t(`helpView.downloadLogs.open`)) {
+              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile));
+              if (result && result === vscode.l10n.t(`Open`)) {
                 vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
               }
             } else {
-              await vscode.window.showErrorMessage(t(`helpView.downloadLogs.failed`, zipFile));
+              await vscode.window.showErrorMessage(vscode.l10n.t(`Failed to downloaded logs to {0}`, zipFile));
             }
-          } catch (error) {
-            await vscode.window.showErrorMessage(t(`helpView.downloadLogs.failedMessage`, zipFile, error));
+          } catch (error: any) {
+            await vscode.window.showErrorMessage(vscode.l10n.t(`Failed to download logs to {0}. {1}`, zipFile, error));
           }
         }
       }
     } else {
-      await vscode.window.showErrorMessage(t(`helpView.downloadLogs.noLogs`));
+      await vscode.window.showErrorMessage(vscode.l10n.t(`No logs to download`));
     }
   } else {
-    await vscode.window.showErrorMessage(t(`helpView.downloadLogs.noConnection`));
+    await vscode.window.showErrorMessage(vscode.l10n.t(`Please connect to an IBM i`));
   }
 }
 

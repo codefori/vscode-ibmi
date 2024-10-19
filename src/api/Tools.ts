@@ -2,7 +2,6 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
-import { t } from "../locale";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
 
@@ -377,7 +376,7 @@ export namespace Tools {
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
       .concat(`${Object.entries(rows)
         .filter(([key, value]) => value !== undefined && value !== '')
-        .map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`)
+        .map(([key, value]) => `<tr><td>${vscode.l10n.t(key)}:</td><td>&nbsp;${value}</td></tr>`)
         .join(``)}`
       )
       .concat(`</table>`);

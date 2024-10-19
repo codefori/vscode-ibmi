@@ -9,7 +9,6 @@ import { isSEPSupported } from "../../api/debug/server";
 import { IBMiComponent } from "../../components/component";
 import { extensionComponentRegistry } from "../../components/manager";
 import { instance } from "../../instantiate";
-import { t } from "../../locale";
 import { ConnectionData, Server } from '../../typings';
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
@@ -355,19 +354,19 @@ export class SettingsUI {
             let { data: stored, index } = connection;
 
             const ui = new CustomUI()
-              .addInput(`host`, t(`login.host`), undefined, { default: stored.host, minlength: 1 })
-              .addInput(`port`, t(`login.port`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-              .addInput(`username`, t(`username`), undefined, { default: stored.username, minlength: 1 })
-              .addParagraph(t(`login.authDecision`))
-              .addPassword(`password`, `${t(`password`)}${storedPassword ? ` (${t(`stored`)})` : ``}`, t(`login.password.label`))
-              .addFile(`privateKeyPath`, `${t(`privateKey`)}${stored.privateKeyPath ? ` (${t(`current`)}: ${stored.privateKeyPath})` : ``}`, t(`login.privateKey.label`) + ' ' + t(`login.privateKey.support`))
+              .addInput(`host`, vscode.l10n.t(`Host or IP Address`), undefined, { default: stored.host, minlength: 1 })
+              .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`username`, vscode.l10n.t(`Username`), undefined, { default: stored.username, minlength: 1 })
+              .addParagraph(vscode.l10n.t(`Only provide either the password or a private key - not both.`))
+              .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
+              .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${stored.privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${stored.privateKeyPath})` : ``}`, vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
               .addButtons(
-                { id: `submitButton`, label: t(`save`), requiresValidation: true },
-                { id: `removeAuth`, label: t(`login.removeAuth`) }
+                { id: `submitButton`, label: vscode.l10n.t(`Save`), requiresValidation: true },
+                { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
               );
 
             await Tools.withContext(EDITING_CONTEXT, async () => {
-              const page = await ui.loadPage<LoginSettings>(t(`login.title.edit`, name));
+              const page = await ui.loadPage<LoginSettings>(vscode.l10n.t(`Login Settings: "{0}"`, name));
               if (page && page.data) {
                 page.panel.dispose();
 
@@ -378,7 +377,7 @@ export class SettingsUI {
                   case `removeAuth`:
                     await ConnectionManager.deleteStoredPassword(context, name);
                     data.privateKeyPath = undefined;
-                    vscode.window.showInformationMessage(t(`login.authRemoved`, name));
+                    vscode.window.showInformationMessage(vscode.l10n.t(`Authentication methods removed for "{0}".`, name));
                     break;
 
                   default:
@@ -388,14 +387,14 @@ export class SettingsUI {
                         // New password was entered, so store the password
                         // and remove the private key path from the data
                         await ConnectionManager.setStoredPassword(context, name, data.password);
-                        vscode.window.showInformationMessage(t(`login.password.updated`, name));
+                        vscode.window.showInformationMessage(vscode.l10n.t(`Password updated and will be used for "{0}".`, name));
                       }
                     } else if (data.privateKeyPath?.trim()) {
                       // If no password was entered, but a keypath exists
                       // then remove the password from the data and
                       // use the keypath instead
                       await ConnectionManager.deleteStoredPassword(context, name);
-                      vscode.window.showInformationMessage(t(`login.privateKey.updated`, name));
+                      vscode.window.showInformationMessage(vscode.l10n.t(`Private key updated and will be used for "{0}".`, name));
                     }
                     else {
                       delete data.privateKeyPath;

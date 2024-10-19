@@ -5,7 +5,6 @@ import path, { dirname, posix } from "path";
 import { promisify } from 'util';
 import vscode from "vscode";
 import { instance } from '../../instantiate';
-import { t } from '../../locale';
 import IBMi from "../IBMi";
 import IBMiContent from '../IBMiContent';
 import { Tools } from '../Tools';
@@ -248,7 +247,7 @@ export async function checkClientCertificate(connection: IBMi, debugConfig?: Deb
     if (!remote.code) {
       const localCertificate = readFileSync(locaCertificatePath).toString("utf-8");
       if (localCertificate.trim() !== remote.stdout.trim()) {
-        throw new Error(t('local.dont.match.remote'));
+        throw new Error(vscode.l10n.t(`Local certificate doesn't match remote`));
       }
     }
     else {
@@ -256,7 +255,7 @@ export async function checkClientCertificate(connection: IBMi, debugConfig?: Deb
     }
   }
   else {
-    throw new Error(t('local.certificate.not.found'));
+    throw new Error(vscode.l10n.t(`Local certificate not found`));
   }
 }
 

@@ -22,7 +22,7 @@
 	},
 	"license": "MIT",
 	"engines": {
-		"vscode": "^1.66.0"
+		"vscode": "^1.90.0"
 	},
 	"categories": [
 		"Other"
@@ -37,6 +37,7 @@
 		"onFileSystem:streamfile"
 	],
 	"main": "./dist/extension.js",
+	"l10n": "./l10n",
 	"contributes": {
 		"taskDefinitions": [
 			{
@@ -501,29 +502,6 @@
 					"type": "boolean",
 					"default": false,
 					"description": "If enabled, when the user tries to delete a directory, they will be asked to confirm the deletion by typing in the directory's name."
-				},
-				"code-for-ibmi.locale": {
-					"type": "string",
-					"default": "inherit",
-					"enum": [
-						"inherit",
-						"en",
-						"da",
-						"de",
-						"no",
-						"pl",
-						"fr"
-					],
-					"enumDescriptions": [
-						"Inherit from VS Code settings",
-						"English",
-						"Danish",
-						"German",
-						"Norwegian",
-						"Polish",
-						"French"
-					],
-					"description": "The locale used when displaying text in Code for IBM i. Requires restart if changed."
 				},
 				"code-for-ibmi.showDateSearchButton": {
 					"type": "boolean",
@@ -2960,7 +2938,7 @@
 		"@types/source-map-support": "^0.5.6",
 		"@types/tar": "^6.1.4",
 		"@types/tmp": "^0.2.3",
-		"@types/vscode": "^1.66.0",
+		"@types/vscode": "^1.90.0",
 		"esbuild": "^0.19.2",
 		"esbuild-loader": "^3.0.1",
 		"eslint": "^7.19.0",

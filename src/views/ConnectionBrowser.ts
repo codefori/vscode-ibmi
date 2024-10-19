@@ -4,7 +4,6 @@ import { ConnectionData, Server } from '../typings';
 import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from '../api/Configuration';
 import { GlobalStorage } from '../api/Storage';
 import { instance } from '../instantiate';
-import { t } from "../locale";
 import { Login } from '../webviews/login';
 
 type CopyOperationItem = {
@@ -44,9 +43,9 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         if (!name) {
           const lastConnections = GlobalStorage.get().getLastConnections() || [];
           if (lastConnections && lastConnections.length) {
-            name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: t(`connectionBrowser.connectTo.lastConnection`) },
-            ...lastConnections.map(lc => ({ label: lc.name, description: t(`connectionBrowser.connectTo.lastUsed`, new Date(lc.timestamp).toLocaleString()) }))],
-              { title: t(`connectionBrowser.connectTo.title`) }
+            name = (await vscode.window.showQuickPick([{ kind: vscode.QuickPickItemKind.Separator, label: vscode.l10n.t(`Last connection`) },
+            ...lastConnections.map(lc => ({ label: lc.name, description: vscode.l10n.t(`Last used: {0}`, new Date(lc.timestamp).toLocaleString()) }))],
+              { title: vscode.l10n.t(`Last IBM i connections`) }
             ))?.label;
           }
         }
@@ -59,7 +58,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             await Login.LoginToPrevious(name.name, context, reloadServerSettings);
             break;
           default:
-            vscode.window.showErrorMessage(t(`connectionBrowser.connectTo.error`));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Use the Server Browser to select which system to connect to.`));
             break;
         }
 
@@ -82,13 +81,13 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       if (!connectionBrowser.attemptingConnection && server) {
         const existingConnections = ConnectionManager.getAll();
         const newName = await vscode.window.showInputBox({
-          prompt: t(`connectionBrowser.renameConnection.prompt`, server.name),
+          prompt: vscode.l10n.t(`Rename connection "{0}"`, server.name),
           value: server.name,
           validateInput: newName => {
             if (newName === server.name) {
-              return t(`connectionBrowser.renameConnection.invalid.input`);
+              return vscode.l10n.t(`New connection name must be different from its current name`);
             } else if (existingConnections.findIndex(item => item.name === newName) !== -1) {
-              return t(`connectionBrowser.renameConnection.alreadyExists`, newName);
+              return vscode.l10n.t(`Connection "{0}" already exists.`, newName);
             }
           }
         });
@@ -97,14 +96,14 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
           try {
             // First rename the connection details
             let { index, data } = ConnectionManager.getByName(server.name)!
-            if (index === -1) throw (t(`connectionBrowser.renameConnection.noConnectionFound`, server.name));
+            if (index === -1) throw (vscode.l10n.t(`No connection named "{0}" was found`, server.name));
             data.name = newName;
             await ConnectionManager.updateByIndex(index, data);
 
             // Then rename the connection settings
             const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`) || [];
             index = connectionSettings.findIndex(connection => connection.name === server.name);
-            if (index === -1) throw (t(`connectionBrowser.renameConnection.noConnParmsFound`, server.name));
+            if (index === -1) throw (vscode.l10n.t(`No parameters for connection "{0}" was found`, server.name));
             connectionSettings[index].name = newName;
 
             // Then get the cached connection settings
@@ -127,7 +126,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
             connectionBrowser.refresh();
           } catch (e: any) {
             vscode.window.showErrorMessage(
-              t(`connectionBrowser.renameConnection.error`, server.name, e.message || String(e)));
+              vscode.l10n.t(`Error renaming connection "{0}"! {1}`, server.name,  e.message || String(e)));
           }
         }
       }
@@ -151,9 +150,9 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       }
 
       if (!connectionBrowser.attemptingConnection && toBeDeleted.length) {
-        const message = toBeDeleted.length === 1 ? t(`connectionBrowser.deleteConnection.warning`, toBeDeleted[0].name) : t(`connectionBrowser.deleteConnection.multiple.warning`, toBeDeleted.length);
+        const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete the connection "{0}"?`, toBeDeleted[0].name) : vscode.l10n.t(`Are you sure you want to delete the connection "{0}"?`, toBeDeleted[0].name);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(server => `- ${server.name}`).join("\n");
-        if (await vscode.window.showWarningMessage(message, { modal: true, detail }, t(`Yes`))) {
+        if (await vscode.window.showWarningMessage(message, { modal: true, detail }, vscode.l10n.t(`Yes`))) {
           for (const server of toBeDeleted) {
             // First remove the connection details
             await ConnectionManager.deleteByName(server.name);
@@ -185,27 +184,27 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
         let copyOperations;
         do {
           newConnectionName = await vscode.window.showInputBox({
-            prompt: t("connectionBrowser.copyConnection.prompt", server.name),
-            placeHolder: t('connectionBrowser.copyConnection.placeholder'),
+            prompt: vscode.l10n.t(`Copy connection "{0}"`, server.name),
+            placeHolder: vscode.l10n.t(`New connection name`),
             value: newConnectionName,
             validateInput: value => ConnectionManager.getByName(value) ?
-              t('connectionBrowser.copyConnection.already.exists', value) :
+              vscode.l10n.t(`Connection "{0}" already exists`, value) :
               undefined
           });
 
           if (newConnectionName) {
             copyOperations = (await vscode.window.showQuickPick<CopyOperationItem>([
-              { label: t('connectionBrowser.copyConnection.select.home.directory'), picked: true, copy: (from, to) => to.homeDirectory = from.homeDirectory },
-              { label: t('connectionBrowser.copyConnection.select.library.list'), picked: true, copy: (from, to) => { to.libraryList = from.libraryList; to.currentLibrary = from.currentLibrary; } },
-              { label: t('connectionBrowser.copyConnection.select.object.filters'), picked: true, copy: (from, to) => to.objectFilters = from.objectFilters },
-              { label: t('connectionBrowser.copyConnection.select.ifs.shortcuts'), picked: true, copy: (from, to) => to.ifsShortcuts = from.ifsShortcuts },
-              { label: t('connectionBrowser.copyConnection.select.custom.variables'), picked: true, copy: (from, to) => to.customVariables = from.customVariables },
-              { label: t('connectionBrowser.copyConnection.select.command.profiles'), picked: true, copy: (from, to) => to.commandProfiles = from.commandProfiles },
-              { label: t('connectionBrowser.copyConnection.select.connection.profiles'), picked: true, copy: (from, to) => to.connectionProfiles = from.connectionProfiles }
+              { label: vscode.l10n.t(`Home directory`), picked: true, copy: (from, to) => to.homeDirectory = from.homeDirectory },
+              { label: vscode.l10n.t(`Library list`), picked: true, copy: (from, to) => { to.libraryList = from.libraryList; to.currentLibrary = from.currentLibrary; } },
+              { label: vscode.l10n.t(`Object filters`), picked: true, copy: (from, to) => to.objectFilters = from.objectFilters },
+              { label: vscode.l10n.t(`IFS shortcuts`), picked: true, copy: (from, to) => to.ifsShortcuts = from.ifsShortcuts },
+              { label: vscode.l10n.t(`Custom variables`), picked: true, copy: (from, to) => to.customVariables = from.customVariables },
+              { label: vscode.l10n.t(`Command profiles`), picked: true, copy: (from, to) => to.commandProfiles = from.commandProfiles },
+              { label: vscode.l10n.t(`Connection profiles`), picked: true, copy: (from, to) => to.connectionProfiles = from.connectionProfiles }
             ],
               {
                 canPickMany: true,
-                title: t('connectionBrowser.copyConnection.select.settings', server.name, newConnectionName)
+                title: vscode.l10n.t(`Select the settings to copy from "{0}" to "{1}"`, server.name,  newConnectionName)
               }))?.map(picked => picked.copy);
           }
         } while (newConnectionName && !copyOperations);
@@ -274,12 +273,12 @@ class ServerItem extends vscode.TreeItem implements Server {
 
     this.contextValue = `server`;
     this.description = `${connection.username}@${connection.host}`;
-    this.tooltip = lastConnected ? t(`connectionBrowser.ServerItem.tooltip`) : "";
+    this.tooltip = lastConnected ? vscode.l10n.t(` (previous connection)`) : "";
     this.iconPath = new vscode.ThemeIcon(readOnly ? `lock` : `remote`, lastConnected ? new vscode.ThemeColor("notificationsWarningIcon.foreground") : undefined);
 
     this.command = {
       command: `code-for-ibmi.connectTo`,
-      title: t(`connectionBrowser.ServerItem.title`),
+      title: vscode.l10n.t(`Connect`),
       arguments: [this]
     };
   }
