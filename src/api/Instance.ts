@@ -4,6 +4,8 @@ import { ConnectionConfiguration } from "./Configuration";
 import IBMi from "./IBMi";
 import { ConnectionStorage, GlobalStorage } from "./Storage";
 
+import EventEmitter from "events";
+
 type IBMiEventSubscription = {
   func: Function,
   transient?: boolean
@@ -14,14 +16,13 @@ type SubscriptionMap = Map<string, IBMiEventSubscription>
 export default class Instance {
   private connection: IBMi | undefined;
   private storage: ConnectionStorage;
-  private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
+  
   private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
 
   private deprecationCount = 0; //TODO: remove in v3.0.0
 
   constructor(context: vscode.ExtensionContext) {
     this.storage = new ConnectionStorage(context);
-    this.emitter.event(e => this.processEvent(e));
   }
 
   async setConnection(connection?: IBMi) {
@@ -90,7 +91,7 @@ export default class Instance {
   }
 
   fire(event: IBMiEvent) {
-    this.emitter?.fire(event);
+    this.processEvent(event);
   }
 
   async processEvent(event: IBMiEvent) {
