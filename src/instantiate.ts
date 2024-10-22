@@ -17,7 +17,7 @@ import { t } from './locale';
 import { Action, BrowserItem, ConnectionData, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import IBMi, { ConnectionResult } from './api/IBMi';
+import IBMi, { ConnectionErrorType, ConnectionResult } from './api/IBMi';
 
 export let instance: Instance;
 
@@ -42,8 +42,8 @@ connectedBarItem.command = {
 
 let selectedForCompare: vscode.Uri;
 
-export async function connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []) {
-  return await Tools.withContext("code-for-ibmi:connecting", async (): Promise<ConnectionResult> => {
+export function connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []) {
+  return Tools.withContext("code-for-ibmi:connecting", async (): Promise<ConnectionResult> => {
     const ibmi = new IBMi();
     try {
       return vscode.window.withProgress({
@@ -51,7 +51,168 @@ export async function connect(connectionObject: ConnectionData, reconnecting?: b
         title: `Connecting`,
         cancellable: true
       }, async (progress, cancelToken): Promise<ConnectionResult> => {
-        return ibmi.connect(connectionObject, {reconnecting, reloadServerSettings, onConnectedOperations});
+
+        const updateProgress = (message: string) => progress.report({message});
+        const warningHandler = async (errType: ConnectionErrorType, customMessage?: string): Promise<boolean> => {
+          switch (errType) {
+            case `BASH_NOT_DEFAULT`:
+              vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`).then(async choice => {
+                switch (choice) {
+                  case `Set shell to bash`:
+                    const commandSetBashResult = await ibmi.setShellToBash();
+
+                    if (commandSetBashResult) {
+                      vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+                    } else {
+                      vscode.window.showInformationMessage(`Default shell was not changed to bash.`);
+                    }
+                    break;
+
+                  case `Read More`:
+                    vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                    break;
+                }
+              });
+              break;
+
+            case `CONNECTION_LOST`:
+              if (!cancelToken.isCancellationRequested) {
+                disconnect();
+        
+                const choice = await vscode.window.showWarningMessage(`Connection lost`, {
+                  modal: true,
+                  detail: `Connection to ${ibmi.currentConnectionName} has dropped. Would you like to reconnect?`
+                }, `Yes`);
+        
+                let shouldDisconnectFully = true;
+                if (choice === `Yes`) {
+                  shouldDisconnectFully = !(await ibmi.connect(connectionObject, { reconnecting: true, progress: updateProgress })).success;
+                }
+        
+                if (shouldDisconnectFully) {
+                  // this.end();
+                };
+              }
+              break;
+
+            case `INCORRECT_TEMP_LIBRARY`:
+              vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
+                .then(result => {
+                  switch (result) {
+                    case `Open Settings`:
+                      vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                      break;
+                  }
+                });
+              break;
+
+            case `DEBUG_PTF_ISSUE`:
+              vscode.window.showWarningMessage(`Could not load debug service configuration: ${customMessage}`);
+              break;
+
+            default:
+              if (customMessage) {
+                vscode.window.showErrorMessage(`${errType.toLowerCase().replaceAll(`_`, ` `)} error`, {detail: customMessage ? `${customMessage} - Code for IBM i may not function correctly. Please contact your system administrator.` : `Please collect logs and raise this issue.`});
+              }
+              break;
+          }
+
+          return false;
+        }
+
+        const result = await ibmi.connect(
+          connectionObject, 
+          { 
+            reconnecting,
+            reloadServerSettings,
+            warning: warningHandler,
+            progress: updateProgress,
+          }
+        );
+
+        if (result.success) {
+          if (!await ibmi.validateShell()) {
+            const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
+              detail: [
+                `This extension can not work with the shell configured on ${ibmi.currentConnectionName},`,
+                `since the output from shell commands have additional content.`,
+                `This can be caused by running commands like "echo" or other`,
+                `commands creating output in your shell start script.`, ``,
+                `The connection to ${ibmi.currentConnectionName} will be aborted.`
+              ].join(`\n`),
+              modal: true
+            }, `Read more`);
+
+            if (chosen === `Read more`) {
+              vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
+            }
+
+            throw (`Shell config error, connection aborted.`);
+          }
+        }
+
+        const existsQCPTOIMPF = await ibmi.checkQcptoImpfDataAreaExists();
+
+        if (existsQCPTOIMPF) {
+          vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
+            detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
+            modal: true,
+          }, `Delete`, `Read more`).then(choice => {
+            switch (choice) {
+              case `Delete`:
+                ibmi.deleteObject(`QSYS/QCPTOIMPF`, `*DTAARA`)
+                  .then((result) => {
+                    if (result) {
+                      vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                    } else {
+                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                    }
+                  })
+                break;
+              case `Read more`:
+                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                break;
+            }
+          });
+        }
+  
+        const existsQCPFRMIMPF = await ibmi.checkQcpfrmImpfDataAreaExists();
+  
+        if (existsQCPFRMIMPF) {
+          vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
+            modal: false,
+          }, `Delete`, `Read more`).then(choice => {
+            switch (choice) {
+              case `Delete`:
+                ibmi.deleteObject(`QSYS/QCPFRMIMPF`, `*DTAARA`)
+                  .then((result) => {
+                    if (result) {
+                      vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                    } else {
+                      vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                    }
+                  })
+                break;
+              case `Read more`:
+                vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                break;
+            }
+          });
+        }
+
+        instance.setConnection(ibmi);
+
+        if (!reconnecting) {
+          vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+          await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+          for (const operation of onConnectedOperations) {
+            await operation();
+          }
+        }
+
+        instance.fire(`connected`);
+
+        return result;
       });
     } catch (e: any) {
       if (ibmi.client.isConnected()) {
@@ -875,6 +1036,7 @@ async function onConnected() {
 
   // Enable the profile view if profiles exist.
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
+  await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
 }
 
 async function onDisconnected() {
@@ -896,7 +1058,16 @@ async function onDisconnected() {
   [
     disconnectBarItem,
     connectedBarItem,
-  ].forEach(barItem => barItem.hide())
+  ].forEach(barItem => barItem.hide());
+
+  await Promise.all([
+    vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+    vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+    vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+  ]);
+
+  instance.setConnection(undefined);
+  await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
 }
 
 async function createQuickPickItemsList(

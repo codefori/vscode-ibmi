@@ -4,8 +4,6 @@ import { ConnectionConfiguration } from "./Configuration";
 import IBMi from "./IBMi";
 import { ConnectionStorage, GlobalStorage } from "./Storage";
 
-import EventEmitter from "events";
-
 type IBMiEventSubscription = {
   func: Function,
   transient?: boolean
