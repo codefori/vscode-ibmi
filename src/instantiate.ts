@@ -14,9 +14,10 @@ import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { t } from './locale';
-import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
+import { Action, BrowserItem, ConnectionData, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import IBMi, { ConnectionResult } from './api/IBMi';
 
 export let instance: Instance;
 
@@ -40,6 +41,51 @@ connectedBarItem.command = {
 };
 
 let selectedForCompare: vscode.Uri;
+
+export async function connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []) {
+  return await Tools.withContext("code-for-ibmi:connecting", async (): Promise<ConnectionResult> => {
+    const ibmi = new IBMi();
+    try {
+      return vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: `Connecting`,
+        cancellable: true
+      }, async (progress, cancelToken): Promise<ConnectionResult> => {
+        return ibmi.connect(connectionObject, {reconnecting, reloadServerSettings, onConnectedOperations});
+      });
+    } catch (e: any) {
+      if (ibmi.client.isConnected()) {
+        ibmi.client.dispose();
+      }
+
+      if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+        modal: true,
+        detail: `Reconnection to ${ibmi.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
+      }, `Yes`)) {
+        return connect(connectionObject, true);
+      }
+
+      let error = e.message;
+      if (e.code === "ENOTFOUND") {
+        error = `Host is unreachable. Check the connection's hostname/IP address.`;
+      }
+      else if (e.code === "ECONNREFUSED") {
+        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+      }
+      else if (e.level === "client-authentication") {
+        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+      }
+
+      return {
+        success: false,
+        error
+      };
+    }
+    finally {
+      ConnectionConfiguration.update(ibmi.config!);
+    }
+  });
+}
 
 export async function disconnect(): Promise<boolean> {
   let doDisconnect = true;

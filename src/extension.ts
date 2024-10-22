@@ -5,7 +5,7 @@ import { ExtensionContext, commands, languages, window, workspace } from "vscode
 // your extension is activated the very first time the command is executed
 
 import { CustomUI } from "./api/CustomUI";
-import { instance, loadAllofExtension } from './instantiate';
+import { connect, instance, loadAllofExtension } from './instantiate';
 
 import { CompileTools } from "./api/CompileTools";
 import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
@@ -83,7 +83,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
           await ConnectionManager.setStoredPassword(context, connectionData.name, connectionData.password);
         }
 
-        return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
+        return (await connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
     onCodeForIBMiConfigurationChange("locale", updateLocale),
