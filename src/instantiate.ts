@@ -13,7 +13,6 @@ import { setupGitEventHandler } from './api/local/git';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { t } from './locale';
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
@@ -189,7 +188,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         } else if (node.scheme === `file`) {
           selectedFile = node
         } else {
-          vscode.window.showInformationMessage(t(`compare.no.file`));
+          vscode.window.showInformationMessage(vscode.l10n.t(`No file is open or selected`));
         }
 
         let activeFile;
@@ -199,13 +198,13 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
           if (activeFile) {
             vscode.commands.executeCommand(`vscode.diff`, activeFile, selectedFile);
           } else {
-            vscode.window.showInformationMessage(t(`compare.no.file`));
+            vscode.window.showInformationMessage(vscode.l10n.t(`No file is open or selected`));
           }
         } else {
-          vscode.window.showInformationMessage(t(`compare.no.file`));
+          vscode.window.showInformationMessage(vscode.l10n.t(`No file is open or selected`));
         }
       } else {
-        vscode.window.showInformationMessage(t(`compare.no.file`));
+        vscode.window.showInformationMessage(vscode.l10n.t(`No file is open or selected`));
       }
     }),
 
@@ -214,7 +213,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       const compareIcon = new vscode.ThemeIcon('split-horizontal');
       const compareButton: vscode.QuickInputButton = {
         iconPath: compareIcon,
-        tooltip: t(`compare.active.file`)
+        tooltip: vscode.l10n.t(`Compare with Active File`)
       };
 
       const LOADING_LABEL = `Please wait`;
@@ -762,11 +761,11 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       if (doc?.isDirty) {
         vscode.window
           .showWarningMessage(
-            t(`discard.changes`),
+            vscode.l10n.t(`Your changes will be discarded`),
             { modal: true },
-            t(`Continue`))
+            vscode.l10n.t(`Continue`))
           .then(result => {
-            if (result === t(`Continue`)) {
+            if (result === vscode.l10n.t(`Continue`)) {
               vscode.commands.executeCommand(`workbench.action.files.revert`);
             }
           });
@@ -893,8 +892,8 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `me
 
   if (currentFile) {
     let compareWith = await vscode.window.showInputBox({
-      prompt: t(`compare.prompt`),
-      title: t(`compare.title`),
+      prompt: vscode.l10n.t(`Enter the path to compare selected with`),
+      title: vscode.l10n.t(`Compare with`),
       value: currentFile.path
     });
 
@@ -906,6 +905,6 @@ async function compareCurrentFile(node: any, scheme: `streamfile` | `file` | `me
       vscode.commands.executeCommand(`vscode.diff`, currentFile, uri);
     }
   } else {
-    vscode.window.showInformationMessage(t(`compare.no.file`));
+    vscode.window.showInformationMessage(vscode.l10n.t(`No file is open or selected`));
   }
 }

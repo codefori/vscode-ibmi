@@ -1,9 +1,8 @@
-import vscode, { ThemeIcon } from "vscode";
+import vscode, { l10n, ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
 import { disconnect, instance } from "../../instantiate";
-import { t } from "../../locale";
 import { ConnectionData } from '../../typings';
 
 type NewLoginSettings = ConnectionData & {
@@ -27,13 +26,13 @@ export class Login {
 
     const connectionTab = new Section()
       .addInput(`name`, `Connection Name`, undefined, { minlength: 1 })
-      .addInput(`host`, t(`login.host`), undefined, { minlength: 1 })
-      .addInput(`port`, t(`login.port`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
-      .addInput(`username`, t(`username`), undefined, { minlength: 1, maxlength: 10 })
-      .addParagraph(t(`login.authDecision`))
-      .addPassword(`password`, t(`password`))
-      .addCheckbox(`savePassword`, t(`login.savePassword`))
-      .addFile(`privateKeyPath`, t(`privateKey`), t(`login.privateKey.support`));
+      .addInput(`host`, l10n.t(`Host or IP Address`), undefined, { minlength: 1 })
+      .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+      .addInput(`username`, l10n.t(`Username`), undefined, { minlength: 1, maxlength: 10 })
+      .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
+      .addPassword(`password`, l10n.t(`Password`))
+      .addCheckbox(`savePassword`, l10n.t(`Save Password`))
+      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`Private Key`));
 
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
