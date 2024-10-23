@@ -9,7 +9,6 @@ import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import * as Tools from './tools';
-import * as VscodeTools from './tools/vscode';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -972,59 +971,6 @@ export default class IBMiContent {
 
   async countFiles(directory: string) {
     return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
-  }
-
-  /**
-   * Returns MarkdownString HTML content
-   */
-  objectToToolTip(path: string, object: IBMiObject): string {
-    return VscodeTools.generateTooltipHtmlTable(path, {
-      "Type": object.type,
-      "Attribute": object.attribute,
-      "Text": object.text,
-      "Size": object.size,
-      "Created": object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      "Changed": object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
-      "Created by": object.created_by,
-      "Owner": object.owner,
-      "IASP": object.asp
-    });
-  }
-
-  /**
-   * Returns MarkdownString HTML content
-   */
-  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject): Promise<string> {
-    return VscodeTools.generateTooltipHtmlTable(path, {
-      "Text": object.text,
-      "Members": await this.countMembers(object),
-      "Length": object.sourceLength,
-      "CCSID": (await this.getAttributes(object, "CCSID"))?.CCSID || '?',
-      "IASP": object.asp
-    });
-  }
-
-  /**
-   * Returns MarkdownString HTML content
-   */
-  memberToToolTip(path: string, member: IBMiMember): string {
-    return VscodeTools.generateTooltipHtmlTable(path, {
-      "Text": member.text,
-      "Lines": member.lines,
-      "Created": member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      "Changed": member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
-    });
-  }
-
-  /**
-   * Returns MarkdownString HTML content
-   */
-  ifsFileToToolTip(path: string, ifsFile: IFSFile): string {
-    return VscodeTools.generateTooltipHtmlTable(path, {
-      "Size": ifsFile.size,
-      "Modified": ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
-      "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
-    });
   }
 
   /**

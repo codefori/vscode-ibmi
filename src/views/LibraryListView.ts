@@ -2,6 +2,7 @@ import vscode, { commands, l10n, MarkdownString } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { IBMiObject, WithLibrary } from "../typings";
+import * as VscodeTools from '../api/tools/vscode';
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode> {
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -301,7 +302,7 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
         + (object.attribute !== `` ? ` (*${object.attribute})` : ``)).trim();
 
-    const content = instance.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
+    const content = VscodeTools.objectToToolTip([object.library, object.name].join(`/`), object);
     const md = new MarkdownString(content);
     md.supportHtml = true;
     this.tooltip = content;

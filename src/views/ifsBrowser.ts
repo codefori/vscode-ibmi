@@ -102,7 +102,7 @@ class IFSItem extends BrowserItem implements WithPath {
     super(file.name, parameters);
     this.path = file.path;
 
-    const content = instance.getContent()?.ifsFileToToolTip(this.path, file);
+    const content = VscodeTools.ifsFileToToolTip(this.path, file);
     const md = new vscode.MarkdownString(content);
     md.supportHtml = true;
     this.tooltip = md;

@@ -3,6 +3,8 @@ import * as vscode from "vscode";
 import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import { API, GitExtension } from "../import/git";
+import { IBMiMember, IBMiObject, IFSFile } from "../../typings";
+import IBMi from "../IBMi";
 
 let gitLookedUp: boolean;
 let gitAPI: API | undefined;
@@ -129,4 +131,57 @@ export async function withContext<T>(context: string, task: () => Promise<T>) {
       }
     }
   }
+}
+
+/**
+ * Returns MarkdownString HTML content
+ */
+export function objectToToolTip(path: string, object: IBMiObject): string {
+  return generateTooltipHtmlTable(path, {
+    "Type": object.type,
+    "Attribute": object.attribute,
+    "Text": object.text,
+    "Size": object.size,
+    "Created": object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+    "Changed": object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
+    "Created by": object.created_by,
+    "Owner": object.owner,
+    "IASP": object.asp
+  });
+}
+
+/**
+ * Returns MarkdownString HTML content
+ */
+export async function sourcePhysicalFileToToolTip(ibmi: IBMi, path: string, object: IBMiObject): Promise<string> {
+  return generateTooltipHtmlTable(path, {
+    "Text": object.text,
+    "Members": await ibmi.content.countMembers(object),
+    "Length": object.sourceLength,
+    "CCSID": (await ibmi.content.getAttributes(object, "CCSID"))?.CCSID || '?',
+    "IASP": object.asp
+  });
+}
+
+/**
+ * Returns MarkdownString HTML content
+ */
+export function memberToToolTip(path: string, member: IBMiMember): string {
+  return generateTooltipHtmlTable(path, {
+    "Text": member.text,
+    "Lines": member.lines,
+    "Created": member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
+    "Changed": member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
+  });
+}
+
+/**
+ * Returns MarkdownString HTML content
+ */
+export function ifsFileToToolTip(path: string, ifsFile: IFSFile): string {
+  return generateTooltipHtmlTable(path, {
+    "Size": ifsFile.size,
+    "Modified": ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
+    "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
+  });
 }

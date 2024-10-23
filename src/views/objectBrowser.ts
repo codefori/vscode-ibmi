@@ -312,7 +312,7 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
   }
 
   async getToolTip() {
-    const htmlContent = await getContent().sourcePhysicalFileToToolTip(this.path, this.object);
+    const htmlContent = await VscodeTools.sourcePhysicalFileToToolTip(getConnection(), this.path, this.object);
     const md = new vscode.MarkdownString(htmlContent, true);
     md.supportHtml = true;
     return md;
@@ -335,7 +335,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isLibrary ? '_library' : ''}${this.isProtected() ? `_readonly` : ``}`;
 
-    const content = getContent().objectToToolTip(this.path, object);
+    const content = VscodeTools.objectToToolTip(this.path, object);
     const md = new vscode.MarkdownString(content);
     md.supportHtml = true;
     this.tooltip = md;
@@ -390,7 +390,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
-    this.tooltip = getContent().memberToToolTip(this.path, member);
+    this.tooltip = VscodeTools.memberToToolTip(this.path, member);
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
