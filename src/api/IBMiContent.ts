@@ -973,8 +973,11 @@ export default class IBMiContent {
     return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
   }
 
-  objectToToolTip(path: string, object: IBMiObject) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString HTML content
+   */
+  objectToToolTip(path: string, object: IBMiObject): string {
+    return Tools.generateTooltipHtmlTable(path, {
       "Type": object.type,
       "Attribute": object.attribute,
       "Text": object.text,
@@ -984,42 +987,43 @@ export default class IBMiContent {
       "Created by": object.created_by,
       "Owner": object.owner,
       "IASP": object.asp
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    });
   }
 
-  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString HTML content
+   */
+  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject): Promise<string> {
+    return Tools.generateTooltipHtmlTable(path, {
       "Text": object.text,
       "Members": await this.countMembers(object),
       "Length": object.sourceLength,
       "CCSID": (await this.getAttributes(object, "CCSID"))?.CCSID || '?',
       "IASP": object.asp
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    });
   }
 
-  memberToToolTip(path: string, member: IBMiMember) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString HTML content
+   */
+  memberToToolTip(path: string, member: IBMiMember): string {
+    return Tools.generateTooltipHtmlTable(path, {
       "Text": member.text,
       "Lines": member.lines,
       "Created": member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
       "Changed": member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    });
   }
 
-  ifsFileToToolTip(path: string, ifsFile: IFSFile) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString HTML content
+   */
+  ifsFileToToolTip(path: string, ifsFile: IFSFile): string {
+    return Tools.generateTooltipHtmlTable(path, {
       "Size": ifsFile.size,
       "Modified": ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
       "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    });
   }
 
   /**
