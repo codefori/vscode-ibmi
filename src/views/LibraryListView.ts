@@ -1,4 +1,4 @@
-import vscode, { commands, l10n } from "vscode";
+import vscode, { commands, l10n, MarkdownString } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { IBMiObject, WithLibrary } from "../typings";
@@ -300,7 +300,11 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
       ((context === `currentLibrary` ? `${l10n.t(`(current library)`)}` : ``)
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
         + (object.attribute !== `` ? ` (*${object.attribute})` : ``)).trim();
-    this.tooltip = instance.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
+
+    const content = instance.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
+    const md = new MarkdownString(content);
+    md.supportHtml = true;
+    this.tooltip = content;
   }
 }
 

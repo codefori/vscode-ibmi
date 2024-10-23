@@ -100,7 +100,11 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip = instance.getContent()?.ifsFileToToolTip(this.path, file);
+
+    const content = instance.getContent()?.ifsFileToToolTip(this.path, file);
+    const md = new vscode.MarkdownString(content);
+    md.supportHtml = true;
+    this.tooltip = md;
   }
 
   sortBy(sort: SortOptions) {
@@ -519,7 +523,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 for (const directory of directoriesToUpload) {
                   const name = path.basename(directory.fsPath);
                   progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
+                  // TODO: check this works
+                  await connection.uploadDirectory(directory.toString(), path.posix.join(root, name), { concurrency: 5 })
                 }
               }
 
