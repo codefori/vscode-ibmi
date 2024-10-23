@@ -59,9 +59,8 @@ export namespace CompileTools {
     return inputValue;
   }
 
-  function applyDefaultVariables(instance: Instance, variables: Variable) {
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
+  function applyDefaultVariables(connection: IBMi, variables: Variable) {
+    const config = connection.config;
     if (connection && config) {
       variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
       if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
@@ -353,10 +352,10 @@ export namespace CompileTools {
                         });
  
                         // We don't care if this fails. Usually it's because the source file already exists.
-                        await runCommand(instance, {command: createSourceFile, environment: `ile`, noLibList: true});
+                        await runCommand(connection, {command: createSourceFile, environment: `ile`, noLibList: true});
 
                         // Attempt to copy to member
-                        const copyResult = await runCommand(instance, {command: copyFromStreamfile, environment: `ile`, noLibList: true});
+                        const copyResult = await runCommand(connection, {command: copyFromStreamfile, environment: `ile`, noLibList: true});
 
                         if (copyResult.code !== 0) {
                           writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
@@ -364,7 +363,7 @@ export namespace CompileTools {
                         }
                       }
 
-                      const commandResult = await runCommand(instance, {
+                      const commandResult = await runCommand(connection, {
                         title: chosenAction.name,
                         environment,
                         command: chosenAction.command,
@@ -580,14 +579,13 @@ export namespace CompileTools {
   /**
    * Execute a command
    */
-  export async function runCommand(instance: Instance, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult> {
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
+  export async function runCommand(connection: IBMi, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult> {
+    const config = connection.config;
     if (config && connection) {
       const cwd = options.cwd;
       const variables = options.env || {};
 
-      applyDefaultVariables(instance, variables);
+      applyDefaultVariables(connection, variables);
       expandVariables(variables);
 
       const ileSetup: ILELibrarySettings = {

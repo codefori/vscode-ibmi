@@ -62,7 +62,7 @@ export const ActionSuite: TestSuite = {
   tests: [
     {
       name: `Variable expansion test`, test: async () => {
-        const result = await CompileTools.runCommand(instance, {
+        const result = await CompileTools.runCommand(instance.getConnection()!, {
           command: 'echo "&CURLIB &MYTEXT"',
           env: { '&MYTEXT': `&BRANCHLIB &BRANCH`, '&BRANCHLIB': 'MYLIB', '&BRANCH': 'my/lib' },
           environment: `pase`

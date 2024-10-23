@@ -1,10 +1,9 @@
 import { parse as parsePath } from "path";
 import { ParsedUrlQueryInput, parse, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError } from "vscode";
-import { onCodeForIBMiConfigurationChange } from "../../api/Configuration";
 import IBMi from "../../api/IBMi";
 import { Tools } from "../../api/Tools";
-import { instance } from "../../instantiate";
+import { instance, onCodeForIBMiConfigurationChange } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";
 import { SourceDateHandler } from "./sourceDateHandler";

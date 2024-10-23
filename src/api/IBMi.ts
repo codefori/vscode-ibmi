@@ -6,7 +6,6 @@ import path, { parse as parsePath } from 'path';
 import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { ComponentManager } from "../components/manager";
-import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { ConnectionConfiguration } from "./Configuration";
@@ -146,7 +145,7 @@ export default class IBMi {
 
     const updateProgress = (message: string) => {
       if (options.progress) {
-        updateProgress(message);
+        options.progress(message);
       }
     }
 
@@ -844,7 +843,7 @@ export default class IBMi {
    *   `env` to customise them.
    */
   runCommand(data: RemoteCommand) {
-    return CompileTools.runCommand(instance, data);
+    return CompileTools.runCommand(this, data);
   }
 
   async sendQsh(options: CommandData) {
@@ -919,7 +918,6 @@ export default class IBMi {
     this.client.connection?.removeAllListeners();
     this.client.dispose();
     this.client.connection = null;
-    instance.fire(`disconnected`);
   }
 
   async end() {
