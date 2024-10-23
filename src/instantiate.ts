@@ -1,4 +1,5 @@
-import { Tools } from './api/Tools';
+import * as Tools from './api/tools';
+import * as VscodeTool from './api/tools/vscode';
 
 import path from 'path';
 import * as vscode from "vscode";
@@ -52,7 +53,7 @@ export function onCodeForIBMiConfigurationChange<T>(props: string | string[], to
 }
 
 export function connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []) {
-  return Tools.withContext("code-for-ibmi:connecting", async (): Promise<ConnectionResult> => {
+  return VscodeTool.withContext("code-for-ibmi:connecting", async (): Promise<ConnectionResult> => {
     const ibmi = new IBMi();
     try {
       return vscode.window.withProgress({
@@ -320,7 +321,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 
       const uri = getUriFromPath(path, options);
 
-      const existingUri = Tools.findExistingDocumentUri(uri);
+      const existingUri = VscodeTool.findExistingDocumentUri(uri);
 
       if (existingUri) {
         const existingOptions = parseFSOptions(existingUri);
@@ -968,7 +969,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: vscode.Uri) => {
       let doc: vscode.TextDocument | undefined;
       if (uri) {
-        doc = Tools.findExistingDocument(uri);
+        doc = VscodeTool.findExistingDocument(uri);
       } else {
         const editor = vscode.window.activeTextEditor;
         doc = editor?.document;

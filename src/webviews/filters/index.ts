@@ -1,6 +1,6 @@
 import { ConnectionConfiguration } from "../../api/Configuration";
 import { CustomUI } from "../../api/CustomUI";
-import { Tools } from "../../api/Tools";
+import * as Tools from "../../api/tools";
 import { instance } from "../../instantiate";
 
 export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters, copy = false) {

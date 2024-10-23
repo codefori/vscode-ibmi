@@ -3,7 +3,7 @@ import vscode from "vscode";
 import { CustomUI, Tab } from "../../api/CustomUI";
 
 import { GlobalConfiguration } from "../../api/Configuration";
-import { Tools } from "../../api/Tools";
+import * as Tools from "../../api/tools";
 import { instance } from "../../instantiate";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typings";
 import { getVariablesInfo } from "./varinfo";

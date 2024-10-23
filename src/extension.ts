@@ -11,7 +11,7 @@ import { CompileTools } from "./api/CompileTools";
 import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, setConfigurationSource } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
-import { Tools } from "./api/Tools";
+import * as Tools from "./api/tools";
 import * as Debug from './api/debug';
 import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";

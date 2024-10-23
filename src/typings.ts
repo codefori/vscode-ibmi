@@ -3,7 +3,7 @@ import { MarkdownString, ProviderResult, Range, ThemeColor, ThemeIcon, TreeItem,
 import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
 import Instance from "./api/Instance";
-import { Tools } from "./api/Tools";
+import * as Tools from "./api/tools";
 import { DeployTools } from "./api/local/deployTools";
 import { ComponentRegistry } from './components/manager';
 

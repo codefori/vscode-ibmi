@@ -5,7 +5,7 @@ import { instance } from '../instantiate';
 import { GlobalConfiguration } from './Configuration';
 import IBMi from './IBMi';
 import Instance from './Instance';
-import { Tools } from './Tools';
+import * as Tools from './tools';
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {

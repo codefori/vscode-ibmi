@@ -7,7 +7,8 @@ import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configurati
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from "../api/Storage";
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools/";
+import * as VscodeTools from "../api/tools/vscode";
 import { instance } from "../instantiate";
 import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../typings";
 
@@ -626,14 +627,14 @@ Please type "{0}" to confirm deletion.`, dirName);
           return;
         }
         // Check if the streamfile is currently open in an editor tab
-        oldFileTabs.push(...Tools.findUriTabs(node.resourceUri));
+        oldFileTabs.push(...VscodeTools.findUriTabs(node.resourceUri));
         if (oldFileTabs.find(tab => tab.isDirty)) {
           vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The file has unsaved changes.")));
           return;
         }
       } else {
         // Check if there are streamfiles in the directory which are currently open in an editor tab
-        oldFileTabs.push(...Tools.findUriTabs(node.file.path));
+        oldFileTabs.push(...VscodeTools.findUriTabs(node.file.path));
         if (oldFileTabs.find(tab => tab.isDirty)) {
           vscode.window.showErrorMessage(l10n.t(`Error renaming/moving {0}! {1}`, typeLabel, l10n.t("The directory has file(s) with unsaved changes.")));
           return;

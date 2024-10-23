@@ -8,7 +8,8 @@ import { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { GlobalStorage } from '../api/Storage';
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools";
+import * as VscodeTools from "../api/tools/vscode";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
@@ -721,7 +722,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       let newNameOK;
 
       // Check if the member is currently open in an editor tab.
-      const oldMemberTabs = Tools.findUriTabs(oldUri);
+      const oldMemberTabs = VscodeTools.findUriTabs(oldUri);
 
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.

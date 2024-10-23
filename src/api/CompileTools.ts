@@ -7,7 +7,7 @@ import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
 import IBMi from './IBMi';
 import Instance from './Instance';
-import { Tools } from './Tools';
+import * as Tools from './tools';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
 import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';

@@ -1,5 +1,5 @@
 import { posix } from "path";
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools";
 import { IBMiMember } from "../typings";
 import { ComponentState, IBMiComponent } from "./component";
 

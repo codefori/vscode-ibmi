@@ -3,7 +3,7 @@ import { commands, l10n, window } from "vscode";
 import { instance } from "../../instantiate";
 import { CustomUI } from "../CustomUI";
 import IBMi from "../IBMi";
-import { Tools } from "../Tools";
+import * as Tools from "../tools";
 import { DebugConfiguration, getDebugServiceDetails } from "./config";
 
 export type DebugJob = {

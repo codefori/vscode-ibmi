@@ -1,6 +1,6 @@
 import assert from "assert";
 import { TestSuite } from ".";
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools";
 import { GetMemberInfo } from "../components/getMemberInfo";
 import { GetNewLibl } from "../components/getNewLibl";
 import { instance } from "../instantiate";

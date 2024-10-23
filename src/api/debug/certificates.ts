@@ -7,7 +7,7 @@ import vscode from "vscode";
 import { instance } from '../../instantiate';
 import IBMi from "../IBMi";
 import IBMiContent from '../IBMiContent';
-import { Tools } from '../Tools';
+import * as Tools from '../tools';
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaHome } from './config';
 
 type HostInfo = {
@@ -109,7 +109,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       password = imported.password;
       if (imported.localFile) {
         setProgress("importing local certificate");
-        await connection.uploadFiles([{ local: imported.localFile, remote: debugConfig.getRemoteServiceCertificatePath() }]);
+        await connection.uploadFiles([{ local: imported.localFile.toString(), remote: debugConfig.getRemoteServiceCertificatePath() }]);
       }
       else if (imported.remoteFile) {
         setProgress("importing remote certificate");

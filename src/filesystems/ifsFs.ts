@@ -1,5 +1,5 @@
 import vscode, { FileSystemError, FileType } from "vscode";
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools";
 import { instance } from "../instantiate";
 import { getFilePermission } from "./qsys/QSysFs";
 

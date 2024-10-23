@@ -2,7 +2,7 @@ import * as path from 'path';
 import { IBMiMember, SearchHit, SearchResults } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
-import { Tools } from './Tools';
+import * as Tools from './tools';
 import { GetMemberInfo } from '../components/getMemberInfo';
 
 export namespace Search {

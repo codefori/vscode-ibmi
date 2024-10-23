@@ -1,4 +1,4 @@
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools";
 import { WrapResult } from "../typings";
 import { ComponentState, IBMiComponent } from "./component";
 

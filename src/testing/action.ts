@@ -3,7 +3,7 @@ import { existsSync } from "fs";
 import vscode from "vscode";
 import { TestSuite } from ".";
 import { CompileTools } from "../api/CompileTools";
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools";
 import { LocalLanguageActions } from "../api/local/LocalLanguageActions";
 import { DeployTools } from "../api/local/deployTools";
 import { getEnvConfig } from "../api/local/env";

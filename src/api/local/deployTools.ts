@@ -3,7 +3,7 @@ import path, { basename } from 'path';
 import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
 import { DeploymentMethod, DeploymentParameters } from '../../typings';
-import { Tools } from '../Tools';
+import * as VscodeTools from '../tools/vscode';
 import { LocalLanguageActions } from './LocalLanguageActions';
 import { Deployment } from './deployment';
 
@@ -67,7 +67,7 @@ export namespace DeployTools {
           const changes = Deployment.workspaceChanges.get(folder)?.size || 0;
           methods.push({ method: "changed" as DeploymentMethod, label: `Changes`, description: `${changes} change${changes > 1 ? `s` : ``} detected since last upload. ${!changes ? `Will skip deploy step.` : ``}` });
 
-          if (Tools.getGitAPI()) {
+          if (VscodeTools.getGitAPI()) {
             methods.push(
               { method: "unstaged" as DeploymentMethod, label: `Working Changes`, description: `Unstaged changes in git` },
               { method: "staged" as DeploymentMethod, label: `Staged Changes`, description: `` }
@@ -215,7 +215,7 @@ export namespace DeployTools {
 
   export async function getDeployGitFiles(parameters: DeploymentParameters, changeType: 'staged' | 'working'): Promise<vscode.Uri[]> {
     const useStagedChanges = (changeType == 'staged');
-    const gitApi = Tools.getGitAPI();
+    const gitApi = VscodeTools.getGitAPI();
 
     if (gitApi && gitApi.repositories.length > 0) {
       const repository = gitApi.repositories.find(r => r.rootUri.fsPath === parameters.workspaceFolder.uri.fsPath);
@@ -273,7 +273,7 @@ export namespace DeployTools {
         const uploads: vscode.Uri[] = [];
         for await (const file of localFiles) {
           const remote = remoteMD5.find(e => e.path === file.path);
-          const md5 = Tools.md5Hash(file.uri);
+          const md5 = VscodeTools.md5Hash(file.uri);
           if (!remote || remote.md5 !== md5) {
             uploads.push(file.uri);
           }

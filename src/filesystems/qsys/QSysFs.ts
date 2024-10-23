@@ -2,7 +2,7 @@ import { parse as parsePath } from "path";
 import { ParsedUrlQueryInput, parse, stringify } from "querystring";
 import vscode, { FilePermission, FileSystemError } from "vscode";
 import IBMi from "../../api/IBMi";
-import { Tools } from "../../api/Tools";
+import * as Tools from "../../api/tools";
 import { instance, onCodeForIBMiConfigurationChange } from "../../instantiate";
 import { IBMiMember, QsysFsOptions, QsysPath } from "../../typings";
 import { ExtendedIBMiContent } from "./extendedContent";

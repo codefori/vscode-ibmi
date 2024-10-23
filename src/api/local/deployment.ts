@@ -6,7 +6,7 @@ import vscode from 'vscode';
 import { instance } from '../../instantiate';
 import { DeploymentParameters } from '../../typings';
 import IBMi from '../IBMi';
-import { Tools } from '../Tools';
+import * as Tools from '../tools';
 import { getLocalActions } from './actions';
 import { DeployTools } from './deployTools';
 

@@ -7,7 +7,8 @@ import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
 import { CompileTools } from "../api/CompileTools";
-import { Tools } from "../api/Tools";
+import * as Tools from "../api/tools";
+import * as VscodeTools from "../api/tools/vscode";
 import { DeployTools } from "../api/local/deployTools";
 import { instance } from "../instantiate";
 import { Action, DeploymentMethod } from "../typings";
@@ -258,7 +259,7 @@ async function getLocalFilesInfo() {
     const localFiles: FilesInfo = new Map;
     for await (const file of await vscode.workspace.findFiles(new vscode.RelativePattern(fakeProject.localPath!, "**/*"))) {
         const path = posix.join(basename(fakeProject.localPath!.path), posix.relative(fakeProject.localPath!.path, file.path));
-        localFiles.set(path, { date: "unused", md5: Tools.md5Hash(file) });
+        localFiles.set(path, { date: "unused", md5: VscodeTools.md5Hash(file) });
     }
     return localFiles;
 }
