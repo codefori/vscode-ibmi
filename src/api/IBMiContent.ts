@@ -116,7 +116,7 @@ export default class IBMiContent {
       ccsid = await this.getNotUTF8CCSID(features.attr, originalPath);
     }
 
-    await writeFileAsync(tmpobj, content, encoding);
+    await writeFileAsync(tmpobj, content, {encoding: encoding as BufferEncoding});
 
     if (ccsid && features.iconv) {
       // Upload our file to the same temp file, then write convert it back to the original ccsid
