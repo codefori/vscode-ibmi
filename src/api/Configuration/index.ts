@@ -1,4 +1,4 @@
-import * as vscode from 'vscode';
+import type * as vscode from 'vscode';
 import os from "os";
 import { ConnectionData, DeploymentMethod } from '../../typings';
 import { FilterType } from '../Filter';
@@ -22,7 +22,7 @@ export namespace GlobalConfiguration {
   }
 
   export function set(key: string, value: any) {
-    return getConfiguration().update(key, value, vscode.ConfigurationTarget.Global);
+    return getConfiguration().update(key, value, true);
   }  
 }
 
@@ -215,7 +215,7 @@ export namespace ConnectionConfiguration {
   }
 
   async function updateAll(connections: Parameters[]) {
-    await getConfiguration().update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
+    await getConfiguration().update(`connectionSettings`, connections, true);
   }
 
   export async function update(parameters: Parameters) {
