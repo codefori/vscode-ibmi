@@ -909,7 +909,7 @@ export default class IBMi {
     };
   }
 
-  private appendOutput(content: string) {
+  public appendOutput(content: string) {
     if (this.logger) {
       this.logger(content);
     }

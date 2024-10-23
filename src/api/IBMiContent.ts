@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { MarkdownString, window } from 'vscode';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
@@ -250,7 +249,7 @@ export default class IBMiContent {
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
           if (messages.findId("CPIA083")) {
-            window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+            this.ibmi.appendOutput(`Member ${library}/${sourceFile}(${member}) was saved with truncated records!`);
           }
           return true;
         } else {
@@ -974,8 +973,11 @@ export default class IBMiContent {
     return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
   }
 
-  objectToToolTip(path: string, object: IBMiObject) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString content
+   */
+  objectToToolTip(path: string, object: IBMiObject): string {
+    return Tools.generateTooltipHtmlTable(path, {
       type: object.type,
       attribute: object.attribute,
       text: object.text,
@@ -985,42 +987,43 @@ export default class IBMiContent {
       created_by: object.created_by,
       owner: object.owner,
       iasp: object.asp
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    });
   }
 
-  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString content
+   */
+  async sourcePhysicalFileToToolTip(path: string, object: IBMiObject): Promise<string> {
+    return Tools.generateTooltipHtmlTable(path, {
       text: object.text,
       members: await this.countMembers(object),
       length: object.sourceLength,
       CCSID: (await this.getAttributes(object, "CCSID"))?.CCSID || '?',
       iasp: object.asp
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    });
   }
 
-  memberToToolTip(path: string, member: IBMiMember) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString content
+   */
+  memberToToolTip(path: string, member: IBMiMember): string {
+    return Tools.generateTooltipHtmlTable(path, {
       text: member.text,
       lines: member.lines,
       created: member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
       changed: member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    });
   }
 
-  ifsFileToToolTip(path: string, ifsFile: IFSFile) {
-    const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
+  /**
+   * Returns MarkdownString content
+   */
+  ifsFileToToolTip(path: string, ifsFile: IFSFile): string {
+    return Tools.generateTooltipHtmlTable(path, {
       size: ifsFile.size,
       modified: ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
       owner: ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
-    }));
-    tooltip.supportHtml = true;
-    return tooltip;
+    })
   }
 
   /**
