@@ -3,7 +3,7 @@ import { Tools } from './api/Tools';
 import path from 'path';
 import * as vscode from "vscode";
 import { CompileTools } from './api/CompileTools';
-import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, setConfigurationSource } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
@@ -18,6 +18,7 @@ import { Action, BrowserItem, ConnectionData, DeploymentMethod, MemberItem, Open
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 import IBMi, { ConnectionErrorType, ConnectionResult } from './api/IBMi';
+import { getVscodeConfiguration } from './api/Configuration/vscode';
 
 export let instance: Instance;
 
@@ -41,6 +42,15 @@ connectedBarItem.command = {
 };
 
 let selectedForCompare: vscode.Uri;
+
+export function onCodeForIBMiConfigurationChange<T>(props: string | string[], todo: (value: vscode.ConfigurationChangeEvent) => void) {
+  const keys = (Array.isArray(props) ? props : Array.of(props)).map(key => `code-for-ibmi.${key}`);
+  return vscode.workspace.onDidChangeConfiguration(async event => {
+    if (keys.some(key => event.affectsConfiguration(key))) {
+      todo(event);
+    }
+  })
+}
 
 export function connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []) {
   return Tools.withContext("code-for-ibmi:connecting", async (): Promise<ConnectionResult> => {

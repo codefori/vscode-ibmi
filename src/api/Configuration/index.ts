@@ -1,22 +1,19 @@
-import os from "os";
 import * as vscode from 'vscode';
-import { ConnectionData, DeploymentMethod } from '../typings';
-import { FilterType } from './Filter';
+import os from "os";
+import { ConnectionData, DeploymentMethod } from '../../typings';
+import { FilterType } from '../Filter';
 
 export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";
 
-const getConfiguration = (): vscode.WorkspaceConfiguration => {
-  return vscode.workspace.getConfiguration(`code-for-ibmi`);
+let configuration: vscode.WorkspaceConfiguration;
+
+export function setConfigurationSource(config: vscode.WorkspaceConfiguration) {
+  configuration = config;
 }
 
-export function onCodeForIBMiConfigurationChange<T>(props: string | string[], todo: (value: vscode.ConfigurationChangeEvent) => void) {
-  const keys = (Array.isArray(props) ? props : Array.of(props)).map(key => `code-for-ibmi.${key}`);
-  return vscode.workspace.onDidChangeConfiguration(async event => {
-    if (keys.some(key => event.affectsConfiguration(key))) {
-      todo(event);
-    }
-  })
+function getConfiguration() {
+  return configuration;
 }
 
 export namespace GlobalConfiguration {

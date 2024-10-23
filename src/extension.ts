@@ -5,10 +5,10 @@ import { ExtensionContext, commands, languages, window, workspace } from "vscode
 // your extension is activated the very first time the command is executed
 
 import { CustomUI } from "./api/CustomUI";
-import { connect, instance, loadAllofExtension } from './instantiate';
+import { connect, instance, loadAllofExtension, onCodeForIBMiConfigurationChange } from './instantiate';
 
 import { CompileTools } from "./api/CompileTools";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, setConfigurationSource } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
@@ -35,11 +35,14 @@ import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
+import { getVscodeConfiguration } from "./api/Configuration/vscode";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
+
+  setConfigurationSource(getVscodeConfiguration());
 
   await loadAllofExtension(context);
   const updateLastConnectionAndServerCache = () => {
