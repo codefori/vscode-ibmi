@@ -1,11 +1,10 @@
 
 import path from 'path';
-import vscode, { CustomExecution, EventEmitter, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
+import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
-import { Action, BrowserItem, CommandResult, DeploymentMethod, RemoteCommand, StandardIO } from '../typings';
+import { Action, BrowserItem, DeploymentMethod, RemoteCommand, StandardIO, Variable } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import { CustomUI } from './CustomUI';
-import IBMi from './IBMi';
 import Instance from './Instance';
 import * as Tools from './tools';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
@@ -13,16 +12,11 @@ import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from './local/env';
 import { getGitBranch } from './local/git';
+import EventEmitter from 'events';
 
 const NEWLINE = `\r\n`;
 
-export interface ILELibrarySettings {
-  currentLibrary: string;
-  libraryList: string[];
-}
-
 export namespace CompileTools {
-  type Variable = Record<string, string>;
 
   interface CommandObject {
     object: string
@@ -37,45 +31,6 @@ export namespace CompileTools {
     context.subscriptions.push(
       ...registerDiagnostics()
     );
-  }
-
-  function expandVariables(variables: Variable) {
-    for (const key in variables) {
-      for (const key2 in variables) {
-        if (key !== key2) { // Do not expand one self
-          variables[key] = variables[key].replace(new RegExp(key2, `g`), variables[key2]);
-        }
-      }
-    }
-  }
-
-  function expandCommand(inputValue: string, variables: Variable, currentVar?: string) {
-    for (const key in variables) {
-      if (variables[key]) {
-        inputValue = inputValue.replace(new RegExp(key, `g`), variables[key]);
-      }
-    };
-
-    return inputValue;
-  }
-
-  function applyDefaultVariables(connection: IBMi, variables: Variable) {
-    const config = connection.config;
-    if (connection && config) {
-      variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
-      if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
-      if (!variables[`\\*CURLIB`]) variables[`\\*CURLIB`] = config.currentLibrary;
-      variables[`&USERNAME`] = connection.currentUser;
-      variables[`{usrprf}`] = connection.currentUser;
-      variables[`&HOST`] = connection.currentHost;
-      variables[`{host}`] = connection.currentHost;
-      variables[`&HOME`] = config.homeDirectory;
-      variables[`&WORKDIR`] = config.homeDirectory;
-
-      for (const variable of config.customVariables) {
-        variables[`&${variable.name.toUpperCase()}`] = variable.value;
-      }
-    }
   }
 
   export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
@@ -318,21 +273,29 @@ export namespace CompileTools {
               runOptions: {},
               group: TaskGroup.Build,
               execution: new CustomExecution(async (e) => {
-                const writeEmitter = new vscode.EventEmitter<string>();
-                const closeEmitter = new vscode.EventEmitter<number>();
+                const eventHandler = new EventEmitter();
 
-                writeEmitter.event(s => outputBuffer.push(s));
-                closeEmitter.event(resolve);
+                eventHandler.on(`message`, (message: string) => e.stdout.write(message));
+                eventHandler.on(`exit`, (code: number) => resolve(code));
 
                 const term: Pseudoterminal = {
-                  onDidWrite: writeEmitter.event,
-                  onDidClose: closeEmitter.event,
+                  onDidWrite: (callback) => {
+                    eventHandler.on(`message`, callback);
+                    return {
+                      dispose: () => eventHandler.off(`message`, callback)
+                    };
+                  },
+                  onDidClose: () => {
+                    return {
+                      dispose: () => { eventHandler.removeAllListeners(); }
+                    }
+                  },
                   open: async (initialDimensions: vscode.TerminalDimensions | undefined) => {
                     let successful = false;
                     let problemsFetched = false;
 
                     try {
-                      writeEmitter.fire(`Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + NEWLINE);
+                      eventHandler.emit(`message`, `Running Action: ${chosenAction.name} (${new Date().toLocaleTimeString()})` + NEWLINE);
 
                       // If &SRCFILE is set, we need to copy the file to a temporary source file from the IFS
                       if (variables[`&FULLPATH`] && variables[`&SRCFILE`] && evfeventInfo.object) {
@@ -352,24 +315,24 @@ export namespace CompileTools {
                         });
  
                         // We don't care if this fails. Usually it's because the source file already exists.
-                        await runCommand(connection, {command: createSourceFile, environment: `ile`, noLibList: true});
+                        await connection.runCommand({command: createSourceFile, environment: `ile`, noLibList: true});
 
                         // Attempt to copy to member
-                        const copyResult = await runCommand(connection, {command: copyFromStreamfile, environment: `ile`, noLibList: true});
+                        const copyResult = await connection.runCommand({command: copyFromStreamfile, environment: `ile`, noLibList: true});
 
                         if (copyResult.code !== 0) {
-                          writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
-                          closeEmitter.fire(copyResult.code || 1);
+                          eventHandler.emit(`message`, `Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
+                          eventHandler.emit(`exit`, copyResult.code || 1);
                         }
                       }
 
-                      const commandResult = await runCommand(connection, {
+                      const commandResult = await connection.runCommand({
                         title: chosenAction.name,
                         environment,
                         command: chosenAction.command,
                         cwd: remoteCwd,
                         env: variables,
-                      }, writeEmitter);
+                      }, eventHandler);
 
                       const useLocalEvfevent = 
                         fromWorkspace && chosenAction.postDownload && 
@@ -387,19 +350,19 @@ export namespace CompileTools {
                         actionName = (isIleCommand && possibleObject ? `${chosenAction.name} for ${evfeventInfo.library}/${evfeventInfo.object}` : actionName);
                         successful = (commandResult.code === 0 || commandResult.code === null);
 
-                        writeEmitter.fire(NEWLINE);
+                        eventHandler.emit(`message`, NEWLINE);
 
                         if (useLocalEvfevent) {
-                          writeEmitter.fire(`Fetching errors from .evfevent.${NEWLINE}`);
+                          eventHandler.emit(`message`, `Fetching errors from .evfevent.${NEWLINE}`);
 
                         }
                         else if (evfeventInfo.object && evfeventInfo.library) {
                           if (chosenAction.command.includes(`*EVENTF`)) {
-                            writeEmitter.fire(`Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
+                            eventHandler.emit(`message`, `Fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                             refreshDiagnosticsFromServer(instance, evfeventInfo);
                             problemsFetched = true;
                           } else {
-                            writeEmitter.fire(`*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
+                            eventHandler.emit(`message`, `*EVENTF not found in command string. Not fetching errors for ${evfeventInfo.library}/${evfeventInfo.object}.` + NEWLINE);
                           }
                         }
                       }
@@ -454,7 +417,7 @@ export namespace CompileTools {
                               catch (error) {
                                 vscode.window.showWarningMessage(`Failed to create download path ${downloadPath}: ${error}`);
                                 console.log(error);
-                                closeEmitter.fire(1);
+                                eventHandler.emit(`exit`, 1);
                               }
                             }
                           }
@@ -473,7 +436,7 @@ export namespace CompileTools {
                           await Promise.all(downloads)
                             .then(async result => {
                               // Done!
-                              writeEmitter.fire(`Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
+                              eventHandler.emit(`message`, `Downloaded files as part of Action: ${chosenAction.postDownload!.join(`, `)}\n`);
 
                               // Process locally downloaded evfevent files:
                               if (useLocalEvfevent) {
@@ -483,8 +446,8 @@ export namespace CompileTools {
                             })
                             .catch(error => {
                               vscode.window.showErrorMessage(`Failed to download files as part of Action.`);
-                              writeEmitter.fire(`Failed to download a file after Action: ${error.message}\n`);
-                              closeEmitter.fire(1);
+                              eventHandler.emit(`message`, `Failed to download a file after Action: ${error.message}\n`);
+                              eventHandler.emit(`exit`, 1);
                             });
                         }
                       }
@@ -494,12 +457,12 @@ export namespace CompileTools {
                       }
 
                     } catch (e) {
-                      writeEmitter.fire(`${e}\n`);
+                      eventHandler.emit(`message`, `${e}\n`);
                       vscode.window.showErrorMessage(`Action ${chosenAction} for ${evfeventInfo.library}/${evfeventInfo.object} failed. (internal error).`);
-                      closeEmitter.fire(1);
+                      eventHandler.emit(`exit`, 1);
                     }
 
-                    closeEmitter.fire(successful ? 0 : 1);
+                    eventHandler.emit(`exit`, successful ? 0 : 1);
                   },
                   close: function (): void { }
                 };
@@ -574,135 +537,6 @@ export namespace CompileTools {
     else {
       throw new Error("Please connect to an IBM i first")
     }
-  }
-
-  /**
-   * Execute a command
-   */
-  export async function runCommand(connection: IBMi, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult> {
-    const config = connection.config;
-    if (config && connection) {
-      const cwd = options.cwd;
-      const variables = options.env || {};
-
-      applyDefaultVariables(connection, variables);
-      expandVariables(variables);
-
-      const ileSetup: ILELibrarySettings = {
-        currentLibrary: variables[`&CURLIB`] || config.currentLibrary,
-        libraryList: variables[`&LIBL`]?.split(` `) || config.libraryList,
-      };
-      // Remove any duplicates from the library list
-      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
-
-      const libraryList = buildLibraryList(ileSetup);
-      variables[`&LIBLS`] = libraryList.join(` `);
-
-      let commandString = expandCommand(
-        options.command,
-        variables
-      );
-
-      if (commandString) {
-        const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
-        const promptedCommands = [];
-        for (let command of commands) {
-          if (command.startsWith(`?`)) {
-            command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
-          } else {
-            command = await showCustomInputs(`Run Command`, command, options.title || `Command`);
-          }
-          promptedCommands.push(command);
-          if (!command) break;
-        }
-        commandString = !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
-      }
-
-      if (commandString) {
-        const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
-
-        if (writeEvent) {
-          if (options.environment === `ile` && !options.noLibList) {
-            writeEvent.fire(`Current library: ` + ileSetup.currentLibrary + NEWLINE);
-            writeEvent.fire(`Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
-          }
-          if (options.cwd) {
-            writeEvent.fire(`Working directory: ` + options.cwd + NEWLINE);
-          }
-          writeEvent.fire(`Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
-        }
-
-        const callbacks: StandardIO = writeEvent ? {
-          onStdout: (data) => {
-            writeEvent.fire(data.toString().replaceAll(`\n`, NEWLINE));
-          },
-          onStderr: (data) => {
-            writeEvent.fire(data.toString().replaceAll(`\n`, NEWLINE));
-          }
-        } : {};
-
-        let commandResult;
-        switch (options.environment) {
-          case `pase`:
-            // We build environment variables for the environment to be ready
-            const paseVars: Variable = {};
-
-            // Append any variables passed into the API
-            Object.entries(variables).forEach(([key, value]) => {
-              if ((/^[A-Za-z\&]/i).test(key)) {
-                paseVars[key.startsWith('&') ? key.substring(1) : key] = value;
-              }
-            });
-
-            commandResult = await connection.sendCommand({
-              command: commands.join(` && `),
-              directory: cwd,
-              env: paseVars,
-              ...callbacks
-            });
-            break;
-
-          case `qsh`:
-            commandResult = await connection.sendQsh({
-              command: [
-                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands,
-              ].join(` && `),
-              directory: cwd,
-              ...callbacks
-            });
-            break;
-
-          case `ile`:
-          default:
-            // escape $ and # in commands
-            commandResult = await connection.sendQsh({
-              command: [
-                ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
-                ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"`}`,
-                )
-              ].join(` && `),
-              directory: cwd,
-              ...callbacks
-            });
-            break;
-        }
-
-        commandResult.command = commandString;
-        return commandResult;
-      }
-    }
-    else {
-      throw new Error("Please connect to an IBM i");
-    }
-
-    return {
-      code: 1,
-      command: options.command,
-      stdout: ``,
-      stderr: `Command execution failed. (Internal)`,
-    };
   }
 
   /**
@@ -804,18 +638,5 @@ export namespace CompileTools {
         }
       }
     }
-  }
-
-  function buildLibraryList(config: ILELibrarySettings): string[] {
-    //We have to reverse it because `liblist -a` adds the next item to the top always 
-    return config.libraryList.slice(0).reverse();
-  }
-
-  function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
-    return [
-      `liblist -d ${Tools.sanitizeLibraryNames(connection.defaultUserLibraries).join(` `)}`,
-      `liblist -c ${Tools.sanitizeLibraryNames([config.currentLibrary])}`,
-      `liblist -a ${Tools.sanitizeLibraryNames(buildLibraryList(config)).join(` `)}`
-    ];
   }
 }

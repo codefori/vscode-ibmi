@@ -16,6 +16,13 @@ export interface CodeForIBMi {
   componentRegistry: ComponentRegistry
 }
 
+export interface ILELibrarySettings {
+  currentLibrary: string;
+  libraryList: string[];
+}
+
+export type Variable = Record<string, string>;
+
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
 export interface DeploymentParameters {

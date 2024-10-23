@@ -6,8 +6,7 @@ import path, { parse as parsePath } from 'path';
 import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { ComponentManager } from "../components/manager";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
-import { CompileTools } from "./CompileTools";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, ILELibrarySettings, RemoteCommand, SpecialAuthorities, StandardIO, Variable, WrapResult } from "../typings";
 import { ConnectionConfiguration } from "./Configuration";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
@@ -15,6 +14,9 @@ import * as Tools from './tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import EventEmitter from 'events';
+
+const NEWLINE = `\r\n`;
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -842,8 +844,131 @@ export default class IBMi {
    *   but `&LIBL` and `&CURLIB` can be passed in the property
    *   `env` to customise them.
    */
-  runCommand(data: RemoteCommand) {
-    return CompileTools.runCommand(this, data);
+  async runCommand(options: RemoteCommand, writeEvent?: EventEmitter): Promise<CommandResult> {
+    if (this.config) {
+      const config = this.config;
+      const cwd = options.cwd;
+      const variables = options.env || {};
+
+      applyDefaultVariables(this, variables);
+      expandVariables(variables);
+
+      const ileSetup: ILELibrarySettings = {
+        currentLibrary: variables[`&CURLIB`] || config.currentLibrary,
+        libraryList: variables[`&LIBL`]?.split(` `) || config.libraryList,
+      };
+      // Remove any duplicates from the library list
+      ileSetup.libraryList = ileSetup.libraryList.filter(Tools.distinct);
+
+      const libraryList = buildLibraryList(ileSetup);
+      variables[`&LIBLS`] = libraryList.join(` `);
+
+      let commandString = expandCommand(
+        options.command,
+        variables
+      );
+
+      if (commandString) {
+        const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+        const promptedCommands = [];
+        for (let command of commands) {
+          // TODO: ???
+          // if (command.startsWith(`?`)) {
+          //   command = await vscode.window.showInputBox({ prompt: `Run Command`, value: command.substring(1) }) || '';
+          // } else {
+          //   command = await showCustomInputs(`Run Command`, command, options.title || `Command`);
+          // }
+          promptedCommands.push(command);
+          if (!command) break;
+        }
+        commandString = !promptedCommands.includes(``) ? promptedCommands.join(`\n`) : ``;
+      }
+
+      if (commandString) {
+        const commands = commandString.split(`\n`).filter(command => command.trim().length > 0);
+
+        if (writeEvent) {
+          if (options.environment === `ile` && !options.noLibList) {
+            writeEvent.emit(`message`, `Current library: ` + ileSetup.currentLibrary + NEWLINE);
+            writeEvent.emit(`message`, `Library list: ` + ileSetup.libraryList.join(` `) + NEWLINE);
+          }
+          if (options.cwd) {
+            writeEvent.emit(`message`, `Working directory: ` + options.cwd + NEWLINE);
+          }
+          writeEvent.emit(`message`, `Commands:\n${commands.map(command => `\t${command}\n`).join(``)}` + NEWLINE);
+        }
+
+        const callbacks: StandardIO = writeEvent ? {
+          onStdout: (data: Buffer) => {
+            writeEvent.emit(`message`, data.toString().replaceAll(`\n`, NEWLINE));
+          },
+          onStderr: (data: Buffer) => {
+            writeEvent.emit(`message`, data.toString().replaceAll(`\n`, NEWLINE));
+          }
+        } : {};
+
+        let commandResult;
+        switch (options.environment) {
+          case `pase`:
+            // We build environment variables for the environment to be ready
+            const paseVars: Variable = {};
+
+            // Append any variables passed into the API
+            Object.entries(variables).forEach(([key, value]) => {
+              if ((/^[A-Za-z\&]/i).test(key)) {
+                paseVars[key.startsWith('&') ? key.substring(1) : key] = value;
+              }
+            });
+
+            commandResult = await this.sendCommand({
+              command: commands.join(` && `),
+              directory: cwd,
+              env: paseVars,
+              ...callbacks
+            });
+            break;
+
+          case `qsh`:
+            commandResult = await this.sendQsh({
+              command: [
+                ...options.noLibList ? [] : buildLiblistCommands(this, ileSetup),
+                ...commands,
+              ].join(` && `),
+              directory: cwd,
+              ...callbacks
+            });
+            break;
+
+          case `ile`:
+          default:
+            // escape $ and # in commands
+            commandResult = await this.sendQsh({
+              command: [
+                ...options.noLibList ? [] : buildLiblistCommands(this, ileSetup),
+                ...commands.map(command =>
+                  `${`system "${command.replace(/[$]/g, `\\$&`)}"`}`,
+                )
+              ].join(` && `),
+              directory: cwd,
+              ...callbacks
+            });
+            break;
+        }
+
+        commandResult.command = commandString;
+        return commandResult;
+      }
+    }
+    else {
+      throw new Error("Please connect to an IBM i");
+    }
+
+    return {
+      code: 1,
+      command: options.command,
+      stdout: ``,
+      stderr: `Command execution failed. (Internal)`,
+    };
   }
 
   async sendQsh(options: CommandData) {
@@ -1263,5 +1388,59 @@ export default class IBMi {
     const userAuthorities = row?.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
     const missing = authorities.filter(auth => !userAuthorities.includes(auth));
     return { valid: !Boolean(missing.length), missing };
+  }
+}
+
+function buildLibraryList(config: ILELibrarySettings): string[] {
+  //We have to reverse it because `liblist -a` adds the next item to the top always 
+  return config.libraryList.slice(0).reverse();
+}
+
+function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
+  return [
+    `liblist -d ${Tools.sanitizeLibraryNames(connection.defaultUserLibraries).join(` `)}`,
+    `liblist -c ${Tools.sanitizeLibraryNames([config.currentLibrary])}`,
+    `liblist -a ${Tools.sanitizeLibraryNames(buildLibraryList(config)).join(` `)}`
+  ];
+}
+
+
+
+function expandVariables(variables: Variable) {
+  for (const key in variables) {
+    for (const key2 in variables) {
+      if (key !== key2) { // Do not expand one self
+        variables[key] = variables[key].replace(new RegExp(key2, `g`), variables[key2]);
+      }
+    }
+  }
+}
+
+function expandCommand(inputValue: string, variables: Variable, currentVar?: string) {
+  for (const key in variables) {
+    if (variables[key]) {
+      inputValue = inputValue.replace(new RegExp(key, `g`), variables[key]);
+    }
+  };
+
+  return inputValue;
+}
+
+function applyDefaultVariables(connection: IBMi, variables: Variable) {
+  const config = connection.config;
+  if (connection && config) {
+    variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
+    if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
+    if (!variables[`\\*CURLIB`]) variables[`\\*CURLIB`] = config.currentLibrary;
+    variables[`&USERNAME`] = connection.currentUser;
+    variables[`{usrprf}`] = connection.currentUser;
+    variables[`&HOST`] = connection.currentHost;
+    variables[`{host}`] = connection.currentHost;
+    variables[`&HOME`] = config.homeDirectory;
+    variables[`&WORKDIR`] = config.homeDirectory;
+
+    for (const variable of config.customVariables) {
+      variables[`&${variable.name.toUpperCase()}`] = variable.value;
+    }
   }
 }
