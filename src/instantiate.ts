@@ -48,8 +48,7 @@ export function connect(connectionObject: ConnectionData, reconnecting?: boolean
     try {
       return vscode.window.withProgress({
         location: vscode.ProgressLocation.Notification,
-        title: `Connecting`,
-        cancellable: true
+        title: `Connecting`
       }, async (progress, cancelToken): Promise<ConnectionResult> => {
 
         const updateProgress = (message: string) => progress.report({message});

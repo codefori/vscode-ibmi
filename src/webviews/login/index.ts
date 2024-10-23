@@ -2,7 +2,7 @@ import vscode, { ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
-import { disconnect, instance } from "../../instantiate";
+import { connect, disconnect, instance } from "../../instantiate";
 import { t } from "../../locale";
 import { ConnectionData } from '../../typings';
 
@@ -96,7 +96,7 @@ export class Login {
 
               if (data.password || data.privateKeyPath) {
                 try {
-                  const connected = await new IBMi().connect(data, false, false, toDoOnConnected);
+                  const connected = await connect(data, false, false, toDoOnConnected);
                   if (connected.success) {
                     if (newConnection) {
                       vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
@@ -172,7 +172,7 @@ export class Login {
       }
 
       try {
-        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings, toDoOnConnected);
+        const connected = await connect(connectionConfig, undefined, reloadServerSettings, toDoOnConnected);
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
