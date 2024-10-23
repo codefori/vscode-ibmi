@@ -1,46 +1,40 @@
 import vscode from "vscode";
-import { t } from "../../locale";
 
-type Item = {
-  name: string
-  description: string
-}
-
-const ITEMS = [
-  "BASENAME",
-  "BRANCH",
-  "BRANCHLIB",
-  "BUILDLIB",
-  "CURLIB",
-  "EXT",
-  "EXTL",
-  "FILEDIR",
-  "FULLPATH",
-  "HOST",
-  "LIBLC",
-  "LIBLS",
-  "LIBRARY",
-  "LOCALPATH",
-  "NAME",
-  "NAMEL",
-  "PARENT",
-  "RELATIVEPATH",
-  "USERNAME",
-  "WORKDIR",
-];
+const ITEMS = {
+  "BASENAME": vscode.l10n.t("Name of the file, including the extension"),
+  "BRANCH": vscode.l10n.t("Current Git branch"),
+  "BRANCHLIB": vscode.l10n.t("Branch library, based on the current branch"),
+  "BUILDLIB": vscode.l10n.t("The same as <code>&amp;CURLIB</code>"),
+  "CURLIB": vscode.l10n.t("Current library, changeable in Library List"),
+  "EXT": vscode.l10n.t("File type"),
+  "EXTL": vscode.l10n.t("Lowercase file type"),
+  "FILEDIR": vscode.l10n.t("Directory of the file on the remote system"),
+  "FULLPATH": vscode.l10n.t("Full path of the file on the remote system"),
+  "HOST": vscode.l10n.t("Hostname or IP address from the current connection"),
+  "LIBLC": vscode.l10n.t("Library list delimited by comma"),
+  "LIBLS": vscode.l10n.t("Library list delimited by space"),
+  "LIBRARY": vscode.l10n.t("Library name where the object lives (<code>&amp;LIBRARYL</code> for lowercase)"),
+  "LOCALPATH": vscode.l10n.t("Local source file path"),
+  "NAME": vscode.l10n.t("Name of the object (<code>&amp;NAMEL</code> for lowercase)"),
+  "NAMEL": vscode.l10n.t("Lowercase name of the object"),
+  "PARENT": vscode.l10n.t("Name of the parent directory or source file"),
+  "RELATIVEPATH": vscode.l10n.t("Relative path of the streamfile from the working directory or workspace"),
+  "USERNAME": vscode.l10n.t("Username for connection"),
+  "WORKDIR": vscode.l10n.t("Current working directory, changeable in IFS Browser"),
+};
 
 export class LocalActionCompletionItemProvider implements vscode.CompletionItemProvider {
   provideCompletionItems(document: vscode.TextDocument, position: vscode.Position, token: vscode.CancellationToken, context: vscode.CompletionContext) {
     //Only provide items if the cursor is on a "command" line
     if (/^\s*"command"\s*:/.test(document.lineAt(position.line).text)) {
-      return ITEMS.map(item => ({
-        label: item,
-        detail: t(`actions.${item}`).replaceAll(/<code>|<\/code>|&amp;/g, ""),
-        insertText: context.triggerCharacter ? undefined : `&${item}`,
+      return Object.entries(ITEMS).map(([variable, label]) => ({
+        label: variable,
+        detail: label.replaceAll(/<code>|<\/code>|&amp;/g, ""),
+        insertText: context.triggerCharacter ? undefined : `&${variable}`,
         kind: vscode.CompletionItemKind.Variable
       } as vscode.CompletionItem));
     }
-    else{
+    else {
       return [];
     }
   }
