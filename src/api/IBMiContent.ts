@@ -512,7 +512,7 @@ export default class IBMiContent {
         `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
         `  t.IASP_NUMBER       as IASP_NUMBER`,
         `from QSYS2.SYSTABLES as t`,
-        `where t.table_schema = '${americanLibrary}' and t.file_type = 'S'${objectNameLike()}`,
+        `where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary}' and t.FILE_TYPE = 'S'${objectNameLike()}`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
@@ -537,14 +537,14 @@ export default class IBMiContent {
       createOBJLIST = [
         `with SRCPF as (`,
         `  select `,
-        `    Replace(Replace(Replace(t.SYSTEM_TABLE_NAME, '${this.ibmi.variantChars.american[2]}','${this.ibmi.variantChars.local[2]}'), '${this.ibmi.variantChars.american[1]}', '${this.ibmi.variantChars.local[1]}'), '${this.ibmi.variantChars.american[0]}', '${this.ibmi.variantChars.local[0]}') as NAME,`,
+        `    replace(replace(replace(t.SYSTEM_TABLE_NAME, '${this.ibmi.variantChars.american[2]}','${this.ibmi.variantChars.local[2]}'), '${this.ibmi.variantChars.american[1]}', '${this.ibmi.variantChars.local[1]}'), '${this.ibmi.variantChars.american[0]}', '${this.ibmi.variantChars.local[0]}') as NAME,`,
         `    '*FILE'             as TYPE,`,
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
         `    1                   as IS_SOURCE,`,
         `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
-        `  where t.table_schema = '${americanLibrary}' and t.file_type = 'S'${objectNameLike()}`,
+        `  where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary}' and t.FILE_TYPE = 'S'${objectNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -626,29 +626,28 @@ export default class IBMiContent {
     const singleMemberExtension = memberExtensionFilter.noFilter && filter.extensions && !filter.extensions.includes(",") ? this.ibmi.upperCaseName(filter.extensions).replace(/[*]/g, `%`) : undefined;
 
     const statement =
-      `With MEMBERS As (
-        SELECT
-          rtrim(cast(a.system_table_schema as char(10) for bit data)) as LIBRARY,
-          b.avgrowsize as RECORD_LENGTH,
-          a.iasp_number as ASP,
-          rtrim(cast(a.system_table_name as char(10) for bit data)) AS SOURCE_FILE,
-          rtrim(cast(b.system_table_member as char(10) for bit data)) as NAME,
-          coalesce(rtrim(cast(b.source_type as varchar(10) for bit data)), '') as TYPE,
-          coalesce(rtrim(varchar(b.partition_text)), '') as TEXT,
+      `with MEMBERS as (
+        select
+          rtrim(cast(a.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,
+          b.AVGROWSIZE as RECORD_LENGTH,
+          a.IASP_NUMBER as ASP,
+          rtrim(cast(a.SYSTEM_TABLE_NAME as char(10) for bit data)) AS SOURCE_FILE,
+          rtrim(cast(b.SYSTEM_TABLE_MEMBER as char(10) for bit data)) as NAME,
+          coalesce(rtrim(cast(b.SOURCE_TYPE as varchar(10) for bit data)), '') as TYPE,
+          coalesce(rtrim(varchar(b.PARTITION_TEXT)), '') as TEXT,
           b.NUMBER_ROWS as LINES,
           extract(epoch from (b.CREATE_TIMESTAMP))*1000 as CREATED,
           extract(epoch from (b.LAST_SOURCE_UPDATE_TIMESTAMP))*1000 as CHANGED
-        FROM qsys2.systables AS a
-          JOIN qsys2.syspartitionstat AS b
-            ON b.table_schema = a.table_schema AND
-              b.table_name = a.table_name
+        from QSYS2.SYSTABLES as a
+          join QSYS2.SYSPARTITIONSTAT as b
+            on ( b.SYSTEM_TABLE_SCHEMA, b.SYSTEM_TABLE_NAME ) = ( a.SYSTEM_TABLE_SCHEMA, a.SYSTEM_TABLE_NAME )
       )
-      Select * From MEMBERS
-      Where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
-        ${sourceFile !== `*ALL` ? `And SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
-        ${singleMember ? `And NAME Like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
-        ${singleMemberExtension ? `And TYPE Like '${this.ibmi.sysNameInAmerican(singleMemberExtension)}'` : ''}
-      Order By ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
+      select * from MEMBERS
+      where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
+        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+        ${singleMember ? `and NAME like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
+        ${singleMemberExtension ? `and TYPE like '${this.ibmi.sysNameInAmerican(singleMemberExtension)}'` : ''}
+      order by ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
     const results = await this.ibmi.runSQL(statement);
     if (results.length) {
