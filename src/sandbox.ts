@@ -75,7 +75,7 @@ export async function registerUriHandler(context: ExtensionContext) {
                   } else {
                     window.showInformationMessage(l10n.t(`Failed to connect`), {
                       modal: true,
-                      detail: l10n.t("Failed to connect to {0} as {1}", server,  user)
+                      detail: l10n.t("Failed to connect to {0} as {1}", server, String(user))
                     });
                   }
 
