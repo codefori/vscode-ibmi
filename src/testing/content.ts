@@ -915,6 +915,36 @@ export const ContentSuite: TestSuite = {
           }
         }
       }
+    },
+    {
+      name: `Test long library name`, test: async () => {
+        const connection = instance.getConnection()!;
+        const content = instance.getContent()!;
+        const longName = Tools.makeid(18);
+        const shortName = Tools.makeid(8);
+        const createLib = await connection.runCommand({ command: `RUNSQL 'create schema "${longName}" for ${shortName}' commit(*none)`, noLibList: true });
+        if (createLib.code === 0) {
+          await connection!.runCommand({ command: `CRTSRCPF FILE(${shortName}/SFILE) MBR(MBR) TEXT('Test long library name')` });
+
+          const libraries = await content?.getLibraries({ library: `${shortName}` })
+          assert.strictEqual(libraries?.length, 1);
+
+          const objects = await content?.getObjectList({ library: `${shortName}`, types: [`*SRCPF`], object: `SFILE` });
+          assert.strictEqual(objects?.length, 1);
+          assert.strictEqual(objects[0].type, `*FILE`);
+          assert.strictEqual(objects[0].text, `Test long library name`);
+
+          const memberCount = await content.countMembers({ library: `${shortName}`, name: `SFILE` });
+          assert.strictEqual(memberCount, 1);
+          const members = await content?.getMemberList({ library: `${shortName}`, sourceFile: `SFILE` });
+
+          assert.strictEqual(members?.length, 1);
+
+          await connection.runCommand({ command: `RUNSQL 'drop schema "${longName}"' commit(*none)`, noLibList: true });
+        } else {
+          throw new Error(`Failed to create schema "${longName}"`);
+        }
+      }
     }
   ]
 };
