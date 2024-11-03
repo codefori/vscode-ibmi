@@ -520,7 +520,7 @@
 				},
 				"code-for-ibmi.autoReconnect": {
 					"type": "string",
-					"default": "always",
+					"default": "ask",
 					"enum": [
 						"ask",
 						"always",

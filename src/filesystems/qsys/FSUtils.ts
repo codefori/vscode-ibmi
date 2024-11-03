@@ -10,7 +10,7 @@ import { Tools } from "../../api/Tools";
  * @returns `true` if the user choses to reconnect, `false` otherwise.
  */
 export async function reconnectFS(uri: vscode.Uri) {
-  const reconnect = GlobalConfiguration.get<ReconnectMode>("autoReconnect");
+  const reconnect = GlobalConfiguration.get<ReconnectMode>("autoReconnect") || "ask";
   let doReconnect = false;
   switch (reconnect) {
     case "always":
