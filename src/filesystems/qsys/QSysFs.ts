@@ -197,8 +197,12 @@ export class QSysFS implements vscode.FileSystemProvider {
                 throw new FileSystemError("Not connected to IBM i");
             }
             else {
-                await reconnectFS(uri);
-                return this.readFile(uri, true);
+                if (await reconnectFS(uri)) {
+                    return this.readFile(uri, true);
+                }
+                else {
+                    return Buffer.alloc(0);
+                }
             }
         }
     }
