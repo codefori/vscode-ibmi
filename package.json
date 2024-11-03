@@ -531,7 +531,7 @@
 						"Always reconnect",
 						"Never reconnect"
 					],
-					"description": "The action to take when a source member is left opened when VS Code is closed and re-opened."
+					"description": "The action to take when a source member/streamfile is left opened when VS Code is closed and re-opened."
 				},
 				"code-for-ibmi.connections": {
 					"type": "array",
