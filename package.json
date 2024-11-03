@@ -518,6 +518,21 @@
 					"default": false,
 					"description": "If enabled, PASE terminals will open in the editor area as tabs instead of panels."
 				},
+				"code-for-ibmi.autoReconnect": {
+					"type": "string",
+					"default": "always",
+					"enum": [
+						"ask",
+						"always",
+						"never"
+					],
+					"enumDescriptions": [
+						"Show a choice notification",
+						"Always reconnect",
+						"Never reconnect"
+					],
+					"description": "The action to take when a source member is left opened when VS Code is closed and re-opened."
+				},
 				"code-for-ibmi.connections": {
 					"type": "array",
 					"items": {
