@@ -311,6 +311,7 @@
   "Private key updated and will be used for \"{0}\".": "Clé privée mise à jour et utilisée pour se connecter à \"{0}\".",
   "QShell": "QShell",
   "Recently used": "Utilisé récemment",
+  "Reconnect": "Se reconnecter",
   "Refresh": "Rafraîchissement",
   "Relative path of the streamfile from the working directory or workspace": "Chemin relatif du fichier de flux à partir du répertoire de travail ou de l'espace de travail",
   "Remote certificate not found": "Le certificat du service n\"existe pas",
