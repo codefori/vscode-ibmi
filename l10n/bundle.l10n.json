@@ -103,7 +103,7 @@
   "directory": "directory",
   "Directory of the file on the remote system": "Directory of the file on the remote system",
   "Do you want to copy or move the selection to {0}?": "Do you want to copy or move the selection to {0}?",
-  "Do you want to reconnect and open {0}?": "Do you want to reconnect and open {0}?",
+  "Do you want to reconnect to {0} and open {1}?": "Do you want to reconnect to {0} and open {1}?",
   "Download certificate": "Download certificate",
   "Download complete": "Download complete",
   "Download Logs": "Download Logs",

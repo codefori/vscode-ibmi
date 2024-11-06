@@ -1,5 +1,7 @@
+import path from "path";
 import vscode, { l10n } from "vscode";
 import { GlobalConfiguration, ReconnectMode } from "../../api/Configuration";
+import { GlobalStorage } from "../../api/Storage";
 import { Tools } from "../../api/Tools";
 
 /**
@@ -18,8 +20,11 @@ export async function reconnectFS(uri: vscode.Uri) {
       break;
 
     case "ask":
-      if (await vscode.window.showInformationMessage(l10n.t("Do you want to reconnect and open {0}?", uri.path.split('/').reverse()?.[0]), l10n.t("Reconnect"))) {
-        doReconnect = true;
+      const lastConnection = GlobalStorage.get().getLastConnections()?.at(0)?.name;
+      if (lastConnection) {
+        if (await vscode.window.showInformationMessage(l10n.t("Do you want to reconnect to {0} and open {1}?", lastConnection, path.basename(uri.path)), l10n.t("Reconnect"))) {
+          doReconnect = true;
+        }
       }
       break;
 
@@ -27,11 +32,11 @@ export async function reconnectFS(uri: vscode.Uri) {
   }
 
   if (doReconnect) {
-    await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);    
+    await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
     return true;
   }
   else {
-    for(const tab of Tools.findUriTabs(uri)){
+    for (const tab of Tools.findUriTabs(uri)) {
       await vscode.window.tabGroups.close(tab);
     }
     return false;

@@ -103,7 +103,7 @@
   "directory": "Répertoire",
   "Directory of the file on the remote system": "Répertoire du fichier sur le système distant",
   "Do you want to copy or move the selection to {0}?": "Voulez-vous déplacer ou copier la sélection vers {0}?",
-  "Do you want to reconnect and open {0}?": "Voulez-vous vous reconnecter et ouvrir {0}?",
+  "Do you want to reconnect to {0} and open {1}?": "Voulez-vous vous reconnecter et ouvrir {0}?",
   "Download certificate": "Télécharger le certificat",
   "Download complete": "Téléchargement terminé",
   "Download Logs": "Télécharger les logs",
