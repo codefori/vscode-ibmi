@@ -1,6 +1,7 @@
 import vscode, { FileSystemError, FileType } from "vscode";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
+import { reconnectFS } from "./qsys/FSUtils";
 import { getFilePermission } from "./qsys/QSysFs";
 
 export class IFSFS implements vscode.FileSystemProvider {
@@ -23,8 +24,12 @@ export class IFSFS implements vscode.FileSystemProvider {
         throw new FileSystemError("Not connected to IBM i");
       }
       else {
-        await vscode.commands.executeCommand(`code-for-ibmi.connectToPrevious`);
-        return this.readFile(uri, true);
+        if (await reconnectFS(uri)) {
+          return this.readFile(uri, true);
+        }
+        else {
+          return Buffer.alloc(0);
+        }
       }
     }
   }
