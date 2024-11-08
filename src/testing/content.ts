@@ -863,6 +863,7 @@ export const ContentSuite: TestSuite = {
             members.push(`TSTMBR${connection.variantChars.local}${i}`);
           }
           try {
+            await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
             const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
             if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
               //Not authorized: carry on, skip library name test
@@ -906,12 +907,12 @@ export const ContentSuite: TestSuite = {
             assert.ok(expectedMembers.every(member => members.find(m => m === member.name)));
           }
           finally {
-            if (!skipLibrary && await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
-              await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true })
-            }
-            if (skipLibrary && await content.checkObject({ library, name: sourceFile, type: "*FILE" })) {
-              await connection.runCommand({ command: `DLTF FILE(${library}/${sourceFile})`, noLibList: true })
-            }
+            // if (!skipLibrary && await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
+            //   await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true })
+            // }
+            // if (skipLibrary && await content.checkObject({ library, name: sourceFile, type: "*FILE" })) {
+            //   await connection.runCommand({ command: `DLTF FILE(${library}/${sourceFile})`, noLibList: true })
+            // }
           }
         }
       }

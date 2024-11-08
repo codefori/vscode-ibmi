@@ -490,7 +490,7 @@ export default class IBMiContent {
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
     const objectNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
-    const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
+    const objectName = () => objectFilter ? `, OBJECT_NAME => '${this.ibmi.sysNameInAmerican(objectFilter)}'` : '';
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
@@ -557,7 +557,7 @@ export default class IBMiContent {
         `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `    OBJOWNER          as OWNER,`,
         `    OBJDEFINER        as CREATED_BY`,
-        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${americanLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
         `  )`,
         `select`,
         `  o.NAME,`,
