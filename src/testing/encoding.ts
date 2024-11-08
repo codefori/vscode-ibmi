@@ -66,7 +66,7 @@ export const EncodingSuite: TestSuite = {
           const varChar = connection.variantChars.local[0];
           
           const testFile = `${varChar}SOURCES`;
-          const testMember = `THEMEMBER`;
+          const testMember = `${varChar}MEMBER`;
 
           const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
 
