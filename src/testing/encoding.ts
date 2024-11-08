@@ -70,14 +70,18 @@ export const EncodingSuite: TestSuite = {
 
           const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
 
-          const clProgram = [
-            `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(284)`,
-            `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`
-          ];
+          // const clProgram = [
+          //   `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(284)`,
+          //   `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`
+          // ];
 
-          const result = await runCommandsWithCCSID(connection, clProgram, ccsidData.userDefaultCCSID);
+          // const result = await runCommandsWithCCSID(connection, clProgram, ccsidData.userDefaultCCSID);
 
-          assert.strictEqual(result.code, 0);
+          const sourceFileCreate = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(284)`, noLibList: true });
+          assert.strictEqual(sourceFileCreate.code, 0);
+
+          const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
+          assert.strictEqual(addPf.code, 0);
 
           const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
           assert.ok(objects.length);
@@ -88,9 +92,10 @@ export const EncodingSuite: TestSuite = {
           assert.ok(members.some(m => m.name === testMember));
           assert.ok(members.some(m => m.file === testFile));
 
-          // TODO: update member contents with basic RPG program
+          await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
 
-          // TODO: attempt to compile program
+          const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
+          assert.strictEqual(compileResult.code, 0);
         }
       },
     },
