@@ -80,15 +80,17 @@ export const EncodingSuite: TestSuite = {
           assert.strictEqual(result.code, 0);
 
           const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
+          assert.ok(objects.length);
+          assert.ok(objects.some(obj => obj.name === testFile));
 
           const members = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile });
-
-          // TODO: add validations
-
-          // TODO: add
-
-          assert.ok(objects.length);
           assert.ok(members.length);
+          assert.ok(members.some(m => m.name === testMember));
+          assert.ok(members.some(m => m.file === testFile));
+
+          // TODO: update member contents with basic RPG program
+
+          // TODO: attempt to compile program
         }
       },
     },
