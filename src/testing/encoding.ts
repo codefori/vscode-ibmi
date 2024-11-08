@@ -55,7 +55,7 @@ export const EncodingSuite: TestSuite = {
   tests: [
     {
       name: `284: Ñ character in source file with QCCSID 65535`, test: async () => {
-        // CHGUSRPRF LIAMA CCSID(284) CNTRYID(ES) LANGID(ESP)
+        // CHGUSRPRF MERTEST CCSID(284) CNTRYID(ES) LANGID(ESP)
         const connection = instance.getConnection()!;
         const config = instance.getConfig()!;
 
@@ -68,8 +68,7 @@ export const EncodingSuite: TestSuite = {
           const testFile = `${varChar}SOURCES`;
           const testMember = `THEMEMBER`;
 
-          // const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
-          const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/#SOURCES)`, noLibList: true });
+          const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
 
           const clProgram = [
             `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(284)`,

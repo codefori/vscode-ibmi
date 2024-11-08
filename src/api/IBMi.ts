@@ -603,141 +603,6 @@ export default class IBMi {
             this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
           }
 
-          if (this.sqlRunnerAvailable()) {
-            //Temporary function to run SQL
-
-            // TODO: stop using this runSQL function and this.runSql
-            const runSQL = async (statement: string) => {
-              const output = await this.sendCommand({
-                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                stdin: statement
-              });
-
-              if (output.code === 0) {
-                return Tools.db2Parse(output.stdout);
-              }
-              else {
-                throw new Error(output.stdout);
-              }
-            };
-
-            // Check for ASP information?
-            if (quickConnect === true && cachedServerSettings?.aspInfo) {
-              this.aspInfo = cachedServerSettings.aspInfo;
-            } else {
-              progress.report({
-                message: `Checking for ASP information.`
-              });
-
-              //This is mostly a nice to have. We grab the ASP info so user's do
-              //not have to provide the ASP in the settings.
-              try {
-                const resultSet = await runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
-                resultSet.forEach(row => {
-                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                    this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
-                  }
-                });
-              } catch (e) {
-                //Oh well
-                progress.report({
-                  message: `Failed to get ASP information.`
-                });
-              }
-            }
-
-            // Fetch conversion values?
-            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
-              this.qccsid = cachedServerSettings.qccsid;
-              this.jobCcsid = cachedServerSettings.jobCcsid;
-              this.variantChars = cachedServerSettings.variantChars;
-              this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
-            } else {
-              progress.report({
-                message: `Fetching conversion values.`
-              });
-
-              // Next, we're going to see if we can get the CCSID from the user or the system.
-              // Some things don't work without it!!!
-              try {
-
-                // we need to grab the system CCSID (QCCSID)
-                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-                }
-
-                // we grab the users default CCSID
-                const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                  this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
-                }
-
-                // if the job ccsid is *SYSVAL, then assign it to sysval
-                if (this.jobCcsid === CCSID_SYSVAL) {
-                  this.jobCcsid = this.qccsid;
-                }
-
-                // Let's also get the user's default CCSID
-                try {
-                  const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
-                  this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
-                }
-                catch (error) {
-                  const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
-                    .stdout
-                    .split("\n")
-                    .filter(line => line.includes("DFTCCSID"));
-
-                  const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
-                  if (defaultCCSCID && !isNaN(defaultCCSCID)) {
-                    this.userDefaultCCSID = defaultCCSCID;
-                  }
-                }
-
-                progress.report({
-                  message: `Fetching local encoding values.`
-                });
-
-                const [variants] = await runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-                  + `  values ( cast( x'7B' as varchar(1) )`
-                  + `         , cast( x'7C' as varchar(1) )`
-                  + `         , cast( x'5B' as varchar(1) ) )`
-                  + `)`
-                  + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
-
-                if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
-                  this.variantChars.local = variants.LOCAL;
-                }
-              } catch (e) {
-                // Oh well!
-                console.log(e);
-              }
-            }
-          } else {
-            // Disable it if it's not found
-            if (this.enableSQL) {
-              progress.report({
-                message: `SQL program not installed. Disabling SQL.`
-              });
-            }
-          }
-
-          if (!this.enableSQL) {
-            const encoding = this.getEncoding();
-            // Show a message if the system CCSID is bad
-            const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
-
-            // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
-            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
-
-            vscode.window.showErrorMessage([
-              ccsidMessage,
-              encodingMessage,
-              `Using fallback methods to access the IBM i file systems.`
-            ].filter(x => x).join(` `));
-          }
-
           // give user option to set bash as default shell.
           if (this.remoteFeatures[`bash`]) {
             try {
@@ -946,6 +811,141 @@ export default class IBMi {
 
           progress.report({ message: `Checking Code for IBM i components.` });
           await this.componentManager.startup();
+
+          if (this.sqlRunnerAvailable()) {
+            //Temporary function to run SQL
+
+            // TODO: stop using this runSQL function and this.runSql
+            // const runSQL = async (statement: string) => {
+            //   const output = await this.sendCommand({
+            //     command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
+            //     stdin: statement
+            //   });
+
+            //   if (output.code === 0) {
+            //     return Tools.db2Parse(output.stdout);
+            //   }
+            //   else {
+            //     throw new Error(output.stdout);
+            //   }
+            // };
+
+            // Check for ASP information?
+            if (quickConnect === true && cachedServerSettings?.aspInfo) {
+              this.aspInfo = cachedServerSettings.aspInfo;
+            } else {
+              progress.report({
+                message: `Checking for ASP information.`
+              });
+
+              //This is mostly a nice to have. We grab the ASP info so user's do
+              //not have to provide the ASP in the settings.
+              try {
+                const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+                resultSet.forEach(row => {
+                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                    this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+                  }
+                });
+              } catch (e) {
+                //Oh well
+                progress.report({
+                  message: `Failed to get ASP information.`
+                });
+              }
+            }
+
+            // Fetch conversion values?
+            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+              this.qccsid = cachedServerSettings.qccsid;
+              this.jobCcsid = cachedServerSettings.jobCcsid;
+              this.variantChars = cachedServerSettings.variantChars;
+              this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
+            } else {
+              progress.report({
+                message: `Fetching conversion values.`
+              });
+
+              // Next, we're going to see if we can get the CCSID from the user or the system.
+              // Some things don't work without it!!!
+              try {
+
+                // we need to grab the system CCSID (QCCSID)
+                const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
+                }
+
+                // we grab the users default CCSID
+                const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+                  this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
+                }
+
+                // if the job ccsid is *SYSVAL, then assign it to sysval
+                if (this.jobCcsid === CCSID_SYSVAL) {
+                  this.jobCcsid = this.qccsid;
+                }
+
+                // Let's also get the user's default CCSID
+                try {
+                  const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+                  this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
+                }
+                catch (error) {
+                  const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
+                    .stdout
+                    .split("\n")
+                    .filter(line => line.includes("DFTCCSID"));
+
+                  const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
+                  if (defaultCCSCID && !isNaN(defaultCCSCID)) {
+                    this.userDefaultCCSID = defaultCCSCID;
+                  }
+                }
+
+                progress.report({
+                  message: `Fetching local encoding values.`
+                });
+
+                const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+                  + `  values ( cast( x'7B' as varchar(1) )`
+                  + `         , cast( x'7C' as varchar(1) )`
+                  + `         , cast( x'5B' as varchar(1) ) )`
+                  + `)`
+                  + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+
+                if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+                  this.variantChars.local = variants.LOCAL;
+                }
+              } catch (e) {
+                // Oh well!
+                console.log(e);
+              }
+            }
+          } else {
+            // Disable it if it's not found
+            if (this.enableSQL) {
+              progress.report({
+                message: `SQL program not installed. Disabling SQL.`
+              });
+            }
+          }
+
+          if (!this.enableSQL) {
+            const encoding = this.getEncoding();
+            // Show a message if the system CCSID is bad
+            const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
+
+            // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
+            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
+
+            vscode.window.showErrorMessage([
+              ccsidMessage,
+              encodingMessage,
+              `Using fallback methods to access the IBM i file systems.`
+            ].filter(x => x).join(` `));
+          }
 
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
