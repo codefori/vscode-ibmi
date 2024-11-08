@@ -22,29 +22,6 @@ const contents = {
 
 const rtlEncodings = [`420`];
 
-async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid: number) {
-  const testPgmSrcFile = `TESTING`;
-  const config = connection.config!;
-
-  const tempLib = config.tempLibrary;
-  const testPgmName = `T${commands.length}${ccsid}`;
-  const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
-
-  await connection.content.uploadMemberContent(undefined, tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
-
-  const compileCommand = `CRTBNDCL PGM(${tempLib}/${testPgmName}) SRCFILE(${tempLib}/${testPgmSrcFile}) SRCMBR(${testPgmName}) REPLACE(*YES)`;
-  const compileResult = await connection.runCommand({ command: compileCommand, noLibList: true });
-
-  if (compileResult.code !== 0) {
-    return compileResult;
-  }
-
-  const callCommand = `CALL ${tempLib}/${testPgmName}`;
-  const result = await connection.runCommand({ command: callCommand, noLibList: true });
-
-  return result;
-}
-
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
@@ -69,13 +46,6 @@ export const EncodingSuite: TestSuite = {
           const testMember = `${varChar}MEMBER`;
 
           const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
-
-          // const clProgram = [
-          //   `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(284)`,
-          //   `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`
-          // ];
-
-          // const result = await runCommandsWithCCSID(connection, clProgram, ccsidData.userDefaultCCSID);
 
           const sourceFileCreate = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(284)`, noLibList: true });
           assert.strictEqual(sourceFileCreate.code, 0);
