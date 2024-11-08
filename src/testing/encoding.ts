@@ -61,9 +61,11 @@ export const EncodingSuite: TestSuite = {
 
         const ccsidData = connection.getCcsids()!;
 
-        if (ccsidData.qccsid === 65535 && ccsidData.userDefaultCCSID === 284) { //TODO: add a check for the CCSID of the user profile for this test
+        if (ccsidData.qccsid === 65535 && ccsidData.userDefaultCCSID !== 37) {
           const tempLib = config.tempLibrary;
-          const testFile = `ÑSOURCES`;
+          const varChar = connection.variantChars.local[0];
+          
+          const testFile = `${varChar}SOURCES`;
           const testMember = `THEMEMBER`;
 
           // const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
@@ -74,7 +76,7 @@ export const EncodingSuite: TestSuite = {
             `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`
           ];
 
-          const result = await runCommandsWithCCSID(connection, clProgram, 284);
+          const result = await runCommandsWithCCSID(connection, clProgram, ccsidData.userDefaultCCSID);
 
           assert.strictEqual(result.code, 0);
 
