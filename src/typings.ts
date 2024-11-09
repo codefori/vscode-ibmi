@@ -16,6 +16,13 @@ export interface CodeForIBMi {
   componentRegistry: ComponentRegistry
 }
 
+export interface AspInfo {
+  id: number;
+  name: string;
+  type: string;
+  rdbName: string;
+}
+
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 
 export interface DeploymentParameters {

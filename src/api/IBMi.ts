@@ -8,7 +8,7 @@ import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { ComponentManager } from "../components/manager";
 import { instance } from "../instantiate";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
+import { AspInfo, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { ConnectionConfiguration } from "./Configuration";
 import IBMiContent from "./IBMiContent";
@@ -71,7 +71,8 @@ export default class IBMi {
    * Their names usually maps up to a directory in
    * the root of the IFS, thus why we store it.
    */
-  aspInfo: { [id: number]: string } = {};
+  private iAspInfo: AspInfo[] = [];
+  private currentAsp: string|undefined;
   remoteFeatures: { [name: string]: string | undefined };
   variantChars: { american: string, local: string };
 
@@ -622,11 +623,11 @@ export default class IBMi {
             };
 
             // Check for ASP information?
-            if (quickConnect === true && cachedServerSettings?.aspInfo) {
-              this.aspInfo = cachedServerSettings.aspInfo;
+            if (quickConnect === true && cachedServerSettings?.iAspInfo) {
+              this.iAspInfo = cachedServerSettings.iAspInfo;
             } else {
               progress.report({
-                message: `Checking for ASP information.`
+                message: `Checking for iASP information.`
               });
 
               //This is mostly a nice to have. We grab the ASP info so user's do
@@ -634,8 +635,14 @@ export default class IBMi {
               try {
                 const resultSet = await runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
                 resultSet.forEach(row => {
+                  // Does not ever include SYSBAS/SYSTEM, only iASPs
                   if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                    this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+                    this.iAspInfo[Number(row.ASP_NUMBER)] = {
+                      id: Number(row.ASP_NUMBER),
+                      name: String(row.DEVICE_DESCRIPTION_NAME),
+                      type: String(row.ASP_TYPE),
+                      rdbName: String(row.RDB_NAME)
+                    };
                   }
                 });
               } catch (e) {
@@ -643,6 +650,22 @@ export default class IBMi {
                 progress.report({
                   message: `Failed to get ASP information.`
                 });
+              }
+            }
+
+            progress.report({
+              message: `Fetching current iASP information.`
+            });
+
+            const [currentRdb] = await runSQL(`values current_server`);
+
+            if (currentRdb) {
+              const key = Object.keys(currentRdb)[0];
+              const rdbName = currentRdb[key];
+              const currentAsp = this.iAspInfo.find(asp => asp.rdbName === rdbName);
+
+              if (currentAsp) {
+                this.currentAsp = currentAsp.name;
               }
             }
 
@@ -958,7 +981,7 @@ export default class IBMi {
           instance.fire(`connected`);
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
-            aspInfo: this.aspInfo,
+            iAspInfo: this.iAspInfo,
             qccsid: this.qccsid,
             jobCcsid: this.jobCcsid,
             remoteFeatures: this.remoteFeatures,
@@ -1175,6 +1198,27 @@ export default class IBMi {
 
   public sqlRunnerAvailable() {
     return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
+  }
+
+  getAllIAsps() {
+    return this.iAspInfo;
+  }
+
+  getIAspName(by: string|number): string|undefined {
+    let asp: AspInfo|undefined;
+    if (typeof by === 'string') {
+      asp = this.iAspInfo.find(asp => asp.name === by);
+    } else {
+      asp = this.iAspInfo.find(asp => asp.id === by);
+    }
+
+    if (asp) {
+      return asp.name;
+    }
+  }
+
+  getCurrentIAspName() {
+    return this.currentAsp;
   }
 
   /**
