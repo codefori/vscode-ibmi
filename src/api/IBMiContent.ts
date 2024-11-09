@@ -958,10 +958,18 @@ export default class IBMiContent {
     return cl;
   }
 
-  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {    
-    const target = Tools.escapePath(path = typeof path === 'string' ? path : this.ibmi.sysNameInAmerican(Tools.qualifyPath(path.library, path.name, path.member, path.asp)));
+  async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
+    if (typeof path === 'object') {
+      path.asp = path.asp ? this.ibmi.sysNameInAmerican(path.asp) : undefined;
+      path.library = this.ibmi.sysNameInAmerican(path.library);
+      path.name = this.ibmi.sysNameInAmerican(path.name);
+      path.member = path.member ? this.ibmi.sysNameInAmerican(path.member) : undefined;
+    }
 
-    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
+    const target = path = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(path.library, path.name, path.member, path.asp, true);
+
+    // Without `env` being set here, variants are not able to be found. It's a bug with sendCommand(?)
+    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`, env: {random: "hi"} });
     if (result.code === 0) {
       return result.stdout
         .split('\n')
