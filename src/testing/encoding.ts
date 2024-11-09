@@ -5,7 +5,7 @@ import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
-import { CommandResult } from "../typings";
+import { CommandResult, IBMiObject } from "../typings";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import path from "path";
 import IBMi from "../api/IBMi";
@@ -31,7 +31,89 @@ export const EncodingSuite: TestSuite = {
 
   tests: [
     {
-      name: `284: Ñ character in source file with QCCSID 65535`, test: async () => {
+      name: "Listing objects with variants",
+      test: async () => {
+        const connection = instance.getConnection();
+        const content = instance.getConnection()?.content;
+        if (connection && content && connection.getEncoding().ccsid !== 37) {
+          const ccsid = connection.getEncoding().ccsid;
+          let library = `TESTLIB${connection.variantChars.local}`;
+          let skipLibrary = false;
+          const sourceFile = `TESTFIL${connection.variantChars.local}`;
+          const dataArea = `TSTDTA${connection.variantChars.local}`;
+          const members: string[] = [];
+          for (let i = 0; i < 5; i++) {
+            members.push(`TSTMBR${connection.variantChars.local}${i}`);
+          }
+          try {
+            await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
+
+            const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
+            if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
+              //Not authorized: carry on, skip library name test
+              library = connection.config?.tempLibrary!;
+              skipLibrary = true
+            }
+            const crtSrcPF = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
+            if ((crtLib.code === 0 || skipLibrary) && crtSrcPF.code === 0) {
+              for (const member of members) {
+                const addPFM = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
+                if (addPFM.code !== 0) {
+                  throw new Error(`Failed to create member ${member}: ${addPFM.stderr}`);
+                }
+              }
+            }
+            else {
+              throw new Error(`Failed to create library and source file: ${crtLib.stderr || crtLib.stderr}`)
+            }
+
+            const crtDtaAra = await connection.runCommand({ command: `CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`, noLibList: true });
+            if (crtDtaAra.code !== 0) {
+              throw new Error(`Failed to create data area: ${crtDtaAra.stderr}`);
+            }
+
+            if (!skipLibrary) {
+              const [expectedLibrary] = await content.getLibraries({ library });
+              assert.ok(expectedLibrary);
+              assert.strictEqual(library, expectedLibrary.name);
+            }
+
+            const checkFile = (expectedObject: IBMiObject) => {
+              assert.ok(expectedObject);
+              assert.ok(expectedObject.sourceFile, `${expectedObject.name} not a source file`);
+              assert.strictEqual(expectedObject.name, sourceFile);
+              assert.strictEqual(expectedObject.library, library);
+            };
+
+            const objectList = await content.getObjectList({ library, types: ["*ALL"] });
+            assert.ok(objectList.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
+            assert.ok(objectList.some(obj => obj.library === library && obj.type === `*DTAARA` && obj.name === dataArea));
+
+            const [expectDataArea] = await content.getObjectList({ library, object: dataArea, types: ["*DTAARA"] });
+            assert.strictEqual(expectDataArea.name, dataArea);
+            assert.strictEqual(expectDataArea.library, library);
+            assert.strictEqual(expectDataArea.type, `*DTAARA`);
+
+            const [expectedSourceFile] = await content.getObjectList({ library, object: sourceFile, types: ["*SRCPF"] });
+            checkFile(expectedSourceFile);
+
+            const expectedMembers = await content.getMemberList({ library, sourceFile });
+            assert.ok(expectedMembers);
+            assert.ok(expectedMembers.every(member => members.find(m => m === member.name)));
+          }
+          finally {
+            // if (!skipLibrary && await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
+            //   await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true })
+            // }
+            // if (skipLibrary && await content.checkObject({ library, name: sourceFile, type: "*FILE" })) {
+            //   await connection.runCommand({ command: `DLTF FILE(${library}/${sourceFile})`, noLibList: true })
+            // }
+          }
+        }
+      }
+    },
+    {
+      name: `Variant character in source file with QCCSID 65535`, test: async () => {
         // CHGUSRPRF MERTEST CCSID(284) CNTRYID(ES) LANGID(ESP)
         const connection = instance.getConnection()!;
         const config = instance.getConfig()!;
@@ -47,7 +129,7 @@ export const EncodingSuite: TestSuite = {
 
           const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
 
-          const sourceFileCreate = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(284)`, noLibList: true });
+          const sourceFileCreate = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`, noLibList: true });
           assert.strictEqual(sourceFileCreate.code, 0);
 
           const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
@@ -66,6 +148,28 @@ export const EncodingSuite: TestSuite = {
 
           const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
           assert.strictEqual(compileResult.code, 0);
+
+          const memberUri = getMemberUri({ library: tempLib, file: testFile, name: testMember, extension: `RPGLE` });
+
+          const content = await workspace.fs.readFile(memberUri);
+          let contentStr = new TextDecoder().decode(content);
+          assert.ok(contentStr.includes(`dsply 'Hello world';`));
+
+          // TODO: this writeFile is not working because `QSysFs#stat` is failing because it can't find $testFile.
+          // It's failing with IBMi#getAttributes with this command:
+          //    $ /usr/bin/attr -p /QSYS.LIB/ILEDITOR.LIB/#SOURCES.FILE CREATE_TIME MODIFY_TIME DATA_SIZE
+          // Though it works when run in the command line
+
+          // It might have something to do with sanitizeLibraryNames. I think we need to actually rename sanitizeLibraryNames to sanitizeObjectNameForIfs or something
+          // Because sysNameInAmerican('ÑSOURCES') -> `#SOURCES` - which is correct
+          // But then because of the #, I think we need to sanitizeLibraryNames('#SOURCES') -> `'#SOURCES'` (added quotes)
+
+          // We can see from the ls that the folder is there
+          // -bash-5.2$ ls /QSYS.LIB/ILEDITOR.LIB/ 
+          // '#MEMBER.PGM'      LIAMA00011.FILE  O_CG16YSHG.FILE  O_U1E7BYUM.FILE  RCUS109517.FILE  RDEP735826.FILE  REMP434689.FILE  RMEA467691.FILE
+          // '#SOURCES.FILE' 
+
+          await workspace.fs.writeFile(memberUri, Buffer.from(`Woah`, `utf8`));
         }
       },
     },
