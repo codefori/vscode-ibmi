@@ -428,25 +428,27 @@ export default class IBMiContent {
   async validateLibraryList(newLibl: string[]): Promise<string[]> {
     let badLibs: string[] = [];
 
-    newLibl = newLibl.filter(lib => {
-      if (lib.match(/^\d/)) {
-        badLibs.push(lib);
-        return false;
-      }
+    newLibl = newLibl
+      .filter(lib => {
+        if (lib.match(/^\d/)) {
+          badLibs.push(lib);
+          return false;
+        }
 
-      if (lib.length > 10) {
-        badLibs.push(lib);
-        return false;
-      }
+        if (lib.length > 10) {
+          badLibs.push(lib);
+          return false;
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .map(lib => this.ibmi.sysNameInAmerican(lib));
 
-    const sanitized = Tools.sanitizeLibraryNames(newLibl);
+    const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
 
     const result = await this.ibmi.sendQsh({
       command: [
-        `liblist -d ` + Tools.sanitizeLibraryNames(this.ibmi.defaultUserLibraries).join(` `),
+        `liblist -d ` + Tools.sanitizeObjNamesForPase(this.ibmi.defaultUserLibraries).join(` `),
         ...sanitized.map(lib => `liblist -a ` + lib)
       ].join(`; `)
     });

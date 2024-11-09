@@ -59,12 +59,15 @@ export const EncodingSuite: TestSuite = {
         const connection = instance.getConnection();
         const content = instance.getConnection()?.content;
         if (connection && content && connection.getEncoding().ccsid !== 37) {
+          const tempLib = connection.config?.tempLibrary!;
           const ccsid = connection.getEncoding().ccsid;
+
           let library = `TESTLIB${connection.variantChars.local}`;
           let skipLibrary = false;
           const sourceFile = `TESTFIL${connection.variantChars.local}`;
           const dataArea = `TSTDTA${connection.variantChars.local}`;
           const members: string[] = [];
+
           for (let i = 0; i < 5; i++) {
             members.push(`TSTMBR${connection.variantChars.local}${i}`);
           }
@@ -74,7 +77,7 @@ export const EncodingSuite: TestSuite = {
             const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
             if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
               //Not authorized: carry on, skip library name test
-              library = connection.config?.tempLibrary!;
+              library = tempLib;
               skipLibrary = true
             }
 
@@ -95,6 +98,9 @@ export const EncodingSuite: TestSuite = {
               const [expectedLibrary] = await content.getLibraries({ library });
               assert.ok(expectedLibrary);
               assert.strictEqual(library, expectedLibrary.name);
+
+              const validated = await connection.content.validateLibraryList([tempLib, library]);
+              assert.strictEqual(validated.length, 0);
             }
 
             const checkFile = (expectedObject: IBMiObject) => {

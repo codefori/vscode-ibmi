@@ -815,9 +815,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${Tools.sanitizeLibraryNames(connection.defaultUserLibraries).join(` `)}`,
-      `liblist -c ${Tools.sanitizeLibraryNames([config.currentLibrary])}`,
-      `liblist -a ${Tools.sanitizeLibraryNames(buildLibraryList(config)).join(` `)}`
+      `liblist -d ${Tools.sanitizeObjNamesForPase(connection.defaultUserLibraries).join(` `)}`,
+      `liblist -c ${Tools.sanitizeObjNamesForPase([config.currentLibrary])}`,
+      `liblist -a ${Tools.sanitizeObjNamesForPase(buildLibraryList(config)).join(` `)}`
     ];
   }
 }

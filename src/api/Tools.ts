@@ -175,7 +175,7 @@ export namespace Tools {
    * @param iasp Optional: an iASP name
    */
   export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
-    const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
+    const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeObjNamesForPase([library]).join(``)}.LIB`;
     const filePath = object ? `${object}.FILE` : '';
     const memberPath = member ? `/${member}.MBR` : '';
     const subPath = `${filePath}${memberPath}`;
@@ -252,7 +252,7 @@ export namespace Tools {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  export function sanitizeLibraryNames(libraries: string[]): string[] {
+  export function sanitizeObjNamesForPase(libraries: string[]): string[] {
     return libraries
       .map(library => {
         // Escape any $ signs
