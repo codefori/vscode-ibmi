@@ -22,6 +22,29 @@ const contents = {
 
 const rtlEncodings = [`420`];
 
+async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid: number) {
+  const testPgmSrcFile = `TESTING`;
+  const config = connection.config!;
+
+  const tempLib = config.tempLibrary;
+  const testPgmName = `T${commands.length}${ccsid}`;
+  const sourceFileCreated = await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testPgmSrcFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
+
+  await connection.content.uploadMemberContent(undefined, tempLib, testPgmSrcFile, testPgmName, commands.join(`\n`));
+
+  const compileCommand = `CRTBNDCL PGM(${tempLib}/${testPgmName}) SRCFILE(${tempLib}/${testPgmSrcFile}) SRCMBR(${testPgmName}) REPLACE(*YES)`;
+  const compileResult = await connection.runCommand({ command: compileCommand, noLibList: true });
+
+  if (compileResult.code !== 0) {
+    return compileResult;
+  }
+
+  const callCommand = `CALL ${tempLib}/${testPgmName}`;
+  const result = await connection.runCommand({ command: callCommand, noLibList: true });
+
+  return result;
+}
+
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
@@ -54,23 +77,19 @@ export const EncodingSuite: TestSuite = {
               library = connection.config?.tempLibrary!;
               skipLibrary = true
             }
-            const crtSrcPF = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
-            if ((crtLib.code === 0 || skipLibrary) && crtSrcPF.code === 0) {
-              for (const member of members) {
-                const addPFM = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
-                if (addPFM.code !== 0) {
-                  throw new Error(`Failed to create member ${member}: ${addPFM.stderr}`);
-                }
-              }
-            }
-            else {
-              throw new Error(`Failed to create library and source file: ${crtLib.stderr || crtLib.stderr}`)
+
+            let commands: string[] = [];
+
+            commands.push(`CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`);
+            for (const member of members) {
+              commands.push(`ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`);
             }
 
-            const crtDtaAra = await connection.runCommand({ command: `CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`, noLibList: true });
-            if (crtDtaAra.code !== 0) {
-              throw new Error(`Failed to create data area: ${crtDtaAra.stderr}`);
-            }
+            commands.push(`CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`);
+
+            // runCommandsWithCCSID proves that using variant characters in runCommand works!
+            const result = await runCommandsWithCCSID(connection, commands, ccsid);
+            assert.strictEqual(result.code, 0);
 
             if (!skipLibrary) {
               const [expectedLibrary] = await content.getLibraries({ library });
@@ -129,8 +148,8 @@ export const EncodingSuite: TestSuite = {
 
           const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
 
-          const sourceFileCreate = await connection.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`, noLibList: true });
-          assert.strictEqual(sourceFileCreate.code, 0);
+          const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
+          assert.strictEqual(createResult.code, 0);
 
           const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
           assert.strictEqual(addPf.code, 0);
