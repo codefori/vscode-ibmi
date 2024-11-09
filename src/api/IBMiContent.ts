@@ -142,7 +142,6 @@ export default class IBMiContent {
    * Download the contents of a source member
    */
   async downloadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, localPath?: string) {
-    asp = asp || this.ibmi.getCurrentIAspName();
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);
@@ -210,7 +209,6 @@ export default class IBMiContent {
    * Upload to a member
    */
   async uploadMemberContent(asp: string | undefined, library: string, sourceFile: string, member: string, content: string | Uint8Array) {
-    asp = asp || this.ibmi.getCurrentIAspName();
     library = this.ibmi.upperCaseName(library);
     sourceFile = this.ibmi.upperCaseName(sourceFile);
     member = this.ibmi.upperCaseName(member);

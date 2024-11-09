@@ -1228,7 +1228,7 @@ export default class IBMi {
     if (!foundNumber) {
       const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
       const iaspNumber = Number(row?.IASP_NUMBER);
-      if (iaspNumber) {
+      if (iaspNumber >= 0) {
         this.libraryAsps[library] = iaspNumber;
         foundNumber = iaspNumber;
       }
@@ -1239,7 +1239,7 @@ export default class IBMi {
 
   getLibraryIAsp(library: string) {
     const found = this.libraryAsps[library];
-    if (found) {
+    if (found >= 0) {
       return this.getIAspName(found);
     }
   }

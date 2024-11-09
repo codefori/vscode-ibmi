@@ -148,7 +148,8 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, name: member } = this.parseMemberPath(connection, uri.path);
+            let { asp, library, file, name: member } = this.parseMemberPath(connection, uri.path);
+            asp = asp || await connection.lookupLibraryIAsp(library);
 
             let memberContent;
             try {
@@ -189,7 +190,9 @@ export class QSysFS implements vscode.FileSystemProvider {
         const contentApi = instance.getContent();
         const connection = instance.getConnection();
         if (connection && contentApi) {
-            const { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
+            let { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
+            asp = asp || await connection.lookupLibraryIAsp(library);
+
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({
                     command: `ADDPFM FILE(${library}/${file}) MBR(${member}) SRCTYPE(${extension || '*NONE'})`,
@@ -202,6 +205,7 @@ export class QSysFS implements vscode.FileSystemProvider {
                     throw new FileSystemError(addMember.stderr);
                 }
             }
+
             else {
                 this.savedAsMembers.delete(uri.path);
                 this.extendedMemberSupport ?
