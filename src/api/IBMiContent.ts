@@ -489,14 +489,20 @@ export default class IBMiContent {
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
-    const objectNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter).replace('*', '%')}'` : '';
-    const objectName = () => objectFilter ? `, OBJECT_NAME => '${this.ibmi.sysNameInAmerican(objectFilter)}'` : '';
 
     const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
 
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
+
+    // Here's the downlow on CCSIDs here.
+
+    // SYSTABLES takes the name in the local format (with the local variant characters)
+    const sourceFileNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
+
+    // OBJECT_STATISTICS takes the name in the system format (with the American variant characters)
+    const objectName = () => objectFilter ? `, OBJECT_NAME => '${this.ibmi.sysNameInAmerican(objectFilter)}'` : '';
 
     let createOBJLIST: string[];
     if (sourceFilesOnly) {
@@ -511,7 +517,7 @@ export default class IBMiContent {
         `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
         `  t.IASP_NUMBER       as IASP_NUMBER`,
         `from QSYS2.SYSTABLES as t`,
-        `where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary}' and t.FILE_TYPE = 'S'${objectNameLike()}`,
+        `where t.SYSTEM_TABLE_SCHEMA = '${library.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
@@ -543,7 +549,7 @@ export default class IBMiContent {
         `    1                   as IS_SOURCE,`,
         `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
-        `  where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary}' and t.FILE_TYPE = 'S'${objectNameLike()}`,
+        `  where t.SYSTEM_TABLE_SCHEMA = '${library.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
