@@ -559,7 +559,7 @@ export class SourceDateHandler {
 }
 
 export function getAliasName(library: string, sourceFile: string, member: string) {
-  return `${library}_${sourceFile}_${member}`.replace(/\./g, `_`)
+  return `${library}_${sourceFile}_${member}`.replace(/\./g, `_`).replace(/[^a-zA-Z0-9_]/g, ``);
 }
 
 /**
