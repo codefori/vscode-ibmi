@@ -139,7 +139,7 @@ export const EncodingSuite: TestSuite = {
     },
     {
       name: `Variant character in source file with QCCSID 65535`, test: async () => {
-        // CHGUSRPRF MERTEST CCSID(284) CNTRYID(ES) LANGID(ESP)
+        // CHGUSRPRF X CCSID(284) CNTRYID(ES) LANGID(ESP)
         const connection = instance.getConnection()!;
         const config = instance.getConfig()!;
 
@@ -159,6 +159,10 @@ export const EncodingSuite: TestSuite = {
 
           const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
           assert.strictEqual(addPf.code, 0);
+
+          const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
+          assert.ok(attributes);
+          assert.strictEqual(attributes[`CCSID`], String(ccsidData.userDefaultCCSID));
 
           const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
           assert.ok(objects.length);
@@ -180,21 +184,12 @@ export const EncodingSuite: TestSuite = {
           let contentStr = new TextDecoder().decode(content);
           assert.ok(contentStr.includes(`dsply 'Hello world';`));
 
-          // TODO: this writeFile is not working because `QSysFs#stat` is failing because it can't find $testFile.
-          // It's failing with IBMi#getAttributes with this command:
-          //    $ /usr/bin/attr -p /QSYS.LIB/ILEDITOR.LIB/#SOURCES.FILE CREATE_TIME MODIFY_TIME DATA_SIZE
-          // Though it works when run in the command line
-
-          // It might have something to do with sanitizeLibraryNames. I think we need to actually rename sanitizeLibraryNames to sanitizeObjectNameForIfs or something
-          // Because sysNameInAmerican('ÑSOURCES') -> `#SOURCES` - which is correct
-          // But then because of the #, I think we need to sanitizeLibraryNames('#SOURCES') -> `'#SOURCES'` (added quotes)
-
-          // We can see from the ls that the folder is there
-          // -bash-5.2$ ls /QSYS.LIB/ILEDITOR.LIB/ 
-          // '#MEMBER.PGM'      LIAMA00011.FILE  O_CG16YSHG.FILE  O_U1E7BYUM.FILE  RCUS109517.FILE  RDEP735826.FILE  REMP434689.FILE  RMEA467691.FILE
-          // '#SOURCES.FILE' 
-
           await workspace.fs.writeFile(memberUri, Buffer.from(`Woah`, `utf8`));
+
+          const memberContentBuf = await workspace.fs.readFile(memberUri);
+          let fileContent = new TextDecoder().decode(memberContentBuf);
+
+          assert.strictEqual(fileContent, `Woah`);
         }
       },
     },
