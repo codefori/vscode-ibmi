@@ -534,7 +534,7 @@ export default class IBMiContent {
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library.padEnd(10)}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${americanLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
       ];
     }
     else {
