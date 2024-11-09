@@ -47,7 +47,7 @@ export interface TestCase {
   duration?: number
 }
 
-const testingEnabled = env.testing === `true`;
+const testingEnabled = env.base_testing === `true`;
 const testIndividually = env.individual === `true`;
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
