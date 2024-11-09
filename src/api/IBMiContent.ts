@@ -10,6 +10,7 @@ import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
+import { GetMemberInfo } from '../components/getMemberInfo';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -684,38 +685,9 @@ export default class IBMiContent {
    * @param filter: the criterias used to list the members
    * @returns
    */
-  async getMemberInfo(library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
-    if (this.ibmi.remoteFeatures[`GETMBRINFO.SQL`]) {
-      const tempLib = this.config.tempLibrary;
-      const statement = `select * from table(${tempLib}.GETMBRINFO('${library}', '${sourceFile}', '${member}'))`;
-
-      let results: Tools.DB2Row[] = [];
-      if (this.config.enableSQL) {
-        try {
-          results = await this.runSQL(statement);
-        } catch (e) { }; // Ignore errors, will return undefined.
-      }
-      else {
-        results = await this.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
-      }
-
-      if (results.length === 1 && results[0].ISSOURCE === 'Y') {
-        const result = results[0];
-        const asp = this.ibmi.aspInfo[Number(results[0].ASP)];
-        return {
-          library: result.LIBRARY,
-          file: result.FILE,
-          name: result.MEMBER,
-          extension: result.EXTENSION,
-          text: result.DESCRIPTION,
-          created: new Date(result.CREATED ? Number(result.CREATED) : 0),
-          changed: new Date(result.CHANGED ? Number(result.CHANGED) : 0)
-        } as IBMiMember
-      }
-      else {
-        return undefined;
-      }
-    }
+  getMemberInfo(library: string, sourceFile: string, member: string) {
+    const component = this.ibmi.getComponent<GetMemberInfo>(GetMemberInfo)!;
+    return component.getMemberInfo(library, sourceFile, member);
   }
 
   /**
