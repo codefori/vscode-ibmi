@@ -37,7 +37,7 @@ export const ToolsSuite: TestSuite = {
         const rawLibraryNames = [`QTEMP`, `#LIBRARY`, `My$lib`, `qsysinc`];
         const sanitizedLibraryNames = Tools.sanitizeObjNamesForPase(rawLibraryNames);
 
-        assert.deepStrictEqual(sanitizedLibraryNames, [`QTEMP`, `"#LIBRARY"`, `My\\$lib`, `qsysinc`]);
+        assert.deepStrictEqual(sanitizedLibraryNames, [`QTEMP`, `"#LIBRARY"`, `My$lib`, `qsysinc`]);
       },
     },
     {

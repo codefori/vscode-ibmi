@@ -259,8 +259,8 @@ export namespace Tools {
   export function sanitizeObjNamesForPase(libraries: string[]): string[] {
     return libraries
       .map(library => {
-        // Escape any $ signs
-        library = library.replace(/\$/g, `\\$`);
+        // Escape any $ signs - We don't do this here. Happens when we send the commands for us
+        // library = library.replace(/\$/g, `\\$`);
         // Quote libraries starting with #
         return library.startsWith(`#`) ? `"${library}"` : library;
       });
