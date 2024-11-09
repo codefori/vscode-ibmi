@@ -32,6 +32,7 @@ const suites: TestSuite[] = [
 
 export type TestSuite = {
   name: string
+  notConcurrent?: boolean
   tests: TestCase[]
   before?: () => Promise<void>
   after?: () => Promise<void>
@@ -48,6 +49,7 @@ export interface TestCase {
 }
 
 const testingEnabled = env.base_testing === `true`;
+const testSuitesSimultaneously = env.simultaneous === `true`;
 const testIndividually = env.individual === `true`;
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
@@ -56,7 +58,7 @@ export function initialise(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
 
     if (!testIndividually) {
-      instance.subscribe(context, 'connected', 'Run tests', runTests);
+      instance.subscribe(context, 'connected', 'Run tests', () => runTests(testSuitesSimultaneously));
     }
 
     instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
@@ -80,43 +82,75 @@ export function initialise(context: vscode.ExtensionContext) {
   }
 }
 
-async function runTests() {
-  for (const suite of suites) {
-    try {
-      suite.status = "running";
-      testSuitesTreeProvider.refresh(suite);
-      if (suite.before) {
-        console.log(`Pre-processing suite ${suite.name}`);
-        await suite.before();
-      }
+async function runTests(simultaneously?: boolean) {
+  let nonConcurrentSuites: Function[] = [];
+  let concurrentSuites: Function[] = [];
 
-      console.log(`Running suite ${suite.name} (${suite.tests.length})`);
-      console.log();
-      for (const test of suite.tests) {
-        await runTest(test);
-      }
-    }
-    catch (error: any) {
-      console.log(error);
-      suite.failure = `${error.message ? error.message : error}`;
-    }
-    finally {
-      suite.status = "done";
-      testSuitesTreeProvider.refresh(suite);
-      if (suite.after) {
+  for (const suite of suites) {
+    const testSuiteRunner = async () => {
+      try {
+        suite.status = "running";
+        testSuitesTreeProvider.refresh(suite);
+        if (suite.before) {
+          console.log(`Pre-processing suite ${suite.name}`);
+          await suite.before();
+        }
+
+        console.log(`Running suite ${suite.name} (${suite.tests.length})`);
         console.log();
-        console.log(`Post-processing suite ${suite.name}`);
-        try {
-          await suite.after();
-        }
-        catch (error: any) {
-          console.log(error);
-          suite.failure = `${error.message ? error.message : error}`;
+        for (const test of suite.tests) {
+          await runTest(test);
+
+          if (simultaneously) {
+            // Add a little break as to not overload the system
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
         }
       }
-      testSuitesTreeProvider.refresh(suite);
+      catch (error: any) {
+        console.log(error);
+        suite.failure = `${error.message ? error.message : error}`;
+      }
+      finally {
+        suite.status = "done";
+        testSuitesTreeProvider.refresh(suite);
+        if (suite.after) {
+          console.log();
+          console.log(`Post-processing suite ${suite.name}`);
+          try {
+            await suite.after();
+          }
+          catch (error: any) {
+            console.log(error);
+            suite.failure = `${error.message ? error.message : error}`;
+          }
+        }
+        testSuitesTreeProvider.refresh(suite);
+      }
+    };
+
+    if (suite.notConcurrent) {
+      nonConcurrentSuites.push(testSuiteRunner);
+    } else {
+      concurrentSuites.push(testSuiteRunner);
     }
   }
+
+  for (const suite of nonConcurrentSuites) {
+    await suite();
+  }
+
+  if (simultaneously) {
+    await Promise.all(concurrentSuites.map(async suite => suite()));
+  }
+
+  else {
+    for (const suite of concurrentSuites) {
+      await suite();
+    }
+  }
+
+  console.log(`All tests completed`);
 }
 
 async function runTest(test: TestCase) {

@@ -35,6 +35,23 @@
 			}
 		},
 		{
+			"name": "Extension Tests (All simultaneously)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],			
+			"sourceMaps": true,
+			"preLaunchTask": "${defaultBuildTask}",
+			"env": {
+				"base_testing": "true",
+				"simultaneous": "true"
+			}
+		},
+		{
 			"name": "Extension Tests (Individual)",
 			"type": "extensionHost",
 			"request": "launch",
