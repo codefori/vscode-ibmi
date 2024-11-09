@@ -28,19 +28,10 @@ export namespace Search {
       }
  
       // First, let's fetch the ASP info
+      const foundAsp = await connection.getLibraryIAsp(library);
       let asp = ``;
-      const definedAsp = connection.getCurrentIAspName();
-      if (definedAsp) {
-        asp = `/${definedAsp}`;
-      } else if (connection.enableSQL) {
-        try {
-          const [row] = await content.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${library}'))`);
-          const iaspNumber = Number(row?.IASP_NUMBER);
-          const aspName = connection.getIAspName(iaspNumber);
-          if (aspName) {
-            asp = `/${aspName}`;
-          }
-        } catch (e) { }
+      if (foundAsp) {
+        asp = `/${foundAsp}`;
       }
 
       // Then search the members

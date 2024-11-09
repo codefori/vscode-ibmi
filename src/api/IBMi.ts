@@ -1221,6 +1221,22 @@ export default class IBMi {
     return this.currentAsp;
   }
 
+  private libraryAsps: { [library: string]: number } = {};
+  async getLibraryIAsp(library: string) {
+    let foundNumber: number|undefined = this.libraryAsps[library];
+
+    if (!foundNumber) {
+      const [row] = await this.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${this.sysNameInAmerican(library)}'))`);
+      const iaspNumber = Number(row?.IASP_NUMBER);
+      if (iaspNumber) {
+        this.libraryAsps[library] = iaspNumber;
+        foundNumber = iaspNumber;
+      }
+    }
+
+    return this.getIAspName(foundNumber);
+  }
+
   /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
