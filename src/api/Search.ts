@@ -29,14 +29,16 @@ export namespace Search {
  
       // First, let's fetch the ASP info
       let asp = ``;
-      if (config.sourceASP) {
-        asp = `/${config.sourceASP}`;
+      const definedAsp = connection.getCurrentIAspName();
+      if (definedAsp) {
+        asp = `/${definedAsp}`;
       } else if (connection.enableSQL) {
         try {
           const [row] = await content.runSQL(`SELECT IASP_NUMBER FROM TABLE(QSYS2.LIBRARY_INFO('${library}'))`);
-          const iaspNumber = row?.IASP_NUMBER;
-          if (iaspNumber && typeof iaspNumber === 'number' && connection.aspInfo[iaspNumber]) {
-            asp = `/${connection.aspInfo[iaspNumber]}`;
+          const iaspNumber = Number(row?.IASP_NUMBER);
+          const aspName = connection.getIAspName(iaspNumber);
+          if (aspName) {
+            asp = `/${aspName}`;
           }
         } catch (e) { }
       }

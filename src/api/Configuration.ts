@@ -112,7 +112,6 @@ export namespace ConnectionConfiguration {
     autoSortIFSShortcuts: boolean;
     tempLibrary: string;
     tempDir: string;
-    sourceASP: string;
     sourceFileCCSID: string;
     autoConvertIFSccsid: boolean;
     hideCompileErrors: string[];
@@ -192,7 +191,6 @@ export namespace ConnectionConfiguration {
       tempLibrary: parameters.tempLibrary || `ILEDITOR`,
       tempDir: parameters.tempDir || `/tmp`,
       currentLibrary: parameters.currentLibrary || ``,
-      sourceASP: parameters.sourceASP || ``,
       sourceFileCCSID: parameters.sourceFileCCSID || `*FILE`,
       autoConvertIFSccsid: (parameters.autoConvertIFSccsid === true),
       hideCompileErrors: parameters.hideCompileErrors || [],

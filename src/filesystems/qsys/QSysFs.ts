@@ -138,8 +138,8 @@ export class QSysFS implements vscode.FileSystemProvider {
         path.asp = path.asp || this.getLibraryASP(connection, path.library);
         let attributes = await loadAttributes();
         if (!attributes && !path.asp) {
-            for (const asp of Object.values(connection.aspInfo)) {
-                path.asp = asp;
+            for (const asp of connection.getAllIAsps()) {
+                path.asp = asp.name;
                 attributes = await loadAttributes();
                 if (attributes) {
                     this.setLibraryASP(connection, path.library, path.asp);
