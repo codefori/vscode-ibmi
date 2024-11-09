@@ -44,7 +44,6 @@ export function isProtectedFilter(filter?: string): boolean {
 }
 
 export class QSysFS implements vscode.FileSystemProvider {
-    private readonly libraryASP: Map<string, string> = new Map;
     private readonly savedAsMembers: Set<string> = new Set;
     private readonly sourceDateHandler: SourceDateHandler;
     private readonly extendedContent: ExtendedIBMiContent;
@@ -71,7 +70,6 @@ export class QSysFS implements vscode.FileSystemProvider {
             'disconnected',
             `Update member support & clear library ASP cache`,
             () => {
-                this.libraryASP.clear();
                 this.updateMemberSupport();
             });
     }
@@ -135,33 +133,15 @@ export class QSysFS implements vscode.FileSystemProvider {
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
         const loadAttributes = async () => await connection.content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
 
-        path.asp = path.asp || this.getLibraryASP(connection, path.library);
+        path.asp = path.asp || await connection.lookupLibraryIAsp(path.library);
         let attributes = await loadAttributes();
-        if (!attributes && !path.asp) {
-            for (const asp of connection.getAllIAsps()) {
-                path.asp = asp.name;
-                attributes = await loadAttributes();
-                if (attributes) {
-                    this.setLibraryASP(connection, path.library, path.asp);
-                    break;
-                }
-            }
-        }
         return attributes;
     }
 
     parseMemberPath(connection: IBMi, path: string) {
         const memberParts = connection.parserMemberPath(path);
-        memberParts.asp = memberParts.asp || this.getLibraryASP(connection, memberParts.library);
+        memberParts.asp = memberParts.asp || connection.getLibraryIAsp(memberParts.library);
         return memberParts;
-    }
-
-    setLibraryASP(connection: IBMi, library: string, asp: string) {
-        this.libraryASP.set(connection.upperCaseName(library), asp);
-    }
-
-    getLibraryASP(connection: IBMi, library: string) {
-        return this.libraryASP.get(connection.upperCaseName(library));
     }
 
     async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
@@ -183,9 +163,6 @@ export class QSysFS implements vscode.FileSystemProvider {
                 throw error;
             }
             if (memberContent !== undefined) {
-                if (asp && !this.getLibraryASP(connection, library)) {
-                    this.setLibraryASP(connection, library, asp);
-                }
                 return new Uint8Array(Buffer.from(memberContent, `utf8`));
             }
             else {

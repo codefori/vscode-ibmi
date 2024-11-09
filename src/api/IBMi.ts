@@ -1222,7 +1222,7 @@ export default class IBMi {
   }
 
   private libraryAsps: { [library: string]: number } = {};
-  async getLibraryIAsp(library: string) {
+  async lookupLibraryIAsp(library: string) {
     let foundNumber: number|undefined = this.libraryAsps[library];
 
     if (!foundNumber) {
@@ -1235,6 +1235,13 @@ export default class IBMi {
     }
 
     return this.getIAspName(foundNumber);
+  }
+
+  getLibraryIAsp(library: string) {
+    const found = this.libraryAsps[library];
+    if (found) {
+      return this.getIAspName(found);
+    }
   }
 
   /**

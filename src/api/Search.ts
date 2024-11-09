@@ -28,7 +28,7 @@ export namespace Search {
       }
  
       // First, let's fetch the ASP info
-      const foundAsp = await connection.getLibraryIAsp(library);
+      const foundAsp = await connection.lookupLibraryIAsp(library);
       let asp = ``;
       if (foundAsp) {
         asp = `/${foundAsp}`;
