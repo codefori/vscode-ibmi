@@ -375,7 +375,7 @@ export default class IBMiContent {
       `;
       const results = await this.ibmi.runSQL(statement);
 
-      const asp = this.ibmi.getIAspName(Number(results[0].IASP_NUMBER));
+      const asp = this.ibmi.getIAspName(Number(results[0]?.IASP_NUMBER));
 
       objects = results.map(object => ({
         library: 'QSYS',
@@ -578,7 +578,7 @@ export default class IBMiContent {
 
     const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
 
-    const asp = this.ibmi.getIAspName(Number(objects[0].IASP_NUMBER));
+    const asp = this.ibmi.getIAspName(Number(objects[0]?.IASP_NUMBER));
 
     return objects.map(object => ({
       library,
@@ -652,7 +652,7 @@ export default class IBMiContent {
 
     const results = await this.ibmi.runSQL(statement);
     if (results.length) {
-      const asp = this.ibmi.getIAspName(Number(results[0].ASP));
+      const asp = this.ibmi.getIAspName(Number(results[0]?.ASP));
       return results.map(result => ({
         asp,
         library,
@@ -695,7 +695,7 @@ export default class IBMiContent {
 
       if (results.length === 1 && results[0].ISSOURCE === 'Y') {
         const result = results[0];
-        const asp = this.ibmi.getIAspName(Number(results[0].ASP));
+        const asp = this.ibmi.getIAspName(Number(results[0]?.ASP));
         return {
           library: result.LIBRARY,
           file: result.FILE,
