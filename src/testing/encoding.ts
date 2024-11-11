@@ -138,59 +138,57 @@ export const EncodingSuite: TestSuite = {
       }
     },
     {
-      name: `Variant character in source file with QCCSID 65535`, test: async () => {
+      name: `Variant character in source names and commands`, test: async () => {
         // CHGUSRPRF X CCSID(284) CNTRYID(ES) LANGID(ESP)
         const connection = instance.getConnection()!;
         const config = instance.getConfig()!;
 
         const ccsidData = connection.getCcsids()!;
 
-        if (ccsidData.qccsid === 65535 && ccsidData.userDefaultCCSID !== 37) {
-          const tempLib = config.tempLibrary;
-          const varChar = connection.variantChars.local[0];
-          
-          const testFile = `${varChar}SOURCES`;
-          const testMember = `${varChar}MEMBER`;
+        const tempLib = config.tempLibrary;
+        const varChar = connection.variantChars.local[0];
+        
+        const testFile = `${varChar}SOURCES`;
+        const testMember = `${varChar}MEMBER`;
 
-          const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
+        const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
 
-          const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
-          assert.strictEqual(createResult.code, 0);
+        const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
+        assert.strictEqual(createResult.code, 0);
 
-          const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
-          assert.strictEqual(addPf.code, 0);
+        const addPf = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${testMember}) SRCTYPE(TXT)`, noLibList: true });
+        assert.strictEqual(addPf.code, 0);
 
-          const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
-          assert.ok(attributes);
-          assert.strictEqual(attributes[`CCSID`], String(ccsidData.userDefaultCCSID));
+        const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
+        assert.ok(attributes);
+        assert.strictEqual(attributes[`CCSID`], String(ccsidData.userDefaultCCSID));
 
-          const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
-          assert.ok(objects.length);
-          assert.ok(objects.some(obj => obj.name === testFile));
+        const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
+        assert.ok(objects.length);
+        assert.ok(objects.some(obj => obj.name === testFile));
 
-          const members = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile });
-          assert.ok(members.length);
-          assert.ok(members.some(m => m.name === testMember));
-          assert.ok(members.some(m => m.file === testFile));
+        const members = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile });
+        assert.ok(members.length);
+        assert.ok(members.some(m => m.name === testMember));
+        assert.ok(members.some(m => m.file === testFile));
 
-          await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
+        await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
 
-          const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
-          assert.strictEqual(compileResult.code, 0);
+        const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
+        assert.strictEqual(compileResult.code, 0);
 
-          const memberUri = getMemberUri({ library: tempLib, file: testFile, name: testMember, extension: `RPGLE` });
+        const memberUri = getMemberUri({ library: tempLib, file: testFile, name: testMember, extension: `RPGLE` });
 
-          const content = await workspace.fs.readFile(memberUri);
-          let contentStr = new TextDecoder().decode(content);
-          assert.ok(contentStr.includes(`dsply 'Hello world';`));
+        const content = await workspace.fs.readFile(memberUri);
+        let contentStr = new TextDecoder().decode(content);
+        assert.ok(contentStr.includes(`dsply 'Hello world';`));
 
-          await workspace.fs.writeFile(memberUri, Buffer.from(`Woah`, `utf8`));
+        await workspace.fs.writeFile(memberUri, Buffer.from(`Woah`, `utf8`));
 
-          const memberContentBuf = await workspace.fs.readFile(memberUri);
-          let fileContent = new TextDecoder().decode(memberContentBuf);
+        const memberContentBuf = await workspace.fs.readFile(memberUri);
+        let fileContent = new TextDecoder().decode(memberContentBuf);
 
-          assert.strictEqual(fileContent, `Woah`);
-        }
+        assert.ok(fileContent.includes(`Woah`));
       },
     },
 
