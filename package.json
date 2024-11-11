@@ -50,6 +50,13 @@
 					".vscode/actions.json"
 				],
 				"url": "./schemas/actions.json"
+			},
+			{
+				"fileMatch": [
+					".vscode/profiles.json",
+					"/.vscode/profiles.json"
+				],
+				"url": "./schemas/profiles.json"
 			}
 		],
 		"configuration": {
@@ -2520,7 +2527,7 @@
 				},
 				{
 					"command": "code-for-ibmi.loadConnectionProfile",
-					"when": "view == profilesView && viewItem == profile",
+					"when": "view == profilesView && (viewItem == profile || viewItem == localProfile)",
 					"group": "inline"
 				},
 				{

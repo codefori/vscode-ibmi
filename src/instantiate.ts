@@ -16,6 +16,8 @@ import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import { getAllProfiles } from './views/ProfilesView';
+import { resetServerProfiles } from './api/local/profiles';
 
 export let instance: Instance;
 
@@ -817,7 +819,7 @@ async function updateConnectedBar() {
 }
 
 async function onConnected() {
-  const config = instance.getConfig();
+  const connection = instance.getConnection()!;
 
   [
     connectedBarItem,
@@ -827,7 +829,9 @@ async function onConnected() {
   updateConnectedBar();
 
   // Enable the profile view if profiles exist.
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
+  resetServerProfiles();
+  const profiles = await getAllProfiles(connection);
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, profiles.length > 0);
 }
 
 async function onDisconnected() {

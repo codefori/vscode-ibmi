@@ -5,6 +5,8 @@ import { GetNewLibl } from '../components/getNewLibl';
 import { instance } from '../instantiate';
 import { Profile } from '../typings';
 import { CommandProfile } from '../webviews/commandProfile';
+import { getProfiles } from '../api/local/profiles';
+import IBMi from '../api/IBMi';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -59,7 +61,7 @@ export class ProfilesView {
           const currentProfiles = config.connectionProfiles;
           const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
           if (chosenProfile) {
-            vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name)).then(async result => {
+            vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Yes`), l10n.t(`No`)).then(async result => {
               if (result === l10n.t(`Yes`)) {
                 currentProfiles.splice(currentProfiles.findIndex(profile => profile === chosenProfile), 1);
                 config.connectionProfiles = currentProfiles;
@@ -73,10 +75,12 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.loadConnectionProfile`, async (profileNode?: Profile) => {
+        const connection = instance.getConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
-        if (config && storage) {
-          const chosenProfile = await getOrPickAvailableProfile(config.connectionProfiles, profileNode);
+        if (connection && config && storage) {
+          const connectionProfiles = await getAllProfiles(connection);
+          const chosenProfile = await getOrPickAvailableProfile(connectionProfiles, profileNode);
           if (chosenProfile) {
             assignProfile(chosenProfile, config);
             await ConnectionConfiguration.update(config);
@@ -185,10 +189,12 @@ export class ProfilesView {
     )
   }
 
-  refresh() {
+  async refresh() {
+    const connection = instance.getConnection();
     const config = instance.getConfig();
-    if (config) {
-      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, config.connectionProfiles.length > 0 || config.commandProfiles.length > 0);
+    if (connection && config) {
+      const profiles = await getAllProfiles(connection);
+      vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, profiles.length > 0 || config.commandProfiles.length > 0);
       this._onDidChangeTreeData.fire(null);
     }
   }
@@ -205,11 +211,15 @@ export class ProfilesView {
       const storage = instance.getStorage();
       if (config && storage) {
         const currentProfile = storage.getLastProfile();
+        const profiles = await getProfilesInGroups(connection);
         return [
           new ResetProfileItem(),
-          ...config.connectionProfiles
+          ...profiles.connectionProfiles
             .map(profile => profile.name)
             .map(name => new ProfileItem(name, name === currentProfile)),
+            ...profiles.localProfiles
+              .map(profile => profile.name)
+              .map(name => new ProfileItem(name, name === currentProfile, true)),
           ...config.commandProfiles
             .map(profile => profile.name)
             .map(name => new CommandProfileItem(name, name === currentProfile)),
@@ -218,6 +228,23 @@ export class ProfilesView {
     }
 
     return [];
+  }
+}
+
+export async function getAllProfiles(connection: IBMi) {
+  const profiles = connection.config!.connectionProfiles;
+  const localProfiles = await getProfiles(connection);
+
+  return [...profiles, ...localProfiles];
+}
+
+async function getProfilesInGroups(connection: IBMi) {
+  const profiles = connection.config!.connectionProfiles || [];
+  const localProfiles = await getAllProfiles(connection);
+
+  return {
+    connectionProfiles: profiles,
+    localProfiles: localProfiles
   }
 }
 
@@ -242,12 +269,29 @@ async function getOrPickAvailableProfile(availableProfiles: ConnectionConfigurat
 }
 
 function assignProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, toProfile: ConnectionConfiguration.ConnectionProfile) {
-  toProfile.homeDirectory = fromProfile.homeDirectory;
-  toProfile.currentLibrary = fromProfile.currentLibrary;
-  toProfile.libraryList = fromProfile.libraryList;
-  toProfile.objectFilters = fromProfile.objectFilters;
-  toProfile.ifsShortcuts = fromProfile.ifsShortcuts;
-  toProfile.customVariables = fromProfile.customVariables;
+  if (fromProfile.homeDirectory && fromProfile.homeDirectory !== `.`) {
+    toProfile.homeDirectory = fromProfile.homeDirectory;
+  }
+
+  if (fromProfile.currentLibrary) {
+    toProfile.currentLibrary = fromProfile.currentLibrary;
+  }
+  
+  if (fromProfile.libraryList.length > 0) {
+    toProfile.libraryList = fromProfile.libraryList;
+  }
+
+  if (fromProfile.objectFilters.length > 0) {
+    toProfile.objectFilters = fromProfile.objectFilters;
+  }
+
+  if (fromProfile.ifsShortcuts.length > 0) {
+    toProfile.ifsShortcuts = fromProfile.ifsShortcuts;
+  }
+
+  if (fromProfile.customVariables) {
+    toProfile.customVariables = fromProfile.customVariables;
+  }
 }
 
 function cloneProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, newName: string): ConnectionConfiguration.ConnectionProfile {
@@ -264,10 +308,10 @@ function cloneProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, ne
 
 class ProfileItem extends vscode.TreeItem implements Profile {
   readonly profile;
-  constructor(name: string, active: boolean) {
+  constructor(name: string, active: boolean, isLocal?: boolean) {
     super(name, vscode.TreeItemCollapsibleState.None);
 
-    this.contextValue = `profile`;
+    this.contextValue = isLocal ? `localProfile` : `profile`;
     this.iconPath = new vscode.ThemeIcon(active ? `layers-active` : `layers`);
     this.description = active ? `Active` : ``;
     this.tooltip = ``;
