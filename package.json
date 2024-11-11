@@ -1250,6 +1250,13 @@
 				"icon": "$(arrow-circle-right)"
 			},
 			{
+				"command": "code-for-ibmi.profiles.copyAsJson",
+				"enablement": "code-for-ibmi:connected",
+				"title": "Copy as JSON",
+				"category": "IBM i",
+				"icon": "$(clippy)"
+			},
+			{
 				"command": "code-for-ibmi.searchSourceFile",
 				"enablement": "code-for-ibmi:connected",
 				"title": "Search Source File...",
@@ -2569,6 +2576,11 @@
 					"command": "code-for-ibmi.saveConnectionProfile",
 					"when": "view == profilesView && viewItem == profile",
 					"group": "profiles@1"
+				},
+				{
+					"command": "code-for-ibmi.profiles.copyAsJson",
+					"when": "view == profilesView && viewItem == profile",
+					"group": "profiles@3"
 				},
 				{
 					"command": "code-for-ibmi.manageCommandProfile",

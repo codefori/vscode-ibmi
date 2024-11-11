@@ -14,7 +14,7 @@ interface ProfilesFile {
   profiles: PartialConnectionProfile[]
 }
 
-export async function getProfiles(connection: IBMi) {
+export async function getStaticProfiles(connection: IBMi) {
   const profiles: ConnectionConfiguration.ConnectionProfile[] = [];
 
   if (workspace.workspaceFolders) {

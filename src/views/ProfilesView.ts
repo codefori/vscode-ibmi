@@ -5,7 +5,7 @@ import { GetNewLibl } from '../components/getNewLibl';
 import { instance } from '../instantiate';
 import { Profile } from '../typings';
 import { CommandProfile } from '../webviews/commandProfile';
-import { getProfiles } from '../api/local/profiles';
+import { getStaticProfiles } from '../api/local/profiles';
 import IBMi from '../api/IBMi';
 
 export class ProfilesView {
@@ -94,6 +94,17 @@ export class ProfilesView {
 
             vscode.window.showInformationMessage(l10n.t(`Switched to profile "{0}".`, chosenProfile.name));
             this.refresh();
+          }
+        }
+      }),
+
+      vscode.commands.registerCommand(`code-for-ibmi.profiles.copyAsJson`, async (profileNode?: Profile) => {
+        const config = instance.getConfig();
+        if (config && profileNode) {
+          const currentProfiles = config.connectionProfiles;
+          const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
+          if (chosenProfile) {
+            await vscode.env.clipboard.writeText(JSON.stringify(chosenProfile, null, 2));
           }
         }
       }),
@@ -233,14 +244,14 @@ export class ProfilesView {
 
 export async function getAllProfiles(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles;
-  const localProfiles = await getProfiles(connection);
+  const localProfiles = await getStaticProfiles(connection);
 
   return [...profiles, ...localProfiles];
 }
 
 async function getProfilesInGroups(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles || [];
-  const localProfiles = await getAllProfiles(connection);
+  const localProfiles = await getStaticProfiles(connection);
 
   return {
     connectionProfiles: profiles,
