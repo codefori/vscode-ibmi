@@ -2,7 +2,7 @@
 import vscode from 'vscode';
 
 //Webpack is returning this as a string
-const vscodeweb = require(`@bendera/vscode-webview-elements/dist/bundled`);
+const vscodeweb = require(`@vscode-elements/elements/dist/bundled`);
 
 type PanelOptions = {
   fullWidth?: boolean
@@ -396,7 +396,7 @@ export class CustomUI extends Section {
             // This is used to read the file in order to get the real path.
             for (const field of filefields) {
               document.getElementById(field)
-                  .addEventListener('vsc-change', (e) => {
+                  .addEventListener('change', (e) => {
                       const VirtualField = document.getElementById(e.target.id)
                       let input = VirtualField.shadowRoot.querySelector("input");
                       for (let file of Array.from(input.files)) {
@@ -413,10 +413,10 @@ export class CustomUI extends Section {
               validateInputs(); 
               var currentTree;
               ${trees.map(tree => {
-      return /*js*/`
+      return /* js */`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
-                  currentTree.addEventListener('vsc-select', (event) => {
+                  currentTree.addEventListener('vsc-tree-select', (event) => {
                     console.log(JSON.stringify(event.detail));
                     if (event.detail.itemType === 'leaf') {
                       vscode.postMessage({'${tree.id}': event.detail.value});
@@ -496,7 +496,7 @@ export class Field {
       case `checkbox`:
         return /* html */`
           <vscode-form-group variant="settings-group">
-            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``}><vscode-label>${this.label}</vscode-label></vscode-checkbox>
+            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``} label="${this.label}"></vscode-checkbox>
             ${this.renderDescription()}
           </vscode-form-group>`;
 
