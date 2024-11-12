@@ -1383,10 +1383,8 @@ export default class IBMi {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
-      const useCcsid = this.qccsid === 65535 ? this.userDefaultCCSID : undefined;
-      const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
-
-      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
+      // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
+      let input = Tools.fixSQL(statements, true);
 
       let returningAsCsv: WrapResult | undefined;
 
