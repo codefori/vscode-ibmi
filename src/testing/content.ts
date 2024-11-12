@@ -709,8 +709,13 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(memberInfoB?.extension === `CPP`, true);
         assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
 
-        const memberInfoC = await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`);
-        assert.ok(!memberInfoC);
+        try{
+          await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`)
+        }
+        catch(error: any){
+          assert.ok(error instanceof Tools.SqlError);
+          assert.strictEqual(error.sqlstate, "38501");
+        }
       }
     },
     {
