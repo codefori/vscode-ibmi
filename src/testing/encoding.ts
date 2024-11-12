@@ -44,14 +44,6 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
   return result;
 }
 
-function bufferToUx(input: string) {
-  // const utf16String = buffer.toString('utf16le');
-  const hexString = Array.from(input)
-    .map(char => char.charCodeAt(0).toString(16).padStart(4, '0').toUpperCase())
-    .join('');
-  return `UX'${hexString}'`;
-}
-
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
@@ -69,8 +61,8 @@ export const EncodingSuite: TestSuite = {
           const data = contents[strCcsid as keyof typeof contents].join(``);
 
           // Note that it always works with the buffer!
-          const sqlA = `select ${bufferToUx(data)} as THEDATA from sysibm.sysdummy1`;
-          const resultA = await connection?.runSQL(sqlA);
+          const sqlA = `select ? as THEDATA from sysibm.sysdummy1`;
+          const resultA = await connection?.runSQL(sqlA, [data]);
           assert.ok(resultA?.length);
           
           const sqlB = `select '${data}' as THEDATA from sysibm.sysdummy1`;
@@ -90,8 +82,8 @@ export const EncodingSuite: TestSuite = {
       name: `Compare Unicode to EBCDIC successfully`, test: async () => {
         const connection = instance.getConnection();
 
-        const sql = `select table_name, table_owner from qsys2.systables where table_schema = ${bufferToUx(`QSYS2`)} and table_name = ${bufferToUx(`SYSCOLUMNS`)}`;
-        const result = await connection?.runSQL(sql);
+        const sql = `select table_name, table_owner from qsys2.systables where table_schema = ? and table_name = ?`;
+        const result = await connection?.runSQL(sql, [`QSYS2`, `SYSCOLUMNS`]);
         assert.ok(result?.length);
       }
     },

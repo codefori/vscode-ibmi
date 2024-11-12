@@ -22,9 +22,7 @@ export namespace Tools {
     length: number
   }
 
-  export interface DB2Row extends Record<string, string | number | null> {
-
-  }
+  export interface DB2Row extends Record<string, string | number | null> {}
 
   /**
    * Parse standard out for `/usr/bin/db2`
@@ -154,6 +152,13 @@ export namespace Tools {
     });
 
     return rows;
+  }
+
+  export function bufferToUx(input: string) {
+    const hexString = Array.from(input)
+      .map(char => char.charCodeAt(0).toString(16).padStart(4, '0').toUpperCase())
+      .join('');
+    return `UX'${hexString}'`;
   }
 
   export function makeid(length: number = 8) {

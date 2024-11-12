@@ -1379,7 +1379,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, fakeBindings?: (string|number)[]): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
@@ -1391,11 +1391,31 @@ export default class IBMi {
       let returningAsCsv: WrapResult | undefined;
 
       let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
-      const lastStmt = list.pop()?.trim();
+      let lastStmt = list.pop()?.trim();
       const asUpper = lastStmt?.toUpperCase();
 
       // We always need to use the CSV to get the values back correctly from the database.
       if (lastStmt) {
+        if (lastStmt.includes(`?`) && fakeBindings && fakeBindings.length > 0) {
+          const parts = lastStmt.split(`?`);
+
+          lastStmt = ``;
+          for (let partsIndex = 0; partsIndex < parts.length; partsIndex++) {
+            lastStmt += parts[partsIndex];
+            if (fakeBindings[partsIndex] !== undefined) {
+              switch (typeof fakeBindings[partsIndex]) {
+                case `number`:
+                  lastStmt += fakeBindings[partsIndex];
+                  break;
+
+                case `string`:
+                  lastStmt += Tools.bufferToUx(fakeBindings[partsIndex] as string);
+                  break;
+              }
+            }
+          }
+        }
+
         if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
           const copyToImport = this.getComponent<CopyToImport>(CopyToImport);
           if (copyToImport) {
