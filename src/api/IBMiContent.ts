@@ -154,6 +154,9 @@ export default class IBMiContent {
     while (true) {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
+        library = this.ibmi.sysNameInAmerican(library);
+        sourceFile = this.ibmi.sysNameInAmerican(sourceFile);
+        member = this.ibmi.sysNameInAmerican(member);
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
           await this.ibmi.runSQL([
@@ -167,7 +170,7 @@ export default class IBMiContent {
       }
       else {
         copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          command: `QSYS/CPYTOSTMF FROMMBR('${this.ibmi.sysNameInAmerican(path)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
           noLibList: true
         });
       }
@@ -231,6 +234,10 @@ export default class IBMiContent {
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
           try {
+            library = this.ibmi.sysNameInAmerican(library);
+            sourceFile = this.ibmi.sysNameInAmerican(sourceFile);
+            member = this.ibmi.sysNameInAmerican(member);
+
             await this.ibmi.runSQL([
               `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
               `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
@@ -243,7 +250,7 @@ export default class IBMiContent {
         }
         else {
           copyResult = await this.ibmi.runCommand({
-            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${path}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+            command: `QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${this.ibmi.sysNameInAmerican(path)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
             noLibList: true
           });
         }

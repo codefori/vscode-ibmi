@@ -180,9 +180,9 @@ export const EncodingSuite: TestSuite = {
         const ccsidData = connection.getCcsids()!;
 
         const tempLib = config.tempLibrary;
-        const varChar = connection.variantChars.local[0];
+        const varChar = connection.variantChars.local[1];
         
-        const testFile = `${varChar}SOURCES`;
+        const testFile = `${varChar}SCOBBY`;
         const testMember = `${varChar}MEMBER`;
 
         const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
@@ -205,6 +205,9 @@ export const EncodingSuite: TestSuite = {
         assert.ok(members.length);
         assert.ok(members.some(m => m.name === testMember));
         assert.ok(members.some(m => m.file === testFile));
+
+        const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
+        assert.ok(files.length);
 
         await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
 
