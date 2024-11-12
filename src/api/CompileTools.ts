@@ -682,7 +682,7 @@ export namespace CompileTools {
               command: [
                 ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${connection.sysNameInAmerican(command).replace(/[$]/g, `\\$&`)}"`}`,
+                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${IBMi.escapeForShell(connection.sysNameInAmerican(command))}"`}`,
                 )
               ].join(` && `),
               directory: cwd,

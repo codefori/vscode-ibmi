@@ -757,8 +757,8 @@ export default class IBMi {
 
               const result = await this.sendQsh({
                 command: [
-                  `liblist -d ` + this.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-                  ...this.config.libraryList.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+                  `liblist -d ` + IBMi.escapeForShell(this.defaultUserLibraries.join(` `)),
+                  ...this.config.libraryList.map(lib => `liblist -a ` + IBMi.escapeForShell(lib))
                 ].join(`; `)
               });
 
@@ -1034,6 +1034,10 @@ export default class IBMi {
     return CompileTools.runCommand(instance, data);
   }
 
+  static escapeForShell(command: string) {
+    return command.replace(/\$/g, `\\$`)
+  }
+
   async sendQsh(options: CommandData) {
     options.stdin = options.command;
 
@@ -1050,8 +1054,7 @@ export default class IBMi {
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
-      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
-        }"`))
+      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? IBMi.escapeForShell(value) : ``}"`));
     }
 
     commands.push(options.command);
