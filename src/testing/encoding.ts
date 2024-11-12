@@ -92,7 +92,7 @@ export const EncodingSuite: TestSuite = {
       test: async () => {
         const connection = instance.getConnection();
         const content = instance.getConnection()?.content;
-        if (connection && content && connection.getEncoding().ccsid !== 37) {
+        if (connection && content) {
           const tempLib = connection.config?.tempLibrary!;
           const ccsid = connection.getEncoding().ccsid;
 
