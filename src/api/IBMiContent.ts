@@ -883,10 +883,10 @@ export default class IBMiContent {
   async checkObject(object: { library: string, name: string, type: string, member?: string }, authorities: Authority[] = [`*NONE`]) {
     return (await this.ibmi.runCommand({
       command: this.toCl(`CHKOBJ`, {
-        obj: `${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`,
+        obj: this.ibmi.sysNameInAmerican(`${this.ibmi.upperCaseName(object.library)}/${this.ibmi.upperCaseName(object.name)}`),
         objtype: object.type.toLocaleUpperCase(),
         aut: authorities.join(" "),
-        mbr: object.member
+        mbr: object.member ? this.ibmi.sysNameInAmerican(object.member) : undefined
       }),
       noLibList: true
     })).code === 0;
