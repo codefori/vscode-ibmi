@@ -987,7 +987,7 @@ function openIFSSearchResults(searchPath: string, searchResults: SearchResults) 
 }
 
 async function showOpenDialog() {
-  const openType = (await vscode.window.showQuickPick([l10n.t(`Folders`), l10n.t(`Folders`)], { title: l10n.t(`Folders`) }));
+  const openType = (await vscode.window.showQuickPick([l10n.t(`Folders`), l10n.t(`Files`)], { title: l10n.t(`What do you want to upload?`) }));
   if (openType) {
     return vscode.window.showOpenDialog({
       defaultUri: vscode.Uri.file(os.homedir()),
