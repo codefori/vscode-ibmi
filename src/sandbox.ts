@@ -1,10 +1,9 @@
 import { env } from "process";
 import querystring from "querystring";
-import { commands, ExtensionContext, Uri, window } from "vscode";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "./api/Configuration";
+import { commands, ExtensionContext, l10n, Uri, window } from "vscode";
+import { ConnectionConfiguration, ConnectionManager } from "./api/Configuration";
 import { Tools } from "./api/Tools";
 import { instance } from "./instantiate";
-import { t } from "./locale";
 import { ConnectionData } from "./typings";
 
 export async function registerUriHandler(context: ExtensionContext) {
@@ -26,10 +25,13 @@ export async function registerUriHandler(context: ExtensionContext) {
               let pass: string | string[] | undefined = queryData.pass;
 
               if (server) {
-                if (!user) {
+                if(user && Array.isArray(user)){
+                  user = user[0];
+                }
+                else if (!user) {
                   user = await window.showInputBox({
-                    title: t(`sandbox.input.user.title`),
-                    prompt: t(`sandbox.input.user.prompt`, server)
+                    title: l10n.t(`User for server`),
+                    prompt: l10n.t(`Enter username for {0}`, server)
                   });
                 }
 
@@ -38,8 +40,8 @@ export async function registerUriHandler(context: ExtensionContext) {
                 } else {
                   pass = await window.showInputBox({
                     password: true,
-                    title: t(`sandbox.input.password.title`),
-                    prompt: t(`sandbox.input.password.prompt`, String(user), server)
+                    title: l10n.t(`Password for server`),
+                    prompt: l10n.t(`Enter password for {0}@{1}`, String(user), server)
                   });
                 }
 
@@ -71,20 +73,20 @@ export async function registerUriHandler(context: ExtensionContext) {
                     }
 
                   } else {
-                    window.showInformationMessage(t(`sandbox.failedToConnect.title`), {
+                    window.showInformationMessage(l10n.t(`Failed to connect`), {
                       modal: true,
-                      detail: t(`sandbox.failedToConnect`, server, user)
+                      detail: l10n.t("Failed to connect to {0} as {1}", server, String(user))
                     });
                   }
 
                 } else {
-                  window.showErrorMessage(t(`sandbox.noPassword`, server));
+                  window.showErrorMessage(l10n.t(`Connection to {0} ended as no password was provided.`, server));
                 }
               }
             } else {
-              window.showInformationMessage(t(`sandbox.failedToConnect.title`), {
+              window.showInformationMessage(l10n.t(`Failed to connect`), {
                 modal: true,
-                detail: t(`sandbox.alreadyConnected`)
+                detail: l10n.t(`This Visual Studio Code instance is already connected to a server.`)
               });
             }
 
@@ -147,9 +149,9 @@ export async function handleStartup() {
 
     if (env.VSCODE_IBMI_SANDBOX) {
       console.log(`Sandbox mode enabled.`);
-      window.showInformationMessage(t(`sandbox.connected.modal.title`), {
+      window.showInformationMessage(l10n.t(`Thanks for trying the Code for IBM i Sandbox!`), {
         modal: true,
-        detail: t(`sandbox.connected.modal.detail`)
+        detail: l10n.t(`You are using this system at your own risk. Do not share any sensitive or private information.`)
       });
     }
 
@@ -159,9 +161,9 @@ export async function handleStartup() {
       await initialSetup(connectionData.username);
 
     } else {
-      window.showInformationMessage(t(`sandbox.noconnection.modal.title`), {
+      window.showInformationMessage(l10n.t(`Oh no! The sandbox is down.`), {
         modal: true,
-        detail: t(`sandbox.noconnection.modal.detail`)
+        detail: l10n.t(`Sorry, but the sandbox is offline right now. Try again another time.`)
       });
     }
   }

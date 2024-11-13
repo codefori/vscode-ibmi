@@ -1,8 +1,7 @@
 import path from 'path';
 import vscode from "vscode";
 import { DefaultOpenMode } from "../api/Configuration";
-import { t } from '../locale';
-import { SearchHit, SearchHitLine, SearchResults } from "../typings";
+import { SearchHit, SearchHitLine, SearchResults, WithPath } from "../typings";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {
   const searchView = new SearchView();
@@ -20,10 +19,10 @@ export function initializeSearchView(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.collapseSearchView`, async () => searchView.collapse()),
     vscode.commands.registerCommand(`code-for-ibmi.setSearchResults`, async (searchResults: SearchResults) => {
       if (searchResults.hits.some(hit => hit.lines.length)) {
-        searchViewViewer.message = t("searchView.search.message", searchResults.hits.length, searchResults.term);
+        searchViewViewer.message = vscode.l10n.t(`{0} file(s) contain(s) '{1}'`, searchResults.hits.length,  searchResults.term);
       }
       else {
-        searchViewViewer.message = t("searchView.find.message", searchResults.hits.length, searchResults.term);
+        searchViewViewer.message = vscode.l10n.t(`{0} file(s) named '{1}'`, searchResults.hits.length,  searchResults.term);
       }
       searchView.setResults(searchResults);
     })
@@ -68,9 +67,9 @@ class SearchView implements vscode.TreeDataProvider<vscode.TreeItem> {
   }
 }
 
-class HitSource extends vscode.TreeItem {
-  private readonly path: string;
+class HitSource extends vscode.TreeItem implements WithPath {
   private readonly _readonly?: boolean;
+  readonly path: string;
 
   constructor(readonly term: string, readonly result: SearchHit) {
     const hits = result.lines.length;
@@ -117,7 +116,8 @@ class LineHit extends vscode.TreeItem {
         if (index >= 0) {
           highlights.push([index, index + term.length]);
           if (!position) {
-            position = new vscode.Range(positionLine, index, positionLine, index + term.length)
+            const offset = index + (line.content.length - line.content.trimStart().length);
+            position = new vscode.Range(positionLine, offset, positionLine, offset + term.length)
           }
           index += term.length;
         }

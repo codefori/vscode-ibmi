@@ -51,11 +51,11 @@ export class ExtendedIBMiContent {
 
       let rows;
       if (sourceColourSupport)
-        rows = await content.runSQL(
+        rows = await connection.runSQL(
           `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`
         );
       else
-        rows = await content.runSQL(
+        rows = await connection.runSQL(
           `select srcdat, srcdta from ${aliasPath}`
         );
 
@@ -92,11 +92,14 @@ export class ExtendedIBMiContent {
     let recordLength: number = DEFAULT_RECORD_LENGTH;
 
     if (content) {
-      const result = await content.runSQL(`SELECT LENGTH(srcdta) as LENGTH FROM ${aliasPath} limit 1`);
+      const result = await content.runSQL(`select length(SRCDTA) as LENGTH from ${aliasPath} limit 1`);
       if (result.length > 0) {
         recordLength = Number(result[0].LENGTH);
       } else {
-        const result = await content.runSQL(`SELECT row_length-12 as LENGTH FROM QSYS2.SYSTABLES WHERE TABLE_SCHEMA = '${lib}' and TABLE_NAME = '${spf}' limit 1`);
+        const result = await content.runSQL(`select row_length-12 as LENGTH
+                                               from QSYS2.SYSTABLES
+                                              where SYSTEM_TABLE_SCHEMA = '${lib}' and SYSTEM_TABLE_NAME = '${spf}'
+                                              limit 1`);
         if (result.length > 0) {
           recordLength = Number(result[0].LENGTH);
         }

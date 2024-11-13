@@ -2,9 +2,11 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
-import { t } from "../locale";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
+
+const MONTHS = [undefined, "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DAYS = [undefined,"Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -174,7 +176,7 @@ export namespace Tools {
    */
   export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
-    const filePath = `${object}.FILE`;
+    const filePath = object ? `${object}.FILE` : '';
     const memberPath = member ? `/${member}.MBR` : '';
     const subPath = `${filePath}${memberPath}`;
 
@@ -272,7 +274,7 @@ export namespace Tools {
   }
 
   export function parseQSysPath(path: string): QsysPath {
-    const parts = path.split('/');
+    const parts = path.split('/').filter(Boolean);
     if (parts.length > 3) {
       return {
         asp: parts[0],
@@ -374,7 +376,7 @@ export namespace Tools {
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
       .concat(`${Object.entries(rows)
         .filter(([key, value]) => value !== undefined && value !== '')
-        .map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`)
+        .map(([key, value]) => `<tr><td>${vscode.l10n.t(key)}:</td><td>&nbsp;${value}</td></tr>`)
         .join(``)}`
       )
       .concat(`</table>`);
@@ -388,6 +390,13 @@ export namespace Tools {
     } else {
       return path;
     }
+  }
+
+  export function assumeType(str: string) {
+    // The number is already generated on the server.
+    // So, we assume that if the string starts with a 0, it is a string.
+    if (str[0] === `0` || str.length > 10) return str;
+    return Number(str) || str;
   }
 
   const activeContexts: Map<string, number> = new Map;
@@ -425,5 +434,18 @@ export namespace Tools {
         }
       }
     }
+  }
+
+  /**
+   * Converts a timestamp from the attr command (in the form `Thu Dec 21 21:47:02 2023`) into a Date object
+   * @param timestamp an attr timestamp string
+   * @returns a Date object
+   */
+  export function parseAttrDate(timestamp:string){
+    const parts = /^([\w]{3}) ([\w]{3}) +([\d]+) ([\d]+:[\d]+:[\d]+) ([\d]+)$/.exec(timestamp);
+    if(parts){
+      return Date.parse(`${parts[3].padStart(2, "0")} ${parts[2]} ${parts[5]} ${parts[4]} GMT`);
+    }
+    return 0;
   }
 }

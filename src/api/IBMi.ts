@@ -1,16 +1,16 @@
-import * as node_ssh from "node-ssh";
-import * as vscode from "vscode";
-import { ConnectionConfiguration } from "./Configuration";
-
 import { parse } from 'csv-parse/sync';
 import { existsSync } from "fs";
+import * as node_ssh from "node-ssh";
 import os from "os";
-import path from 'path';
-import { ComponentId, ComponentManager } from "../components/component";
+import path, { parse as parsePath } from 'path';
+import * as vscode from "vscode";
+import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
+import { ComponentManager } from "../components/manager";
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
+import { ConnectionConfiguration } from "./Configuration";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
@@ -55,7 +55,7 @@ export default class IBMi {
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
 
-  private components: ComponentManager = new ComponentManager();
+  private componentManager = new ComponentManager(this);
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
@@ -66,7 +66,6 @@ export default class IBMi {
   defaultUserLibraries: string[] = [];
   outputChannel?: vscode.OutputChannel;
   outputChannelContent?: string;
-
   /**
    * Used to store ASP numbers and their names
    * Their names usually maps up to a directory in
@@ -85,7 +84,10 @@ export default class IBMi {
   content = new IBMiContent(this);
   shell?: string;
 
-  commandsExecuted: number = 0;
+  commandsExecuted = 0;
+
+  //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
+  maximumArgsLength = 0;
 
   dangerousVariants = false;
 
@@ -111,6 +113,10 @@ export default class IBMi {
       tar: undefined,
       ls: undefined,
       find: undefined,
+      jdk80: undefined,
+      jdk11: undefined,
+      jdk17: undefined,
+      openjdk11: undefined
     };
 
     this.variantChars = {
@@ -132,13 +138,18 @@ export default class IBMi {
         return await vscode.window.withProgress({
           location: vscode.ProgressLocation.Notification,
           title: `Connecting`,
-        }, async progress => {
+          cancellable: true
+        }, async (progress, cancelToken) => {
           progress.report({
             message: `Connecting via SSH.`
           });
           const delayedOperations: Function[] = [...onConnectedOperations];
 
           await this.client.connect(connectionObject as node_ssh.Config);
+
+          cancelToken.onCancellationRequested(() => {
+            this.end();
+          });
 
           this.currentConnectionName = connectionObject.name;
           this.currentHost = connectionObject.host;
@@ -152,20 +163,24 @@ export default class IBMi {
 
           let tempLibrarySet = false;
 
-          const disconnected = async () => {
-            const choice = await vscode.window.showWarningMessage(`Connection lost`, {
-              modal: true,
-              detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
-            }, `Yes`);
+          const timeoutHandler = async () => {
+            if (!cancelToken.isCancellationRequested) {
+              this.disconnect();
 
-            let disconnect = true;
-            if (choice === `Yes`) {
-              disconnect = !(await this.connect(connectionObject, true)).success;
+              const choice = await vscode.window.showWarningMessage(`Connection lost`, {
+                modal: true,
+                detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
+              }, `Yes`);
+
+              let disconnect = true;
+              if (choice === `Yes`) {
+                disconnect = !(await this.connect(connectionObject, true)).success;
+              }
+
+              if (disconnect) {
+                this.end();
+              };
             }
-
-            if (disconnect) {
-              this.end();
-            };
           };
 
           progress.report({
@@ -210,9 +225,9 @@ export default class IBMi {
           }
 
           // Register handlers after we might have to abort due to bad configuration.
-          this.client.connection!.once(`timeout`, disconnected);
-          this.client.connection!.once(`end`, disconnected);
-          this.client.connection!.once(`error`, disconnected);
+          this.client.connection!.once(`timeout`, timeoutHandler);
+          this.client.connection!.once(`end`, timeoutHandler);
+          this.client.connection!.once(`error`, timeoutHandler);
 
           if (!reconnecting) {
             instance.setConnection(this);
@@ -576,6 +591,16 @@ export default class IBMi {
                 console.log(e);
               }
             }
+
+            //Specific Java installations check
+            progress.report({
+              message: `Checking installed components on host IBM i: Java`
+            });
+            const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
+            this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
+            this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
+            this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
+            this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
           }
 
           if (this.sqlRunnerAvailable()) {
@@ -759,18 +784,18 @@ export default class IBMi {
                     let reason;
                     const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
                     let missingPath;
-                    for (const requiredPath of requiredPaths){
+                    for (const requiredPath of requiredPaths) {
                       if (!currentPaths.includes(requiredPath)) {
                         reason = `Your $PATH shell environment variable does not include ${requiredPath}`;
                         missingPath = requiredPath
                         break;
-                      } 
+                      }
                     }
                     // If reason is still undefined, then we know the user has all the required paths. Then we don't 
                     // need to check for their existence before checking the order of the required paths.
-                    if (!reason && 
+                    if (!reason &&
                       (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
-                   || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
+                        || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
                       reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
                       missingPath = "/QOpenSys/pkgs/bin"
                     }
@@ -911,8 +936,16 @@ export default class IBMi {
             }
           }
 
+          if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
+            //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
+            this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
+          }
+          else {
+            this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
+          }
+
           progress.report({ message: `Checking Code for IBM i components.` });
-          await this.components.startup(this);
+          await this.componentManager.startup();
 
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
@@ -920,8 +953,9 @@ export default class IBMi {
             for (const operation of delayedOperations) {
               await operation();
             }
-            instance.fire("connected");
           }
+
+          instance.fire(`connected`);
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
             aspInfo: this.aspInfo,
@@ -937,7 +971,8 @@ export default class IBMi {
             libraryListValidated: true,
             pathChecked: true,
             userDefaultCCSID: this.userDefaultCCSID,
-            debugConfigLoaded
+            debugConfigLoaded,
+            maximumArgsLength: this.maximumArgsLength
           });
 
           //Keep track of variant characters that can be uppercased
@@ -1088,9 +1123,17 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  async end() {
+  private async disconnect() {
     this.client.connection?.removeAllListeners();
     this.client.dispose();
+    this.client.connection = null;
+    instance.fire(`disconnected`);
+  }
+
+  async end() {
+    if (this.client.connection) {
+      this.disconnect();
+    }
 
     if (this.outputChannel) {
       this.outputChannel.hide();
@@ -1108,7 +1151,6 @@ export default class IBMi {
     ]);
 
     instance.setConnection(undefined);
-    instance.fire(`disconnected`);
     await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
     vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }
@@ -1152,7 +1194,7 @@ export default class IBMi {
       }
   }
 
-  parserMemberPath(string: string): MemberParts {
+  parserMemberPath(string: string, checkExtension?: boolean): MemberParts {
     const variant_chars_local = this.variantChars.local;
     const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
 
@@ -1160,12 +1202,13 @@ export default class IBMi {
     const upperCasedString = this.upperCaseName(string);
     const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
 
-    const basename = path[path.length - 1];
+    const parsedPath = parsePath(upperCasedString);
+    const name = parsedPath.name;
     const file = path[path.length - 2];
     const library = path[path.length - 3];
     const asp = path[path.length - 4];
 
-    if (!library || !file || !basename) {
+    if (!library || !file || !name) {
       throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
     }
     if (asp && !validQsysName.test(asp)) {
@@ -1178,12 +1221,10 @@ export default class IBMi {
       throw new Error(`Invalid Source File name: ${file}`);
     }
 
-    //Having a blank extension is allowed but the . in the path is required
-    if (!basename.includes(`.`)) {
+    //Having a blank extension is allowed but the . in the path is required if checking the extension
+    if (checkExtension && !parsedPath.ext) {
       throw new Error(`Source Type extension is required.`);
     }
-    const name = basename.substring(0, basename.lastIndexOf(`.`));
-    const extension = basename.substring(basename.lastIndexOf(`.`) + 1).trim();
 
     if (!validQsysName.test(name)) {
       throw new Error(`Invalid Source Member name: ${name}`);
@@ -1193,6 +1234,7 @@ export default class IBMi {
     // the existing RegExp because result.extension is everything after
     // the final period (so we know it won't contain a period).
     // But, a blank extension is valid.
+    const extension = parsedPath.ext.substring(1);
     if (extension && !validQsysName.test(extension)) {
       throw new Error(`Invalid Source Member Extension: ${extension}`);
     }
@@ -1201,7 +1243,7 @@ export default class IBMi {
       library,
       file,
       extension,
-      basename,
+      basename: parsedPath.base,
       name,
       asp
     };
@@ -1325,8 +1367,8 @@ export default class IBMi {
     }
   }
 
-  getComponent<T>(id: ComponentId) {
-    return this.components.get<T>(id);
+  getComponent<T extends IBMiComponent>(type: IBMiComponentType<T>, ignoreState?: boolean): T | undefined {
+    return this.componentManager.get<T>(type, ignoreState);
   }
 
   /**
@@ -1356,7 +1398,7 @@ export default class IBMi {
 
         if (lastStmt) {
           if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-            const copyToImport = this.getComponent<CopyToImport>(`CopyToImport`);
+            const copyToImport = this.getComponent<CopyToImport>(CopyToImport);
             if (copyToImport) {
               returningAsCsv = copyToImport.wrap(lastStmt);
               list.push(...returningAsCsv.newStatements);
@@ -1388,10 +1430,9 @@ export default class IBMi {
             return parse(csvContent, {
               columns: true,
               skip_empty_lines: true,
-              cast: true,
               onRecord(record) {
                 for (const key of Object.keys(record)) {
-                  record[key] = record[key] === ` ` ? `` : record[key];
+                  record[key] = record[key] === ` ` ? `` : Tools.assumeType(record[key]);
                 }
                 return record;
               }
