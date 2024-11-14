@@ -99,10 +99,10 @@ export function initialise(context: vscode.ExtensionContext) {
 export async function connectWithFixture(server?: Server) {
   if (server) {
     const connectionName = server.name;
-    const chosenFixture = await vscode.window.showQuickPick(TestConnectionFixtures.map(f => f.name), { title: vscode.l10n.t(`Select connection fixture`) });
+    const chosenFixture = await vscode.window.showQuickPick(TestConnectionFixtures.map(f => ({label: f.name, description: Object.values(f.user).join(`, `)})), { title: vscode.l10n.t(`Select connection fixture`) });
 
     if (chosenFixture) {
-      const fixture = TestConnectionFixtures.find(f => f.name === chosenFixture);
+      const fixture = TestConnectionFixtures.find(f => f.name === chosenFixture.label);
       if (fixture) {
         configuringFixture = true;
         const error = await setupUserFixture(connectionName, fixture)
@@ -312,7 +312,11 @@ async function generateReport() {
       }
     }
 
-    lines.push(``, `## Job info`, ``);
+    lines.push(``, `## System info`, ``);
+
+    lines.push(`### Variants`, ``, `American: \`${connection.variantChars.american}\``, `Local: \`${connection.variantChars.local}\``, ``);
+
+    lines.push(`### Job info`, ``);
 
     const [jobInfoSql] = await connection.runSQL(`Select JOB_USER, CCSID, DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
     const columns = Object.keys(jobInfoSql);
@@ -322,7 +326,7 @@ async function generateReport() {
     }
 
     const systemValues = await connection.runSQL(`SELECT * FROM QSYS2.SYSTEM_VALUE_INFO`);
-    lines.push(``, `## System values`, ``);
+    lines.push(``, `### System values`, ``);
     lines.push(`| System value | Numeric | String |`, `| --- | --- | --- |`);
     for (const value of systemValues) {
       lines.push(`| ${value.SYSTEM_VALUE_NAME} | ${value.CURRENT_NUMERIC_VALUE} | ${value.CURRENT_CHARACTER_VALUE} |`);

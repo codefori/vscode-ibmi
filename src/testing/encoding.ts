@@ -47,8 +47,10 @@ async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid:
 export const EncodingSuite: TestSuite = {
   name: `Encoding tests`,
   before: async () => {
-    const config = instance.getConfig()!;
-    assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
+    const config = instance.getConfig();
+    if (config) {
+      assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
+    }
   },
 
   tests: [
