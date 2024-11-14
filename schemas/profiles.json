@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "FilterType": {
+      "type": "string",
+      "enum": ["simple", "regex"]
+    },
+    "ObjectFilters": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "filterType": { "$ref": "#/definitions/FilterType" },
+        "library": { "type": "string" },
+        "object": { "type": "string" },
+        "types": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "member": { "type": "string" },
+        "memberType": { "type": "string" },
+        "protected": { "type": "boolean" }
+      },
+      "required": ["name", "filterType", "library", "object", "types", "member", "memberType", "protected"]
+    },
+    "CustomVariable": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "value": { "type": "string" }
+      },
+      "required": ["name", "value"]
+    },
+    "ConnectionProfile": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "homeDirectory": { "type": "string" },
+        "currentLibrary": { "type": "string" },
+        "libraryList": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "objectFilters": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ObjectFilters" }
+        },
+        "ifsShortcuts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "customVariables": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/CustomVariable" }
+        }
+      },
+      "required": ["name"]
+    },
+    "TopLevel": {
+      "type": "object",
+      "properties": {
+        "profiles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "homeDirectory": { "type": "string" },
+              "currentLibrary": { "type": "string" },
+              "libraryList": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "objectFilters": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/ObjectFilters" }
+              },
+              "ifsShortcuts": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "customVariables": {
+                "type": "array",
+                "items": { "$ref": "#/definitions/CustomVariable" }
+              }
+            }
+          }
+        }
+      },
+      "required": ["profiles"]
+    }
+  },
+  "$ref": "#/definitions/TopLevel"
+}
