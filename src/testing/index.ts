@@ -59,6 +59,7 @@ const TestConnectionFixtures: ConnectionFixture[] = [
 ]
 
 let configuringFixture = false;
+let lastChosenFixture: ConnectionFixture;
 const testingEnabled = env.base_testing === `true`;
 const testSuitesSimultaneously = env.simultaneous === `true`;
 const testIndividually = env.individual === `true`;
@@ -110,7 +111,8 @@ export async function connectWithFixture(server?: Server) {
         if (error) {
           vscode.window.showErrorMessage(`Failed to setup connection fixture: ${error}`);
         } else {
-          vscode.window.showInformationMessage(`Successfully setup connection fixture to ${chosenFixture}`);
+          lastChosenFixture = fixture;
+          vscode.window.showInformationMessage(`Successfully setup connection fixture for ${chosenFixture}`);
           vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
         }
       }
@@ -119,7 +121,7 @@ export async function connectWithFixture(server?: Server) {
 }
 
 async function setupUserFixture(connectionName: string, fixture: ConnectionFixture) {
-  let error: string|undefined;
+  let error: string | undefined;
 
   await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
 
@@ -188,6 +190,7 @@ async function runTests(simultaneously?: boolean) {
   }
 
   console.log(`All tests completed`);
+  generateReport();
 }
 
 async function testSuiteRunner(suite: TestSuite, withGap?: boolean) {
@@ -264,4 +267,69 @@ function resetTests() {
     tc.status = undefined;
     tc.failure = undefined;
   });
+}
+
+async function generateReport() {
+  const connection = instance.getConnection();
+  if (connection) {
+    let lines: string[] = [`# Code for IBM i testing report`];
+
+    if (lastChosenFixture) {
+      lines.push(`## Connection fixture ${lastChosenFixture.name}`);
+      lines.push(``);
+      lines.push(`- \`${connection.content.toCl(`CHGUSRPRF`, lastChosenFixture.user)}\``);
+      for (const command of lastChosenFixture.commands || []) {
+        lines.push(`  - \`${command}\``);
+      }
+      lines.push(``);
+    }
+
+    lines.push(`## Test suites`, ``);
+
+    const statusIcon = {
+      failed: `❌`,
+      pass: `✅`,
+    }
+
+    for (const suite of suites) {
+
+      let testList: string[] = [];
+      for (const test of suite.tests) {
+        let status = statusIcon[test.status as keyof typeof statusIcon];
+        if (status) {
+          testList.push(`- ${test.name} ${status}${test.failure ? `: ${test.failure}` : ``}`);
+        }
+      }
+
+      // We only want to show the suite if there are tests that ran
+      if (testList.length > 0) {
+        lines.push(`### ${suite.name} ${suite.failure ? `❌` : `✅`}`, ``);
+        if (suite.failure) {
+          lines.push(`Failure: ${suite.failure}`, ``);
+        }
+
+        lines.push(...testList, ``);
+      }
+    }
+
+    lines.push(``, `## Job info`, ``);
+
+    const [jobInfoSql] = await connection.runSQL(`Select JOB_USER, CCSID, DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+    const columns = Object.keys(jobInfoSql);
+    lines.push(`| Column | Description |`, `| --- | --- |`);
+    for (const column of columns) {
+      lines.push(`| ${column} | ${jobInfoSql[column as keyof typeof jobInfoSql]} |`);
+    }
+
+    const systemValues = await connection.runSQL(`SELECT * FROM QSYS2.SYSTEM_VALUE_INFO`);
+    lines.push(``, `## System values`, ``);
+    lines.push(`| System value | Numeric | String |`, `| --- | --- | --- |`);
+    for (const value of systemValues) {
+      lines.push(`| ${value.SYSTEM_VALUE_NAME} | ${value.CURRENT_NUMERIC_VALUE} | ${value.CURRENT_CHARACTER_VALUE} |`);
+    }
+
+    vscode.workspace.openTextDocument({ content: lines.join(`\n`), language: `markdown` }).then(doc => {
+      vscode.window.showTextDocument(doc);
+    });
+  }
 }
