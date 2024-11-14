@@ -14,6 +14,7 @@ import { SearchSuite } from "./search";
 import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
+import { Server } from "../typings";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -48,9 +49,20 @@ export interface TestCase {
   duration?: number
 }
 
+export interface ConnectionFixture { name: string, user: { [parm: string]: string | number }, commands?: string[] };
+
+const TestConnectionFixtures: ConnectionFixture[] = [
+  { name: `American`, user: { CCSID: 37, CNTRYID: `US`, LANGID: `ENG` } },
+  { name: `French`, user: { CCSID: 297, CNTRYID: `FR`, LANGID: `FRA` } },
+  { name: `Spanish`, user: { CCSID: 284, CNTRYID: `ES`, LANGID: `ESP` } },
+  { name: `Danish`, user: { CCSID: 277, CNTRYID: `DK`, LANGID: `DAN` } }
+]
+
+let configuringFixture = false;
 const testingEnabled = env.base_testing === `true`;
 const testSuitesSimultaneously = env.simultaneous === `true`;
 const testIndividually = env.individual === `true`;
+const testSpecific = env.specific;
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
@@ -58,7 +70,7 @@ export function initialise(context: vscode.ExtensionContext) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
 
     if (!testIndividually) {
-      instance.subscribe(context, 'connected', 'Run tests', () => runTests(testSuitesSimultaneously));
+      instance.subscribe(context, 'connected', 'Run tests', () => configuringFixture ? console.log(`Not running tests as configuring fixture`) : runTests(testSuitesSimultaneously));
     }
 
     instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
@@ -77,9 +89,67 @@ export function initialise(context: vscode.ExtensionContext) {
             }
           }
         }
-      })
+      }),
+      vscode.commands.registerCommand(`code-for-ibmi.testing.connectWithFixture`, connectWithFixture),
     );
   }
+}
+
+export async function connectWithFixture(server?: Server) {
+  if (server) {
+    const connectionName = server.name;
+    const chosenFixture = await vscode.window.showQuickPick(TestConnectionFixtures.map(f => f.name), { title: vscode.l10n.t(`Select connection fixture`) });
+
+    if (chosenFixture) {
+      const fixture = TestConnectionFixtures.find(f => f.name === chosenFixture);
+      if (fixture) {
+        configuringFixture = true;
+        const error = await setupUserFixture(connectionName, fixture)
+        configuringFixture = false;
+
+        if (error) {
+          vscode.window.showErrorMessage(`Failed to setup connection fixture: ${error}`);
+        } else {
+          vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
+        }
+      }
+    }
+  }
+}
+
+async function setupUserFixture(connectionName: string, fixture: ConnectionFixture) {
+  let error: string|undefined;
+
+  await vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
+
+  let connection = instance.getConnection();
+  if (!connection) {
+    configuringFixture = false;
+    return `Failed to connect to ${connectionName}`;
+  }
+
+  const user = connection.currentUser;
+  fixture.user.USRPRF = user.toUpperCase();
+
+  const changeUserCommand = connection.content.toCl(`CHGUSRPRF`, fixture.user);
+  const changeResult = await connection.runCommand({ command: changeUserCommand });
+
+  if (changeResult.code > 0) {
+    error = changeResult.stderr;
+  }
+
+  if (!error && fixture.commands) {
+    for (const command of fixture.commands) {
+      let commandResult = await connection.runCommand({ command });
+      if (commandResult.code > 0) {
+        error = commandResult.stderr;
+      }
+    }
+  }
+
+  vscode.commands.executeCommand(`code-for-ibmi.disconnect`);
+
+  return error;
 }
 
 async function runTests(simultaneously?: boolean) {
@@ -87,52 +157,18 @@ async function runTests(simultaneously?: boolean) {
   let concurrentSuites: Function[] = [];
 
   for (const suite of suites) {
-    const testSuiteRunner = async () => {
-      try {
-        suite.status = "running";
-        testSuitesTreeProvider.refresh(suite);
-        if (suite.before) {
-          console.log(`Pre-processing suite ${suite.name}`);
-          await suite.before();
-        }
+    if (testSpecific) {
+      if (!suite.name.toLowerCase().includes(testSpecific.toLowerCase())) {
+        continue;
+      }
+    }
 
-        console.log(`Running suite ${suite.name} (${suite.tests.length})`);
-        console.log();
-        for (const test of suite.tests) {
-          await runTest(test);
-
-          if (simultaneously) {
-            // Add a little break as to not overload the system
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        }
-      }
-      catch (error: any) {
-        console.log(error);
-        suite.failure = `${error.message ? error.message : error}`;
-      }
-      finally {
-        suite.status = "done";
-        testSuitesTreeProvider.refresh(suite);
-        if (suite.after) {
-          console.log();
-          console.log(`Post-processing suite ${suite.name}`);
-          try {
-            await suite.after();
-          }
-          catch (error: any) {
-            console.log(error);
-            suite.failure = `${error.message ? error.message : error}`;
-          }
-        }
-        testSuitesTreeProvider.refresh(suite);
-      }
-    };
+    const runner = async () => testSuiteRunner(suite, true);
 
     if (suite.notConcurrent) {
-      nonConcurrentSuites.push(testSuiteRunner);
+      nonConcurrentSuites.push(runner);
     } else {
-      concurrentSuites.push(testSuiteRunner);
+      concurrentSuites.push(runner);
     }
   }
 
@@ -153,10 +189,52 @@ async function runTests(simultaneously?: boolean) {
   console.log(`All tests completed`);
 }
 
+async function testSuiteRunner(suite: TestSuite, withGap?: boolean) {
+  try {
+    suite.status = "running";
+    testSuitesTreeProvider.refresh(suite);
+    if (suite.before) {
+      console.log(`Pre-processing suite ${suite.name}`);
+      await suite.before();
+    }
+
+    console.log(`Running suite ${suite.name} (${suite.tests.length})`);
+    console.log();
+    for (const test of suite.tests) {
+      await runTest(test);
+
+      if (withGap) {
+        // Add a little break as to not overload the system
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+  }
+  catch (error: any) {
+    console.log(error);
+    suite.failure = `${error.message ? error.message : error}`;
+  }
+  finally {
+    suite.status = "done";
+    testSuitesTreeProvider.refresh(suite);
+    if (suite.after) {
+      console.log();
+      console.log(`Post-processing suite ${suite.name}`);
+      try {
+        await suite.after();
+      }
+      catch (error: any) {
+        console.log(error);
+        suite.failure = `${error.message ? error.message : error}`;
+      }
+    }
+    testSuitesTreeProvider.refresh(suite);
+  }
+};
+
 async function runTest(test: TestCase) {
   const connection = instance.getConnection();
 
-  console.log(`\tRunning ${test.name}`);
+  console.log(`Running ${test.name}`);
   test.status = "running";
   testSuitesTreeProvider.refresh(test);
   const start = +(new Date());

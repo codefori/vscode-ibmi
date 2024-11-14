@@ -1692,6 +1692,13 @@
 				"category": "IBM i",
 				"icon": "$(keyboard)",
 				"enablement": "code-for-ibmi:connected"
+			},
+			{
+				"command": "code-for-ibmi.testing.connectWithFixture",
+				"title": "Connect with Fixture",
+				"category": "IBM i",
+				"icon": "$(debug)",
+				"enablement": "code-for-ibmi:testing"
 			}
 		],
 		"keybindings": [
@@ -1938,6 +1945,10 @@
 				}
 			],
 			"commandPalette": [
+				{
+					"command": "code-for-ibmi.testing.connectWithFixture",
+					"when": "never"
+				},
 				{
 					"command": "code-for-ibmi.userLibraryList.enable",
 					"when": "never"
@@ -2500,6 +2511,11 @@
 				},
 				{
 					"command": "code-for-ibmi.connectTo",
+					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
+					"group": "inline"
+				},
+				{
+					"command": "code-for-ibmi.testing.connectWithFixture",
 					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
 					"group": "inline"
 				},
