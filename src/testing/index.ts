@@ -105,8 +105,7 @@ export async function connectWithFixture(server?: Server) {
       const fixture = TestConnectionFixtures.find(f => f.name === chosenFixture.label);
       if (fixture) {
         configuringFixture = true;
-        const error = await setupUserFixture(connectionName, fixture)
-        configuringFixture = false;
+        const error = await setupUserFixture(connectionName, fixture);
 
         if (error) {
           vscode.window.showErrorMessage(`Failed to setup connection fixture: ${error}`);
@@ -114,6 +113,7 @@ export async function connectWithFixture(server?: Server) {
           lastChosenFixture = fixture;
           vscode.window.showInformationMessage(`Successfully setup connection fixture for ${chosenFixture}`);
           vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
+          configuringFixture = false;
         }
       }
     }
