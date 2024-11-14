@@ -90,6 +90,41 @@ export const EncodingSuite: TestSuite = {
       }
     },
     {
+      name: `Run variants through shells`, test: async () => {
+        const connection = instance.getConnection();
+
+        const text = `Hello${connection?.variantChars.local}world`;
+        const basicCommandA = `echo "${IBMi.escapeForShell(text)}"`;
+        const basicCommandB = `echo '${text}'`;
+        const basicCommandC = `echo 'abc'\\''123'`;
+        const printEscapeChar = `echo "\\\\"`;
+        const setCommand = `set`;
+
+        const setResult = await connection?.sendQsh({command: setCommand});
+
+        const qshEscapeResult = await connection?.sendQsh({command: printEscapeChar});
+        const paseEscapeResult = await connection?.sendCommand({command: printEscapeChar});
+        
+        console.log(qshEscapeResult?.stdout);
+        console.log(paseEscapeResult?.stdout);
+
+        const qshTextResultA = await connection?.sendQsh({command: basicCommandA});
+        const paseTextResultA = await connection?.sendCommand({command: basicCommandA});
+
+        const qshTextResultB = await connection?.sendQsh({command: basicCommandB});
+        const paseTextResultB = await connection?.sendCommand({command: basicCommandB});
+
+        const qshTextResultC = await connection?.sendQsh({command: basicCommandC});
+        const paseTextResultC = await connection?.sendCommand({command: basicCommandC});
+
+        assert.strictEqual(paseEscapeResult?.stdout, `\\`);
+        assert.strictEqual(qshTextResultA?.stdout, text);
+        assert.strictEqual(paseTextResultA?.stdout, text);
+        assert.strictEqual(qshTextResultB?.stdout, text);
+        assert.strictEqual(paseTextResultB?.stdout, text);
+      }
+    },
+    {
       name: `Test downloadMemberContent with dollar`, test: async () => {
         const content = instance.getContent();
         const config = instance.getConfig();
