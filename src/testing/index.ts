@@ -110,6 +110,7 @@ export async function connectWithFixture(server?: Server) {
         if (error) {
           vscode.window.showErrorMessage(`Failed to setup connection fixture: ${error}`);
         } else {
+          vscode.window.showInformationMessage(`Successfully setup connection fixture to ${chosenFixture}`);
           vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
         }
       }
@@ -234,25 +235,27 @@ async function testSuiteRunner(suite: TestSuite, withGap?: boolean) {
 async function runTest(test: TestCase) {
   const connection = instance.getConnection();
 
-  console.log(`Running ${test.name}`);
-  test.status = "running";
-  testSuitesTreeProvider.refresh(test);
-  const start = +(new Date());
-  try {
-    connection!.enableSQL = true;
-
-    await test.test();
-    test.status = "pass";
-  }
-
-  catch (error: any) {
-    console.log(error);
-    test.status = "failed";
-    test.failure = `${error.message ? error.message : error}`;
-  }
-  finally {
-    test.duration = +(new Date()) - start;
+  if (connection) {
+    console.log(`Running ${test.name}`);
+    test.status = "running";
     testSuitesTreeProvider.refresh(test);
+    const start = +(new Date());
+    try {
+      connection!.enableSQL = true;
+
+      await test.test();
+      test.status = "pass";
+    }
+
+    catch (error: any) {
+      console.log(error);
+      test.status = "failed";
+      test.failure = `${error.message ? error.message : error}`;
+    }
+    finally {
+      test.duration = +(new Date()) - start;
+      testSuitesTreeProvider.refresh(test);
+    }
   }
 }
 
