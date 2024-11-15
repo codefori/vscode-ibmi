@@ -1047,6 +1047,8 @@ export default class IBMi {
     const customQsh = this.getComponent(cqsh);
     if (customQsh) {
       qshExecutable = await customQsh.getPath();
+    } else {
+      options.stdin = this.sysNameInAmerican(options.stdin);
     }
 
     return this.sendCommand({
