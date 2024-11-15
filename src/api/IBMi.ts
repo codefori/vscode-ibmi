@@ -6,6 +6,7 @@ import path, { parse as parsePath } from 'path';
 import * as vscode from "vscode";
 import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
+import { cqsh } from '../components/cqsh';
 import { ComponentManager } from "../components/manager";
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
@@ -17,7 +18,6 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
-import { cqsh } from '../components/cqsh';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1293,7 +1293,7 @@ export default class IBMi {
       result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
     };
 
-    return result;
+    return result
   }
   async uploadFiles(files: { local: string | vscode.Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
     await this.client.putFiles(files.map(f => { return { local: this.fileToPath(f.local), remote: f.remote } }), options);
@@ -1392,7 +1392,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, fakeBindings?: (string|number)[]): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, fakeBindings?: (string | number)[]): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
