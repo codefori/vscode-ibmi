@@ -17,6 +17,7 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import { cqsh } from '../components/cqsh';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -1041,9 +1042,16 @@ export default class IBMi {
   async sendQsh(options: CommandData) {
     options.stdin = options.command;
 
+    let qshExecutable = `/QOpenSys/usr/bin/qsh`;
+
+    const customQsh = this.getComponent(cqsh);
+    if (customQsh) {
+      qshExecutable = await customQsh.getPath();
+    }
+
     return this.sendCommand({
       ...options,
-      command: `/QOpenSys/usr/bin/qsh`
+      command: qshExecutable
     });
   }
 
