@@ -4,13 +4,13 @@ import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
 import { MarkdownString, window } from 'vscode';
+import { GetMemberInfo } from '../components/getMemberInfo';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
-import { GetMemberInfo } from '../components/getMemberInfo';
 const tmpFile = util.promisify(tmp.file);
 const readFileAsync = util.promisify(fs.readFile);
 const writeFileAsync = util.promisify(fs.writeFile);
@@ -118,7 +118,7 @@ export default class IBMiContent {
       ccsid = await this.getNotUTF8CCSID(features.attr, originalPath);
     }
 
-    await writeFileAsync(tmpobj, content, {encoding: encoding as BufferEncoding});
+    await writeFileAsync(tmpobj, content, { encoding: encoding as BufferEncoding });
 
     if (ccsid && features.iconv) {
       // Upload our file to the same temp file, then write convert it back to the original ccsid
@@ -154,9 +154,6 @@ export default class IBMiContent {
     while (true) {
       let copyResult: CommandResult;
       if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
-        library = this.ibmi.sysNameInAmerican(library);
-        sourceFile = this.ibmi.sysNameInAmerican(sourceFile);
-        member = this.ibmi.sysNameInAmerican(member);
         copyResult = { code: 0, stdout: '', stderr: '' };
         try {
           await this.ibmi.runSQL([
@@ -234,10 +231,6 @@ export default class IBMiContent {
         if (this.ibmi.dangerousVariants && new RegExp(`[${this.ibmi.variantChars.local}]`).test(path)) {
           copyResult = { code: 0, stdout: '', stderr: '' };
           try {
-            library = this.ibmi.sysNameInAmerican(library);
-            sourceFile = this.ibmi.sysNameInAmerican(sourceFile);
-            member = this.ibmi.sysNameInAmerican(member);
-
             await this.ibmi.runSQL([
               `@QSYS/CPYF FROMFILE(${library}/${sourceFile}) FROMMBR(${member}) TOFILE(QTEMP/QTEMPSRC) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
               `@QSYS/CPYFRMSTMF FROMSTMF('${tempRmt}') TOMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') MBROPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
@@ -511,7 +504,7 @@ export default class IBMiContent {
     const sourceFileNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
 
     // OBJECT_STATISTICS takes the name in the system format (with the American variant characters)
-    const objectName = () => objectFilter ? `, OBJECT_NAME => '${this.ibmi.sysNameInAmerican(objectFilter)}'` : '';
+    const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     let createOBJLIST: string[];
     if (sourceFilesOnly) {
@@ -526,7 +519,7 @@ export default class IBMiContent {
         `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
         `  t.IASP_NUMBER       as IASP_NUMBER`,
         `from QSYS2.SYSTABLES as t`,
-        `where t.SYSTEM_TABLE_SCHEMA = '${library.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
+        `where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
@@ -558,7 +551,7 @@ export default class IBMiContent {
         `    1                   as IS_SOURCE,`,
         `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
-        `  where t.SYSTEM_TABLE_SCHEMA = '${library.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
+        `  where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -657,9 +650,9 @@ export default class IBMiContent {
             on ( b.SYSTEM_TABLE_SCHEMA, b.SYSTEM_TABLE_NAME ) = ( a.SYSTEM_TABLE_SCHEMA, a.SYSTEM_TABLE_NAME )
       )
       select * from MEMBERS
-      where LIBRARY = '${library}'
-        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${sourceFile}'` : ``}
-        ${singleMember ? `and NAME like '${singleMember}'` : ''}
+      where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
+        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
+        ${singleMember ? `and NAME like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
         ${singleMemberExtension ? `and TYPE like '${singleMemberExtension}'` : ''}
       order by ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
@@ -937,17 +930,9 @@ export default class IBMiContent {
   }
 
   async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
-    if (typeof path === 'object') {
-      path.asp = path.asp ? this.ibmi.sysNameInAmerican(path.asp) : undefined;
-      path.library = this.ibmi.sysNameInAmerican(path.library);
-      path.name = this.ibmi.sysNameInAmerican(path.name);
-      path.member = path.member ? this.ibmi.sysNameInAmerican(path.member) : undefined;
-    }
+    const target = path = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(this.ibmi.sysNameInAmerican(path.library), this.ibmi.sysNameInAmerican(path.name), this.ibmi.sysNameInAmerican(path.member || ''), this.ibmi.sysNameInAmerican(path.asp || ''), true);
 
-    const target = path = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(path.library, path.name, path.member, path.asp, true);
-
-    // Without `env` being set here, variants are not able to be found. It's a bug with sendCommand(?)
-    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`, env: {random: "hi"} });
+    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
     if (result.code === 0) {
       return result.stdout
         .split('\n')
@@ -960,7 +945,7 @@ export default class IBMiContent {
   }
 
   async countMembers(path: QsysPath) {
-    return this.countFiles(Tools.qualifyPath(path.library, path.name, undefined, path.asp))
+    return this.countFiles(this.ibmi.sysNameInAmerican(Tools.qualifyPath(path.library, path.name, undefined, path.asp)))
   }
 
   async countFiles(directory: string) {
