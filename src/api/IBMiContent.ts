@@ -501,7 +501,7 @@ export default class IBMiContent {
     // Here's the downlow on CCSIDs here.
 
     // SYSTABLES takes the name in the local format (with the local variant characters)
-    const sourceFileNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter.replace('*', '%'))}'` : '';
 
     // OBJECT_STATISTICS takes the name in the system format (with the American variant characters)
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
@@ -536,7 +536,7 @@ export default class IBMiContent {
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${americanLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'${objectName()}))`,
       ];
     }
     else {
@@ -565,7 +565,7 @@ export default class IBMiContent {
         `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `    OBJOWNER          as OWNER,`,
         `    OBJDEFINER        as CREATED_BY`,
-        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${americanLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'${objectName()}))`,
         `  )`,
         `select`,
         `  o.NAME,`,
