@@ -250,7 +250,7 @@ export const EncodingSuite: TestSuite = {
         const testFile = `${varChar}SCOBBY`;
         const testMember = `${varChar}MEMBER`;
 
-        const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${connection.sysNameInAmerican(testFile)})`, noLibList: true });
+        const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
         const createResult = await runCommandsWithCCSID(connection, [`CRTSRCPF FILE(${tempLib}/${testFile}) RCDLEN(112) CCSID(${ccsidData.userDefaultCCSID})`], ccsidData.userDefaultCCSID);
         assert.strictEqual(createResult.code, 0);
