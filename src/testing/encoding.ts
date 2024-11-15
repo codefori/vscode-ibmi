@@ -1,13 +1,12 @@
 import assert from "assert";
-import tmp from 'tmp';
-import util, { TextDecoder } from 'util';
-import { Uri, workspace } from "vscode";
+import os from "os";
+import { workspace } from "vscode";
 import { TestSuite } from ".";
-import { Tools } from "../api/Tools";
-import { instance } from "../instantiate";
-import { CommandResult, IBMiObject } from "../typings";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import IBMi from "../api/IBMi";
+import { Tools } from "../api/Tools";
+import { getMemberUri } from "../filesystems/qsys/QSysFs";
+import { instance } from "../instantiate";
+import { IBMiObject } from "../typings";
 
 const contents = {
   '37': [`Hello world`],
@@ -303,7 +302,7 @@ export const EncodingSuite: TestSuite = {
         const config = instance.getConfig()!;
 
         const oldLines = contents[ccsid as keyof typeof contents];
-        const lines = oldLines.join(`\n`);
+        const lines = oldLines.join(os.EOL);
 
         const tempLib = config!.tempLibrary;
 
@@ -313,13 +312,10 @@ export const EncodingSuite: TestSuite = {
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
 
         const theBadOneUri = getMemberUri({ library: tempLib, file, name: `THEMEMBER`, extension: `TXT` });
-
-        await workspace.fs.readFile(theBadOneUri);
-
         await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-        let fileContent = new TextDecoder().decode(memberContentBuf);
+        const fileContent = new TextDecoder().decode(memberContentBuf).trimEnd();
 
         if (rtlEncodings.includes(ccsid)) {
           const newLines = fileContent.split(`\n`);
