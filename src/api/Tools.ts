@@ -5,8 +5,8 @@ import vscode from "vscode";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
 
-const MONTHS = [undefined, "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const DAYS = [undefined,"Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const MONTHS = [undefined, "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAYS = [undefined, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export namespace Tools {
   export class SqlError extends Error {
@@ -22,7 +22,7 @@ export namespace Tools {
     length: number
   }
 
-  export interface DB2Row extends Record<string, string | number | null> {}
+  export interface DB2Row extends Record<string, string | number | null> { }
 
   /**
    * Parse standard out for `/usr/bin/db2`
@@ -183,7 +183,7 @@ export namespace Tools {
     [library, object] = Tools.sanitizeObjNamesForPase([library, object]);
     member = member ? Tools.sanitizeObjNamesForPase([member])[0] : undefined;
     iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp])[0] : undefined;
-    
+
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${library}.LIB`;
     const filePath = object ? `${object}.FILE` : '';
     const memberPath = member ? `/${member}.MBR` : '';
@@ -346,9 +346,9 @@ export namespace Tools {
       group.tabs.filter(tab =>
         (tab.input instanceof vscode.TabInputText)
         && (uriToFind instanceof vscode.Uri ? areEquivalentUris(tab.input.uri, uriToFind) : tab.input.uri.path.startsWith(`${uriToFind}/`))
-        ).forEach(tab => {
-          resourceTabs.push(tab);
-        });
+      ).forEach(tab => {
+        resourceTabs.push(tab);
+      });
     }
     return resourceTabs;
   }
@@ -404,8 +404,14 @@ export namespace Tools {
   export function assumeType(str: string) {
     // The number is already generated on the server.
     // So, we assume that if the string starts with a 0, it is a string.
-    if (str[0] === `0` || str.length > 10) return str;
-    return Number(str) || str;
+    if (/0.+/.test(str) || str.length > 10) {
+      return str
+    }
+    const number = Number(str);
+    if(isNaN(number)){
+      return str;
+    }
+    return number;
   }
 
   const activeContexts: Map<string, number> = new Map;
@@ -450,9 +456,9 @@ export namespace Tools {
    * @param timestamp an attr timestamp string
    * @returns a Date object
    */
-  export function parseAttrDate(timestamp:string){
+  export function parseAttrDate(timestamp: string) {
     const parts = /^([\w]{3}) ([\w]{3}) +([\d]+) ([\d]+:[\d]+:[\d]+) ([\d]+)$/.exec(timestamp);
-    if(parts){
+    if (parts) {
       return Date.parse(`${parts[3].padStart(2, "0")} ${parts[2]} ${parts[5]} ${parts[4]} GMT`);
     }
     return 0;
