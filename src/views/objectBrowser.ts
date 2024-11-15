@@ -843,7 +843,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const toBeDownloaded = members
           .filter((member, index, list) => list.findIndex(m => m.library === member.library && m.file === member.file && m.name === member.name) === index)
           .sort((m1, m2) => m1.name.localeCompare(m2.name))
-          .map(member => ({ path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
+          .map(member => ({ member, path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
 
         if (!saveIntoDirectory) {
           toBeDownloaded[0].name = basename(downloadLocationURI.path);
@@ -890,8 +890,12 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
             await connection.withTempDirectory(async directory => {
               task.report({ message: vscode.l10n.t(`copying to streamfiles`), increment: 33 })
               const copyToStreamFiles = toBeDownloaded
-                .filter(member => member.copy)
-                .map(member => `@CPYTOSTMF FROMMBR('${member.path}') TOSTMF('${directory}/${member.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID}) ENDLINFMT(*LF);`)
+                .filter(item => item.copy)
+                .map(item =>
+                  [
+                    `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID});`
+                  ].join("\n"))
                 .join("\n");
               await contentApi.runSQL(copyToStreamFiles);
 
@@ -901,7 +905,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
                 .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, toBeDownloaded[0].name) : downloadLocationURI) : undefined);
             });
           } catch (e: any) {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error downloading member(s)! {0}`, e));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error downloading member(s)! {0}`, String(e)));
           }
         });
       }
