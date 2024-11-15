@@ -323,6 +323,64 @@ export default class IBMi {
             }
           }
 
+          // Check for installed components?
+          // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
+          if (quickConnect === true && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
+            Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
+          } else {
+            progress.report({
+              message: `Checking installed components on host IBM i.`
+            });
+
+            // We need to check if our remote programs are installed.
+            remoteApps.push(
+              {
+                path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
+                names: [`GETNEWLIBL.PGM`],
+                specific: `GE*.PGM`
+              }
+            );
+
+            //Next, we see what pase features are available (installed via yum)
+            //This may enable certain features in the future.
+            for (const feature of remoteApps) {
+              try {
+                progress.report({
+                  message: `Checking installed components on host IBM i: ${feature.path}`
+                });
+
+                const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
+                if (call.stdout) {
+                  const files = call.stdout.split(`\n`);
+
+                  if (feature.specific) {
+                    for (const name of feature.names)
+                      this.remoteFeatures[name] = files.find(file => file.includes(name));
+                  } else {
+                    for (const name of feature.names)
+                      if (files.includes(name))
+                        this.remoteFeatures[name] = feature.path + name;
+                  }
+                }
+              } catch (e) {
+                console.log(e);
+              }
+            }
+
+            //Specific Java installations check
+            progress.report({
+              message: `Checking installed components on host IBM i: Java`
+            });
+            const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
+            this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
+            this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
+            this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
+            this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
+          }
+
+          progress.report({ message: `Checking Code for IBM i components.` });
+          await this.componentManager.startup();
+
           progress.report({
             message: `Checking library list configuration.`
           });
@@ -549,61 +607,6 @@ export default class IBMi {
             }
           }
 
-          // Check for installed components?
-          // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
-          if (quickConnect === true && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
-            Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
-          } else {
-            progress.report({
-              message: `Checking installed components on host IBM i.`
-            });
-
-            // We need to check if our remote programs are installed.
-            remoteApps.push(
-              {
-                path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
-                names: [`GETNEWLIBL.PGM`],
-                specific: `GE*.PGM`
-              }
-            );
-
-            //Next, we see what pase features are available (installed via yum)
-            //This may enable certain features in the future.
-            for (const feature of remoteApps) {
-              try {
-                progress.report({
-                  message: `Checking installed components on host IBM i: ${feature.path}`
-                });
-
-                const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
-                if (call.stdout) {
-                  const files = call.stdout.split(`\n`);
-
-                  if (feature.specific) {
-                    for (const name of feature.names)
-                      this.remoteFeatures[name] = files.find(file => file.includes(name));
-                  } else {
-                    for (const name of feature.names)
-                      if (files.includes(name))
-                        this.remoteFeatures[name] = feature.path + name;
-                  }
-                }
-              } catch (e) {
-                console.log(e);
-              }
-            }
-
-            //Specific Java installations check
-            progress.report({
-              message: `Checking installed components on host IBM i: Java`
-            });
-            const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
-            this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
-            this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
-            this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
-            this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
-          }
-
           // give user option to set bash as default shell.
           if (this.remoteFeatures[`bash`]) {
             try {
@@ -809,9 +812,6 @@ export default class IBMi {
           else {
             this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
           }
-
-          progress.report({ message: `Checking Code for IBM i components.` });
-          await this.componentManager.startup();
 
           if (this.sqlRunnerAvailable()) {
             //Temporary function to run SQL
