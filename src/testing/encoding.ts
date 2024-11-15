@@ -271,6 +271,9 @@ export const EncodingSuite: TestSuite = {
         assert.ok(members.some(m => m.name === testMember));
         assert.ok(members.some(m => m.file === testFile));
 
+        const smallFilter = await connection.content.getMemberList({ library: tempLib, sourceFile: testFile, members: `${varChar}*` });
+        assert.ok(smallFilter.length);
+
         const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
         assert.ok(files.length);
 
