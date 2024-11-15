@@ -170,7 +170,7 @@ export default class IBMiContent {
       }
       else {
         copyResult = await this.ibmi.runCommand({
-          command: `QSYS/CPYTOSTMF FROMMBR('${this.ibmi.sysNameInAmerican(path)}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
+          command: `QSYS/CPYTOSTMF FROMMBR('${path}') TOSTMF('${tempRmt}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${this.config.sourceFileCCSID})`,
           noLibList: true
         });
       }
@@ -449,8 +449,7 @@ export default class IBMiContent {
         }
 
         return true;
-      })
-      .map(lib => this.ibmi.sysNameInAmerican(lib));
+      });
 
     const sanitized = Tools.sanitizeObjNamesForPase(newLibl);
 
