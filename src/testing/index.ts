@@ -111,7 +111,7 @@ export async function connectWithFixture(server?: Server) {
           vscode.window.showErrorMessage(`Failed to setup connection fixture: ${error}`);
         } else {
           lastChosenFixture = fixture;
-          vscode.window.showInformationMessage(`Successfully setup connection fixture for ${chosenFixture}`);
+          vscode.window.showInformationMessage(`Successfully setup connection fixture for ${chosenFixture.label}`);
           vscode.commands.executeCommand(`code-for-ibmi.connectTo`, connectionName, true);
           configuringFixture = false;
         }
@@ -258,6 +258,10 @@ async function runTest(test: TestCase) {
       test.duration = +(new Date()) - start;
       testSuitesTreeProvider.refresh(test);
     }
+  } else {
+    test.status = undefined;
+    test.failure = undefined;
+    test.duration = undefined;
   }
 }
 
