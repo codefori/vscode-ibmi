@@ -1160,15 +1160,6 @@ export default class IBMi {
     return sqlRunner && encodings.invalid === false;
   }
 
-  /**
-   * Do not use this API directly.
-   * It exists to support some backwards compatability.
-   * @deprecated
-   */
-  set enableSQL(value: boolean) {
-    this.remoteFeatures[`QZDFMDB2.PGM`] = value ? `/QSYS.LIB/QZDFMDB2.PGM` : undefined;
-  }
-
   public sqlRunnerAvailable() {
     return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
   }

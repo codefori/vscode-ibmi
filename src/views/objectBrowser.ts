@@ -283,18 +283,13 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
       console.log(e);
 
       // Work around since we can't get the member list if the users CCSID is not setup.
-      const config = getConfig();
       if (connection.enableSQL) {
         if (e && e.message && e.message.includes(`CCSID`)) {
-          vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. It is recommended you reload. ${e.message}`, `Reload`).then(async (value) => {
+          vscode.window.showErrorMessage(`Error getting member list. It is recommended you disconnect and correctly set your user profile CCSID. ${e.message}`, `Reload`).then(async (value) => {
             if (value === `Reload`) {
               await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
             }
           });
-
-          connection.enableSQL = false;
-          await ConnectionConfiguration.update(config);
-          return this.getChildren();
         }
       } else {
         throw e;

@@ -244,8 +244,6 @@ async function runTest(test: TestCase) {
     testSuitesTreeProvider.refresh(test);
     const start = +(new Date());
     try {
-      connection!.enableSQL = true;
-
       await test.test();
       test.status = "pass";
     }
