@@ -22,7 +22,18 @@ export class cqsh extends IBMiComponent {
   protected async getRemoteState(): Promise<ComponentState> {
     const remotePath = await this.getPath();
     const result = await this.connection.content.testStreamFile(remotePath, "x");
-    return result ? `Installed` : `NotInstalled`;
+
+    if (!result) {
+      return `Error`;
+    }
+
+    const testResult = await this.testCommand();
+
+    if (!testResult) {
+      return `Error`;
+    }
+
+    return `Installed`;
   }
 
   protected async update(): Promise<ComponentState> {
@@ -38,7 +49,28 @@ export class cqsh extends IBMiComponent {
 
     await this.connection.uploadFiles([{ local: assetPath, remote: remotePath }]);
 
+    const testResult = await this.testCommand();
+
+    if (!testResult) {
+      return `Error`;
+    }
+
     return `Installed`;
+  }
+
+  async testCommand() {
+    const remotePath = await this.getPath();
+    const text = `Hello world`;
+    const result = await this.connection.sendCommand({
+      stdin: `echo "${text}"`,
+      command: remotePath,
+    });
+
+    if (result.code !== 0 || result.stdout !== text) {
+      return false;
+    }
+
+    return true;
   }
 }
 
