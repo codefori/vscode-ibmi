@@ -22,11 +22,15 @@ if (isProduction) {
 // Move required binaries to dist folder
 /// ====================
 
+const dist = path.resolve(__dirname, `dist`);
+
+fs.mkdirSync(dist, {recursive: true});
+
 const files = [{relative: `src/components/cqsh/cqsh`, name: `cqsh_1`}];
 
 for (const file of files) {
-  const src = path.resolve(__dirname, `${file.relative}`);
-  const dest = path.resolve(__dirname, `dist`, `${file.name}`);
+  const src = path.resolve(__dirname, file.relative);
+  const dest = path.resolve(dist, file.name);
 
   console.log(`Copying ${src} to ${dest}`);
   if (fs.existsSync(src)) {
@@ -34,6 +38,8 @@ for (const file of files) {
     fs.copyFileSync(src, dest);
   }
 }
+
+console.log(``);
 
 /// ====================
 // Webpack configuration
