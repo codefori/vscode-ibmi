@@ -205,6 +205,7 @@ async function testSuiteRunner(suite: TestSuite, withGap?: boolean) {
     console.log();
     for (const test of suite.tests) {
       await runTest(test);
+      testSuitesTreeProvider.refresh(suite);
 
       if (withGap) {
         // Add a little break as to not overload the system
