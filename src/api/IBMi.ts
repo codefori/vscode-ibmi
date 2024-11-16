@@ -90,7 +90,9 @@ export default class IBMi {
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
 
-  dangerousVariants = false;
+  get dangerousVariants() {
+    return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();;
+  };
 
   constructor() {
     this.client = new node_ssh.NodeSSH;
@@ -842,10 +844,9 @@ export default class IBMi {
             }
 
             // Fetch conversion values?
-            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
               this.qccsid = cachedServerSettings.qccsid;
               this.jobCcsid = cachedServerSettings.jobCcsid;
-              this.variantChars = cachedServerSettings.variantChars;
               this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
             } else {
               progress.report({
@@ -890,20 +891,6 @@ export default class IBMi {
                   }
                 }
 
-                progress.report({
-                  message: `Fetching local encoding values.`
-                });
-
-                const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-                  + `  values ( cast( x'7B' as varchar(1) )`
-                  + `         , cast( x'7C' as varchar(1) )`
-                  + `         , cast( x'5B' as varchar(1) ) )`
-                  + `)`
-                  + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
-
-                if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
-                  this.variantChars.local = variants.LOCAL;
-                }
               } catch (e) {
                 // Oh well!
                 console.log(e);
@@ -916,6 +903,23 @@ export default class IBMi {
                 message: `SQL program not installed. Disabling SQL.`
               });
             }
+          }
+
+          // We always need to fetch the local variants because 
+          // now we pickup CCSID changes faster due to cqsh
+          progress.report({
+            message: `Fetching local encoding values.`
+          });
+
+          const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+            + `  values ( cast( x'7B' as varchar(1) )`
+            + `         , cast( x'7C' as varchar(1) )`
+            + `         , cast( x'5B' as varchar(1) ) )`
+            + `)`
+            + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+
+          if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+            this.variantChars.local = variants.LOCAL;
           }
 
           if (!this.enableSQL) {
@@ -949,10 +953,6 @@ export default class IBMi {
             jobCcsid: this.jobCcsid,
             remoteFeatures: this.remoteFeatures,
             remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
-            variantChars: {
-              american: this.variantChars.american,
-              local: this.variantChars.local,
-            },
             badDataAreasChecked: true,
             libraryListValidated: true,
             pathChecked: true,
@@ -960,9 +960,6 @@ export default class IBMi {
             debugConfigLoaded,
             maximumArgsLength: this.maximumArgsLength
           });
-
-          //Keep track of variant characters that can be uppercased
-          this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
 
           return {
             success: true

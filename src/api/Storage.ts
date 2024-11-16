@@ -57,7 +57,6 @@ export type CachedServerSettings = {
   jobCcsid: number | null
   remoteFeatures: { [name: string]: string | undefined }
   remoteFeaturesKeys: string | null
-  variantChars: { american: string, local: string }
   badDataAreasChecked: boolean | null
   libraryListValidated: boolean | null
   pathChecked?: boolean
