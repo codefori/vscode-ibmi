@@ -275,6 +275,7 @@ export const EncodingSuite: TestSuite = {
 
         const files = await connection.content.getFileList(`/QSYS.LIB/${tempLib}.LIB/${connection.sysNameInAmerican(testFile)}.FILE`);
         assert.ok(files.length);
+        assert.strictEqual(files[0].name, connection.sysNameInAmerican(testMember) + `.MBR`);
 
         await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
 

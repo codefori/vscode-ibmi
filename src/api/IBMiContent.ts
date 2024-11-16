@@ -653,9 +653,9 @@ export default class IBMiContent {
             on ( b.SYSTEM_TABLE_SCHEMA, b.SYSTEM_TABLE_NAME ) = ( a.SYSTEM_TABLE_SCHEMA, a.SYSTEM_TABLE_NAME )
       )
       select * from MEMBERS
-      where LIBRARY = '${this.ibmi.sysNameInAmerican(library)}'
-        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${this.ibmi.sysNameInAmerican(sourceFile)}'` : ``}
-        ${singleMember ? `and NAME like '${this.ibmi.sysNameInAmerican(singleMember)}'` : ''}
+      where LIBRARY = '${library}'
+        ${sourceFile !== `*ALL` ? `and SOURCE_FILE = '${sourceFile}'` : ``}
+        ${singleMember ? `and NAME like '${singleMember}'` : ''}
         ${singleMemberExtension ? `and TYPE like '${singleMemberExtension}'` : ''}
       order by ${sort.order === 'name' ? 'NAME' : 'CHANGED'} ${!sort.ascending ? 'DESC' : 'ASC'}`;
 
