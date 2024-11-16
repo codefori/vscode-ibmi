@@ -404,7 +404,7 @@ export namespace Tools {
   export function assumeType(str: string) {
     // The number is already generated on the server.
     // So, we assume that if the string starts with a 0, it is a string.
-    if (/0.+/.test(str) || str.length > 10) {
+    if (/^0.+/.test(str) || str.length > 10) {
       return str
     }
     const number = Number(str);
