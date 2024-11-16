@@ -32,9 +32,9 @@ export class ExtendedIBMiContent {
     const config = instance.getConfig();
     const connection = instance.getConnection();
     if (connection && config && content) {
-      lib = connection.sysNameInAmerican(connection.upperCaseName(lib));
-      spf = connection.sysNameInAmerican(connection.upperCaseName(spf));
-      mbr = connection.sysNameInAmerican(connection.upperCaseName(mbr));
+      lib = connection.upperCaseName(lib);
+      spf = connection.upperCaseName(spf);
+      mbr = connection.upperCaseName(mbr);
 
       const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;

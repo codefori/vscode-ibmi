@@ -482,10 +482,13 @@ export default class IBMiContent {
    * @returns an array of IBMiObject
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
-    const library = this.ibmi.upperCaseName(filters.library);
-    const americanLibrary = this.ibmi.sysNameInAmerican(library);
-    if (!await this.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
-      throw new Error(`Library ${library} does not exist.`);
+    const localLibrary = this.ibmi.upperCaseName(filters.library);
+    const americanLibrary = this.ibmi.sysNameInAmerican(localLibrary);
+
+    if (localLibrary !== `QSYS`) {
+      if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
+        throw new Error(`Library ${localLibrary} does not exist.`);
+      }
     }
 
     const singleEntry = filters.filterType !== 'regex' ? singleGenericName(filters.object) : undefined;
@@ -536,7 +539,7 @@ export default class IBMiContent {
         `  extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `  OBJOWNER         as OWNER,`,
         `  OBJDEFINER       as CREATED_BY`,
-        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
       ];
     }
     else {
@@ -565,7 +568,7 @@ export default class IBMiContent {
         `    extract(epoch from (CHANGE_TIMESTAMP))*1000 as CHANGED,`,
         `    OBJOWNER          as OWNER,`,
         `    OBJDEFINER        as CREATED_BY`,
-        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${library}', OBJTYPELIST => '${type}'${objectName()}))`,
+        `  from table(QSYS2.OBJECT_STATISTICS(OBJECT_SCHEMA => '${localLibrary}', OBJTYPELIST => '${type}'${objectName()}))`,
         `  )`,
         `select`,
         `  o.NAME,`,
@@ -587,7 +590,7 @@ export default class IBMiContent {
     const objects = (await this.runStatements(createOBJLIST.join(`\n`)));
 
     return objects.map(object => ({
-      library,
+      library: localLibrary,
       name: sourceFilesOnly ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
@@ -930,7 +933,7 @@ export default class IBMiContent {
   }
 
   async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
-    const target = path = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(this.ibmi.sysNameInAmerican(path.library), this.ibmi.sysNameInAmerican(path.name), this.ibmi.sysNameInAmerican(path.member || ''), this.ibmi.sysNameInAmerican(path.asp || ''), true);
+    const target = path = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(path.library, path.name, path.member || '', path.asp || '', true);
 
     const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
     if (result.code === 0) {

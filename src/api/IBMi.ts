@@ -1049,6 +1049,7 @@ export default class IBMi {
       qshExecutable = await customQsh.getPath();
     } else {
       options.stdin = this.sysNameInAmerican(options.stdin);
+      options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
     }
 
     return this.sendCommand({
@@ -1441,8 +1442,17 @@ export default class IBMi {
         }
       }
 
+      let command = `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
+
+      const customQsh = this.getComponent(cqsh);
+      if (customQsh) {
+        command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+      } else {
+        input = this.sysNameInAmerican(input);
+      }
+      
       const output = await this.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
+        command,
         stdin: input
       })
 
