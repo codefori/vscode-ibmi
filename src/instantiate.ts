@@ -116,7 +116,12 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
       }
 
       try {
-        await vscode.commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as vscode.TextDocumentShowOptions);
+        if(options.position){
+          await vscode.commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as vscode.TextDocumentShowOptions);
+        }
+        else{
+          await vscode.commands.executeCommand(`vscode.open`, uri);
+        }
 
         // Add file to front of recently opened files list.
         const recentLimit = GlobalConfiguration.get<number>(`recentlyOpenedFilesLimit`);

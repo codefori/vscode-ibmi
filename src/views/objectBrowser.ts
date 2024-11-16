@@ -1040,7 +1040,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
         const autoRefresh = objectBrowser.autoRefresh();
 
         // Add to library list ?
-        await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Would you like to add the new library to the library list?`))
+        await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`), vscode.l10n.t(`No`))
           .then(async result => {
             switch (result) {
               case vscode.l10n.t(`Yes`):
