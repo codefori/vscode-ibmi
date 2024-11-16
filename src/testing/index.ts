@@ -175,10 +175,6 @@ async function runTests(simultaneously?: boolean) {
     }
   }
 
-  for (const suite of nonConcurrentSuites) {
-    await suite();
-  }
-
   if (simultaneously) {
     await Promise.all(concurrentSuites.map(async suite => suite()));
   }
@@ -187,6 +183,10 @@ async function runTests(simultaneously?: boolean) {
     for (const suite of concurrentSuites) {
       await suite();
     }
+  }
+
+  for (const suite of nonConcurrentSuites) {
+    await suite();
   }
 
   console.log(`All tests completed`);
