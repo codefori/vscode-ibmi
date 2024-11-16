@@ -63,11 +63,11 @@ export const EncodingSuite: TestSuite = {
 
           // Note that it always works with the buffer!
           const sqlA = `select ? as THEDATA from sysibm.sysdummy1`;
-          const resultA = await connection?.runSQL(sqlA, [data]);
+          const resultA = await connection?.runSQL(sqlA, {fakeBindings: [data], forceSafe: true});
           assert.ok(resultA?.length);
           
           const sqlB = `select '${data}' as THEDATA from sysibm.sysdummy1`;
-          const resultB = await connection?.runSQL(sqlB);
+          const resultB = await connection?.runSQL(sqlB, {forceSafe: true});
           assert.ok(resultB?.length);
 
           assert.strictEqual(resultA![0].THEDATA, data);
@@ -84,7 +84,7 @@ export const EncodingSuite: TestSuite = {
         const connection = instance.getConnection();
 
         const sql = `select table_name, table_owner from qsys2.systables where table_schema = ? and table_name = ?`;
-        const result = await connection?.runSQL(sql, [`QSYS2`, `SYSCOLUMNS`]);
+        const result = await connection?.runSQL(sql, {fakeBindings: [`QSYS2`, `SYSCOLUMNS`]});
         assert.ok(result?.length);
       }
     },

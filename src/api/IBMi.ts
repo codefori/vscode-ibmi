@@ -816,21 +816,6 @@ export default class IBMi {
           if (this.sqlRunnerAvailable()) {
             //Temporary function to run SQL
 
-            // TODO: stop using this runSQL function and this.runSql
-            // const runSQL = async (statement: string) => {
-            //   const output = await this.sendCommand({
-            //     command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-            //     stdin: statement
-            //   });
-
-            //   if (output.code === 0) {
-            //     return Tools.db2Parse(output.stdout);
-            //   }
-            //   else {
-            //     throw new Error(output.stdout);
-            //   }
-            // };
-
             // Check for ASP information?
             if (quickConnect === true && cachedServerSettings?.aspInfo) {
               this.aspInfo = cachedServerSettings.aspInfo;
@@ -1393,21 +1378,34 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, fakeBindings?: (string | number)[]): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, options: {fakeBindings?: (string | number)[], forceSafe?: boolean} = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
       // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
       let input = Tools.fixSQL(statements, true);
-
       let returningAsCsv: WrapResult | undefined;
+      let command = `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
+      let useCsv = options.forceSafe;
 
+      // Use custom QSH if available
+      const customQsh = this.getComponent(cqsh);
+      if (customQsh) {
+        command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+      } else {
+        // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
+        input = this.sysNameInAmerican(input);
+        useCsv = true;
+      }
+
+      // Fix up the parameters
       let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
       let lastStmt = list.pop()?.trim();
       const asUpper = lastStmt?.toUpperCase();
 
       // We always need to use the CSV to get the values back correctly from the database.
       if (lastStmt) {
+        const fakeBindings = options.fakeBindings;
         if (lastStmt.includes(`?`) && fakeBindings && fakeBindings.length > 0) {
           const parts = lastStmt.split(`?`);
 
@@ -1428,27 +1426,20 @@ export default class IBMi {
           }
         }
 
-        if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
+        // Return as CSV when needed
+        if (useCsv && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
           const copyToImport = this.getComponent<CopyToImport>(CopyToImport);
           if (copyToImport) {
             returningAsCsv = copyToImport.wrap(lastStmt);
             list.push(...returningAsCsv.newStatements);
-            input = list.join(`;\n`);
           }
         }
 
         if (!returningAsCsv) {
           list.push(lastStmt);
         }
-      }
-
-      let command = `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
-
-      const customQsh = this.getComponent(cqsh);
-      if (customQsh) {
-        command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
-      } else {
-        input = this.sysNameInAmerican(input);
+        
+        input = list.join(`;\n`);
       }
       
       const output = await this.sendCommand({
@@ -1457,7 +1448,7 @@ export default class IBMi {
       })
 
       if (output.stdout) {
-        Tools.db2Parse(output.stdout, input);
+        const fromStdout = Tools.db2Parse(output.stdout, input);
 
         if (returningAsCsv) {
           // Will throw an error if stdout contains an error
@@ -1480,7 +1471,7 @@ export default class IBMi {
 
           throw new Error(`There was an error fetching the SQL result set.`)
         } else {
-          return Tools.db2Parse(output.stdout);
+          return fromStdout;
         }
       }
     }
