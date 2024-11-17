@@ -901,7 +901,11 @@ export default class IBMi {
               const sshPort = await this.getSshCcsid();
               const encoding = this.getEncoding();
               if (sshPort !== encoding.ccsid) {
-                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${sshPort}) does not match the job CCSID (${encoding.ccsid}). This may cause issues with objects with variant characters.`);
+                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${sshPort}) does not match the job CCSID (${encoding.ccsid}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
+                  if (choice === `Show documentation`) {
+                    vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
+                  }
+                });
               }
             }
 
