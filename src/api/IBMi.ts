@@ -816,8 +816,6 @@ export default class IBMi {
           }
 
           if (this.sqlRunnerAvailable()) {
-            //Temporary function to run SQL
-
             // Check for ASP information?
             if (quickConnect === true && cachedServerSettings?.aspInfo) {
               this.aspInfo = cachedServerSettings.aspInfo;
@@ -896,45 +894,35 @@ export default class IBMi {
                 console.log(e);
               }
             }
-          } else {
-            // Disable it if it's not found
-            if (this.enableSQL) {
-              progress.report({
-                message: `SQL program not installed. Disabling SQL.`
-              });
+
+            const cqshAvailable = this.getComponent(cqsh);
+
+            if (!cqshAvailable) {
+              const sshPort = await this.getSshCcsid();
+              const encoding = this.getEncoding();
+              if (sshPort !== encoding.ccsid) {
+                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${sshPort}) does not match the job CCSID (${encoding.ccsid}). This may cause issues with objects with variant characters.`);
+              }
             }
-          }
 
-          // We always need to fetch the local variants because 
-          // now we pickup CCSID changes faster due to cqsh
-          progress.report({
-            message: `Fetching local encoding values.`
-          });
+            // We always need to fetch the local variants because 
+            // now we pickup CCSID changes faster due to cqsh
+            progress.report({
+              message: `Fetching local encoding values.`
+            });
 
-          const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-            + `  values ( cast( x'7B' as varchar(1) )`
-            + `         , cast( x'7C' as varchar(1) )`
-            + `         , cast( x'5B' as varchar(1) ) )`
-            + `)`
-            + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+            const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+              + `  values ( cast( x'7B' as varchar(1) )`
+              + `         , cast( x'7C' as varchar(1) )`
+              + `         , cast( x'5B' as varchar(1) ) )`
+              + `)`
+              + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
 
-          if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
-            this.variantChars.local = variants.LOCAL;
-          }
-
-          if (!this.enableSQL) {
-            const encoding = this.getEncoding();
-            // Show a message if the system CCSID is bad
-            const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
-
-            // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
-            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
-
-            vscode.window.showErrorMessage([
-              ccsidMessage,
-              encodingMessage,
-              `Using fallback methods to access the IBM i file systems.`
-            ].filter(x => x).join(` `));
+            if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+              this.variantChars.local = variants.LOCAL;
+            }
+          } else {
+            vscode.window.showWarningMessage(`The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
           }
 
           if (!reconnecting) {
@@ -1164,6 +1152,18 @@ export default class IBMi {
     return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
   }
 
+  private async getSshCcsid() {
+    const sql = `
+    with SSH_DETAIL (id, iid) as (
+      select substring(job_name, locate('/', job_name, 15)+1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = 22
+    )
+    select DEFAULT_CCSID, CCSID from table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => (select id from SSH_DETAIL), DETAILED_INFO => 'ALL')) where INTERNAL_JOB_ID = (select iid from SSH_DETAIL)
+    `;
+
+    const [result] = await this.runSQL(sql);
+    return (result.CCSID === 65535 ? result.DEFAULT_CCSID : result.CCSID);
+  }
+
   /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
@@ -1366,7 +1366,7 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string, options: {fakeBindings?: (string | number)[], forceSafe?: boolean} = {}): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
 
     if (QZDFMDB2) {
@@ -1426,10 +1426,10 @@ export default class IBMi {
         if (!returningAsCsv) {
           list.push(lastStmt);
         }
-        
+
         input = list.join(`;\n`);
       }
-      
+
       const output = await this.sendCommand({
         command,
         stdin: input
