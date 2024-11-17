@@ -127,7 +127,14 @@ export const EncodingSuite: TestSuite = {
       name: `Test downloadMemberContent with dollar`, test: async () => {
         const content = instance.getContent();
         const config = instance.getConfig();
-        const connection = instance.getConnection();
+        const connection = instance.getConnection()!;
+
+        if (!connection.variantChars.local.includes(`$`)) {
+          // This test will fail if $ is not a variant character, 
+          // since we're testing object names here
+          return;
+        }
+
         const tempLib = config!.tempLibrary,
           tempSPF = `TESTINGS`,
           tempMbr = Tools.makeid(2) + `$` + Tools.makeid(2);
@@ -311,8 +318,11 @@ export const EncodingSuite: TestSuite = {
 
         await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(THEMEMBER) SRCTYPE(TXT)`, noLibList: true });
-
         const theBadOneUri = getMemberUri({ library: tempLib, file, name: `THEMEMBER`, extension: `TXT` });
+
+        // Initial read to create the alias
+        await workspace.fs.readFile(theBadOneUri);
+
         await workspace.fs.writeFile(theBadOneUri, Buffer.from(lines, `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
