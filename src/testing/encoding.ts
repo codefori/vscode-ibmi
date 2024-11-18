@@ -18,6 +18,8 @@ const contents = {
   '420': [`Hello world`, `ص ث ب`],
 }
 
+const SHELL_CHARS = [`$`, `#`];
+
 const rtlEncodings = [`420`];
 
 async function runCommandsWithCCSID(connection: IBMi, commands: string[], ccsid: number) {
@@ -123,13 +125,13 @@ export const EncodingSuite: TestSuite = {
         assert.strictEqual(paseTextResultB?.stdout, text);
       }
     },
-    {
-      name: `Test downloadMemberContent with dollar`, test: async () => {
+    ...SHELL_CHARS.map(char => ({
+      name: `Test members with shell character ${char}`, test: async () => {
         const content = instance.getContent();
         const config = instance.getConfig();
         const connection = instance.getConnection()!;
 
-        if (!connection.variantChars.local.includes(`$`)) {
+        if (!connection.variantChars.local.includes(char)) {
           // This test will fail if $ is not a variant character, 
           // since we're testing object names here
           return;
@@ -137,7 +139,7 @@ export const EncodingSuite: TestSuite = {
 
         const tempLib = config!.tempLibrary,
           tempSPF = `TESTINGS`,
-          tempMbr = Tools.makeid(2) + `$` + Tools.makeid(2);
+          tempMbr = char + Tools.makeid(4)
 
         await connection!.runCommand({
           command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
@@ -151,16 +153,29 @@ export const EncodingSuite: TestSuite = {
 
         const baseContent = `Hello world\r\n`;
 
+        const attributes = await content?.getAttributes({ library: tempLib, name: tempSPF, member: tempMbr }, `CCSID`);
+        assert.ok(attributes);
+
         const uploadResult = await content?.uploadMemberContent(undefined, tempLib, tempSPF, tempMbr, baseContent);
         assert.ok(uploadResult);
 
-        const memberContent = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
-        assert.strictEqual(memberContent, baseContent);
+        const memberContentA = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
+        assert.strictEqual(memberContentA, baseContent);
 
-        const attributes = await content?.getAttributes({ library: tempLib, name: tempSPF, member: tempMbr }, `CCSID`);
-        assert.ok(attributes);
-      },
-    },
+        const memberUri = getMemberUri({ library: tempLib, file: tempSPF, name: tempMbr, extension: `TXT` });
+
+        const memberContentB = await workspace.fs.readFile(memberUri);
+        let contentStr = new TextDecoder().decode(memberContentB);
+        assert.ok(contentStr.includes(`Hello world`));
+
+        await workspace.fs.writeFile(memberUri, Buffer.from(`Woah`, `utf8`));
+
+        const memberContentBuf = await workspace.fs.readFile(memberUri);
+        let fileContent = new TextDecoder().decode(memberContentBuf);
+
+        assert.ok(fileContent.includes(`Woah`));
+      }
+    })),
     {
       name: "Listing objects with variants",
       test: async () => {
