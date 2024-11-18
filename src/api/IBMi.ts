@@ -1471,6 +1471,15 @@ export default class IBMi {
     throw new Error(`There is no way to run SQL on this system.`);
   }
 
+  validQsysName(name: string): boolean {
+    // First character can only be A-Z, or a variant character
+    // The rest can be A-Z, 0-9, _, ., or a variant character
+    const regexTest = `^[A-Z${this.variantChars}][A-Z0-9_.${this.variantChars}]{0,9}$`;
+    if (name.length > 10) return false;
+    name = this.upperCaseName(name);
+    return new RegExp(regexTest).test(name);
+  }
+
   getEncoding() {
     const fallbackToDefault = ((this.jobCcsid < 1 || this.jobCcsid === 65535) && this.userDefaultCCSID > 0);
     const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.jobCcsid;
