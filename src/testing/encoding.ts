@@ -202,7 +202,7 @@ export const EncodingSuite: TestSuite = {
 
           let library = `TESTLIB${connection.variantChars.local}`;
           let skipLibrary = false;
-          const sourceFile = `TESTFIL${connection.variantChars.local}`;
+          const sourceFile = `${connection.variantChars.local}TESTFIL`;
           const dataArea = `TSTDTA${connection.variantChars.local}`;
           const members: string[] = [];
 
@@ -251,6 +251,14 @@ export const EncodingSuite: TestSuite = {
             const objectList = await content.getObjectList({ library, types: ["*ALL"] });
             assert.ok(objectList.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
             assert.ok(objectList.some(obj => obj.library === library && obj.type === `*DTAARA` && obj.name === dataArea));
+
+            const nameFilter = await content.getObjectList({ library, types: ["*ALL"], object: `${connection.variantChars.local[0]}*` });
+            assert.strictEqual(nameFilter.length, 1);
+            assert.ok(nameFilter.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
+
+            const sourceFilter = await content.getObjectList({ library, types: ["*SRCPF"], object: `${connection.variantChars.local[0]}*` });
+            assert.strictEqual(sourceFilter.length, 1);
+            assert.ok(sourceFilter.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
 
             const [expectDataArea] = await content.getObjectList({ library, object: dataArea, types: ["*DTAARA"] });
             assert.strictEqual(expectDataArea.name, dataArea);
