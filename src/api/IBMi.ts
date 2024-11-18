@@ -180,6 +180,7 @@ export default class IBMi {
           if (!reconnecting) {
             this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
             this.outputChannelContent = '';
+            this.appendOutput(`Code for IBM i, version ${process.env.VSCODEIBMI_VERSION}\n\n`);
           }
 
           let tempLibrarySet = false;
@@ -400,6 +401,13 @@ export default class IBMi {
 
           progress.report({ message: `Checking Code for IBM i components.` });
           await this.componentManager.startup();
+
+          const componentStates = await this.componentManager.getState();
+          this.appendOutput(`\nCode for IBM i components:\n`);
+          for (const state of componentStates) {
+            this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
+          }
+          this.appendOutput(`\n`);
 
           progress.report({
             message: `Checking library list configuration.`

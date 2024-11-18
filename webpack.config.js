@@ -6,6 +6,7 @@ const webpack = require(`webpack`);
 const fs = require(`fs`);
 const path = require(`path`);
 
+const packageJson = require(`./package.json`);
 const npm_runner = process.env[`npm_lifecycle_script`];
 const isProduction = (npm_runner && npm_runner.includes(`production`));
 
@@ -67,6 +68,7 @@ const config = {
   },
   plugins: [
     new webpack.DefinePlugin({
+      'process.env.VSCODEIBMI_VERSION': JSON.stringify(packageJson.version),
       'process.env.DEV': JSON.stringify(!isProduction),
     }),
 

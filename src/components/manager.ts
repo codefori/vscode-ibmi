@@ -30,6 +30,16 @@ export class ComponentManager {
 
   }
 
+  public getState() {
+    return Array.from(this.registered.keys()).map(k => {
+      const comp = this.registered.get(k)!;
+      return {
+        id: comp.getIdentification(),
+        state: comp.getState()
+      }
+    });
+  }
+
   public async startup() {
     const components = Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
     for (const Component of components) {
