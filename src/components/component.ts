@@ -43,7 +43,7 @@ export abstract class IBMiComponent {
 
   async getInstallDirectory() {
     if (!this.cachedInstallDirectory) {
-      const result = await this.connection.runCommand({
+      const result = await this.connection.sendCommand({
         command: `echo "${IBMiComponent.InstallDirectory}"`,
       });
 
