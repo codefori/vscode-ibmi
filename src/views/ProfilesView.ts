@@ -59,7 +59,7 @@ export class ProfilesView {
           const currentProfiles = config.connectionProfiles;
           const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
           if (chosenProfile) {
-            vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name)).then(async result => {
+            vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t("Yes")).then(async result => {
               if (result === l10n.t(`Yes`)) {
                 currentProfiles.splice(currentProfiles.findIndex(profile => profile === chosenProfile), 1);
                 config.connectionProfiles = currentProfiles;

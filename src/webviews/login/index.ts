@@ -32,7 +32,7 @@ export class Login {
       .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
-      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`Private Key`));
+      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716, or PPK formats are supported.`));
 
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
