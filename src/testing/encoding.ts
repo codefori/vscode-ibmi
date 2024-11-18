@@ -7,6 +7,7 @@ import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { IBMiObject } from "../typings";
+import path from "path";
 
 const contents = {
   '37': [`Hello world`],
@@ -123,6 +124,20 @@ export const EncodingSuite: TestSuite = {
         assert.strictEqual(paseTextResultA?.stdout, text);
         assert.strictEqual(qshTextResultB?.stdout, text);
         assert.strictEqual(paseTextResultB?.stdout, text);
+      }
+    },
+    {
+      name: `streamfileResolve with dollar`, test: async () => {
+        const connection = instance.getConnection()!;
+
+        await connection.withTempDirectory(async tempDir => {
+          const tempFile = path.posix.join(tempDir, `$hello`);
+          await connection.content.createStreamFile(tempFile);
+
+          const resolved = await connection.content.streamfileResolve([tempFile], [`/`]);
+
+          assert.strictEqual(resolved, tempFile);
+        });
       }
     },
     ...SHELL_CHARS.map(char => ({
