@@ -296,6 +296,7 @@ export const EncodingSuite: TestSuite = {
         
         const testFile = `${varChar}SCOBBY`;
         const testMember = `${varChar}MEMBER`;
+        const variantMember = `${connection.variantChars.local}MBR`;
 
         const attemptDelete = await connection.runCommand({ command: `DLTF FILE(${tempLib}/${testFile})`, noLibList: true });
 
@@ -308,6 +309,17 @@ export const EncodingSuite: TestSuite = {
         const attributes = await connection.content.getAttributes({ library: tempLib, name: testFile, member: testMember }, `CCSID`);
         assert.ok(attributes);
         assert.strictEqual(attributes[`CCSID`], String(ccsidData.userDefaultCCSID));
+
+        /// Test for getAttributes on member with all variants
+
+        const addPfB = await connection.runCommand({ command: `ADDPFM FILE(${tempLib}/${testFile}) MBR(${variantMember}) SRCTYPE(TXT)`, noLibList: true });
+        assert.strictEqual(addPfB.code, 0);
+
+        const attributesB = await connection.content.getAttributes({ library: tempLib, name: testFile, member: variantMember }, `CCSID`);
+        assert.ok(attributesB);
+        assert.strictEqual(attributesB[`CCSID`], String(ccsidData.userDefaultCCSID));
+        
+        /// -----
 
         const objects = await connection.content.getObjectList({ library: tempLib, types: [`*SRCPF`] });
         assert.ok(objects.length);

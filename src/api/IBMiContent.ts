@@ -933,16 +933,29 @@ export default class IBMiContent {
   }
 
   async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
-    const target = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(path.library, path.name, path.member || '', path.asp || '');
+    const localPath = typeof path === `string` ? path : {...path};
+    const assumeMember = typeof localPath === `object`;
+    let target: string;
+
+    if (assumeMember) {
+      // If it's an object, we assume it's a member, therefore let's let qsh handle it (better for variants)
+      localPath.asp = localPath.asp ? this.ibmi.sysNameInAmerican(localPath.asp) : undefined;
+      localPath.library = this.ibmi.sysNameInAmerican(localPath.library);
+      localPath.name = this.ibmi.sysNameInAmerican(localPath.name);
+      localPath.member = localPath.member ? this.ibmi.sysNameInAmerican(localPath.member) : undefined;
+      target = Tools.qualifyPath(localPath.library, localPath.name, localPath.member || '', localPath.asp || '', true);
+    } else {
+      target = localPath;
+    }
+
+    target = IBMi.escapeForShell(target);
 
     let result: CommandResult;
-    const command = `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`;
 
-    if (typeof path === `object`) {
-      // If it's an object, we assume it's a member, therefore let's let qsh handle it (better for variants)
-      result = await this.ibmi.sendQsh({command})
+    if (assumeMember) {
+      result = await this.ibmi.sendQsh({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`});
     } else {
-      result = await this.ibmi.sendCommand({ command });
+      result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`});
     }
 
     if (result.code === 0) {
