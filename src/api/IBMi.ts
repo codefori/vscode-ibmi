@@ -74,7 +74,11 @@ export default class IBMi {
    */
   aspInfo: { [id: number]: string } = {};
   remoteFeatures: { [name: string]: string | undefined };
-  variantChars: { american: string, local: string };
+  variantChars: { 
+    american: string, 
+    local: string,
+    qsysNameRegex?: RegExp
+  };
 
   /** 
    * Strictly for storing errors from sendCommand.
@@ -1471,10 +1475,14 @@ export default class IBMi {
   validQsysName(name: string): boolean {
     // First character can only be A-Z, or a variant character
     // The rest can be A-Z, 0-9, _, ., or a variant character
-    const regexTest = `^[A-Z${this.variantChars.local}][A-Z0-9_.${this.variantChars.local}]{0,9}$`;
+    if (!this.variantChars.qsysNameRegex) {
+      const regexTest = `^[A-Z${this.variantChars.local}][A-Z0-9_.${this.variantChars.local}]{0,9}$`;
+      this.variantChars.qsysNameRegex = new RegExp(regexTest);
+    }
+
     if (name.length > 10) return false;
     name = this.upperCaseName(name);
-    return new RegExp(regexTest).test(name);
+    return this.variantChars.qsysNameRegex.test(name);
   }
 
   getEncoding() {
