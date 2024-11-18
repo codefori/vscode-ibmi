@@ -198,7 +198,7 @@ export const EncodingSuite: TestSuite = {
         const content = instance.getConnection()?.content;
         if (connection && content) {
           const tempLib = connection.config?.tempLibrary!;
-          const ccsid = connection.getEncoding().ccsid;
+          const ccsid = connection.getCcsid();
 
           let library = `TESTLIB${connection.variantChars.local}`;
           let skipLibrary = false;

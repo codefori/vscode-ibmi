@@ -55,6 +55,7 @@ export default class IBMi {
   private jobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
+  private sshdCcsidMismatch: boolean = false;
 
   private componentManager = new ComponentManager(this);
 
@@ -74,6 +75,7 @@ export default class IBMi {
    */
   aspInfo: { [id: number]: string } = {};
   remoteFeatures: { [name: string]: string | undefined };
+
   variantChars: { 
     american: string, 
     local: string,
@@ -93,6 +95,18 @@ export default class IBMi {
 
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
+
+  get shouldUseCqsh() {
+    return this.getComponent(cqsh) !== undefined && this.sshdCcsidMismatch;
+  }
+
+  get requiresClientTranslation() {
+    if (this.getComponent(cqsh)) {
+      return false;
+    } else {
+      return this.sshdCcsidMismatch;
+    }
+  }
 
   get dangerousVariants() {
     return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();;
@@ -903,9 +917,10 @@ export default class IBMi {
 
             if (!cqshAvailable) {
               const sshPort = await this.getSshCcsid();
-              const encoding = this.getEncoding();
-              if (sshPort !== encoding.ccsid) {
-                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${sshPort}) does not match the job CCSID (${encoding.ccsid}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
+              const encoding = this.getCcsid();
+              if (sshPort !== encoding) {
+                this.sshdCcsidMismatch = true;
+                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${sshPort}) does not match the job CCSID (${encoding}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
                   if (choice === `Show documentation`) {
                     vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
                   }
@@ -1022,10 +1037,12 @@ export default class IBMi {
 
     let qshExecutable = `/QOpenSys/usr/bin/qsh`;
 
-    const customQsh = this.getComponent(cqsh);
-    if (customQsh) {
+    if (this.shouldUseCqsh) {
+      const customQsh = this.getComponent(cqsh)!;
       qshExecutable = await customQsh.getPath();
-    } else {
+    }
+    
+    if (this.requiresClientTranslation) {
       options.stdin = this.sysNameInAmerican(options.stdin);
       options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
     }
@@ -1152,8 +1169,7 @@ export default class IBMi {
    */
   get enableSQL(): boolean {
     const sqlRunner = this.sqlRunnerAvailable();
-    const encodings = this.getEncoding();
-    return sqlRunner && encodings.invalid === false;
+    return sqlRunner;
   }
 
   public sqlRunnerAvailable() {
@@ -1382,10 +1398,12 @@ export default class IBMi {
       let useCsv = options.forceSafe;
 
       // Use custom QSH if available
-      const customQsh = this.getComponent(cqsh);
-      if (customQsh) {
+      if (this.shouldUseCqsh) {
+        const customQsh = this.getComponent(cqsh)!;
         command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
-      } else {
+      }
+      
+      if (this.requiresClientTranslation) {
         // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
         input = this.sysNameInAmerican(input);
         useCsv = true;
@@ -1485,14 +1503,10 @@ export default class IBMi {
     return this.variantChars.qsysNameRegex.test(name);
   }
 
-  getEncoding() {
+  getCcsid() {
     const fallbackToDefault = ((this.jobCcsid < 1 || this.jobCcsid === 65535) && this.userDefaultCCSID > 0);
     const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.jobCcsid;
-    return {
-      fallback: fallbackToDefault,
-      ccsid,
-      invalid: (ccsid < 1 || ccsid === 65535)
-    };
+    return ccsid;
   }
 
   getCcsids() {
