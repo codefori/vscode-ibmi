@@ -187,9 +187,9 @@ export namespace Tools {
     const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${library}.LIB`;
     const filePath = object ? `${object}.FILE` : '';
     const memberPath = member ? `/${member}.MBR` : '';
-    const subPath = `${filePath}${memberPath}`;
+    const fullPath = `${libraryPath}/${filePath}${memberPath}`;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${noEscape ? subPath : Tools.escapePath(subPath)}`;
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${noEscape ? fullPath : Tools.escapePath(fullPath)}`;
     return result;
   }
 
