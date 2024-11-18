@@ -722,7 +722,16 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         newBasename = await vscode.window.showInputBox({
           value: newBasename,
           prompt: vscode.l10n.t(`Rename {0}`, oldMember.basename),
-          validateInput: value => connection.upperCaseName(value) === oldMember.basename ? vscode.l10n.t(`New member name must be different from it's current name`) : undefined
+          validateInput: value => {
+            if (connection.upperCaseName(value) === oldMember.basename) {
+              return vscode.l10n.t(`New member name must be different from it's current name`)
+            }
+
+            if (!connection.validQsysName(value)) {
+              return vscode.l10n.t(`Not a valid member name!`);
+            }
+            return undefined;
+          }
         });
 
         if (newBasename) {

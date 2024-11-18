@@ -1186,9 +1186,6 @@ export default class IBMi {
   }
 
   parserMemberPath(string: string, checkExtension?: boolean): MemberParts {
-    const variant_chars_local = this.variantChars.local;
-    const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
-
     // Remove leading slash
     const upperCasedString = this.upperCaseName(string);
     const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
@@ -1202,13 +1199,13 @@ export default class IBMi {
     if (!library || !file || !name) {
       throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
     }
-    if (asp && !validQsysName.test(asp)) {
+    if (asp && !this.validQsysName(asp)) {
       throw new Error(`Invalid ASP name: ${asp}`);
     }
-    if (!validQsysName.test(library)) {
+    if (!this.validQsysName(library)) {
       throw new Error(`Invalid Library name: ${library}`);
     }
-    if (!validQsysName.test(file)) {
+    if (!this.validQsysName(file)) {
       throw new Error(`Invalid Source File name: ${file}`);
     }
 
@@ -1217,7 +1214,7 @@ export default class IBMi {
       throw new Error(`Source Type extension is required.`);
     }
 
-    if (!validQsysName.test(name)) {
+    if (!this.validQsysName(name)) {
       throw new Error(`Invalid Source Member name: ${name}`);
     }
     // The extension/source type has nearly the same naming rules as
@@ -1226,7 +1223,7 @@ export default class IBMi {
     // the final period (so we know it won't contain a period).
     // But, a blank extension is valid.
     const extension = parsedPath.ext.substring(1);
-    if (extension && !validQsysName.test(extension)) {
+    if (extension && !this.validQsysName(extension)) {
       throw new Error(`Invalid Source Member Extension: ${extension}`);
     }
 
