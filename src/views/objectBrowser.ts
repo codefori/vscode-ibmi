@@ -1017,7 +1017,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
       const newLibrary = await vscode.window.showInputBox({
         prompt: vscode.l10n.t(`Name of new library`),
-        validateInput: (library => !connection.validQsysName(library) ? vscode.l10n.t(`Library name too long.`) : undefined)
+        validateInput: (library => !connection.validQsysName(library) ? vscode.l10n.t(`Library name not valid.`) : undefined)
       });
 
       if (newLibrary) {
@@ -1068,7 +1068,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
         const connection = getConnection();
         const fileName = await vscode.window.showInputBox({
           prompt: vscode.l10n.t(`Name of new source file`),
-          validateInput: (fileName => connection.validQsysName(fileName) ? vscode.l10n.t(`Source filename must be 10 chars or less.`) : undefined)
+          validateInput: (fileName => !connection.validQsysName(fileName) ? vscode.l10n.t(`Source filename is not valid.`) : undefined)
         });
 
         if (fileName) {
