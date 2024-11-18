@@ -1471,7 +1471,7 @@ export default class IBMi {
   validQsysName(name: string): boolean {
     // First character can only be A-Z, or a variant character
     // The rest can be A-Z, 0-9, _, ., or a variant character
-    const regexTest = `^[A-Z${this.variantChars}][A-Z0-9_.${this.variantChars}]{0,9}$`;
+    const regexTest = `^[A-Z${this.variantChars.local}][A-Z0-9_.${this.variantChars.local}]{0,9}$`;
     if (name.length > 10) return false;
     name = this.upperCaseName(name);
     return new RegExp(regexTest).test(name);
