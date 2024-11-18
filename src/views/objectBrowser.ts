@@ -1017,7 +1017,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
       const newLibrary = await vscode.window.showInputBox({
         prompt: vscode.l10n.t(`Name of new library`),
-        validateInput: (library => library.length > 10 ? vscode.l10n.t(`Library name too long.`) : undefined)
+        validateInput: (library => !connection.validQsysName(library) ? vscode.l10n.t(`Library name too long.`) : undefined)
       });
 
       if (newLibrary) {
@@ -1065,13 +1065,13 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
     vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node: ObjectBrowserFilterItem | ObjectBrowserObjectItem) => {
       if (node.library) {
+        const connection = getConnection();
         const fileName = await vscode.window.showInputBox({
           prompt: vscode.l10n.t(`Name of new source file`),
-          validateInput: (fileName => fileName.length > 10 ? vscode.l10n.t(`Source filename must be 10 chars or less.`) : undefined)
+          validateInput: (fileName => connection.validQsysName(fileName) ? vscode.l10n.t(`Source filename must be 10 chars or less.`) : undefined)
         });
 
         if (fileName) {
-          const connection = getConnection();
           const library = node.library;
           const uriPath = `${library}/${connection.upperCaseName(fileName)}`
 
