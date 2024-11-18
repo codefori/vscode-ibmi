@@ -937,7 +937,9 @@ export default class IBMi {
                   }
                 });
               }
-            } else {
+            }
+            
+            if (!this.canUseCqsh) {
               this.sshdCcsid = await this.getSshCcsid();
               const encoding = this.getCcsid();
               if (this.sshdCcsid !== encoding) {
