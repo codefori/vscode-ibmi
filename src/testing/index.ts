@@ -55,6 +55,7 @@ const TestConnectionFixtures: ConnectionFixture[] = [
   { name: `American`, user: { CCSID: 37, CNTRYID: `US`, LANGID: `ENG` } },
   { name: `French`, user: { CCSID: 297, CNTRYID: `FR`, LANGID: `FRA` } },
   { name: `Spanish`, user: { CCSID: 284, CNTRYID: `ES`, LANGID: `ESP` } },
+  { name: `Spanish (CCSID *SYSVAL)`, user: { CCSID: '*SYSVAL', CNTRYID: `ES`, LANGID: `ESP` } },
   { name: `Danish`, user: { CCSID: 277, CNTRYID: `DK`, LANGID: `DAN` } }
 ]
 

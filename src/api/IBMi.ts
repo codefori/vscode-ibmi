@@ -23,6 +23,7 @@ export interface MemberParts extends IBMiMember {
   basename: string
 }
 
+const CCSID_NOCONVERSION = 65535;
 const CCSID_SYSVAL = -2;
 const bashShellPath = '/QOpenSys/pkgs/bin/bash';
 
@@ -51,8 +52,8 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
-  private qccsid: number = 65535;
-  private jobCcsid: number = CCSID_SYSVAL;
+  private qccsid: number = CCSID_NOCONVERSION;
+  private userJobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
   private sshdCcsid: number|undefined;
@@ -875,7 +876,7 @@ export default class IBMi {
             // Fetch conversion values?
             if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
               this.qccsid = cachedServerSettings.qccsid;
-              this.jobCcsid = cachedServerSettings.jobCcsid;
+              this.userJobCcsid = cachedServerSettings.jobCcsid;
               this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
             } else {
               progress.report({
@@ -895,12 +896,12 @@ export default class IBMi {
                 // we grab the users default CCSID
                 const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
                 if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                  this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
+                  this.userJobCcsid = userInfo.CHARACTER_CODE_SET_ID;
                 }
 
                 // if the job ccsid is *SYSVAL, then assign it to sysval
-                if (this.jobCcsid === CCSID_SYSVAL) {
-                  this.jobCcsid = this.qccsid;
+                if (this.userJobCcsid === CCSID_SYSVAL) {
+                  this.userJobCcsid = this.qccsid;
                 }
 
                 // Let's also get the user's default CCSID
@@ -928,7 +929,15 @@ export default class IBMi {
 
             const cqshAvailable = this.getComponent(cqsh);
 
-            if (!cqshAvailable) {
+            if (cqshAvailable) {
+              if (this.userJobCcsid === CCSID_NOCONVERSION) {
+                vscode.window.showWarningMessage(`The job CCSID is set to 65535. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`, `Show documentation`).then(choice => {
+                  if (choice === `Show documentation`) {
+                    vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
+                  }
+                });
+              }
+            } else {
               this.sshdCcsid = await this.getSshCcsid();
               const encoding = this.getCcsid();
               if (this.sshdCcsid !== encoding) {
@@ -973,7 +982,7 @@ export default class IBMi {
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
             aspInfo: this.aspInfo,
             qccsid: this.qccsid,
-            jobCcsid: this.jobCcsid,
+            jobCcsid: this.userJobCcsid,
             remoteFeatures: this.remoteFeatures,
             remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
             badDataAreasChecked: true,
@@ -1197,7 +1206,7 @@ export default class IBMi {
     `;
 
     const [result] = await this.runSQL(sql);
-    return Number(result.CCSID === 65535 ? result.DEFAULT_CCSID : result.CCSID);
+    return Number(result.CCSID === CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
   }
 
   /**
@@ -1516,15 +1525,15 @@ export default class IBMi {
   }
 
   getCcsid() {
-    const fallbackToDefault = ((this.jobCcsid < 1 || this.jobCcsid === 65535) && this.userDefaultCCSID > 0);
-    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.jobCcsid;
+    const fallbackToDefault = ((this.userJobCcsid < 1 || this.userJobCcsid === CCSID_NOCONVERSION) && this.userDefaultCCSID > 0);
+    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.userJobCcsid;
     return ccsid;
   }
 
   getCcsids() {
     return {
       qccsid: this.qccsid,
-      runtimeCcsid: this.jobCcsid,
+      runtimeCcsid: this.userJobCcsid,
       userDefaultCCSID: this.userDefaultCCSID,
     };
   }
