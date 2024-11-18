@@ -933,9 +933,18 @@ export default class IBMiContent {
   }
 
   async getAttributes(path: string | (QsysPath & { member?: string }), ...operands: AttrOperands[]) {
-    const target = path = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(path.library, path.name, path.member || '', path.asp || '');
+    const target = typeof path === 'string' ? Tools.escapePath(path) : Tools.qualifyPath(path.library, path.name, path.member || '', path.asp || '');
 
-    const result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}` });
+    let result: CommandResult;
+    const command = `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`;
+
+    if (typeof path === `object`) {
+      // If it's an object, we assume it's a member, therefore let's let qsh handle it (better for variants)
+      result = await this.ibmi.sendQsh({command})
+    } else {
+      result = await this.ibmi.sendCommand({ command });
+    }
+
     if (result.code === 0) {
       return result.stdout
         .split('\n')

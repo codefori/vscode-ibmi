@@ -98,7 +98,7 @@ export default class IBMi {
   maximumArgsLength = 0;
 
   get canUseCqsh() {
-    return this.getComponent(cqsh) !== undefined;
+    return this.getComponent(cqsh) !== undefined && this.userDefaultCCSID !== CCSID_NOCONVERSION;
   }
 
   /**
@@ -107,7 +107,7 @@ export default class IBMi {
    * True when cqsh is not available and the job CCSID is not the same as the SSHD CCSID.
    */
   get requiresClientTranslation() {
-    if (this.getComponent(cqsh)) {
+    if (this.canUseCqsh) {
       return false;
     } else {
       return this.getCcsid() !== this.sshdCcsid;
