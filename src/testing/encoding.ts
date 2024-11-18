@@ -156,6 +156,9 @@ export const EncodingSuite: TestSuite = {
 
         const memberContent = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
         assert.strictEqual(memberContent, baseContent);
+
+        const attributes = await content?.getAttributes({ library: tempLib, name: tempSPF, member: tempMbr }, `CCSID`);
+        assert.ok(attributes);
       },
     },
     {
