@@ -55,7 +55,7 @@ export default class IBMi {
   private jobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
-  private sshdCcsidMismatch: boolean = false;
+  private sshdCcsid: number|undefined;
 
   private componentManager = new ComponentManager(this);
 
@@ -96,20 +96,25 @@ export default class IBMi {
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
 
-  get shouldUseCqsh() {
-    return this.getComponent(cqsh) !== undefined && this.sshdCcsidMismatch;
+  get canUseCqsh() {
+    return this.getComponent(cqsh) !== undefined;
   }
 
+  /**
+   * Determines if the client should do variant translation.
+   * False when cqsh should be used.
+   * True when cqsh is not available and the job CCSID is not the same as the SSHD CCSID.
+   */
   get requiresClientTranslation() {
     if (this.getComponent(cqsh)) {
       return false;
     } else {
-      return this.sshdCcsidMismatch;
+      return this.getCcsid() !== this.sshdCcsid;
     }
   }
 
   get dangerousVariants() {
-    return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();;
+    return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
   };
 
   constructor() {
@@ -924,11 +929,10 @@ export default class IBMi {
             const cqshAvailable = this.getComponent(cqsh);
 
             if (!cqshAvailable) {
-              const sshPort = await this.getSshCcsid();
+              this.sshdCcsid = await this.getSshCcsid();
               const encoding = this.getCcsid();
-              if (sshPort !== encoding) {
-                this.sshdCcsidMismatch = true;
-                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${sshPort}) does not match the job CCSID (${encoding}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
+              if (this.sshdCcsid !== encoding) {
+                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${encoding}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
                   if (choice === `Show documentation`) {
                     vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
                   }
@@ -1045,7 +1049,7 @@ export default class IBMi {
 
     let qshExecutable = `/QOpenSys/usr/bin/qsh`;
 
-    if (this.shouldUseCqsh) {
+    if (this.canUseCqsh) {
       const customQsh = this.getComponent(cqsh)!;
       qshExecutable = await customQsh.getPath();
     }
@@ -1193,7 +1197,7 @@ export default class IBMi {
     `;
 
     const [result] = await this.runSQL(sql);
-    return (result.CCSID === 65535 ? result.DEFAULT_CCSID : result.CCSID);
+    return Number(result.CCSID === 65535 ? result.DEFAULT_CCSID : result.CCSID);
   }
 
   /**
@@ -1406,7 +1410,7 @@ export default class IBMi {
       let useCsv = options.forceSafe;
 
       // Use custom QSH if available
-      if (this.shouldUseCqsh) {
+      if (this.canUseCqsh) {
         const customQsh = this.getComponent(cqsh)!;
         command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
       }

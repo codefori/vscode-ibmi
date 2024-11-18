@@ -128,10 +128,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
+  extensionComponentRegistry.registerComponent(context, cqsh);
   extensionComponentRegistry.registerComponent(context, GetNewLibl);
   extensionComponentRegistry.registerComponent(context, GetMemberInfo);
   extensionComponentRegistry.registerComponent(context, CopyToImport);
-  extensionComponentRegistry.registerComponent(context, cqsh);
 
   return {
     instance, customUI: () => new CustomUI(),
