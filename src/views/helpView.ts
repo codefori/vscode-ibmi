@@ -209,7 +209,7 @@ async function downloadLogs() {
             const result = await zip.writeZipPromise(downloadLocation, { overwrite: false });
 
             if (result) {
-              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile));
+              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Open`));
               if (result && result === vscode.l10n.t(`Open`)) {
                 vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
               }
