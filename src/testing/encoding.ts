@@ -363,7 +363,7 @@ export const EncodingSuite: TestSuite = {
         assert.ok(files.length);
         assert.strictEqual(files[0].name, connection.sysNameInAmerican(testMember) + `.MBR`);
 
-        await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
+        await connection.content.uploadMemberContent(undefined, tempLib, testFile, testMember, [`**free`, `dsply 'Hello world';`, `   `, `   `, `return;`].join(`\n`));
 
         const compileResult = await connection.runCommand({ command: `CRTBNDRPG PGM(${tempLib}/${testMember}) SRCFILE(${tempLib}/${testFile}) SRCMBR(${testMember})`, noLibList: true });
         assert.strictEqual(compileResult.code, 0);
@@ -372,14 +372,16 @@ export const EncodingSuite: TestSuite = {
 
         const content = await workspace.fs.readFile(memberUri);
         let contentStr = new TextDecoder().decode(content);
+        assert.ok(!contentStr.includes(`0`));
         assert.ok(contentStr.includes(`dsply 'Hello world';`));
 
-        await workspace.fs.writeFile(memberUri, Buffer.from(`Woah`, `utf8`));
+        await workspace.fs.writeFile(memberUri, Buffer.from([`**free`, `dsply 'Woah';`, `   `, `   `, `return;`].join(`\n`), `utf8`));
 
         const memberContentBuf = await workspace.fs.readFile(memberUri);
         let fileContent = new TextDecoder().decode(memberContentBuf);
 
         assert.ok(fileContent.includes(`Woah`));
+        assert.ok(!fileContent.includes(`0`));
       },
     },
 

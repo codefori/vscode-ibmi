@@ -145,6 +145,7 @@ export class ExtendedIBMiContent {
           sequence = 0;
         for (let i = 0; i < sourceData.length; i++) {
           sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
+          sourceData[i] = sourceData[i].trimEnd();
           if (sourceData[i].length > recordLength) {
             sourceData[i] = sourceData[i].substring(0, recordLength);
           }

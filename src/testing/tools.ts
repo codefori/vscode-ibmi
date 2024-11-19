@@ -62,6 +62,14 @@ export const ToolsSuite: TestSuite = {
       }
     },
     {
+      name: `assumeType tests (simple values)`, test: async () => {
+        assert.strictEqual(Tools.assumeType(``), ``);
+        assert.strictEqual(Tools.assumeType(`       `), ``);
+        assert.strictEqual(Tools.assumeType(`1`), 1);
+        assert.strictEqual(Tools.assumeType(`0`), 0);
+      }
+    },
+    {
       name: `unqualifyPath (In a named library)`, test: async () => {
         const qualifiedPath = `/QSYS.LIB/MYLIB.LIB/DEVSRC.FILE/THINGY.MBR`;
         const simplePath = Tools.unqualifyPath(qualifiedPath);
