@@ -52,6 +52,7 @@ export type LastConnection = {
 };
 
 export type CachedServerSettings = {
+  lastCheckedOnVersion: string | undefined;
   aspInfo: { [id: number]: string }
   qccsid: number | null;
   jobCcsid: number | null

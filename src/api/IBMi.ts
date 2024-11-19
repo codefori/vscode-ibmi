@@ -156,6 +156,7 @@ export default class IBMi {
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
   async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []): Promise<{ success: boolean, error?: any }> {
+    const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
     return await Tools.withContext("code-for-ibmi:connecting", async () => {
       try {
         connectionObject.keepaliveInterval = 35000;
@@ -186,7 +187,7 @@ export default class IBMi {
           if (!reconnecting) {
             this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
             this.outputChannelContent = '';
-            this.appendOutput(`Code for IBM i, version ${process.env.VSCODEIBMI_VERSION}\n\n`);
+            this.appendOutput(`Code for IBM i, version ${currentExtensionVersion}\n\n`);
           }
 
           let tempLibrarySet = false;
@@ -220,8 +221,11 @@ export default class IBMi {
 
           // Load cached server settings.
           const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
+
           // Reload server settings?
-          const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
+          const quickConnect = () => {
+            return (this.config!.quickConnect === true && reloadServerSettings === false);
+          }
 
           // Check shell output for additional user text - this will confuse Code...
           progress.report({
@@ -350,9 +354,14 @@ export default class IBMi {
             }
           }
 
+          // If the version has changed (by update for example), then fetch everything again
+          if (cachedServerSettings?.lastCheckedOnVersion !== currentExtensionVersion) {
+            reloadServerSettings = true;
+          }
+
           // Check for installed components?
           // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
-          if (quickConnect === true && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
+          if (quickConnect() && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
             Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
           } else {
             progress.report({
@@ -572,7 +581,7 @@ export default class IBMi {
           }
 
           // Check for bad data areas?
-          if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
+          if (quickConnect() && cachedServerSettings?.badDataAreasChecked === true) {
             // Do nothing, bad data areas are already checked.
           } else {
             progress.report({
@@ -783,7 +792,7 @@ export default class IBMi {
           }
 
           // Validate configured library list.
-          if (quickConnect === true && cachedServerSettings?.libraryListValidated === true) {
+          if (quickConnect() && cachedServerSettings?.libraryListValidated === true) {
             // Do nothing, library list is already checked.
           } else {
             if (this.config.libraryList) {
@@ -849,7 +858,7 @@ export default class IBMi {
 
           if (this.sqlRunnerAvailable()) {
             // Check for ASP information?
-            if (quickConnect === true && cachedServerSettings?.aspInfo) {
+            if (quickConnect() && cachedServerSettings?.aspInfo) {
               this.aspInfo = cachedServerSettings.aspInfo;
             } else {
               progress.report({
@@ -874,7 +883,7 @@ export default class IBMi {
             }
 
             // Fetch conversion values?
-            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+            if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
               this.qccsid = cachedServerSettings.qccsid;
               this.userJobCcsid = cachedServerSettings.jobCcsid;
               this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
@@ -995,6 +1004,7 @@ export default class IBMi {
           instance.fire(`connected`);
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
+            lastCheckedOnVersion: currentExtensionVersion,
             aspInfo: this.aspInfo,
             qccsid: this.qccsid,
             jobCcsid: this.userJobCcsid,
