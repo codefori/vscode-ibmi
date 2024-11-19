@@ -98,7 +98,14 @@ export default class IBMi {
   maximumArgsLength = 0;
 
   get canUseCqsh() {
-    return this.getComponent(cqsh) !== undefined && this.userJobCcsid !== CCSID_NOCONVERSION;
+    return this.getComponent(cqsh) !== undefined;
+  }
+
+  /**
+   * Primarily used for running SQL statements.
+   */
+  get userCcsidInvalid() {
+    return this.userJobCcsid === CCSID_NOCONVERSION;
   }
 
   /**
@@ -106,7 +113,7 @@ export default class IBMi {
    * False when cqsh should be used.
    * True when cqsh is not available and the job CCSID is not the same as the SSHD CCSID.
    */
-  get requiresClientTranslation() {
+  get requiresTranslation() {
     if (this.canUseCqsh) {
       return false;
     } else {
@@ -941,7 +948,7 @@ export default class IBMi {
 
             if (this.getComponent(cqsh)) {
               // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
-              if (this.userJobCcsid === CCSID_NOCONVERSION) {
+              if (this.getCcsid() === CCSID_NOCONVERSION) {
                 userCcsidNeedsFixing = true;
               }
             }
@@ -971,6 +978,14 @@ export default class IBMi {
                   vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
                 }
               });
+            }
+
+            this.appendOutput(`\nCCSID information:\n`);
+            this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
+            this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
+            this.appendOutput(`\tUser Default CCSID: ${this.userDefaultCCSID}\n`);
+            if (this.sshdCcsid) {
+              this.appendOutput(`\tSSHD CCSID: ${this.sshdCcsid}\n`);
             }
 
             // We always need to fetch the local variants because 
@@ -1088,7 +1103,7 @@ export default class IBMi {
       qshExecutable = await customQsh.getPath();
     }
     
-    if (this.requiresClientTranslation) {
+    if (this.requiresTranslation) {
       options.stdin = this.sysNameInAmerican(options.stdin);
       options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
     }
@@ -1435,10 +1450,11 @@ export default class IBMi {
    */
   async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
+    const possibleChangeCommand = (this.userCcsidInvalid ? `@CHGJOB CCSID(${this.getCcsid()});\n` : '');
 
     if (QZDFMDB2) {
       // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
-      let input = Tools.fixSQL(statements, true);
+      let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
       let returningAsCsv: WrapResult | undefined;
       let command = `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
       let useCsv = options.forceSafe;
@@ -1449,7 +1465,7 @@ export default class IBMi {
         command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
       }
       
-      if (this.requiresClientTranslation) {
+      if (this.requiresTranslation) {
         // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
         input = this.sysNameInAmerican(input);
         useCsv = true;

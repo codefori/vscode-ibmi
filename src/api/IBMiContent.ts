@@ -483,7 +483,9 @@ export default class IBMiContent {
    */
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
-    const americanLibrary = this.ibmi.sysNameInAmerican(localLibrary);
+
+    const useLocalNameForSources = this.ibmi.userCcsidInvalid;
+    const sourceLibrary = useLocalNameForSources ? localLibrary : this.ibmi.sysNameInAmerican(localLibrary);
 
     if (localLibrary !== `QSYS`) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
@@ -504,9 +506,10 @@ export default class IBMiContent {
     // Here's the downlow on CCSIDs here.
 
     // SYSTABLES takes the name in the local format (with the local variant characters)
-    const sourceFileNameLike = () => objectFilter ? ` and t.SYSTEM_TABLE_NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${this.ibmi.sysNameInAmerican(objectFilter.replace('*', '%'))}'` : '';
+    const sourceFileName = objectFilter ? (useLocalNameForSources ? objectFilter : this.ibmi.sysNameInAmerican(objectFilter)) : undefined;
+    const sourceFileNameLike = () => sourceFileName ? ` and t.SYSTEM_TABLE_NAME ${(sourceFileName.includes('*') ? ` like ` : ` = `)} '${sourceFileName.replace('*', '%')}'` : '';
 
-    // OBJECT_STATISTICS takes the name in the system format (with the American variant characters)
+    // OBJECT_STATISTICS takes the name in the system format
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     let createOBJLIST: string[];
@@ -522,7 +525,7 @@ export default class IBMiContent {
         `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
         `  t.IASP_NUMBER       as IASP_NUMBER`,
         `from QSYS2.SYSTABLES as t`,
-        `where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
+        `where t.SYSTEM_TABLE_SCHEMA = '${sourceLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
@@ -554,7 +557,7 @@ export default class IBMiContent {
         `    1                   as IS_SOURCE,`,
         `    t.ROW_LENGTH        as SOURCE_LENGTH`,
         `  from QSYS2.SYSTABLES as t`,
-        `  where t.SYSTEM_TABLE_SCHEMA = '${americanLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
+        `  where t.SYSTEM_TABLE_SCHEMA = '${sourceLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
