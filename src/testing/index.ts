@@ -51,8 +51,10 @@ export interface TestCase {
 
 export interface ConnectionFixture { name: string, user: { [parm: string]: string | number }, commands?: string[] };
 
+// https://www.ibm.com/docs/en/i/7.5?topic=information-language-identifiers-associated-default-ccsids
 const TestConnectionFixtures: ConnectionFixture[] = [
-  { name: `American`, user: { CCSID: 37, CNTRYID: `US`, LANGID: `ENG` } },
+  { name: `American`, user: { CCSID: 37, CNTRYID: `US`, LANGID: `ENU` } },
+  { name: `American (CCSID *SYSVAL)`, user: { CCSID: '*SYSVAL', CNTRYID: `US`, LANGID: `ENU` } },
   { name: `French`, user: { CCSID: 297, CNTRYID: `FR`, LANGID: `FRA` } },
   { name: `Spanish`, user: { CCSID: 284, CNTRYID: `ES`, LANGID: `ESP` } },
   { name: `Spanish (CCSID *SYSVAL)`, user: { CCSID: '*SYSVAL', CNTRYID: `ES`, LANGID: `ESP` } },
