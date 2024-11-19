@@ -485,7 +485,6 @@ export default class IBMiContent {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
     const useLocalNameForSources = this.ibmi.userCcsidInvalid;
-    const sourceLibrary = useLocalNameForSources ? localLibrary : this.ibmi.sysNameInAmerican(localLibrary);
 
     if (localLibrary !== `QSYS`) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
@@ -506,8 +505,7 @@ export default class IBMiContent {
     // Here's the downlow on CCSIDs here.
 
     // SYSTABLES takes the name in the local format (with the local variant characters)
-    const sourceFileName = objectFilter ? (useLocalNameForSources ? objectFilter : this.ibmi.sysNameInAmerican(objectFilter)) : undefined;
-    const sourceFileNameLike = () => sourceFileName ? ` and t.SYSTEM_TABLE_NAME ${(sourceFileName.includes('*') ? ` like ` : ` = `)} '${sourceFileName.replace('*', '%')}'` : '';
+    const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
 
     // OBJECT_STATISTICS takes the name in the system format
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
@@ -516,16 +514,21 @@ export default class IBMiContent {
     if (sourceFilesOnly) {
       //DSPFD only
       createOBJLIST = [
-        `select `,
-        `  t.SYSTEM_TABLE_NAME as NAME,`,
-        `  '*FILE'             as TYPE,`,
-        `  'PF'                as ATTRIBUTE,`,
-        `  t.TABLE_TEXT        as TEXT,`,
-        `  1                   as IS_SOURCE,`,
-        `  t.ROW_LENGTH        as SOURCE_LENGTH,`,
-        `  t.IASP_NUMBER       as IASP_NUMBER`,
-        `from QSYS2.SYSTABLES as t`,
-        `where t.SYSTEM_TABLE_SCHEMA = '${sourceLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
+        `with SRCFILES as (`,
+        `  select `,
+        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10) for bit data)) as NAME,`,
+        `    '*FILE'             as TYPE,`,
+        `    'PF'                as ATTRIBUTE,`,
+        `    t.TABLE_TEXT        as TEXT,`,
+        `    1                   as IS_SOURCE,`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `    t.IASP_NUMBER       as IASP_NUMBER`,
+        `  from QSYS2.SYSTABLES as t`,
+        `  where t.FILE_TYPE = 'S'`,
+        `)`,
+        `SELECT * FROM SRCFILES as f`,
+        `where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
       ];
     } else if (!withSourceFiles) {
       //DSPOBJD only
@@ -548,16 +551,21 @@ export default class IBMiContent {
     else {
       //Both DSPOBJD and DSPFD
       createOBJLIST = [
-        `with SRCPF as (`,
+        `with SRCFILES as (`,
         `  select `,
-        `    replace(replace(replace(t.SYSTEM_TABLE_NAME, '${this.ibmi.variantChars.american[2]}','${this.ibmi.variantChars.local[2]}'), '${this.ibmi.variantChars.american[1]}', '${this.ibmi.variantChars.local[1]}'), '${this.ibmi.variantChars.american[0]}', '${this.ibmi.variantChars.local[0]}') as NAME,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_SCHEMA as char(10) for bit data)) as LIBRARY,`,
+        `    rtrim(cast(t.SYSTEM_TABLE_NAME as char(10) for bit data)) as NAME,`,
         `    '*FILE'             as TYPE,`,
         `    'PF'                as ATTRIBUTE,`,
         `    t.TABLE_TEXT        as TEXT,`,
         `    1                   as IS_SOURCE,`,
-        `    t.ROW_LENGTH        as SOURCE_LENGTH`,
+        `    t.ROW_LENGTH        as SOURCE_LENGTH,`,
+        `    t.IASP_NUMBER       as IASP_NUMBER`,
         `  from QSYS2.SYSTABLES as t`,
-        `  where t.SYSTEM_TABLE_SCHEMA = '${sourceLibrary.padEnd(10)}' and t.FILE_TYPE = 'S'${sourceFileNameLike()}`,
+        `  where t.FILE_TYPE = 'S'`,
+        `), SRCPF as (`,
+        `  SELECT * FROM SRCFILES as f`,
+        `  where f.LIBRARY = '${localLibrary}'${sourceFileNameLike()}`,
         `), OBJD as (`,
         `  select `,
         `    OBJNAME           as NAME,`,
@@ -594,7 +602,7 @@ export default class IBMiContent {
 
     return objects.map(object => ({
       library: localLibrary,
-      name: sourceFilesOnly ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
+      name: Boolean(object.IS_SOURCE) ? this.ibmi.sysNameInLocal(String(object.NAME)) : String(object.NAME),
       type: String(object.TYPE),
       attribute: String(object.ATTRIBUTE),
       text: String(object.TEXT || ""),

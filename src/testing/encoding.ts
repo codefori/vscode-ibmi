@@ -248,13 +248,17 @@ export const EncodingSuite: TestSuite = {
             assert.strictEqual(expectedObject.library, library);
           };
 
-          const objectList = await content.getObjectList({ library, types: ["*ALL"] });
-          assert.ok(objectList.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
-          assert.ok(objectList.some(obj => obj.library === library && obj.type === `*DTAARA` && obj.name === dataArea));
-
           const nameFilter = await content.getObjectList({ library, types: ["*ALL"], object: `${connection.variantChars.local[0]}*` });
           assert.strictEqual(nameFilter.length, 1);
           assert.ok(nameFilter.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
+
+          const objectList = await content.getObjectList({ library, types: ["*ALL"] });
+          assert.ok(objectList.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile && obj.sourceFile === true));
+          assert.ok(objectList.some(obj => obj.library === library && obj.type === `*DTAARA` && obj.name === dataArea));
+
+          const expectedMembers = await content.getMemberList({ library, sourceFile });
+          assert.ok(expectedMembers);
+          assert.ok(expectedMembers.every(member => members.find(m => m === member.name)));
 
           const sourceFilter = await content.getObjectList({ library, types: ["*SRCPF"], object: `${connection.variantChars.local[0]}*` });
           assert.strictEqual(sourceFilter.length, 1);
@@ -267,10 +271,6 @@ export const EncodingSuite: TestSuite = {
 
           const [expectedSourceFile] = await content.getObjectList({ library, object: sourceFile, types: ["*SRCPF"] });
           checkFile(expectedSourceFile);
-
-          const expectedMembers = await content.getMemberList({ library, sourceFile });
-          assert.ok(expectedMembers);
-          assert.ok(expectedMembers.every(member => members.find(m => m === member.name)));
 
         }
       }
