@@ -293,6 +293,8 @@ async function getRemoteSection() {
           `|CCSID Origin|${ccsids.qccsid}|`,
           `|Runtime CCSID|${ccsids.runtimeCcsid || '?'}|`,
           `|Default CCSID|${ccsids.userDefaultCCSID || '?'}|`,
+          `|SSHD CCSID|${ccsids.sshdCcsid || '?'}|`,
+          `|cqsh|${connection.canUseCqsh}|`,
           `|SQL|${connection.enableSQL ? 'Enabled' : 'Disabled'}`,
           `|Source dates|${config.enableSourceDates ? 'Enabled' : 'Disabled'}`,
           '',
@@ -307,11 +309,6 @@ async function getRemoteSection() {
           `\`\`\`json`,
           JSON.stringify(connection?.variantChars || {}, null, 2),
           `\`\`\``),
-        ``,
-        createSection(`Errors`,
-          `\`\`\`json`,
-          JSON.stringify(connection?.lastErrors || [], null, 2),
-          `\`\`\``)
       ].join("\n");
     });
   }
