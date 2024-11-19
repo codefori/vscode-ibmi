@@ -98,7 +98,7 @@ export default class IBMi {
   maximumArgsLength = 0;
 
   get canUseCqsh() {
-    return this.getComponent(cqsh) !== undefined && this.userDefaultCCSID !== CCSID_NOCONVERSION;
+    return this.getComponent(cqsh) !== undefined && this.userJobCcsid !== CCSID_NOCONVERSION;
   }
 
   /**
@@ -927,28 +927,41 @@ export default class IBMi {
               }
             }
 
-            const cqshAvailable = this.getComponent(cqsh);
+            let userCcsidNeedsFixing = false;
+            let sshdCcsidMismatch = false;
 
-            if (cqshAvailable) {
+            if (this.getComponent(cqsh)) {
+              // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
               if (this.userJobCcsid === CCSID_NOCONVERSION) {
-                vscode.window.showWarningMessage(`The job CCSID is set to 65535. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`, `Show documentation`).then(choice => {
-                  if (choice === `Show documentation`) {
-                    vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
-                  }
-                });
+                userCcsidNeedsFixing = true;
               }
             }
             
             if (!this.canUseCqsh) {
+              // If cqsh is not available, then we need to check the SSHD CCSID
               this.sshdCcsid = await this.getSshCcsid();
-              const encoding = this.getCcsid();
-              if (this.sshdCcsid !== encoding) {
-                vscode.window.showWarningMessage(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${encoding}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
-                  if (choice === `Show documentation`) {
-                    vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
-                  }
-                });
+              if (this.sshdCcsid === this.getCcsid()) {
+                // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
+                // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
+                userCcsidNeedsFixing = false;
+              } else {
+                // If the SSHD CCSID does not match the job CCSID, then we need to warn the user
+                sshdCcsidMismatch = true;
               }
+            }
+
+            if (userCcsidNeedsFixing) {
+              vscode.window.showWarningMessage(`The job CCSID is set to 65535. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`, `Show documentation`).then(choice => {
+                if (choice === `Show documentation`) {
+                  vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
+                }
+              });
+            } else if (sshdCcsidMismatch) {
+              vscode.window.showWarningMessage(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
+                if (choice === `Show documentation`) {
+                  vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
+                }
+              });
             }
 
             // We always need to fetch the local variants because 
@@ -1537,6 +1550,7 @@ export default class IBMi {
       qccsid: this.qccsid,
       runtimeCcsid: this.userJobCcsid,
       userDefaultCCSID: this.userDefaultCCSID,
+      sshdCcsid: this.sshdCcsid
     };
   }
 
