@@ -1,5 +1,7 @@
 import { env } from "process";
-import vscode from "vscode";
+import vscode, { commands } from "vscode";
+import path from "path";
+import fs from "fs";
 import { instance } from "../instantiate";
 import { ActionSuite } from "./action";
 import { ComponentSuite } from "./components";
@@ -67,6 +69,7 @@ const testingEnabled = env.base_testing === `true`;
 const testSuitesSimultaneously = env.simultaneous === `true`;
 const testIndividually = env.individual === `true`;
 const testSpecific = env.specific;
+const report_and_exit = env.report_and_exit !== undefined ? env.report_and_exit : undefined;
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
@@ -120,6 +123,25 @@ export async function connectWithFixture(server?: Server) {
         }
       }
     }
+  }
+  
+  const connection = instance.getConnection()!;
+
+  if (report_and_exit) {
+    const connectionDetail = {
+      system: connection.currentConnectionName,
+      user: connection.currentConnectionName,
+      ccsids: connection.getCcsids(),
+      variants: connection.variantChars
+    };
+
+    const contents = {
+      connection: connectionDetail,
+      suites,
+    }
+    fs.writeFileSync(report_and_exit, JSON.stringify(contents));
+    console.log(`vscode-ibmi test report written to ${report_and_exit}`);
+    commands.executeCommand(`workbench.action.closeWindow`);
   }
 }
 

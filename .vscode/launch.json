@@ -69,6 +69,23 @@
 			}
 		},
 		{
+			"name": "Extension Tests (Report)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],			
+			"sourceMaps": true,
+			"preLaunchTask": "${defaultBuildTask}",
+			"env": {
+				"testing": "true",
+				"report_and_exit": "/Users/barry/Repos/vscode-ibmi/report.json"
+			}
+		},
+		{
 			"name": "Extension Tests (Individual)",
 			"type": "extensionHost",
 			"request": "launch",
