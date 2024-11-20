@@ -124,25 +124,6 @@ export async function connectWithFixture(server?: Server) {
       }
     }
   }
-  
-  const connection = instance.getConnection()!;
-
-  if (report_and_exit) {
-    const connectionDetail = {
-      system: connection.currentConnectionName,
-      user: connection.currentConnectionName,
-      ccsids: connection.getCcsids(),
-      variants: connection.variantChars
-    };
-
-    const contents = {
-      connection: connectionDetail,
-      suites,
-    }
-    fs.writeFileSync(report_and_exit, JSON.stringify(contents));
-    console.log(`vscode-ibmi test report written to ${report_and_exit}`);
-    commands.executeCommand(`workbench.action.closeWindow`);
-  }
 }
 
 async function setupUserFixture(connectionName: string, fixture: ConnectionFixture) {
@@ -215,6 +196,26 @@ async function runTests(simultaneously?: boolean) {
   }
 
   console.log(`All tests completed`);
+
+
+  const connection = instance.getConnection()!;
+
+  if (report_and_exit) {
+    const connectionDetail = {
+      system: connection.currentConnectionName,
+      user: connection.currentConnectionName,
+      ccsids: connection.getCcsids(),
+      variants: connection.variantChars
+    };
+
+    const contents = {
+      connection: connectionDetail,
+      suites,
+    }
+    fs.writeFileSync(report_and_exit, JSON.stringify(contents));
+    console.log(`vscode-ibmi test report written to ${report_and_exit}`);
+    commands.executeCommand(`workbench.action.closeWindow`);
+  }
 }
 
 async function testSuiteRunner(suite: TestSuite, withGap?: boolean) {
