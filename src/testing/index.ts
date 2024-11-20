@@ -1,5 +1,7 @@
 import { env } from "process";
-import vscode from "vscode";
+import vscode, { commands } from "vscode";
+import path from "path";
+import fs from "fs";
 import { instance } from "../instantiate";
 import { ActionSuite } from "./action";
 import { ComponentSuite } from "./components";
@@ -49,6 +51,7 @@ export interface TestCase {
 
 const testingEnabled = env.testing === `true`;
 const testIndividually = env.individual === `true`;
+const report_and_exit = env.report_and_exit !== undefined ? env.report_and_exit : undefined;
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
@@ -81,6 +84,8 @@ export function initialise(context: vscode.ExtensionContext) {
 }
 
 async function runTests() {
+  const connection = instance.getConnection()!;
+
   for (const suite of suites) {
     try {
       suite.status = "running";
@@ -116,6 +121,23 @@ async function runTests() {
       }
       testSuitesTreeProvider.refresh(suite);
     }
+  }
+
+  if (report_and_exit) {
+    const connectionDetail = {
+      system: connection.currentConnectionName,
+      user: connection.currentConnectionName,
+      ccsids: connection.getCcsids(),
+      variants: connection.variantChars
+    };
+
+    const contents = {
+      connection: connectionDetail,
+      suites,
+    }
+    fs.writeFileSync(report_and_exit, JSON.stringify(contents));
+    console.log(`vscode-ibmi test report written to ${report_and_exit}`);
+    commands.executeCommand(`workbench.action.closeWindow`);
   }
 }
 
