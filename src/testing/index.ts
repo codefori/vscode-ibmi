@@ -202,8 +202,8 @@ async function runTests(simultaneously?: boolean) {
 
   if (report_and_exit) {
     const connectionDetail = {
-      system: connection.currentConnectionName,
-      user: connection.currentConnectionName,
+      system: connection.currentHost,
+      user: connection.currentUser,
       ccsids: connection.getCcsids(),
       variants: connection.variantChars
     };
