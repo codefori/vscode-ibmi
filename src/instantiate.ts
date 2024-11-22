@@ -617,6 +617,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
         const editor = vscode.window.activeTextEditor;
 
         if (editor) {
+          const connection = instance.getConnection()!;
           const config = instance.getConfig()!;
           const uri = editor.document.uri;
 
@@ -633,7 +634,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 }
                 break;
               case `streamfile`:
-                detail.asp = (config.sourceASP && config.sourceASP.length > 0) ? config.sourceASP : undefined;
+                const asp = connection.getCurrentIAspName();
+                detail.asp = asp;
                 detail.lib = config.currentLibrary;
                 break;
             }

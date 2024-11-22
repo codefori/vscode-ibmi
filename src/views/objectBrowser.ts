@@ -913,8 +913,9 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
         filter: node?.filter
       }
 
+      const connection = getConnection();
+
       if (!parameters.path) {
-        const connection = getConnection();
         const input = await vscode.window.showInputBox({
           prompt: vscode.l10n.t(`Enter LIB/SPF/member.ext to search (member.ext is optional and can contain wildcards)`),
           title: vscode.l10n.t(`Search source file`),
@@ -954,7 +955,8 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
-          const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? vscode.l10n.t(`(in ASP {0})`, config.sourceASP) : ``);
+          const selectedAsp = connection.getCurrentIAspName();
+          const aspText = (selectedAsp ? vscode.l10n.t(`(in ASP {0})`, selectedAsp) : ``);
 
           const list = GlobalStorage.get().getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [

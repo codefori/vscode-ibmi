@@ -328,6 +328,16 @@ export const ConnectionSuite: TestSuite = {
           connection.variantChars.local = variantsBackup;
         }
       }
+    },
+    {
+      name: `Test getLibraryIAsp against QSYSINC`, test: async () => {
+        const connection = instance.getConnection()!;
+
+        const library = `QSYSINC`;
+
+        const asp = await connection.lookupLibraryIAsp(library);
+        assert.strictEqual(asp, undefined); // Because QSYSINC is not an iASP
+      }
     }
   ]
 };

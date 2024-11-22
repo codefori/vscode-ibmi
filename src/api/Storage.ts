@@ -1,5 +1,5 @@
 import vscode from 'vscode';
-import { ConnectionData } from '../typings';
+import { AspInfo, ConnectionData } from '../typings';
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;
@@ -52,7 +52,7 @@ export type LastConnection = {
 };
 
 export type CachedServerSettings = {
-  aspInfo: { [id: number]: string }
+  iAspInfo: AspInfo[];
   qccsid: number | null;
   jobCcsid: number | null
   remoteFeatures: { [name: string]: string | undefined }
