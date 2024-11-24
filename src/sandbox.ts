@@ -103,6 +103,7 @@ export async function handleStartup() {
   let server: string | undefined = env.SANDBOX_SERVER;
   let username: string | undefined = env.SANDBOX_USER;
   let password: string | undefined = env.SANDBOX_PASS;
+  let reloadSettings: boolean = env.SANDBOX_RELOAD_SETTINGS === `true`;
 
   // If Sandbox mode is enabled, then the server and username can be inherited from the branch name
   if (env.VSCODE_IBMI_SANDBOX) {
@@ -155,7 +156,7 @@ export async function handleStartup() {
       });
     }
 
-    const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData);
+    const connectionResult = await commands.executeCommand(`code-for-ibmi.connectDirect`, connectionData, reloadSettings);
 
     if (connectionResult) {
       await initialSetup(connectionData.username);
