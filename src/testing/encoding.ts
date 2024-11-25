@@ -1,6 +1,6 @@
 import assert from "assert";
 import os from "os";
-import { workspace } from "vscode";
+import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
@@ -140,6 +140,33 @@ export const EncodingSuite: TestSuite = {
         });
       }
     },
+    ...SHELL_CHARS.map(char => ({
+      name: `Test streamfiles with shell character ${char}`, test: async () => {
+        const connection = instance.getConnection()!;
+
+        const nameCombos = [`${char}ABC`, `ABC${char}`, `${char}ABC${char}`, `A${char}C`];
+
+        await connection.withTempDirectory(async tempDir => {
+          for (const name of nameCombos) {
+            const tempFile = path.posix.join(tempDir, `${name}.txt`);
+            await connection.content.createStreamFile(tempFile);
+            
+            const resolved = await connection.content.streamfileResolve([tempFile], [`/`]);
+            assert.strictEqual(resolved, tempFile);
+
+            const attributes = await connection.content.getAttributes(resolved, `CCSID`);
+            assert.ok(attributes);
+
+            const uri = Uri.from({scheme: `streamfile`, path: tempFile});
+
+            await workspace.fs.writeFile(uri, Buffer.from(`Hello world`, `utf8`));
+            
+            const streamfileContents = await workspace.fs.readFile(uri);
+            assert.strictEqual(streamfileContents.toString(), `Hello world`);
+          }
+        });
+      }
+    })),
     ...SHELL_CHARS.map(char => ({
       name: `Test members with shell character ${char}`, test: async () => {
         const content = instance.getContent();

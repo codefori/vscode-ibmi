@@ -964,7 +964,8 @@ export default class IBMiContent {
     if (assumeMember) {
       result = await this.ibmi.sendQsh({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`});
     } else {
-      result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`});
+      // Take {DOES_THIS_WORK: `YESITDOES`} away, and all of a sudden names with # aren't found.
+      result = await this.ibmi.sendCommand({ command: `/QOpenSys/${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`, env: {DOES_THIS_WORK: `YESITDOES`}});
     }
 
     if (result.code === 0) {
