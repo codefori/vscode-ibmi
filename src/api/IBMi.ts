@@ -18,6 +18,7 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import { r } from 'tar';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -30,7 +31,7 @@ const bashShellPath = '/QOpenSys/pkgs/bin/bash';
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`]
+    names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`, `uname`]
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
@@ -52,6 +53,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
+  private systemVersion: number|undefined;
   private qccsid: number = CCSID_NOCONVERSION;
   private userJobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
@@ -150,7 +152,8 @@ export default class IBMi {
       jdk80: undefined,
       jdk11: undefined,
       jdk17: undefined,
-      openjdk11: undefined
+      openjdk11: undefined,
+      uname: undefined,
     };
 
     this.variantChars = {
@@ -419,6 +422,24 @@ export default class IBMi {
             this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
             this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
             this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
+          }
+
+          if (this.remoteFeatures.uname) {
+            progress.report({
+              message: `Checking OS version.`
+            });
+            const systemVersionResult = await this.sendCommand({ command: `/QOpenSys/usr/bin/uname -rv` });
+
+            if (systemVersionResult.code === 0) {
+              const version = systemVersionResult.stdout.trim().split(` `);
+              this.systemVersion = Number(`${version[1]}.${version[0]}`);
+            }
+          }
+
+          if (!this.systemVersion) {
+            vscode.window.showWarningMessage(`Unable to determine system version. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
+          } else if (this.systemVersion < 7.3) {
+            vscode.window.showWarningMessage(`IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
           }
 
           progress.report({ message: `Checking Code for IBM i components.` });
@@ -946,6 +967,14 @@ export default class IBMi {
             let userCcsidNeedsFixing = false;
             let sshdCcsidMismatch = false;
 
+            const showCcsidWarning = (message: string) => {
+              vscode.window.showWarningMessage(message, `Show documentation`).then(choice => {
+                if (choice === `Show documentation`) {
+                  vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
+                }
+              });
+            }
+
             if (this.canUseCqsh) {
               // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
               if (this.getCcsid() === CCSID_NOCONVERSION) {
@@ -967,17 +996,9 @@ export default class IBMi {
             }
 
             if (userCcsidNeedsFixing) {
-              vscode.window.showWarningMessage(`The job CCSID is set to ${CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`, `Show documentation`).then(choice => {
-                if (choice === `Show documentation`) {
-                  vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
-                }
-              });
+              showCcsidWarning(`The job CCSID is set to ${CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
             } else if (sshdCcsidMismatch) {
-              vscode.window.showWarningMessage(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`, `Show documentation`).then(choice => {
-                if (choice === `Show documentation`) {
-                  vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
-                }
-              });
+              showCcsidWarning(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`);
             }
 
             this.appendOutput(`\nCCSID information:\n`);
@@ -986,6 +1007,27 @@ export default class IBMi {
             this.appendOutput(`\tUser Default CCSID: ${this.userDefaultCCSID}\n`);
             if (this.sshdCcsid) {
               this.appendOutput(`\tSSHD CCSID: ${this.sshdCcsid}\n`);
+            }
+
+            // We only do this check if we're on 7.3 or below.
+            if (this.systemVersion && this.systemVersion <= 7.3) {
+              progress.report({
+                message: `Checking PASE locale environment variables.`
+              });
+
+              const systemEnvVars = await this.runSQL([
+                `select ENVIRONMENT_VARIABLE_NAME, ENVIRONMENT_VARIABLE_VALUE`,
+                `from qsys2.environment_variable_info where environment_variable_type = 'SYSTEM'`
+              ].join(` `)) as { ENVIRONMENT_VARIABLE_NAME: string, ENVIRONMENT_VARIABLE_VALUE: string }[];
+
+              const paseLang = systemEnvVars.find(r => r.ENVIRONMENT_VARIABLE_NAME === `PASE_LANG`);
+              const paseCcsid = systemEnvVars.find(r => r.ENVIRONMENT_VARIABLE_NAME === `QIBM_PASE_CCSID`);
+
+              if (paseLang === undefined || paseCcsid === undefined) {
+                showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+              } else if (paseCcsid.ENVIRONMENT_VARIABLE_VALUE !== `1208`) {
+                showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+              }
             }
 
             // We always need to fetch the local variants because 
