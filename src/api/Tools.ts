@@ -220,9 +220,12 @@ export namespace Tools {
    * @param Path
    * @returns the escaped path
    */
-  export function escapePath(Path: string): string {
-    const path = Path.replace(/'|"|\$|\\| /g, matched => `\\`.concat(matched));
-    return path;
+  export function escapePath(Path: string, alreadyQuoted = false): string {
+    if (alreadyQuoted) {
+      return Path.replace(/"|\$|\\/g, matched => `\\`.concat(matched));
+    } else {
+      return Path.replace(/'|"|\$|\\| /g, matched => `\\`.concat(matched));
+    }
   }
 
   let gitLookedUp: boolean;
