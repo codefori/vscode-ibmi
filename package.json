@@ -2516,7 +2516,7 @@
 				},
 				{
 					"command": "code-for-ibmi.testing.connectWithFixture",
-					"when": "view == connectionBrowser && !listMultiSelection && viewItem == server",
+					"when": "view == connectionBrowser && code-for-ibmi:testing && !listMultiSelection && viewItem == server",
 					"group": "inline"
 				},
 				{
