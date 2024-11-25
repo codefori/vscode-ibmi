@@ -53,7 +53,7 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
-  private systemVersion: number|undefined;
+  private systemVersion: number = 0;
   private qccsid: number = CCSID_NOCONVERSION;
   private userJobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
@@ -1015,17 +1015,14 @@ export default class IBMi {
                 message: `Checking PASE locale environment variables.`
               });
 
-              const systemEnvVars = await this.runSQL([
-                `select ENVIRONMENT_VARIABLE_NAME, ENVIRONMENT_VARIABLE_VALUE`,
-                `from qsys2.environment_variable_info where environment_variable_type = 'SYSTEM'`
-              ].join(` `)) as { ENVIRONMENT_VARIABLE_NAME: string, ENVIRONMENT_VARIABLE_VALUE: string }[];
+              const systemEnvVars = await this.getSysEnvVars();
 
-              const paseLang = systemEnvVars.find(r => r.ENVIRONMENT_VARIABLE_NAME === `PASE_LANG`);
-              const paseCcsid = systemEnvVars.find(r => r.ENVIRONMENT_VARIABLE_NAME === `QIBM_PASE_CCSID`);
+              const paseLang = systemEnvVars.PASE_LANG;
+              const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
 
               if (paseLang === undefined || paseCcsid === undefined) {
                 showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
-              } else if (paseCcsid.ENVIRONMENT_VARIABLE_VALUE !== `1208`) {
+              } else if (paseCcsid !== `1208`) {
                 showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
               }
             }
@@ -1113,6 +1110,13 @@ export default class IBMi {
         ConnectionConfiguration.update(this.config!);
       }
     });
+  }
+
+  /**
+   * Can return 0 if the OS version was not detected.
+   */
+  getSystemVersion(): number {
+    return this.systemVersion;
   }
 
   usingBash() {
@@ -1289,6 +1293,21 @@ export default class IBMi {
 
     const [result] = await this.runSQL(sql);
     return Number(result.CCSID === CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
+  }
+
+  async getSysEnvVars() {
+    const systemEnvVars = await this.runSQL([
+      `select ENVIRONMENT_VARIABLE_NAME, ENVIRONMENT_VARIABLE_VALUE`,
+      `from qsys2.environment_variable_info where environment_variable_type = 'SYSTEM'`
+    ].join(` `)) as { ENVIRONMENT_VARIABLE_NAME: string, ENVIRONMENT_VARIABLE_VALUE: string }[];
+
+    let result: { [name: string]: string; } = {};
+
+    systemEnvVars.forEach(row => {
+      result[row.ENVIRONMENT_VARIABLE_NAME] = row.ENVIRONMENT_VARIABLE_VALUE;
+    });
+
+    return result;
   }
 
   /**
