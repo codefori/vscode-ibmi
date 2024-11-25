@@ -525,54 +525,6 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(actbpgm?.file, `MIH`);
       }
     },
-
-    // The next two tests are now useless since we always require SQL
-    //
-    // {
-    //   name: `getMemberList (SQL compared to nosql)`, test: async () => {
-    //     const connection = instance.getConnection();
-    //     const content = instance.getContent();
-
-    //     // First we fetch the members in SQL mode
-    //     const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
-
-    //     assert.notStrictEqual(membersA?.length, 0);
-
-    //     // Then we fetch the members without SQL
-    //     connection!.enableSQL = false;
-
-    //     try {
-    //       await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
-    //       assert.fail(`Should have thrown an error`);
-    //     } catch (e) {
-    //       // This fails because getMemberList has no ability   to fetch members without SQL
-    //       assert.ok(e);
-    //     }
-    //   }
-    // },
-    // {
-    //   name: `getMemberList (name filter, SQL compared to nosql)`, test: async () => {
-    //     const connection = instance.getConnection();
-    //     const content = instance.getContent();
-
-    //     // First we fetch the members in SQL mode
-    //     connection!.enableSQL = true;
-    //     const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
-
-    //     assert.notStrictEqual(membersA?.length, 0);
-
-    //     // Then we fetch the members without SQL
-    //     connection!.enableSQL = false;
-
-    //     try {
-    //       await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
-    //       assert.fail(`Should have thrown an error`);
-    //     } catch (e) {
-    //       // This fails because getMemberList has no ability   to fetch members without SQL
-    //       assert.ok(e);
-    //     }
-    //   }
-    // },
     {
       name: `getMemberList (advanced filtering)`, test: async () => {
         const content = instance.getContent();
