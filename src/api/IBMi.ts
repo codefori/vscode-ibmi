@@ -428,7 +428,7 @@ export default class IBMi {
             progress.report({
               message: `Checking OS version.`
             });
-            const systemVersionResult = await this.sendCommand({ command: `/QOpenSys/usr/bin/uname -rv` });
+            const systemVersionResult = await this.sendCommand({ command: `${this.remoteFeatures.uname} -rv` });
 
             if (systemVersionResult.code === 0) {
               const version = systemVersionResult.stdout.trim().split(` `);
