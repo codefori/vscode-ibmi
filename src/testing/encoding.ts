@@ -391,7 +391,7 @@ export const EncodingSuite: TestSuite = {
         const config = instance.getConfig()!;
 
         const oldLines = contents[ccsid as keyof typeof contents];
-        const lines = oldLines.join(os.EOL);
+        const lines = oldLines.join(`\n`);
 
         const tempLib = config!.tempLibrary;
 
