@@ -78,22 +78,6 @@ export class cqsh extends IBMiComponent {
   }
 }
 
-function getSource(library: string) {
-  return Buffer.from([
-    `CREATE OR REPLACE PROCEDURE ${library}.GETNEWLIBL(IN COMMAND VARCHAR(2000))`,
-    `DYNAMIC RESULT SETS 1 `,
-    `BEGIN`,
-    `  DECLARE clibl CURSOR FOR `,
-    `    SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME`,
-    `    FROM QSYS2.LIBRARY_LIST_INFO;`,
-    `  CALL QSYS2.QCMDEXC(COMMAND);`,
-    `  OPEN clibl;`,
-    `END;`,
-    ``,
-    `call QSYS2.QCMDEXC( 'grtobjaut ${library}/GETNEWLIBL *PGM *PUBLIC *ALL' );`
-  ].join(`\n`), "utf8");
-}
-
 async function exists(path: string) {
   try {
     await stat(path);
