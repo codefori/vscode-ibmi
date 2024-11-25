@@ -5,9 +5,6 @@ import vscode from "vscode";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
 
-const MONTHS = [undefined, "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DAYS = [undefined, "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 export namespace Tools {
   export class SqlError extends Error {
     public sqlstate: string = "0";
