@@ -946,14 +946,14 @@ export default class IBMi {
             let userCcsidNeedsFixing = false;
             let sshdCcsidMismatch = false;
 
-            if (this.getComponent(cqsh)) {
+            if (this.canUseCqsh) {
               // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
               if (this.getCcsid() === CCSID_NOCONVERSION) {
                 userCcsidNeedsFixing = true;
               }
             }
             
-            if (!this.canUseCqsh) {
+            else {
               // If cqsh is not available, then we need to check the SSHD CCSID
               this.sshdCcsid = await this.getSshCcsid();
               if (this.sshdCcsid === this.getCcsid()) {
@@ -967,7 +967,7 @@ export default class IBMi {
             }
 
             if (userCcsidNeedsFixing) {
-              vscode.window.showWarningMessage(`The job CCSID is set to 65535. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`, `Show documentation`).then(choice => {
+              vscode.window.showWarningMessage(`The job CCSID is set to ${CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`, `Show documentation`).then(choice => {
                 if (choice === `Show documentation`) {
                   vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
                 }
