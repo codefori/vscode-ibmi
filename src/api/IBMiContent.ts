@@ -484,8 +484,6 @@ export default class IBMiContent {
   async getObjectList(filters: { library: string; object?: string; types?: string[]; filterType?: FilterType }, sortOrder?: SortOrder): Promise<IBMiObject[]> {
     const localLibrary = this.ibmi.upperCaseName(filters.library);
 
-    const useLocalNameForSources = this.ibmi.userCcsidInvalid;
-
     if (localLibrary !== `QSYS`) {
       if (!await this.checkObject({ library: "QSYS", name: localLibrary, type: "*LIB" })) {
         throw new Error(`Library ${localLibrary} does not exist.`);
@@ -503,11 +501,11 @@ export default class IBMiContent {
     const withSourceFiles = ['*ALL', '*SRCPF', '*FILE'].includes(type);
 
     // Here's the downlow on CCSIDs here.
-
     // SYSTABLES takes the name in the local format (with the local variant characters)
+    // OBJECT_STATISTICS takes the name in the system format
+
     const sourceFileNameLike = () => objectFilter ? ` and f.NAME ${(objectFilter.includes('*') ? ` like ` : ` = `)} '${objectFilter.replace('*', '%')}'` : '';
 
-    // OBJECT_STATISTICS takes the name in the system format
     const objectName = () => objectFilter ? `, OBJECT_NAME => '${objectFilter}'` : '';
 
     let createOBJLIST: string[];
