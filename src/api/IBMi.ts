@@ -6,6 +6,7 @@ import path, { parse as parsePath } from 'path';
 import * as vscode from "vscode";
 import { IBMiComponent, IBMiComponentType } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
+import { cqsh } from '../components/cqsh';
 import { ComponentManager } from "../components/manager";
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
@@ -17,18 +18,20 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import { r } from 'tar';
 
 export interface MemberParts extends IBMiMember {
   basename: string
 }
 
+const CCSID_NOCONVERSION = 65535;
 const CCSID_SYSVAL = -2;
 const bashShellPath = '/QOpenSys/pkgs/bin/bash';
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
-    names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`]
+    names: [`setccsid`, `iconv`, `attr`, `tar`, `ls`, `uname`]
   },
   {
     path: `/QOpenSys/pkgs/bin/`,
@@ -50,10 +53,12 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
-  private qccsid: number = 65535;
-  private jobCcsid: number = CCSID_SYSVAL;
+  private systemVersion: number = 0;
+  private qccsid: number = CCSID_NOCONVERSION;
+  private userJobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
+  private sshdCcsid: number|undefined;
 
   private componentManager = new ComponentManager(this);
 
@@ -73,7 +78,12 @@ export default class IBMi {
    */
   aspInfo: { [id: number]: string } = {};
   remoteFeatures: { [name: string]: string | undefined };
-  variantChars: { american: string, local: string };
+
+  variantChars: { 
+    american: string, 
+    local: string,
+    qsysNameRegex?: RegExp
+  };
 
   /** 
    * Strictly for storing errors from sendCommand.
@@ -89,7 +99,33 @@ export default class IBMi {
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
 
-  dangerousVariants = false;
+  get canUseCqsh() {
+    return this.getComponent(cqsh) !== undefined;
+  }
+
+  /**
+   * Primarily used for running SQL statements.
+   */
+  get userCcsidInvalid() {
+    return this.userJobCcsid === CCSID_NOCONVERSION;
+  }
+
+  /**
+   * Determines if the client should do variant translation.
+   * False when cqsh should be used.
+   * True when cqsh is not available and the job CCSID is not the same as the SSHD CCSID.
+   */
+  get requiresTranslation() {
+    if (this.canUseCqsh) {
+      return false;
+    } else {
+      return this.getCcsid() !== this.sshdCcsid;
+    }
+  }
+
+  get dangerousVariants() {
+    return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
+  };
 
   constructor() {
     this.client = new node_ssh.NodeSSH;
@@ -116,7 +152,8 @@ export default class IBMi {
       jdk80: undefined,
       jdk11: undefined,
       jdk17: undefined,
-      openjdk11: undefined
+      openjdk11: undefined,
+      uname: undefined,
     };
 
     this.variantChars = {
@@ -129,6 +166,7 @@ export default class IBMi {
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
   async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []): Promise<{ success: boolean, error?: any }> {
+    const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
     return await Tools.withContext("code-for-ibmi:connecting", async () => {
       try {
         connectionObject.keepaliveInterval = 35000;
@@ -159,6 +197,7 @@ export default class IBMi {
           if (!reconnecting) {
             this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
             this.outputChannelContent = '';
+            this.appendOutput(`Code for IBM i, version ${currentExtensionVersion}\n\n`);
           }
 
           let tempLibrarySet = false;
@@ -192,8 +231,11 @@ export default class IBMi {
 
           // Load cached server settings.
           const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
+
           // Reload server settings?
-          const quickConnect = (this.config.quickConnect === true && reloadServerSettings === false);
+          const quickConnect = () => {
+            return (this.config!.quickConnect === true && reloadServerSettings === false);
+          }
 
           // Check shell output for additional user text - this will confuse Code...
           progress.report({
@@ -321,6 +363,94 @@ export default class IBMi {
               this.config.ifsShortcuts = [`/`];
             }
           }
+
+          // If the version has changed (by update for example), then fetch everything again
+          if (cachedServerSettings?.lastCheckedOnVersion !== currentExtensionVersion) {
+            reloadServerSettings = true;
+          }
+
+          // Check for installed components?
+          // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
+          if (quickConnect() && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
+            Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
+          } else {
+            progress.report({
+              message: `Checking installed components on host IBM i.`
+            });
+
+            // We need to check if our remote programs are installed.
+            remoteApps.push(
+              {
+                path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
+                names: [`GETNEWLIBL.PGM`],
+                specific: `GE*.PGM`
+              }
+            );
+
+            //Next, we see what pase features are available (installed via yum)
+            //This may enable certain features in the future.
+            for (const feature of remoteApps) {
+              try {
+                progress.report({
+                  message: `Checking installed components on host IBM i: ${feature.path}`
+                });
+
+                const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
+                if (call.stdout) {
+                  const files = call.stdout.split(`\n`);
+
+                  if (feature.specific) {
+                    for (const name of feature.names)
+                      this.remoteFeatures[name] = files.find(file => file.includes(name));
+                  } else {
+                    for (const name of feature.names)
+                      if (files.includes(name))
+                        this.remoteFeatures[name] = feature.path + name;
+                  }
+                }
+              } catch (e) {
+                console.log(e);
+              }
+            }
+
+            //Specific Java installations check
+            progress.report({
+              message: `Checking installed components on host IBM i: Java`
+            });
+            const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
+            this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
+            this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
+            this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
+            this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
+          }
+
+          if (this.remoteFeatures.uname) {
+            progress.report({
+              message: `Checking OS version.`
+            });
+            const systemVersionResult = await this.sendCommand({ command: `${this.remoteFeatures.uname} -rv` });
+
+            if (systemVersionResult.code === 0) {
+              const version = systemVersionResult.stdout.trim().split(` `);
+              this.systemVersion = Number(`${version[1]}.${version[0]}`);
+            }
+          }
+
+          if (!this.systemVersion) {
+            vscode.window.showWarningMessage(`Unable to determine system version. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
+          } else if (this.systemVersion < 7.3) {
+            vscode.window.showWarningMessage(`IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
+          }
+
+          progress.report({ message: `Checking Code for IBM i components.` });
+          await this.componentManager.startup();
+
+          const componentStates = await this.componentManager.getState();
+          this.appendOutput(`\nCode for IBM i components:\n`);
+          for (const state of componentStates) {
+            this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
+          }
+          this.appendOutput(`\n`);
 
           progress.report({
             message: `Checking library list configuration.`
@@ -479,7 +609,7 @@ export default class IBMi {
           }
 
           // Check for bad data areas?
-          if (quickConnect === true && cachedServerSettings?.badDataAreasChecked === true) {
+          if (quickConnect() && cachedServerSettings?.badDataAreasChecked === true) {
             // Do nothing, bad data areas are already checked.
           } else {
             progress.report({
@@ -546,196 +676,6 @@ export default class IBMi {
                 }
               });
             }
-          }
-
-          // Check for installed components?
-          // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
-          if (quickConnect === true && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
-            Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
-          } else {
-            progress.report({
-              message: `Checking installed components on host IBM i.`
-            });
-
-            // We need to check if our remote programs are installed.
-            remoteApps.push(
-              {
-                path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
-                names: [`GETNEWLIBL.PGM`],
-                specific: `GE*.PGM`
-              }
-            );
-
-            //Next, we see what pase features are available (installed via yum)
-            //This may enable certain features in the future.
-            for (const feature of remoteApps) {
-              try {
-                progress.report({
-                  message: `Checking installed components on host IBM i: ${feature.path}`
-                });
-
-                const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
-                if (call.stdout) {
-                  const files = call.stdout.split(`\n`);
-
-                  if (feature.specific) {
-                    for (const name of feature.names)
-                      this.remoteFeatures[name] = files.find(file => file.includes(name));
-                  } else {
-                    for (const name of feature.names)
-                      if (files.includes(name))
-                        this.remoteFeatures[name] = feature.path + name;
-                  }
-                }
-              } catch (e) {
-                console.log(e);
-              }
-            }
-
-            //Specific Java installations check
-            progress.report({
-              message: `Checking installed components on host IBM i: Java`
-            });
-            const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
-            this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
-            this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
-            this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
-            this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
-          }
-
-          if (this.sqlRunnerAvailable()) {
-            //Temporary function to run SQL
-
-            // TODO: stop using this runSQL function and this.runSql
-            const runSQL = async (statement: string) => {
-              const output = await this.sendCommand({
-                command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i')"`,
-                stdin: statement
-              });
-
-              if (output.code === 0) {
-                return Tools.db2Parse(output.stdout);
-              }
-              else {
-                throw new Error(output.stdout);
-              }
-            };
-
-            // Check for ASP information?
-            if (quickConnect === true && cachedServerSettings?.aspInfo) {
-              this.aspInfo = cachedServerSettings.aspInfo;
-            } else {
-              progress.report({
-                message: `Checking for ASP information.`
-              });
-
-              //This is mostly a nice to have. We grab the ASP info so user's do
-              //not have to provide the ASP in the settings.
-              try {
-                const resultSet = await runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
-                resultSet.forEach(row => {
-                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                    this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
-                  }
-                });
-              } catch (e) {
-                //Oh well
-                progress.report({
-                  message: `Failed to get ASP information.`
-                });
-              }
-            }
-
-            // Fetch conversion values?
-            if (quickConnect === true && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.variantChars && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
-              this.qccsid = cachedServerSettings.qccsid;
-              this.jobCcsid = cachedServerSettings.jobCcsid;
-              this.variantChars = cachedServerSettings.variantChars;
-              this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
-            } else {
-              progress.report({
-                message: `Fetching conversion values.`
-              });
-
-              // Next, we're going to see if we can get the CCSID from the user or the system.
-              // Some things don't work without it!!!
-              try {
-
-                // we need to grab the system CCSID (QCCSID)
-                const [systemCCSID] = await runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-                }
-
-                // we grab the users default CCSID
-                const [userInfo] = await runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                  this.jobCcsid = userInfo.CHARACTER_CODE_SET_ID;
-                }
-
-                // if the job ccsid is *SYSVAL, then assign it to sysval
-                if (this.jobCcsid === CCSID_SYSVAL) {
-                  this.jobCcsid = this.qccsid;
-                }
-
-                // Let's also get the user's default CCSID
-                try {
-                  const [activeJob] = await runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
-                  this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
-                }
-                catch (error) {
-                  const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
-                    .stdout
-                    .split("\n")
-                    .filter(line => line.includes("DFTCCSID"));
-
-                  const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
-                  if (defaultCCSCID && !isNaN(defaultCCSCID)) {
-                    this.userDefaultCCSID = defaultCCSCID;
-                  }
-                }
-
-                progress.report({
-                  message: `Fetching local encoding values.`
-                });
-
-                const [variants] = await runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-                  + `  values ( cast( x'7B' as varchar(1) )`
-                  + `         , cast( x'7C' as varchar(1) )`
-                  + `         , cast( x'5B' as varchar(1) ) )`
-                  + `)`
-                  + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
-
-                if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
-                  this.variantChars.local = variants.LOCAL;
-                }
-              } catch (e) {
-                // Oh well!
-                console.log(e);
-              }
-            }
-          } else {
-            // Disable it if it's not found
-            if (this.enableSQL) {
-              progress.report({
-                message: `SQL program not installed. Disabling SQL.`
-              });
-            }
-          }
-
-          if (!this.enableSQL) {
-            const encoding = this.getEncoding();
-            // Show a message if the system CCSID is bad
-            const ccsidMessage = this.qccsid === 65535 ? `The system QCCSID is not set correctly. We recommend changing the CCSID on your user profile first, and then changing your system QCCSID.` : undefined;
-
-            // Show a message if the runtime CCSID is bad (which means both runtime and default CCSID are bad) - in theory should never happen
-            const encodingMessage = encoding.invalid ? `Runtime CCSID detected as ${encoding.ccsid} and is invalid. Please change the CCSID or default CCSID in your user profile.` : undefined;
-
-            vscode.window.showErrorMessage([
-              ccsidMessage,
-              encodingMessage,
-              `Using fallback methods to access the IBM i file systems.`
-            ].filter(x => x).join(` `));
           }
 
           // give user option to set bash as default shell.
@@ -880,7 +820,7 @@ export default class IBMi {
           }
 
           // Validate configured library list.
-          if (quickConnect === true && cachedServerSettings?.libraryListValidated === true) {
+          if (quickConnect() && cachedServerSettings?.libraryListValidated === true) {
             // Do nothing, library list is already checked.
           } else {
             if (this.config.libraryList) {
@@ -892,8 +832,8 @@ export default class IBMi {
 
               const result = await this.sendQsh({
                 command: [
-                  `liblist -d ` + this.defaultUserLibraries.join(` `).replace(/\$/g, `\\$`),
-                  ...this.config.libraryList.map(lib => `liblist -a ` + lib.replace(/\$/g, `\\$`))
+                  `liblist -d ` + IBMi.escapeForShell(this.defaultUserLibraries.join(` `)),
+                  ...this.config.libraryList.map(lib => `liblist -a ` + IBMi.escapeForShell(lib))
                 ].join(`; `)
               });
 
@@ -944,8 +884,168 @@ export default class IBMi {
             this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
           }
 
-          progress.report({ message: `Checking Code for IBM i components.` });
-          await this.componentManager.startup();
+          if (this.sqlRunnerAvailable()) {
+            // Check for ASP information?
+            if (quickConnect() && cachedServerSettings?.aspInfo) {
+              this.aspInfo = cachedServerSettings.aspInfo;
+            } else {
+              progress.report({
+                message: `Checking for ASP information.`
+              });
+
+              //This is mostly a nice to have. We grab the ASP info so user's do
+              //not have to provide the ASP in the settings.
+              try {
+                const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+                resultSet.forEach(row => {
+                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                    this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+                  }
+                });
+              } catch (e) {
+                //Oh well
+                progress.report({
+                  message: `Failed to get ASP information.`
+                });
+              }
+            }
+
+            // Fetch conversion values?
+            if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+              this.qccsid = cachedServerSettings.qccsid;
+              this.userJobCcsid = cachedServerSettings.jobCcsid;
+              this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
+            } else {
+              progress.report({
+                message: `Fetching conversion values.`
+              });
+
+              // Next, we're going to see if we can get the CCSID from the user or the system.
+              // Some things don't work without it!!!
+              try {
+
+                // we need to grab the system CCSID (QCCSID)
+                const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
+                }
+
+                // we grab the users default CCSID
+                const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+                  this.userJobCcsid = userInfo.CHARACTER_CODE_SET_ID;
+                }
+
+                // if the job ccsid is *SYSVAL, then assign it to sysval
+                if (this.userJobCcsid === CCSID_SYSVAL) {
+                  this.userJobCcsid = this.qccsid;
+                }
+
+                // Let's also get the user's default CCSID
+                try {
+                  const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+                  this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
+                }
+                catch (error) {
+                  const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
+                    .stdout
+                    .split("\n")
+                    .filter(line => line.includes("DFTCCSID"));
+
+                  const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
+                  if (defaultCCSCID && !isNaN(defaultCCSCID)) {
+                    this.userDefaultCCSID = defaultCCSCID;
+                  }
+                }
+
+              } catch (e) {
+                // Oh well!
+                console.log(e);
+              }
+            }
+
+            let userCcsidNeedsFixing = false;
+            let sshdCcsidMismatch = false;
+
+            const showCcsidWarning = (message: string) => {
+              vscode.window.showWarningMessage(message, `Show documentation`).then(choice => {
+                if (choice === `Show documentation`) {
+                  vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
+                }
+              });
+            }
+
+            if (this.canUseCqsh) {
+              // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
+              if (this.getCcsid() === CCSID_NOCONVERSION) {
+                userCcsidNeedsFixing = true;
+              }
+            }
+            
+            else {
+              // If cqsh is not available, then we need to check the SSHD CCSID
+              this.sshdCcsid = await this.getSshCcsid();
+              if (this.sshdCcsid === this.getCcsid()) {
+                // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
+                // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
+                userCcsidNeedsFixing = false;
+              } else {
+                // If the SSHD CCSID does not match the job CCSID, then we need to warn the user
+                sshdCcsidMismatch = true;
+              }
+            }
+
+            if (userCcsidNeedsFixing) {
+              showCcsidWarning(`The job CCSID is set to ${CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
+            } else if (sshdCcsidMismatch) {
+              showCcsidWarning(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`);
+            }
+
+            this.appendOutput(`\nCCSID information:\n`);
+            this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
+            this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
+            this.appendOutput(`\tUser Default CCSID: ${this.userDefaultCCSID}\n`);
+            if (this.sshdCcsid) {
+              this.appendOutput(`\tSSHD CCSID: ${this.sshdCcsid}\n`);
+            }
+
+            // We only do this check if we're on 7.3 or below.
+            if (this.systemVersion && this.systemVersion <= 7.3) {
+              progress.report({
+                message: `Checking PASE locale environment variables.`
+              });
+
+              const systemEnvVars = await this.getSysEnvVars();
+
+              const paseLang = systemEnvVars.PASE_LANG;
+              const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
+
+              if (paseLang === undefined || paseCcsid === undefined) {
+                showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+              } else if (paseCcsid !== `1208`) {
+                showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+              }
+            }
+
+            // We always need to fetch the local variants because 
+            // now we pickup CCSID changes faster due to cqsh
+            progress.report({
+              message: `Fetching local encoding values.`
+            });
+
+            const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+              + `  values ( cast( x'7B' as varchar(1) )`
+              + `         , cast( x'7C' as varchar(1) )`
+              + `         , cast( x'5B' as varchar(1) ) )`
+              + `)`
+              + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+
+            if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+              this.variantChars.local = variants.LOCAL;
+            }
+          } else {
+            vscode.window.showWarningMessage(`The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
+          }
 
           if (!reconnecting) {
             vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
@@ -958,15 +1058,12 @@ export default class IBMi {
           instance.fire(`connected`);
 
           GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
+            lastCheckedOnVersion: currentExtensionVersion,
             aspInfo: this.aspInfo,
             qccsid: this.qccsid,
-            jobCcsid: this.jobCcsid,
+            jobCcsid: this.userJobCcsid,
             remoteFeatures: this.remoteFeatures,
             remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
-            variantChars: {
-              american: this.variantChars.american,
-              local: this.variantChars.local,
-            },
             badDataAreasChecked: true,
             libraryListValidated: true,
             pathChecked: true,
@@ -974,9 +1071,6 @@ export default class IBMi {
             debugConfigLoaded,
             maximumArgsLength: this.maximumArgsLength
           });
-
-          //Keep track of variant characters that can be uppercased
-          this.dangerousVariants = this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
 
           return {
             success: true
@@ -1018,6 +1112,13 @@ export default class IBMi {
     });
   }
 
+  /**
+   * Can return 0 if the OS version was not detected.
+   */
+  getSystemVersion(): number {
+    return this.systemVersion;
+  }
+
   usingBash() {
     return this.shell === bashShellPath;
   }
@@ -1034,12 +1135,28 @@ export default class IBMi {
     return CompileTools.runCommand(instance, data);
   }
 
+  static escapeForShell(command: string) {
+    return command.replace(/\$/g, `\\$`)
+  }
+
   async sendQsh(options: CommandData) {
     options.stdin = options.command;
 
+    let qshExecutable = `/QOpenSys/usr/bin/qsh`;
+
+    if (this.canUseCqsh) {
+      const customQsh = this.getComponent(cqsh)!;
+      qshExecutable = await customQsh.getPath();
+    }
+    
+    if (this.requiresTranslation) {
+      options.stdin = this.sysNameInAmerican(options.stdin);
+      options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
+    }
+
     return this.sendCommand({
       ...options,
-      command: `/QOpenSys/usr/bin/qsh`
+      command: qshExecutable
     });
   }
 
@@ -1050,8 +1167,7 @@ export default class IBMi {
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
-      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value?.replace(/\$/g, `\\$`).replace(/"/g, `\\"`) || ``
-        }"`))
+      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? IBMi.escapeForShell(value) : ``}"`));
     }
 
     commands.push(options.command);
@@ -1160,21 +1276,38 @@ export default class IBMi {
    */
   get enableSQL(): boolean {
     const sqlRunner = this.sqlRunnerAvailable();
-    const encodings = this.getEncoding();
-    return sqlRunner && encodings.invalid === false;
-  }
-
-  /**
-   * Do not use this API directly.
-   * It exists to support some backwards compatability.
-   * @deprecated
-   */
-  set enableSQL(value: boolean) {
-    this.remoteFeatures[`QZDFMDB2.PGM`] = value ? `/QSYS.LIB/QZDFMDB2.PGM` : undefined;
+    return sqlRunner;
   }
 
   public sqlRunnerAvailable() {
     return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
+  }
+
+  private async getSshCcsid() {
+    const sql = `
+    with SSH_DETAIL (id, iid) as (
+      select substring(job_name, locate('/', job_name, 15)+1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = 22
+    )
+    select DEFAULT_CCSID, CCSID from table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => (select id from SSH_DETAIL), DETAILED_INFO => 'ALL')) where INTERNAL_JOB_ID = (select iid from SSH_DETAIL)
+    `;
+
+    const [result] = await this.runSQL(sql);
+    return Number(result.CCSID === CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
+  }
+
+  async getSysEnvVars() {
+    const systemEnvVars = await this.runSQL([
+      `select ENVIRONMENT_VARIABLE_NAME, ENVIRONMENT_VARIABLE_VALUE`,
+      `from qsys2.environment_variable_info where environment_variable_type = 'SYSTEM'`
+    ].join(` `)) as { ENVIRONMENT_VARIABLE_NAME: string, ENVIRONMENT_VARIABLE_VALUE: string }[];
+
+    let result: { [name: string]: string; } = {};
+
+    systemEnvVars.forEach(row => {
+      result[row.ENVIRONMENT_VARIABLE_NAME] = row.ENVIRONMENT_VARIABLE_VALUE;
+    });
+
+    return result;
   }
 
   /**
@@ -1195,9 +1328,6 @@ export default class IBMi {
   }
 
   parserMemberPath(string: string, checkExtension?: boolean): MemberParts {
-    const variant_chars_local = this.variantChars.local;
-    const validQsysName = new RegExp(`^[A-Z0-9${variant_chars_local}][A-Z0-9_${variant_chars_local}.]{0,9}$`);
-
     // Remove leading slash
     const upperCasedString = this.upperCaseName(string);
     const path = upperCasedString.startsWith(`/`) ? upperCasedString.substring(1).split(`/`) : upperCasedString.split(`/`);
@@ -1211,13 +1341,13 @@ export default class IBMi {
     if (!library || !file || !name) {
       throw new Error(`Invalid path: ${string}. Use format LIB/SPF/NAME.ext`);
     }
-    if (asp && !validQsysName.test(asp)) {
+    if (asp && !this.validQsysName(asp)) {
       throw new Error(`Invalid ASP name: ${asp}`);
     }
-    if (!validQsysName.test(library)) {
+    if (!this.validQsysName(library)) {
       throw new Error(`Invalid Library name: ${library}`);
     }
-    if (!validQsysName.test(file)) {
+    if (!this.validQsysName(file)) {
       throw new Error(`Invalid Source File name: ${file}`);
     }
 
@@ -1226,7 +1356,7 @@ export default class IBMi {
       throw new Error(`Source Type extension is required.`);
     }
 
-    if (!validQsysName.test(name)) {
+    if (!this.validQsysName(name)) {
       throw new Error(`Invalid Source Member name: ${name}`);
     }
     // The extension/source type has nearly the same naming rules as
@@ -1235,7 +1365,7 @@ export default class IBMi {
     // the final period (so we know it won't contain a period).
     // But, a blank extension is valid.
     const extension = parsedPath.ext.substring(1);
-    if (extension && !validQsysName.test(extension)) {
+    if (extension && !this.validQsysName(extension)) {
       throw new Error(`Invalid Source Member Extension: ${extension}`);
     }
 
@@ -1280,7 +1410,7 @@ export default class IBMi {
       result = result.replace(new RegExp(`[${fromChars[i]}]`, `g`), toChars[i]);
     };
 
-    return result;
+    return result
   }
   async uploadFiles(files: { local: string | vscode.Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
     await this.client.putFiles(files.map(f => { return { local: this.fileToPath(f.local), remote: f.remote } }), options);
@@ -1379,46 +1509,80 @@ export default class IBMi {
    * @param statements
    * @returns a Result set
    */
-  async runSQL(statements: string): Promise<Tools.DB2Row[]> {
+  async runSQL(statements: string, options: { fakeBindings?: (string | number)[], forceSafe?: boolean } = {}): Promise<Tools.DB2Row[]> {
     const { 'QZDFMDB2.PGM': QZDFMDB2 } = this.remoteFeatures;
+    const possibleChangeCommand = (this.userCcsidInvalid ? `@CHGJOB CCSID(${this.getCcsid()});\n` : '');
 
     if (QZDFMDB2) {
-      const ccsidDetail = this.getEncoding();
-      const useCcsid = ccsidDetail.fallback && !ccsidDetail.invalid ? ccsidDetail.ccsid : undefined;
-      const possibleChangeCommand = (useCcsid ? `@CHGJOB CCSID(${useCcsid});\n` : '');
-
+      // CHGJOB not required here. It will use the job CCSID, or the runtime CCSID.
       let input = Tools.fixSQL(`${possibleChangeCommand}${statements}`, true);
-
       let returningAsCsv: WrapResult | undefined;
+      let command = `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`
+      let useCsv = options.forceSafe;
 
-      if (this.qccsid === 65535) {
-        let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
-        const lastStmt = list.pop()?.trim();
-        const asUpper = lastStmt?.toUpperCase();
+      // Use custom QSH if available
+      if (this.canUseCqsh) {
+        const customQsh = this.getComponent(cqsh)!;
+        command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+      }
+      
+      if (this.requiresTranslation) {
+        // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
+        input = this.sysNameInAmerican(input);
+        useCsv = true;
+      }
 
-        if (lastStmt) {
-          if ((asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-            const copyToImport = this.getComponent<CopyToImport>(CopyToImport);
-            if (copyToImport) {
-              returningAsCsv = copyToImport.wrap(lastStmt);
-              list.push(...returningAsCsv.newStatements);
-              input = list.join(`;\n`);
+      // Fix up the parameters
+      let list = input.split(`\n`).join(` `).split(`;`).filter(x => x.trim().length > 0);
+      let lastStmt = list.pop()?.trim();
+      const asUpper = lastStmt?.toUpperCase();
+
+      // We always need to use the CSV to get the values back correctly from the database.
+      if (lastStmt) {
+        const fakeBindings = options.fakeBindings;
+        if (lastStmt.includes(`?`) && fakeBindings && fakeBindings.length > 0) {
+          const parts = lastStmt.split(`?`);
+
+          lastStmt = ``;
+          for (let partsIndex = 0; partsIndex < parts.length; partsIndex++) {
+            lastStmt += parts[partsIndex];
+            if (fakeBindings[partsIndex] !== undefined) {
+              switch (typeof fakeBindings[partsIndex]) {
+                case `number`:
+                  lastStmt += fakeBindings[partsIndex];
+                  break;
+
+                case `string`:
+                  lastStmt += Tools.bufferToUx(fakeBindings[partsIndex] as string);
+                  break;
+              }
             }
           }
+        }
 
-          if (!returningAsCsv) {
-            list.push(lastStmt);
+        // Return as CSV when needed
+        if (useCsv && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
+          const copyToImport = this.getComponent<CopyToImport>(CopyToImport);
+          if (copyToImport) {
+            returningAsCsv = copyToImport.wrap(lastStmt);
+            list.push(...returningAsCsv.newStatements);
           }
         }
+
+        if (!returningAsCsv) {
+          list.push(lastStmt);
+        }
+
+        input = list.join(`;\n`);
       }
 
       const output = await this.sendCommand({
-        command: `LC_ALL=EN_US.UTF-8 system "call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')"`,
+        command,
         stdin: input
       })
 
       if (output.stdout) {
-        Tools.db2Parse(output.stdout, input);
+        const fromStdout = Tools.db2Parse(output.stdout, input);
 
         if (returningAsCsv) {
           // Will throw an error if stdout contains an error
@@ -1441,7 +1605,7 @@ export default class IBMi {
 
           throw new Error(`There was an error fetching the SQL result set.`)
         } else {
-          return Tools.db2Parse(output.stdout);
+          return fromStdout;
         }
       }
     }
@@ -1449,21 +1613,31 @@ export default class IBMi {
     throw new Error(`There is no way to run SQL on this system.`);
   }
 
-  getEncoding() {
-    const fallbackToDefault = ((this.jobCcsid < 1 || this.jobCcsid === 65535) && this.userDefaultCCSID > 0);
-    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.jobCcsid;
-    return {
-      fallback: fallbackToDefault,
-      ccsid,
-      invalid: (ccsid < 1 || ccsid === 65535)
-    };
+  validQsysName(name: string): boolean {
+    // First character can only be A-Z, or a variant character
+    // The rest can be A-Z, 0-9, _, ., or a variant character
+    if (!this.variantChars.qsysNameRegex) {
+      const regexTest = `^[A-Z${this.variantChars.local}][A-Z0-9_.${this.variantChars.local}]{0,9}$`;
+      this.variantChars.qsysNameRegex = new RegExp(regexTest);
+    }
+
+    if (name.length > 10) return false;
+    name = this.upperCaseName(name);
+    return this.variantChars.qsysNameRegex.test(name);
+  }
+
+  getCcsid() {
+    const fallbackToDefault = ((this.userJobCcsid < 1 || this.userJobCcsid === CCSID_NOCONVERSION) && this.userDefaultCCSID > 0);
+    const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.userJobCcsid;
+    return ccsid;
   }
 
   getCcsids() {
     return {
       qccsid: this.qccsid,
-      runtimeCcsid: this.jobCcsid,
+      runtimeCcsid: this.userJobCcsid,
       userDefaultCCSID: this.userDefaultCCSID,
+      sshdCcsid: this.sshdCcsid
     };
   }
 

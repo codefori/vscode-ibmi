@@ -32,6 +32,7 @@ let currentLibrary: string;
 
 export const ActionSuite: TestSuite = {
   name: `Action tests`,
+  notConcurrent: true,
   before: async () => {
     const config = instance.getConfig();
     const storage = instance.getStorage();

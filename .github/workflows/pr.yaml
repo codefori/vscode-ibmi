@@ -4,7 +4,6 @@ jobs:
   release:
     name: Validation
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'build')
     steps:
       - name: Use Node.js 20
         uses: actions/setup-node@v3
@@ -15,8 +14,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 1
-      - run: npm install
-      - run: npm run lint
+      - run: npm ci
+
+      - name: Build types
+        run: npm run typings
       
       - run: npm install -g @vscode/vsce
       - name: Create build
@@ -27,8 +28,17 @@ jobs:
         with:
           name: code-for-ibmi-pr-build
           path: ./*.vsix
-          
+
+      - name: Find Comment
+        uses: peter-evans/find-comment@v1
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: new build is available
+
       - name: Post comment
+        if: steps.fc.outputs.comment-id == ''
         uses: actions/github-script@v5
         with:
           script: |
@@ -36,8 +46,17 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '👋  A new build is available for this PR based on ${{ github.event.pull_request.head.sha }}.\n * [Download here.](https://github.com/codefori/vscode-ibmi/actions/runs/${{ github.run_id }})\n* [Read more about how to test](https://github.com/codefori/vscode-ibmi/blob/master/.github/pr_testing_template.md)'
+              body: '👋 A new build is available for this PR based on ${{ github.event.pull_request.head.sha }}.\n * [Download here.](https://github.com/codefori/vscode-ibmi/actions/runs/${{ github.run_id }})\n* [Read more about how to test](https://github.com/codefori/vscode-ibmi/blob/master/.github/pr_testing_template.md)'
             })
 
-      - name: Build types
-        run: npm run typings
+      - name: Update comment
+        if: steps.fc.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          edit-mode: replace
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          body: |
+            👋 A new build is available for this PR based on ${{ github.event.pull_request.head.sha }}.
+
+            * [Download here.](https://github.com/codefori/vscode-ibmi/actions/runs/${{ github.run_id }})
+            * [Read more about how to test](https://github.com/codefori/vscode-ibmi/blob/master/.github/pr_testing_template.md)

@@ -33,10 +33,24 @@ export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
  * 
  */
 export abstract class IBMiComponent {
+  public static readonly InstallDirectory = `$HOME/.vscode/`;
   private state: ComponentState = `NotChecked`;
+  private cachedInstallDirectory: string | undefined;
 
   constructor(protected readonly connection: IBMi) {
 
+  }
+
+  async getInstallDirectory() {
+    if (!this.cachedInstallDirectory) {
+      const result = await this.connection.sendCommand({
+        command: `echo "${IBMiComponent.InstallDirectory}"`,
+      });
+
+      this.cachedInstallDirectory = result.stdout.trim() || `/home/${this.connection.currentUser.toLowerCase()}/.vscode/`;
+    }
+
+    return this.cachedInstallDirectory;
   }
 
   getState() {

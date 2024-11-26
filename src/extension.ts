@@ -34,6 +34,7 @@ import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
+import { cqsh } from "./components/cqsh";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -127,6 +128,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
+  extensionComponentRegistry.registerComponent(context, cqsh);
   extensionComponentRegistry.registerComponent(context, GetNewLibl);
   extensionComponentRegistry.registerComponent(context, GetMemberInfo);
   extensionComponentRegistry.registerComponent(context, CopyToImport);
