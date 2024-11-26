@@ -7,7 +7,7 @@ export const ToolsSuite: TestSuite = {
   tests: [
     { 
       name: `assumeType tests (simple)`, test: async () => {
-        const row = {"CUSNUM":"938472","LSTNAM":"Henning","INIT":"G K","STREET":"4859 Elm Ave","CITY":"Dallas","STATE":"TX","ZIPCOD":"75217","CDTLMT":"5000","CHGCOD":"3","BALDUE":"37.00","CDTDUE":"../.00"};
+        const row = {"CUSNUM":"938472","LSTNAM":"Henning","INIT":"G K","STREET":"4859 Elm Ave","CITY":"Dallas","STATE":"TX","ZIPCOD":"75217","CDTLMT":"5000","CHGCOD":"3","BALDUE":"37.00","CDTDUE":".00"};
 
         let newRow: any = {};
 

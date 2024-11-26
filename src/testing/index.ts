@@ -80,17 +80,12 @@ let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
   if (testingEnabled) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
-
     instance.subscribe(context, 'connected', 'Run tests', () => {
-      if (instance.getConnection()) {
-        coverage.addInstanceCollector(new CoverageCollector(instance.getConnection()));
+      const connection = instance.getConnection();
+      if (connection) {
+        coverage.addInstanceCollector(new CoverageCollector(connection));
+        coverage.addInstanceCollector(new CoverageCollector(connection.content));
       }
-
-      if (instance.getContent()) {
-        coverage.addInstanceCollector(new CoverageCollector(instance.getContent()));
-      }
-
-      coverage.reset();
 
       testSuitesTreeProvider.refresh();
 
@@ -103,7 +98,11 @@ export function initialise(context: vscode.ExtensionContext) {
       }
     });
 
-    instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
+    instance.subscribe(context, 'disconnected', 'Reset tests', () => {
+      coverage.clearInstances();
+      resetTests();
+    });
+    
     testSuitesTreeProvider = new TestSuitesTreeProvider(suites, coverage);
     context.subscriptions.push(
       vscode.window.createTreeView("testingView", { treeDataProvider: testSuitesTreeProvider, showCollapseAll: true }),
@@ -185,6 +184,9 @@ async function setupUserFixture(connectionName: string, fixture: ConnectionFixtu
 }
 
 async function runTests(simultaneously?: boolean) {
+  coverage.reset();
+  resetTests();
+
   let nonConcurrentSuites: Function[] = [];
   let concurrentSuites: Function[] = [];
 
@@ -294,7 +296,6 @@ async function runTest(test: TestCase) {
 }
 
 function resetTests() {
-  coverage.clearInstances();
   coverage.reset();
   suites.flatMap(ts => ts.tests).forEach(tc => {
     tc.status = undefined;

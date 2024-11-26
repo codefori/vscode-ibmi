@@ -65,7 +65,7 @@
 			"preLaunchTask": "${defaultBuildTask}",
 			"env": {
 				"base_testing": "true",
-				"specific": "encoding"
+				"specific": "tools"
 			}
 		},
 		{
