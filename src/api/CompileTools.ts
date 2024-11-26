@@ -79,15 +79,17 @@ export namespace CompileTools {
     }
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem, workspaceFolder?: WorkspaceFolder): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
     const uriOptions = parseFSOptions(uri);
     const isProtected = uriOptions.readonly || config?.readOnlyMode;
-        
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    
+    if(!workspaceFolder) {
+      workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    }
     let remoteCwd = config?.homeDirectory || `.`;
 
     if (connection && config && content) {
