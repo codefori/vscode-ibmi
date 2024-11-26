@@ -73,8 +73,8 @@ const testSpecific = env.specific;
 
 let coverage = new CoverageCollection();
 
-coverage.addStaticCollector(new CoverageCollector(Tools, `Tools`));
-coverage.addStaticCollector(new CoverageCollector(Search, `Search`));
+coverage.addStaticCollector(new CoverageCollector(Tools, {fixedName: `Tools`}));
+coverage.addStaticCollector(new CoverageCollector(Search, {fixedName: `Search`}));
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
@@ -83,7 +83,7 @@ export function initialise(context: vscode.ExtensionContext) {
     instance.subscribe(context, 'connected', 'Run tests', () => {
       const connection = instance.getConnection();
       if (connection) {
-        coverage.addInstanceCollector(new CoverageCollector(connection));
+        coverage.addInstanceCollector(new CoverageCollector(connection, {ignoredMethods: [`connect`, `disconnect`, `end`]}));
         coverage.addInstanceCollector(new CoverageCollector(connection.content));
       }
 

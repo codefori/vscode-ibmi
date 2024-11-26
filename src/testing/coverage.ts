@@ -42,7 +42,7 @@ export class CoverageCollector<T> {
   private name: string = `Unknown`;
   private methodNames: string[] = [];
   private captured: CapturedMethods = {};
-  constructor(private instanceClass: T, fixedName?: string) {
+  constructor(private instanceClass: T, options: { fixedName?: string, ignoredMethods?: string[] } = {}) {
     if ('constructor' in (instanceClass as object)) {
       this.name = (instanceClass as object).constructor.name;
     }
@@ -53,11 +53,11 @@ export class CoverageCollector<T> {
     if (isObject) {
       // T is an object, so get a list of methods
       
-      if (!fixedName) {
+      if (!options.fixedName) {
         throw new Error(`CoverageCollector: Object must have a fixed name`);
       }
 
-      this.name = fixedName;
+      this.name = options.fixedName;
       methods = Object.keys(instanceClass as object);
       this.methodNames = methods.filter(prop => IGNORE_METHODS.includes(prop) === false && typeof instanceClass[prop as keyof T] === 'function');
 
@@ -66,6 +66,11 @@ export class CoverageCollector<T> {
       methods = Object.getOwnPropertyNames(Object.getPrototypeOf(instanceClass));
 
       this.methodNames = methods.filter(prop => IGNORE_METHODS.includes(prop) === false && typeof instanceClass[prop as keyof T] === 'function');
+    }
+
+    // Remove any ignored method names
+    if (options.ignoredMethods) {
+      this.methodNames = this.methodNames.filter(method => options.ignoredMethods!.includes(method) === false);
     }
     
     for (const func of this.methodNames) {
