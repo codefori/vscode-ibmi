@@ -1,9 +1,42 @@
 import IBMi from "../api/IBMi";
 
-export type CollectorGroup = CoverageCollector<any>[];
-export interface CapturedMethods { [key: string]: number };
 
 const IGNORE_METHODS = [`constructor`];
+
+export class CoverageCollection {
+  private staticCollectors: CoverageCollector<any>[] = [];
+  private instanceCollectors: CoverageCollector<any>[] = [];
+
+  constructor() {}
+
+  addStaticCollector<T>(collector: CoverageCollector<T>) {
+    this.staticCollectors.push(collector);
+  }
+
+  addInstanceCollector<T>(collector: CoverageCollector<T>) {
+    this.instanceCollectors.push(collector);
+  }
+
+  clearInstances() {
+    this.instanceCollectors = [];
+  }
+
+  reset() {
+    for (const collector of this.staticCollectors) {
+      collector.reset();
+    }
+
+    for (const collector of this.instanceCollectors) {
+      collector.reset();
+    }
+  }
+
+  get() {
+    return [...this.staticCollectors, ...this.instanceCollectors];
+  }
+}
+
+export interface CapturedMethods { [key: string]: number };
 
 export class CoverageCollector<T> {
   private name: string = `Unknown`;

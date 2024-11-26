@@ -1,6 +1,6 @@
 import vscode from "vscode";
 import { TestCase, TestSuite } from ".";
-import { CollectorGroup, CoverageCollector } from "./coverage";
+import { CoverageCollection, CoverageCollector } from "./coverage";
 
 class CoolTreeItem extends vscode.TreeItem {
     constructor(readonly label: string, readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None) {
@@ -14,7 +14,7 @@ export class TestSuitesTreeProvider implements vscode.TreeDataProvider<CoolTreeI
     private readonly emitter: vscode.EventEmitter<CoolTreeItem | undefined | null | void> = new vscode.EventEmitter();
     readonly onDidChangeTreeData: vscode.Event<void | CoolTreeItem | CoolTreeItem[] | null | undefined> = this.emitter.event;
 
-    constructor(readonly testSuites: TestSuite[], readonly coverageCollection: CollectorGroup) {}
+    constructor(readonly testSuites: TestSuite[], readonly coverageCollection: CoverageCollection) {}
 
     refresh(element?: CoolTreeItem|TestSuite) {
         this.emitter.fire();
@@ -37,12 +37,12 @@ export class TestSuitesTreeProvider implements vscode.TreeDataProvider<CoolTreeI
 }
 
 class CoverageListItem extends CoolTreeItem {
-    constructor(readonly coverages: CollectorGroup) {
+    constructor(readonly coverages: CoverageCollection) {
         super("Coverage", vscode.TreeItemCollapsibleState.Expanded);
     }
 
     async getChildren() {
-        return this.coverages.map(collector => new CoverageCollectionItem(collector));
+        return this.coverages.get().map(collector => new CoverageCollectionItem(collector));
     }
 }
 

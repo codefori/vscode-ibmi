@@ -15,10 +15,9 @@ import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
 import { Server } from "../typings";
-import { CollectorGroup, CoverageCollector } from "./coverage";
-import IBMi from "../api/IBMi";
-import IBMiContent from "../api/IBMiContent";
+import { CoverageCollection, CoverageCollector } from "./coverage";
 import { Tools } from "../api/Tools";
+import { Search } from "../api/Search";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -72,7 +71,10 @@ const testSuitesSimultaneously = env.simultaneous === `true`;
 const testIndividually = env.individual === `true`;
 const testSpecific = env.specific;
 
-let coverages: CollectorGroup = [];
+let coverage = new CoverageCollection();
+
+coverage.addStaticCollector(new CoverageCollector(Tools, `Tools`));
+coverage.addStaticCollector(new CoverageCollector(Search, `Search`));
 
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
@@ -81,18 +83,14 @@ export function initialise(context: vscode.ExtensionContext) {
 
     instance.subscribe(context, 'connected', 'Run tests', () => {
       if (instance.getConnection()) {
-        coverages.push(new CoverageCollector(instance.getConnection()!));
+        coverage.addInstanceCollector(new CoverageCollector(instance.getConnection()));
       }
 
       if (instance.getContent()) {
-        coverages.push(new CoverageCollector(instance.getContent()!));
+        coverage.addInstanceCollector(new CoverageCollector(instance.getContent()));
       }
 
-      if (instance.getContent()) {
-        coverages.push(new CoverageCollector(Tools, `Tools`));
-      }
-
-      coverages.forEach(c => c.reset());
+      coverage.reset();
 
       testSuitesTreeProvider.refresh();
 
@@ -106,7 +104,7 @@ export function initialise(context: vscode.ExtensionContext) {
     });
 
     instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
-    testSuitesTreeProvider = new TestSuitesTreeProvider(suites, coverages);
+    testSuitesTreeProvider = new TestSuitesTreeProvider(suites, coverage);
     context.subscriptions.push(
       vscode.window.createTreeView("testingView", { treeDataProvider: testSuitesTreeProvider, showCollapseAll: true }),
       vscode.commands.registerCommand(`code-for-ibmi.testing.specific`, (suiteName: string, testName: string) => {
@@ -296,7 +294,8 @@ async function runTest(test: TestCase) {
 }
 
 function resetTests() {
-  coverages.splice(0, coverages.length);
+  coverage.clearInstances();
+  coverage.reset();
   suites.flatMap(ts => ts.tests).forEach(tc => {
     tc.status = undefined;
     tc.failure = undefined;
