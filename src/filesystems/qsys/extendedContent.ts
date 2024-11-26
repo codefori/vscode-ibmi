@@ -11,6 +11,9 @@ const writeFileAsync = util.promisify(fs.writeFile);
 
 const DEFAULT_RECORD_LENGTH = 80;
 
+// Translate x'25' to a space forever, or x'25' will become x'0A' (linefeed)!
+const SEU_GREEN_UL_RI = `x'25'`;
+
 export class ExtendedIBMiContent {
   constructor(readonly sourceDateHandler: SourceDateHandler) {
 
@@ -46,7 +49,8 @@ export class ExtendedIBMiContent {
       }
 
       let rows = await connection.runSQL(
-        `select srcdat, srcdta from ${aliasPath}`
+        `select srcdat, rtrim(translate(srcdta, ' ', ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`,
+        {forceSafe: true}
       );
 
       if (rows.length === 0) {

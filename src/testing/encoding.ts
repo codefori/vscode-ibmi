@@ -84,7 +84,6 @@ export const EncodingSuite: TestSuite = {
           `values `,
           `  (01.00, 240805, '      // This illustrates 5250 attribute bytes.'),`,
           `  (02.00, 240805, '     '),`,
-          // `--(05.00, 240805, '     C*' concat x'XX' concat 'X''XX''' concat x'404020' concat  'X''XX'' GRN RI UL BL CS ND'),`,
           `  (03.00, 240805, '     C*' concat x'20' concat 'X''20''' concat x'404020' concat  'X''20'' GRN               '),`,
           `  (04.00, 240805, '     C*' concat x'24' concat 'X''24''' concat x'404020' concat  'X''24'' GRN    UL         '),`,
           `  (05.00, 240805, '     C*' concat x'25' concat 'X''25''' concat x'404020' concat  'X''25'' GRN RI UL         '),`,
@@ -111,13 +110,17 @@ export const EncodingSuite: TestSuite = {
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
         const fileContent = new TextDecoder().decode(memberContentBuf);
 
+        // We do a line count check because there is a sneaky newline in the SQL (x'25')
+        const splitLines = fileContent.split(`\n`);
+        assert.strictEqual(splitLines.length, 16);
+
         assert.ok(hasInvalidCharacters(fileContent));
 
         const newContent = replaceInvalidCharacters(fileContent);
 
         assert.notStrictEqual(newContent, fileContent);
 
-        assert.ok(hasInvalidCharacters(newContent));
+        assert.strictEqual(hasInvalidCharacters(newContent), false);
       }
     },
     {
