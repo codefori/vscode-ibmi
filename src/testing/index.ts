@@ -15,6 +15,9 @@ import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
 import { Server } from "../typings";
+import { CoverageCollector } from "./coverage";
+import IBMi from "../api/IBMi";
+import IBMiContent from "../api/IBMiContent";
 
 const suites: TestSuite[] = [
   ActionSuite,
@@ -68,14 +71,33 @@ const testSuitesSimultaneously = env.simultaneous === `true`;
 const testIndividually = env.individual === `true`;
 const testSpecific = env.specific;
 
+const coverages: {
+  'Connection': CoverageCollector<IBMi>|undefined,
+  'Content': CoverageCollector<IBMiContent>|undefined
+} = { Connection: undefined, Content: undefined };
+
 let testSuitesTreeProvider: TestSuitesTreeProvider;
 export function initialise(context: vscode.ExtensionContext) {
   if (testingEnabled) {
     vscode.commands.executeCommand(`setContext`, `code-for-ibmi:testing`, true);
 
-    if (!testIndividually) {
-      instance.subscribe(context, 'connected', 'Run tests', () => configuringFixture ? console.log(`Not running tests as configuring fixture`) : runTests(testSuitesSimultaneously));
-    }
+    instance.subscribe(context, 'connected', 'Run tests', () => {
+      if (instance.getConnection()) {
+        coverages.Connection = new CoverageCollector(instance.getConnection()!);
+      }
+
+      if (instance.getContent()) {
+        coverages.Content = new CoverageCollector(instance.getContent()!);
+      }
+
+      if (!testIndividually) {
+        if (configuringFixture) {
+          console.log(`Not running tests as configuring fixture`);
+        } else {
+          runTests(testSuitesSimultaneously)
+        }
+      }
+    });
 
     instance.subscribe(context, 'disconnected', 'Reset tests', resetTests);
     testSuitesTreeProvider = new TestSuitesTreeProvider(suites);
