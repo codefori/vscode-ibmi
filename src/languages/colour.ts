@@ -1,6 +1,5 @@
-import { ExtensionContext, Range, window, workspace, WorkspaceEdit } from "vscode";
+import { ExtensionContext, l10n, Range, window, workspace, WorkspaceEdit } from "vscode";
 import { instance } from "../instantiate";
-import { t } from "../locale";
 
 const NEW_LINE_NUMBERS = [10, 13];
 
@@ -49,12 +48,12 @@ async function askUserToStart() {
     return true;
   }
 
-  const always = t(`Always`);
-  const no = t(`No`);
+  const always = l10n.t(`Always`);
+  const no = l10n.t(`No`);
   
   const chosen = await window.showInformationMessage(
-    t(`seuColours.warning`), 
-    t(`Yes`), always, no);
+    l10n.t(`seuColours.warning`), 
+    l10n.t(`Yes`), always, no);
 
   if (chosen === no) {
     return false;

@@ -9,6 +9,7 @@ import { hasInvalidCharacters, replaceInvalidCharacters } from "../languages/col
 import { instance } from "../instantiate";
 import { IBMiObject } from "../typings";
 import path from "path";
+import { getAliasName } from "../filesystems/qsys/sourceDateHandler";
 
 const contents = {
   '37': [`Hello world`],
@@ -69,7 +70,9 @@ export const EncodingSuite: TestSuite = {
         await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
         await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
 
-        const aliasName = `${tempLib}.test_${file}_${member}`;
+        const theBadOneUri = getMemberUri({ library: tempLib, file, name: member, extension: `TXT` });
+        const aliasName = tempLib + `.` + getAliasName(theBadOneUri);
+
         await connection?.runSQL(`CREATE OR REPLACE ALIAS ${aliasName} for "${tempLib}"."${file}"("${member}")`);
 
         try {
@@ -94,13 +97,16 @@ export const EncodingSuite: TestSuite = {
           `  (12.00, 240805, '     C*' concat x'3E' concat 'X''3E''' concat x'404020' concat  'X''3E'' BLU    UL         '),`,
           `  (13.00, 240805, '     C*' concat x'3F' concat 'X''3F''' concat x'404020' concat  'X''3F'' revert to default '),`,
           `  (14.00, 240805, '     '),`,
-          `  (15.00, 240805, '       *inlr = *on;'),`,
-          `  (16.00, 240805, '       return;')`,
+          `  (15.00, 240805, '       *inlr = *on'),`,
+          `  (16.00, 240805, '       return')`,
         ];
 
-        await connection?.runSQL(lines.join(` `));
-
-        const theBadOneUri = getMemberUri({ library: tempLib, file, name: member, extension: `TXT` });
+        try {
+          await connection?.runSQL(lines.join(` `));
+        } catch (e) {
+          console.log(e);
+          assert.fail(`Failed to run SQL`);
+        }
 
         const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
         const fileContent = new TextDecoder().decode(memberContentBuf);
