@@ -1,13 +1,13 @@
 import assert from "assert";
-import { TestSuite } from ".";
-import { Tools } from "../api/Tools";
+import { TestSuite } from "../.";
+import { Tools } from "../../api/Tools";
 
 export const ToolsSuite: TestSuite = {
   name: `Tools API tests`,
   tests: [
     { 
       name: `assumeType tests (simple)`, test: async () => {
-        const row = {"CUSNUM":"938472","LSTNAM":"Henning","INIT":"G K","STREET":"4859 Elm Ave","CITY":"Dallas","STATE":"TX","ZIPCOD":"75217","CDTLMT":"5000","CHGCOD":"3","BALDUE":"37.00","CDTDUE":".00"};
+        const row = {"CUSNUM":"938472","LSTNAM":"Henning","INIT":"G K","STREET":"4859 Elm Ave","CITY":"Dallas","STATE":"TX","ZIPCOD":"75217","CDTLMT":"5000","CHGCOD":"3","BALDUE":"37.00","CDTDUE":"../.00"};
 
         let newRow: any = {};
 

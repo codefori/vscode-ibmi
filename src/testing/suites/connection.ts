@@ -1,7 +1,7 @@
 import assert from "assert";
-import { TestSuite } from ".";
-import { instance } from "../instantiate";
-import { Tools } from "../api/Tools";
+import { TestSuite } from "../.";
+import { instance } from "../../instantiate";
+import { Tools } from "../../api/Tools";
 
 export const ConnectionSuite: TestSuite = {
   name: `Connection tests`,

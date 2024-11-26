@@ -1,7 +1,7 @@
 import assert from "assert";
-import { TestSuite } from ".";
-import { getJavaHome } from "../api/debug/config";
-import { instance } from "../instantiate";
+import { TestSuite } from "../.";
+import { getJavaHome } from "../../api/debug/config";
+import { instance } from "../../instantiate";
 
 export const DebugSuite: TestSuite = {
   name: `Debug engine tests`,
