@@ -2,7 +2,6 @@ import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import path from "path";
 import vscode from "vscode";
-import { t } from "../locale";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
 import { API, GitExtension } from "./import/git";
 
@@ -20,9 +19,7 @@ export namespace Tools {
     length: number
   }
 
-  export interface DB2Row extends Record<string, string | number | null> {
-
-  }
+  export interface DB2Row extends Record<string, string | number | null> { }
 
   /**
    * Parse standard out for `/usr/bin/db2`
@@ -154,6 +151,13 @@ export namespace Tools {
     return rows;
   }
 
+  export function bufferToUx(input: string) {
+    const hexString = Array.from(input)
+      .map(char => char.charCodeAt(0).toString(16).padStart(4, '0').toUpperCase())
+      .join('');
+    return `UX'${hexString}'`;
+  }
+
   export function makeid(length: number = 8) {
     let text = `O_`;
     const possible =
@@ -173,12 +177,16 @@ export namespace Tools {
    * @param iasp Optional: an iASP name
    */
   export function qualifyPath(library: string, object: string, member?: string, iasp?: string, noEscape?: boolean) {
-    const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${Tools.sanitizeLibraryNames([library]).join(``)}.LIB`;
-    const filePath = `${object}.FILE`;
-    const memberPath = member ? `/${member}.MBR` : '';
-    const subPath = `${filePath}${memberPath}`;
+    [library, object] = Tools.sanitizeObjNamesForPase([library, object]);
+    member = member ? Tools.sanitizeObjNamesForPase([member])[0] : undefined;
+    iasp = iasp ? Tools.sanitizeObjNamesForPase([iasp])[0] : undefined;
 
-    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${libraryPath}/${noEscape ? subPath : Tools.escapePath(subPath)}`;
+    const libraryPath = library === `QSYS` ? `QSYS.LIB` : `QSYS.LIB/${library}.LIB`;
+    const filePath = object ? `${object}.FILE` : '';
+    const memberPath = member ? `/${member}.MBR` : '';
+    const fullPath = `${libraryPath}/${filePath}${memberPath}`;
+
+    const result = (iasp && iasp.length > 0 ? `/${iasp}` : ``) + `/${noEscape ? fullPath : Tools.escapePath(fullPath)}`;
     return result;
   }
 
@@ -212,9 +220,12 @@ export namespace Tools {
    * @param Path
    * @returns the escaped path
    */
-  export function escapePath(Path: string): string {
-    const path = Path.replace(/'|"|\$|\\| /g, matched => `\\`.concat(matched));
-    return path;
+  export function escapePath(Path: string, alreadyQuoted = false): string {
+    if (alreadyQuoted) {
+      return Path.replace(/"|\$|\\/g, matched => `\\`.concat(matched));
+    } else {
+      return Path.replace(/'|"|\$|\\| /g, matched => `\\`.concat(matched));
+    }
   }
 
   let gitLookedUp: boolean;
@@ -250,11 +261,9 @@ export namespace Tools {
     return text.charAt(0).toUpperCase() + text.slice(1);
   }
 
-  export function sanitizeLibraryNames(libraries: string[]): string[] {
+  export function sanitizeObjNamesForPase(libraries: string[]): string[] {
     return libraries
       .map(library => {
-        // Escape any $ signs
-        library = library.replace(/\$/g, `\\$`);
         // Quote libraries starting with #
         return library.startsWith(`#`) ? `"${library}"` : library;
       });
@@ -272,7 +281,7 @@ export namespace Tools {
   }
 
   export function parseQSysPath(path: string): QsysPath {
-    const parts = path.split('/');
+    const parts = path.split('/').filter(Boolean);
     if (parts.length > 3) {
       return {
         asp: parts[0],
@@ -335,9 +344,9 @@ export namespace Tools {
       group.tabs.filter(tab =>
         (tab.input instanceof vscode.TabInputText)
         && (uriToFind instanceof vscode.Uri ? areEquivalentUris(tab.input.uri, uriToFind) : tab.input.uri.path.startsWith(`${uriToFind}/`))
-        ).forEach(tab => {
-          resourceTabs.push(tab);
-        });
+      ).forEach(tab => {
+        resourceTabs.push(tab);
+      });
     }
     return resourceTabs;
   }
@@ -374,7 +383,7 @@ export namespace Tools {
       .concat(`${header ? `<thead>${header}</thead>` : ``}`)
       .concat(`${Object.entries(rows)
         .filter(([key, value]) => value !== undefined && value !== '')
-        .map(([key, value]) => `<tr><td>${t(key)}:</td><td>&nbsp;${value}</td></tr>`)
+        .map(([key, value]) => `<tr><td>${vscode.l10n.t(key)}:</td><td>&nbsp;${value}</td></tr>`)
         .join(``)}`
       )
       .concat(`</table>`);
@@ -388,6 +397,21 @@ export namespace Tools {
     } else {
       return path;
     }
+  }
+
+  export function assumeType(str: string) {
+    if (str.trim().length === 0) return ``;
+    
+    // The number is already generated on the server.
+    // So, we assume that if the string starts with a 0, it is a string.
+    if (/^0.+/.test(str) || str.length > 10) {
+      return str
+    }
+    const number = Number(str);
+    if(isNaN(number)){
+      return str;
+    }
+    return number;
   }
 
   const activeContexts: Map<string, number> = new Map;
@@ -425,5 +449,18 @@ export namespace Tools {
         }
       }
     }
+  }
+
+  /**
+   * Converts a timestamp from the attr command (in the form `Thu Dec 21 21:47:02 2023`) into a Date object
+   * @param timestamp an attr timestamp string
+   * @returns a Date object
+   */
+  export function parseAttrDate(timestamp: string) {
+    const parts = /^([\w]{3}) ([\w]{3}) +([\d]+) ([\d]+:[\d]+:[\d]+) ([\d]+)$/.exec(timestamp);
+    if (parts) {
+      return Date.parse(`${parts[3].padStart(2, "0")} ${parts[2]} ${parts[5]} ${parts[4]} GMT`);
+    }
+    return 0;
   }
 }

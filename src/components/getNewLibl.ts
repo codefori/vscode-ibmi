@@ -1,29 +1,20 @@
 import { posix } from "path";
-import IBMi from "../api/IBMi";
 import { instance } from "../instantiate";
-import { ComponentState, ComponentT } from "./component";
+import { ComponentState, IBMiComponent } from "./component";
 
-export class GetNewLibl implements ComponentT {
-  public state: ComponentState = ComponentState.NotInstalled;
-  public currentVersion: number = 1;
-
-  constructor(public connection: IBMi) { }
-
-  async getInstalledVersion(): Promise<number> {
-    return (this.connection.remoteFeatures[`GETNEWLIBL.PGM`] ? 1 : 0);
+export class GetNewLibl extends IBMiComponent {
+  getIdentification() {
+    return { name: 'GetNewLibl', version: 1 };
   }
 
-  async checkState(): Promise<boolean> {
-    const installedVersion = await this.getInstalledVersion();
+  protected async getRemoteState(): Promise<ComponentState> {
+    return this.connection.remoteFeatures[`GETNEWLIBL.PGM`] ? `Installed` : `NotInstalled`;
+  }
 
-    if (installedVersion === this.currentVersion) {
-      this.state = ComponentState.Installed;
-      return true;
-    }
-
+  protected update(): Promise<ComponentState> {
     const config = this.connection.config!
     const content = instance.getContent();
-    return this.connection.withTempDirectory(async tempDir => {
+    return this.connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 
       await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary));
@@ -33,48 +24,37 @@ export class GetNewLibl implements ComponentT {
         noLibList: true
       });
 
-      if (result.code === 0) {
-        this.state = ComponentState.Installed;
+      if (!result.code) {
+        return `Installed`;
       } else {
-        this.state = ComponentState.Error;
+        return `Error`;
       }
-
-      return this.state === ComponentState.Installed;
     });
   }
 
-  getState(): ComponentState {
-    return this.state;
+  async getLibraryListFromCommand(ileCommand: string) {
+    const tempLib = this.connection.config!.tempLibrary;
+    const resultSet = await this.connection.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
+
+    const result = {
+      currentLibrary: `QGPL`,
+      libraryList: [] as string[]
+    };
+
+    resultSet.forEach(row => {
+      const libraryName = String(row.SYSTEM_SCHEMA_NAME);
+      switch (row.PORTION) {
+        case `CURRENT`:
+          result.currentLibrary = libraryName;
+          break;
+        case `USER`:
+          result.libraryList.push(libraryName);
+          break;
+      }
+    })
+
+    return result;
   }
-
-  async getLibraryListFromCommand(ileCommand: string): Promise<{ currentLibrary: string; libraryList: string[]; } | undefined> {
-    if (this.state === ComponentState.Installed) {
-      const tempLib = this.connection.config!.tempLibrary;
-      const resultSet = await this.connection.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
-
-      const result = {
-        currentLibrary: `QGPL`,
-        libraryList: [] as string[]
-      };
-
-      resultSet.forEach(row => {
-        const libraryName = String(row.SYSTEM_SCHEMA_NAME);
-        switch (row.PORTION) {
-          case `CURRENT`:
-            result.currentLibrary = libraryName;
-            break;
-          case `USER`:
-            result.libraryList.push(libraryName);
-            break;
-        }
-      })
-
-      return result;
-    }
-
-    return undefined;
-  }
-
 }
 
 function getSource(library: string) {

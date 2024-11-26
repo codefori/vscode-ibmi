@@ -79,15 +79,17 @@ export namespace CompileTools {
     }
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem, workspaceFolder?: WorkspaceFolder): Promise<boolean> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
     const uriOptions = parseFSOptions(uri);
     const isProtected = uriOptions.readonly || config?.readOnlyMode;
-        
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    
+    if(!workspaceFolder) {
+      workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    }
     let remoteCwd = config?.homeDirectory || `.`;
 
     if (connection && config && content) {
@@ -562,6 +564,10 @@ export namespace CompileTools {
         else {
           return false;
         }
+      } else if (isProtected) {
+        //when a member is protected(read only)
+        vscode.window.showErrorMessage(`Action cannot be applied on a read only member.`);
+        return false;
       } else {
         //No compile commands
         vscode.window.showErrorMessage(`No compile commands found for ${uri.scheme}-${extension}.`);
@@ -678,7 +684,7 @@ export namespace CompileTools {
               command: [
                 ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"`}`,
+                  `${`system "${IBMi.escapeForShell(command)}"`}`,
                 )
               ].join(` && `),
               directory: cwd,
@@ -811,9 +817,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${Tools.sanitizeLibraryNames(connection.defaultUserLibraries).join(` `)}`,
-      `liblist -c ${Tools.sanitizeLibraryNames([config.currentLibrary])}`,
-      `liblist -a ${Tools.sanitizeLibraryNames(buildLibraryList(config)).join(` `)}`
+      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(connection.defaultUserLibraries).join(` `))}`,
+      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase([config.currentLibrary])[0])}`,
+      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(buildLibraryList(config)).join(` `))}`
     ];
   }
 }

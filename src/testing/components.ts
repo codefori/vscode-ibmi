@@ -16,7 +16,7 @@ export const ComponentSuite: TestSuite = {
     {
       name: `Get new libl`, test: async () => {
         const connection = instance.getConnection()!
-        const component = connection.getComponent<GetNewLibl>(`GetNewLibl`);
+        const component = connection.getComponent<GetNewLibl>(GetNewLibl);
 
         if (component) {
           const newLibl = await component.getLibraryListFromCommand(`CHGLIBL CURLIB(SYSTOOLS)`);
@@ -31,7 +31,7 @@ export const ComponentSuite: TestSuite = {
     {
       name: `Check getMemberInfo`, test: async () => {
         const connection = instance.getConnection();
-        const component = connection?.getComponent<GetMemberInfo>(`GetMemberInfo`)!;
+        const component = connection?.getComponent<GetMemberInfo>(GetMemberInfo)!;
 
         assert.ok(component);
 

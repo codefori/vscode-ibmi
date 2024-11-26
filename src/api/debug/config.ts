@@ -1,7 +1,7 @@
 import path from "path";
 import vscode from "vscode";
 import { instance } from "../../instantiate";
-import { t } from "../../locale";
+import IBMi from "../IBMi";
 import { SERVICE_CERTIFICATE } from "./certificates";
 
 type ConfigLine = {
@@ -147,9 +147,9 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
             };
           }
         }
-      } catch (e) {
+      } catch (e: any) {
         // Something very very bad has happened
-        vscode.window.showErrorMessage(t('detail.reading.error', detailFilePath, e));
+        vscode.window.showErrorMessage(vscode.l10n.t(`Failed to read debug service detail file {0}: {1}`, detailFilePath, e));
         console.log(e);
       }
     }
@@ -170,9 +170,12 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
   return debugServiceDetails;
 }
 
-export function getJavaHome(version: string) {
-  switch (version) {
-    case "11": return `/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`;
-    default: return `/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`;
+export function getJavaHome(connection: IBMi, version: string) {
+  version = version.padEnd(2, '0');
+  const javaHome = connection.remoteFeatures[`jdk${version}`];
+  if (!javaHome) {
+    throw new Error(vscode.l10n.t(`Java version {0} is not installed.`, version));
   }
+
+  return javaHome;
 }

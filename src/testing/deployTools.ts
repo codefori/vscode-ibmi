@@ -82,6 +82,7 @@ export const fakeProject: Folder = {
 
 export const DeployToolsSuite: TestSuite = {
     name: `Deploy Tools API tests`,
+    notConcurrent: true,
     before: async () => {
         const features = instance.getConnection()?.remoteFeatures;
         assert.ok(features?.stat, "stat is required to run deploy tools test suite");

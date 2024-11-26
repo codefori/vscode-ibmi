@@ -5,7 +5,6 @@ import path, { dirname, posix } from "path";
 import { promisify } from 'util';
 import vscode from "vscode";
 import { instance } from '../../instantiate';
-import { t } from '../../locale';
 import IBMi from "../IBMi";
 import IBMiContent from '../IBMiContent';
 import { Tools } from '../Tools';
@@ -170,7 +169,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
         await debugConfig.save();
       }
-      const javaHome = getJavaHome((await getDebugServiceDetails()).java);
+      const javaHome = getJavaHome(connection, (await getDebugServiceDetails()).java);
       const encryptResult = await connection.sendCommand({
         command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
         env: {
@@ -248,7 +247,7 @@ export async function checkClientCertificate(connection: IBMi, debugConfig?: Deb
     if (!remote.code) {
       const localCertificate = readFileSync(locaCertificatePath).toString("utf-8");
       if (localCertificate.trim() !== remote.stdout.trim()) {
-        throw new Error(t('local.dont.match.remote'));
+        throw new Error(vscode.l10n.t(`Local certificate doesn't match remote`));
       }
     }
     else {
@@ -256,7 +255,7 @@ export async function checkClientCertificate(connection: IBMi, debugConfig?: Deb
     }
   }
   else {
-    throw new Error(t('local.certificate.not.found'));
+    throw new Error(vscode.l10n.t(`Local certificate not found`));
   }
 }
 
@@ -268,7 +267,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
 
   //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
   const javaHome = debugConfig.get("JAVA_HOME");
-  const expectedJavaHome = getJavaHome((await getDebugServiceDetails()).java);
+  const expectedJavaHome = getJavaHome(connection, (await getDebugServiceDetails()).java);
   if (javaHome && javaHome !== expectedJavaHome) {
     if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
       //Automatically make the change if possible

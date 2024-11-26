@@ -1,29 +1,33 @@
-
+import * as path from 'path';
 import { IBMiMember, SearchHit, SearchResults } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
 import { Tools } from './Tools';
+import { GetMemberInfo } from '../components/getMemberInfo';
 
 export namespace Search {
-  export async function searchMembers(instance: Instance, library: string, sourceFile: string, searchTerm: string, members: IBMiMember[] | string, readOnly?: boolean,): Promise<SearchResults> {
+  export async function searchMembers(instance: Instance, library: string, sourceFile: string, searchTerm: string, members: string|IBMiMember[], readOnly?: boolean,): Promise<SearchResults> {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     const content = instance.getContent();
 
     if (connection && config && content) {
-      let memberFilter = connection.sysNameInAmerican(typeof members === 'string' ? `${members}.MBR` : members.map(member => `${member.name}.MBR`).join(" "));
+      let detailedMembers: IBMiMember[]|undefined;
+      let memberFilter: string|undefined;
 
-      let postSearchFilter = (hit: SearchHit) => true;
-      if (Array.isArray(members) && memberFilter.length > connection.maximumArgsLength) {
-        //Failsafe: when searching on a complex filter, the member list may exceed the maximum admited arguments length (which is around 4.180.000 characters, roughly 298500 members),
-        //          in this case, we fall back to a global search and manually filter the results afterwards/
-        memberFilter = "*.MBR";
-        postSearchFilter = (hit) => {
-          const memberName = hit.path.split("/").at(-1);
-          return members.find(member => member.name === memberName) !== undefined;
+      if (typeof members === `string`) {
+        memberFilter = connection.sysNameInAmerican(`${members}.MBR`);
+      } else
+      if (Array.isArray(members)) {
+        if (members.length > connection.maximumArgsLength) {
+          detailedMembers = members;
+          memberFilter = "*.MBR";
+        } else {
+          memberFilter = members.map(member => `${member.name}.MBR`).join(` `);
         }
       }
-
+ 
+      // First, let's fetch the ASP info
       let asp = ``;
       if (config.sourceASP) {
         asp = `/${config.sourceASP}`;
@@ -37,17 +41,59 @@ export namespace Search {
         } catch (e) { }
       }
 
+      // Then search the members
       const result = await connection.sendQsh({
         command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`,
         directory: connection.sysNameInAmerican(`${asp}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
       });
 
       if (!result.stderr) {
+        let hits = parseGrepOutput(
+          result.stdout || '', readOnly || content.isProtectedPath(library),
+          path => connection.sysNameInLocal(`${library}/${sourceFile}/${path.replace(/\.MBR$/, '')}`)
+        );
+
+        if (detailedMembers) {
+          // If the user provided a list of members, we need to filter the results to only include those members
+          hits = hits.filter(hit => {
+            const { name, dir } = path.parse(hit.path);
+            const [lib, spf] = dir.split(`/`);
+            return detailedMembers!.some(member => member.name === name && member.library === lib && member.file === spf);
+          });
+
+        } else {
+          // Else, we need to fetch the member info for each hit so we can display the correct extension
+          const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo);
+          const memberInfos: IBMiMember[] = hits.map(hit => {
+            const { name, dir } = path.parse(hit.path);
+            const [library, file] = dir.split(`/`);
+
+            return {
+              name,
+              library,
+              file,
+              extension: ``
+            };
+          });
+
+          detailedMembers = await infoComponent?.getMultipleMemberInfo(memberInfos);
+        }
+
+        // Then fix the extensions in the hit
+        for (const hit of hits) {
+          const { name, dir } = path.parse(hit.path);
+          const [lib, spf] = dir.split(`/`);
+
+          const foundMember = detailedMembers?.find(member => member.name === name && member.library === lib && member.file === spf);
+
+          if (foundMember) {
+            hit.path = connection.sysNameInLocal(`${lib}/${spf}/${name}.${foundMember.extension}`);
+          }
+        }
+
         return {
           term: searchTerm,
-          hits: (parseGrepOutput(result.stdout || '', readOnly || content.isProtectedPath(library),
-            path => connection.sysNameInLocal(`${library}/${sourceFile}/${path.replace(/\.MBR$/, '')}`)))
-            .filter(postSearchFilter)
+          hits: hits
         }
       }
       else {

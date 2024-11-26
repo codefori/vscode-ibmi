@@ -5,6 +5,7 @@ import { FilterType } from './Filter';
 
 export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";
+export type ReconnectMode = "always" | "never" | "ask";
 
 const getConfiguration = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
@@ -26,7 +27,7 @@ export namespace GlobalConfiguration {
 
   export function set(key: string, value: any) {
     return getConfiguration().update(key, value, vscode.ConfigurationTarget.Global);
-  }  
+  }
 }
 
 export interface StoredConnection {
@@ -34,7 +35,7 @@ export interface StoredConnection {
   data: ConnectionData
 };
 
-const getPasswordKey = (connectionName:string) => `${connectionName}_password`;  
+const getPasswordKey = (connectionName: string) => `${connectionName}_password`;
 
 export namespace ConnectionManager {
   export function getByName(name: string): StoredConnection | undefined {
@@ -136,12 +137,12 @@ export namespace ConnectionConfiguration {
     lastDownloadLocation:string;
     autoFixInvalidCharacters: boolean;
     [name: string]: any;
-  }  
+  }
 
   export interface ObjectFilters {
     name: string
     filterType: FilterType
-    library: string    
+    library: string
     object: string
     types: string[]
     member: string
@@ -224,7 +225,7 @@ export namespace ConnectionConfiguration {
   }
 
   export async function update(parameters: Parameters) {
-    if(parameters?.name) {
+    if (parameters?.name) {
       const connections = getConnectionSettings();
       connections.filter(conn => conn.name === parameters.name).forEach(conn => Object.assign(conn, parameters));
       await updateAll(connections);

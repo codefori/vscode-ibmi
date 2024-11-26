@@ -3,9 +3,10 @@
 'use strict';
 
 const webpack = require(`webpack`);
-
+const fs = require(`fs`);
 const path = require(`path`);
 
+const packageJson = require(`./package.json`);
 const npm_runner = process.env[`npm_lifecycle_script`];
 const isProduction = (npm_runner && npm_runner.includes(`production`));
 
@@ -18,33 +19,32 @@ if (isProduction) {
   exclude = path.resolve(__dirname, `src`, `testing`)
 }
 
-console.log(`Checking for missing keys in locales...`);
-const baseLocale = require(`./src/locale/ids/en.json`);
-const locales = {
-  da: require(`./src/locale/ids/da.json`),
-  de: require(`./src/locale/ids/de.json`),
-  fr: require(`./src/locale/ids/fr.json`),
-  no: require(`./src/locale/ids/no.json`),
-  pl: require(`./src/locale/ids/pl.json`),
-};
+/// ====================
+// Move required binaries to dist folder
+/// ====================
 
-let localeIsBad = false;
+const dist = path.resolve(__dirname, `dist`);
 
-for (const locale in locales) {
-  for (const key in baseLocale) {
-    if (!locales[locale][key]) {
-      localeIsBad = true;
-      console.error(`\tmissing key '${key}' in locale ${locale}`);
-    }
+fs.mkdirSync(dist, {recursive: true});
+
+const files = [{relative: `src/components/cqsh/cqsh`, name: `cqsh_1`}];
+
+for (const file of files) {
+  const src = path.resolve(__dirname, file.relative);
+  const dest = path.resolve(dist, file.name);
+
+  console.log(`Copying ${src} to ${dest}`);
+  if (fs.existsSync(src)) {
+    // Overwrites by default
+    fs.copyFileSync(src, dest);
   }
 }
 
-if (localeIsBad && isProduction) {
-  console.error(`\n\nMissing keys in locales. Aborting build.`);
-  process.exit(1);
-}
+console.log(``);
 
-console.log();
+/// ====================
+// Webpack configuration
+/// ====================
 
 /**@type {webpack.Configuration}*/
 const config = {
@@ -68,6 +68,7 @@ const config = {
   },
   plugins: [
     new webpack.DefinePlugin({
+      'process.env.VSCODEIBMI_VERSION': JSON.stringify(packageJson.version),
       'process.env.DEV': JSON.stringify(!isProduction),
     }),
 

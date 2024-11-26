@@ -16,9 +16,12 @@ import * as Debug from './api/debug';
 import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
+import { CopyToImport } from "./components/copyToImport";
+import { GetMemberInfo } from "./components/getMemberInfo";
+import { GetNewLibl } from "./components/getNewLibl";
+import { extensionComponentRegistry } from "./components/manager";
 import { IFSFS } from "./filesystems/ifsFs";
 import { LocalActionCompletionItemProvider } from "./languages/actions/completion";
-import { updateLocale } from "./locale";
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
 import { CodeForIBMi, ConnectionData } from "./typings";
@@ -31,6 +34,7 @@ import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
+import { cqsh } from "./components/cqsh";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -82,7 +86,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
         return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
       }
     ),
-    onCodeForIBMiConfigurationChange("locale", updateLocale),
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
@@ -125,7 +128,18 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  return { instance, customUI: () => new CustomUI(), deployTools: DeployTools, evfeventParser: parseErrors, tools: Tools };
+  extensionComponentRegistry.registerComponent(context, cqsh);
+  extensionComponentRegistry.registerComponent(context, GetNewLibl);
+  extensionComponentRegistry.registerComponent(context, GetMemberInfo);
+  extensionComponentRegistry.registerComponent(context, CopyToImport);
+
+  return {
+    instance, customUI: () => new CustomUI(),
+    deployTools: DeployTools,
+    evfeventParser: parseErrors,
+    tools: Tools,
+    componentRegistry: extensionComponentRegistry
+  };
 }
 
 async function fixLoginSettings() {
