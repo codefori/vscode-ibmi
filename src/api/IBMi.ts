@@ -1167,7 +1167,12 @@ export default class IBMi {
   async sendCommand(options: CommandData): Promise<CommandResult> {
     let commands: string[] = [];
     if (options.env) {
-      commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? IBMi.escapeForShell(value) : ``}"`));
+      if (this.usingBash()) {
+        commands.push(...Object.entries(options.env).map(([key, value]) => `export ${key}="${value ? IBMi.escapeForShell(value) : ``}"`));
+      } else {
+        // bourne shell doesn't support the same export syntax as bash
+        commands.push(...Object.entries(options.env).map(([key, value]) => `${key}="${value ? IBMi.escapeForShell(value) : ``}" export ${key}`));
+      }
     }
 
     commands.push(options.command);
