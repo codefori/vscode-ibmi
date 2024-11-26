@@ -266,6 +266,10 @@ export const EncodingSuite: TestSuite = {
 
             const validated = await connection.content.validateLibraryList([tempLib, library]);
             assert.strictEqual(validated.length, 0);
+
+            const libl = await content.getLibraryList([library]);
+            assert.strictEqual(libl.length, 1);
+            assert.strictEqual(libl[0].name, library);
           }
 
           const checkFile = (expectedObject: IBMiObject) => {
