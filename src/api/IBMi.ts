@@ -4,9 +4,9 @@ import * as node_ssh from "node-ssh";
 import os from "os";
 import path, { parse as parsePath } from 'path';
 import * as vscode from "vscode";
-import { IBMiComponent, IBMiComponentType } from "../components/component";
+import { IBMiComponent } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
-import { cqsh } from '../components/cqsh';
+import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "../components/manager";
 import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
@@ -18,7 +18,6 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
-import { r } from 'tar';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -58,7 +57,7 @@ export default class IBMi {
   private userJobCcsid: number = CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
-  private sshdCcsid: number|undefined;
+  private sshdCcsid: number | undefined;
 
   private componentManager = new ComponentManager(this);
 
@@ -79,8 +78,8 @@ export default class IBMi {
   aspInfo: { [id: number]: string } = {};
   remoteFeatures: { [name: string]: string | undefined };
 
-  variantChars: { 
-    american: string, 
+  variantChars: {
+    american: string,
     local: string,
     qsysNameRegex?: RegExp
   };
@@ -100,7 +99,7 @@ export default class IBMi {
   maximumArgsLength = 0;
 
   get canUseCqsh() {
-    return this.getComponent(cqsh) !== undefined;
+    return this.getComponent(CustomQSh.ID) !== undefined;
   }
 
   /**
@@ -445,11 +444,11 @@ export default class IBMi {
           progress.report({ message: `Checking Code for IBM i components.` });
           await this.componentManager.startup();
 
-          const componentStates = await this.componentManager.getState();
+          const componentStates = this.componentManager.getState();
           this.appendOutput(`\nCode for IBM i components:\n`);
-          for (const state of componentStates) {
-            this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
-          }
+          Array.from(componentStates.entries()).forEach(([name, state]) => {
+            this.appendOutput(`\t${name} (${state.id.version}): ${state.state}\n`);
+          });
           this.appendOutput(`\n`);
 
           progress.report({
@@ -981,7 +980,7 @@ export default class IBMi {
                 userCcsidNeedsFixing = true;
               }
             }
-            
+
             else {
               // If cqsh is not available, then we need to check the SSHD CCSID
               this.sshdCcsid = await this.getSshCcsid();
@@ -1145,10 +1144,9 @@ export default class IBMi {
     let qshExecutable = `/QOpenSys/usr/bin/qsh`;
 
     if (this.canUseCqsh) {
-      const customQsh = this.getComponent(cqsh)!;
-      qshExecutable = await customQsh.getPath();
+      qshExecutable = this.getComponent<CustomQSh>(CustomQSh.ID)!.installPath;
     }
-    
+
     if (this.requiresTranslation) {
       options.stdin = this.sysNameInAmerican(options.stdin);
       options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
@@ -1502,8 +1500,12 @@ export default class IBMi {
     }
   }
 
-  getComponent<T extends IBMiComponent>(type: IBMiComponentType<T>, ignoreState?: boolean): T | undefined {
-    return this.componentManager.get<T>(type, ignoreState);
+  getComponent<T extends IBMiComponent>(name: string, ignoreState?: boolean) {
+    return this.componentManager.get<T>(name, ignoreState);
+  }
+
+  getComponentStates(){
+    return this.componentManager.getState();
   }
 
   /**
@@ -1527,10 +1529,10 @@ export default class IBMi {
 
       // Use custom QSH if available
       if (this.canUseCqsh) {
-        const customQsh = this.getComponent(cqsh)!;
-        command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
+        const customQsh = this.getComponent<CustomQSh>(CustomQSh.ID)!;
+        command = `${customQsh.installPath} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
       }
-      
+
       if (this.requiresTranslation) {
         // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
         input = this.sysNameInAmerican(input);
@@ -1567,9 +1569,9 @@ export default class IBMi {
 
         // Return as CSV when needed
         if (useCsv && (asUpper?.startsWith(`SELECT`) || asUpper?.startsWith(`WITH`))) {
-          const copyToImport = this.getComponent<CopyToImport>(CopyToImport);
+          const copyToImport = this.getComponent<CopyToImport>(CopyToImport.ID);
           if (copyToImport) {
-            returningAsCsv = copyToImport.wrap(lastStmt);
+            returningAsCsv = copyToImport.wrap(this, lastStmt);
             list.push(...returningAsCsv.newStatements);
           }
         }

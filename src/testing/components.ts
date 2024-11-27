@@ -16,10 +16,10 @@ export const ComponentSuite: TestSuite = {
     {
       name: `Get new libl`, test: async () => {
         const connection = instance.getConnection()!
-        const component = connection.getComponent<GetNewLibl>(GetNewLibl);
+        const component = connection.getComponent<GetNewLibl>(GetNewLibl.ID);
 
         if (component) {
-          const newLibl = await component.getLibraryListFromCommand(`CHGLIBL CURLIB(SYSTOOLS)`);
+          const newLibl = await component.getLibraryListFromCommand(connection, `CHGLIBL CURLIB(SYSTOOLS)`);
 
           assert.strictEqual(newLibl?.currentLibrary, `SYSTOOLS`);
 
@@ -30,12 +30,12 @@ export const ComponentSuite: TestSuite = {
     },
     {
       name: `Check getMemberInfo`, test: async () => {
-        const connection = instance.getConnection();
-        const component = connection?.getComponent<GetMemberInfo>(GetMemberInfo)!;
+        const connection = instance.getConnection()!;
+        const component = connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID)!;
 
         assert.ok(component);
 
-        const memberInfoA = await component.getMemberInfo(`QSYSINC`, `H`, `MATH`);
+        const memberInfoA = await component.getMemberInfo(connection, `QSYSINC`, `H`, `MATH`);
         assert.ok(memberInfoA);
         assert.strictEqual(memberInfoA?.library === `QSYSINC`, true);
         assert.strictEqual(memberInfoA?.file === `H`, true);
@@ -43,7 +43,7 @@ export const ComponentSuite: TestSuite = {
         assert.strictEqual(memberInfoA?.extension === `C`, true);
         assert.strictEqual(memberInfoA?.text === `STANDARD HEADER FILE MATH`, true);
 
-        const memberInfoB = await component.getMemberInfo(`QSYSINC`, `H`, `MEMORY`);
+        const memberInfoB = await component.getMemberInfo(connection, `QSYSINC`, `H`, `MEMORY`);
         assert.ok(memberInfoB);
         assert.strictEqual(memberInfoB?.library === `QSYSINC`, true);
         assert.strictEqual(memberInfoB?.file === `H`, true);
@@ -52,7 +52,7 @@ export const ComponentSuite: TestSuite = {
         assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
 
         try{
-          await component.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`)
+          await component.getMemberInfo(connection, `QSYSINC`, `H`, `OH_NONO`)
         }
         catch(error: any){
           assert.ok(error instanceof Tools.SqlError);

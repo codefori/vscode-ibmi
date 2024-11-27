@@ -1,24 +1,26 @@
 import { posix } from "path";
+import IBMi from "../api/IBMi";
 import { instance } from "../instantiate";
 import { ComponentState, IBMiComponent } from "./component";
 
-export class GetNewLibl extends IBMiComponent {
+export class GetNewLibl implements IBMiComponent {
+  static ID = "GetNewLibl";
   getIdentification() {
-    return { name: 'GetNewLibl', version: 1 };
+    return { name: GetNewLibl.ID, version: 1 };
   }
 
-  protected async getRemoteState(): Promise<ComponentState> {
-    return this.connection.remoteFeatures[`GETNEWLIBL.PGM`] ? `Installed` : `NotInstalled`;
+  async getRemoteState(connection: IBMi): Promise<ComponentState> {
+    return connection.remoteFeatures[`GETNEWLIBL.PGM`] ? `Installed` : `NotInstalled`;
   }
 
-  protected update(): Promise<ComponentState> {
-    const config = this.connection.config!
+  update(connection: IBMi): Promise<ComponentState> {
+    const config = connection.config!
     const content = instance.getContent();
-    return this.connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
+    return connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 
       await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary));
-      const result = await this.connection.runCommand({
+      const result = await connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
         noLibList: true
@@ -32,9 +34,9 @@ export class GetNewLibl extends IBMiComponent {
     });
   }
 
-  async getLibraryListFromCommand(ileCommand: string) {
-    const tempLib = this.connection.config!.tempLibrary;
-    const resultSet = await this.connection.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
+  async getLibraryListFromCommand(connection: IBMi, ileCommand: string) {
+    const tempLib = connection.config!.tempLibrary;
+    const resultSet = await connection.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
 
     const result = {
       currentLibrary: `QGPL`,
