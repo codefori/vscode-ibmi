@@ -5,6 +5,7 @@ import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from 
 import { GlobalStorage } from '../api/Storage';
 import { instance } from '../instantiate';
 import { Login } from '../webviews/login';
+import { LoginToPrevious } from '../login';
 
 type CopyOperationItem = {
   label: string
@@ -52,10 +53,10 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
 
         switch (typeof name) {
           case `string`: // Name of connection object
-            await Login.LoginToPrevious(name, context, reloadServerSettings);
+            await LoginToPrevious(name, context, reloadServerSettings);
             break;
           case `object`: // A Server object
-            await Login.LoginToPrevious(name.name, context, reloadServerSettings);
+            await LoginToPrevious(name.name, context, reloadServerSettings);
             break;
           default:
             vscode.window.showErrorMessage(vscode.l10n.t(`Use the Server Browser to select which system to connect to.`));
