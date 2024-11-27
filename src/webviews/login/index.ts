@@ -95,7 +95,7 @@ export class Login {
 
               if (data.password || data.privateKeyPath) {
                 try {
-                  const connected = await new IBMi().connect(data, false, false, toDoOnConnected);
+                  const connected = await instance.connect({data, onConnectedOperations: toDoOnConnected});
                   if (connected.success) {
                     if (newConnection) {
                       vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
@@ -171,7 +171,7 @@ export class Login {
       }
 
       try {
-        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings, toDoOnConnected);
+        const connected = await instance.connect({data: connectionConfig, onConnectedOperations: toDoOnConnected, reloadServerSettings});
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {

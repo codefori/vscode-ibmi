@@ -279,7 +279,6 @@ export async function initialize(context: ExtensionContext) {
       Tools.withContext("code-for-ibmi:debugWorking", async () => {
         const connection = instance.getConnection();
         if (connection) {
-          const content = connection.getContent();
           const ptfInstalled = server.debugPTFInstalled();
 
           if (ptfInstalled) {
