@@ -124,11 +124,12 @@ async function openNewIssue() {
 
 async function downloadLogs() {
   const connection = instance.getConnection();
-  const config = instance.getConfig();
-  const content = instance.getContent();
   const logs: any[] = [];
 
-  if (connection && config && content) {
+  if (connection) {
+    const config = connection.getConfig();
+    const content = connection.getContent();
+
     await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: vscode.l10n.t(`Gathering logs...`),
@@ -144,7 +145,7 @@ async function downloadLogs() {
         });
       }
 
-      const debugConfig = await new DebugConfiguration().load();
+      const debugConfig = await new DebugConfiguration(connection).load();
       try {
         const debugServiceLogPath = `${debugConfig.getRemoteServiceWorkDir()}/DebugService_log.txt`;
         const debugServiceLog = (await content.downloadStreamfileRaw(debugServiceLogPath));
