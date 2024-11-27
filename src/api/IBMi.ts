@@ -61,16 +61,18 @@ export default class IBMi {
   private sshdCcsid: number|undefined;
 
   private componentManager = new ComponentManager(this);
+  private config?: ConnectionConfiguration.Parameters;
+  private content = new IBMiContent(this);
 
   client: node_ssh.NodeSSH;
   currentHost: string = ``;
   currentPort: number = 22;
   currentUser: string = ``;
   currentConnectionName: string = ``;
-  tempRemoteFiles: { [name: string]: string } = {};
+  private tempRemoteFiles: { [name: string]: string } = {};
   defaultUserLibraries: string[] = [];
-  outputChannel?: vscode.OutputChannel;
-  outputChannelContent?: string;
+  private outputChannel?: vscode.OutputChannel;
+  private outputChannelContent?: string;
   /**
    * Used to store ASP numbers and their names
    * Their names usually maps up to a directory in
@@ -85,16 +87,9 @@ export default class IBMi {
     qsysNameRegex?: RegExp
   };
 
-  /** 
-   * Strictly for storing errors from sendCommand.
-   * Used when creating issues on GitHub.
-   * */
-  lastErrors: object[] = [];
-  config?: ConnectionConfiguration.Parameters;
-  content = new IBMiContent(this);
   shell?: string;
 
-  commandsExecuted = 0;
+  private commandsExecuted = 0;
 
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
@@ -126,6 +121,22 @@ export default class IBMi {
   get dangerousVariants() {
     return this.variantChars.local !== this.variantChars.local.toLocaleUpperCase();
   };
+
+  get connected(): boolean {
+    return this.client ? this.client.isConnected() : false;
+  }
+
+  getContent() {
+    return this.content;
+  }
+
+  getConfig() {
+    if (this.connected && this.config) {
+      return this.config!;
+    } else {
+      throw new Error(`Not connected to IBM i.`);
+    }
+  }
 
   constructor() {
     this.client = new node_ssh.NodeSSH;
@@ -1198,20 +1209,6 @@ export default class IBMi {
 
     // Some simplification
     if (result.code === null) result.code = 0;
-
-    // Store the error
-    if (result.code && result.stderr) {
-      this.lastErrors.push({
-        command,
-        code: result.code,
-        stderr: result.stderr,
-        cwd: directory
-      });
-
-      // We don't want it to fill up too much.
-      if (this.lastErrors.length > 3)
-        this.lastErrors.shift();
-    }
 
     this.appendOutput(JSON.stringify(result, null, 4) + `\n\n`);
 
