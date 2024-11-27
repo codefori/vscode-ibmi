@@ -141,6 +141,10 @@ export default class IBMi {
     this.config = newConfig;
   }
 
+  getOutputChannelContent() {
+    return this.outputChannelContent;
+  }
+
   constructor() {
     this.client = new node_ssh.NodeSSH;
 

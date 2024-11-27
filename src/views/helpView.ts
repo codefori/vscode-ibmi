@@ -133,7 +133,7 @@ async function downloadLogs() {
       location: vscode.ProgressLocation.Notification,
       title: vscode.l10n.t(`Gathering logs...`),
     }, async () => {
-      const codeForIBMiLog = connection.outputChannelContent;
+      const codeForIBMiLog = connection.getOutputChannelContent();
       if (codeForIBMiLog !== undefined) {
         logs.push({
           label: vscode.l10n.t(`Code for IBM i Log`),

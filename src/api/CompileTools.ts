@@ -465,10 +465,11 @@ export namespace CompileTools {
                           // Then we download the files that is specified.
                           const downloads = postDownloads.map(
                             async (postDownload) => {
+                              const content = connection.getContent();
                               if (postDownload.type === vscode.FileType.Directory) {
-                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
+                                return content.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
                               } else {
-                                return connection.downloadFile(postDownload.localPath, postDownload.remotePath);
+                                return content.downloadFile(postDownload.localPath, postDownload.remotePath);
                               }
                             }
                           );
