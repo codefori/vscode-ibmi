@@ -1004,8 +1004,8 @@ export default class IBMiContent {
       "Attribute": object.attribute,
       "Text": object.text,
       "Size": object.size,
-      "Created": object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      "Changed": object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
+      "Created": safeIsoValue(object.created),
+      "Changed": safeIsoValue(object.changed),
       "Created by": object.created_by,
       "Owner": object.owner,
       "IASP": object.asp
@@ -1030,8 +1030,8 @@ export default class IBMiContent {
     const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
       "Text": member.text,
       "Lines": member.lines,
-      "Created": member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      "Changed": member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
+      "Created": safeIsoValue(member.created),
+      "Changed": safeIsoValue(member.changed)
     }));
     tooltip.supportHtml = true;
     return tooltip;
@@ -1040,7 +1040,7 @@ export default class IBMiContent {
   ifsFileToToolTip(path: string, ifsFile: IFSFile) {
     const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
       "Size": ifsFile.size,
-      "Modified": ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
+      "Modified": ifsFile.modified ? safeIsoValue(new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000)) : ``,
       "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
     }));
     tooltip.supportHtml = true;
@@ -1101,5 +1101,13 @@ export default class IBMiContent {
 
   async downloadDirectory(localDirectory: string | Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
     await this.ibmi.client.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  }
+}
+
+function safeIsoValue(date: Date|undefined) {
+  try {
+    return date ? date.toISOString().slice(0, 19).replace(`T`, ` `) : ``;
+  } catch (e) {
+    return `Unknown`;
   }
 }
