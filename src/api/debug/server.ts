@@ -21,7 +21,7 @@ export async function isSEPSupported() {
 
 export async function startService(connection: IBMi) {
   const checkAuthority = async (user?: string) => {
-    if (!(await connection.checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+    if (!(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
       throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
     }
   };
@@ -113,7 +113,7 @@ export async function stopService(connection: IBMi) {
 export async function getDebugServiceJob() {
   const connection = instance.getConnection();
   if (connection) {
-    const rows = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.config?.debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only) and remote_address = '0.0.0.0'`);
+    const rows = await connection.runSQL(`select job_name, local_port from qsys2.netstat_job_info j where job_name = (select job_name from qsys2.netstat_job_info j where local_port = ${connection.getConfig().debugPort || 8005} and remote_address = '0.0.0.0' fetch first row only) and remote_address = '0.0.0.0'`);
     if (rows && rows.length) {
       return {
         name: String(rows[0].JOB_NAME),

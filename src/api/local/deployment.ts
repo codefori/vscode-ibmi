@@ -223,7 +223,7 @@ export namespace Deployment {
   export async function sendCompressed(parameters: DeploymentParameters, files: vscode.Uri[], progress: vscode.Progress<{ message?: string }>) {
     const connection = getConnection();
     const localTarball = tmp.fileSync({ postfix: ".tar" });
-    const remoteTarball = path.posix.join(getConnection().config?.tempDir || '/tmp', `deploy_${Tools.makeid()}.tar`);
+    const remoteTarball = path.posix.join(getConnection().getConfig().tempDir || '/tmp', `deploy_${Tools.makeid()}.tar`);
     try {
       const toSend = files.map(file => path.relative(parameters.workspaceFolder.uri.fsPath, file.fsPath));
 

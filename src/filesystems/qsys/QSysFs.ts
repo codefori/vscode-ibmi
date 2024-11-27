@@ -79,7 +79,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     private updateMemberSupport() {
         this.extendedMemberSupport = false
         const connection = instance.getConnection();
-        const config = connection?.config;
+        const config = connection?.getConfig();
 
         if (connection && config?.enableSourceDates) {
             if (connection.sqlRunnerAvailable()) {
@@ -129,7 +129,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async getMemberAttributes(connection: IBMi, path: QsysPath & { member?: string }) {
-        const loadAttributes = async () => await connection.content.getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
+        const loadAttributes = async () => await connection.getContent().getAttributes(path, "CREATE_TIME", "MODIFY_TIME", "DATA_SIZE");
 
         path.asp = path.asp || this.getLibraryASP(connection, path.library);
         let attributes = await loadAttributes();
@@ -242,7 +242,7 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-        const content = instance.getConnection()?.content;
+        const content = instance.getConnection()?.getContent();
         if (content) {
             const qsysPath = Tools.parseQSysPath(uri.path);
             if (qsysPath.name) {
@@ -264,7 +264,7 @@ export class QSysFS implements vscode.FileSystemProvider {
         const connection = instance.getConnection();
         if (connection) {
             const qsysPath = Tools.parseQSysPath(uri.path);
-            if (qsysPath.library && !await connection.content.checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
+            if (qsysPath.library && !await connection.getContent().checkObject({ library: "QSYS", name: qsysPath.library, type: "*LIB" })) {
                 const createLibrary = await connection.runCommand({
                     command: `CRTLIB LIB(${qsysPath.library})`,
                     noLibList: true

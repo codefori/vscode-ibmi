@@ -12,7 +12,7 @@ export class GetNewLibl extends IBMiComponent {
   }
 
   protected update(): Promise<ComponentState> {
-    const config = this.connection.config!
+    const config = this.connection.getConfig()
     const content = instance.getContent();
     return this.connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
@@ -33,7 +33,7 @@ export class GetNewLibl extends IBMiComponent {
   }
 
   async getLibraryListFromCommand(ileCommand: string) {
-    const tempLib = this.connection.config!.tempLibrary;
+    const tempLib = this.connection.getConfig().tempLibrary;
     const resultSet = await this.connection.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
 
     const result = {

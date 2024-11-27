@@ -77,7 +77,7 @@ async function getExtFileContent(hostInfo: HostInfo) {
  * @param imported if defined, gives the location and password of a local or remote (i.e. on the IFS) service certificate to import
  */
 export async function setup(connection: IBMi, imported?: ImportedCertificate) {
-  if (!(await connection.checkUserSpecialAuthorities(["*ALLOBJ"])).valid) {
+  if (!(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"])).valid) {
     throw new Error(`User ${connection.currentUser} doesn't have *ALLOBJ special authority`);
   }
   await vscode.window.withProgress({ title: "Setup debug service", location: vscode.ProgressLocation.Window }, async (task) => {
@@ -109,7 +109,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       password = imported.password;
       if (imported.localFile) {
         setProgress("importing local certificate");
-        await connection.uploadFiles([{ local: imported.localFile, remote: debugConfig.getRemoteServiceCertificatePath() }]);
+        await connection.getContent().uploadFiles([{ local: imported.localFile, remote: debugConfig.getRemoteServiceCertificatePath() }]);
       }
       else if (imported.remoteFile) {
         setProgress("importing remote certificate");
@@ -126,7 +126,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       });
       try {
         if (!clientCertificate.code) {
-          instance.getContent()!.writeStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), Buffer.from(clientCertificate.stdout), "utf-8");
+          connection.getContent().writeStreamfileRaw(debugConfig.getRemoteClientCertificatePath(), Buffer.from(clientCertificate.stdout), "utf-8");
         }
         else {
           throw clientCertificate.stderr;
@@ -210,7 +210,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
 }
 
 export async function debugKeyFileExists(connection: IBMi, debugConfig: DebugConfiguration) {
-  return await connection.content.testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/.code4i.debug`, "f");
+  return await connection.getContent().testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/.code4i.debug`, "f");
 }
 
 export async function remoteCertificatesExists(debugConfig?: DebugConfiguration) {
@@ -293,7 +293,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
       })
     }
   }
-  else if ((await connection.checkUserSpecialAuthorities(["*ALLOBJ"])).valid) {
+  else if ((await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"])).valid) {
     try {
       if (legacyCertExists && !remoteCertExists) {
         //import legacy

@@ -105,7 +105,7 @@ export class IFSFS implements vscode.FileSystemProvider {
     const connection = instance.getConnection();
     if (connection) {
       const path = uri.path;
-      if (await connection.content.testStreamFile(path, "d")) {
+      if (await connection.getContent().testStreamFile(path, "d")) {
         throw FileSystemError.FileExists(uri);
       }
       else {

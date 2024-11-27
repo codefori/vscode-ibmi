@@ -18,15 +18,10 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
-import { r } from 'tar';
 
 export interface MemberParts extends IBMiMember {
   basename: string
 }
-
-const CCSID_NOCONVERSION = 65535;
-const CCSID_SYSVAL = -2;
-const bashShellPath = '/QOpenSys/pkgs/bin/bash';
 
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
@@ -53,9 +48,13 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 export default class IBMi {
+  static readonly CCSID_NOCONVERSION = 65535;
+  static readonly CCSID_SYSVAL = -2;
+  static readonly bashShellPath = '/QOpenSys/pkgs/bin/bash';
+
   private systemVersion: number = 0;
-  private qccsid: number = CCSID_NOCONVERSION;
-  private userJobCcsid: number = CCSID_SYSVAL;
+  private qccsid: number = IBMi.CCSID_NOCONVERSION;
+  private userJobCcsid: number = IBMi.CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
   private sshdCcsid: number|undefined;
@@ -102,7 +101,7 @@ export default class IBMi {
    * Primarily used for running SQL statements.
    */
   get userCcsidInvalid() {
-    return this.userJobCcsid === CCSID_NOCONVERSION;
+    return this.userJobCcsid === IBMi.CCSID_NOCONVERSION;
   }
 
   /**
@@ -136,6 +135,10 @@ export default class IBMi {
     } else {
       throw new Error(`Not connected to IBM i.`);
     }
+  }
+
+  setConfig(newConfig: ConnectionConfiguration.Parameters) {
+    this.config = newConfig;
   }
 
   constructor() {
@@ -695,7 +698,7 @@ export default class IBMi {
               //check users default shell
 
               if (!commandShellResult.stderr) {
-                let usesBash = this.shell === bashShellPath;
+                let usesBash = this.shell === IBMi.bashShellPath;
                 if (!usesBash) {
                   // make sure chsh is installed
                   if (this.remoteFeatures[`chsh`]) {
@@ -948,7 +951,7 @@ export default class IBMi {
                 }
 
                 // if the job ccsid is *SYSVAL, then assign it to sysval
-                if (this.userJobCcsid === CCSID_SYSVAL) {
+                if (this.userJobCcsid === IBMi.CCSID_SYSVAL) {
                   this.userJobCcsid = this.qccsid;
                 }
 
@@ -988,14 +991,14 @@ export default class IBMi {
 
             if (this.canUseCqsh) {
               // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
-              if (this.getCcsid() === CCSID_NOCONVERSION) {
+              if (this.getCcsid() === IBMi.CCSID_NOCONVERSION) {
                 userCcsidNeedsFixing = true;
               }
             }
             
             else {
               // If cqsh is not available, then we need to check the SSHD CCSID
-              this.sshdCcsid = await this.getSshCcsid();
+              this.sshdCcsid = await this.content.getSshCcsid();
               if (this.sshdCcsid === this.getCcsid()) {
                 // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
                 // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
@@ -1007,7 +1010,7 @@ export default class IBMi {
             }
 
             if (userCcsidNeedsFixing) {
-              showCcsidWarning(`The job CCSID is set to ${CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
+              showCcsidWarning(`The job CCSID is set to ${IBMi.CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
             } else if (sshdCcsidMismatch) {
               showCcsidWarning(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`);
             }
@@ -1026,7 +1029,7 @@ export default class IBMi {
                 message: `Checking PASE locale environment variables.`
               });
 
-              const systemEnvVars = await this.getSysEnvVars();
+              const systemEnvVars = await this.content.getSysEnvVars();
 
               const paseLang = systemEnvVars.PASE_LANG;
               const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
@@ -1131,7 +1134,7 @@ export default class IBMi {
   }
 
   usingBash() {
-    return this.shell === bashShellPath;
+    return this.shell === IBMi.bashShellPath;
   }
 
   /**
@@ -1285,33 +1288,6 @@ export default class IBMi {
     return this.remoteFeatures[`QZDFMDB2.PGM`] !== undefined;
   }
 
-  private async getSshCcsid() {
-    const sql = `
-    with SSH_DETAIL (id, iid) as (
-      select substring(job_name, locate('/', job_name, 15)+1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = 22
-    )
-    select DEFAULT_CCSID, CCSID from table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => (select id from SSH_DETAIL), DETAILED_INFO => 'ALL')) where INTERNAL_JOB_ID = (select iid from SSH_DETAIL)
-    `;
-
-    const [result] = await this.runSQL(sql);
-    return Number(result.CCSID === CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
-  }
-
-  async getSysEnvVars() {
-    const systemEnvVars = await this.runSQL([
-      `select ENVIRONMENT_VARIABLE_NAME, ENVIRONMENT_VARIABLE_VALUE`,
-      `from qsys2.environment_variable_info where environment_variable_type = 'SYSTEM'`
-    ].join(` `)) as { ENVIRONMENT_VARIABLE_NAME: string, ENVIRONMENT_VARIABLE_VALUE: string }[];
-
-    let result: { [name: string]: string; } = {};
-
-    systemEnvVars.forEach(row => {
-      result[row.ENVIRONMENT_VARIABLE_NAME] = row.ENVIRONMENT_VARIABLE_VALUE;
-    });
-
-    return result;
-  }
-
   /**
    * Generates path to a temp file on the IBM i
    * @param {string} key Key to the temp file to be re-used
@@ -1414,21 +1390,6 @@ export default class IBMi {
 
     return result
   }
-  async uploadFiles(files: { local: string | vscode.Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
-    await this.client.putFiles(files.map(f => { return { local: this.fileToPath(f.local), remote: f.remote } }), options);
-  }
-
-  async downloadFile(localFile: string | vscode.Uri, remoteFile: string) {
-    await this.client.getFile(this.fileToPath(localFile), remoteFile);
-  }
-
-  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.client.putDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
-  }
-
-  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.client.getDirectory(this.fileToPath(localDirectory), remoteDirectory, options);
-  }
 
   getLastDownloadLocation() {
     if (this.config?.lastDownloadLocation && existsSync(Tools.fixWindowsPath(this.config.lastDownloadLocation))) {
@@ -1443,15 +1404,6 @@ export default class IBMi {
     if (this.config && location && location !== this.config.lastDownloadLocation) {
       this.config.lastDownloadLocation = location;
       await ConnectionConfiguration.update(this.config);
-    }
-  }
-
-  fileToPath(file: string | vscode.Uri): string {
-    if (typeof file === "string") {
-      return Tools.fixWindowsPath(file);
-    }
-    else {
-      return file.fsPath;
     }
   }
 
@@ -1629,7 +1581,7 @@ export default class IBMi {
   }
 
   getCcsid() {
-    const fallbackToDefault = ((this.userJobCcsid < 1 || this.userJobCcsid === CCSID_NOCONVERSION) && this.userDefaultCCSID > 0);
+    const fallbackToDefault = ((this.userJobCcsid < 1 || this.userJobCcsid === IBMi.CCSID_NOCONVERSION) && this.userDefaultCCSID > 0);
     const ccsid = fallbackToDefault ? this.userDefaultCCSID : this.userJobCcsid;
     return ccsid;
   }
@@ -1641,19 +1593,5 @@ export default class IBMi {
       userDefaultCCSID: this.userDefaultCCSID,
       sshdCcsid: this.sshdCcsid
     };
-  }
-
-  async checkUserSpecialAuthorities(authorities: SpecialAuthorities[], user?: string) {
-    const profile = (user || this.currentUser).toLocaleUpperCase();
-    const [row] = await this.runSQL(
-      `select trim(coalesce(usr.special_authorities,'') concat ' ' concat coalesce(grp.special_authorities, '')) AUTHORITIES ` +
-      `from qsys2.user_info_basic usr ` +
-      `left join qsys2.user_info_basic grp on grp.authorization_name = usr.group_profile_name ` +
-      `where usr.authorization_name = '${profile}'`
-    );
-
-    const userAuthorities = row?.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
-    const missing = authorities.filter(auth => !userAuthorities.includes(auth));
-    return { valid: !Boolean(missing.length), missing };
   }
 }

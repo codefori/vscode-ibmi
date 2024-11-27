@@ -58,7 +58,7 @@ export class CopyToImport extends IBMiComponent {
       newStatements.push(`CREATE TABLE ${library}.${table} AS (${statement}) WITH DATA`);
     }
 
-    newStatements.push(`Call QSYS2.QCMDEXC('` + this.connection.content.toCl(`CPYTOIMPF`, {
+    newStatements.push(`Call QSYS2.QCMDEXC('` + this.connection.getContent().toCl(`CPYTOIMPF`, {
       FROMFILE: `${library!}/${table!} *FIRST`,
       TOSTMF: outStmf,
       MBROPT: `*REPLACE`,

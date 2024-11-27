@@ -13,7 +13,7 @@ export class GetMemberInfo extends IBMiComponent {
   }
 
   protected async getRemoteState(): Promise<ComponentState> {
-    const [result] = await this.connection.runSQL(`select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${this.connection.config?.tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
+    const [result] = await this.connection.runSQL(`select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${this.connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
     if (result.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
       const dash = comment.indexOf('-');
@@ -29,10 +29,10 @@ export class GetMemberInfo extends IBMiComponent {
   }
 
   protected async update(): Promise<ComponentState> {
-    const config = this.connection.config!;
+    const config = this.connection.getConfig();
     return this.connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);
-      await this.connection.content.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.procedureName, this.currentVersion));
+      await this.connection.getContent().writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.procedureName, this.currentVersion));
       const result = await this.connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
@@ -48,7 +48,7 @@ export class GetMemberInfo extends IBMiComponent {
   }
 
   async getMemberInfo(library: string, sourceFile: string, member: string): Promise<IBMiMember | undefined> {
-    const config = this.connection.config!;
+    const config = this.connection.getConfig()!;
     const tempLib = config.tempLibrary;
     const statement = `select * from table(${tempLib}.${this.procedureName}('${library}', '${sourceFile}', '${member}'))`;
 
@@ -59,7 +59,7 @@ export class GetMemberInfo extends IBMiComponent {
       } catch (e) { } // Ignore errors, will return undefined.
     }
     else {
-      results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      results = await this.connection.getContent().getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
     }
 
     if (results.length === 1 && results[0].ISSOURCE === 'Y') {
@@ -79,7 +79,7 @@ export class GetMemberInfo extends IBMiComponent {
   }
 
   async getMultipleMemberInfo(members: IBMiMember[]): Promise<IBMiMember[] | undefined> {
-    const config = this.connection.config!;
+    const config = this.connection.getConfig();
     const tempLib = config.tempLibrary;
     const statement = members
       .map(member => `select * from table(${tempLib}.${this.procedureName}('${member.library}', '${member.file}', '${member.name}'))`)
@@ -92,7 +92,7 @@ export class GetMemberInfo extends IBMiComponent {
       } catch (e) { }; // Ignore errors, will return undefined.
     }
     else {
-      results = await this.connection.content.getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
+      results = await this.connection.getContent().getQTempTable([`create table QTEMP.MEMBERINFO as (${statement}) with data`], "MEMBERINFO");
     }
 
     return results.filter(row => row.ISSOURCE === 'Y').map(result => {

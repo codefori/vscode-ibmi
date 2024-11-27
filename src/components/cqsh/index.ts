@@ -21,7 +21,7 @@ export class cqsh extends IBMiComponent {
 
   protected async getRemoteState(): Promise<ComponentState> {
     const remotePath = await this.getPath();
-    const result = await this.connection.content.testStreamFile(remotePath, "x");
+    const result = await this.connection.getContent().testStreamFile(remotePath, "x");
 
     if (!result) {
       return `NotInstalled`;
@@ -47,7 +47,7 @@ export class cqsh extends IBMiComponent {
       return `Error`;
     }
 
-    await this.connection.uploadFiles([{ local: assetPath, remote: remotePath }]);
+    await this.connection.getContent().uploadFiles([{ local: assetPath, remote: remotePath }]);
 
     await this.connection.sendCommand({
       command: `chmod +x ${remotePath}`,

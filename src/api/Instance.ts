@@ -42,17 +42,23 @@ export default class Instance {
 
   async setConfig(newConfig: ConnectionConfiguration.Parameters) {
     if (this.connection) {
-      this.connection.config = newConfig;
+      this.connection.setConfig(newConfig);
     }
     await ConnectionConfiguration.update(newConfig);
   }
 
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMi.getConfig()} instead
+   */
   getConfig() {
-    return this.connection?.config;
+    return this.connection?.getConfig();
   }
 
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMi.getContent()} instead
+   */
   getContent() {
-    return this.connection?.content;
+    return this.connection?.getContent();
   }
 
   getStorage() {
