@@ -1,7 +1,7 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
-import { disconnect, instance } from "../../instantiate";
+import { safeDisconnect, instance } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 import { LoginNew } from "../../login";
 
@@ -21,7 +21,7 @@ export class Login {
   static async show(context: vscode.ExtensionContext) {
     const connection = instance.getConnection();
     if (connection) {
-      if (!disconnect()) return;
+      if (!safeDisconnect()) return;
     }
 
     const connectionTab = new Section()

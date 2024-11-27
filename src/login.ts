@@ -2,7 +2,7 @@ import { window, commands, ExtensionContext, QuickInputButton, ThemeIcon } from 
 import { ConnectionManager } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { ConnectionData } from "./typings";
-import { instance, disconnect } from "./instantiate";
+import { instance, safeDisconnect } from "./instantiate";
 
 export async function LoginNew(context: ExtensionContext, data: ConnectionData) {
   window.showInformationMessage(`Connecting to ${data.host}.`);
@@ -13,7 +13,7 @@ export async function LoginNew(context: ExtensionContext, data: ConnectionData) 
 
   if (data.password || data.privateKeyPath) {
     try {
-      const connected = await new IBMi().connect(data, false, false, toDoOnConnected);
+      const connected = await instance.connect({data: data, onConnectedOperations: toDoOnConnected});
       if (connected.success) {
         window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
           if (selectionA === `Open configuration`) {
@@ -28,7 +28,7 @@ export async function LoginNew(context: ExtensionContext, data: ConnectionData) 
           }
         });
       } else {
-        window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
+        window.showErrorMessage(`Not connected to ${data.host}! ${connected.error}`);
       }
     } catch (e) {
       window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
@@ -42,7 +42,7 @@ export async function LoginToPrevious(name: string, context: ExtensionContext, r
     // If the user is already connected and trying to connect to a different system, disconnect them first
     if (name !== existingConnection.currentConnectionName) {
       window.showInformationMessage(`Disconnecting from ${existingConnection.currentHost}.`);
-      if (!await disconnect()) return false;
+      if (!await safeDisconnect()) return false;
     }
   }
 
@@ -68,11 +68,11 @@ export async function LoginToPrevious(name: string, context: ExtensionContext, r
     }
 
     try {
-      const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings, toDoOnConnected);
+      const connected = await instance.connect({data: connectionConfig, reloadServerSettings: reloadServerSettings, onConnectedOperations: toDoOnConnected});
       if (connected.success) {
         window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
       } else {
-        window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
+        window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error || connected.error}`);
       }
 
       return true;

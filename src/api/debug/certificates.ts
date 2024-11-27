@@ -91,7 +91,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       }
     }
 
-    const debugConfig = await new DebugConfiguration().load();
+    const debugConfig = await new DebugConfiguration(connection).load();
 
     const certificatePath = debugConfig.getRemoteServiceCertificatePath();
     const directory = dirname(certificatePath);
@@ -214,9 +214,10 @@ export async function debugKeyFileExists(connection: IBMi, debugConfig: DebugCon
 }
 
 export async function remoteCertificatesExists(debugConfig?: DebugConfiguration) {
-  const content = instance.getContent();
-  if (content) {
-    debugConfig = debugConfig || await new DebugConfiguration().load();
+  const connection = instance.getConnection();
+  if (connection) {
+    const content = connection.getContent();
+    debugConfig = debugConfig || await new DebugConfiguration(connection).load();
     return await content.testStreamFile(debugConfig.getRemoteServiceCertificatePath(), "f") && await content.testStreamFile(debugConfig.getRemoteClientCertificatePath(), "f");
   }
   else {
@@ -227,7 +228,7 @@ export async function remoteCertificatesExists(debugConfig?: DebugConfiguration)
 export async function downloadClientCert(connection: IBMi) {
   const content = instance.getContent();
   if (content) {
-    await content.downloadStreamfileRaw((await new DebugConfiguration().load()).getRemoteClientCertificatePath(), getLocalCertPath(connection));
+    await content.downloadStreamfileRaw((await new DebugConfiguration(connection).load()).getRemoteClientCertificatePath(), getLocalCertPath(connection));
   }
   else {
     throw new Error("Not connected to an IBM i");
@@ -242,7 +243,7 @@ export function getLocalCertPath(connection: IBMi) {
 export async function checkClientCertificate(connection: IBMi, debugConfig?: DebugConfiguration) {
   const locaCertificatePath = getLocalCertPath(connection);
   if (existsSync(locaCertificatePath)) {
-    debugConfig = debugConfig || await new DebugConfiguration().load();
+    debugConfig = debugConfig || await new DebugConfiguration(connection).load();
     const remote = (await connection.sendCommand({ command: `cat ${debugConfig.getRemoteClientCertificatePath()}` }));
     if (!remote.code) {
       const localCertificate = readFileSync(locaCertificatePath).toString("utf-8");
@@ -263,7 +264,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
   //Since Code for IBM i v2.10.0, the debug configuration is managed from the debug service .env file
   //The encryption key is backed up since it's destroyed every time the service starts up
   //The remote certificate is only valid if the client certificate is found too
-  const debugConfig = await new DebugConfiguration().load();
+  const debugConfig = await new DebugConfiguration(connection).load();
 
   //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
   const javaHome = debugConfig.get("JAVA_HOME");

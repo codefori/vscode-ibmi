@@ -1,19 +1,13 @@
-import { Tools } from './api/Tools';
 
-import path from 'path';
 import * as vscode from "vscode";
-import { CompileTools } from './api/CompileTools';
-import { ConnectionConfiguration, ConnectionManager, DefaultOpenMode, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./api/Instance";
 import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
-import { refreshDiagnosticsFromServer } from './api/errors/diagnostics';
 import { setupGitEventHandler } from './api/local/git';
-import { GetMemberInfo } from './components/getMemberInfo';
-import { QSysFS, getUriFromPath, parseFSOptions } from "./filesystems/qsys/QSysFs";
+import { QSysFS } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
-import { Action, BrowserItem, DeploymentMethod, MemberItem, OpenEditableOptions, WithPath } from "./typings";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 import { registerOpenCommands } from './commands/open';
@@ -38,7 +32,7 @@ connectedBarItem.command = {
   title: `Show connection settings`
 };
 
-export async function disconnect(): Promise<boolean> {
+export async function safeDisconnect(): Promise<boolean> {
   let doDisconnect = true;
 
   for (const document of vscode.workspace.textDocuments) {
@@ -58,10 +52,7 @@ export async function disconnect(): Promise<boolean> {
   }
 
   if (doDisconnect) {
-    const connection = instance.getConnection();
-    if (connection) {
-      await connection.end();
-    }
+    await instance.disconnect();
   }
 
   return doDisconnect;
@@ -75,13 +66,6 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     connectedBarItem,
     disconnectBarItem,
-    vscode.commands.registerCommand(`code-for-ibmi.disconnect`, async (silent?: boolean) => {
-      if (instance.getConnection()) {
-        await disconnect();
-      } else if (!silent) {
-        vscode.window.showErrorMessage(`Not currently connected to any system.`);
-      }
-    }),
 
     ...registerConnectionCommands(context, instance),
 

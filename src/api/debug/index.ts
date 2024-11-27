@@ -259,7 +259,7 @@ export async function initialize(context: ExtensionContext) {
         if (doSetup) {
           Tools.withContext("code-for-ibmi:debugWorking", async () => {
             if (!(await server.getDebugServiceJob()) || await server.stopService(connection)) {
-              const debugConfig = await new DebugConfiguration().load();
+              const debugConfig = await new DebugConfiguration(connection).load();
               const clearResult = await connection.sendCommand({ command: `rm -f ${debugConfig.getRemoteServiceCertificatePath()} ${debugConfig.getRemoteClientCertificatePath()}` });
               if (clearResult.code) {
                 vscode.window.showErrorMessage(`Failed to clear existing certificate: ${clearResult.stderr}`);
@@ -283,7 +283,7 @@ export async function initialize(context: ExtensionContext) {
           const ptfInstalled = server.debugPTFInstalled();
 
           if (ptfInstalled) {
-            const debugConfig = await new DebugConfiguration().load()
+            const debugConfig = await new DebugConfiguration(connection).load()
             const remoteCertsExists = await certificates.remoteCertificatesExists(debugConfig);
             if (remoteCertsExists && await certificates.debugKeyFileExists(connection, debugConfig) && debugConfig.getCode4iDebug()) {
               await certificates.downloadClientCert(connection);

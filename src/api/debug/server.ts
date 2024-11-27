@@ -28,7 +28,7 @@ export async function startService(connection: IBMi) {
 
   try {
     await checkAuthority();
-    const debugConfig = await new DebugConfiguration().load();
+    const debugConfig = await new DebugConfiguration(connection).load();
 
     const submitOptions = await window.showInputBox({
       title: l10n.t(`Debug Service submit options`),
@@ -95,7 +95,7 @@ export async function startService(connection: IBMi) {
 }
 
 export async function stopService(connection: IBMi) {
-  const debugConfig = await new DebugConfiguration().load();
+  const debugConfig = await new DebugConfiguration(connection).load();
   const endResult = await connection.sendCommand({
     command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`
   });

@@ -23,6 +23,11 @@ export interface MemberParts extends IBMiMember {
   basename: string
 }
 
+export interface ConnectionResult {
+  success: boolean,
+  error?: string
+}
+
 const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures' below!!
   {
     path: `/usr/bin/`,
@@ -57,7 +62,7 @@ export default class IBMi {
   private userJobCcsid: number = IBMi.CCSID_SYSVAL;
   /** User default CCSID is job default CCSID */
   private userDefaultCCSID: number = 0;
-  private sshdCcsid: number|undefined;
+  private sshdCcsid: number | undefined;
 
   private componentManager = new ComponentManager(this);
   private config?: ConnectionConfiguration.Parameters;
@@ -80,8 +85,8 @@ export default class IBMi {
   aspInfo: { [id: number]: string } = {};
   remoteFeatures: { [name: string]: string | undefined };
 
-  variantChars: { 
-    american: string, 
+  variantChars: {
+    american: string,
     local: string,
     qsysNameRegex?: RegExp
   };
@@ -183,951 +188,931 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = []): Promise<{ success: boolean, error?: any }> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = [], timeoutCallback?: () => Promise<void>): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
-    return await Tools.withContext("code-for-ibmi:connecting", async () => {
-      try {
-        connectionObject.keepaliveInterval = 35000;
+    try {
+      connectionObject.keepaliveInterval = 35000;
 
-        configVars.replaceAll(connectionObject);
+      configVars.replaceAll(connectionObject);
 
-        return await vscode.window.withProgress({
-          location: vscode.ProgressLocation.Notification,
-          title: `Connecting`,
-          cancellable: true
-        }, async (progress, cancelToken) => {
-          progress.report({
-            message: `Connecting via SSH.`
-          });
-          const delayedOperations: Function[] = [...onConnectedOperations];
+      return await vscode.window.withProgress({
+        location: vscode.ProgressLocation.Notification,
+        title: `Connecting`,
+        cancellable: true
+      }, async (progress, cancelToken) => {
+        progress.report({
+          message: `Connecting via SSH.`
+        });
+        const delayedOperations: Function[] = [...onConnectedOperations];
 
-          await this.client.connect(connectionObject as node_ssh.Config);
+        await this.client.connect(connectionObject as node_ssh.Config);
 
-          cancelToken.onCancellationRequested(() => {
-            this.end();
-          });
+        cancelToken.onCancellationRequested(() => {
+          this.dispose();
+        });
 
-          this.currentConnectionName = connectionObject.name;
-          this.currentHost = connectionObject.host;
-          this.currentPort = connectionObject.port;
-          this.currentUser = connectionObject.username;
+        this.currentConnectionName = connectionObject.name;
+        this.currentHost = connectionObject.host;
+        this.currentPort = connectionObject.port;
+        this.currentUser = connectionObject.username;
 
-          if (!reconnecting) {
-            this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
-            this.outputChannelContent = '';
-            this.appendOutput(`Code for IBM i, version ${currentExtensionVersion}\n\n`);
+        if (!reconnecting) {
+          this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
+          this.outputChannelContent = '';
+          this.appendOutput(`Code for IBM i, version ${currentExtensionVersion}\n\n`);
+        }
+
+        let tempLibrarySet = false;
+
+        progress.report({
+          message: `Loading configuration.`
+        });
+
+        //Load existing config
+        this.config = await ConnectionConfiguration.load(this.currentConnectionName);
+
+        // Load cached server settings.
+        const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
+
+        // Reload server settings?
+        const quickConnect = () => {
+          return (this.config!.quickConnect === true && reloadServerSettings === false);
+        }
+
+        // Check shell output for additional user text - this will confuse Code...
+        progress.report({
+          message: `Checking shell output.`
+        });
+
+        const checkShellText = `This should be the only text!`;
+        const checkShellResult = await this.sendCommand({
+          command: `echo "${checkShellText}"`,
+          directory: `.`
+        });
+        if (checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
+          const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
+            detail: [
+              `This extension can not work with the shell configured on ${this.currentConnectionName},`,
+              `since the output from shell commands have additional content.`,
+              `This can be caused by running commands like "echo" or other`,
+              `commands creating output in your shell start script.`, ``,
+              `The connection to ${this.currentConnectionName} will be aborted.`
+            ].join(`\n`),
+            modal: true
+          }, `Read more`);
+
+          if (chosen === `Read more`) {
+            vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
           }
 
-          let tempLibrarySet = false;
+          throw (`Shell config error, connection aborted.`);
+        }
 
-          const timeoutHandler = async () => {
+        if (timeoutCallback) {
+          const timeoutCallbackWrapper = () => {
+            // Don't call the callback function if it was based on a user cancellation request.
             if (!cancelToken.isCancellationRequested) {
-              this.disconnect();
-
-              const choice = await vscode.window.showWarningMessage(`Connection lost`, {
-                modal: true,
-                detail: `Connection to ${this.currentConnectionName} has dropped. Would you like to reconnect?`
-              }, `Yes`);
-
-              let disconnect = true;
-              if (choice === `Yes`) {
-                disconnect = !(await this.connect(connectionObject, true)).success;
-              }
-
-              if (disconnect) {
-                this.end();
-              };
+              timeoutCallback();
             }
-          };
-
-          progress.report({
-            message: `Loading configuration.`
-          });
-
-          //Load existing config
-          this.config = await ConnectionConfiguration.load(this.currentConnectionName);
-
-          // Load cached server settings.
-          const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
-
-          // Reload server settings?
-          const quickConnect = () => {
-            return (this.config!.quickConnect === true && reloadServerSettings === false);
-          }
-
-          // Check shell output for additional user text - this will confuse Code...
-          progress.report({
-            message: `Checking shell output.`
-          });
-
-          const checkShellText = `This should be the only text!`;
-          const checkShellResult = await this.sendCommand({
-            command: `echo "${checkShellText}"`,
-            directory: `.`
-          });
-          if (checkShellResult.stdout.split(`\n`)[0] !== checkShellText) {
-            const chosen = await vscode.window.showErrorMessage(`Error in shell configuration!`, {
-              detail: [
-                `This extension can not work with the shell configured on ${this.currentConnectionName},`,
-                `since the output from shell commands have additional content.`,
-                `This can be caused by running commands like "echo" or other`,
-                `commands creating output in your shell start script.`, ``,
-                `The connection to ${this.currentConnectionName} will be aborted.`
-              ].join(`\n`),
-              modal: true
-            }, `Read more`);
-
-            if (chosen === `Read more`) {
-              vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/#/pages/tips/setup`);
-            }
-
-            throw (`Shell config error, connection aborted.`);
           }
 
           // Register handlers after we might have to abort due to bad configuration.
-          this.client.connection!.once(`timeout`, timeoutHandler);
-          this.client.connection!.once(`end`, timeoutHandler);
-          this.client.connection!.once(`error`, timeoutHandler);
+          this.client.connection!.once(`timeout`, timeoutCallbackWrapper);
+          this.client.connection!.once(`end`, timeoutCallbackWrapper);
+          this.client.connection!.once(`error`, timeoutCallbackWrapper);
+        }
 
-          if (!reconnecting) {
-            instance.setConnection(this);
-          }
+        progress.report({
+          message: `Checking home directory.`
+        });
 
-          progress.report({
-            message: `Checking home directory.`
-          });
+        let defaultHomeDir;
 
-          let defaultHomeDir;
+        const echoHomeResult = await this.sendCommand({
+          command: `echo $HOME && cd && test -w $HOME`,
+          directory: `.`
+        });
+        // Note: if the home directory does not exist, the behavior of the echo/cd/test command combo is as follows:
+        //   - stderr contains 'Could not chdir to home directory /home/________: No such file or directory'
+        //       (The output contains 'chdir' regardless of locale and shell, so maybe we could use that
+        //        if we iterate on this code again in the future)
+        //   - stdout contains the name of the home directory (even if it does not exist)
+        //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
+        //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
+        let isHomeUsable = (0 == echoHomeResult.code);
+        if (isHomeUsable) {
+          defaultHomeDir = echoHomeResult.stdout.trim();
+        } else {
+          // Let's try to provide more valuable information to the user about why their home directory
+          // is bad and maybe even provide the opportunity to create the home directory
 
-          const echoHomeResult = await this.sendCommand({
-            command: `echo $HOME && cd && test -w $HOME`,
-            directory: `.`
-          });
-          // Note: if the home directory does not exist, the behavior of the echo/cd/test command combo is as follows:
-          //   - stderr contains 'Could not chdir to home directory /home/________: No such file or directory'
-          //       (The output contains 'chdir' regardless of locale and shell, so maybe we could use that
-          //        if we iterate on this code again in the future)
-          //   - stdout contains the name of the home directory (even if it does not exist)
-          //   - The 'cd' command causes an error if the home directory does not exist or otherwise can't be cd'ed into
-          //   - The 'test' command causes an error if the home directory is not writable (one can cd into a non-writable directory)
-          let isHomeUsable = (0 == echoHomeResult.code);
-          if (isHomeUsable) {
-            defaultHomeDir = echoHomeResult.stdout.trim();
-          } else {
-            // Let's try to provide more valuable information to the user about why their home directory
-            // is bad and maybe even provide the opportunity to create the home directory
+          let actualHomeDir = echoHomeResult.stdout.trim();
 
-            let actualHomeDir = echoHomeResult.stdout.trim();
-
-            // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
-            let doesHomeExist = (0 === (await this.sendCommand({ command: `test -e ${actualHomeDir}` })).code);
-            if (doesHomeExist) {
-              // Note: this logic might look backward because we fall into this (failure) leg on what looks like success (home dir exists).
-              //       But, remember, but we only got here if 'cd $HOME' failed.
-              //       Let's try to figure out why....
-              if (0 !== (await this.sendCommand({ command: `test -d ${actualHomeDir}` })).code) {
-                await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not a directory! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
-              }
-              else if (0 !== (await this.sendCommand({ command: `test -w ${actualHomeDir}` })).code) {
-                await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not writable! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
-              }
-              else if (0 !== (await this.sendCommand({ command: `test -x ${actualHomeDir}` })).code) {
-                await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not usable due to permissions! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
-              }
-              else {
-                // not sure, but get your sys admin involved
-                await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
-              }
+          // we _could_ just assume the home directory doesn't exist but maybe there's something more going on, namely mucked-up permissions
+          let doesHomeExist = (0 === (await this.sendCommand({ command: `test -e ${actualHomeDir}` })).code);
+          if (doesHomeExist) {
+            // Note: this logic might look backward because we fall into this (failure) leg on what looks like success (home dir exists).
+            //       But, remember, but we only got here if 'cd $HOME' failed.
+            //       Let's try to figure out why....
+            if (0 !== (await this.sendCommand({ command: `test -d ${actualHomeDir}` })).code) {
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not a directory! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
             }
-            else if (reconnecting) {
-              vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) does not exist. Code for IBM i may not function correctly.`, { modal: false });
+            else if (0 !== (await this.sendCommand({ command: `test -w ${actualHomeDir}` })).code) {
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not writable! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
             }
-            else if (await vscode.window.showWarningMessage(`Home directory does not exist`, {
-              modal: true,
-              detail: `Your home directory (${actualHomeDir}) does not exist, so Code for IBM i may not function correctly. Would you like to create this directory now?`,
-            }, `Yes`)) {
-              this.appendOutput(`creating home directory ${actualHomeDir}`);
-              let mkHomeCmd = `mkdir -p ${actualHomeDir} && chown ${connectionObject.username.toLowerCase()} ${actualHomeDir} && chmod 0755 ${actualHomeDir}`;
-              let mkHomeResult = await this.sendCommand({ command: mkHomeCmd, directory: `.` });
-              if (0 === mkHomeResult.code) {
-                defaultHomeDir = actualHomeDir;
-              } else {
-                let mkHomeErrs = mkHomeResult.stderr;
-                // We still get 'Could not chdir to home directory' in stderr so we need to hackily gut that out, as well as the bashisms that are a side effect of our API
-                mkHomeErrs = mkHomeErrs.substring(1 + mkHomeErrs.indexOf(`\n`)).replace(`bash: line 1: `, ``);
-                await vscode.window.showWarningMessage(`Error creating home directory (${actualHomeDir}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
-              }
+            else if (0 !== (await this.sendCommand({ command: `test -x ${actualHomeDir}` })).code) {
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) is not usable due to permissions! Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
+            }
+            else {
+              // not sure, but get your sys admin involved
+              await vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) exists but is unusable. Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: !reconnecting });
             }
           }
+          else if (reconnecting) {
+            vscode.window.showWarningMessage(`Your home directory (${actualHomeDir}) does not exist. Code for IBM i may not function correctly.`, { modal: false });
+          }
+          else if (await vscode.window.showWarningMessage(`Home directory does not exist`, {
+            modal: true,
+            detail: `Your home directory (${actualHomeDir}) does not exist, so Code for IBM i may not function correctly. Would you like to create this directory now?`,
+          }, `Yes`)) {
+            this.appendOutput(`creating home directory ${actualHomeDir}`);
+            let mkHomeCmd = `mkdir -p ${actualHomeDir} && chown ${connectionObject.username.toLowerCase()} ${actualHomeDir} && chmod 0755 ${actualHomeDir}`;
+            let mkHomeResult = await this.sendCommand({ command: mkHomeCmd, directory: `.` });
+            if (0 === mkHomeResult.code) {
+              defaultHomeDir = actualHomeDir;
+            } else {
+              let mkHomeErrs = mkHomeResult.stderr;
+              // We still get 'Could not chdir to home directory' in stderr so we need to hackily gut that out, as well as the bashisms that are a side effect of our API
+              mkHomeErrs = mkHomeErrs.substring(1 + mkHomeErrs.indexOf(`\n`)).replace(`bash: line 1: `, ``);
+              await vscode.window.showWarningMessage(`Error creating home directory (${actualHomeDir}):\n${mkHomeErrs}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
+            }
+          }
+        }
 
-          // Check to see if we need to store a new value for the home directory
+        // Check to see if we need to store a new value for the home directory
+        if (defaultHomeDir) {
+          if (this.config.homeDirectory !== defaultHomeDir) {
+            this.config.homeDirectory = defaultHomeDir;
+            vscode.window.showInformationMessage(`Configured home directory reset to ${defaultHomeDir}.`);
+          }
+        } else {
+          // New connections always have `.` as the initial value.
+          // If we can't find a usable home directory, just reset it to
+          // the initial default.
+          this.config.homeDirectory = `.`;
+        }
+
+        //Set a default IFS listing
+        if (this.config.ifsShortcuts.length === 0) {
           if (defaultHomeDir) {
-            if (this.config.homeDirectory !== defaultHomeDir) {
-              this.config.homeDirectory = defaultHomeDir;
-              vscode.window.showInformationMessage(`Configured home directory reset to ${defaultHomeDir}.`);
-            }
+            this.config.ifsShortcuts = [this.config.homeDirectory];
           } else {
-            // New connections always have `.` as the initial value.
-            // If we can't find a usable home directory, just reset it to
-            // the initial default.
-            this.config.homeDirectory = `.`;
+            this.config.ifsShortcuts = [`/`];
           }
+        }
 
-          //Set a default IFS listing
-          if (this.config.ifsShortcuts.length === 0) {
-            if (defaultHomeDir) {
-              this.config.ifsShortcuts = [this.config.homeDirectory];
-            } else {
-              this.config.ifsShortcuts = [`/`];
-            }
-          }
+        // If the version has changed (by update for example), then fetch everything again
+        if (cachedServerSettings?.lastCheckedOnVersion !== currentExtensionVersion) {
+          reloadServerSettings = true;
+        }
 
-          // If the version has changed (by update for example), then fetch everything again
-          if (cachedServerSettings?.lastCheckedOnVersion !== currentExtensionVersion) {
-            reloadServerSettings = true;
-          }
-
-          // Check for installed components?
-          // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
-          if (quickConnect() && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
-            Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
-          } else {
-            progress.report({
-              message: `Checking installed components on host IBM i.`
-            });
-
-            // We need to check if our remote programs are installed.
-            remoteApps.push(
-              {
-                path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
-                names: [`GETNEWLIBL.PGM`],
-                specific: `GE*.PGM`
-              }
-            );
-
-            //Next, we see what pase features are available (installed via yum)
-            //This may enable certain features in the future.
-            for (const feature of remoteApps) {
-              try {
-                progress.report({
-                  message: `Checking installed components on host IBM i: ${feature.path}`
-                });
-
-                const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
-                if (call.stdout) {
-                  const files = call.stdout.split(`\n`);
-
-                  if (feature.specific) {
-                    for (const name of feature.names)
-                      this.remoteFeatures[name] = files.find(file => file.includes(name));
-                  } else {
-                    for (const name of feature.names)
-                      if (files.includes(name))
-                        this.remoteFeatures[name] = feature.path + name;
-                  }
-                }
-              } catch (e) {
-                console.log(e);
-              }
-            }
-
-            //Specific Java installations check
-            progress.report({
-              message: `Checking installed components on host IBM i: Java`
-            });
-            const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
-            this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
-            this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
-            this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
-            this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
-          }
-
-          if (this.remoteFeatures.uname) {
-            progress.report({
-              message: `Checking OS version.`
-            });
-            const systemVersionResult = await this.sendCommand({ command: `${this.remoteFeatures.uname} -rv` });
-
-            if (systemVersionResult.code === 0) {
-              const version = systemVersionResult.stdout.trim().split(` `);
-              this.systemVersion = Number(`${version[1]}.${version[0]}`);
-            }
-          }
-
-          if (!this.systemVersion) {
-            vscode.window.showWarningMessage(`Unable to determine system version. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
-          } else if (this.systemVersion < 7.3) {
-            vscode.window.showWarningMessage(`IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
-          }
-
-          progress.report({ message: `Checking Code for IBM i components.` });
-          await this.componentManager.startup();
-
-          const componentStates = await this.componentManager.getState();
-          this.appendOutput(`\nCode for IBM i components:\n`);
-          for (const state of componentStates) {
-            this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
-          }
-          this.appendOutput(`\n`);
-
+        // Check for installed components?
+        // For Quick Connect to work here, 'remoteFeatures' MUST have all features defined and no new properties may be added!
+        if (quickConnect() && cachedServerSettings?.remoteFeaturesKeys && cachedServerSettings.remoteFeaturesKeys === Object.keys(this.remoteFeatures).sort().toString()) {
+          Object.assign(this.remoteFeatures, cachedServerSettings.remoteFeatures);
+        } else {
           progress.report({
-            message: `Checking library list configuration.`
+            message: `Checking installed components on host IBM i.`
           });
 
-          //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
-          //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
-          let currentLibrary = `QGPL`;
-          this.defaultUserLibraries = [];
-
-          const liblResult = await this.sendQsh({
-            command: `liblist`
-          });
-          if (liblResult.code === 0) {
-            const libraryListString = liblResult.stdout;
-            if (libraryListString !== ``) {
-              const libraryList = libraryListString.split(`\n`);
-
-              let lib, type;
-              for (const line of libraryList) {
-                lib = line.substring(0, 10).trim();
-                type = line.substring(12);
-
-                switch (type) {
-                  case `USR`:
-                    this.defaultUserLibraries.push(lib);
-                    break;
-
-                  case `CUR`:
-                    currentLibrary = lib;
-                    break;
-                }
-              }
-
-              //If this is the first time the config is made, then these arrays will be empty
-              if (this.config.currentLibrary.length === 0) {
-                this.config.currentLibrary = currentLibrary;
-              }
-              if (this.config.libraryList.length === 0) {
-                this.config.libraryList = this.defaultUserLibraries;
-              }
+          // We need to check if our remote programs are installed.
+          remoteApps.push(
+            {
+              path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
+              names: [`GETNEWLIBL.PGM`],
+              specific: `GE*.PGM`
             }
-          }
+          );
 
-          progress.report({
-            message: `Checking temporary library configuration.`
-          });
-
-          //Next, we need to check the temp lib (where temp outfile data lives) exists
-          const createdTempLib = await this.runCommand({
-            command: `CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
-            noLibList: true
-          });
-
-          if (createdTempLib.code === 0) {
-            tempLibrarySet = true;
-          } else {
-            const messages = Tools.parseMessages(createdTempLib.stderr);
-            if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)
-              tempLibrarySet = true;
-            }
-            else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
-              const tempLibExists = await this.runCommand({
-                command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
-                noLibList: true
-              });
-
-              if (tempLibExists.code === 0) {
-                //We're all good if no errors
-                tempLibrarySet = true;
-              } else if (currentLibrary && !currentLibrary.startsWith(`Q`)) {
-                //Using ${currentLibrary} as the temporary library for temporary data.
-                this.config.tempLibrary = currentLibrary;
-                tempLibrarySet = true;
-              }
-            }
-          }
-
-          progress.report({
-            message: `Checking temporary directory configuration.`
-          });
-
-          let tempDirSet = false;
-          // Next, we need to check if the temp directory exists
-          let result = await this.sendCommand({
-            command: `[ -d "${this.config.tempDir}" ]`
-          });
-
-          if (result.code === 0) {
-            // Directory exists
-            tempDirSet = true;
-          } else {
-            // Directory does not exist, try to create it
-            let result = await this.sendCommand({
-              command: `mkdir -p ${this.config.tempDir}`
-            });
-            if (result.code === 0) {
-              // Directory created
-              tempDirSet = true;
-            } else {
-              // Directory not created
-            }
-          }
-
-          if (!tempDirSet) {
-            this.config.tempDir = `/tmp`;
-          }
-
-          if (tempLibrarySet && this.config.autoClearTempData) {
-            progress.report({
-              message: `Clearing temporary data.`
-            });
-
-            this.runCommand({
-              command: `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
-              noLibList: true,
-            })
-              .then(result => {
-                // All good!
-                if (result && result.stderr) {
-                  const messages = Tools.parseMessages(result.stderr);
-                  if (!messages.findId(`CPF2125`)) {
-                    // @ts-ignore We know the config exists.
-                    vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
-                      if (choice === `View log`) {
-                        this.outputChannel!.show();
-                      }
-                    });
-                  }
-                }
-              })
-
-            this.sendCommand({
-              command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
-            })
-              .then(result => {
-                // All good!
-              })
-              .catch(e => {
-                // CPF2125: No objects deleted.
-                // @ts-ignore We know the config exists.
-                vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
-                  if (choice === `View log`) {
-                    this.outputChannel!.show();
-                  }
-                });
-              });
-          }
-
-          const commandShellResult = await this.sendCommand({
-            command: `echo $SHELL`
-          });
-
-          if (commandShellResult.code === 0) {
-            this.shell = commandShellResult.stdout.trim();
-          }
-
-          // Check for bad data areas?
-          if (quickConnect() && cachedServerSettings?.badDataAreasChecked === true) {
-            // Do nothing, bad data areas are already checked.
-          } else {
-            progress.report({
-              message: `Checking for bad data areas.`
-            });
-
-            const QCPTOIMPF = await this.runCommand({
-              command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-              noLibList: true
-            });
-
-            if (QCPTOIMPF?.code === 0) {
-              vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
-                detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
-                modal: true,
-              }, `Delete`, `Read more`).then(choice => {
-                switch (choice) {
-                  case `Delete`:
-                    this.runCommand({
-                      command: `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
-                      noLibList: true
-                    })
-                      .then((result) => {
-                        if (result?.code === 0) {
-                          vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
-                        } else {
-                          vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
-                        }
-                      })
-                    break;
-                  case `Read more`:
-                    vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
-                    break;
-                }
-              });
-            }
-
-            const QCPFRMIMPF = await this.runCommand({
-              command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-              noLibList: true
-            });
-
-            if (QCPFRMIMPF?.code === 0) {
-              vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
-                modal: false,
-              }, `Delete`, `Read more`).then(choice => {
-                switch (choice) {
-                  case `Delete`:
-                    this.runCommand({
-                      command: `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
-                      noLibList: true
-                    })
-                      .then((result) => {
-                        if (result?.code === 0) {
-                          vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
-                        } else {
-                          vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
-                        }
-                      })
-                    break;
-                  case `Read more`:
-                    vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
-                    break;
-                }
-              });
-            }
-          }
-
-          // give user option to set bash as default shell.
-          if (this.remoteFeatures[`bash`]) {
+          //Next, we see what pase features are available (installed via yum)
+          //This may enable certain features in the future.
+          for (const feature of remoteApps) {
             try {
-              //check users default shell
+              progress.report({
+                message: `Checking installed components on host IBM i: ${feature.path}`
+              });
 
-              if (!commandShellResult.stderr) {
-                let usesBash = this.shell === IBMi.bashShellPath;
-                if (!usesBash) {
-                  // make sure chsh is installed
-                  if (this.remoteFeatures[`chsh`]) {
-                    vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
-                      switch (choice) {
-                        case `Set shell to bash`:
-                          const commandSetBashResult = await this.sendCommand({
-                            command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
-                          });
+              const call = await this.sendCommand({ command: `ls -p ${feature.path}${feature.specific || ``}` });
+              if (call.stdout) {
+                const files = call.stdout.split(`\n`);
 
-                          if (!commandSetBashResult.stderr) {
-                            vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
-                            usesBash = true;
-                          } else {
-                            vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
-                          }
-                          break;
-
-                        case `Read More`:
-                          vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
-                          break;
-                      }
-                    });
-                  }
-                }
-
-                if (usesBash) {
-                  //Ensure /QOpenSys/pkgs/bin is found in $PATH
-                  progress.report({
-                    message: `Checking /QOpenSys/pkgs/bin in $PATH.`
-                  });
-
-                  if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
-                    const currentPaths = (await this.sendCommand({ command: "echo $PATH" })).stdout.split(":");
-                    const bashrcFile = `${defaultHomeDir}/.bashrc`;
-                    let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
-                    let reason;
-                    const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
-                    let missingPath;
-                    for (const requiredPath of requiredPaths) {
-                      if (!currentPaths.includes(requiredPath)) {
-                        reason = `Your $PATH shell environment variable does not include ${requiredPath}`;
-                        missingPath = requiredPath
-                        break;
-                      }
-                    }
-                    // If reason is still undefined, then we know the user has all the required paths. Then we don't 
-                    // need to check for their existence before checking the order of the required paths.
-                    if (!reason &&
-                      (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
-                        || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
-                      reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
-                      missingPath = "/QOpenSys/pkgs/bin"
-                    }
-                    if (reason && await vscode.window.showWarningMessage(`${missingPath} not found in $PATH`, {
-                      modal: true,
-                      detail: `${reason}, so Code for IBM i may not function correctly. Would you like to ${bashrcExists ? "update" : "create"} ${bashrcFile} to fix this now?`,
-                    }, `Yes`)) {
-                      delayedOperations.push(async () => {
-                        this.appendOutput(`${bashrcExists ? "update" : "create"} ${bashrcFile}`);
-                        if (!bashrcExists) {
-                          // Add "/usr/bin" and "/QOpenSys/usr/bin" to the end of the path. This way we know that the user has 
-                          // all the required paths, but we don't overwrite the priority of other items on their path.
-                          const createBashrc = await this.sendCommand({ command: `echo "# Generated by Code for IBM i\nexport PATH=/QOpenSys/pkgs/bin:\\$PATH:/QOpenSys/usr/bin:/usr/bin" >> ${bashrcFile} && chown ${connectionObject.username.toLowerCase()} ${bashrcFile} && chmod 755 ${bashrcFile}` });
-                          if (createBashrc.code !== 0) {
-                            vscode.window.showWarningMessage(`Error creating ${bashrcFile}):\n${createBashrc.stderr}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
-                          }
-                        }
-                        else {
-                          try {
-                            const content = this.content;
-                            if (content) {
-                              const bashrcContent = (await content.downloadStreamfile(bashrcFile)).split("\n");
-                              let replaced = false;
-                              bashrcContent.forEach((line, index) => {
-                                if (!replaced) {
-                                  const pathRegex = /^((?:export )?PATH=)(.*)(?:)$/.exec(line);
-                                  if (pathRegex) {
-                                    bashrcContent[index] = `${pathRegex[1]}/QOpenSys/pkgs/bin:${pathRegex[2]
-                                      .replace("/QOpenSys/pkgs/bin", "") //Removes /QOpenSys/pkgs/bin wherever it is
-                                      .replace("::", ":")}:/QOpenSys/usr/bin:/usr/bin`; //Removes double : in case /QOpenSys/pkgs/bin wasn't at the end
-                                    replaced = true;
-                                  }
-                                }
-                              });
-
-                              if (!replaced) {
-                                bashrcContent.push(
-                                  "",
-                                  "# Generated by Code for IBM i",
-                                  "export PATH=/QOpenSys/pkgs/bin:$PATH:/QOpenSys/usr/bin:/usr/bin"
-                                );
-                              }
-
-                              await content.writeStreamfile(bashrcFile, bashrcContent.join("\n"));
-                            }
-                          }
-                          catch (error) {
-                            vscode.window.showWarningMessage(`Error modifying PATH in ${bashrcFile}):\n${error}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
-                          }
-                        }
-                      });
-                    }
-                  }
+                if (feature.specific) {
+                  for (const name of feature.names)
+                    this.remoteFeatures[name] = files.find(file => file.includes(name));
+                } else {
+                  for (const name of feature.names)
+                    if (files.includes(name))
+                      this.remoteFeatures[name] = feature.path + name;
                 }
               }
             } catch (e) {
-              // Oh well...trying to set default shell is not worth stopping for.
               console.log(e);
             }
           }
 
-          if (this.config.autoConvertIFSccsid) {
-            if (this.remoteFeatures.attr === undefined || this.remoteFeatures.iconv === undefined) {
-              this.config.autoConvertIFSccsid = false;
-              vscode.window.showWarningMessage(`EBCDIC streamfiles will not be rendered correctly since \`attr\` or \`iconv\` is not installed on the host. They should both exist in \`\\usr\\bin\`.`);
-            }
-          }
-
-          if (defaultHomeDir) {
-            if (!tempLibrarySet) {
-              vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
-                .then(result => {
-                  switch (result) {
-                    case `Open Settings`:
-                      vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
-                      break;
-                  }
-                });
-            }
-          } else {
-            vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory.`);
-          }
-
-          // Validate configured library list.
-          if (quickConnect() && cachedServerSettings?.libraryListValidated === true) {
-            // Do nothing, library list is already checked.
-          } else {
-            if (this.config.libraryList) {
-              progress.report({
-                message: `Validate configured library list`
-              });
-              let validLibs: string[] = [];
-              let badLibs: string[] = [];
-
-              const result = await this.sendQsh({
-                command: [
-                  `liblist -d ` + IBMi.escapeForShell(this.defaultUserLibraries.join(` `)),
-                  ...this.config.libraryList.map(lib => `liblist -a ` + IBMi.escapeForShell(lib))
-                ].join(`; `)
-              });
-
-              if (result.stderr) {
-                const lines = result.stderr.split(`\n`);
-
-                lines.forEach(line => {
-                  const badLib = this.config?.libraryList.find(lib => line.includes(`ibrary ${lib} `));
-
-                  // If there is an error about the library, store it
-                  if (badLib) badLibs.push(badLib);
-                });
-              }
-
-              if (result && badLibs.length > 0) {
-                validLibs = this.config.libraryList.filter(lib => !badLibs.includes(lib));
-                const chosen = await vscode.window.showWarningMessage(`The following ${badLibs.length > 1 ? `libraries` : `library`} does not exist: ${badLibs.join(`,`)}. Remove ${badLibs.length > 1 ? `them` : `it`} from the library list?`, `Yes`, `No`);
-                if (chosen === `Yes`) {
-                  this.config!.libraryList = validLibs;
-                } else {
-                  vscode.window.showWarningMessage(`The following libraries does not exist: ${badLibs.join(`,`)}.`);
-                }
-              }
-            }
-          }
-
-          let debugConfigLoaded = false
-          if ((!quickConnect || !cachedServerSettings?.debugConfigLoaded)) {
-            if (debugPTFInstalled()) {
-              try {
-                const debugServiceConfig = await new DebugConfiguration().load();
-                delete this.config.debugCertDirectory;
-                this.config.debugPort = debugServiceConfig.getOrDefault("DBGSRV_SECURED_PORT", "8005");
-                this.config.debugSepPort = debugServiceConfig.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
-                debugConfigLoaded = true;
-              }
-              catch (error) {
-                vscode.window.showWarningMessage(`Could not load debug service configuration: ${error}`);
-              }
-            }
-          }
-
-          if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
-            //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
-            this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
-          }
-          else {
-            this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
-          }
-
-          if (this.sqlRunnerAvailable()) {
-            // Check for ASP information?
-            if (quickConnect() && cachedServerSettings?.aspInfo) {
-              this.aspInfo = cachedServerSettings.aspInfo;
-            } else {
-              progress.report({
-                message: `Checking for ASP information.`
-              });
-
-              //This is mostly a nice to have. We grab the ASP info so user's do
-              //not have to provide the ASP in the settings.
-              try {
-                const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
-                resultSet.forEach(row => {
-                  if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                    this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
-                  }
-                });
-              } catch (e) {
-                //Oh well
-                progress.report({
-                  message: `Failed to get ASP information.`
-                });
-              }
-            }
-
-            // Fetch conversion values?
-            if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
-              this.qccsid = cachedServerSettings.qccsid;
-              this.userJobCcsid = cachedServerSettings.jobCcsid;
-              this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
-            } else {
-              progress.report({
-                message: `Fetching conversion values.`
-              });
-
-              // Next, we're going to see if we can get the CCSID from the user or the system.
-              // Some things don't work without it!!!
-              try {
-
-                // we need to grab the system CCSID (QCCSID)
-                const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
-                if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
-                  this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
-                }
-
-                // we grab the users default CCSID
-                const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
-                if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
-                  this.userJobCcsid = userInfo.CHARACTER_CODE_SET_ID;
-                }
-
-                // if the job ccsid is *SYSVAL, then assign it to sysval
-                if (this.userJobCcsid === IBMi.CCSID_SYSVAL) {
-                  this.userJobCcsid = this.qccsid;
-                }
-
-                // Let's also get the user's default CCSID
-                try {
-                  const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
-                  this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
-                }
-                catch (error) {
-                  const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
-                    .stdout
-                    .split("\n")
-                    .filter(line => line.includes("DFTCCSID"));
-
-                  const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
-                  if (defaultCCSCID && !isNaN(defaultCCSCID)) {
-                    this.userDefaultCCSID = defaultCCSCID;
-                  }
-                }
-
-              } catch (e) {
-                // Oh well!
-                console.log(e);
-              }
-            }
-
-            let userCcsidNeedsFixing = false;
-            let sshdCcsidMismatch = false;
-
-            const showCcsidWarning = (message: string) => {
-              vscode.window.showWarningMessage(message, `Show documentation`).then(choice => {
-                if (choice === `Show documentation`) {
-                  vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
-                }
-              });
-            }
-
-            if (this.canUseCqsh) {
-              // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
-              if (this.getCcsid() === IBMi.CCSID_NOCONVERSION) {
-                userCcsidNeedsFixing = true;
-              }
-            }
-            
-            else {
-              // If cqsh is not available, then we need to check the SSHD CCSID
-              this.sshdCcsid = await this.content.getSshCcsid();
-              if (this.sshdCcsid === this.getCcsid()) {
-                // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
-                // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
-                userCcsidNeedsFixing = false;
-              } else {
-                // If the SSHD CCSID does not match the job CCSID, then we need to warn the user
-                sshdCcsidMismatch = true;
-              }
-            }
-
-            if (userCcsidNeedsFixing) {
-              showCcsidWarning(`The job CCSID is set to ${IBMi.CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
-            } else if (sshdCcsidMismatch) {
-              showCcsidWarning(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`);
-            }
-
-            this.appendOutput(`\nCCSID information:\n`);
-            this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
-            this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
-            this.appendOutput(`\tUser Default CCSID: ${this.userDefaultCCSID}\n`);
-            if (this.sshdCcsid) {
-              this.appendOutput(`\tSSHD CCSID: ${this.sshdCcsid}\n`);
-            }
-
-            // We only do this check if we're on 7.3 or below.
-            if (this.systemVersion && this.systemVersion <= 7.3) {
-              progress.report({
-                message: `Checking PASE locale environment variables.`
-              });
-
-              const systemEnvVars = await this.content.getSysEnvVars();
-
-              const paseLang = systemEnvVars.PASE_LANG;
-              const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
-
-              if (paseLang === undefined || paseCcsid === undefined) {
-                showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
-              } else if (paseCcsid !== `1208`) {
-                showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
-              }
-            }
-
-            // We always need to fetch the local variants because 
-            // now we pickup CCSID changes faster due to cqsh
-            progress.report({
-              message: `Fetching local encoding values.`
-            });
-
-            const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
-              + `  values ( cast( x'7B' as varchar(1) )`
-              + `         , cast( x'7C' as varchar(1) )`
-              + `         , cast( x'5B' as varchar(1) ) )`
-              + `)`
-              + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
-
-            if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
-              this.variantChars.local = variants.LOCAL;
-            }
-          } else {
-            vscode.window.showWarningMessage(`The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
-          }
-
-          if (!reconnecting) {
-            vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
-            await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
-            for (const operation of delayedOperations) {
-              await operation();
-            }
-          }
-
-          instance.fire(`connected`);
-
-          GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
-            lastCheckedOnVersion: currentExtensionVersion,
-            aspInfo: this.aspInfo,
-            qccsid: this.qccsid,
-            jobCcsid: this.userJobCcsid,
-            remoteFeatures: this.remoteFeatures,
-            remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
-            badDataAreasChecked: true,
-            libraryListValidated: true,
-            pathChecked: true,
-            userDefaultCCSID: this.userDefaultCCSID,
-            debugConfigLoaded,
-            maximumArgsLength: this.maximumArgsLength
+          //Specific Java installations check
+          progress.report({
+            message: `Checking installed components on host IBM i: Java`
           });
+          const javaCheck = async (root: string) => await this.content.testStreamFile(`${root}/bin/java`, 'x') ? root : undefined;
+          this.remoteFeatures.jdk80 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk80/64bit`);
+          this.remoteFeatures.jdk11 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk11/64bit`);
+          this.remoteFeatures.openjdk11 = await javaCheck(`/QOpensys/pkgs/lib/jvm/openjdk-11`);
+          this.remoteFeatures.jdk17 = await javaCheck(`/QOpenSys/QIBM/ProdData/JavaVM/jdk17/64bit`);
+        }
 
-          return {
-            success: true
-          };
+        if (this.remoteFeatures.uname) {
+          progress.report({
+            message: `Checking OS version.`
+          });
+          const systemVersionResult = await this.sendCommand({ command: `${this.remoteFeatures.uname} -rv` });
+
+          if (systemVersionResult.code === 0) {
+            const version = systemVersionResult.stdout.trim().split(` `);
+            this.systemVersion = Number(`${version[1]}.${version[0]}`);
+          }
+        }
+
+        if (!this.systemVersion) {
+          vscode.window.showWarningMessage(`Unable to determine system version. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
+        } else if (this.systemVersion < 7.3) {
+          vscode.window.showWarningMessage(`IBM i ${this.systemVersion} is not supported. Code for IBM i only supports 7.3 and above. Some features may not work correctly.`);
+        }
+
+        progress.report({ message: `Checking Code for IBM i components.` });
+        await this.componentManager.startup();
+
+        const componentStates = await this.componentManager.getState();
+        this.appendOutput(`\nCode for IBM i components:\n`);
+        for (const state of componentStates) {
+          this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
+        }
+        this.appendOutput(`\n`);
+
+        progress.report({
+          message: `Checking library list configuration.`
         });
 
-      } catch (e: any) {
+        //Since the compiles are stateless, then we have to set the library list each time we use the `SYSTEM` command
+        //We setup the defaultUserLibraries here so we can remove them later on so the user can setup their own library list
+        let currentLibrary = `QGPL`;
+        this.defaultUserLibraries = [];
 
-        if (this.client.isConnected()) {
-          this.client.dispose();
+        const liblResult = await this.sendQsh({
+          command: `liblist`
+        });
+        if (liblResult.code === 0) {
+          const libraryListString = liblResult.stdout;
+          if (libraryListString !== ``) {
+            const libraryList = libraryListString.split(`\n`);
+
+            let lib, type;
+            for (const line of libraryList) {
+              lib = line.substring(0, 10).trim();
+              type = line.substring(12);
+
+              switch (type) {
+                case `USR`:
+                  this.defaultUserLibraries.push(lib);
+                  break;
+
+                case `CUR`:
+                  currentLibrary = lib;
+                  break;
+              }
+            }
+
+            //If this is the first time the config is made, then these arrays will be empty
+            if (this.config.currentLibrary.length === 0) {
+              this.config.currentLibrary = currentLibrary;
+            }
+            if (this.config.libraryList.length === 0) {
+              this.config.libraryList = this.defaultUserLibraries;
+            }
+          }
         }
 
-        if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
-          modal: true,
-          detail: `Reconnection to ${this.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
-        }, `Yes`)) {
-          return this.connect(connectionObject, true);
+        progress.report({
+          message: `Checking temporary library configuration.`
+        });
+
+        //Next, we need to check the temp lib (where temp outfile data lives) exists
+        const createdTempLib = await this.runCommand({
+          command: `CRTLIB LIB(${this.config.tempLibrary}) TEXT('Code for i temporary objects. May be cleared.')`,
+          noLibList: true
+        });
+
+        if (createdTempLib.code === 0) {
+          tempLibrarySet = true;
+        } else {
+          const messages = Tools.parseMessages(createdTempLib.stderr);
+          if (messages.findId(`CPF2158`) || messages.findId(`CPF2111`)) { //Already exists, hopefully ok :)
+            tempLibrarySet = true;
+          }
+          else if (messages.findId(`CPD0032`)) { //Can't use CRTLIB
+            const tempLibExists = await this.runCommand({
+              command: `CHKOBJ OBJ(QSYS/${this.config.tempLibrary}) OBJTYPE(*LIB)`,
+              noLibList: true
+            });
+
+            if (tempLibExists.code === 0) {
+              //We're all good if no errors
+              tempLibrarySet = true;
+            } else if (currentLibrary && !currentLibrary.startsWith(`Q`)) {
+              //Using ${currentLibrary} as the temporary library for temporary data.
+              this.config.tempLibrary = currentLibrary;
+              tempLibrarySet = true;
+            }
+          }
         }
 
-        let error = e;
-        if (e.code === "ENOTFOUND") {
-          error = `Host is unreachable. Check the connection's hostname/IP address.`;
+        progress.report({
+          message: `Checking temporary directory configuration.`
+        });
+
+        let tempDirSet = false;
+        // Next, we need to check if the temp directory exists
+        let result = await this.sendCommand({
+          command: `[ -d "${this.config.tempDir}" ]`
+        });
+
+        if (result.code === 0) {
+          // Directory exists
+          tempDirSet = true;
+        } else {
+          // Directory does not exist, try to create it
+          let result = await this.sendCommand({
+            command: `mkdir -p ${this.config.tempDir}`
+          });
+          if (result.code === 0) {
+            // Directory created
+            tempDirSet = true;
+          } else {
+            // Directory not created
+          }
         }
-        else if (e.code === "ECONNREFUSED") {
-          error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+
+        if (!tempDirSet) {
+          this.config.tempDir = `/tmp`;
         }
-        else if (e.level === "client-authentication") {
-          error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+
+        if (tempLibrarySet && this.config.autoClearTempData) {
+          progress.report({
+            message: `Clearing temporary data.`
+          });
+
+          this.runCommand({
+            command: `DLTOBJ OBJ(${this.config.tempLibrary}/O_*) OBJTYPE(*FILE)`,
+            noLibList: true,
+          })
+            .then(result => {
+              // All good!
+              if (result && result.stderr) {
+                const messages = Tools.parseMessages(result.stderr);
+                if (!messages.findId(`CPF2125`)) {
+                  // @ts-ignore We know the config exists.
+                  vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempLibrary}.`, `View log`).then(async choice => {
+                    if (choice === `View log`) {
+                      this.outputChannel!.show();
+                    }
+                  });
+                }
+              }
+            })
+
+          this.sendCommand({
+            command: `rm -rf ${path.posix.join(this.config.tempDir, `vscodetemp*`)}`
+          })
+            .then(result => {
+              // All good!
+            })
+            .catch(e => {
+              // CPF2125: No objects deleted.
+              // @ts-ignore We know the config exists.
+              vscode.window.showErrorMessage(`Temporary data not cleared from ${this.config.tempDir}.`, `View log`).then(async choice => {
+                if (choice === `View log`) {
+                  this.outputChannel!.show();
+                }
+              });
+            });
         }
+
+        const commandShellResult = await this.sendCommand({
+          command: `echo $SHELL`
+        });
+
+        if (commandShellResult.code === 0) {
+          this.shell = commandShellResult.stdout.trim();
+        }
+
+        // Check for bad data areas?
+        if (quickConnect() && cachedServerSettings?.badDataAreasChecked === true) {
+          // Do nothing, bad data areas are already checked.
+        } else {
+          progress.report({
+            message: `Checking for bad data areas.`
+          });
+
+          const QCPTOIMPF = await this.runCommand({
+            command: `CHKOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+            noLibList: true
+          });
+
+          if (QCPTOIMPF?.code === 0) {
+            vscode.window.showWarningMessage(`The data area QSYS/QCPTOIMPF exists on this system and may impact Code for IBM i functionality.`, {
+              detail: `For V5R3, the code for the command CPYTOIMPF had a major design change to increase functionality and performance. The QSYS/QCPTOIMPF data area lets developers keep the pre-V5R2 version of CPYTOIMPF. Code for IBM i cannot function correctly while this data area exists.`,
+              modal: true,
+            }, `Delete`, `Read more`).then(choice => {
+              switch (choice) {
+                case `Delete`:
+                  this.runCommand({
+                    command: `DLTOBJ OBJ(QSYS/QCPTOIMPF) OBJTYPE(*DTAARA)`,
+                    noLibList: true
+                  })
+                    .then((result) => {
+                      if (result?.code === 0) {
+                        vscode.window.showInformationMessage(`The data area QSYS/QCPTOIMPF has been deleted.`);
+                      } else {
+                        vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPTOIMPF. Code for IBM i may not work as intended.`);
+                      }
+                    })
+                  break;
+                case `Read more`:
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  break;
+              }
+            });
+          }
+
+          const QCPFRMIMPF = await this.runCommand({
+            command: `CHKOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+            noLibList: true
+          });
+
+          if (QCPFRMIMPF?.code === 0) {
+            vscode.window.showWarningMessage(`The data area QSYS/QCPFRMIMPF exists on this system and may impact Code for IBM i functionality.`, {
+              modal: false,
+            }, `Delete`, `Read more`).then(choice => {
+              switch (choice) {
+                case `Delete`:
+                  this.runCommand({
+                    command: `DLTOBJ OBJ(QSYS/QCPFRMIMPF) OBJTYPE(*DTAARA)`,
+                    noLibList: true
+                  })
+                    .then((result) => {
+                      if (result?.code === 0) {
+                        vscode.window.showInformationMessage(`The data area QSYS/QCPFRMIMPF has been deleted.`);
+                      } else {
+                        vscode.window.showInformationMessage(`Failed to delete the data area QSYS/QCPFRMIMPF. Code for IBM i may not work as intended.`);
+                      }
+                    })
+                  break;
+                case `Read more`:
+                  vscode.env.openExternal(vscode.Uri.parse(`https://github.com/codefori/vscode-ibmi/issues/476#issuecomment-1018908018`));
+                  break;
+              }
+            });
+          }
+        }
+
+        // give user option to set bash as default shell.
+        if (this.remoteFeatures[`bash`]) {
+          try {
+            //check users default shell
+
+            if (!commandShellResult.stderr) {
+              let usesBash = this.shell === IBMi.bashShellPath;
+              if (!usesBash) {
+                // make sure chsh is installed
+                if (this.remoteFeatures[`chsh`]) {
+                  vscode.window.showInformationMessage(`IBM recommends using bash as your default shell.`, `Set shell to bash`, `Read More`,).then(async choice => {
+                    switch (choice) {
+                      case `Set shell to bash`:
+                        const commandSetBashResult = await this.sendCommand({
+                          command: `/QOpenSys/pkgs/bin/chsh -s /QOpenSys/pkgs/bin/bash`
+                        });
+
+                        if (!commandSetBashResult.stderr) {
+                          vscode.window.showInformationMessage(`Shell is now bash! Reconnect for change to take effect.`);
+                          usesBash = true;
+                        } else {
+                          vscode.window.showInformationMessage(`Default shell WAS NOT changed to bash.`);
+                        }
+                        break;
+
+                      case `Read More`:
+                        vscode.env.openExternal(vscode.Uri.parse(`https://ibmi-oss-docs.readthedocs.io/en/latest/user_setup/README.html#step-4-change-your-default-shell-to-bash`));
+                        break;
+                    }
+                  });
+                }
+              }
+
+              if (usesBash) {
+                //Ensure /QOpenSys/pkgs/bin is found in $PATH
+                progress.report({
+                  message: `Checking /QOpenSys/pkgs/bin in $PATH.`
+                });
+
+                if ((!quickConnect || !cachedServerSettings?.pathChecked)) {
+                  const currentPaths = (await this.sendCommand({ command: "echo $PATH" })).stdout.split(":");
+                  const bashrcFile = `${defaultHomeDir}/.bashrc`;
+                  let bashrcExists = (await this.sendCommand({ command: `test -e ${bashrcFile}` })).code === 0;
+                  let reason;
+                  const requiredPaths = ["/QOpenSys/pkgs/bin", "/usr/bin", "/QOpenSys/usr/bin"]
+                  let missingPath;
+                  for (const requiredPath of requiredPaths) {
+                    if (!currentPaths.includes(requiredPath)) {
+                      reason = `Your $PATH shell environment variable does not include ${requiredPath}`;
+                      missingPath = requiredPath
+                      break;
+                    }
+                  }
+                  // If reason is still undefined, then we know the user has all the required paths. Then we don't 
+                  // need to check for their existence before checking the order of the required paths.
+                  if (!reason &&
+                    (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/usr/bin")
+                      || (currentPaths.indexOf("/QOpenSys/pkgs/bin") > currentPaths.indexOf("/QOpenSys/usr/bin")))) {
+                    reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
+                    missingPath = "/QOpenSys/pkgs/bin"
+                  }
+                  if (reason && await vscode.window.showWarningMessage(`${missingPath} not found in $PATH`, {
+                    modal: true,
+                    detail: `${reason}, so Code for IBM i may not function correctly. Would you like to ${bashrcExists ? "update" : "create"} ${bashrcFile} to fix this now?`,
+                  }, `Yes`)) {
+                    delayedOperations.push(async () => {
+                      this.appendOutput(`${bashrcExists ? "update" : "create"} ${bashrcFile}`);
+                      if (!bashrcExists) {
+                        // Add "/usr/bin" and "/QOpenSys/usr/bin" to the end of the path. This way we know that the user has 
+                        // all the required paths, but we don't overwrite the priority of other items on their path.
+                        const createBashrc = await this.sendCommand({ command: `echo "# Generated by Code for IBM i\nexport PATH=/QOpenSys/pkgs/bin:\\$PATH:/QOpenSys/usr/bin:/usr/bin" >> ${bashrcFile} && chown ${connectionObject.username.toLowerCase()} ${bashrcFile} && chmod 755 ${bashrcFile}` });
+                        if (createBashrc.code !== 0) {
+                          vscode.window.showWarningMessage(`Error creating ${bashrcFile}):\n${createBashrc.stderr}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
+                        }
+                      }
+                      else {
+                        try {
+                          const content = this.content;
+                          if (content) {
+                            const bashrcContent = (await content.downloadStreamfile(bashrcFile)).split("\n");
+                            let replaced = false;
+                            bashrcContent.forEach((line, index) => {
+                              if (!replaced) {
+                                const pathRegex = /^((?:export )?PATH=)(.*)(?:)$/.exec(line);
+                                if (pathRegex) {
+                                  bashrcContent[index] = `${pathRegex[1]}/QOpenSys/pkgs/bin:${pathRegex[2]
+                                    .replace("/QOpenSys/pkgs/bin", "") //Removes /QOpenSys/pkgs/bin wherever it is
+                                    .replace("::", ":")}:/QOpenSys/usr/bin:/usr/bin`; //Removes double : in case /QOpenSys/pkgs/bin wasn't at the end
+                                  replaced = true;
+                                }
+                              }
+                            });
+
+                            if (!replaced) {
+                              bashrcContent.push(
+                                "",
+                                "# Generated by Code for IBM i",
+                                "export PATH=/QOpenSys/pkgs/bin:$PATH:/QOpenSys/usr/bin:/usr/bin"
+                              );
+                            }
+
+                            await content.writeStreamfile(bashrcFile, bashrcContent.join("\n"));
+                          }
+                        }
+                        catch (error) {
+                          vscode.window.showWarningMessage(`Error modifying PATH in ${bashrcFile}):\n${error}.\n\n Code for IBM i may not function correctly. Please contact your system administrator.`, { modal: true });
+                        }
+                      }
+                    });
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            // Oh well...trying to set default shell is not worth stopping for.
+            console.log(e);
+          }
+        }
+
+        if (this.config.autoConvertIFSccsid) {
+          if (this.remoteFeatures.attr === undefined || this.remoteFeatures.iconv === undefined) {
+            this.config.autoConvertIFSccsid = false;
+            vscode.window.showWarningMessage(`EBCDIC streamfiles will not be rendered correctly since \`attr\` or \`iconv\` is not installed on the host. They should both exist in \`\\usr\\bin\`.`);
+          }
+        }
+
+        if (defaultHomeDir) {
+          if (!tempLibrarySet) {
+            vscode.window.showWarningMessage(`Code for IBM i will not function correctly until the temporary library has been corrected in the settings.`, `Open Settings`)
+              .then(result => {
+                switch (result) {
+                  case `Open Settings`:
+                    vscode.commands.executeCommand(`code-for-ibmi.showAdditionalSettings`);
+                    break;
+                }
+              });
+          }
+        } else {
+          vscode.window.showWarningMessage(`Code for IBM i may not function correctly until your user has a home directory.`);
+        }
+
+        // Validate configured library list.
+        if (quickConnect() && cachedServerSettings?.libraryListValidated === true) {
+          // Do nothing, library list is already checked.
+        } else {
+          if (this.config.libraryList) {
+            progress.report({
+              message: `Validate configured library list`
+            });
+            let validLibs: string[] = [];
+            let badLibs: string[] = [];
+
+            const result = await this.sendQsh({
+              command: [
+                `liblist -d ` + IBMi.escapeForShell(this.defaultUserLibraries.join(` `)),
+                ...this.config.libraryList.map(lib => `liblist -a ` + IBMi.escapeForShell(lib))
+              ].join(`; `)
+            });
+
+            if (result.stderr) {
+              const lines = result.stderr.split(`\n`);
+
+              lines.forEach(line => {
+                const badLib = this.config?.libraryList.find(lib => line.includes(`ibrary ${lib} `));
+
+                // If there is an error about the library, store it
+                if (badLib) badLibs.push(badLib);
+              });
+            }
+
+            if (result && badLibs.length > 0) {
+              validLibs = this.config.libraryList.filter(lib => !badLibs.includes(lib));
+              const chosen = await vscode.window.showWarningMessage(`The following ${badLibs.length > 1 ? `libraries` : `library`} does not exist: ${badLibs.join(`,`)}. Remove ${badLibs.length > 1 ? `them` : `it`} from the library list?`, `Yes`, `No`);
+              if (chosen === `Yes`) {
+                this.config!.libraryList = validLibs;
+              } else {
+                vscode.window.showWarningMessage(`The following libraries does not exist: ${badLibs.join(`,`)}.`);
+              }
+            }
+          }
+        }
+
+        let debugConfigLoaded = false
+        if ((!quickConnect || !cachedServerSettings?.debugConfigLoaded)) {
+          if (debugPTFInstalled()) {
+            try {
+              const debugServiceConfig = await new DebugConfiguration(this).load();
+              delete this.config.debugCertDirectory;
+              this.config.debugPort = debugServiceConfig.getOrDefault("DBGSRV_SECURED_PORT", "8005");
+              this.config.debugSepPort = debugServiceConfig.getOrDefault("DBGSRV_SEP_DAEMON_PORT", "8008");
+              debugConfigLoaded = true;
+            }
+            catch (error) {
+              vscode.window.showWarningMessage(`Could not load debug service configuration: ${error}`);
+            }
+          }
+        }
+
+        if ((!quickConnect || !cachedServerSettings?.maximumArgsLength)) {
+          //Compute the maximum admited length of a command's arguments. Source: Googling and https://www.in-ulm.de/~mascheck/various/argmax/#effectively_usable
+          this.maximumArgsLength = Number((await this.sendCommand({ command: "/QOpenSys/usr/bin/expr `/QOpenSys/usr/bin/getconf ARG_MAX` - `env|wc -c` - `env|wc -l` \\* 4 - 2048" })).stdout);
+        }
+        else {
+          this.maximumArgsLength = cachedServerSettings.maximumArgsLength;
+        }
+
+        if (this.sqlRunnerAvailable()) {
+          // Check for ASP information?
+          if (quickConnect() && cachedServerSettings?.aspInfo) {
+            this.aspInfo = cachedServerSettings.aspInfo;
+          } else {
+            progress.report({
+              message: `Checking for ASP information.`
+            });
+
+            //This is mostly a nice to have. We grab the ASP info so user's do
+            //not have to provide the ASP in the settings.
+            try {
+              const resultSet = await this.runSQL(`SELECT * FROM QSYS2.ASP_INFO`);
+              resultSet.forEach(row => {
+                if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
+                  this.aspInfo[Number(row.ASP_NUMBER)] = String(row.DEVICE_DESCRIPTION_NAME);
+                }
+              });
+            } catch (e) {
+              //Oh well
+              progress.report({
+                message: `Failed to get ASP information.`
+              });
+            }
+          }
+
+          // Fetch conversion values?
+          if (quickConnect() && cachedServerSettings?.jobCcsid !== null && cachedServerSettings?.userDefaultCCSID && cachedServerSettings?.qccsid) {
+            this.qccsid = cachedServerSettings.qccsid;
+            this.userJobCcsid = cachedServerSettings.jobCcsid;
+            this.userDefaultCCSID = cachedServerSettings.userDefaultCCSID;
+          } else {
+            progress.report({
+              message: `Fetching conversion values.`
+            });
+
+            // Next, we're going to see if we can get the CCSID from the user or the system.
+            // Some things don't work without it!!!
+            try {
+
+              // we need to grab the system CCSID (QCCSID)
+              const [systemCCSID] = await this.runSQL(`select SYSTEM_VALUE_NAME, CURRENT_NUMERIC_VALUE from QSYS2.SYSTEM_VALUE_INFO where SYSTEM_VALUE_NAME = 'QCCSID'`);
+              if (typeof systemCCSID.CURRENT_NUMERIC_VALUE === 'number') {
+                this.qccsid = systemCCSID.CURRENT_NUMERIC_VALUE;
+              }
+
+              // we grab the users default CCSID
+              const [userInfo] = await this.runSQL(`select CHARACTER_CODE_SET_ID from table( QSYS2.QSYUSRINFO( USERNAME => upper('${this.currentUser}') ) )`);
+              if (userInfo.CHARACTER_CODE_SET_ID !== `null` && typeof userInfo.CHARACTER_CODE_SET_ID === 'number') {
+                this.userJobCcsid = userInfo.CHARACTER_CODE_SET_ID;
+              }
+
+              // if the job ccsid is *SYSVAL, then assign it to sysval
+              if (this.userJobCcsid === IBMi.CCSID_SYSVAL) {
+                this.userJobCcsid = this.qccsid;
+              }
+
+              // Let's also get the user's default CCSID
+              try {
+                const [activeJob] = await this.runSQL(`Select DEFAULT_CCSID From Table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => '*', DETAILED_INFO => 'ALL' ))`);
+                this.userDefaultCCSID = Number(activeJob.DEFAULT_CCSID);
+              }
+              catch (error) {
+                const [defaultCCSID] = (await this.runCommand({ command: "DSPJOB OPTION(*DFNA)" }))
+                  .stdout
+                  .split("\n")
+                  .filter(line => line.includes("DFTCCSID"));
+
+                const defaultCCSCID = Number(defaultCCSID.split("DFTCCSID").at(1)?.trim());
+                if (defaultCCSCID && !isNaN(defaultCCSCID)) {
+                  this.userDefaultCCSID = defaultCCSCID;
+                }
+              }
+
+            } catch (e) {
+              // Oh well!
+              console.log(e);
+            }
+          }
+
+          let userCcsidNeedsFixing = false;
+          let sshdCcsidMismatch = false;
+
+          const showCcsidWarning = (message: string) => {
+            vscode.window.showWarningMessage(message, `Show documentation`).then(choice => {
+              if (choice === `Show documentation`) {
+                vscode.commands.executeCommand(`vscode.open`, `https://codefori.github.io/docs/tips/ccsid/`);
+              }
+            });
+          }
+
+          if (this.canUseCqsh) {
+            // If cqsh is available, but the user profile CCSID is bad, then cqsh won't work
+            if (this.getCcsid() === IBMi.CCSID_NOCONVERSION) {
+              userCcsidNeedsFixing = true;
+            }
+          }
+
+          else {
+            // If cqsh is not available, then we need to check the SSHD CCSID
+            this.sshdCcsid = await this.content.getSshCcsid();
+            if (this.sshdCcsid === this.getCcsid()) {
+              // If the SSHD CCSID matches the job CCSID (not the user profile!), then we're good.
+              // This means we can use regular qsh without worrying about translation because the SSHD and job CCSID match.
+              userCcsidNeedsFixing = false;
+            } else {
+              // If the SSHD CCSID does not match the job CCSID, then we need to warn the user
+              sshdCcsidMismatch = true;
+            }
+          }
+
+          if (userCcsidNeedsFixing) {
+            showCcsidWarning(`The job CCSID is set to ${IBMi.CCSID_NOCONVERSION}. This may cause issues with objects with variant characters. Please use CHGUSRPRF USER(${this.currentUser.toUpperCase()}) CCSID(${this.userDefaultCCSID}) to set your profile to the current default CCSID.`);
+          } else if (sshdCcsidMismatch) {
+            showCcsidWarning(`The CCSID of the SSH connection (${this.sshdCcsid}) does not match the job CCSID (${this.getCcsid()}). This may cause issues with objects with variant characters.`);
+          }
+
+          this.appendOutput(`\nCCSID information:\n`);
+          this.appendOutput(`\tQCCSID: ${this.qccsid}\n`);
+          this.appendOutput(`\tUser Job CCSID: ${this.userJobCcsid}\n`);
+          this.appendOutput(`\tUser Default CCSID: ${this.userDefaultCCSID}\n`);
+          if (this.sshdCcsid) {
+            this.appendOutput(`\tSSHD CCSID: ${this.sshdCcsid}\n`);
+          }
+
+          // We only do this check if we're on 7.3 or below.
+          if (this.systemVersion && this.systemVersion <= 7.3) {
+            progress.report({
+              message: `Checking PASE locale environment variables.`
+            });
+
+            const systemEnvVars = await this.content.getSysEnvVars();
+
+            const paseLang = systemEnvVars.PASE_LANG;
+            const paseCcsid = systemEnvVars.QIBM_PASE_CCSID;
+
+            if (paseLang === undefined || paseCcsid === undefined) {
+              showCcsidWarning(`The PASE environment variables PASE_LANG and QIBM_PASE_CCSID are not set correctly and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+            } else if (paseCcsid !== `1208`) {
+              showCcsidWarning(`The PASE environment variable QIBM_PASE_CCSID is not set to 1208 and is required for this OS version (${this.systemVersion}). This may cause issues with objects with variant characters.`);
+            }
+          }
+
+          // We always need to fetch the local variants because 
+          // now we pickup CCSID changes faster due to cqsh
+          progress.report({
+            message: `Fetching local encoding values.`
+          });
+
+          const [variants] = await this.runSQL(`With VARIANTS ( HASH, AT, DOLLARSIGN ) as (`
+            + `  values ( cast( x'7B' as varchar(1) )`
+            + `         , cast( x'7C' as varchar(1) )`
+            + `         , cast( x'5B' as varchar(1) ) )`
+            + `)`
+            + `Select HASH concat AT concat DOLLARSIGN as LOCAL from VARIANTS`);
+
+          if (typeof variants.LOCAL === 'string' && variants.LOCAL !== `null`) {
+            this.variantChars.local = variants.LOCAL;
+          }
+        } else {
+          vscode.window.showWarningMessage(`The SQL runner is not available. This could mean that VS Code will not work for this connection. See our documentation for more information.`)
+        }
+
+        if (!reconnecting) {
+          vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
+          await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
+          for (const operation of delayedOperations) {
+            await operation();
+          }
+        }
+
+        GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
+          lastCheckedOnVersion: currentExtensionVersion,
+          aspInfo: this.aspInfo,
+          qccsid: this.qccsid,
+          jobCcsid: this.userJobCcsid,
+          remoteFeatures: this.remoteFeatures,
+          remoteFeaturesKeys: Object.keys(this.remoteFeatures).sort().toString(),
+          badDataAreasChecked: true,
+          libraryListValidated: true,
+          pathChecked: true,
+          userDefaultCCSID: this.userDefaultCCSID,
+          debugConfigLoaded,
+          maximumArgsLength: this.maximumArgsLength
+        });
 
         return {
-          success: false,
-          error
+          success: true
         };
+      });
+
+    } catch (e: any) {
+
+      if (this.client.isConnected()) {
+        this.client.dispose();
       }
-      finally {
-        ConnectionConfiguration.update(this.config!);
+      if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+        modal: true,
+        detail: `Reconnection to ${this.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
+      }, `Yes`)) {
+        return this.connect(connectionObject, true);
       }
-    });
+
+      let error = e;
+      if (e.code === "ENOTFOUND") {
+        error = `Host is unreachable. Check the connection's hostname/IP address.`;
+      }
+      else if (e.code === "ECONNREFUSED") {
+        error = `Port ${connectionObject.port} is unreachable. Check the connection's port number or run command STRTCPSVR SERVER(*SSHD) on the host.`
+      }
+      else if (e.level === "client-authentication") {
+        error = `Check your credentials${e.message ? ` (${e.message})` : ''}.`;
+      }
+
+      return {
+        success: false,
+        error
+      };
+    }
+    finally {
+      ConnectionConfiguration.update(this.config!);
+    }
   }
 
   /**
@@ -1150,7 +1135,7 @@ export default class IBMi {
    *   `env` to customise them.
    */
   runCommand(data: RemoteCommand) {
-    return CompileTools.runCommand(instance, data);
+    return CompileTools.runCommand(this, data);
   }
 
   static escapeForShell(command: string) {
@@ -1166,7 +1151,7 @@ export default class IBMi {
       const customQsh = this.getComponent(cqsh)!;
       qshExecutable = await customQsh.getPath();
     }
-    
+
     if (this.requiresTranslation) {
       options.stdin = this.sysNameInAmerican(options.stdin);
       options.directory = options.directory ? this.sysNameInAmerican(options.directory) : undefined;
@@ -1255,7 +1240,7 @@ export default class IBMi {
     instance.fire(`disconnected`);
   }
 
-  async end() {
+  async dispose() {
     if (this.client.connection) {
       this.disconnect();
     }
@@ -1268,16 +1253,6 @@ export default class IBMi {
     if (this.outputChannelContent !== undefined) {
       this.outputChannelContent = undefined;
     }
-
-    await Promise.all([
-      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
-      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
-    ]);
-
-    instance.setConnection(undefined);
-    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
-    vscode.window.showInformationMessage(`Disconnected from ${this.currentHost}.`);
   }
 
   /**
@@ -1483,7 +1458,7 @@ export default class IBMi {
         const customQsh = this.getComponent(cqsh)!;
         command = `${await customQsh.getPath()} -c "system \\"call QSYS/QZDFMDB2 PARM('-d' '-i' '-t')\\""`;
       }
-      
+
       if (this.requiresTranslation) {
         // If we can't fix the input, then we can attempt to convert ourselves and then use the CSV.
         input = this.sysNameInAmerican(input);
