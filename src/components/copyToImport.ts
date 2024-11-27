@@ -1,8 +1,11 @@
+import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { WrapResult } from "../typings";
 import { ComponentState, IBMiComponent } from "./component";
 
-export class CopyToImport extends IBMiComponent {
+export class CopyToImport implements IBMiComponent {
+  static ID = 'CopyToImport';
+
   static isSimple(statement: string): boolean {
     statement = statement.trim();
     if (statement.endsWith(';')) {
@@ -13,20 +16,24 @@ export class CopyToImport extends IBMiComponent {
     return parts.length === 4 && parts[0].toUpperCase() === `SELECT` && parts[1] === `*` && parts[2].toUpperCase() === `FROM` && parts[3].includes(`.`);
   }
 
-  getIdentification() {
-    return { name: 'CopyToImport', version: 1 };
+  reset() {
+    //Nothing installed remotely
   }
 
-  protected getRemoteState(): ComponentState {
+  getIdentification() {
+    return { name: CopyToImport.ID, version: 1 };
+  }
+
+  getRemoteState(): ComponentState {
     return `Installed`;
   }
 
-  protected update(): ComponentState | Promise<ComponentState> {
+  update(): ComponentState | Promise<ComponentState> {
     return this.getRemoteState();
   }
 
-  wrap(statement: string): WrapResult {
-    const outStmf = this.connection.getTempRemote(Tools.makeid())!;
+  wrap(connection: IBMi, statement: string): WrapResult {
+    const outStmf = connection.getTempRemote(Tools.makeid())!;
 
     statement = statement.trim();
     if (statement.endsWith(';')) {
@@ -58,7 +65,7 @@ export class CopyToImport extends IBMiComponent {
       newStatements.push(`CREATE TABLE ${library}.${table} AS (${statement}) WITH DATA`);
     }
 
-    newStatements.push(`Call QSYS2.QCMDEXC('` + this.connection.content.toCl(`CPYTOIMPF`, {
+    newStatements.push(`Call QSYS2.QCMDEXC('` + connection.content.toCl(`CPYTOIMPF`, {
       FROMFILE: `${library!}/${table!} *FIRST`,
       TOSTMF: outStmf,
       MBROPT: `*REPLACE`,

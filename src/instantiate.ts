@@ -470,7 +470,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
             const selectionSplit = connection!.upperCaseName(selection).split('/')
             if (selectionSplit.length === 3 || selection.startsWith(`/`)) {
 
-              const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo);
+              const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID);
 
               // When selection is QSYS path
               if (!selection.startsWith(`/`) && infoComponent && connection) {
@@ -478,7 +478,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
                 const file = selectionSplit[1];
                 const member = path.parse(selectionSplit[2]);
                 member.ext = member.ext.substring(1);
-                const memberInfo = await infoComponent.getMemberInfo(library, file, member.name);
+                const memberInfo = await infoComponent.getMemberInfo(connection, library, file, member.name);
                 if (!memberInfo) {
                   vscode.window.showWarningMessage(`Source member ${library}/${file}/${member.base} does not exist.`);
                   return;
