@@ -19,7 +19,7 @@ export class cqsh extends IBMiComponent {
     return path.posix.join(installDir, this.getFileName());
   }
 
-  protected async getRemoteState(): Promise<ComponentState> {
+  async getRemoteState(): Promise<ComponentState> {
     const remotePath = await this.getPath();
     const result = await this.connection.content.testStreamFile(remotePath, "x");
 
@@ -36,7 +36,7 @@ export class cqsh extends IBMiComponent {
     return `Installed`;
   }
 
-  protected async update(): Promise<ComponentState> {
+  async update(): Promise<ComponentState> {
     const extensionPath = extensions.getExtension(`halcyontechltd.code-for-ibmi`)!.extensionPath;
     const remotePath = await this.getPath();
 

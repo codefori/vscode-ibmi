@@ -43,7 +43,9 @@ export class ComponentManager {
   public async startup() {
     const components = Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
     for (const Component of components) {
-      this.registered.set(Component, await new Component(this.connection).check());
+      const comp: IBMiComponent = await new Component(this.connection);
+      await comp.check();
+      this.registered.set(Component, comp);
     }
   }
 

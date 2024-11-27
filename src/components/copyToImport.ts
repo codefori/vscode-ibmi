@@ -17,11 +17,11 @@ export class CopyToImport extends IBMiComponent {
     return { name: 'CopyToImport', version: 1 };
   }
 
-  protected getRemoteState(): ComponentState {
+  getRemoteState(): ComponentState {
     return `Installed`;
   }
 
-  protected update(): ComponentState | Promise<ComponentState> {
+  update(): ComponentState | Promise<ComponentState> {
     return this.getRemoteState();
   }
 

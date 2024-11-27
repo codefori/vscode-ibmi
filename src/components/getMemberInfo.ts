@@ -12,7 +12,7 @@ export class GetMemberInfo extends IBMiComponent {
     return { name: 'GetMemberInfo', version: this.installedVersion };
   }
 
-  protected async getRemoteState(): Promise<ComponentState> {
+  async getRemoteState(): Promise<ComponentState> {
     const [result] = await this.connection.runSQL(`select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${this.connection.config?.tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
     if (result.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
@@ -28,7 +28,7 @@ export class GetMemberInfo extends IBMiComponent {
     return `Installed`;
   }
 
-  protected async update(): Promise<ComponentState> {
+  async update(): Promise<ComponentState> {
     const config = this.connection.config!;
     return this.connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);

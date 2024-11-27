@@ -7,11 +7,11 @@ export class GetNewLibl extends IBMiComponent {
     return { name: 'GetNewLibl', version: 1 };
   }
 
-  protected async getRemoteState(): Promise<ComponentState> {
+  async getRemoteState(): Promise<ComponentState> {
     return this.connection.remoteFeatures[`GETNEWLIBL.PGM`] ? `Installed` : `NotInstalled`;
   }
 
-  protected update(): Promise<ComponentState> {
+  update(): Promise<ComponentState> {
     const config = this.connection.config!
     const content = instance.getContent();
     return this.connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {

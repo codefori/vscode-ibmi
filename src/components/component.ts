@@ -34,10 +34,10 @@ export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
  */
 export abstract class IBMiComponent {
   public static readonly InstallDirectory = `$HOME/.vscode/`;
-  private state: ComponentState = `NotChecked`;
-  private cachedInstallDirectory: string | undefined;
+  state: ComponentState = `NotChecked`;
+  cachedInstallDirectory: string | undefined;
 
-  constructor(protected readonly connection: IBMi) {
+  constructor(readonly connection: IBMi) {
 
   }
 
@@ -53,11 +53,11 @@ export abstract class IBMiComponent {
     return this.cachedInstallDirectory;
   }
 
-  getState() {
+  getState(): ComponentState {
     return this.state;
   }
 
-  async check() {
+  async check(): Promise<ComponentState> {
     try {
       this.state = await this.getRemoteState();
       if (this.state !== `Installed`) {
@@ -70,7 +70,7 @@ export abstract class IBMiComponent {
       this.state = `Error`;
     }
 
-    return this;
+    return this.state;
   }
 
   toString() {
@@ -88,7 +88,7 @@ export abstract class IBMiComponent {
   /**
    * @returns the component's {@link ComponentState state} on the IBM i
    */
-  protected abstract getRemoteState(): ComponentState | Promise<ComponentState>;
+  abstract getRemoteState(): ComponentState | Promise<ComponentState>;
 
   /**
    * Called whenever the components needs to be installed or updated, depending on its {@link ComponentState state}.
@@ -97,5 +97,5 @@ export abstract class IBMiComponent {
    * 
    * @returns the component's {@link ComponentState state} after the update is done
    */
-  protected abstract update(): ComponentState | Promise<ComponentState>
+  abstract update(): ComponentState | Promise<ComponentState>
 }
