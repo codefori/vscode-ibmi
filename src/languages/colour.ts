@@ -52,7 +52,7 @@ async function askUserToStart() {
   const no = l10n.t(`No`);
   
   const chosen = await window.showInformationMessage(
-    l10n.t(`seuColours.warning`), 
+    l10n.t("This member contains invalid characters. Would you like to clean it up?"), 
     l10n.t(`Yes`), always, no);
 
   if (chosen === no) {
