@@ -45,7 +45,7 @@ export class CustomQSh implements IBMiComponent {
       return `Error`;
     }
 
-    await connection.uploadFiles([{ local: assetPath, remote: this.installPath }]);
+    await connection.getContent().uploadFiles([{ local: assetPath, remote: this.installPath }]);
 
     await connection.sendCommand({
       command: `chmod +x ${this.installPath}`,

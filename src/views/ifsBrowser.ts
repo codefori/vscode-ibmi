@@ -512,14 +512,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             try {
               if (filesToUpload.length) {
                 progress.report({ message: l10n.t(`sending {0} file(s)...`, filesToUpload.length) });
-                await connection.uploadFiles(filesToUpload, { concurrency: 5 });
+                await connection.getContent().uploadFiles(filesToUpload, { concurrency: 5 });
               }
 
               if (directoriesToUpload.length) {
                 for (const directory of directoriesToUpload) {
                   const name = path.basename(directory.fsPath);
                   progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
+                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
                 }
               }
 
@@ -875,19 +875,19 @@ Please type "{0}" to confirm deletion.`, dirName);
 
                     if (proceed) {
                       mkdirSync(target, { recursive: true });
-                      await ibmi.downloadDirectory(target, targetPath, { concurrency: 5 });
+                      await ibmi.getContent().downloadDirectory(target, targetPath, { concurrency: 5 });
                     }
                   }
                   else {
                     if (!existsSync(target) || await vscode.window.showWarningMessage(l10n.t(`{0} already exists.
 Do you want to replace it?`, target), { modal: true }, l10n.t(`{0} already exists.
 Do you want to replace it?`, target))) {
-                      await ibmi.downloadFile(target, targetPath);
+                      await ibmi.getContent().downloadFile(target, targetPath);
                     }
                   }
                 }
                 else {
-                  await ibmi.downloadFile(downloadLocation!, targetPath);
+                  await ibmi.getContent().downloadFile(downloadLocation!, targetPath);
                 }
               }
               vscode.window.showInformationMessage(l10n.t(`Download complete`), l10n.t(`Open`))
