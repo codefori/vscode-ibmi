@@ -1055,8 +1055,6 @@ export default class IBMi {
         }
 
         if (!reconnecting) {
-          vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
-          await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, true);
           for (const operation of delayedOperations) {
             await operation();
           }

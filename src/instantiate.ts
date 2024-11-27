@@ -61,6 +61,7 @@ export async function safeDisconnect(): Promise<boolean> {
 export async function loadAllofExtension(context: vscode.ExtensionContext) {
   // No connection when the extension is first activated
   vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false);
+  vscode.workspace.getConfiguration().update(`workbench.editor.enablePreview`, false, true);
 
   instance = new Instance(context);
   context.subscriptions.push(

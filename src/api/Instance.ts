@@ -80,8 +80,7 @@ export default class Instance {
       await Promise.all([
         vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
         vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-        vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser"),
-        vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, false)
+        vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
       ]);
   
       vscode.window.showInformationMessage(`Disconnected.`);
@@ -89,6 +88,8 @@ export default class Instance {
   }
 
   private async setConnection(connection?: IBMi) {
+    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, connection !== undefined);
+
     if (connection) {
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
