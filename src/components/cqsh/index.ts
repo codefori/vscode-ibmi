@@ -6,7 +6,7 @@ import IBMi from "../../api/IBMi";
 import { ComponentState, IBMiComponent } from "../component";
 
 export class CustomQSh implements IBMiComponent {
-  static ID = "CQSh";
+  static ID = "cqsh";
   installPath = "";
 
   getIdentification() {
