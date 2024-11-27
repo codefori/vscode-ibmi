@@ -1,6 +1,6 @@
 {
   "name": "@halcyontech/vscode-ibmi-types",
-  "version": "2.14.3-dev.0",
+  "version": "2.14.3",
   "description": "Types for vscode-ibmi",
   "typings": "./typings.d.ts",
   "scripts": {
