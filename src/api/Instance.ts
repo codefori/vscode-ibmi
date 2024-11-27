@@ -88,7 +88,6 @@ export default class Instance {
   }
 
   private async setConnection(connection?: IBMi) {
-    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, connection !== undefined);
 
     if (connection) {
       this.connection = connection;
@@ -100,6 +99,8 @@ export default class Instance {
       this.connection = undefined;
       this.storage.setConnectionName("");
     }
+
+    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, connection !== undefined);
   }
 
   getConnection() {

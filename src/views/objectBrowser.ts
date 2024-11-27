@@ -1307,16 +1307,6 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
   );
 }
 
-function getConfig() {
-  const config = instance.getConnection()?.getConfig();
-  if (config) {
-    return config;
-  }
-  else {
-    throw new Error(vscode.l10n.t(`Not connected to an IBM i`));
-  }
-}
-
 function getConnection() {
   const connection = instance.getConnection();
   if (connection) {
@@ -1327,9 +1317,12 @@ function getConnection() {
   }
 }
 
+function getConfig() {
+  return getConnection().getConfig();
+}
+
 function getContent() {
-  const content = getConnection().getContent();
-  return content;
+  return getConnection().getContent();
 }
 
 function storeMemberList(path: string, list: string[]) {
