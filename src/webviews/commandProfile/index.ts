@@ -5,8 +5,8 @@ import { instance } from "../../instantiate";
 
 export class CommandProfile {
   static async show(currentName?: string) {
-    let config = instance.getConfig();
-    const connection = instance.getConnection();
+    const connection = instance.getConnection()!;
+    let config = connection.getConfig();
 
     let currentSettings: ConnectionConfiguration.CommandProfile = {
       name: ``,

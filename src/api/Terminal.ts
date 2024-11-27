@@ -53,7 +53,7 @@ export namespace Terminal {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
-        const content = instance.getContent();
+        const content = instance.getConnection()?.getContent();
         if (content) {
           const ifsPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : path.dirname(ifsNode.path);
           const terminal = await selectAndOpen(context, instance, TerminalType.PASE);
@@ -73,8 +73,8 @@ export namespace Terminal {
 
   async function selectAndOpen(context: vscode.ExtensionContext, instance: Instance, openType?: TerminalType) {
     const connection = instance.getConnection();
-    const configuration = instance.getConfig();
-    if (connection && configuration) {
+    if (connection) {
+      const configuration = connection.getConfig();
       const type = openType || (await vscode.window.showQuickPick(typeItems, {
         placeHolder: `Select a terminal type`
       }))?.type;

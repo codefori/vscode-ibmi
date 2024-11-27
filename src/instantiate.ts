@@ -108,8 +108,9 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 }
 
 async function updateConnectedBar() {
-  const config = instance.getConfig();
-  if (config) {
+  const connection = instance.getConnection();
+  if (connection) {
+    const config = connection.getConfig();
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
   }
 
@@ -127,7 +128,8 @@ async function updateConnectedBar() {
 }
 
 async function onConnected() {
-  const config = instance.getConfig();
+  const connection = instance.getConnection()!;
+  const config = connection.getConfig();
 
   [
     connectedBarItem,
@@ -137,7 +139,7 @@ async function onConnected() {
   updateConnectedBar();
 
   // Enable the profile view if profiles exist.
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config.connectionProfiles || []).length > 0);
 }
 
 async function onDisconnected() {

@@ -5,7 +5,6 @@ import { ConnectionData } from "../typings";
 import { safeDisconnect } from "../instantiate";
 
 export function registerConnectionCommands(context: ExtensionContext, instance: Instance): Disposable[] {
-  const connection = instance.getConnection()!;
 
   return [
     commands.registerCommand(`code-for-ibmi.connectDirect`,

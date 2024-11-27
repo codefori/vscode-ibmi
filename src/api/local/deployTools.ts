@@ -76,7 +76,8 @@ export namespace DeployTools {
 
           methods.push({ method: "all" as DeploymentMethod, label: `All`, description: `Every file in the local workspace` });
 
-          const defaultDeploymentMethod = instance.getConfig()?.defaultDeploymentMethod as DeploymentMethod
+          const connection = instance.getConnection()!;
+          const defaultDeploymentMethod = connection.getConfig()?.defaultDeploymentMethod as DeploymentMethod
 
           if (methods.find((element) => element.method === defaultDeploymentMethod)) { // default deploy method is usable
             method = defaultDeploymentMethod

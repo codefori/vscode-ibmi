@@ -129,18 +129,21 @@ export class SourceDateHandler {
   }
 
   private onDidChangeTextSelection(event: vscode.TextEditorSelectionChangeEvent) {
-    if (this.enabled && this.sourceDateMode === "edit" && instance.getConfig()?.sourceDateGutter) {
+    if (this.enabled && this.sourceDateMode === "edit" && instance.getConnection()?.getConfig()?.sourceDateGutter) {
       this._editRefreshGutter(event.textEditor);
     }
   }
 
   private onDidChangeEditor(editor?: vscode.TextEditor) {
     if (this.enabled && editor) {
-      if (this.sourceDateMode === "edit" && instance.getConfig()?.sourceDateGutter) {
-        this._editRefreshGutter(editor);
-      }
-      else if (this.sourceDateMode === "diff") {
-        this._diffRefreshGutter(editor.document);
+      const connection = instance.getConnection();
+      if (connection) {
+        if (this.sourceDateMode === "edit" && connection.getConfig()?.sourceDateGutter) {
+          this._editRefreshGutter(editor);
+        }
+        else if (this.sourceDateMode === "diff") {
+          this._diffRefreshGutter(editor.document);
+        }
       }
     }
   }
@@ -344,89 +347,91 @@ export class SourceDateHandler {
   private _diffRefreshGutter(document: vscode.TextDocument) {
     if (document.uri.scheme === `member`) {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
 
-      if (connection && config && config.sourceDateGutter) {
-        const alias = getAliasName(document.uri);
+      if (connection) {
+        const config = connection.getConfig();
+        if (config.sourceDateGutter) {
+          const alias = getAliasName(document.uri);
 
-        const sourceDates = this.baseDates.get(alias);
-        if (sourceDates) {
-          const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
+          const sourceDates = this.baseDates.get(alias);
+          if (sourceDates) {
+            const dates = document.isDirty ? this.calcNewSourceDates(alias, document.getText()) : sourceDates;
 
-          let lineGutters: vscode.DecorationOptions[] = [];
-          let changedLined: vscode.DecorationOptions[] = [];
+            let lineGutters: vscode.DecorationOptions[] = [];
+            let changedLined: vscode.DecorationOptions[] = [];
 
-          const currentDate = currentStamp();
-          const currentDateNumber = Number(currentDate);
+            const currentDate = currentStamp();
+            const currentDateNumber = Number(currentDate);
 
-          const markdownString = [
-            `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`,
-            `---`,
-            `${this.highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`
-          ];
+            const markdownString = [
+              `[Show changes since last local save](command:workbench.files.action.compareWithSaved)`,
+              `---`,
+              `${this.highlightSince ? `[Clear date search](command:code-for-ibmi.member.clearDateSearch) | ` : ``}[New date search](command:code-for-ibmi.member.newDateSearch)`
+            ];
 
-          if (this.highlightSince) markdownString.push(`---`, `Changes from ${String(this.highlightSince) == currentDate ? `today` : this.highlightSince} highlighted`)
+            if (this.highlightSince) markdownString.push(`---`, `Changes from ${String(this.highlightSince) == currentDate ? `today` : this.highlightSince} highlighted`)
 
-          const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n`));
-          hoverMessage.isTrusted = true;
+            const hoverMessage = new vscode.MarkdownString(markdownString.join(`\n\n`));
+            hoverMessage.isTrusted = true;
 
-          // Due to the way source dates are stored, we're doing some magic.
-          // Dates are stored in zoned/character columns, which means 26th 
-          // August 2022 is 220826, 4th May 1997 means 970504.
+            // Due to the way source dates are stored, we're doing some magic.
+            // Dates are stored in zoned/character columns, which means 26th 
+            // August 2022 is 220826, 4th May 1997 means 970504.
 
-          // We support the ability to search and highlight dates after a
-          // certain date. The issue with these dates value when converted
-          // to numeric is that 970504 is more than 220826, even though
-          // 220826 is after 970504 in terms of dates.
+            // We support the ability to search and highlight dates after a
+            // certain date. The issue with these dates value when converted
+            // to numeric is that 970504 is more than 220826, even though
+            // 220826 is after 970504 in terms of dates.
 
-          // To get around this, if the line date or search date is less than
-          // or equal to the date of today, we add 1000000 (one million).
-          // 220826 + 1000000 = 1220826, which is more than 970504.
+            // To get around this, if the line date or search date is less than
+            // or equal to the date of today, we add 1000000 (one million).
+            // 220826 + 1000000 = 1220826, which is more than 970504.
 
-          const currentHighlightSince = this.highlightSince ? this.highlightSince + (this.highlightSince <= currentDateNumber ? 1000000 : 0) : undefined;
-          const currentHighlightBefore = this.highlightBefore ? this.highlightBefore + (this.highlightBefore <= currentDateNumber ? 1000000 : 0) : undefined;
+            const currentHighlightSince = this.highlightSince ? this.highlightSince + (this.highlightSince <= currentDateNumber ? 1000000 : 0) : undefined;
+            const currentHighlightBefore = this.highlightBefore ? this.highlightBefore + (this.highlightBefore <= currentDateNumber ? 1000000 : 0) : undefined;
 
-          for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
-            let highlightForSearch = false;
+            for (let cLine = 0; cLine < dates.length && cLine < document.lineCount; cLine++) {
+              let highlightForSearch = false;
 
-            // Add 1000000 to date if less than today.
-            let lineDateNumber = Number(dates[cLine]);
-            if (lineDateNumber <= currentDateNumber && lineDateNumber !== 0) {
-              lineDateNumber += 1000000;
-            }
+              // Add 1000000 to date if less than today.
+              let lineDateNumber = Number(dates[cLine]);
+              if (lineDateNumber <= currentDateNumber && lineDateNumber !== 0) {
+                lineDateNumber += 1000000;
+              }
 
-            if (currentHighlightSince && currentHighlightBefore)
-              highlightForSearch = lineDateNumber >= currentHighlightSince && lineDateNumber <= currentHighlightBefore;
-            else if (currentHighlightSince)
-              highlightForSearch = lineDateNumber >= currentHighlightSince;
-            else if (currentHighlightBefore)
-              highlightForSearch = lineDateNumber <= currentHighlightBefore;
+              if (currentHighlightSince && currentHighlightBefore)
+                highlightForSearch = lineDateNumber >= currentHighlightSince && lineDateNumber <= currentHighlightBefore;
+              else if (currentHighlightSince)
+                highlightForSearch = lineDateNumber >= currentHighlightSince;
+              else if (currentHighlightBefore)
+                highlightForSearch = lineDateNumber <= currentHighlightBefore;
 
-            lineGutters.push({
-              hoverMessage,
-              range: new vscode.Range(
-                new vscode.Position(cLine, 0),
-                new vscode.Position(cLine, 0)
-              ),
-              renderOptions: {
-                before: {
-                  contentText: dates[cLine],
-                  color: highlightForSearch ? seachGutterColor : (currentDate === dates[cLine] ? editedTodayColor : undefined)
+              lineGutters.push({
+                hoverMessage,
+                range: new vscode.Range(
+                  new vscode.Position(cLine, 0),
+                  new vscode.Position(cLine, 0)
+                ),
+                renderOptions: {
+                  before: {
+                    contentText: dates[cLine],
+                    color: highlightForSearch ? seachGutterColor : (currentDate === dates[cLine] ? editedTodayColor : undefined)
+                  },
                 },
-              },
-            });
+              });
 
-            if (highlightForSearch) {
-              changedLined.push({
-                range: document.lineAt(cLine).range
-              })
+              if (highlightForSearch) {
+                changedLined.push({
+                  range: document.lineAt(cLine).range
+                })
+              }
             }
-          }
 
-          const activeEditor = vscode.window.activeTextEditor;
-          if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
-            activeEditor.setDecorations(annotationDecoration, lineGutters);
-            activeEditor.setDecorations(lineDecor, changedLined);
+            const activeEditor = vscode.window.activeTextEditor;
+            if (activeEditor && activeEditor.document.uri.fsPath === document.uri.fsPath) {
+              activeEditor.setDecorations(annotationDecoration, lineGutters);
+              activeEditor.setDecorations(lineDecor, changedLined);
+            }
           }
         }
       }
@@ -476,8 +481,9 @@ export class SourceDateHandler {
 
   private toggleSourceDateGutter() {
     if (this.sourceDateMode === "diff") {
-      const config = instance.getConfig();
-      if (config) {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
         const currentValue = config.sourceDateGutter;
         config.sourceDateGutter = !currentValue;
 
@@ -540,7 +546,7 @@ export class SourceDateHandler {
 
     const editor = vscode.window.activeTextEditor;
     if (editor) {
-      instance.getConfig()!.sourceDateGutter = true;
+      instance.getConnection()!.getConfig()!.sourceDateGutter = true;
       this._diffRefreshGutter(editor.document);
     }
   }

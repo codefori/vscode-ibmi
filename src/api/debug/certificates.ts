@@ -179,7 +179,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       });
 
       //Check if encryption key exists too...because the encryption script can return 0 and an error in stdout in some cases.
-      if (!encryptResult.code && await instance.getContent()?.testStreamFile(posix.join(debugConfig.getRemoteServiceWorkDir(), "key.properties"), "r")) {
+      if (!encryptResult.code && await connection.getContent().testStreamFile(posix.join(debugConfig.getRemoteServiceWorkDir(), "key.properties"), "r")) {
         //After the certificates are generated/imported and the password is encrypted, we make a copy of the encryption key
         //because it gets deleted each time the service starts. The CODE4IDEBUG variable is here to run the script that will restore the key
         //when the service starts.
@@ -226,13 +226,8 @@ export async function remoteCertificatesExists(debugConfig?: DebugConfiguration)
 }
 
 export async function downloadClientCert(connection: IBMi) {
-  const content = instance.getContent();
-  if (content) {
-    await content.downloadStreamfileRaw((await new DebugConfiguration(connection).load()).getRemoteClientCertificatePath(), getLocalCertPath(connection));
-  }
-  else {
-    throw new Error("Not connected to an IBM i");
-  }
+  const content = connection.getContent();
+  await content.downloadStreamfileRaw((await new DebugConfiguration(connection).load()).getRemoteClientCertificatePath(), getLocalCertPath(connection));
 }
 
 export function getLocalCertPath(connection: IBMi) {

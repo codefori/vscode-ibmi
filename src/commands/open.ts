@@ -12,20 +12,20 @@ const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
 
 export function registerOpenCommands(instance: Instance): Disposable[] {
-  const connection = instance.getConnection()!;
 
   return [
     commands.registerCommand(`code-for-ibmi.openEditable`, async (path: string, options?: OpenEditableOptions) => {
+      const connection = instance.getConnection()!;
       console.log(path);
       options = options || {};
-      options.readonly = options.readonly || connection.getContent()?.isProtectedPath(path);
+      options.readonly = options.readonly || connection.getContent().isProtectedPath(path);
       if (!options.readonly) {
         if (path.startsWith('/')) {
-          options.readonly = !await instance.getContent()?.testStreamFile(path, "w");
+          options.readonly = !await connection.getContent().testStreamFile(path, "w");
         }
         else {
           const qsysObject = Tools.parseQSysPath(path);
-          const writable = await instance.getContent()?.checkObject({ library: qsysObject.library, name: qsysObject.name, type: '*FILE' }, ["*UPD"]);
+          const writable = await connection.getContent().checkObject({ library: qsysObject.library, name: qsysObject.name, type: '*FILE' }, ["*UPD"]);
           if (!writable) {
             options.readonly = true;
           }
@@ -47,10 +47,10 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
       try {
         if(options.position){
-          await commands.executeCommand(`openWith`, uri, 'default', { selection: options.position } as TextDocumentShowOptions);
+          await commands.executeCommand(`vscode.openWith`, uri, 'default', { selection: options.position } as TextDocumentShowOptions);
         }
         else{
-          await commands.executeCommand(`open`, uri);
+          await commands.executeCommand(`vscode.open`, uri);
         }
 
         // Add file to front of recently opened files list.
@@ -118,9 +118,11 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       };
 
       const LOADING_LABEL = `Please wait`;
-      const storage = instance.getStorage();
-      const content = instance.getContent();
       const connection = instance.getConnection();
+      if (!connection) return;
+      
+      const storage = instance.getStorage();
+      const content = connection?.getContent();
       let starRemoved: boolean = false;
 
       if (!storage && !content && !connection) return;

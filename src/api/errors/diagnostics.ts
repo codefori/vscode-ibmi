@@ -58,7 +58,7 @@ export function clearDiagnostic(uri: vscode.Uri, changeRange: vscode.Range) {
 }
 
 export async function refreshDiagnosticsFromServer(instance: Instance, evfeventInfo: EvfEventInfo) {
-  const content = instance.getContent();
+  const content = instance.getConnection()?.getContent();
 
   if (content) {
     const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
@@ -102,7 +102,6 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
 
 export function handleEvfeventLines(lines: string[], instance: Instance, evfeventInfo: EvfEventInfo) {
   const connection = instance.getConnection();
-  const config = instance.getConfig();
   const asp = evfeventInfo.asp ? `${evfeventInfo.asp}/` : ``;
 
   const errorsByFiles = parseErrors(lines);
@@ -129,6 +128,7 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
 
         diagnostic.code = error.code;
 
+        const config = connection?.getConfig();
         if (config) {
           if (!config.hideCompileErrors.includes(error.code)) {
             diagnostics.push(diagnostic);

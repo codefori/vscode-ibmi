@@ -27,8 +27,11 @@ export function getUriFromPath(path: string, options?: QsysFsOptions) {
 
 export function getFilePermission(uri: vscode.Uri): FilePermission | undefined {
     const fsOptions = parseFSOptions(uri);
-    if (instance.getConfig()?.readOnlyMode || fsOptions.readonly) {
-        return FilePermission.Readonly;
+    const connection = instance.getConnection();
+    if (connection) {
+        if (connection.getConfig()?.readOnlyMode || fsOptions.readonly) {
+            return FilePermission.Readonly;
+        }
     }
 }
 
@@ -40,7 +43,12 @@ export function parseFSOptions(uri: vscode.Uri): QsysFsOptions {
 }
 
 export function isProtectedFilter(filter?: string): boolean {
-    return filter && instance.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
+    const connection = instance.getConnection();
+    if (connection) {
+        return filter && connection.getConfig()?.objectFilters.find(f => f.name === filter)?.protected || false;
+    }
+
+    return false;
 }
 
 export class QSysFS implements vscode.FileSystemProvider {
@@ -161,9 +169,9 @@ export class QSysFS implements vscode.FileSystemProvider {
     }
 
     async readFile(uri: vscode.Uri, retrying?: boolean): Promise<Uint8Array> {
-        const contentApi = instance.getContent();
         const connection = instance.getConnection();
-        if (connection && contentApi) {
+        if (connection) {
+            const contentApi = connection.getContent();
             const { asp, library, file, name: member } = this.parseMemberPath(connection, uri.path);
 
             let memberContent;
@@ -205,9 +213,9 @@ export class QSysFS implements vscode.FileSystemProvider {
 
     async writeFile(uri: vscode.Uri, content: Uint8Array, options: { readonly create: boolean; readonly overwrite: boolean; }) {
         const path = uri.path;
-        const contentApi = instance.getContent();
         const connection = instance.getConnection();
-        if (connection && contentApi) {
+        if (connection) {
+            const contentApi = connection.getContent();
             const { asp, library, file, name: member, extension } = this.parseMemberPath(connection, uri.path);
             if (!content.length) { //Coming from "Save as"
                 const addMember = await connection.runCommand({

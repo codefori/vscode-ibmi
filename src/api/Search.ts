@@ -8,10 +8,10 @@ import { GetMemberInfo } from '../components/getMemberInfo';
 export namespace Search {
   export async function searchMembers(instance: Instance, library: string, sourceFile: string, searchTerm: string, members: string|IBMiMember[], readOnly?: boolean,): Promise<SearchResults> {
     const connection = instance.getConnection();
-    const config = instance.getConfig();
-    const content = instance.getContent();
 
-    if (connection && config && content) {
+    if (connection) {
+      const config = connection.getConfig();
+      const content = connection.getContent();
       let detailedMembers: IBMiMember[]|undefined;
       let memberFilter: string|undefined;
 

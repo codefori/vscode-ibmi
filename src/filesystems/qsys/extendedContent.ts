@@ -29,17 +29,18 @@ export class ExtendedIBMiContent {
    * @param {string} mbr 
    */
   async downloadMemberContentWithDates(uri: vscode.Uri) {
-    const content = instance.getContent();
-    const config = instance.getConfig();
     const connection = instance.getConnection();
-    if (connection && config && content) {
+    if (connection) {
+      const config = connection.getConfig();
+      const content = connection.getContent();
+
       const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
       const { library, file, name } = connection.parserMemberPath(uri.path);
       try {
-        await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${library}"."${file}"("${name}")`);
+        await connection.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${library}"."${file}"("${name}")`);
       } catch (e) {
         console.log(e);
       }
@@ -90,7 +91,8 @@ export class ExtendedIBMiContent {
    * @param {string} spf
    */
   private async getRecordLength(aliasPath: string, lib: string, spf: string): Promise<number> {
-    const content = instance.getContent();
+    const connection = instance.getConnection();
+    const content = connection!.getContent();
     let recordLength: number = DEFAULT_RECORD_LENGTH;
 
     if (content) {
@@ -118,8 +120,8 @@ export class ExtendedIBMiContent {
    */
   async uploadMemberContentWithDates(uri: vscode.Uri, body: string) {
     const connection = instance.getConnection();
-    const config = instance.getConfig();
-    if (connection && config) {
+    if (connection) {
+      const config = connection.getConfig();
       const setccsid = connection.remoteFeatures.setccsid;
 
       const tempLib = config.tempLibrary;

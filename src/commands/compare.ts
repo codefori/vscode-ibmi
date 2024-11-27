@@ -4,8 +4,6 @@ import Instance from "../api/Instance";
 let selectedForCompare: Uri;
 
 export function registerCompareCommands(instance: Instance): Disposable[] {
-  const connection = instance.getConnection()!;
-
   return [
     commands.registerCommand(`code-for-ibmi.selectForCompare`, async (node) => {
       if (node) {

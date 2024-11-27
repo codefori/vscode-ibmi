@@ -13,7 +13,7 @@ export class GetNewLibl extends IBMiComponent {
 
   protected update(): Promise<ComponentState> {
     const config = this.connection.getConfig()
-    const content = instance.getContent();
+    const content = this.connection.getContent();
     return this.connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 

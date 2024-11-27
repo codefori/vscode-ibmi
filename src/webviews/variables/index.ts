@@ -18,7 +18,7 @@ export class VariablesUI {
   }
 
   static async MainMenu() {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       let variables = config.customVariables;
 
@@ -53,7 +53,7 @@ export class VariablesUI {
    * @param {number} id Existing action index, or -1 for a brand new index
    */
   static async WorkVariable(id: number) {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       let allVariables = config.customVariables;
       let currentVariable;

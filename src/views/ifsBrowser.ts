@@ -20,7 +20,7 @@ type DragNDropBehavior = DragNDropAction | "ask";
 const getDragDropBehavior = () => GlobalConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
-  return PROTECTED_DIRS.test(path) || instance.getContent()?.isProtectedPath(path);
+  return PROTECTED_DIRS.test(path) || instance.getConnection()?.getContent()?.isProtectedPath(path);
 }
 
 function alwaysShow(name: string) {
@@ -44,7 +44,7 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   getShortCuts() {
-    return instance.getConfig()?.ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
+    return instance.getConnection()?.getConfig()?.ifsShortcuts.map(directory => new IFSShortcutItem(directory)) || [];
   }
 
   getParent(item: BrowserItem) {
@@ -52,7 +52,7 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async moveShortcut(shortcut: IFSShortcutItem, direction: "top" | "up" | "down" | "bottom") {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       const shortcuts = config.ifsShortcuts;
 
@@ -100,7 +100,7 @@ class IFSItem extends BrowserItem implements WithPath {
   constructor(readonly file: IFSFile, parameters: BrowserItemParameters) {
     super(file.name, parameters);
     this.path = file.path;
-    this.tooltip = instance.getContent()?.ifsFileToToolTip(this.path, file);
+    this.tooltip = instance.getConnection()?.getContent()?.ifsFileToToolTip(this.path, file);
   }
 
   sortBy(sort: SortOptions) {
@@ -155,10 +155,10 @@ class IFSDirectoryItem extends IFSItem {
   }
 
   async getChildren(): Promise<BrowserItem[]> {
-    const content = instance.getContent();
+    const content = instance.getConnection()?.getContent();
     if (content) {
       try {
-        const showHidden = instance.getConfig()?.showHiddenFiles;
+        const showHidden = instance.getConnection()?.getConfig()?.showHiddenFiles;
         const filterIFSFile = (file: IFSFile, type: "directory" | "streamfile") => file.type === type && (showHidden || !file.name.startsWith(`.`) || alwaysShow(file.name));
         const objects = await content.getFileList(this.path, this.sort, handleFileListErrors);
         const directories = objects.filter(f => filterIFSFile(f, "directory"));
@@ -321,7 +321,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.sortIFSFilesByDate`, (item: IFSItem) => item.sortBy({ order: "date" })),
 
     vscode.commands.registerCommand(`code-for-ibmi.changeWorkingDirectory`, async (node?: IFSDirectoryItem) => {
-      const config = instance.getConfig();
+      const config = instance.getConnection()?.getConfig();
       if (config) {
         const homeDirectory = config.homeDirectory;
 
@@ -343,9 +343,10 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.addIFSShortcut`, async (node?: IFSDirectoryItem) => {
-      const config = instance.getConfig();
-      const content = instance.getContent();
-      if (config && content) {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        const content = connection.getContent();
         const newDirectory = (await vscode.window.showInputBox({
           prompt: l10n.t(`Path to IFS directory`),
           value: node ? node.path : undefined
@@ -375,7 +376,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.removeIFSShortcut`, async (node: IFSShortcutItem) => {
-      const config = instance.getConfig();
+      const config = instance.getConnection()?.getConfig();
       if (config) {
         const shortcuts = config.ifsShortcuts;
         const removeDir = (node.path || (await vscode.window.showQuickPick(shortcuts, {
@@ -401,7 +402,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.sortIFSShortcuts`, async () => {
-      const config = instance.getConfig();
+      const config = instance.getConnection()?.getConfig();
 
       if (config) {
         try {
@@ -423,8 +424,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.createDirectory`, async (node?: IFSDirectoryItem) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (connection && config) {
+      if (connection) {
+        const config = connection.getConfig();
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
@@ -449,9 +450,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
     }),
 
     vscode.commands.registerCommand(`code-for-ibmi.createStreamfile`, async (node?: IFSDirectoryItem) => {
-      const config = instance.getConfig();
-      const content = instance.getContent();
-      if (config && content) {
+      const connection = instance.getConnection();
+      if (connection) {
+        const config = connection.getConfig();
+        const content = connection.getContent();
+
         const value = `${node?.path || config.homeDirectory}/`;
         const selectStart = value.length + 1;
         const fullName = await vscode.window.showInputBox({
@@ -480,9 +483,9 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.uploadStreamfile`, async (node: IFSDirectoryItem, files?: vscode.Uri[]) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
 
-      if (config && connection) {
+      if (connection) {
+        const config = connection.getConfig();
         const root = node?.path || config.homeDirectory;
 
         const chosenFiles = files || await showOpenDialog();
@@ -540,8 +543,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
 
     vscode.commands.registerCommand(`code-for-ibmi.deleteIFS`, async (singleItem: IFSItem, items?: IFSItem[]) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (connection && config) {
+      if (connection) {
+        const config = connection.getConfig();
         if (items || singleItem) {
           items = (items || [singleItem]).filter(reduceIFSPath);
         }
@@ -635,8 +638,8 @@ Please type "{0}" to confirm deletion.`, dirName);
         }
       }
       const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (config && connection) {
+      if (connection) {
+        const config = connection.getConfig();
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
           prompt: l10n.t(`Name of new path`),
@@ -683,10 +686,10 @@ Please type "{0}" to confirm deletion.`, dirName);
       }
     }),
     vscode.commands.registerCommand(`code-for-ibmi.copyIFS`, async (node: IFSItem) => {
-      const config = instance.getConfig();
       const connection = instance.getConnection();
 
-      if (config && connection) {
+      if (connection) {
+        const config = connection.getConfig();
         const homeDirectory = config.homeDirectory;
         const target = await vscode.window.showInputBox({
           prompt: l10n.t(`Name of new path`),
@@ -713,7 +716,7 @@ Please type "{0}" to confirm deletion.`, dirName);
 
     vscode.commands.registerCommand(`code-for-ibmi.searchIFS`, async (node?: IFSItem) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
+      const config = instance.getConnection()?.getConfig();
 
       if (connection?.remoteFeatures.grep && config) {
         const searchPath = node?.path || await vscode.window.showInputBox({
@@ -773,7 +776,7 @@ Please type "{0}" to confirm deletion.`, dirName);
 
     vscode.commands.registerCommand(`code-for-ibmi.ifs.find`, async (node?: IFSItem) => {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
+      const config = instance.getConnection()?.getConfig();
 
       if (connection?.remoteFeatures.find && config) {
         const findPath = node?.path || await vscode.window.showInputBox({
@@ -913,7 +916,7 @@ Do you want to replace it?`, target))) {
 }
 
 vscode.commands.registerCommand(`code-for-ibmi.ifs.toggleShowHiddenFiles`, async function () {
-  const config = instance.getConfig();
+  const config = instance.getConnection()?.getConfig();
   if (config) {
     config.showHiddenFiles = !config.showHiddenFiles;
     await ConnectionConfiguration.update(config);

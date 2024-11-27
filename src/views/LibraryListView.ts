@@ -19,9 +19,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
       vscode.commands.registerCommand(`code-for-ibmi.changeCurrentLibrary`, async () => {
         const connection = instance.getConnection();
-        const config = instance.getConfig();
         const storage = instance.getStorage();
-        if (connection && storage && config) {
+        if (connection && storage) {
+          const config = connection.getConfig();
+
           const currentLibrary = connection.upperCaseName(config.currentLibrary);
           let prevCurLibs = storage.getPreviousCurLibs();
           let list = [...prevCurLibs];
@@ -76,9 +77,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
       vscode.commands.registerCommand(`code-for-ibmi.changeUserLibraryList`, async () => {
         const connection = instance.getConnection();
-        const content = instance.getContent();
-        const config = instance.getConfig();
-        if (connection && content && config) {
+        if (connection) {
+          const content = connection.getContent();
+          const config = connection.getConfig();
+
           const libraryList = config.libraryList;
 
           const newLibraryListStr = await vscode.window.showInputBox({
@@ -117,10 +119,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.addToLibraryList`, async (newLibrary: WithLibrary) => {
-        const content = instance.getContent();
-        const config = instance.getConfig();
         const connection = instance.getConnection();
-        if (content && config && connection) {
+        if (connection) {
+          const content = connection.getContent();
+          const config = connection.getConfig();
           const addingLib = connection.upperCaseName(newLibrary.library);
 
           if (addingLib.length > 10) {
@@ -161,8 +163,8 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         if (node) {
           //Running from right click
           const connection = instance.getConnection();
-          const config = instance.getConfig();
-          if (connection && config) {
+          if (connection) {
+            const config = connection.getConfig();
             let libraryList = config.libraryList;
 
             let index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library)
@@ -181,9 +183,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       vscode.commands.registerCommand(`code-for-ibmi.moveLibraryUp`, async (node: LibraryListNode) => {
         if (node) {
           //Running from right click
-          const config = instance.getConfig();
           const connection = instance.getConnection();
-          if (connection && config) {
+          if (connection) {
+            const config = connection.getConfig();
             const libraryList = config.libraryList;
 
             const index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library);
@@ -202,9 +204,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       vscode.commands.registerCommand(`code-for-ibmi.moveLibraryDown`, async (node: LibraryListNode) => {
         if (node) {
           //Running from right click
-          const config = instance.getConfig();
           const connection = instance.getConnection();
-          if (connection && config) {
+          if (connection) {
+            const config = connection.getConfig();
             const libraryList = config.libraryList;
             const index = libraryList.findIndex(library => connection.upperCaseName(library) === node.library);
             if (index >= 0 && (index + 1) >= 0) {
@@ -220,9 +222,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.cleanupLibraryList`, async () => {
-        const content = instance.getContent();
-        const config = instance.getConfig();
-        if (config && content) {
+        const connection = instance.getConnection();
+        if (connection) {
+          const content = connection.getContent();
+          const config = connection.getConfig();
           let libraryList = [...config.libraryList];
           const badLibs = await content.validateLibraryList(libraryList);
 
@@ -241,10 +244,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
         const library = node.library;
         if (library) {
           const connection = instance.getConnection();
-          const content = instance.getContent();
-          const config = instance.getConfig();
           const storage = instance.getStorage();
-          if (connection && config && content && storage) {
+          if (connection && storage) {
+            const content = connection.getContent();
             if (await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
               await changeCurrentLibrary(library);
               this.refresh();
@@ -274,10 +276,10 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
     const items = [];
     const connection = instance.getConnection();
     if (connection) {
-      const content = instance.getContent();
-      const config = instance.getConfig();
       const connection = instance.getConnection();
-      if (connection && content && config) {
+      if (connection) {
+        const content = connection.getContent();
+        const config = connection.getConfig();
         const currentLibrary = connection.upperCaseName(config.currentLibrary);
 
         const libraries = await content.getLibraryList([currentLibrary, ...config.libraryList]);
@@ -300,15 +302,16 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
       ((context === `currentLibrary` ? `${l10n.t(`(current library)`)}` : ``)
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
         + (object.attribute !== `` ? ` (*${object.attribute})` : ``)).trim();
-    this.tooltip = instance.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
+    this.tooltip = instance.getConnection()?.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
   }
 }
 
 async function changeCurrentLibrary(library: string) {
   const connection = instance.getConnection();
-  const config = instance.getConfig();
   const storage = instance.getStorage();
-  if (connection && config && storage) {
+  if (connection && storage) {
+    const config = connection.getConfig();
+
     const commandResult = await connection.runCommand({ command: `CHGCURLIB ${library}`, noLibList: true });
     if (commandResult.code === 0) {
       const currentLibrary = connection.upperCaseName(config.currentLibrary);

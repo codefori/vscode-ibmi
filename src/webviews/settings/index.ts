@@ -45,8 +45,8 @@ export class SettingsUI {
           config = await ConnectionConfiguration.load(server.name);
 
         } else {
-          config = instance.getConfig()!;
-          if (connection && config) {
+          if (connection) {
+            config = connection.getConfig()!;
             // Reload config to initialize any new config parameters.
             config = await ConnectionConfiguration.load(config.name);
           } else {

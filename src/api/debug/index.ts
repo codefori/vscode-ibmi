@@ -46,8 +46,8 @@ export async function initialize(context: ExtensionContext) {
   const startDebugging = async (type: DebugType, objectType: DebugObjectType, objectLibrary: string, objectName: string, env?: Env) => {
     if (debugExtensionAvailable()) {
       const connection = instance.getConnection();
-      const config = instance.getConfig();
-      if (connection && config) {
+      if (connection) {
+        const config = connection.getConfig();
         if (connection.remoteFeatures[`startDebugService.sh`]) {
           const password = await getPassword();
 
@@ -120,9 +120,9 @@ export async function initialize(context: ExtensionContext) {
     if (cachedResolvedTypes[path]) {
       return cachedResolvedTypes[path];
     } else {
-      const content = instance.getContent()!;
+      const connection = instance.getConnection()!;
 
-      const [row] = await content.runSQL(`select OBJTYPE from table(qsys2.object_statistics('${library}', '*PGM *SRVPGM', '${objectName}')) X`) as { OBJTYPE: DebugObjectType }[];
+      const [row] = await connection.runSQL(`select OBJTYPE from table(qsys2.object_statistics('${library}', '*PGM *SRVPGM', '${objectName}')) X`) as { OBJTYPE: DebugObjectType }[];
 
       if (row) {
         cachedResolvedTypes[path] = row.OBJTYPE;
@@ -133,14 +133,14 @@ export async function initialize(context: ExtensionContext) {
 
   const getObjectFromUri = (uri: Uri, env?: Env) => {
     const connection = instance.getConnection();
-    const configuration = instance.getConfig();
 
     const qualifiedPath: {
       library: string | undefined,
       object: string | undefined
     } = { library: undefined, object: undefined };
 
-    if (connection && configuration) {
+    if (connection) {
+      const configuration = connection.getConfig();
 
       switch (uri.scheme) {
         case `member`:
@@ -278,8 +278,8 @@ export async function initialize(context: ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.debug.setup.remote`, (doSetup?: 'Generate' | 'Import') =>
       Tools.withContext("code-for-ibmi:debugWorking", async () => {
         const connection = instance.getConnection();
-        const content = instance.getContent();
-        if (connection && content) {
+        if (connection) {
+          const content = connection.getContent();
           const ptfInstalled = server.debugPTFInstalled();
 
           if (ptfInstalled) {
@@ -379,7 +379,7 @@ export async function initialize(context: ExtensionContext) {
     async () => {
       activateDebugExtension();
       const connection = instance.getConnection();
-      const content = instance.getContent();
+      const content = instance.getConnection()?.getContent();
       if (connection && content && server.debugPTFInstalled()) {
         vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
@@ -435,8 +435,8 @@ type DebugType = "batch" | "sep";
 type DebugObjectType = "*PGM" | "*SRVPGM";
 
 export async function startDebug(instance: Instance, options: DebugOptions) {
-  const connection = instance.getConnection();
-  const config = instance.getConfig();
+  const connection = instance.getConnection()!;
+  const config = connection.getConfig();
   const storage = instance.getStorage();
 
   const serviceDetails = await getDebugServiceDetails();

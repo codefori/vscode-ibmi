@@ -1308,7 +1308,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 }
 
 function getConfig() {
-  const config = instance.getConfig();
+  const config = instance.getConnection()?.getConfig();
   if (config) {
     return config;
   }
@@ -1328,13 +1328,8 @@ function getConnection() {
 }
 
 function getContent() {
-  const content = instance.getContent();
-  if (content) {
-    return content;
-  }
-  else {
-    throw new Error(vscode.l10n.t(`Not connected to an IBM i`));
-  }
+  const content = getConnection().getContent();
+  return content;
 }
 
 function storeMemberList(path: string, list: string[]) {

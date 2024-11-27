@@ -7,10 +7,9 @@ import Instance from "../api/Instance";
 import { BrowserItem, Action, DeploymentMethod } from "../typings";
 
 export function registerActionsCommands(instance: Instance): Disposable[] {
-  const connection = instance.getConnection()!;
-
   return [
     commands.registerCommand(`code-for-ibmi.runAction`, async (target: TreeItem | BrowserItem | Uri, group?: any, action?: Action, method?: DeploymentMethod, workspaceFolder?: WorkspaceFolder) => {
+      const connection = instance.getConnection()!;
       const editor = window.activeTextEditor;
       let uri;
       let browserItem;
@@ -29,8 +28,8 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
       uri = uri || editor?.document.uri;
 
       if (uri) {
-        const config = connection.getConfig();
-        if (config) {
+        if (connection) {
+          const config = connection.getConfig();
           let canRun = true;
           if (editor && uri.path === editor.document.uri.path && editor.document.isDirty) {
             if (config.autoSaveBeforeAction) {
@@ -93,9 +92,10 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
 
         let initialPath = ``;
         const editor = window.activeTextEditor;
-
-        if (editor) {
-          const config = instance.getConfig()!;
+        const connection = instance.getConnection();
+        
+        if (editor && connection) {
+          const config = connection.getConfig();
           const uri = editor.document.uri;
 
           if ([`member`, `streamfile`].includes(uri.scheme)) {

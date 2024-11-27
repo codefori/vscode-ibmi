@@ -52,10 +52,10 @@ export namespace Deployment {
       () => {
         const workspaces = vscode.workspace.workspaceFolders;
         const connection = instance.getConnection();
-        const config = instance.getConfig();
         const storage = instance.getStorage();
 
-        if (workspaces && connection && storage && config) {
+        if (workspaces && connection && storage) {
+          const config = connection.getConfig();
           if (workspaces.length > 0) {
             button.show();
           }
@@ -112,7 +112,7 @@ export namespace Deployment {
   }
 
   export function getContent() {
-    const content = instance.getContent();
+    const content = instance.getConnection()?.getContent();
     if (!content) {
       throw new Error("Please connect to an IBM i");
     }

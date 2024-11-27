@@ -246,9 +246,9 @@ function getExtensions(active: boolean) {
 
 async function getRemoteSection() {
   const connection = instance.getConnection();
-  const config = instance.getConfig();
-  const content = instance.getContent();
-  if (connection && config && content) {
+  if (connection) {
+    const config = connection.getConfig();
+    const content = connection.getContent();
     return await vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: `Gathering issue details...`,

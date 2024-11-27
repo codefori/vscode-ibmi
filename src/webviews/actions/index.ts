@@ -111,7 +111,7 @@ export namespace ActionsUI {
    * Edit an existing action
    */
   async function workAction(id: number, actionDefault?: Action) {
-    const config = instance.getConfig();
+    const config = instance.getConnection()?.getConfig();
     if (config) {
       const allActions = loadActions();
       let currentAction: Action;
