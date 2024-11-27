@@ -16,10 +16,6 @@ export class CopyToImport implements IBMiComponent {
     return parts.length === 4 && parts[0].toUpperCase() === `SELECT` && parts[1] === `*` && parts[2].toUpperCase() === `FROM` && parts[3].includes(`.`);
   }
 
-  reset() {
-    //Nothing installed remotely
-  }
-
   getIdentification() {
     return { name: CopyToImport.ID, version: 1 };
   }
