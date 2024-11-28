@@ -36,6 +36,11 @@ export interface ComplexTab {
   fields: Field[];
 }
 
+interface WebviewMessageRequest {
+  type: "submit"|"file";
+  data?: any;
+}
+
 export class Section {
   readonly fields: Field[] = [];
 
@@ -139,13 +144,13 @@ export class CustomUI extends Section {
    * @param callback
    * @returns a Promise<Page<T>> if no callback is provided
    */
-  loadPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
+  loadPage<T>(title: string): Promise<Page<T>> | undefined {
     const webview = openedWebviews.get(title);
     if (webview) {
       webview.reveal();
     }
     else {
-      return this.createPage(title, callback);
+      return this.createPage(title);
     }
   }
 
@@ -154,7 +159,7 @@ export class CustomUI extends Section {
     return this;
   }
 
-  private createPage<T>(title: string, callback?: (page: Page<T>) => void): Promise<Page<T>> | undefined {
+  private createPage<T>(title: string): Promise<Page<T>> | undefined {
     const panel = vscode.window.createWebviewPanel(
       `custom`,
       title,
@@ -172,39 +177,44 @@ export class CustomUI extends Section {
 
     openedWebviews.set(title, panel);
 
-    if (callback) {
+    const page = new Promise<Page<T>>((resolve) => {
       panel.webview.onDidReceiveMessage(
-        message => {
-          didSubmit = true;
-          callback({ panel, data: message });
+        (message: WebviewMessageRequest) => {
+          if (message.type && message.data) {
+            switch (message.type) {
+              case `submit`:
+                didSubmit = true;
+                resolve({ panel, data: message.data });
+                break;
+
+              case `file`:
+                const resultField = message.data.field;
+                if (resultField) {
+                  vscode.window.showOpenDialog({
+                    canSelectFiles: true,
+                    canSelectMany: false,
+                    canSelectFolders: false,
+                  }).then(result => {
+                    if (result) {
+                      panel.webview.postMessage({ type: `update`, field: resultField, value: result[0].fsPath });
+                    }
+                  });
+                }
+                break;
+            }
+          }
         }
       );
 
       panel.onDidDispose(() => {
         openedWebviews.delete(title);
         if (!didSubmit) {
-          callback({ panel });
-        }        
+          resolve({ panel });
+        }
       });
-    } else {
-      const page = new Promise<Page<T>>((resolve) => {
-        panel.webview.onDidReceiveMessage(
-          message => {
-            didSubmit = true;
-            resolve({ panel, data: message });
-          }
-        );
+    });
 
-        panel.onDidDispose(() => {
-          openedWebviews.delete(title);
-          if (!didSubmit) {
-            resolve({ panel });
-          }
-        });
-      });
-
-      return page;
-    }
+    return page;
   }
 
   private getHTML(panel: vscode.WebviewPanel, title: string) {
@@ -278,6 +288,26 @@ export class CustomUI extends Section {
             // Fields that have value which can be returned
             const submitfields = [${allFields.filter(field => !notInputFields.includes(field.type)).map(field => `'${field.id}'`).join(`,`)}];
 
+            window.addEventListener('message', event => {
+              const response = event.data;
+
+              if (response.type === 'update') {
+                const newValue = response.value;
+                const field = document.getElementById(response.field);
+                if (response.field && response.value) {
+                  const field = document.getElementById(response.field);
+                  if (field) {
+                    field.value = newValue;
+                    let innerInput = field.shadowRoot.querySelector("input");
+                    if (innerInput) {
+                      innerInput.value = newValue;
+                    }
+                  }
+                  validateInputs(response.field);
+                }
+              }
+            });
+
             const validateInputs = (optionalId) => {
               const testFields = optionalId ? inputFields.filter(theField => theField.id === optionalId) : inputFields
 
@@ -342,8 +372,15 @@ export class CustomUI extends Section {
                   data[checkbox] = (data[checkbox] && data[checkbox].length >= 1);
                 }
 
-                vscode.postMessage(data);
+                vscode.postMessage({ type: 'submit', data });
             };
+
+            const doFileRequest = (event, fieldId) => {
+                if (event)
+                    event.preventDefault();
+
+                vscode.postMessage({ type: 'file', data: {field: fieldId} });
+            }
 
             // Setup the input fields for validation
             for (const field of inputFields) {
@@ -395,18 +432,10 @@ export class CustomUI extends Section {
 
             // This is used to read the file in order to get the real path.
             for (const field of filefields) {
-              document.getElementById(field)
-                  .addEventListener('vsc-change', (e) => {
-                      const VirtualField = document.getElementById(e.target.id)
-                      let input = VirtualField.shadowRoot.querySelector("input");
-                      for (let file of Array.from(input.files)) {
-                          let reader = new FileReader();
-                          reader.addEventListener("load", () => {
-                            document.getElementById(e.target.id).setAttribute("value", file.path)   
-                          });
-                          reader.readAsText(file);
-                      }
-                  })
+                let fileButton = document.getElementById(field + '-file');
+                if (fileButton) {
+                  fileButton.onclick = (event) => doFileRequest(event, field);
+                }
             }
 
             document.addEventListener('DOMContentLoaded', () => {
@@ -551,7 +580,9 @@ export class Field {
           <vscode-form-group variant="settings-group">
               ${this.renderLabel()}
               ${this.renderDescription()}
-              <vscode-textfield type="file" id="${this.id}" name="${this.id}"></vscode-textfield>
+              <vscode-textfield type="input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} readonly></vscode-textfield>
+              <br /><br />
+              <vscode-button id="${this.id}-file" secondary>Select File</vscode-button>
           </vscode-form-group>`;
 
       case `password`:
