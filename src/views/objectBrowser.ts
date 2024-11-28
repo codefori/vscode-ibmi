@@ -727,7 +727,8 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               return vscode.l10n.t(`New member name must be different from it's current name`)
             }
 
-            if (!connection.validQsysName(value)) {
+            const parsedNewName = path.parse(value);
+            if (!connection.validQsysName(parsedNewName.name)) {
               return vscode.l10n.t(`Not a valid member name!`);
             }
             return undefined;
