@@ -136,7 +136,7 @@ export namespace Terminal {
 
     let emulatorTerminal: vscode.Terminal | undefined;
     await new Promise((resolve) => {
-      vscode.window.createTerminal({
+      emulatorTerminal = vscode.window.createTerminal({
         name: `IBM i ${terminalSettings.type}: ${connection.config?.name}`,
         location: terminalSettings.location,
         pty: {
@@ -196,11 +196,11 @@ export namespace Terminal {
       });
       channel.on(`error`, (err: Error) => {
         vscode.window.showErrorMessage(`Connection error: ${err.message}`);
-        emulatorTerminal.dispose();
+        emulatorTerminal!.dispose();
         channel.destroy();
       });
 
-      emulatorTerminal!.show();
+      emulatorTerminal.show();
       if (terminalSettings.type === TerminalType._5250) {
         channel.write([
           `/QOpenSys/pkgs/bin/tn5250`,
@@ -224,7 +224,7 @@ export namespace Terminal {
         context,
         'disconnected',
         `Dispose Terminal ${terminalCount++}`,
-        () => emulatorTerminal.dispose(),
+        () => emulatorTerminal!.dispose(),
         true);
 
       return emulatorTerminal;
