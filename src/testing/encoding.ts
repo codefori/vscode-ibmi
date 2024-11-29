@@ -92,6 +92,26 @@ export const EncodingSuite: TestSuite = {
       }
     },
     {
+      name: `Files and directories with spaces`, test: async () => {
+        const connection = instance.getConnection()!;
+
+        await connection.withTempDirectory(async tempDir => {
+          const dirWithSpace = path.posix.join(tempDir, `hello world`);
+          const fileName = `hello world.txt`;
+          const nameWithSpace = path.posix.join(dirWithSpace, fileName);
+
+          await connection.sendCommand({command: `mkdir -p "${dirWithSpace}"`});
+          await connection.content.createStreamFile(nameWithSpace);
+
+          const resolved = await connection.content.streamfileResolve([fileName], [tempDir, dirWithSpace]);
+          assert.strictEqual(resolved, nameWithSpace);
+
+          const attributes = await connection.content.getAttributes(resolved, `CCSID`);
+          assert.ok(attributes);
+        });
+      }
+    },
+    {
       name: `Run variants through shells`, test: async () => {
         const connection = instance.getConnection();
 
