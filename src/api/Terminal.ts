@@ -27,7 +27,7 @@ export namespace Terminal {
     }
   });
 
-  interface TerminalSettings {
+  type TerminalSettings = {
     type: TerminalType
     location: vscode.TerminalLocation
     encoding?: string
