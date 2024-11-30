@@ -83,7 +83,7 @@ const config = {
       },
       {
         test: /\.js$/,
-        include: path.resolve(__dirname, `node_modules/@bendera/vscode-webview-elements/dist`),
+        include: path.resolve(__dirname, `node_modules/@vscode-elements/elements/dist`),
         type: `asset/source`
       },
       {

@@ -2,7 +2,7 @@
 import vscode from 'vscode';
 
 //Webpack is returning this as a string
-const vscodeweb = require(`@bendera/vscode-webview-elements/dist/bundled`);
+const vscodeweb = require(`@vscode-elements/elements/dist/bundled`);
 
 type PanelOptions = {
   fullWidth?: boolean
@@ -445,7 +445,7 @@ export class CustomUI extends Section {
       return /*js*/`
                   currentTree = document.getElementById('${tree.id}');
                   currentTree.data = ${JSON.stringify(tree.treeList)};
-                  currentTree.addEventListener('vsc-select', (event) => {
+                  currentTree.addEventListener('vsc-tree-select', (event) => {
                     console.log(JSON.stringify(event.detail));
                     if (event.detail.itemType === 'leaf') {
                       vscode.postMessage({'${tree.id}': event.detail.value});
@@ -525,7 +525,7 @@ export class Field {
       case `checkbox`:
         return /* html */`
           <vscode-form-group variant="settings-group">
-            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``}><vscode-label>${this.label}</vscode-label></vscode-checkbox>
+            <vscode-checkbox id="${this.id}" name="${this.id}" ${this.default === `checked` ? `checked` : ``} label="${this.label}"></vscode-checkbox>
             ${this.renderDescription()}
           </vscode-form-group>`;
 
