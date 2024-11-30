@@ -92,6 +92,44 @@ export const EncodingSuite: TestSuite = {
       }
     },
     {
+      name: `Files and directories with spaces`, test: async () => {
+        const connection = instance.getConnection()!;
+
+        await connection.withTempDirectory(async tempDir => {
+          const dirName = `hello world`;
+          const dirWithSpace = path.posix.join(tempDir, dirName);
+          const fileName = `hello world.txt`;
+          const nameWithSpace = path.posix.join(dirWithSpace, fileName);
+
+          await connection.sendCommand({command: `mkdir -p "${dirWithSpace}"`});
+          await connection.content.createStreamFile(nameWithSpace);
+
+          // Resolve and get attributes
+          const resolved = await connection.content.streamfileResolve([fileName], [tempDir, dirWithSpace]);
+          assert.strictEqual(resolved, nameWithSpace);
+
+          const attributes = await connection.content.getAttributes(resolved, `CCSID`);
+          assert.ok(attributes);
+
+          // Write and read the files
+          const uri = Uri.from({scheme: `streamfile`, path: nameWithSpace});
+          await workspace.fs.writeFile(uri, Buffer.from(`Hello world`, `utf8`));
+
+          const streamfileContents = await workspace.fs.readFile(uri);
+          assert.ok(streamfileContents.toString().includes(`Hello world`));
+
+          // List files
+          const files = await connection.content.getFileList(tempDir);
+          assert.strictEqual(files.length, 1);
+          assert.ok(files.some(f => f.name === dirName && f.path === dirWithSpace));
+
+          const files2 = await connection.content.getFileList(dirWithSpace);
+          assert.strictEqual(files2.length, 1);
+          assert.ok(files2.some(f => f.name === fileName && f.path === nameWithSpace));
+        });
+      }
+    },
+    {
       name: `Run variants through shells`, test: async () => {
         const connection = instance.getConnection();
 
