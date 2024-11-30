@@ -1,6 +1,6 @@
 import vscode from "vscode";
 import { TestCase, TestSuite } from ".";
-import { CoverageCollection, CoverageCollector } from "./coverage";
+import { CaptureDetail, CoverageCollection, CoverageCollector } from "./coverage";
 
 class CoolTreeItem extends vscode.TreeItem {
     constructor(readonly label: string, readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None) {
@@ -68,15 +68,41 @@ class CoverageCollectionItem extends CoolTreeItem {
 }
 
 class CoverageMethodCountItem extends CoolTreeItem {
-    constructor(readonly method: string, readonly count: number) {
-        super(method, vscode.TreeItemCollapsibleState.None);
-        this.description = `${count}`;
+    constructor(readonly method: string, readonly detail: CaptureDetail) {
+        super(method, Object.keys(detail.usedInTests).length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+        this.description = `${detail.count}`;
 
-        if (count > 0) {
+        if (detail.count > 0) {
             this.iconPath = new vscode.ThemeIcon("pass", new vscode.ThemeColor("testing.iconPassed"));
         } else {
             this.iconPath = new vscode.ThemeIcon("symbol-method");
         }
+    }
+
+    async getChildren() {
+        let caseNodes: CoverageMethodTestReferenceItem[] = [];
+        for (const suite in this.detail.usedInTests) {
+            for (const test of this.detail.usedInTests[suite]) {
+
+                caseNodes.push(new CoverageMethodTestReferenceItem(suite, test));
+            }
+        }
+        return caseNodes;
+    }
+}
+
+class CoverageMethodTestReferenceItem extends CoolTreeItem {
+    constructor(readonly suite: string, readonly test: string) {
+        super(test, vscode.TreeItemCollapsibleState.None);
+
+        this.iconPath = new vscode.ThemeIcon("run");
+
+        this.description = suite;
+        this.command = {
+            command: `code-for-ibmi.testing.specific`,
+            arguments: [suite, test],
+            title: `Run test`
+        };
     }
 }
 

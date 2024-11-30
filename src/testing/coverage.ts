@@ -1,5 +1,4 @@
-import IBMi from "../api/IBMi";
-
+import { TestSuite } from ".";
 
 const IGNORE_METHODS = [`constructor`];
 
@@ -34,9 +33,27 @@ export class CoverageCollection {
   get() {
     return [...this.staticCollectors, ...this.instanceCollectors];
   }
+
+  addSuiteReferences(suites: TestSuite[]) {
+    this.reset();
+    
+    for (const suite of suites) {
+      for (const testcase of suite.tests) {
+        for (const collector of [...this.staticCollectors, ...this.instanceCollectors]) {
+          const functionBody = testcase.test.toString();
+
+          const possibleReferences = collector.getMethods().filter(method => functionBody.includes(method));
+          for (const method of possibleReferences) {
+            collector.addSuiteReference(suite.name, testcase.name, method);
+          }
+        }
+      }
+    }
+  }
 }
 
-export interface CapturedMethods { [key: string]: number };
+export interface CaptureDetail {count: number, usedInTests: {[suiteName: string]: string[]}};
+export interface CapturedMethods { [key: string]: CaptureDetail };
 
 export class CoverageCollector<T> {
   private name: string = `Unknown`;
@@ -74,17 +91,31 @@ export class CoverageCollector<T> {
     }
     
     for (const func of this.methodNames) {
-      this.captured[func] = 0;
+      this.captured[func] = {count: 0, usedInTests: {}};
     }
 
     this.wrap();
+  }
+
+  getMethods() {
+    return this.methodNames;
+  }
+
+  addSuiteReference(suiteName: string, testName: string, method: string) {
+    if (this.captured[method]) {
+      if (!this.captured[method].usedInTests[suiteName]) {
+        this.captured[method].usedInTests[suiteName] = [];
+      }
+
+      this.captured[method].usedInTests[suiteName].push(testName);
+    }
   }
 
   private wrap() {
     for (const method of this.methodNames) {
       const original = (this.instanceClass as any)[method];
       (this.instanceClass as any)[method] = (...args: any[]) => {
-        this.captured[method]++;
+        this.captured[method].count++;
         return original.apply(this.instanceClass, args);
       }
     }
@@ -96,13 +127,13 @@ export class CoverageCollector<T> {
 
   reset() {
     for (const method of this.methodNames) {
-      this.captured[method] = 0;
+      this.captured[method] = {count: 0, usedInTests: {}};
     }
   }
 
   getPercentCoverage() {
     const totalMethods = this.methodNames.length;
-    const capturedMethods = Object.keys(this.captured).filter(method => this.captured[method] > 0).length;
+    const capturedMethods = Object.keys(this.captured).filter(method => this.captured[method].count > 0).length;
     return Math.round((capturedMethods / totalMethods) * 100);
   }
 

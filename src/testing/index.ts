@@ -87,6 +87,8 @@ export function initialise(context: vscode.ExtensionContext) {
         coverage.addInstanceCollector(new CoverageCollector(connection.content));
       }
 
+      coverage.addSuiteReferences(suites);
+
       testSuitesTreeProvider.refresh();
 
       if (!testIndividually) {
