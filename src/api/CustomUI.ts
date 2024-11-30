@@ -375,6 +375,10 @@ export class CustomUI extends Section {
                 vscode.postMessage({ type: 'submit', data });
             };
 
+            const treeItemSubmit = (treeId, value) => {
+              vscode.postMessage({ type: 'submit', data: {treeId, value} });
+            }
+
             const doFileRequest = (event, fieldId) => {
                 if (event)
                     event.preventDefault();
@@ -448,7 +452,7 @@ export class CustomUI extends Section {
                   currentTree.addEventListener('vsc-tree-select', (event) => {
                     console.log(JSON.stringify(event.detail));
                     if (event.detail.itemType === 'leaf') {
-                      vscode.postMessage({'${tree.id}': event.detail.value});
+                      treeItemSubmit('${tree.id}', event.detail.value);
                     }
                   });
                   `
