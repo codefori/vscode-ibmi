@@ -226,11 +226,15 @@ export default class IBMi {
         this.currentPort = connectionObject.port;
         this.currentUser = connectionObject.username;
 
-        if (!reconnecting) {
+        if (this.outputChannel) {
+          this.appendOutput(`\n\nReconnecting to ${this.currentConnectionName}...\n\n`);
+
+        } else {
           this.outputChannel = vscode.window.createOutputChannel(`Code for IBM i: ${this.currentConnectionName}`);
-          this.outputChannelContent = '';
-          this.appendOutput(`Code for IBM i, version ${currentExtensionVersion}\n\n`);
         }
+
+        this.outputChannelContent = '';
+        this.appendOutput(`Code for IBM i, version ${currentExtensionVersion}\n\n`);
 
         let tempLibrarySet = false;
 
@@ -1091,13 +1095,10 @@ export default class IBMi {
       });
 
     } catch (e: any) {
-
-      if (this.client.isConnected()) {
-        this.client.dispose();
-      }
+      this.dispose();
       if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
         modal: true,
-        detail: `Reconnection to ${this.currentConnectionName} has failed. Would you like to try again?\n\n${e}`
+        detail: `Reconnection has failed. Would you like to try again?\n\n${e}`
       }, `Yes`)) {
         return this.connect(connectionObject, true);
       }
@@ -1241,9 +1242,11 @@ export default class IBMi {
   }
 
   private async disconnect() {
-    this.client.connection?.removeAllListeners();
-    this.client.dispose();
-    this.client.connection = null;
+    if (this.client) {
+      this.client.connection?.removeAllListeners();
+      this.client.dispose();
+      this.client.connection = null;
+    }
     instance.fire(`disconnected`);
   }
 
