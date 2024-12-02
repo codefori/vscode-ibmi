@@ -396,7 +396,6 @@ export class SettingsUI {
                       // then remove the password from the data and
                       // use the keypath instead
                       data.privateKeyPath = Tools.normalizePath(data.privateKeyPath);
-                      console.log(data.privateKeyPath)
                       await ConnectionManager.deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(vscode.l10n.t(`Private key updated and will be used for "{0}".`, name));
                     }
