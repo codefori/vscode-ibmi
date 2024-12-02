@@ -1,4 +1,5 @@
 /* eslint-disable indent */
+import os from "os";
 import vscode from 'vscode';
 
 //Webpack is returning this as a string
@@ -37,7 +38,7 @@ export interface ComplexTab {
 }
 
 interface WebviewMessageRequest {
-  type: "submit"|"file";
+  type: "submit" | "file";
   data?: any;
 }
 
@@ -72,8 +73,10 @@ export class Section {
     return this;
   }
 
-  addFile(id: string, label: string, description?: string) {
-    this.addField(new Field('file', id, label, description));
+  addFile(id: string, label: string, description?: string, homeAsVar?: boolean) {
+    const fileInput = new Field('file', id, label, description);
+    fileInput.homeAsVar = homeAsVar;
+    this.addField(fileInput);
     return this;
   }
 
@@ -194,11 +197,17 @@ export class CustomUI extends Section {
                     canSelectFiles: true,
                     canSelectMany: false,
                     canSelectFolders: false,
-                  }).then(result => {
-                    if (result) {
-                      panel.webview.postMessage({ type: `update`, field: resultField, value: result[0].fsPath });
-                    }
-                  });
+                  })
+                    .then(selected => selected?.at(0)?.fsPath)
+                    .then(path => {
+                      if (path) {
+                        const filePath = message.data.translateHomeVar && path.startsWith(os.homedir()) ?
+                          path.replace(os.homedir(), '~') :
+                          path;
+                        console.log(filePath);
+                        panel.webview.postMessage({ type: `update`, field: resultField, value: filePath });
+                      }
+                    });
                 }
                 break;
             }
@@ -379,11 +388,11 @@ export class CustomUI extends Section {
               vscode.postMessage({ type: 'submit', data: {treeId, value} });
             }
 
-            const doFileRequest = (event, fieldId) => {
+            const doFileRequest = (event, fieldId, translateHomeVar) => {
                 if (event)
                     event.preventDefault();
 
-                vscode.postMessage({ type: 'file', data: {field: fieldId} });
+                vscode.postMessage({ type: 'file', data: {field: fieldId, translateHomeVar} });
             }
 
             // Setup the input fields for validation
@@ -438,7 +447,7 @@ export class CustomUI extends Section {
             for (const field of filefields) {
                 let fileButton = document.getElementById(field + '-file');
                 if (fileButton) {
-                  fileButton.onclick = (event) => doFileRequest(event, field);
+                  fileButton.onclick = (event) => doFileRequest(event, field, fileButton.dataset.homevar === "true");
                 }
             }
 
@@ -505,6 +514,8 @@ export class Field {
   public minlength?: number;
   public maxlength?: number;
   public regexTest?: string;
+
+  public homeAsVar?: boolean;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
@@ -586,7 +597,7 @@ export class Field {
               ${this.renderDescription()}
               <vscode-textfield type="input" id="${this.id}" name="${this.id}" ${this.default ? `value="${this.default}"` : ``} readonly></vscode-textfield>
               <br /><br />
-              <vscode-button id="${this.id}-file" secondary>Select File</vscode-button>
+              <vscode-button id="${this.id}-file" secondary ${this.homeAsVar ? ' data-homevar="true"' : ''}>Select File</vscode-button>
           </vscode-form-group>`;
 
       case `password`:
