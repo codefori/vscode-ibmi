@@ -957,15 +957,15 @@ export default class IBMiContent {
       target = localPath;
     }
 
-    target = IBMi.escapeForShell(target);
-
     let result: CommandResult;
 
     if (assumeMember) {
+      target = IBMi.escapeForShell(target);
       result = await this.ibmi.sendQsh({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`});
     } else {
+      target = Tools.escapePath(target, true);
       // Take {DOES_THIS_WORK: `YESITDOES`} away, and all of a sudden names with # aren't found.
-      result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`, env: {DOES_THIS_WORK: `YESITDOES`}});
+      result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p "${target}" ${operands.join(" ")}`, env: {DOES_THIS_WORK: `YESITDOES`}});
     }
 
     if (result.code === 0) {

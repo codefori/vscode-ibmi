@@ -9,8 +9,8 @@ import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typi
 import { getVariablesInfo } from "./varinfo";
 
 type MainMenuPage = {
-  buttons: 'newAction' | 'duplicateAction'
-  actions: number
+  buttons?: 'newAction' | 'duplicateAction'
+  value: string
 }
 
 type ActionPage = {
@@ -76,7 +76,7 @@ export namespace ActionsUI {
           duplicateAction();
           break;
         default:
-          workAction(page.data.actions);
+          workAction(Number(page.data.value));
           break;
       }
     }
