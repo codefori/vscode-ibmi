@@ -29,7 +29,7 @@ export class TestSuitesTreeProvider implements vscode.TreeDataProvider<CoolTreeI
             return element.getChildren();
         } else {
             return [
-                new CoverageListItem(this.coverageCollection),
+                new CoverageListItem(this.coverageCollection, this.testSuites),
                 new TestSuitesItem(this.testSuites)
             ]
         }
@@ -37,17 +37,17 @@ export class TestSuitesTreeProvider implements vscode.TreeDataProvider<CoolTreeI
 }
 
 class CoverageListItem extends CoolTreeItem {
-    constructor(readonly coverages: CoverageCollection) {
+    constructor(readonly coverages: CoverageCollection, readonly suites: TestSuite[]) {
         super("Coverage", vscode.TreeItemCollapsibleState.Expanded);
     }
 
     async getChildren() {
-        return this.coverages.get().map(collector => new CoverageCollectionItem(collector));
+        return this.coverages.get().map(collector => new CoverageCollectionItem(collector, this.suites));
     }
 }
 
 class CoverageCollectionItem extends CoolTreeItem {
-    constructor(readonly collector: CoverageCollector<any>) {
+    constructor(readonly collector: CoverageCollector<any>, readonly suites: TestSuite[]) {
         super(collector.getName(), vscode.TreeItemCollapsibleState.Collapsed);
         const percentage = collector.getPercentCoverage();
         this.description = `${percentage}% covered`;
@@ -63,12 +63,12 @@ class CoverageCollectionItem extends CoolTreeItem {
 
     async getChildren() {
         const coverage = this.collector.getCoverage();
-        return Object.keys(coverage).map(method => new CoverageMethodCountItem(method, coverage[method]));
+        return Object.keys(coverage).map(method => new CoverageMethodCountItem(method, coverage[method], this.suites));
     }
 }
 
 class CoverageMethodCountItem extends CoolTreeItem {
-    constructor(readonly method: string, readonly detail: CaptureDetail) {
+    constructor(readonly method: string, readonly detail: CaptureDetail, readonly suites: TestSuite[]) {
         super(method, Object.keys(detail.usedInTests).length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
         this.description = `${detail.count}`;
 
@@ -80,29 +80,20 @@ class CoverageMethodCountItem extends CoolTreeItem {
     }
 
     async getChildren() {
-        let caseNodes: CoverageMethodTestReferenceItem[] = [];
+        let cases: TestCaseItem[] = [];
         for (const suite in this.detail.usedInTests) {
             for (const test of this.detail.usedInTests[suite]) {
+                const suiteObj = this.suites.find(s => s.name === suite);
+                if (suiteObj) {
+                    const testObj = suiteObj.tests.find(t => t.name === test);
+                    if (testObj) {
+                        cases.push(new TestCaseItem(suiteObj, testObj));
+                    }
+                }
 
-                caseNodes.push(new CoverageMethodTestReferenceItem(suite, test));
             }
         }
-        return caseNodes;
-    }
-}
-
-class CoverageMethodTestReferenceItem extends CoolTreeItem {
-    constructor(readonly suite: string, readonly test: string) {
-        super(test, vscode.TreeItemCollapsibleState.None);
-
-        this.iconPath = new vscode.ThemeIcon("run");
-
-        this.description = suite;
-        this.command = {
-            command: `code-for-ibmi.testing.specific`,
-            arguments: [suite, test],
-            title: `Run test`
-        };
+        return cases;
     }
 }
 
