@@ -359,7 +359,7 @@ export class SettingsUI {
               .addInput(`username`, vscode.l10n.t(`Username`), undefined, { default: stored.username, minlength: 1 })
               .addParagraph(vscode.l10n.t(`Only provide either the password or a private key - not both.`))
               .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
-              .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${stored.privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${stored.privateKeyPath})` : ``}`, vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."), true)
+              .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${stored.privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${stored.privateKeyPath})` : ``}`, vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
               .addButtons(
                 { id: `submitButton`, label: vscode.l10n.t(`Save`), requiresValidation: true },
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
