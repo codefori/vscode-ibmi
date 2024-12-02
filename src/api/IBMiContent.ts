@@ -697,8 +697,8 @@ export default class IBMiContent {
    * @returns
    */
   getMemberInfo(library: string, sourceFile: string, member: string) {
-    const component = this.ibmi.getComponent<GetMemberInfo>(GetMemberInfo)!;
-    return component.getMemberInfo(library, sourceFile, member);
+    const component = this.ibmi.getComponent<GetMemberInfo>(GetMemberInfo.ID)!;
+    return component.getMemberInfo(this.ibmi, library, sourceFile, member);
   }
 
   /**
@@ -965,7 +965,7 @@ export default class IBMiContent {
       result = await this.ibmi.sendQsh({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`});
     } else {
       // Take {DOES_THIS_WORK: `YESITDOES`} away, and all of a sudden names with # aren't found.
-      result = await this.ibmi.sendCommand({ command: `/QOpenSys/${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`, env: {DOES_THIS_WORK: `YESITDOES`}});
+      result = await this.ibmi.sendCommand({ command: `${this.ibmi.remoteFeatures.attr} -p ${target} ${operands.join(" ")}`, env: {DOES_THIS_WORK: `YESITDOES`}});
     }
 
     if (result.code === 0) {
@@ -993,8 +993,8 @@ export default class IBMiContent {
       "Attribute": object.attribute,
       "Text": object.text,
       "Size": object.size,
-      "Created": object.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      "Changed": object.changed?.toISOString().slice(0, 19).replace(`T`, ` `),
+      "Created": safeIsoValue(object.created),
+      "Changed": safeIsoValue(object.changed),
       "Created by": object.created_by,
       "Owner": object.owner,
       "IASP": object.asp
@@ -1019,8 +1019,8 @@ export default class IBMiContent {
     const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
       "Text": member.text,
       "Lines": member.lines,
-      "Created": member.created?.toISOString().slice(0, 19).replace(`T`, ` `),
-      "Changed": member.changed?.toISOString().slice(0, 19).replace(`T`, ` `)
+      "Created": safeIsoValue(member.created),
+      "Changed": safeIsoValue(member.changed)
     }));
     tooltip.supportHtml = true;
     return tooltip;
@@ -1029,7 +1029,7 @@ export default class IBMiContent {
   ifsFileToToolTip(path: string, ifsFile: IFSFile) {
     const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
       "Size": ifsFile.size,
-      "Modified": ifsFile.modified ? new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000).toISOString().slice(0, 19).replace(`T`, ` `) : ``,
+      "Modified": ifsFile.modified ? safeIsoValue(new Date(ifsFile.modified.getTime() - ifsFile.modified.getTimezoneOffset() * 60 * 1000)) : ``,
       "Owner": ifsFile.owner ? ifsFile.owner.toUpperCase() : ``
     }));
     tooltip.supportHtml = true;
@@ -1047,5 +1047,13 @@ export default class IBMiContent {
     if (result.code !== 0) {
       throw new Error(result.stderr);
     }
+  }
+}
+
+function safeIsoValue(date: Date|undefined) {
+  try {
+    return date ? date.toISOString().slice(0, 19).replace(`T`, ` `) : ``;
+  } catch (e) {
+    return `Unknown`;
   }
 }

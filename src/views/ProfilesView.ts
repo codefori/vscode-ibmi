@@ -115,13 +115,13 @@ export class ProfilesView {
         const connection = instance.getConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
-        if (commandProfile && config && storage) {
+        if (commandProfile && connection && config && storage) {
           const storedProfile = config.commandProfiles.find(profile => profile.name === commandProfile.profile);
 
           if (storedProfile) {
             try {
-              const component = connection?.getComponent<GetNewLibl>(GetNewLibl)
-              const newSettings = await component?.getLibraryListFromCommand(storedProfile.command);
+              const component = connection?.getComponent<GetNewLibl>(GetNewLibl.ID)
+              const newSettings = await component?.getLibraryListFromCommand(connection, storedProfile.command);
 
               if (newSettings) {
                 config.libraryList = newSettings.libraryList;

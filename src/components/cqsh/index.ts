@@ -1,12 +1,16 @@
 
 import { stat } from "fs/promises";
-import { ComponentState, IBMiComponent } from "../component";
 import path from "path";
 import { extensions } from "vscode";
+import IBMi from "../../api/IBMi";
+import { ComponentState, IBMiComponent } from "../component";
 
-export class cqsh extends IBMiComponent {
+export class CustomQSh implements IBMiComponent {
+  static ID = "cqsh";
+  installPath = "";
+
   getIdentification() {
-    return { name: 'cqsh', version: 1 };
+    return { name: CustomQSh.ID, version: 1 };
   }
 
   getFileName() {
@@ -14,20 +18,15 @@ export class cqsh extends IBMiComponent {
     return `${id.name}_${id.version}`;
   }
 
-  public async getPath() {
-    const installDir = await this.getInstallDirectory();
-    return path.posix.join(installDir, this.getFileName());
-  }
-
-  protected async getRemoteState(): Promise<ComponentState> {
-    const remotePath = await this.getPath();
-    const result = await this.connection.content.testStreamFile(remotePath, "x");
+  async getRemoteState(connection: IBMi, installDirectory: string): Promise<ComponentState> {
+    this.installPath = path.posix.join(installDirectory, this.getFileName());
+    const result = await connection.content.testStreamFile(this.installPath, "x");
 
     if (!result) {
       return `NotInstalled`;
     }
 
-    const testResult = await this.testCommand();
+    const testResult = await this.testCommand(connection);
 
     if (!testResult) {
       return `Error`;
@@ -36,9 +35,8 @@ export class cqsh extends IBMiComponent {
     return `Installed`;
   }
 
-  protected async update(): Promise<ComponentState> {
+  async update(connection: IBMi): Promise<ComponentState> {
     const extensionPath = extensions.getExtension(`halcyontechltd.code-for-ibmi`)!.extensionPath;
-    const remotePath = await this.getPath();
 
     const assetPath = path.join(extensionPath, `dist`, this.getFileName());
     const assetExistsLocally = await exists(assetPath);
@@ -47,13 +45,13 @@ export class cqsh extends IBMiComponent {
       return `Error`;
     }
 
-    await this.connection.uploadFiles([{ local: assetPath, remote: remotePath }]);
+    await connection.uploadFiles([{ local: assetPath, remote: this.installPath }]);
 
-    await this.connection.sendCommand({
-      command: `chmod +x ${remotePath}`,
+    await connection.sendCommand({
+      command: `chmod +x ${this.installPath}`,
     });
 
-    const testResult = await this.testCommand();
+    const testResult = await this.testCommand(connection);
 
     if (!testResult) {
       return `Error`;
@@ -62,12 +60,11 @@ export class cqsh extends IBMiComponent {
     return `Installed`;
   }
 
-  async testCommand() {
-    const remotePath = await this.getPath();
+  async testCommand(connection: IBMi) {
     const text = `Hello world`;
-    const result = await this.connection.sendCommand({
+    const result = await connection.sendCommand({
       stdin: `echo "${text}"`,
-      command: remotePath,
+      command: this.installPath,
     });
 
     if (result.code !== 0 || result.stdout !== text) {

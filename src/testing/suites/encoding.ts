@@ -250,7 +250,7 @@ export const EncodingSuite: TestSuite = {
 
           commands.push(`CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`);
           for (const member of members) {
-            commands.push(`ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`);
+            commands.push(`ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')`);
           }
 
           commands.push(`CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`);
@@ -289,7 +289,7 @@ export const EncodingSuite: TestSuite = {
 
           const expectedMembers = await content.getMemberList({ library, sourceFile });
           assert.ok(expectedMembers);
-          assert.ok(expectedMembers.every(member => members.find(m => m === member.name)));
+          assert.ok(expectedMembers.every(member => members.find(m => m === member.name && member.text?.includes(m))));
 
           const sourceFilter = await content.getObjectList({ library, types: ["*SRCPF"], object: `${connection.variantChars.local[0]}*` });
           assert.strictEqual(sourceFilter.length, 1);

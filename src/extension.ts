@@ -17,6 +17,7 @@ import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
 import { CopyToImport } from "./components/copyToImport";
+import { CustomQSh } from "./components/cqsh";
 import { GetMemberInfo } from "./components/getMemberInfo";
 import { GetNewLibl } from "./components/getNewLibl";
 import { extensionComponentRegistry } from "./components/manager";
@@ -34,7 +35,6 @@ import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
-import { cqsh } from "./components/cqsh";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -128,10 +128,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  extensionComponentRegistry.registerComponent(context, cqsh);
-  extensionComponentRegistry.registerComponent(context, GetNewLibl);
-  extensionComponentRegistry.registerComponent(context, GetMemberInfo);
-  extensionComponentRegistry.registerComponent(context, CopyToImport);
+  extensionComponentRegistry.registerComponent(context, new CustomQSh());
+  extensionComponentRegistry.registerComponent(context, new GetNewLibl);
+  extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
+  extensionComponentRegistry.registerComponent(context, new CopyToImport());
 
   return {
     instance, customUI: () => new CustomUI(),
