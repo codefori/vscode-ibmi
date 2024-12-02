@@ -6,7 +6,8 @@ import { GlobalConfiguration } from './Configuration';
 import IBMi from './IBMi';
 import { Tools } from './Tools';
 
-const PASE_INIT_FLAG = '#Code4iInitializationDone';
+const PASE_INIT_FLAG = '#C4IINIT';
+const PASE_INIT_FLAG_REGEX = /#+C+4+I+I+N+I+T+$/
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
@@ -130,7 +131,7 @@ export namespace Terminal {
       }
 
       if (!ready) {
-        ready = dataString.trim().endsWith(PASE_INIT_FLAG);
+        ready = PASE_INIT_FLAG_REGEX.test(dataString.trim());
       }
     });
 
@@ -175,6 +176,7 @@ export namespace Terminal {
           }
         },
       });
+      emulatorTerminal.show();
     })
 
     if (emulatorTerminal) {
@@ -200,7 +202,6 @@ export namespace Terminal {
         channel.destroy();
       });
 
-      emulatorTerminal.show();
       if (terminalSettings.type === TerminalType._5250) {
         channel.write([
           `/QOpenSys/pkgs/bin/tn5250`,
@@ -216,7 +217,7 @@ export namespace Terminal {
           initialCommands.push(`cd ${Tools.escapePath(terminalSettings.currentDirectory)}`);
         }
         initialCommands.push(`echo -e "\\0033[0;32mTerminal started, thanks for using \\0033[0;34mCode for IBM i. \\0033[0;32mCurrent directory is \\0033[0;34m"$(pwd)"\\0033[0m."`);
-        initialCommands.push(PASE_INIT_FLAG);
+        initialCommands.push([PASE_INIT_FLAG].join(" "));
         channel.write(`${initialCommands.join('; ')}\n`);
       }
 
