@@ -182,7 +182,10 @@ export default class IBMi {
           });
           const delayedOperations: Function[] = [...onConnectedOperations];
 
-          await this.client.connect(connectionObject as node_ssh.Config);
+          await this.client.connect({
+            ...connectionObject,
+            privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined
+          } as node_ssh.Config);
 
           cancelToken.onCancellationRequested(() => {
             this.end();
@@ -1504,7 +1507,7 @@ export default class IBMi {
     return this.componentManager.get<T>(name, ignoreState);
   }
 
-  getComponentStates(){
+  getComponentStates() {
     return this.componentManager.getState();
   }
 

@@ -8,7 +8,7 @@ import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 
 import { CompileTools } from "./api/CompileTools";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
@@ -140,38 +140,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     tools: Tools,
     componentRegistry: extensionComponentRegistry
   };
-}
-
-async function fixLoginSettings() {
-  const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
-  let update = false;
-  for (const connection of connections) {
-    //privateKey was used to hold privateKeyPath 
-    if ('privateKey' in connection) {
-      const privateKey = connection["privateKey"] as string;
-      if (privateKey) {
-        connection.privateKeyPath = privateKey;
-      }
-      delete connection["privateKey"];
-      update = true;
-    }
-
-    //An empty privateKeyPath will crash the connection
-    if (!connection.privateKeyPath?.trim()) {
-      connection.privateKeyPath = undefined;
-      update = true;
-    }
-
-    //buttons were added by the login settings page
-    if (`buttons` in connection) {
-      delete connection["buttons"];
-      update = true;
-    }
-  }
-
-  if (update) {
-    await GlobalConfiguration.set(`connections`, connections);
-  }
 }
 
 // this method is called when your extension is deactivated
