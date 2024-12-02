@@ -1,5 +1,6 @@
 import Crypto from 'crypto';
 import { readFileSync } from "fs";
+import os from "os";
 import path from "path";
 import vscode from "vscode";
 import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
@@ -401,14 +402,14 @@ export namespace Tools {
 
   export function assumeType(str: string) {
     if (str.trim().length === 0) return ``;
-    
+
     // The number is already generated on the server.
     // So, we assume that if the string starts with a 0, it is a string.
     if (/^0.+/.test(str) || str.length > 10) {
       return str
     }
     const number = Number(str);
-    if(isNaN(number)){
+    if (isNaN(number)) {
       return str;
     }
     return number;
@@ -462,5 +463,34 @@ export namespace Tools {
       return Date.parse(`${parts[3].padStart(2, "0")} ${parts[2]} ${parts[5]} ${parts[4]} GMT`);
     }
     return 0;
+  }
+
+  /**
+   * Transforms a file path into an OS agnostic path.
+   * - Replaces full home directory path by ~
+   * - Replaces all \ into / on Windows
+   * 
+   * @param filePath 
+   * @returns 
+   */
+  export function normalizePath(filePath: string) {
+    //Test path in lowercase since os.homedir doesn't always has the same case as filePath on Windows
+    if(filePath.toLowerCase().startsWith(os.homedir().toLowerCase())){
+      filePath = path.join(`~`, filePath.substring(os.homedir().length));
+    }
+    
+    return process.platform === "win32" ? filePath.replaceAll('\\', '/') : filePath;
+  }
+
+  /**
+   * Transforms a normalized path into an OS specific path.
+   * - Replaces ~ with the current home directory
+   * - Changes all / to \ on Windows
+   * @param path 
+   * @returns 
+   */
+  export function resolvePath(path: string) {
+    path = path.replace("~", os.homedir());
+    return process.platform === "win32" ? path.replaceAll('/', '\\') : path;
   }
 }

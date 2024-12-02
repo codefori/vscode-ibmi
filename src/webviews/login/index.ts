@@ -2,6 +2,7 @@ import vscode, { l10n, ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
+import { Tools } from "../../api/Tools";
 import { disconnect, instance } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 
@@ -54,7 +55,7 @@ export class Login {
       page.panel.dispose();
 
       data.port = Number(data.port);
-      data.privateKeyPath = data.privateKeyPath?.trim() ? data.privateKeyPath : undefined;
+      data.privateKeyPath = data.privateKeyPath?.trim() ? Tools.normalizePath(data.privateKeyPath) : undefined;
       if (data.name) {
         const existingConnection = ConnectionManager.getByName(data.name);
 
