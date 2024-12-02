@@ -3,6 +3,7 @@ import { ConnectionConfiguration, ConnectionManager } from "../../api/Configurat
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
 import { safeDisconnect, instance } from "../../instantiate";
+import { Tools } from "../../api/Tools";
 import { ConnectionData } from '../../typings';
 
 type NewLoginSettings = ConnectionData & {
@@ -54,7 +55,7 @@ export class Login {
       page.panel.dispose();
 
       data.port = Number(data.port);
-      data.privateKeyPath = data.privateKeyPath?.trim() ? data.privateKeyPath : undefined;
+      data.privateKeyPath = data.privateKeyPath?.trim() ? Tools.normalizePath(data.privateKeyPath) : undefined;
       if (data.name) {
         const existingConnection = ConnectionManager.getByName(data.name);
 
