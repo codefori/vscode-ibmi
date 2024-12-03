@@ -1240,6 +1240,8 @@ export default class IBMi {
       this.client.connection?.removeAllListeners();
       this.client.dispose();
       this.client.connection = null;
+
+      instance.fire(`disconnected`);
     }
   }
 
@@ -1254,8 +1256,6 @@ export default class IBMi {
     if (this.outputChannelContent !== undefined) {
       this.outputChannelContent = undefined;
     }
-
-    instance.fire(`disconnected`);
   }
 
   /**

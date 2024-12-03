@@ -54,7 +54,7 @@ export default class Instance {
           });
         }
 
-        await conn.dispose();
+        this.setConnection();
 
         if (reconnect) {
           await this.connect({...options, reconnecting: true});
@@ -75,7 +75,7 @@ export default class Instance {
           break;
 
         } else {
-          await this.setConnection();
+          await this.disconnect();
           if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
             modal: true,
             detail: `Reconnection has failed. Would you like to try again?\n\n${result.error || `No error provided.`}`
@@ -110,11 +110,11 @@ export default class Instance {
   }
 
   private async setConnection(connection?: IBMi) {
-    if (connection) {
-      if (this.connection) {
-        await this.connection.dispose();
-      }
+    if (this.connection) {
+      await this.connection.dispose();
+    }
 
+    if (connection) {
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
       await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
