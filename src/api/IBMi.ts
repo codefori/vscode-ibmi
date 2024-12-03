@@ -195,7 +195,7 @@ export default class IBMi {
   /**
    * @returns {Promise<{success: boolean, error?: any}>} Was succesful at connecting or not.
    */
-  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = [], timeoutCallback?: () => Promise<void>): Promise<ConnectionResult> {
+  async connect(connectionObject: ConnectionData, reconnecting?: boolean, reloadServerSettings: boolean = false, onConnectedOperations: Function[] = [], timeoutCallback?: (conn: IBMi) => Promise<void>): Promise<ConnectionResult> {
     const currentExtensionVersion = process.env.VSCODEIBMI_VERSION;
     try {
       connectionObject.keepaliveInterval = 35000;
@@ -286,7 +286,7 @@ export default class IBMi {
           const timeoutCallbackWrapper = () => {
             // Don't call the callback function if it was based on a user cancellation request.
             if (!cancelToken.isCancellationRequested) {
-              timeoutCallback();
+              timeoutCallback(this);
             }
           }
 
@@ -1095,15 +1095,9 @@ export default class IBMi {
       });
 
     } catch (e: any) {
-      this.dispose();
-      if (reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
-        modal: true,
-        detail: `Reconnection has failed. Would you like to try again?\n\n${e}`
-      }, `Yes`)) {
-        return this.connect(connectionObject, true);
-      }
+      this.disconnect();
 
-      let error = e;
+      let error = e.message;
       if (e.code === "ENOTFOUND") {
         error = `Host is unreachable. Check the connection's hostname/IP address.`;
       }
@@ -1241,19 +1235,16 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  private async disconnect() {
-    if (this.client) {
+  private disconnect() {
+    if (this.client.connection) {
       this.client.connection?.removeAllListeners();
       this.client.dispose();
       this.client.connection = null;
     }
-    instance.fire(`disconnected`);
   }
 
   async dispose() {
-    if (this.client.connection) {
-      this.disconnect();
-    }
+    this.disconnect();
 
     if (this.outputChannel) {
       this.outputChannel.hide();
@@ -1263,6 +1254,8 @@ export default class IBMi {
     if (this.outputChannelContent !== undefined) {
       this.outputChannelContent = undefined;
     }
+
+    instance.fire(`disconnected`);
   }
 
   /**

@@ -37,35 +37,56 @@ export default class Instance {
 
     let result: ConnectionResult;
 
-    const timeoutHandler = async () => {
-      if (connection) {
+    const timeoutHandler = async (conn: IBMi) => {
+      if (conn) {
         const choice = await vscode.window.showWarningMessage(`Connection lost`, {
           modal: true,
-          detail: `Connection has dropped. Would you like to reconnect?`
-        }, `Yes`);
+          detail: `Connection to ${conn.currentConnectionName} has dropped. Would you like to reconnect?`
+        }, `Yes`, `No, get logs`);
 
-        let disconnect = true;
-        if (choice === `Yes`) {
-          disconnect = !(await this.connect({...options, reconnecting: true})).success;
+        let reconnect = choice === `Yes`;
+        let collectLogs = choice === `No, get logs`;
+
+        if (collectLogs) {
+          const logs = conn.getOutputChannelContent();
+          vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
+            vscode.window.showTextDocument(doc);
+          });
         }
 
-        if (disconnect) {
-          this.disconnect();
-        };
+        await conn.dispose();
+
+        if (reconnect) {
+          await this.connect({...options, reconnecting: true});
+        }
       }
     };
 
     return Tools.withContext("code-for-ibmi:connecting", async () => {
-      try {
-        result = await connection.connect(options.data, options.reconnecting, options.reloadServerSettings, options.onConnectedOperations || [], timeoutHandler);
-      } catch (e: any) {
-        result = { success: false, error: e.message };
-      }
+      while (true) {
+        try {
+          result = await connection.connect(options.data, options.reconnecting, options.reloadServerSettings, options.onConnectedOperations || [], timeoutHandler);
+        } catch (e: any) {
+          result = { success: false, error: e.message };
+        }
 
-      if (result.success) {
-        await this.setConnection(connection);
-      } else {
-        await this.setConnection();
+        if (result.success) {
+          await this.setConnection(connection);
+
+        } else {
+          await this.setConnection();
+          if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+            modal: true,
+            detail: `Reconnection has failed. Would you like to try again?\n\n${result.error || `No error provided.`}`
+          }, `Yes`)) {
+            
+            options.reconnecting = true;
+            continue;
+
+          } else {
+            break;
+          }
+        }
       }
 
       return result;
@@ -88,8 +109,11 @@ export default class Instance {
   }
 
   private async setConnection(connection?: IBMi) {
-
     if (connection) {
+      if (this.connection) {
+        await this.connection.dispose();
+      }
+
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
       await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
