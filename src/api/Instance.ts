@@ -72,6 +72,7 @@ export default class Instance {
 
         if (result.success) {
           await this.setConnection(connection);
+          break;
 
         } else {
           await this.setConnection();
