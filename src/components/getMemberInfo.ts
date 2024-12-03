@@ -19,7 +19,7 @@ export class GetMemberInfo implements IBMiComponent {
   }
 
   async getRemoteState(connection: IBMi): Promise<ComponentState> {
-    const [result] = await connection.runSQL(`select LONG_COMMENT from qsys2.sysroutines where routine_schema = '${connection.config?.tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
+    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysroutines where routine_schema = '${connection.config?.tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
     if (result?.LONG_COMMENT) {
       const comment = result.LONG_COMMENT as string;
       const dash = comment.indexOf('-');
