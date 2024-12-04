@@ -306,6 +306,7 @@ export class SettingsUI {
                         break;
                       case `defaultDeploymentMethod`:
                         if (data[key] === 'No Default') data[key] = '';
+                        break;
                     }
                   }
 
