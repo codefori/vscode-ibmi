@@ -54,7 +54,7 @@ export default class Instance {
           });
         }
 
-        this.setConnection();
+        this.disconnect();
 
         if (reconnect) {
           await this.connect({...options, reconnecting: true});
@@ -90,23 +90,22 @@ export default class Instance {
         }
       }
 
+      if (result.success === false) {
+        connection.dispose();
+      }
+
       return result;
     });
   }
 
   async disconnect() {
-    if (this.connection) {
-      await this.connection.dispose();
-      await this.setConnection();
+    await this.setConnection();
       
-      await Promise.all([
-        vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
-        vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
-        vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
-      ]);
-  
-      vscode.window.showInformationMessage(`Disconnected.`);
-    }
+    await Promise.all([
+      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+    ]);
   }
 
   private async setConnection(connection?: IBMi) {
@@ -115,6 +114,11 @@ export default class Instance {
     }
 
     if (connection) {
+      connection.setDisconnectedCallback(async () => {
+        this.setConnection();
+        this.fire(`disconnected`);
+      });
+
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
       await GlobalStorage.get().setLastConnection(connection.currentConnectionName);

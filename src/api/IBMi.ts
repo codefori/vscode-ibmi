@@ -8,7 +8,6 @@ import { IBMiComponent } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "../components/manager";
-import { instance } from "../instantiate";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { ConnectionConfiguration } from "./Configuration";
@@ -52,6 +51,8 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
   }
 ];
 
+type DisconnectCallback = (conn: IBMi) => Promise<void>;
+
 export default class IBMi {
   static readonly CCSID_NOCONVERSION = 65535;
   static readonly CCSID_SYSVAL = -2;
@@ -75,7 +76,7 @@ export default class IBMi {
    */
   content = new IBMiContent(this);
 
-  client: node_ssh.NodeSSH;
+  client: node_ssh.NodeSSH|undefined;
   currentHost: string = ``;
   currentPort: number = 22;
   currentUser: string = ``;
@@ -104,6 +105,15 @@ export default class IBMi {
 
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
+
+  private disconnectedCallback: (DisconnectCallback)|undefined;
+
+  /**
+   * Will only be called once per connection.
+   */
+  setDisconnectedCallback(callback: DisconnectCallback) {
+    this.disconnectedCallback = callback;
+  }
 
   get canUseCqsh() {
     return this.getComponent(CustomQSh.ID) !== undefined;
@@ -158,8 +168,6 @@ export default class IBMi {
   }
 
   constructor() {
-    this.client = new node_ssh.NodeSSH;
-
     this.remoteFeatures = {
       git: undefined,
       grep: undefined,
@@ -212,10 +220,11 @@ export default class IBMi {
         });
         const delayedOperations: Function[] = [...onConnectedOperations];
 
-          await this.client.connect({
-            ...connectionObject,
-            privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined
-          } as node_ssh.Config);
+        this.client = new node_ssh.NodeSSH;
+        await this.client.connect({
+          ...connectionObject,
+          privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined
+        } as node_ssh.Config);
 
         cancelToken.onCancellationRequested(() => {
           this.dispose();
@@ -1095,7 +1104,7 @@ export default class IBMi {
       });
 
     } catch (e: any) {
-      this.disconnect();
+      this.disconnect(true);
 
       let error = e.message;
       if (e.code === "ENOTFOUND") {
@@ -1194,7 +1203,7 @@ export default class IBMi {
       }
     }
 
-    const result = await this.client.execCommand(command, {
+    const result = await this.client!.execCommand(command, {
       cwd: directory,
       stdin: options.stdin,
       onStdout: options.onStdout,
@@ -1235,13 +1244,13 @@ export default class IBMi {
     this.commandsExecuted += 1;
   }
 
-  private disconnect() {
-    if (this.client.connection) {
-      this.client.connection?.removeAllListeners();
-      this.client.dispose();
-      this.client.connection = null;
+  private disconnect(failedToConnect = false) {
+    if (this.client) {
+      this.client = undefined;
 
-      instance.fire(`disconnected`);
+      if (failedToConnect === false && this.disconnectedCallback) {
+        this.disconnectedCallback(this);
+      }
     }
   }
 
