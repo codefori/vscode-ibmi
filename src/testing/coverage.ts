@@ -1,0 +1,143 @@
+import { TestSuite } from ".";
+
+const IGNORE_METHODS = [`constructor`];
+
+export class CoverageCollection {
+  private staticCollectors: CoverageCollector<any>[] = [];
+  private instanceCollectors: CoverageCollector<any>[] = [];
+
+  constructor() {}
+
+  addStaticCollector<T>(collector: CoverageCollector<T>) {
+    this.staticCollectors.push(collector);
+  }
+
+  addInstanceCollector<T>(collector: CoverageCollector<T>) {
+    this.instanceCollectors.push(collector);
+  }
+
+  clearInstances() {
+    this.instanceCollectors = [];
+  }
+
+  reset() {
+    for (const collector of this.staticCollectors) {
+      collector.reset();
+    }
+
+    for (const collector of this.instanceCollectors) {
+      collector.reset();
+    }
+  }
+
+  get() {
+    return [...this.staticCollectors, ...this.instanceCollectors];
+  }
+
+  addSuiteReferences(suites: TestSuite[]) {
+    this.reset();
+    
+    for (const suite of suites) {
+      for (const testcase of suite.tests) {
+        for (const collector of [...this.staticCollectors, ...this.instanceCollectors]) {
+          const functionBody = testcase.test.toString();
+
+          const possibleReferences = collector.getMethods().filter(method => functionBody.includes(method));
+          for (const method of possibleReferences) {
+            collector.addSuiteReference(suite.name, testcase.name, method);
+          }
+        }
+      }
+    }
+  }
+}
+
+export interface CaptureDetail {count: number, usedInTests: {[suiteName: string]: string[]}};
+export interface CapturedMethods { [key: string]: CaptureDetail };
+
+export class CoverageCollector<T> {
+  private name: string = `Unknown`;
+  private methodNames: string[] = [];
+  private captured: CapturedMethods = {};
+  constructor(private instanceClass: T, options: { fixedName?: string, ignoredMethods?: string[] } = {}) {
+    if ('constructor' in (instanceClass as object)) {
+      this.name = (instanceClass as object).constructor.name;
+    }
+
+    const isObject = this.name === `Object`;
+    let methods = [];
+
+    if (isObject) {
+      // T is an object, so get a list of methods
+      
+      if (!options.fixedName) {
+        throw new Error(`CoverageCollector: Object must have a fixed name`);
+      }
+
+      this.name = options.fixedName;
+      methods = Object.keys(instanceClass as object);
+      this.methodNames = methods.filter(prop => IGNORE_METHODS.includes(prop) === false && typeof instanceClass[prop as keyof T] === 'function');
+
+    } else {
+      // T is a class, so get a list of methods
+      methods = Object.getOwnPropertyNames(Object.getPrototypeOf(instanceClass));
+
+      this.methodNames = methods.filter(prop => IGNORE_METHODS.includes(prop) === false && typeof instanceClass[prop as keyof T] === 'function');
+    }
+
+    // Remove any ignored method names
+    if (options.ignoredMethods) {
+      this.methodNames = this.methodNames.filter(method => options.ignoredMethods!.includes(method) === false);
+    }
+    
+    for (const func of this.methodNames) {
+      this.captured[func] = {count: 0, usedInTests: {}};
+    }
+
+    this.wrap();
+  }
+
+  getMethods() {
+    return this.methodNames;
+  }
+
+  addSuiteReference(suiteName: string, testName: string, method: string) {
+    if (this.captured[method]) {
+      if (!this.captured[method].usedInTests[suiteName]) {
+        this.captured[method].usedInTests[suiteName] = [];
+      }
+
+      this.captured[method].usedInTests[suiteName].push(testName);
+    }
+  }
+
+  private wrap() {
+    for (const method of this.methodNames) {
+      const original = (this.instanceClass as any)[method];
+      (this.instanceClass as any)[method] = (...args: any[]) => {
+        this.captured[method].count++;
+        return original.apply(this.instanceClass, args);
+      }
+    }
+  }
+
+  getName() {
+    return this.name;
+  }
+
+  reset() {
+    for (const method of this.methodNames) {
+      this.captured[method] = {count: 0, usedInTests: {}};
+    }
+  }
+
+  getPercentCoverage() {
+    const totalMethods = this.methodNames.length;
+    const capturedMethods = Object.keys(this.captured).filter(method => this.captured[method].count > 0).length;
+    return Math.round((capturedMethods / totalMethods) * 100);
+  }
+
+  getCoverage() {
+    return this.captured;
+  }
+}

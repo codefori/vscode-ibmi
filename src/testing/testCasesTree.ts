@@ -1,40 +1,113 @@
 import vscode from "vscode";
 import { TestCase, TestSuite } from ".";
+import { CaptureDetail, CoverageCollection, CoverageCollector } from "./coverage";
 
-type TestObject = TestSuite | TestCase;
-
-export class TestSuitesTreeProvider implements vscode.TreeDataProvider<TestObject>{
-    private readonly emitter: vscode.EventEmitter<TestObject | undefined | null | void> = new vscode.EventEmitter();
-    readonly onDidChangeTreeData: vscode.Event<void | TestObject | TestObject[] | null | undefined> = this.emitter.event;
-
-    constructor(readonly testSuites: TestSuite[]) {
-
+class CoolTreeItem extends vscode.TreeItem {
+    constructor(readonly label: string, readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.None) {
+        super(label, collapsibleState);
     }
 
-    refresh(element?: TestObject) {
-        this.emitter.fire(element);
+    getChildren?(): Thenable<CoolTreeItem[]>;
+}
+
+export class TestSuitesTreeProvider implements vscode.TreeDataProvider<CoolTreeItem>{
+    private readonly emitter: vscode.EventEmitter<CoolTreeItem | undefined | null | void> = new vscode.EventEmitter();
+    readonly onDidChangeTreeData: vscode.Event<void | CoolTreeItem | CoolTreeItem[] | null | undefined> = this.emitter.event;
+
+    constructor(readonly testSuites: TestSuite[], readonly coverageCollection: CoverageCollection) {}
+
+    refresh(element?: CoolTreeItem|TestSuite) {
+        this.emitter.fire();
     }
 
-    getTreeItem(element: TestObject): vscode.TreeItem | Thenable<vscode.TreeItem> {
-        if("tests" in element){
-            return new TestSuiteItem(element);
-        }
-        else{
-            return new TestCaseItem(this.testSuites.find(ts => ts.tests.includes(element))!, element);
-        }
+    getTreeItem(element: CoolTreeItem): vscode.TreeItem | Thenable<vscode.TreeItem> {
+        return element;
     }
 
-    getChildren(element?: TestObject): vscode.ProviderResult<TestObject[]> {
-        if (element && "tests" in element) {
-            return element.tests;
-        }
-        else {
-            return this.testSuites.sort((ts1, ts2) => ts1.name.localeCompare(ts2.name));
+    getChildren(element?: CoolTreeItem): vscode.ProviderResult<CoolTreeItem[]> {
+        if (element && element.getChildren) {
+            return element.getChildren();
+        } else {
+            return [
+                new CoverageListItem(this.coverageCollection, this.testSuites),
+                new TestSuitesItem(this.testSuites)
+            ]
         }
     }
 }
 
-class TestSuiteItem extends vscode.TreeItem {
+class CoverageListItem extends CoolTreeItem {
+    constructor(readonly coverages: CoverageCollection, readonly suites: TestSuite[]) {
+        super("Coverage", vscode.TreeItemCollapsibleState.Expanded);
+    }
+
+    async getChildren() {
+        return this.coverages.get().map(collector => new CoverageCollectionItem(collector, this.suites));
+    }
+}
+
+class CoverageCollectionItem extends CoolTreeItem {
+    constructor(readonly collector: CoverageCollector<any>, readonly suites: TestSuite[]) {
+        super(collector.getName(), vscode.TreeItemCollapsibleState.Collapsed);
+        const percentage = collector.getPercentCoverage();
+        this.description = `${percentage}% covered`;
+
+        if (percentage <= 1) {
+            this.iconPath = new vscode.ThemeIcon("circle-slash");
+        } else if (percentage < 100) {
+            this.iconPath = new vscode.ThemeIcon("warning");
+        } else {
+            this.iconPath = new vscode.ThemeIcon("pass", new vscode.ThemeColor("testing.iconPassed"));
+        }
+    }
+
+    async getChildren() {
+        const coverage = this.collector.getCoverage();
+        return Object.keys(coverage).map(method => new CoverageMethodCountItem(method, coverage[method], this.suites));
+    }
+}
+
+class CoverageMethodCountItem extends CoolTreeItem {
+    constructor(readonly method: string, readonly detail: CaptureDetail, readonly suites: TestSuite[]) {
+        super(method, Object.keys(detail.usedInTests).length > 0 ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None);
+        this.description = `${detail.count}`;
+
+        if (detail.count > 0) {
+            this.iconPath = new vscode.ThemeIcon("pass", new vscode.ThemeColor("testing.iconPassed"));
+        } else {
+            this.iconPath = new vscode.ThemeIcon("symbol-method");
+        }
+    }
+
+    async getChildren() {
+        let cases: TestCaseItem[] = [];
+        for (const suite in this.detail.usedInTests) {
+            for (const test of this.detail.usedInTests[suite]) {
+                const suiteObj = this.suites.find(s => s.name === suite);
+                if (suiteObj) {
+                    const testObj = suiteObj.tests.find(t => t.name === test);
+                    if (testObj) {
+                        cases.push(new TestCaseItem(suiteObj, testObj));
+                    }
+                }
+
+            }
+        }
+        return cases;
+    }
+}
+
+class TestSuitesItem extends CoolTreeItem {
+    constructor(readonly testSuites: TestSuite[]) {
+        super("Test Suites", vscode.TreeItemCollapsibleState.Expanded);
+    }
+
+    async getChildren() {
+        return this.testSuites.map(suite => new TestSuiteItem(suite));
+    }
+}
+
+class TestSuiteItem extends CoolTreeItem {
     constructor(readonly testSuite: TestSuite) {
         super(testSuite.name, vscode.TreeItemCollapsibleState.Expanded);
         this.description = `${this.testSuite.tests.filter(tc => tc.status === "pass").length}/${this.testSuite.tests.length}`;
@@ -52,9 +125,13 @@ class TestSuiteItem extends vscode.TreeItem {
         this.iconPath = new vscode.ThemeIcon(testSuite.status === "running" ? "gear~spin" : "beaker", new vscode.ThemeColor(color));
         this.tooltip = this.testSuite.failure;
     }
+
+    async getChildren() {
+        return this.testSuite.tests.map(tc => new TestCaseItem(this.testSuite, tc));
+    }
 }
 
-class TestCaseItem extends vscode.TreeItem {
+class TestCaseItem extends CoolTreeItem {
     constructor(readonly testSuite: TestSuite, readonly testCase: TestCase) {
         super(testCase.name, vscode.TreeItemCollapsibleState.None);
         let icon;

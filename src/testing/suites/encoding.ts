@@ -1,12 +1,12 @@
 import assert from "assert";
 import os from "os";
 import { Uri, workspace } from "vscode";
-import { TestSuite } from ".";
-import IBMi from "../api/IBMi";
-import { Tools } from "../api/Tools";
-import { getMemberUri } from "../filesystems/qsys/QSysFs";
-import { instance } from "../instantiate";
-import { IBMiObject } from "../typings";
+import { TestSuite } from "../.";
+import IBMi from "../../api/IBMi";
+import { Tools } from "../../api/Tools";
+import { getMemberUri } from "../../filesystems/qsys/QSysFs";
+import { instance } from "../../instantiate";
+import { IBMiObject } from "../../typings";
 import path from "path";
 
 const contents = {
