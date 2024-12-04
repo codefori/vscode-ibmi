@@ -1,9 +1,11 @@
 on: pull_request
-    
+
 jobs:
   release:
     name: Validation
     runs-on: ubuntu-latest
+    permissions: 
+      pull-requests: write
     steps:
       - name: Use Node.js 20
         uses: actions/setup-node@v3
