@@ -304,6 +304,8 @@ export class SettingsUI {
                           .filter(item => item !== ``)
                           .filter(Tools.distinct);
                         break;
+                      case `defaultDeploymentMethod`:
+                        if (data[key] === 'No Default') data[key] = '';
                     }
                   }
 
