@@ -134,7 +134,8 @@ export namespace ConnectionConfiguration {
     defaultDeploymentMethod: DeploymentMethod | '';
     protectedPaths: string[];
     showHiddenFiles: boolean;
-    lastDownloadLocation: string;
+    lastDownloadLocation:string;
+    autoFixInvalidCharacters: boolean;
     [name: string]: any;
   }
 
@@ -214,7 +215,8 @@ export namespace ConnectionConfiguration {
       defaultDeploymentMethod: parameters.defaultDeploymentMethod || ``,
       protectedPaths: (parameters.protectedPaths || []),
       showHiddenFiles: (parameters.showHiddenFiles === true || parameters.showHiddenFiles === undefined),
-      lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir())
+      lastDownloadLocation: (parameters.lastDownloadLocation || os.homedir()),
+      autoFixInvalidCharacters: (parameters.autoFixInvalidCharacters === true)
     }
   }
 
