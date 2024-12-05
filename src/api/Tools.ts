@@ -123,7 +123,8 @@ export namespace Tools {
 
           */
 
-          const extendedBytes = strValue.split(``).map(c => Buffer.byteLength(c) < 3 ? 0 : 1).reduce((a: number, b: number) => a + b, 0);
+          // 65533 = � (not a double byte character!)
+          const extendedBytes = strValue.split(``).map(c => (Buffer.byteLength(c) < 3 || c.charCodeAt(0) === 65533) ? 0 : 1).reduce((a: number, b: number) => a + b, 0);
 
           slideBytesBy += extendedBytes;
           if (extendedBytes > 0) {

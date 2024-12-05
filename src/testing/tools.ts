@@ -325,6 +325,41 @@ export const ToolsSuite: TestSuite = {
       }
     },
     {
+      name: `Db2 results with bad character`, test: async () => {
+        const lines = [
+          `DB2>`,
+          `  ?>`,
+          ``,
+          `LIBRARY    NAME       TYPE  ATTRIBUTE  TEXT                                               IS_SOURCE   SOURCE_LENGTH  IASP_NUMBER `,
+          `---------- ---------- ----- ---------- -------------------------------------------------- ----------- -------------- ------------`,
+          `LOGOMATE   QCLSRC     *FILE PF         LogoMate� - Sourcen CL                                       1            112            0`,
+          `LOGOMATE   QCMDSRC    *FILE PF         LogoMate� - Sourcen CMD                                      1            112            0`,
+          `LOGOMATE   QMNUSRC    *FILE PF         LogoMate� - Sourcen MNU                                      1            112            0`,
+          `LOGOMATE   QPNLSRC    *FILE PF         LogoMate� - Sourcen PNLGRP                                   1            112            0`,
+          `LOGOMATE   QRPGLECPY  *FILE PF         LogoMate� - Sourcen RPGLECPY                                 1            112            0`,
+          `LOGOMATE   QRPGLEH    *FILE PF         LogoMate� - Sourcen RPGLEH                                   1            112            0`,
+          `LOGOMATE   QRPGLESRC  *FILE PF         LogoMate� - Sourcen RPGLE                                    1            112            0`,
+          `LOGOMATE   QSQDSRC    *FILE PF         SQL PROCEDURES                                               1            160            0`,
+          `LOGOMATE   QSQLSRC    *FILE PF         LogoMate� - Sourcen SQL                                      1            112            0`,
+          `LOGOMATE   QSRVSRC    *FILE PF         LogoMate� - Sourcen SRV                                      1            112            0`,
+          ``,
+          ` 10 RECORD(S) SELECTED.`,
+        ]
+
+        const rows = Tools.db2Parse(lines.join(`\n`));
+        assert.strictEqual(rows.length, 10);
+
+        assert.strictEqual(rows[0].LIBRARY, `LOGOMATE`);
+        assert.strictEqual(rows[0].NAME, `QCLSRC`);
+        assert.strictEqual(rows[0].TYPE, `*FILE`);
+        assert.strictEqual(rows[0].ATTRIBUTE, `PF`);
+        assert.strictEqual(rows[0].TEXT, `LogoMate� - Sourcen CL`);
+        assert.strictEqual(rows[0].IS_SOURCE, 1);
+        assert.strictEqual(rows[0].SOURCE_LENGTH, 112);
+        assert.strictEqual(rows[0].IASP_NUMBER, 0);
+      }
+    },
+    {
       name: "Date attr parsing", test: async () => {
         const date1Epoch = Tools.parseAttrDate(`Fri Apr  5 09:00:10 2024`);
         assert.strictEqual(date1Epoch, 1712307610000);
@@ -346,6 +381,6 @@ export const ToolsSuite: TestSuite = {
         assert.strictEqual(date2.getUTCMinutes(), 47);
         assert.strictEqual(date2.getUTCSeconds(), 2);
       }
-    }
+    },
   ]
 };
