@@ -8,7 +8,7 @@ import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
-import { CommandResult, IBMiObject } from "../typings";
+import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -249,51 +249,53 @@ export const ContentSuite: TestSuite = {
       }
     },
 
-    {name: `Ensure source lines are correct`, test: async () => {
-      const connection = instance.getConnection();
-      const config = instance.getConfig()!;
+    {
+      name: `Ensure source lines are correct`, test: async () => {
+        const connection = instance.getConnection();
+        const config = instance.getConfig()!;
 
-      assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
+        assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
 
-      const tempLib = config!.tempLibrary;
-      const file = `LINES`;
-      const member = `THEMEMBER`;
-      
-      await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
-      await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
+        const tempLib = config!.tempLibrary;
+        const file = `LINES`;
+        const member = `THEMEMBER`;
 
-      const aliasName = `${tempLib}.test_${file}_${member}`;
-      await connection?.runSQL(`CREATE OR REPLACE ALIAS ${aliasName} for "${tempLib}"."${file}"("${member}")`);
+        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
 
-      try {
-        await connection?.runSQL(`delete from ${aliasName}`);
-      } catch (e) {}
+        const aliasName = `${tempLib}.test_${file}_${member}`;
+        await connection?.runSQL(`CREATE OR REPLACE ALIAS ${aliasName} for "${tempLib}"."${file}"("${member}")`);
 
-      const inLines = [
-        `Hello world`,
-        `1`,
-        `001`,
-        `0002`,
-        `00003`,
-      ]
+        try {
+          await connection?.runSQL(`delete from ${aliasName}`);
+        } catch (e) { }
 
-      const lines = [
-        `insert into ${aliasName} (srcseq, srcdat, srcdta)`,
-        `values `,
-        inLines.map((line, index) => `(${index + 1}.00, 0, '${line}')`).join(`, `),
-      ];
+        const inLines = [
+          `Hello world`,
+          `1`,
+          `001`,
+          `0002`,
+          `00003`,
+        ]
 
-      await connection?.runSQL(lines.join(` `));
+        const lines = [
+          `insert into ${aliasName} (srcseq, srcdat, srcdta)`,
+          `values `,
+          inLines.map((line, index) => `(${index + 1}.00, 0, '${line}')`).join(`, `),
+        ];
 
-      const theBadOneUri = getMemberUri({ library: tempLib, file, name: member, extension: `TXT` });
+        await connection?.runSQL(lines.join(` `));
 
-      const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-      const fileContent = new TextDecoder().decode(memberContentBuf);
+        const theBadOneUri = getMemberUri({ library: tempLib, file, name: member, extension: `TXT` });
 
-      const outLines = fileContent.split(`\n`);
+        const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
+        const fileContent = new TextDecoder().decode(memberContentBuf);
 
-      assert.deepStrictEqual(inLines, outLines);
-    }},
+        const outLines = fileContent.split(`\n`);
+
+        assert.deepStrictEqual(inLines, outLines);
+      }
+    },
 
     {
       name: `Test runSQL (basic select)`, test: async () => {
@@ -486,6 +488,11 @@ export const ContentSuite: TestSuite = {
         const includeSYSLibraries = await content?.getLibraries({ library: "*SYS*" });
         assert.notStrictEqual(includeSYSLibraries?.length, 0);
         assert.strictEqual(includeSYSLibraries?.every(l => l.name.includes("SYS")), true);
+
+        const libraries = ["QSYSINC", "QGPL", "QTEMP"];
+        const multipleLibraries = await content?.getLibraries({ library: libraries.join(",") })
+        assert.strictEqual(multipleLibraries?.length, libraries.length);
+        assert.strictEqual(libraries.every(l => multipleLibraries.some(o => o.name === l)), true);
       }
     },
     {
@@ -631,10 +638,10 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(memberInfoB?.extension === `CPP`, true);
         assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
 
-        try{
+        try {
           await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`)
         }
-        catch(error: any){
+        catch (error: any) {
           assert.ok(error instanceof Tools.SqlError);
           assert.strictEqual(error.sqlstate, "38501");
         }
