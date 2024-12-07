@@ -473,7 +473,11 @@ export default class IBMiContent {
   }
 
   async getLibraries(filters: { library: string; filterType?: FilterType }) {
-    return this.getObjectList({ library: "QSYS", object: filters.library, types: ["*LIB"], filterType: filters.filterType });
+    const libraries = [];
+    for(const library of filters.library.split(",")){
+      libraries.push(...await this.getObjectList({ library: "QSYS", object: library.trim(), types: ["*LIB"], filterType: filters.filterType }));
+    }
+    return libraries;    
   }
 
   /**
