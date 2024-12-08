@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
-import { IBMiEvent } from "../typings";
+import { ConnectionData, IBMiEvent } from "../typings";
 import { ConnectionConfiguration } from "./Configuration";
-import IBMi from "./IBMi";
+import IBMi, { ConnectionResult } from "./IBMi";
 import { ConnectionStorage, GlobalStorage } from "./Storage";
+import { Tools } from "./Tools";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -10,6 +11,13 @@ type IBMiEventSubscription = {
 };
 
 type SubscriptionMap = Map<string, IBMiEventSubscription>
+
+export interface ConnectionOptions {
+  data: ConnectionData, 
+  reconnecting?: boolean, 
+  reloadServerSettings?: boolean, 
+  onConnectedOperations?: Function[]
+}
 
 export default class Instance {
   private connection: IBMi | undefined;
@@ -24,16 +32,104 @@ export default class Instance {
     this.emitter.event(e => this.processEvent(e));
   }
 
-  async setConnection(connection?: IBMi) {
+  connect(options: ConnectionOptions): Promise<ConnectionResult> {
+    const connection = new IBMi();
+
+    let result: ConnectionResult;
+
+    const timeoutHandler = async (conn: IBMi) => {
+      if (conn) {
+        const choice = await vscode.window.showWarningMessage(`Connection lost`, {
+          modal: true,
+          detail: `Connection to ${conn.currentConnectionName} has dropped. Would you like to reconnect?`
+        }, `Yes`, `No, get logs`);
+
+        let reconnect = choice === `Yes`;
+        let collectLogs = choice === `No, get logs`;
+
+        if (collectLogs) {
+          const logs = conn.getOutputChannelContent();
+          vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
+            vscode.window.showTextDocument(doc);
+          });
+        }
+
+        this.disconnect();
+
+        if (reconnect) {
+          await this.connect({...options, reconnecting: true});
+        }
+      }
+    };
+
+    return Tools.withContext("code-for-ibmi:connecting", async () => {
+      while (true) {
+        try {
+          result = await connection.connect(options.data, options.reconnecting, options.reloadServerSettings, options.onConnectedOperations || [], timeoutHandler);
+        } catch (e: any) {
+          result = { success: false, error: e.message };
+        }
+
+        if (result.success) {
+          await this.setConnection(connection);
+          break;
+
+        } else {
+          await this.disconnect();
+          if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
+            modal: true,
+            detail: `Reconnection has failed. Would you like to try again?\n\n${result.error || `No error provided.`}`
+          }, `Yes`)) {
+            
+            options.reconnecting = true;
+            continue;
+
+          } else {
+            break;
+          }
+        }
+      }
+
+      if (result.success === false) {
+        connection.dispose();
+      }
+
+      return result;
+    });
+  }
+
+  async disconnect() {
+    await this.setConnection();
+      
+    await Promise.all([
+      vscode.commands.executeCommand("code-for-ibmi.refreshObjectBrowser"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshLibraryListView"),
+      vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser")
+    ]);
+  }
+
+  private async setConnection(connection?: IBMi) {
+    if (this.connection) {
+      await this.connection.dispose();
+    }
+
     if (connection) {
+      connection.setDisconnectedCallback(async () => {
+        this.setConnection();
+        this.fire(`disconnected`);
+      });
+
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
       await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
+      this.fire(`connected`);
     }
     else {
       this.connection = undefined;
       this.storage.setConnectionName("");
     }
+
+    await vscode.commands.executeCommand(`setContext`, `code-for-ibmi:connected`, connection !== undefined);
   }
 
   getConnection() {
@@ -42,17 +138,23 @@ export default class Instance {
 
   async setConfig(newConfig: ConnectionConfiguration.Parameters) {
     if (this.connection) {
-      this.connection.config = newConfig;
+      this.connection.setConfig(newConfig);
     }
     await ConnectionConfiguration.update(newConfig);
   }
 
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMi.getConfig()} instead
+   */
   getConfig() {
-    return this.connection?.config;
+    return this.connection?.getConfig();
   }
 
+  /**
+   * @deprecated Will be removed in `v3.0.0`; use {@link IBMi.getContent()} instead
+   */
   getContent() {
-    return this.connection?.content;
+    return this.connection?.getContent();
   }
 
   getStorage() {

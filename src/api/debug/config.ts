@@ -11,10 +11,11 @@ type ConfigLine = {
 export const DEBUG_CONFIG_FILE = "/QIBM/ProdData/IBMiDebugService/bin/DebugService.env";
 
 export class DebugConfiguration {
+  constructor(private connection: IBMi) {}
   readonly configLines: ConfigLine[] = [];
 
   private getContent() {
-    const content = instance.getContent();
+    const content = this.connection.getContent();
     if (!content) {
       throw new Error("Not connected to an IBM i");
     }
@@ -118,7 +119,6 @@ export function resetDebugServiceDetails() {
 }
 
 export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
-  const content = instance.getContent()!;
   if (!debugServiceDetails) {
     let details = {
       version: `1.0.0`,
@@ -130,44 +130,49 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
       })
     };
 
-    const detailFilePath = path.posix.join((await new DebugConfiguration().load()).getRemoteServiceRoot(), `package.json`);
-    const detailExists = await content.testStreamFile(detailFilePath, "r");
-    if (detailExists) {
-      try {
-        const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
-        const parsed = JSON.parse(fileContents);
-        details = {
-          ...parsed as DebugServiceDetails,
-          semanticVersion: () => {
-            const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
-            return {
-              major: parts[0],
-              minor: parts[1],
-              patch: parts[2]
-            };
+    const connection = instance.getConnection();
+    if (connection) {
+      const content = connection.getContent();
+      const detailFilePath = path.posix.join((await new DebugConfiguration(connection).load()).getRemoteServiceRoot(), `package.json`);
+      const detailExists = await content.testStreamFile(detailFilePath, "r");
+      if (detailExists) {
+        try {
+          const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
+          const parsed = JSON.parse(fileContents);
+          details = {
+            ...parsed as DebugServiceDetails,
+            semanticVersion: () => {
+              const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
+              return {
+                major: parts[0],
+                minor: parts[1],
+                patch: parts[2]
+              };
+            }
           }
+        } catch (e: any) {
+          // Something very very bad has happened
+          vscode.window.showErrorMessage(vscode.l10n.t(`Failed to read debug service detail file {0}: {1}`, detailFilePath, e));
+          console.log(e);
         }
-      } catch (e: any) {
-        // Something very very bad has happened
-        vscode.window.showErrorMessage(vscode.l10n.t(`Failed to read debug service detail file {0}: {1}`, detailFilePath, e));
-        console.log(e);
       }
-    }
-    else {
-      details = {
-        version: `1.0.0`,
-        java: `8`,
-        semanticVersion: () => ({
-          major: 1,
-          minor: 0,
-          patch: 0
-        })
-      };
-    }
+      else {
+        details = {
+          version: `1.0.0`,
+          java: `8`,
+          semanticVersion: () => ({
+            major: 1,
+            minor: 0,
+            patch: 0
+          })
+        };
+      }
 
-    debugServiceDetails = details;
+      debugServiceDetails = details;
+    }
   }
-  return debugServiceDetails;
+
+  return debugServiceDetails!;
 }
 
 export function getJavaHome(connection: IBMi, version: string) {

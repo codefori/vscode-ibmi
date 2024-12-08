@@ -71,21 +71,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       `profilesView`,
       new ProfilesView(context)
     ),
-    commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<boolean> => {
-        const existingConnection = instance.getConnection();
-
-        if (existingConnection) {
-          return false;
-        }
-
-        if (savePassword && connectionData.password) {
-          await ConnectionManager.setStoredPassword(context, connectionData.name, connectionData.password);
-        }
-
-        return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
-      }
-    ),
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();

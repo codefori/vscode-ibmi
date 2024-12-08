@@ -21,14 +21,14 @@ export async function isSEPSupported() {
 
 export async function startService(connection: IBMi) {
   const checkAuthority = async (user?: string) => {
-    if (!(await connection.checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+    if (!(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
       throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
     }
   };
 
   try {
     await checkAuthority();
-    const debugConfig = await new DebugConfiguration().load();
+    const debugConfig = await new DebugConfiguration(connection).load();
 
     const submitOptions = await window.showInputBox({
       title: l10n.t(`Debug Service submit options`),
@@ -95,7 +95,7 @@ export async function startService(connection: IBMi) {
 }
 
 export async function stopService(connection: IBMi) {
-  const debugConfig = await new DebugConfiguration().load();
+  const debugConfig = await new DebugConfiguration(connection).load();
   const endResult = await connection.sendCommand({
     command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`
   });

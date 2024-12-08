@@ -133,7 +133,7 @@ async function downloadLogs() {
       location: vscode.ProgressLocation.Notification,
       title: vscode.l10n.t(`Gathering logs...`),
     }, async () => {
-      const codeForIBMiLog = connection.outputChannelContent;
+      const codeForIBMiLog = connection.getOutputChannelContent();
       if (codeForIBMiLog !== undefined) {
         logs.push({
           label: vscode.l10n.t(`Code for IBM i Log`),
@@ -144,7 +144,7 @@ async function downloadLogs() {
         });
       }
 
-      const debugConfig = await new DebugConfiguration().load();
+      const debugConfig = await new DebugConfiguration(connection).load();
       try {
         const debugServiceLogPath = `${debugConfig.getRemoteServiceWorkDir()}/DebugService_log.txt`;
         const debugServiceLog = (await content.downloadStreamfileRaw(debugServiceLogPath));

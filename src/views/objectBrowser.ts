@@ -905,7 +905,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
               await contentApi.runSQL(copyToStreamFiles);
 
               task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: 33 })
-              await connection.downloadDirectory(downloadLocation!, directory);
+              await connection.getContent().downloadDirectory(downloadLocation!, directory);
               vscode.window.showInformationMessage(vscode.l10n.t(`Members download complete.`), vscode.l10n.t(`Open`))
                 .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, toBeDownloaded[0].name.toLocaleLowerCase()) : downloadLocationURI) : undefined);
             });

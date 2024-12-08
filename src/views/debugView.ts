@@ -72,7 +72,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   private async getRootItems() {
     const connection = instance.getConnection();
     if (connection) {
-      const debugConfig = await new DebugConfiguration().load();
+      const debugConfig = await new DebugConfiguration(connection).load();
       const keyFileExists = await debugKeyFileExists(connection, debugConfig);
 
       const certificates: Certificates = {
