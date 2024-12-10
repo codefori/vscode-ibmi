@@ -3,10 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
-import { MarkdownString, window } from 'vscode';
+import * as node_ssh from "node-ssh";
+import { MarkdownString, Uri, window } from 'vscode';
 import { GetMemberInfo } from '../components/getMemberInfo';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
-import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath } from '../typings';
+import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from '../typings';
 import { ConnectionConfiguration } from './Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
@@ -29,12 +30,7 @@ export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
   private get config(): ConnectionConfiguration.Parameters {
-    if (!this.ibmi.config) {
-      throw new Error("Please connect to an IBM i");
-    }
-    else {
-      return this.ibmi.config;
-    }
+    return this.ibmi.getConfig();
   }
 
   private getTempRemote(path: string) {
@@ -89,7 +85,7 @@ export default class IBMiContent {
       localPath = await tmpFile();
     }
 
-    await this.ibmi.downloadFile(localPath, remotePath);
+    await this.downloadFile(localPath, remotePath);
     const raw = await readFileAsync(localPath);
     return raw;
   }
@@ -176,7 +172,7 @@ export default class IBMiContent {
         if (!localPath) {
           localPath = await tmpFile();
         }
-        await this.ibmi.downloadFile(localPath, tempRmt);
+        await this.downloadFile(localPath, tempRmt);
         return await readFileAsync(localPath, `utf8`);
       } else {
         if (!retry) {
@@ -993,6 +989,21 @@ export default class IBMiContent {
     return Number((await this.ibmi.sendCommand({ command: `cd "${directory}" && (ls | wc -l)` })).stdout.trim());
   }
 
+
+  async checkUserSpecialAuthorities(authorities: SpecialAuthorities[], user?: string) {
+    const profile = (user || this.ibmi.currentUser).toLocaleUpperCase();
+    const [row] = await this.ibmi.runSQL(
+      `select trim(coalesce(usr.special_authorities,'') concat ' ' concat coalesce(grp.special_authorities, '')) AUTHORITIES ` +
+      `from qsys2.user_info_basic usr ` +
+      `left join qsys2.user_info_basic grp on grp.authorization_name = usr.group_profile_name ` +
+      `where usr.authorization_name = '${profile}'`
+    );
+
+    const userAuthorities = row?.AUTHORITIES ? String(row.AUTHORITIES).split(" ").filter(Boolean).filter(Tools.distinct) : [];
+    const missing = authorities.filter(auth => !userAuthorities.includes(auth));
+    return { valid: !Boolean(missing.length), missing };
+  }
+
   objectToToolTip(path: string, object: IBMiObject) {
     const tooltip = new MarkdownString(Tools.generateTooltipHtmlTable(path, {
       "Type": object.type,
@@ -1042,6 +1053,33 @@ export default class IBMiContent {
     return tooltip;
   }
 
+  async getSshCcsid() {
+    const sql = `
+    with SSH_DETAIL (id, iid) as (
+      select substring(job_name, locate('/', job_name, 15)+1, 10) as id, internal_job_id as iid from qsys2.netstat_job_info j where local_address = '0.0.0.0' and local_port = 22
+    )
+    select DEFAULT_CCSID, CCSID from table(QSYS2.ACTIVE_JOB_INFO( JOB_NAME_FILTER => (select id from SSH_DETAIL), DETAILED_INFO => 'ALL')) where INTERNAL_JOB_ID = (select iid from SSH_DETAIL)
+    `;
+
+    const [result] = await this.ibmi.runSQL(sql);
+    return Number(result.CCSID === IBMi.CCSID_NOCONVERSION ? result.DEFAULT_CCSID : result.CCSID);
+  }
+
+  async getSysEnvVars() {
+    const systemEnvVars = await this.ibmi.runSQL([
+      `select ENVIRONMENT_VARIABLE_NAME, ENVIRONMENT_VARIABLE_VALUE`,
+      `from qsys2.environment_variable_info where environment_variable_type = 'SYSTEM'`
+    ].join(` `)) as { ENVIRONMENT_VARIABLE_NAME: string, ENVIRONMENT_VARIABLE_VALUE: string }[];
+
+    let result: { [name: string]: string; } = {};
+
+    systemEnvVars.forEach(row => {
+      result[row.ENVIRONMENT_VARIABLE_NAME] = row.ENVIRONMENT_VARIABLE_VALUE;
+    });
+
+    return result;
+  }
+
   /**
    * Creates an empty unicode streamfile
    * @param path the full path to the streamfile
@@ -1053,6 +1091,22 @@ export default class IBMiContent {
     if (result.code !== 0) {
       throw new Error(result.stderr);
     }
+  }
+
+  async uploadFiles(files: { local: string | Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    await this.ibmi.client.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
+  }
+
+  async downloadFile(localFile: string | Uri, remoteFile: string) {
+    await this.ibmi.client.getFile(Tools.fileToPath(localFile), remoteFile);
+  }
+
+  async uploadDirectory(localDirectory: string | Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.ibmi.client.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+  }
+
+  async downloadDirectory(localDirectory: string | Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.ibmi.client.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 }
 

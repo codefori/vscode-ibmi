@@ -2,8 +2,8 @@ import vscode, { l10n, ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
 import IBMi from "../../api/IBMi";
+import { safeDisconnect, instance } from "../../instantiate";
 import { Tools } from "../../api/Tools";
-import { disconnect, instance } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 
 type NewLoginSettings = ConnectionData & {
@@ -22,7 +22,7 @@ export class Login {
   static async show(context: vscode.ExtensionContext) {
     const connection = instance.getConnection();
     if (connection) {
-      if (!disconnect()) return;
+      if (!safeDisconnect()) return;
     }
 
     const connectionTab = new Section()
@@ -96,7 +96,7 @@ export class Login {
 
               if (data.password || data.privateKeyPath) {
                 try {
-                  const connected = await new IBMi().connect(data, false, false, toDoOnConnected);
+                  const connected = await instance.connect({data, onConnectedOperations: toDoOnConnected});
                   if (connected.success) {
                     if (newConnection) {
                       vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
@@ -116,7 +116,7 @@ export class Login {
                     }
 
                   } else {
-                    vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
+                    vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error}`);
                   }
                 } catch (e) {
                   vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
@@ -146,7 +146,7 @@ export class Login {
       // If the user is already connected and trying to connect to a different system, disconnect them first
       if (name !== existingConnection.currentConnectionName) {
         vscode.window.showInformationMessage(`Disconnecting from ${existingConnection.currentHost}.`);
-        if (!await disconnect()) return false;
+        if (!await safeDisconnect()) return false;
       }
     }
 
@@ -172,11 +172,11 @@ export class Login {
       }
 
       try {
-        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings, toDoOnConnected);
+        const connected = await instance.connect({data: connectionConfig, onConnectedOperations: toDoOnConnected, reloadServerSettings});
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
-          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
+          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error}`);
         }
 
         return true;
