@@ -6,15 +6,15 @@ import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
 import { setupGitEventHandler } from './api/local/git';
+import { registerActionsCommands } from './commands/actions';
+import { registerCompareCommands } from './commands/compare';
+import { registerConnectionCommands } from './commands/connection';
+import { registerOpenCommands } from './commands/open';
+import { registerPasswordCommands } from './commands/password';
 import { QSysFS } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
-import { registerOpenCommands } from './commands/open';
-import { registerCompareCommands } from './commands/compare';
-import { registerActionsCommands } from './commands/actions';
-import { registerPasswordCommands } from './commands/password';
-import { registerConnectionCommands } from './commands/connection';
 
 export let instance: Instance;
 
@@ -108,9 +108,8 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 }
 
 async function updateConnectedBar() {
-  const connection = instance.getConnection();
-  if (connection) {
-    const config = instance.getConfig()!;
+  const config = instance.getConnection()?.getConfig();
+  if (config) {
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
   }
 
@@ -128,9 +127,7 @@ async function updateConnectedBar() {
 }
 
 async function onConnected() {
-  const connection = instance.getConnection()!;
-  const config = connection.getConfig();
-
+  const config = instance.getConnection()?.getConfig();
   [
     connectedBarItem,
     disconnectBarItem,
@@ -139,7 +136,7 @@ async function onConnected() {
   updateConnectedBar();
 
   // Enable the profile view if profiles exist.
-  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config.connectionProfiles || []).length > 0);
+  vscode.commands.executeCommand(`setContext`, `code-for-ibmi:hasProfiles`, (config?.connectionProfiles || []).length > 0);
 }
 
 async function onDisconnected() {

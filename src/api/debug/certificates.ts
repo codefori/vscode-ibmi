@@ -210,7 +210,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
 }
 
 export async function debugKeyFileExists(connection: IBMi, debugConfig: DebugConfiguration) {
-  return await connection.content.testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/.code4i.debug`, "f");
+  return await connection.getContent().testStreamFile(`${debugConfig.getRemoteServiceWorkDir()}/.code4i.debug`, "f");
 }
 
 export async function remoteCertificatesExists(debugConfig?: DebugConfiguration) {
