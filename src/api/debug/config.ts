@@ -8,11 +8,14 @@ type ConfigLine = {
   key: string
   value?: string
 }
-export const DEBUG_CONFIG_FILE = "/QIBM/ProdData/IBMiDebugService/bin/DebugService.env";
+
+export const DEBUG_CONFIG_FILE = "/QIBM/UserData/IBMiDebugService/C4iDebugService.env";
+export const ORIGINAL_DEBUG_CONFIG_FILE = "/QIBM/ProdData/IBMiDebugService/bin/DebugService.env";
 
 export class DebugConfiguration {
-  constructor(private connection: IBMi) {}
+  constructor(private connection: IBMi) { }
   readonly configLines: ConfigLine[] = [];
+  private readOnly = false;
 
   private getContent() {
     const content = this.connection.getContent();
@@ -49,7 +52,15 @@ export class DebugConfiguration {
   }
 
   async load() {
-    const content = (await this.getContent().downloadStreamfileRaw(DEBUG_CONFIG_FILE)).toString("utf-8");
+    //Since Debug Service 2.0.1: https://github.com/codefori/vscode-ibmi/issues/2416
+    if (!await this.getContent().testStreamFile(DEBUG_CONFIG_FILE, "r")) {
+      const copyResult = await this.connection.sendCommand({ command: `cp ${ORIGINAL_DEBUG_CONFIG_FILE} ${DEBUG_CONFIG_FILE} && chmod 755 ${DEBUG_CONFIG_FILE}` });
+      if (copyResult.code) {
+        this.readOnly = true;
+      }
+    }
+
+    const content = (await this.getContent().downloadStreamfileRaw(this.readOnly ? ORIGINAL_DEBUG_CONFIG_FILE : DEBUG_CONFIG_FILE)).toString("utf-8");
     this.configLines.push(...content.split("\n")
       .map(line => line.trim())
       .map(line => {
@@ -69,7 +80,9 @@ export class DebugConfiguration {
   }
 
   async save() {
-    await this.getContent().writeStreamfileRaw(DEBUG_CONFIG_FILE, Buffer.from(this.configLines.map(line => `${line.key}${line.value !== undefined ? `=${line.value}` : ''}`).join("\n"), `utf8`));
+    if (!this.readOnly) {
+      await this.getContent().writeStreamfileRaw(DEBUG_CONFIG_FILE, Buffer.from(this.configLines.map(line => `${line.key}${line.value !== undefined ? `=${line.value}` : ''}`).join("\n"), `utf8`));
+    }
   }
 
   getRemoteServiceCertificatePath() {
