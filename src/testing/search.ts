@@ -50,6 +50,21 @@ export const SearchSuite: TestSuite = {
         assert.ok(checkNames(result.hits.map(hit => hit.path.split("/").at(-1)!)));
         assert.ok(result.hits.every(hit => !hit.path.endsWith(`MBR`)));
       }
+    },
+    {
+      name: "pfgrep vs. qsh grep equivalency", test: async () => {
+        const pfgrep = getConnection().remoteFeatures.pfgrep;
+        // This test only needs to run if pfgrep is installed
+        if (pfgrep) {
+          const resultPfgrep = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+          getConnection().remoteFeatures.pfgrep = undefined;
+          const resultQsh = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "IBM", "CMRPG");
+          getConnection().remoteFeatures.pfgrep = pfgrep;
+          assert.deepEqual(resultPfgrep, resultQsh);
+        } else {
+          assert.ok(true)
+        }
+      }
     }
   ]
 }
