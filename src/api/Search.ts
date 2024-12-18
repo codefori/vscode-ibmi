@@ -1,6 +1,6 @@
 import * as path from 'path';
 import { GetMemberInfo } from '../components/getMemberInfo';
-import { IBMiMember, SearchHit, SearchResults } from '../typings';
+import { IBMiMember, SearchHit, SearchResults, CommandResult } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
 import { Tools } from './Tools';
@@ -14,6 +14,8 @@ export namespace Search {
     if (connection && config && content) {
       let detailedMembers: IBMiMember[]|undefined;
       let memberFilter: string|undefined;
+
+      const pfgrep = connection.remoteFeatures.pfgrep;
 
       if (typeof members === `string`) {
         memberFilter = connection.sysNameInAmerican(`${members}.MBR`);
@@ -42,10 +44,22 @@ export namespace Search {
       }
 
       // Then search the members
-      const result = await connection.sendQsh({
-        command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`,
-        directory: connection.sysNameInAmerican(`${asp}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
-      });
+      var result: CommandResult | undefined = undefined;
+      if (pfgrep) {
+        // pfgrep vs. qshell grep difference: uses -r for recursion instead of -R
+        // (GNU/BSD grep treat them the same); we don't use recursion yet though...
+        const command = `${pfgrep} -inHr -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
+        result = await connection.sendCommand({
+          command: command,
+          directory: connection.sysNameInAmerican(`${asp}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
+        });
+      } else {
+        const command = `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
+        result = await connection.sendQsh({
+          command: command,
+          directory: connection.sysNameInAmerican(`${asp}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
+        });
+      }
 
       if (!result.stderr) {
         let hits = parseGrepOutput(
