@@ -38,7 +38,8 @@ export namespace Search {
       if (pfgrep) {
         // pfgrep vs. qshell grep difference: uses -r for recursion instead of -R
         // (GNU/BSD grep treat them the same); we don't use recursion yet though...
-        const command = `${pfgrep} -inHr -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
+        // another difference: use -t to trim ending whitespace (pfgrep leaves intact)
+        const command = `${pfgrep} -inHrt -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`;
         result = await connection.sendCommand({
           command: command,
           directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
