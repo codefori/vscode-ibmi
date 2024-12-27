@@ -35,10 +35,9 @@ export class GetMemberInfo implements IBMiComponent {
   }
 
   async update(connection: IBMi): Promise<ComponentState> {
-    const config = connection.config!;
     return connection.withTempDirectory(async tempDir => {
       const tempSourcePath = posix.join(tempDir, `getMemberInfo.sql`);
-      await connection.content.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary, this.procedureName, this.currentVersion));
+      await connection.getContent().writeStreamfileRaw(tempSourcePath, getSource(connection.getConfig().tempLibrary, this.procedureName, this.currentVersion));
       const result = await connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
