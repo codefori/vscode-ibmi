@@ -8,7 +8,7 @@ import { IBMiComponent } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "../components/manager";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { ConnectionConfiguration } from "./Configuration";
 import IBMiContent from "./IBMiContent";
@@ -407,15 +407,6 @@ export default class IBMi {
           progress.report({
             message: `Checking installed components on host IBM i.`
           });
-
-          // We need to check if our remote programs are installed.
-          remoteApps.push(
-            {
-              path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
-              names: [`GETNEWLIBL.PGM`],
-              specific: `GE*.PGM`
-            }
-          );
 
           //Next, we see what pase features are available (installed via yum)
           //This may enable certain features in the future.
