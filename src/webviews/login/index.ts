@@ -1,9 +1,8 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
-import IBMi from "../../api/IBMi";
-import { safeDisconnect, instance } from "../../instantiate";
 import { Tools } from "../../api/Tools";
+import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 
 type NewLoginSettings = ConnectionData & {
@@ -30,6 +29,8 @@ export class Login {
       .addInput(`host`, l10n.t(`Host or IP Address`), undefined, { minlength: 1 })
       .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
       .addInput(`username`, l10n.t(`Username`), undefined, { minlength: 1, maxlength: 10 })
+      .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" })
+      .addHorizontalRule()
       .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
@@ -55,6 +56,7 @@ export class Login {
       page.panel.dispose();
 
       data.port = Number(data.port);
+      data.readyTimeout = Number(data.readyTimeout);
       data.privateKeyPath = data.privateKeyPath?.trim() ? Tools.normalizePath(data.privateKeyPath) : undefined;
       if (data.name) {
         const existingConnection = ConnectionManager.getByName(data.name);
@@ -96,7 +98,7 @@ export class Login {
 
               if (data.password || data.privateKeyPath) {
                 try {
-                  const connected = await instance.connect({data, onConnectedOperations: toDoOnConnected});
+                  const connected = await instance.connect({ data, onConnectedOperations: toDoOnConnected });
                   if (connected.success) {
                     if (newConnection) {
                       vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
@@ -172,7 +174,7 @@ export class Login {
       }
 
       try {
-        const connected = await instance.connect({data: connectionConfig, onConnectedOperations: toDoOnConnected, reloadServerSettings});
+        const connected = await instance.connect({ data: connectionConfig, onConnectedOperations: toDoOnConnected, reloadServerSettings });
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
