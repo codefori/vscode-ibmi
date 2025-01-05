@@ -329,6 +329,13 @@ export class CustomUI extends Section {
                   }
                 }
 
+                if(field.inputType === "number"){                  
+                  const numberValue = Number(currentValue);
+                  isInvalid = isNaN(numberValue) ||
+                    (field.min !== undefined && numberValue < Number(field.min)) ||
+                    (field.max !== undefined && numberValue > Number(field.max));
+                }
+
                 if (isInvalid) {
                   fieldElement.setAttribute("invalid", "true");
                   isValid = false;
@@ -578,6 +585,7 @@ export class Field {
                 ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}
                 ${this.min ? `min="${this.min}"` : ``}
                 ${this.max ? `max="${this.max}"` : ``}
+                ${this.inputType === 'number' ? `step="1"` : ``}
                 >
               <${tag}>
           </vscode-form-group>`;
