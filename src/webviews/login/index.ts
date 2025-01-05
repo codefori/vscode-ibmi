@@ -27,7 +27,7 @@ export class Login {
     const connectionTab = new Section()
       .addInput(`name`, `Connection Name`, undefined, { minlength: 1 })
       .addInput(`host`, l10n.t(`Host or IP Address`), undefined, { minlength: 1 })
-      .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+      .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, min: 1, max: 65535, inputType: "number" })
       .addInput(`username`, l10n.t(`Username`), undefined, { minlength: 1, maxlength: 10 })
       .addHorizontalRule()
       .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))

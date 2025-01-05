@@ -360,7 +360,7 @@ export class SettingsUI {
             const privateKeyWarning = !privateKeyPath || existsSync(privateKeyPath) ? "" : "<b>⚠️ This private key doesn't exist on this system! ⚠️</b></br></br>";
             const ui = new CustomUI()
               .addInput(`host`, vscode.l10n.t(`Host or IP Address`), undefined, { default: stored.host, minlength: 1 })
-              .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), min: 1, max: 65535, inputType: "number" })
               .addInput(`username`, vscode.l10n.t(`Username`), undefined, { default: stored.username, minlength: 1 })
               .addHorizontalRule()
               .addParagraph(vscode.l10n.t(`Only provide either the password or a private key - not both.`))
