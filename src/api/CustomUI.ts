@@ -398,10 +398,7 @@ export class CustomUI extends Section {
             // Setup the input fields for validation
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
-              fieldElement.onkeyup = (e) => {validateInputs()};              
-              if(field.inputType === "number"){
-                fieldElement.onmousewheel = (e) => {validateInputs()};
-              }
+              fieldElement.addEventListener("change", (e) => {validateInputs()});              
             }
 
             // Now many buttons can be pressed to submit
