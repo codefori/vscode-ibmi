@@ -360,11 +360,14 @@ export class SettingsUI {
             const privateKeyWarning = !privateKeyPath || existsSync(privateKeyPath) ? "" : "<b>⚠️ This private key doesn't exist on this system! ⚠️</b></br></br>";
             const ui = new CustomUI()
               .addInput(`host`, vscode.l10n.t(`Host or IP Address`), undefined, { default: stored.host, minlength: 1 })
-              .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), min: 1, max: 65535, inputType: "number" })
               .addInput(`username`, vscode.l10n.t(`Username`), undefined, { default: stored.username, minlength: 1 })
+              .addHorizontalRule()
               .addParagraph(vscode.l10n.t(`Only provide either the password or a private key - not both.`))
               .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
               .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
+              .addHorizontalRule()
+              .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })              
               .addButtons(
                 { id: `submitButton`, label: vscode.l10n.t(`Save`), requiresValidation: true },
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
@@ -410,6 +413,7 @@ export class SettingsUI {
 
                 //Fix values before assigning the data
                 data.port = Number(data.port);
+                data.readyTimeout = Number(data.readyTimeout);
                 delete data.password;
                 delete data.buttons;
 

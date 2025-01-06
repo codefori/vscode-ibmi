@@ -8,7 +8,7 @@ import { IBMiComponent } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "../components/manager";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, SpecialAuthorities, WrapResult } from "../typings";
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { ConnectionConfiguration } from "./Configuration";
 import IBMiContent from "./IBMiContent";
@@ -76,7 +76,7 @@ export default class IBMi {
    */
   content = new IBMiContent(this);
 
-  client: node_ssh.NodeSSH|undefined;
+  client: node_ssh.NodeSSH | undefined;
   currentHost: string = ``;
   currentPort: number = 22;
   currentUser: string = ``;
@@ -106,7 +106,7 @@ export default class IBMi {
   //Maximum admited length for command's argument - any command whose arguments are longer than this won't be executed by the shell
   maximumArgsLength = 0;
 
-  private disconnectedCallback: (DisconnectCallback)|undefined;
+  private disconnectedCallback: (DisconnectCallback) | undefined;
 
   /**
    * Will only be called once per connection.

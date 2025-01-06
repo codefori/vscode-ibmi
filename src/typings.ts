@@ -85,6 +85,7 @@ export interface ConnectionData {
   password?: string;
   privateKeyPath?: string;
   keepaliveInterval?: number;
+  readyTimeout?: number;
 }
 
 export interface Server {

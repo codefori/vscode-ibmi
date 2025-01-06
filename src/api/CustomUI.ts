@@ -41,6 +41,8 @@ interface WebviewMessageRequest {
   data?: any;
 }
 
+type InputType = "text" | "number";
+
 export class Section {
   readonly fields: Field[] = [];
 
@@ -61,7 +63,7 @@ export class Section {
     return this;
   }
 
-  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number, regexTest?: string }) {
+  addInput(id: string, label: string, description?: string, options?: { default?: string, readonly?: boolean, rows?: number, minlength?: number, maxlength?: number, regexTest?: string, inputType?: InputType, min?:number, max?:number }) {
     const input = Object.assign(new Field('input', id, label, description), options);
     this.addField(input);
     return this;
@@ -327,6 +329,13 @@ export class CustomUI extends Section {
                   }
                 }
 
+                if(field.inputType === "number"){
+                  const numberValue = Number(currentValue);
+                  isInvalid = isNaN(numberValue) ||
+                    (field.min !== undefined && numberValue < Number(field.min)) ||
+                    (field.max !== undefined && numberValue > Number(field.max));
+                }
+
                 if (isInvalid) {
                   fieldElement.setAttribute("invalid", "true");
                   isValid = false;
@@ -389,7 +398,7 @@ export class CustomUI extends Section {
             // Setup the input fields for validation
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
-              fieldElement.onkeyup = (e) => {validateInputs()};
+              fieldElement.addEventListener("change", (e) => {validateInputs()});              
             }
 
             // Now many buttons can be pressed to submit
@@ -505,6 +514,9 @@ export class Field {
   public minlength?: number;
   public maxlength?: number;
   public regexTest?: string;
+  public inputType?: InputType;
+  public min?: number;
+  public max?: number;
 
   constructor(readonly type: FieldType, readonly id: string, readonly label: string, readonly description?: string) {
 
@@ -565,12 +577,17 @@ export class Field {
               ${this.renderLabel()}
               ${this.renderDescription()}              
               <${tag} class="long-input" id="${this.id}" name="${this.id}" 
+                ${this.inputType ? `type="${this.inputType}"` : ``} 
                 ${this.default ? `value="${this.default}"` : ``} 
                 ${this.readonly ? `readonly` : ``} 
                 ${multiline ? `rows="${this.rows}" resize="vertical"` : ''}
                 ${this.minlength ? `minlength="${this.minlength}"` : ``} 
-                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}>
-              /${tag}>
+                ${this.maxlength ? `maxlength="${this.maxlength}"` : ``}
+                ${this.min ? `min="${this.min}"` : ``}
+                ${this.max ? `max="${this.max}"` : ``}
+                ${this.inputType === 'number' ? `step="1"` : ``}
+                >
+              <${tag}>
           </vscode-form-group>`;
 
       case `paragraph`:

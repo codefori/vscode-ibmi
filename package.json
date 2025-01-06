@@ -2983,7 +2983,7 @@
 	},
 	"dependencies": {
 		"@ibm/ibmi-eventf-parser": "^1.0.2",
-		"@vscode-elements/elements": "^1.9.0",
+		"@vscode-elements/elements": "^1.9.1",
 		"adm-zip": "^0.5.14",
 		"crc-32": "https://cdn.sheetjs.com/crc-32-latest/crc-32-latest.tgz",
 		"csv": "^6.2.1",
