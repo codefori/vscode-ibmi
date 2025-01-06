@@ -329,7 +329,7 @@ export class CustomUI extends Section {
                   }
                 }
 
-                if(field.inputType === "number"){                  
+                if(field.inputType === "number"){
                   const numberValue = Number(currentValue);
                   isInvalid = isNaN(numberValue) ||
                     (field.min !== undefined && numberValue < Number(field.min)) ||
@@ -398,7 +398,10 @@ export class CustomUI extends Section {
             // Setup the input fields for validation
             for (const field of inputFields) {
               const fieldElement = document.getElementById(field.id);
-              fieldElement.onkeyup = (e) => {validateInputs()};
+              fieldElement.onkeyup = (e) => {validateInputs()};              
+              if(field.inputType === "number"){
+                fieldElement.onmousewheel = (e) => {validateInputs()};
+              }
             }
 
             // Now many buttons can be pressed to submit
