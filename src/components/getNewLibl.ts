@@ -1,25 +1,43 @@
 import { posix } from "path";
 import IBMi from "../api/IBMi";
-import { instance } from "../instantiate";
 import { ComponentState, IBMiComponent } from "./component";
 
 export class GetNewLibl implements IBMiComponent {
   static ID = "GetNewLibl";
+  private readonly procedureName = 'GETNEWLIBL';
+  private readonly currentVersion = 1;
+  private installedVersion = 0;
+
+  reset() {
+    this.installedVersion = 0;
+  }
+
   getIdentification() {
-    return { name: GetNewLibl.ID, version: 1 };
+    return { name: GetNewLibl.ID, version: this.installedVersion };
   }
 
   async getRemoteState(connection: IBMi): Promise<ComponentState> {
-    return connection.remoteFeatures[`GETNEWLIBL.PGM`] ? `Installed` : `NotInstalled`;
+    const [result] = await connection.runSQL(`select cast(LONG_COMMENT as VarChar(200)) LONG_COMMENT from qsys2.sysprocs where routine_schema = '${connection.getConfig().tempLibrary.toUpperCase()}' and routine_name = '${this.procedureName}'`);
+    if (result?.LONG_COMMENT) {
+      const comment = result.LONG_COMMENT as string;
+      const dash = comment.indexOf('-');
+      if (dash > -1) {
+        this.installedVersion = Number(comment.substring(0, dash).trim());
+      }
+    }
+    if (this.installedVersion < this.currentVersion) {
+      return `NeedsUpdate`;
+    }
+
+    return `Installed`;
   }
 
   update(connection: IBMi): Promise<ComponentState> {
     const config = connection.config!
-    const content = instance.getContent();
     return connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 
-      await content!.writeStreamfileRaw(tempSourcePath, getSource(config.tempLibrary));
+      await connection.getContent().writeStreamfileRaw(tempSourcePath, this.getSource(config.tempLibrary));
       const result = await connection.runCommand({
         command: `RUNSQLSTM SRCSTMF('${tempSourcePath}') COMMIT(*NONE) NAMING(*SQL)`,
         cwd: `/`,
@@ -36,7 +54,7 @@ export class GetNewLibl implements IBMiComponent {
 
   async getLibraryListFromCommand(connection: IBMi, ileCommand: string) {
     const tempLib = connection.config!.tempLibrary;
-    const resultSet = await connection.runSQL(`CALL ${tempLib}.GETNEWLIBL('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
+    const resultSet = await connection.runSQL(`CALL ${tempLib}.${this.procedureName}('${ileCommand.replace(new RegExp(`'`, 'g'), `''`)}')`);
 
     const result = {
       currentLibrary: `QGPL`,
@@ -57,20 +75,22 @@ export class GetNewLibl implements IBMiComponent {
 
     return result;
   }
-}
 
-function getSource(library: string) {
-  return Buffer.from([
-    `CREATE OR REPLACE PROCEDURE ${library}.GETNEWLIBL(IN COMMAND VARCHAR(2000))`,
-    `DYNAMIC RESULT SETS 1 `,
-    `BEGIN`,
-    `  DECLARE clibl CURSOR FOR `,
-    `    SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME`,
-    `    FROM QSYS2.LIBRARY_LIST_INFO;`,
-    `  CALL QSYS2.QCMDEXC(COMMAND);`,
-    `  OPEN clibl;`,
-    `END;`,
-    ``,
-    `call QSYS2.QCMDEXC( 'grtobjaut ${library}/GETNEWLIBL *PGM *PUBLIC *ALL' );`
-  ].join(`\n`), "utf8");
+  private getSource(library: string) {
+    return Buffer.from([
+      `CREATE OR REPLACE PROCEDURE ${library}.${this.procedureName}(IN COMMAND VARCHAR(2000))`,
+      `DYNAMIC RESULT SETS 1 `,
+      `BEGIN`,
+      `  DECLARE clibl CURSOR FOR `,
+      `    SELECT ORDINAL_POSITION, TYPE as PORTION, SYSTEM_SCHEMA_NAME`,
+      `    FROM QSYS2.LIBRARY_LIST_INFO;`,
+      `  CALL QSYS2.QCMDEXC(COMMAND);`,
+      `  OPEN clibl;`,
+      `END;`,
+      ``,
+      `comment on procedure ${library}.${this.procedureName} is '${this.currentVersion} - Validate member information';`,
+      ``,
+      `call QSYS2.QCMDEXC( 'grtobjaut ${library}/${this.procedureName} *PGM *PUBLIC *ALL' );`
+    ].join(`\n`), "utf8");
+  }
 }

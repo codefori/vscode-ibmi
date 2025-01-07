@@ -408,15 +408,6 @@ export default class IBMi {
             message: `Checking installed components on host IBM i.`
           });
 
-          // We need to check if our remote programs are installed.
-          remoteApps.push(
-            {
-              path: `/QSYS.lib/${this.upperCaseName(this.config.tempLibrary)}.lib/`,
-              names: [`GETNEWLIBL.PGM`],
-              specific: `GE*.PGM`
-            }
-          );
-
           //Next, we see what pase features are available (installed via yum)
           //This may enable certain features in the future.
           for (const feature of remoteApps) {
