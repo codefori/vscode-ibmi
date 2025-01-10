@@ -69,6 +69,13 @@ export class SettingsUI {
           .addCheckbox(`autoSaveBeforeAction`, `Auto Save for Actions`, `When current editor has unsaved changes, automatically save it before running an action.`, config.autoSaveBeforeAction)
           .addInput(`hideCompileErrors`, `Errors to ignore`, `A comma delimited list of errors to be hidden from the result of an Action in the EVFEVENT file. Useful for codes like <code>RNF5409</code>.`, { default: config.hideCompileErrors.join(`, `) })
 
+        if (connection) {
+          featuresTab
+            .addHorizontalRule()
+            .addParagraph(`Profiles and Actions can be stored on the server, but are only loaded when connecting to the server. Use this to reload them now.`)
+            .addButtons({ id: `reloadConfigs`, label: `Reload config files` })
+        }
+
         const tempDataTab = new Section();
         tempDataTab
           .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: config.tempLibrary, minlength: 1, maxlength: 10 })
@@ -270,6 +277,10 @@ export class SettingsUI {
               const button = data.buttons;
 
               switch (button) {
+                case `reloadConfigs`:
+                  await connection?.loadRemoteConfigs();
+                  break;
+
                 case `import`:
                   vscode.commands.executeCommand(`code-for-ibmi.debug.setup.local`);
                   break;

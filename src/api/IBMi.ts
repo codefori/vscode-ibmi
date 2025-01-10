@@ -502,22 +502,11 @@ export default class IBMi {
 
         // Next, load in all the config files!
 
-        const totalConfigs = Object.keys(this.configFiles).length;
-        let currentI = 1;
-        for (const configFile in this.configFiles) {
-          progress.report({
-            message: `Loading from local and remote configuration. (${currentI++}/${totalConfigs})`
-          });
+        progress.report({
+          message: `Loading remote configuration files.`
+        });
 
-          const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
-
-          try {
-            await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
-          } catch (e) {}
-
-
-          this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
-        }
+        await this.loadRemoteConfigs();
 
         progress.report({
           message: `Checking library list configuration.`
@@ -1161,6 +1150,20 @@ export default class IBMi {
     }
     finally {
       ConnectionConfiguration.update(this.config!);
+    }
+  }
+
+  async loadRemoteConfigs() {
+    for (const configFile in this.configFiles) {
+      const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+      
+      this.configFiles[configFile as keyof ConnectionConfigFiles].reset();
+
+      try {
+        await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
+      } catch (e) { }
+
+      this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
     }
   }
 
