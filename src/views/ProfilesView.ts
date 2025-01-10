@@ -6,6 +6,7 @@ import { instance } from '../instantiate';
 import { Profile } from '../typings';
 import { CommandProfile } from '../webviews/commandProfile';
 import IBMi from '../api/IBMi';
+import { ProfilesConfigFile } from '../api/config/profiles';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -243,7 +244,7 @@ export class ProfilesView {
 
 export async function getAllProfiles(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles;
-  const profilesConfig = await connection.getConfigFile(`profiles`).load();
+  const profilesConfig = await connection.getConfigFile<ProfilesConfigFile>(`profiles`).get();
   const localProfiles = profilesConfig ? profilesConfig.profiles : [];
 
   return [...profiles, ...localProfiles];
@@ -251,7 +252,7 @@ export async function getAllProfiles(connection: IBMi) {
 
 async function getProfilesInGroups(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles || [];
-  const profilesConfig = await connection.getConfigFile(`profiles`).load();
+  const profilesConfig = await connection.getConfigFile<ProfilesConfigFile>(`profiles`).get();
   const localProfiles = profilesConfig ? profilesConfig.profiles : [];
 
   return {

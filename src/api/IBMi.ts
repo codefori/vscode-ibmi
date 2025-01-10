@@ -8,7 +8,7 @@ import { IBMiComponent } from "../components/component";
 import { CopyToImport } from "../components/copyToImport";
 import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "../components/manager";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
+import { Action, CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import { ConnectionConfiguration } from "./Configuration";
 import IBMiContent from "./IBMiContent";
@@ -19,6 +19,7 @@ import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
 import { ConfigFile } from './config/configFile';
 import { getProfilesConfig, ProfilesConfigFile } from './config/profiles';
+import { getActionsConfig } from './config/actions';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -57,6 +58,7 @@ type DisconnectCallback = (conn: IBMi) => Promise<void>;
 
 interface ConnectionConfigFiles {
   profiles: ConfigFile<ProfilesConfigFile>
+  actions: ConfigFile<Action[]>
 }
 
 export default class IBMi {
@@ -79,7 +81,8 @@ export default class IBMi {
   config?: ConnectionConfiguration.Parameters;
 
   private configFiles: ConnectionConfigFiles = {
-    profiles: getProfilesConfig(this)
+    profiles: getProfilesConfig(this),
+    actions: getActionsConfig(this)
   }
 
   /**
@@ -126,8 +129,8 @@ export default class IBMi {
     this.disconnectedCallback = callback;
   }
 
-  getConfigFile(id: keyof ConnectionConfigFiles) {
-    return this.configFiles[id];
+  getConfigFile<T>(id: keyof ConnectionConfigFiles) {
+    return this.configFiles[id] as ConfigFile<T>;
   }
 
   get canUseCqsh() {
@@ -509,7 +512,7 @@ export default class IBMi {
           const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
 
           try {
-            await this.configFiles[configFile as keyof ConnectionConfigFiles].load();
+            await this.configFiles[configFile as keyof ConnectionConfigFiles].loadFromServer();
           } catch (e) {}
 
 

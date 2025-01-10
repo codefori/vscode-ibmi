@@ -9,7 +9,6 @@ import IBMi from './IBMi';
 import Instance from './Instance';
 import { Tools } from './Tools';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './errors/diagnostics';
-import { getLocalActions } from './local/actions';
 import { DeployTools } from './local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from './local/env';
 import { getGitBranch } from './local/git';
@@ -102,8 +101,10 @@ export namespace CompileTools {
         // Then, if we're being called from a local file
         // we fetch the Actions defined from the workspace.
         if (workspaceFolder && uri.scheme === `file`) {
-          const localActions = await getLocalActions(workspaceFolder);
-          allActions.push(...localActions);
+          const localActions = await connection.getConfigFile<Action[]>(`actions`).get(workspaceFolder);
+          if (localActions) {
+            allActions.push(...localActions);
+          }
         }
 
         // We make sure all extensions are uppercase

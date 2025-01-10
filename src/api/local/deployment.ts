@@ -4,10 +4,9 @@ import tar from 'tar';
 import tmp from 'tmp';
 import vscode from 'vscode';
 import { instance } from '../../instantiate';
-import { DeploymentParameters } from '../../typings';
+import { Action, DeploymentParameters } from '../../typings';
 import IBMi from '../IBMi';
 import { Tools } from '../Tools';
-import { getLocalActions } from './actions';
 import { DeployTools } from './deployTools';
 
 export namespace Deployment {
@@ -78,8 +77,8 @@ export namespace Deployment {
               });
             }
 
-            getLocalActions(workspace).then(result => {
-              if (result.length === 0) {
+            connection.getConfigFile<Action[]>(`actions`).get(workspace).then(result => {
+              if (result === undefined || result.length === 0) {
                 vscode.window.showInformationMessage(
                   `There are no local Actions defined for this project.`,
                   `Run Setup`
@@ -232,7 +231,7 @@ export namespace Deployment {
       deploymentLog.appendLine(`Created deployment tarball ${localTarball.name}`);
 
       progress?.report({ message: `sending deployment tarball...` });
-      await connection.client.putFile(localTarball.name, remoteTarball);
+      await connection.client!.putFile(localTarball.name, remoteTarball);
       deploymentLog.appendLine(`Uploaded deployment tarball as ${remoteTarball}`);
 
       progress?.report({ message: `extracting deployment tarball to ${parameters.remotePath}...` });
