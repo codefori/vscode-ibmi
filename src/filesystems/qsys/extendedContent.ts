@@ -1,6 +1,7 @@
 import fs from "fs";
 import tmp from "tmp";
 import util from "util";
+import vscode from "vscode";
 import { GlobalConfiguration } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
@@ -27,37 +28,37 @@ export class ExtendedIBMiContent {
    * @param {string} spf 
    * @param {string} mbr 
    */
-  async downloadMemberContentWithDates(asp: string | undefined, lib: string, spf: string, mbr: string) {
+  async downloadMemberContentWithDates(uri: vscode.Uri) {
     const content = instance.getContent();
     const config = instance.getConfig();
     const connection = instance.getConnection();
     if (connection && config && content) {
-      lib = connection.upperCaseName(lib);
-      spf = connection.upperCaseName(spf);
-      mbr = connection.upperCaseName(mbr);
-
       const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;
-      const alias = getAliasName(lib, spf, mbr);
+      const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
-
+      const { library, file, name } = connection.parserMemberPath(uri.path);
       try {
-        await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${lib}"."${spf}"("${mbr}")`);
-      } catch (e) { }
+        await content.runSQL(`CREATE OR REPLACE ALIAS ${aliasPath} for "${library}"."${file}"("${name}")`);
+      } catch (e) {
+        console.log(e);
+      }
 
       if (!this.sourceDateHandler.recordLengths.has(alias)) {
-        let recordLength = await this.getRecordLength(aliasPath, lib, spf);
+        let recordLength = await this.getRecordLength(aliasPath, library, file);
         this.sourceDateHandler.recordLengths.set(alias, recordLength);
       }
 
       let rows;
       if (sourceColourSupport)
         rows = await connection.runSQL(
-          `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`
+          `select srcdat, rtrim(translate(srcdta, ${SEU_GREEN_UL_RI_temp}, ${SEU_GREEN_UL_RI})) as srcdta from ${aliasPath}`,
+          {forceSafe: true}
         );
       else
         rows = await connection.runSQL(
-          `select srcdat, srcdta from ${aliasPath}`
+          `select srcdat, srcdta from ${aliasPath}`,
+          {forceSafe: true}
         );
 
       if (rows.length === 0) {
@@ -112,32 +113,31 @@ export class ExtendedIBMiContent {
 
   /**
    * Upload to a member with source dates 
-   * @param {string|undefined} asp 
-   * @param {string} lib 
-   * @param {string} spf 
-   * @param {string} mbr 
+   * @param {vscode.Uri} uri
    * @param {string} body 
    */
-  async uploadMemberContentWithDates(asp: string | undefined, lib: string, spf: string, mbr: string, body: string) {
+  async uploadMemberContentWithDates(uri: vscode.Uri, body: string) {
     const connection = instance.getConnection();
     const config = instance.getConfig();
     if (connection && config) {
       const setccsid = connection.remoteFeatures.setccsid;
 
       const tempLib = config.tempLibrary;
-      const alias = getAliasName(lib, spf, mbr);
+      const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
 
       const sourceDates = this.sourceDateHandler.sourceDateMode === `edit` ? this.sourceDateHandler.baseDates.get(alias) || [] : this.sourceDateHandler.calcNewSourceDates(alias, body);
 
       const client = connection.client;
-      const tempRmt = connection.getTempRemote(lib + spf + mbr);
+
+      const { library, file, name } = connection.parserMemberPath(uri.path);
+      const tempRmt = connection.getTempRemote(library + file + name);
       if (tempRmt) {
         const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
         const tmpobj = await tmpFile();
 
         const sourceData = body.split(`\n`);
-        const recordLength = this.sourceDateHandler.recordLengths.get(alias) || await this.getRecordLength(aliasPath, lib, spf);
+        const recordLength = this.sourceDateHandler.recordLengths.get(alias) || await this.getRecordLength(aliasPath, library, file);
 
         const decimalSequence = sourceData.length >= 10000;
 
@@ -145,6 +145,7 @@ export class ExtendedIBMiContent {
           sequence = 0;
         for (let i = 0; i < sourceData.length; i++) {
           sequence = decimalSequence ? ((i + 1) / 100) : i + 1;
+          sourceData[i] = sourceData[i].trimEnd();
           if (sourceData[i].length > recordLength) {
             sourceData[i] = sourceData[i].substring(0, recordLength);
           }
@@ -165,7 +166,7 @@ export class ExtendedIBMiContent {
         //We assume the alias still exists....
         const tempTable = `QTEMP.NEWMEMBER`;
         const query: string[] = [
-          `CREATE TABLE ${tempTable} LIKE "${lib}"."${spf}";`,
+          `CREATE TABLE ${tempTable} LIKE "${library}"."${file}";`,
         ];
 
         // Row length is the length of the SQL string used to insert each row
@@ -179,7 +180,7 @@ export class ExtendedIBMiContent {
         });
 
         query.push(
-          `CALL QSYS2.QCMDEXC('CLRPFM FILE(${lib}/${spf}) MBR(${mbr})');`,
+          `CALL QSYS2.QCMDEXC('CLRPFM FILE(${library}/${file}) MBR(${name})');`,
           `insert into ${aliasPath} (select * from ${tempTable});`
         )
 

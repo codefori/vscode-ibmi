@@ -1,3 +1,4 @@
+import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 
@@ -119,9 +120,7 @@ export class SourceDateHandler {
     if (this.enabled && document.uri.scheme === `member` && document.isClosed) {
       const connection = instance.getConnection();
       if (connection) {
-        const { library, file, name: member } = connection.parserMemberPath(document.uri.path);
-
-        const alias = getAliasName(library, file, member);
+        const alias = getAliasName(document.uri);
         this.baseDates.delete(alias);
         this.baseSource.delete(alias);
         this.recordLengths.delete(alias);
@@ -166,10 +165,7 @@ export class SourceDateHandler {
   private _editOnDidChange(event: vscode.TextDocumentChangeEvent) {
     const connection = instance.getConnection();
     if (connection) {
-      const path = event.document.uri.path;
-      const { library, file, name: member } = connection.parserMemberPath(path);
-
-      const alias = getAliasName(library, file, member);
+      const alias = getAliasName(event.document.uri);
       const sourceDates = this.baseDates.get(alias);
       if (sourceDates) {
         for (const change of event.contentChanges) {
@@ -243,7 +239,7 @@ export class SourceDateHandler {
     fullName = fullName.substring(0, fullName.lastIndexOf(`.`));
 
     const lengthDiags: vscode.Diagnostic[] = [];
-    const alias = getAliasName(lib, file, fullName);
+    const alias = getAliasName(document.uri);
     const recordLength = this.recordLengths.get(alias);
     if (recordLength) {
       for (let lineIndex = 0; lineIndex < document.lineCount; lineIndex++) {
@@ -264,11 +260,7 @@ export class SourceDateHandler {
     if (editor.document.uri.scheme === `member`) {
       const connection = instance.getConnection();
       if (connection) {
-        const path = editor.document.uri.path;
-        const { library, file, name: member } = connection.parserMemberPath(path);
-
-        const alias = getAliasName(library, file, member);;
-
+        const alias = getAliasName(editor.document.uri);
         const sourceDates = this.baseDates.get(alias);
         if (sourceDates) {
           const annotations: vscode.DecorationOptions[] = [];
@@ -320,9 +312,9 @@ export class SourceDateHandler {
       if (isDelete || isSpace) {
         this.lineEditedBefore = 0;
       } else
-      if (event.contentChanges.length > 0) {
-        this.lineEditedBefore = currentEditingLine || 0;
-      }
+        if (event.contentChanges.length > 0) {
+          this.lineEditedBefore = currentEditingLine || 0;
+        }
     }
   }
 
@@ -330,9 +322,7 @@ export class SourceDateHandler {
     const connection = instance.getConnection();
     if (connection) {
       const lengthDiags: vscode.Diagnostic[] = [];
-      const path = connection.parserMemberPath(document.uri.path);
-      const lib = path.library, file = path.file, fullName = path.name;
-      const alias = getAliasName(lib, file, fullName);
+      const alias = getAliasName(document.uri);
       const recordLength = this.recordLengths.get(alias);
 
       if (recordLength) {
@@ -357,9 +347,7 @@ export class SourceDateHandler {
       const config = instance.getConfig();
 
       if (connection && config && config.sourceDateGutter) {
-        const path = document.uri.path;
-        const { library, file, name: member } = connection.parserMemberPath(path);
-        const alias = getAliasName(library, file, member);;
+        const alias = getAliasName(document.uri);
 
         const sourceDates = this.baseDates.get(alias);
         if (sourceDates) {
@@ -558,8 +546,8 @@ export class SourceDateHandler {
   }
 }
 
-export function getAliasName(library: string, sourceFile: string, member: string) {
-  return `${library}_${sourceFile}_${member}`.replace(/\./g, `_`)
+export function getAliasName(uri: vscode.Uri) {
+  return `TEMP_${Crypto.createHash('sha1').update(uri.toString()).digest('hex')}`.toUpperCase();
 }
 
 /**

@@ -150,7 +150,7 @@ export function initializeConnectionBrowser(context: vscode.ExtensionContext) {
       }
 
       if (!connectionBrowser.attemptingConnection && toBeDeleted.length) {
-        const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete the connection "{0}"?`, toBeDeleted[0].name) : vscode.l10n.t(`Are you sure you want to delete the connection "{0}"?`, toBeDeleted[0].name);
+        const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete the connection "{0}"?`, toBeDeleted[0].name) : vscode.l10n.t("Are you sure you want to delete these {0} connections?", toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(server => `- ${server.name}`).join("\n");
         if (await vscode.window.showWarningMessage(message, { modal: true, detail }, vscode.l10n.t(`Yes`))) {
           for (const server of toBeDeleted) {

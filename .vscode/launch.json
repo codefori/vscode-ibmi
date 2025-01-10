@@ -31,7 +31,41 @@
 			"sourceMaps": true,
 			"preLaunchTask": "${defaultBuildTask}",
 			"env": {
-				"testing": "true"
+				"base_testing": "true"
+			}
+		},
+		{
+			"name": "Extension Tests (All simultaneously)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],			
+			"sourceMaps": true,
+			"preLaunchTask": "${defaultBuildTask}",
+			"env": {
+				"base_testing": "true",
+				"simultaneous": "true"
+			}
+		},
+		{
+			"name": "Extension Tests (Encoding suite)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],			
+			"sourceMaps": true,
+			"preLaunchTask": "${defaultBuildTask}",
+			"env": {
+				"base_testing": "true",
+				"specific": "encoding"
 			}
 		},
 		{
@@ -47,7 +81,7 @@
 			"sourceMaps": true,
 			"preLaunchTask": "${defaultBuildTask}",
 			"env": {
-				"testing": "true",
+				"base_testing": "true",
 				"individual": "true"
 			}
 		},

@@ -7,8 +7,6 @@ export type ComponentIdentification = {
   version: number
 }
 
-export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
-
 /**
  * Defines a component that is managed per IBM i.
  * 
@@ -16,8 +14,8 @@ export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
  * 
  * For example, this class:
  * ```
- * class MyIBMIComponent extends IBMiComponent {
- *  //implements getName(), getRemoteState() and update()
+ * class MyIBMIComponent implements IBMiComponent {
+ *  //implements getName, getRemoteState and update
  * }
  * ```
  * Must be registered like this, when the extension providing the component gets activated:
@@ -32,49 +30,18 @@ export type IBMiComponentType<T extends IBMiComponent> = new (c: IBMi) => T;
  * ```
  * 
  */
-export abstract class IBMiComponent {
-  private state: ComponentState = `NotChecked`;
-
-  constructor(protected readonly connection: IBMi) {
-
-  }
-
-  getState() {
-    return this.state;
-  }
-
-  async check() {
-    try {
-      this.state = await this.getRemoteState();
-      if (this.state !== `Installed`) {
-        this.state = await this.update();
-      }
-    }
-    catch (error) {
-      console.log(`Error occurred while checking component ${this.toString()}`);
-      console.log(error);
-      this.state = `Error`;
-    }
-
-    return this;
-  }
-
-  toString() {
-    const identification = this.getIdentification();
-    return `${identification.name} (version ${identification.version})`
-  }
-
+export type IBMiComponent = {
   /**
-   * The name of this component; mainly used for display and logging purposes
+   * The identification of this component; name must be unique
    * 
    * @returns a human-readable name
    */
-  abstract getIdentification(): ComponentIdentification;
+  getIdentification(): ComponentIdentification;
 
   /**
    * @returns the component's {@link ComponentState state} on the IBM i
    */
-  protected abstract getRemoteState(): ComponentState | Promise<ComponentState>;
+  getRemoteState(connection: IBMi, installDirectory:string): ComponentState | Promise<ComponentState>;
 
   /**
    * Called whenever the components needs to be installed or updated, depending on its {@link ComponentState state}.
@@ -83,5 +50,10 @@ export abstract class IBMiComponent {
    * 
    * @returns the component's {@link ComponentState state} after the update is done
    */
-  protected abstract update(): ComponentState | Promise<ComponentState>
+  update(connection: IBMi, installDirectory:string): ComponentState | Promise<ComponentState>
+
+  /**
+   * Called when connecting to clear every persitent information related to the previous connection
+   */
+  reset?() : void | Promise<void>
 }

@@ -1,9 +1,9 @@
 import * as path from 'path';
+import { GetMemberInfo } from '../components/getMemberInfo';
 import { IBMiMember, SearchHit, SearchResults } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import Instance from './Instance';
 import { Tools } from './Tools';
-import { GetMemberInfo } from '../components/getMemberInfo';
 
 export namespace Search {
   export async function searchMembers(instance: Instance, library: string, sourceFile: string, searchTerm: string, members: string|IBMiMember[], readOnly?: boolean,): Promise<SearchResults> {
@@ -63,7 +63,7 @@ export namespace Search {
 
         } else {
           // Else, we need to fetch the member info for each hit so we can display the correct extension
-          const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo);
+          const infoComponent = connection?.getComponent<GetMemberInfo>(GetMemberInfo.ID);
           const memberInfos: IBMiMember[] = hits.map(hit => {
             const { name, dir } = path.parse(hit.path);
             const [library, file] = dir.split(`/`);
@@ -76,7 +76,7 @@ export namespace Search {
             };
           });
 
-          detailedMembers = await infoComponent?.getMultipleMemberInfo(memberInfos);
+          detailedMembers = await infoComponent?.getMultipleMemberInfo(connection, memberInfos);
         }
 
         // Then fix the extensions in the hit

@@ -42,7 +42,7 @@ export namespace Deployment {
 
     const workspaces = vscode.workspace.workspaceFolders;
     if (workspaces && workspaces.length > 0) {
-      buildWatcher().then(bw => context.subscriptions.push(bw));
+      buildWatcher().then(context.subscriptions.push);
     }
 
     instance.subscribe(
@@ -57,7 +57,6 @@ export namespace Deployment {
 
         if (workspaces && connection && storage && config) {
           if (workspaces.length > 0) {
-            buildWatcher().then(bw => context.subscriptions.push(bw));
             button.show();
           }
 

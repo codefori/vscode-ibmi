@@ -1,11 +1,11 @@
 import vscode from "vscode";
 import IBMi from "../api/IBMi";
-import { ComponentState, IBMiComponent, IBMiComponentType } from "./component";
+import { ComponentState, IBMiComponent } from "./component";
 
 export class ComponentRegistry {
-  private readonly components: Map<string, (IBMiComponentType<any>)[]> = new Map;
+  private readonly components: Map<string, IBMiComponent[]> = new Map;
 
-  public registerComponent(context: vscode.ExtensionContext, component: IBMiComponentType<any>) {
+  public registerComponent(context: vscode.ExtensionContext, component: IBMiComponent) {
     const key = context.extension.id;
     const extensionComponents = this.components.get(key);
     if (extensionComponents) {
@@ -24,23 +24,82 @@ export class ComponentRegistry {
 export const extensionComponentRegistry = new ComponentRegistry();
 
 export class ComponentManager {
-  private readonly registered: Map<IBMiComponentType<any>, IBMiComponent> = new Map;
+  private readonly registered: Map<string, IBMiComponentRuntime> = new Map;
 
   constructor(private readonly connection: IBMi) {
 
   }
 
+  public getState() {
+    return Array.from(this.registered.keys()).map(k => {
+      const comp = this.registered.get(k)!;
+      return {
+        id: comp.component.getIdentification(),
+        state: comp.getState()
+      }
+    });
+  }
+
   public async startup() {
     const components = Array.from(extensionComponentRegistry.getComponents().values()).flatMap(a => a.flat());
-    for (const Component of components) {
-      this.registered.set(Component, await new Component(this.connection).check());
+    for (const component of components) {
+      await component.reset?.();
+      this.registered.set(component.getIdentification().name, await new IBMiComponentRuntime(this.connection, component).check());
     }
   }
 
-  get<T extends IBMiComponent>(type: IBMiComponentType<T>, ignoreState?: boolean): T | undefined {
-    const component = this.registered.get(type);
-    if (component && (ignoreState || component.getState() === `Installed`)) {
-      return component as T;
+  get<T extends IBMiComponent>(id: string, ignoreState?: boolean) {
+    const componentEngine = this.registered.get(id);
+    if (componentEngine && (ignoreState || componentEngine.getState() === `Installed`)) {
+      return componentEngine.component as T;
     }
+  }
+}
+
+class IBMiComponentRuntime {
+  public static readonly InstallDirectory = `$HOME/.vscode/`;
+  private state: ComponentState = `NotChecked`;
+  private cachedInstallDirectory: string | undefined;
+
+  constructor(protected readonly connection: IBMi, readonly component: IBMiComponent) {
+
+  }
+
+  async getInstallDirectory() {
+    if (!this.cachedInstallDirectory) {
+      const result = await this.connection.sendCommand({
+        command: `echo "${IBMiComponentRuntime.InstallDirectory}"`,
+      });
+
+      this.cachedInstallDirectory = result.stdout.trim() || `/home/${this.connection.currentUser.toLowerCase()}/.vscode/`;
+    }
+
+    return this.cachedInstallDirectory;
+  }
+
+  getState() {
+    return this.state;
+  }
+
+  async check() {
+    try {
+      const installDirectory = await this.getInstallDirectory();
+      this.state = await this.component.getRemoteState(this.connection, installDirectory);
+      if (this.state !== `Installed`) {
+        this.state = await this.component.update(this.connection, installDirectory);
+      }
+    }
+    catch (error) {
+      console.log(`Error occurred while checking component ${this.toString()}`);
+      console.log(error);
+      this.state = `Error`;
+    }
+
+    return this;
+  }
+
+  toString() {
+    const identification = this.component.getIdentification();
+    return `${identification.name} (version ${identification.version})`
   }
 }
