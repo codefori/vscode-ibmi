@@ -21,8 +21,8 @@ export function getActionsConfig(connection: IBMi) {
           Array.isArray(action.extensions)
         ) {
           actions.push({
+            type: `file`,
             ...action,
-            type: `file`
           });
         } else {
           throw new Error(`Invalid Action defined at index ${index}.`);

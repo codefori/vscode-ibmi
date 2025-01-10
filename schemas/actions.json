@@ -34,6 +34,18 @@
             "description": "The command that will be run when executing this Action.",
             "default": ""
           },
+          "type": {
+            "$id": "#/actions/items/anyOf/0/properties/type",
+            "type": "string",
+            "title": "File system type",
+            "description": "Which environment the command will run in.",
+            "default": "file",
+            "enum": [
+              "file",
+              "member",
+              "streamfile"
+            ]
+          },
           "environment": {
             "$id": "#/actions/items/anyOf/0/properties/commandEnvironment",
             "type": "string",
