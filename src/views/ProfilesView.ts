@@ -5,7 +5,6 @@ import { GetNewLibl } from '../components/getNewLibl';
 import { instance } from '../instantiate';
 import { Profile } from '../typings';
 import { CommandProfile } from '../webviews/commandProfile';
-import { getStaticProfiles } from '../api/local/profiles';
 import IBMi from '../api/IBMi';
 
 export class ProfilesView {
@@ -244,14 +243,16 @@ export class ProfilesView {
 
 export async function getAllProfiles(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles;
-  const localProfiles = await getStaticProfiles(connection);
+  const profilesConfig = await connection.getConfigFile(`profiles`).load();
+  const localProfiles = profilesConfig ? profilesConfig.profiles : [];
 
   return [...profiles, ...localProfiles];
 }
 
 async function getProfilesInGroups(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles || [];
-  const localProfiles = await getStaticProfiles(connection);
+  const profilesConfig = await connection.getConfigFile(`profiles`).load();
+  const localProfiles = profilesConfig ? profilesConfig.profiles : [];
 
   return {
     connectionProfiles: profiles,

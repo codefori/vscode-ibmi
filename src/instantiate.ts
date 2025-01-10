@@ -16,7 +16,6 @@ import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
 import { getAllProfiles } from './views/ProfilesView';
-import { resetServerProfiles } from './api/local/profiles';
 
 export let instance: Instance;
 
@@ -135,9 +134,6 @@ async function onConnected() {
   ].forEach(barItem => barItem.show());
 
   updateConnectedBar();
-
-  // Enable the profile view if profiles exist.
-  resetServerProfiles();
 
   const connection = instance.getConnection()!;
   const profiles = await getAllProfiles(connection);

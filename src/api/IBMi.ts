@@ -17,6 +17,8 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./debug/config";
 import { debugPTFInstalled } from "./debug/server";
+import { ConfigFile } from './config/configFile';
+import { getProfilesConfig, ProfilesConfigFile } from './config/profiles';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -53,6 +55,10 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 
 type DisconnectCallback = (conn: IBMi) => Promise<void>;
 
+interface ConnectionConfigFiles {
+  profiles: ConfigFile<ProfilesConfigFile>
+}
+
 export default class IBMi {
   static readonly CCSID_NOCONVERSION = 65535;
   static readonly CCSID_SYSVAL = -2;
@@ -71,6 +77,11 @@ export default class IBMi {
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getConfig} instead.
    */
   config?: ConnectionConfiguration.Parameters;
+
+  private configFiles: ConnectionConfigFiles = {
+    profiles: getProfilesConfig(this)
+  }
+
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getContent} instead.
    */
@@ -113,6 +124,10 @@ export default class IBMi {
    */
   setDisconnectedCallback(callback: DisconnectCallback) {
     this.disconnectedCallback = callback;
+  }
+
+  getConfigFile(id: keyof ConnectionConfigFiles) {
+    return this.configFiles[id];
   }
 
   get canUseCqsh() {
@@ -481,6 +496,25 @@ export default class IBMi {
           this.appendOutput(`\t${state.id.name} (${state.id.version}): ${state.state}\n`);
         }
         this.appendOutput(`\n`);
+
+        // Next, load in all the config files!
+
+        const totalConfigs = Object.keys(this.configFiles).length;
+        let currentI = 1;
+        for (const configFile in this.configFiles) {
+          progress.report({
+            message: `Loading from local and remote configuration. (${currentI++}/${totalConfigs})`
+          });
+
+          const currentConfig = this.configFiles[configFile as keyof ConnectionConfigFiles];
+
+          try {
+            await this.configFiles[configFile as keyof ConnectionConfigFiles].load();
+          } catch (e) {}
+
+
+          this.appendOutput(`${configFile} config state: ` + JSON.stringify(currentConfig.getState()) + `\n`);
+        }
 
         progress.report({
           message: `Checking library list configuration.`
