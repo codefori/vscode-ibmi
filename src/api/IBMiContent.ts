@@ -1096,19 +1096,19 @@ export default class IBMiContent {
   }
 
   async uploadFiles(files: { local: string | Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
-    await this.ibmi.client.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
+    await this.ibmi.client!.putFiles(files.map(f => { return { local: Tools.fileToPath(f.local), remote: f.remote } }), options);
   }
 
   async downloadFile(localFile: string | Uri, remoteFile: string) {
-    await this.ibmi.client.getFile(Tools.fileToPath(localFile), remoteFile);
+    await this.ibmi.client!.getFile(Tools.fileToPath(localFile), remoteFile);
   }
 
   async uploadDirectory(localDirectory: string | Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+    await this.ibmi.client!.putDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 
   async downloadDirectory(localDirectory: string | Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
-    await this.ibmi.client.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
+    await this.ibmi.client!.getDirectory(Tools.fileToPath(localDirectory), remoteDirectory, options);
   }
 }
 
