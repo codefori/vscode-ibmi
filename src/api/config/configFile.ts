@@ -57,8 +57,6 @@ export class ConfigFile<T> {
   }
 
   async get(currentWorkspace?: WorkspaceFolder): Promise<T|undefined> {
-    if (this.serverData) return this.serverData;
-
     let resultingConfig: any;
     let workspaceConfig: any|undefined;
 
@@ -74,7 +72,7 @@ export class ConfigFile<T> {
           workspaceConfig = JSON.parse(content.toString());
           this.state.workspace = `ok`;
         } catch (e: any) {
-          this.state.server = `failed_to_parse`;
+          this.state.workspace = `failed_to_parse`;
         }
       };
     }
