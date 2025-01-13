@@ -931,12 +931,12 @@ export default class IBMi {
               resultSet.forEach(row => {
                 // Does not ever include SYSBAS/SYSTEM, only iASPs
                 if (row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME && row.DEVICE_DESCRIPTION_NAME !== `null`) {
-                  this.iAspInfo[Number(row.ASP_NUMBER)] = {
+                  this.iAspInfo.push({
                     id: Number(row.ASP_NUMBER),
                     name: String(row.DEVICE_DESCRIPTION_NAME),
                     type: String(row.ASP_TYPE),
                     rdbName: String(row.RDB_NAME)
-                  };
+                  });
                 }
               });
             } catch (e) {
@@ -1655,5 +1655,33 @@ export default class IBMi {
       userDefaultCCSID: this.userDefaultCCSID,
       sshdCcsid: this.sshdCcsid
     };
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.uploadFiles} instead.
+   */
+  uploadFiles(files: { local: string | vscode.Uri, remote: string }[], options?: node_ssh.SSHPutFilesOptions) {
+    return this.content.uploadFiles(files, options); 
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.downloadFiles} instead.
+   */
+  async downloadFile(localFile: string | vscode.Uri, remoteFile: string) {
+    await this.content.downloadFile(localFile, remoteFile);
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.uploadDirectory} instead.
+   */
+  async uploadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.content.uploadDirectory(localDirectory, remoteDirectory, options);
+  }
+
+  /**
+   * @deprecated Use {@link IBMiContent.downloadDirectory} instead.
+   */
+  async downloadDirectory(localDirectory: string | vscode.Uri, remoteDirectory: string, options?: node_ssh.SSHGetPutDirectoryOptions) {
+    await this.content.downloadDirectory(localDirectory, remoteDirectory, options);
   }
 }
