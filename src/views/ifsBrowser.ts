@@ -512,14 +512,14 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             try {
               if (filesToUpload.length) {
                 progress.report({ message: l10n.t(`sending {0} file(s)...`, filesToUpload.length) });
-                await connection.uploadFiles(filesToUpload, { concurrency: 5 });
+                await connection.getContent().uploadFiles(filesToUpload, { concurrency: 5 });
               }
 
               if (directoriesToUpload.length) {
                 for (const directory of directoriesToUpload) {
                   const name = path.basename(directory.fsPath);
                   progress.report({ message: l10n.t(`sending {0} directory...`, name) })
-                  await connection.uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
+                  await connection.getContent().uploadDirectory(directory, path.posix.join(root, name), { concurrency: 5 })
                 }
               }
 
@@ -552,7 +552,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         if (items && items.length) {
           if (!items.find(n => isProtected(n.path))) {
             let deletionConfirmed = false;
-            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t(`Are you sure you want to delete {0}?`, items[0].path);
+            const message = items.length === 1 ? l10n.t(`Are you sure you want to delete {0}?`, items[0].path) : l10n.t("Are you sure you want to delete the {0} selected files?", items.length);
             const detail = items.length === 1 ? undefined : items.map(i => `- ${i.path}`).join("\n");
             if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
               const toBeDeleted: string[] = [];
@@ -733,7 +733,7 @@ Please type "{0}" to confirm deletion.`, dirName);
 
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
-          quickPick.placeholder = items.length ? l10n.t(`Enter search term or select one of the previous search terms.`) : l10n.t(`Enter search term or select one of the previous search terms.`);
+          quickPick.placeholder = items.length ? l10n.t(`Enter search term or select one of the previous search terms.`) : l10n.t("Enter search term.");
           quickPick.title = l10n.t(`Search {0}`, searchPath);
 
           quickPick.onDidChangeValue(() => {
@@ -793,7 +793,7 @@ Please type "{0}" to confirm deletion.`, dirName);
 
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = items.length ? [...items, ...clearListArray] : [];
-          quickPick.placeholder = items.length ? l10n.t(`Enter find term or select one of the previous find terms.`) : l10n.t(`Enter find term or select one of the previous find terms.`);
+          quickPick.placeholder = items.length ? l10n.t(`Enter find term or select one of the previous find terms.`) : l10n.t("Enter find term.");
           quickPick.title = l10n.t(`Find {0}`, findPath);
 
           quickPick.onDidChangeValue(() => {
@@ -875,22 +875,22 @@ Please type "{0}" to confirm deletion.`, dirName);
 
                     if (proceed) {
                       mkdirSync(target, { recursive: true });
-                      await ibmi.downloadDirectory(target, targetPath, { concurrency: 5 });
+                      await ibmi.getContent().downloadDirectory(target, targetPath, { concurrency: 5 });
                     }
                   }
                   else {
                     if (!existsSync(target) || await vscode.window.showWarningMessage(l10n.t(`{0} already exists.
 Do you want to replace it?`, target), { modal: true }, l10n.t(`{0} already exists.
 Do you want to replace it?`, target))) {
-                      await ibmi.downloadFile(target, targetPath);
+                      await ibmi.getContent().downloadFile(target, targetPath);
                     }
                   }
                 }
                 else {
-                  await ibmi.downloadFile(downloadLocation!, targetPath);
+                  await ibmi.getContent().downloadFile(downloadLocation!, targetPath);
                 }
               }
-              vscode.window.showInformationMessage(l10n.t(`Download complete`), l10n.t(`Download complete`))
+              vscode.window.showInformationMessage(l10n.t(`Download complete`), l10n.t(`Open`))
                 .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, path.basename(items[0].path)) : downloadLocationURI) : undefined);
             }
             catch (e: any) {
@@ -987,7 +987,7 @@ function openIFSSearchResults(searchPath: string, searchResults: SearchResults) 
 }
 
 async function showOpenDialog() {
-  const openType = (await vscode.window.showQuickPick([l10n.t(`Folders`), l10n.t(`Folders`)], { title: l10n.t(`Folders`) }));
+  const openType = (await vscode.window.showQuickPick([l10n.t(`Folders`), l10n.t(`Files`)], { title: l10n.t(`What do you want to upload?`) }));
   if (openType) {
     return vscode.window.showOpenDialog({
       defaultUri: vscode.Uri.file(os.homedir()),

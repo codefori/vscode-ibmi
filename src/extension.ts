@@ -8,7 +8,7 @@ import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 
 import { CompileTools } from "./api/CompileTools";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
@@ -17,6 +17,7 @@ import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./api/local/deployTools";
 import { Deployment } from "./api/local/deployment";
 import { CopyToImport } from "./components/copyToImport";
+import { CustomQSh } from "./components/cqsh";
 import { GetMemberInfo } from "./components/getMemberInfo";
 import { GetNewLibl } from "./components/getNewLibl";
 import { extensionComponentRegistry } from "./components/manager";
@@ -70,21 +71,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       `profilesView`,
       new ProfilesView(context)
     ),
-    commands.registerCommand(`code-for-ibmi.connectDirect`,
-      async (connectionData: ConnectionData, reloadSettings = false, savePassword = false): Promise<boolean> => {
-        const existingConnection = instance.getConnection();
-
-        if (existingConnection) {
-          return false;
-        }
-
-        if (savePassword && connectionData.password) {
-          await ConnectionManager.setStoredPassword(context, connectionData.name, connectionData.password);
-        }
-
-        return (await new IBMi().connect(connectionData, undefined, reloadSettings)).success;
-      }
-    ),
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
@@ -127,9 +113,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  extensionComponentRegistry.registerComponent(context, GetNewLibl);
-  extensionComponentRegistry.registerComponent(context, GetMemberInfo);
-  extensionComponentRegistry.registerComponent(context, CopyToImport);
+  extensionComponentRegistry.registerComponent(context, new CustomQSh());
+  extensionComponentRegistry.registerComponent(context, new GetNewLibl);
+  extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
+  extensionComponentRegistry.registerComponent(context, new CopyToImport());
 
   return {
     instance, customUI: () => new CustomUI(),
@@ -138,38 +125,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     tools: Tools,
     componentRegistry: extensionComponentRegistry
   };
-}
-
-async function fixLoginSettings() {
-  const connections = (GlobalConfiguration.get<ConnectionData[]>(`connections`) || []);
-  let update = false;
-  for (const connection of connections) {
-    //privateKey was used to hold privateKeyPath 
-    if ('privateKey' in connection) {
-      const privateKey = connection["privateKey"] as string;
-      if (privateKey) {
-        connection.privateKeyPath = privateKey;
-      }
-      delete connection["privateKey"];
-      update = true;
-    }
-
-    //An empty privateKeyPath will crash the connection
-    if (!connection.privateKeyPath?.trim()) {
-      connection.privateKeyPath = undefined;
-      update = true;
-    }
-
-    //buttons were added by the login settings page
-    if (`buttons` in connection) {
-      delete connection["buttons"];
-      update = true;
-    }
-  }
-
-  if (update) {
-    await GlobalConfiguration.set(`connections`, connections);
-  }
 }
 
 // this method is called when your extension is deactivated

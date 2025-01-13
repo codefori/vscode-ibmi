@@ -59,40 +59,40 @@ export namespace CompileTools {
     return inputValue;
   }
 
-  function applyDefaultVariables(instance: Instance, variables: Variable) {
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
-    if (connection && config) {
-      variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
-      if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
-      if (!variables[`\\*CURLIB`]) variables[`\\*CURLIB`] = config.currentLibrary;
-      variables[`&USERNAME`] = connection.currentUser;
-      variables[`{usrprf}`] = connection.currentUser;
-      variables[`&HOST`] = connection.currentHost;
-      variables[`{host}`] = connection.currentHost;
-      variables[`&HOME`] = config.homeDirectory;
-      variables[`&WORKDIR`] = config.homeDirectory;
+  function applyDefaultVariables(connection: IBMi, variables: Variable) {
+    const config = connection.getConfig();
+    variables[`&BUILDLIB`] = variables[`CURLIB`] || config.currentLibrary;
+    if (!variables[`&CURLIB`]) variables[`&CURLIB`] = config.currentLibrary;
+    if (!variables[`\\*CURLIB`]) variables[`\\*CURLIB`] = config.currentLibrary;
+    variables[`&USERNAME`] = connection.currentUser;
+    variables[`{usrprf}`] = connection.currentUser;
+    variables[`&HOST`] = connection.currentHost;
+    variables[`{host}`] = connection.currentHost;
+    variables[`&HOME`] = config.homeDirectory;
+    variables[`&WORKDIR`] = config.homeDirectory;
 
-      for (const variable of config.customVariables) {
-        variables[`&${variable.name.toUpperCase()}`] = variable.value;
-      }
+    for (const variable of config.customVariables) {
+      variables[`&${variable.name.toUpperCase()}`] = variable.value;
     }
   }
 
-  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem): Promise<boolean> {
+  export async function runAction(instance: Instance, uri: vscode.Uri, customAction?: Action, method?: DeploymentMethod, browserItem?: BrowserItem, workspaceFolder?: WorkspaceFolder): Promise<boolean> {
     const connection = instance.getConnection();
-    const config = instance.getConfig();
-    const content = instance.getContent();
 
     const uriOptions = parseFSOptions(uri);
-    const isProtected = uriOptions.readonly || config?.readOnlyMode;
-        
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-    let remoteCwd = config?.homeDirectory || `.`;
+    if (connection) {
+      const config = connection.getConfig();
+      const content = connection.getContent();
 
-    if (connection && config && content) {
       const extension = uri.path.substring(uri.path.lastIndexOf(`.`) + 1).toUpperCase();
       const fragment = uri.fragment.toUpperCase();
+
+      const isProtected = uriOptions.readonly || config?.readOnlyMode;
+    
+      if(!workspaceFolder) {
+        workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+      }
+      let remoteCwd = config?.homeDirectory || `.`;
 
       let availableActions: { label: string; action: Action; }[] = [];
       if (!customAction) {
@@ -353,10 +353,10 @@ export namespace CompileTools {
                         });
  
                         // We don't care if this fails. Usually it's because the source file already exists.
-                        await runCommand(instance, {command: createSourceFile, environment: `ile`, noLibList: true});
+                        await runCommand(connection, {command: createSourceFile, environment: `ile`, noLibList: true});
 
                         // Attempt to copy to member
-                        const copyResult = await runCommand(instance, {command: copyFromStreamfile, environment: `ile`, noLibList: true});
+                        const copyResult = await runCommand(connection, {command: copyFromStreamfile, environment: `ile`, noLibList: true});
 
                         if (copyResult.code !== 0) {
                           writeEmitter.fire(`Failed to copy file to a temporary member.\n\t${copyResult.stderr}\n\n`);
@@ -364,7 +364,7 @@ export namespace CompileTools {
                         }
                       }
 
-                      const commandResult = await runCommand(instance, {
+                      const commandResult = await runCommand(connection, {
                         title: chosenAction.name,
                         environment,
                         command: chosenAction.command,
@@ -463,10 +463,11 @@ export namespace CompileTools {
                           // Then we download the files that is specified.
                           const downloads = postDownloads.map(
                             async (postDownload) => {
+                              const content = connection.getContent();
                               if (postDownload.type === vscode.FileType.Directory) {
-                                return connection.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
+                                return content.downloadDirectory(postDownload.localPath, postDownload.remotePath, { recursive: true, concurrency: 5 });
                               } else {
-                                return connection.downloadFile(postDownload.localPath, postDownload.remotePath);
+                                return content.downloadFile(postDownload.localPath, postDownload.remotePath);
                               }
                             }
                           );
@@ -580,14 +581,13 @@ export namespace CompileTools {
   /**
    * Execute a command
    */
-  export async function runCommand(instance: Instance, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult> {
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
+  export async function runCommand(connection: IBMi, options: RemoteCommand, writeEvent?: EventEmitter<string>): Promise<CommandResult> {
+    const config = connection.getConfig();
     if (config && connection) {
       const cwd = options.cwd;
       const variables = options.env || {};
 
-      applyDefaultVariables(instance, variables);
+      applyDefaultVariables(connection, variables);
       expandVariables(variables);
 
       const ileSetup: ILELibrarySettings = {
@@ -682,7 +682,7 @@ export namespace CompileTools {
               command: [
                 ...options.noLibList? [] : buildLiblistCommands(connection, ileSetup),
                 ...commands.map(command =>
-                  `${`system ${GlobalConfiguration.get(`logCompileOutput`) ? `` : `-s`} "${command.replace(/[$]/g, `\\$&`)}"`}`,
+                  `${`system "${IBMi.escapeForShell(command)}"`}`,
                 )
               ].join(` && `),
               directory: cwd,
@@ -815,9 +815,9 @@ export namespace CompileTools {
 
   function buildLiblistCommands(connection: IBMi, config: ILELibrarySettings): string[] {
     return [
-      `liblist -d ${Tools.sanitizeLibraryNames(connection.defaultUserLibraries).join(` `)}`,
-      `liblist -c ${Tools.sanitizeLibraryNames([config.currentLibrary])}`,
-      `liblist -a ${Tools.sanitizeLibraryNames(buildLibraryList(config)).join(` `)}`
+      `liblist -d ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(connection.defaultUserLibraries).join(` `))}`,
+      `liblist -c ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase([config.currentLibrary])[0])}`,
+      `liblist -a ${IBMi.escapeForShell(Tools.sanitizeObjNamesForPase(buildLibraryList(config)).join(` `))}`
     ];
   }
 }

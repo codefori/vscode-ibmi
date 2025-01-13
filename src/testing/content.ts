@@ -8,7 +8,7 @@ import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
-import { CommandResult, IBMiObject } from "../typings";
+import { CommandResult } from "../typings";
 
 export const ContentSuite: TestSuite = {
   name: `Content API tests`,
@@ -250,79 +250,52 @@ export const ContentSuite: TestSuite = {
     },
 
     {
-      name: `Test downloadMemberContent with dollar`, test: async () => {
-        const content = instance.getContent();
-        const config = instance.getConfig();
+      name: `Ensure source lines are correct`, test: async () => {
         const connection = instance.getConnection();
-        const tempLib = config!.tempLibrary,
-          tempSPF = `TESTINGS`,
-          tempMbr = Tools.makeid(2) + `$` + Tools.makeid(2);
+        const config = instance.getConfig()!;
 
-        await connection!.runCommand({
-          command: `CRTSRCPF ${tempLib}/${tempSPF} MBR(*NONE)`,
-          environment: `ile`
-        });
+        assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
 
-        await connection!.runCommand({
-          command: `ADDPFM FILE(${tempLib}/${tempSPF}) MBR(${tempMbr}) `,
-          environment: `ile`
-        });
+        const tempLib = config!.tempLibrary;
+        const file = `LINES`;
+        const member = `THEMEMBER`;
 
-        const baseContent = `Hello world\r\n`;
+        await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
+        await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
 
-        const uploadResult = await content?.uploadMemberContent(undefined, tempLib, tempSPF, tempMbr, baseContent);
-        assert.ok(uploadResult);
+        const aliasName = `${tempLib}.test_${file}_${member}`;
+        await connection?.runSQL(`CREATE OR REPLACE ALIAS ${aliasName} for "${tempLib}"."${file}"("${member}")`);
 
-        const memberContent = await content?.downloadMemberContent(undefined, tempLib, tempSPF, tempMbr);
-        assert.strictEqual(memberContent, baseContent);
-      },
+        try {
+          await connection?.runSQL(`delete from ${aliasName}`);
+        } catch (e) { }
+
+        const inLines = [
+          `Hello world`,
+          `1`,
+          `001`,
+          `0002`,
+          `00003`,
+        ]
+
+        const lines = [
+          `insert into ${aliasName} (srcseq, srcdat, srcdta)`,
+          `values `,
+          inLines.map((line, index) => `(${index + 1}.00, 0, '${line}')`).join(`, `),
+        ];
+
+        await connection?.runSQL(lines.join(` `));
+
+        const theBadOneUri = getMemberUri({ library: tempLib, file, name: member, extension: `TXT` });
+
+        const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
+        const fileContent = new TextDecoder().decode(memberContentBuf);
+
+        const outLines = fileContent.split(`\n`);
+
+        assert.deepStrictEqual(inLines, outLines);
+      }
     },
-
-    {name: `Ensure source lines are correct`, test: async () => {
-      const connection = instance.getConnection();
-      const config = instance.getConfig()!;
-
-      assert.ok(config.enableSourceDates, `Source dates must be enabled for this test.`);
-
-      const tempLib = config!.tempLibrary;
-      const file = `LINES`;
-      const member = `THEMEMBER`;
-      
-      await connection!.runCommand({ command: `CRTSRCPF FILE(${tempLib}/${file}) RCDLEN(112)`, noLibList: true });
-      await connection!.runCommand({ command: `ADDPFM FILE(${tempLib}/${file}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
-
-      const aliasName = `${tempLib}.test_${file}_${member}`;
-      await connection?.runSQL(`CREATE OR REPLACE ALIAS ${aliasName} for "${tempLib}"."${file}"("${member}")`);
-
-      try {
-        await connection?.runSQL(`delete from ${aliasName}`);
-      } catch (e) {}
-
-      const inLines = [
-        `Hello world`,
-        `1`,
-        `001`,
-        `0002`,
-        `00003`,
-      ]
-
-      const lines = [
-        `insert into ${aliasName} (srcseq, srcdat, srcdta)`,
-        `values `,
-        inLines.map((line, index) => `(${index + 1}.00, 0, '${line}')`).join(`, `),
-      ];
-
-      await connection?.runSQL(lines.join(` `));
-
-      const theBadOneUri = getMemberUri({ library: tempLib, file, name: member, extension: `TXT` });
-
-      const memberContentBuf = await workspace.fs.readFile(theBadOneUri);
-      const fileContent = new TextDecoder().decode(memberContentBuf);
-
-      const outLines = fileContent.split(`\n`);
-
-      assert.deepStrictEqual(inLines, outLines);
-    }},
 
     {
       name: `Test runSQL (basic select)`, test: async () => {
@@ -366,12 +339,10 @@ export const ContentSuite: TestSuite = {
     },
 
     {
-      name: `Test getTable (SQL disabled)`, test: async () => {
+      name: `Test getTable`, test: async () => {
         const connection = instance.getConnection();
         const content = instance.getContent();
 
-        // SQL needs to be disabled for this test.
-        connection!.enableSQL = false;
         const rows = await content?.getTable(`qiws`, `qcustcdt`, `*all`);
 
         assert.notStrictEqual(rows?.length, 0);
@@ -517,6 +488,11 @@ export const ContentSuite: TestSuite = {
         const includeSYSLibraries = await content?.getLibraries({ library: "*SYS*" });
         assert.notStrictEqual(includeSYSLibraries?.length, 0);
         assert.strictEqual(includeSYSLibraries?.every(l => l.name.includes("SYS")), true);
+
+        const libraries = ["QSYSINC", "QGPL", "QTEMP"];
+        const multipleLibraries = await content?.getLibraries({ library: libraries.join(",") })
+        assert.strictEqual(multipleLibraries?.length, libraries.length);
+        assert.strictEqual(libraries.every(l => multipleLibraries.some(o => o.name === l)), true);
       }
     },
     {
@@ -554,53 +530,6 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(actbpgm?.text, `ACTIVATE BOUND PROGRAM`);
         assert.strictEqual(actbpgm?.library, `QSYSINC`);
         assert.strictEqual(actbpgm?.file, `MIH`);
-      }
-    },
-
-    {
-      name: `getMemberList (SQL compared to nosql)`, test: async () => {
-        const connection = instance.getConnection();
-        const content = instance.getContent();
-
-        // First we fetch the members in SQL mode
-        const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
-
-        assert.notStrictEqual(membersA?.length, 0);
-
-        // Then we fetch the members without SQL
-        connection!.enableSQL = false;
-
-        try {
-          await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih` });
-          assert.fail(`Should have thrown an error`);
-        } catch (e) {
-          // This fails because getMemberList has no ability   to fetch members without SQL
-          assert.ok(e);
-        }
-      }
-    },
-
-    {
-      name: `getMemberList (name filter, SQL compared to nosql)`, test: async () => {
-        const connection = instance.getConnection();
-        const content = instance.getContent();
-
-        // First we fetch the members in SQL mode
-        connection!.enableSQL = true;
-        const membersA = await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
-
-        assert.notStrictEqual(membersA?.length, 0);
-
-        // Then we fetch the members without SQL
-        connection!.enableSQL = false;
-
-        try {
-          await content?.getMemberList({ library: `qsysinc`, sourceFile: `mih`, members: 'C*' });
-          assert.fail(`Should have thrown an error`);
-        } catch (e) {
-          // This fails because getMemberList has no ability   to fetch members without SQL
-          assert.ok(e);
-        }
       }
     },
     {
@@ -709,8 +638,13 @@ export const ContentSuite: TestSuite = {
         assert.strictEqual(memberInfoB?.extension === `CPP`, true);
         assert.strictEqual(memberInfoB?.text === `C++ HEADER`, true);
 
-        const memberInfoC = await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`);
-        assert.ok(!memberInfoC);
+        try {
+          await content?.getMemberInfo(`QSYSINC`, `H`, `OH_NONO`)
+        }
+        catch (error: any) {
+          assert.ok(error instanceof Tools.SqlError);
+          assert.strictEqual(error.sqlstate, "38501");
+        }
       }
     },
     {
@@ -846,74 +780,6 @@ export const ContentSuite: TestSuite = {
           assert.ok(attributes);
           assert.strictEqual(attributes.CCSID, "1208");
         });
-      }
-    },
-    {
-      name: "Listing objects with variants",
-      test: async () => {
-        const connection = instance.getConnection();
-        const content = instance.getConnection()?.content;
-        if (connection && content && connection.getEncoding().ccsid !== 37) {
-          const ccsid = connection.getEncoding().ccsid;
-          let library = `TESTLIB${connection.variantChars.local}`;
-          let skipLibrary = false;
-          const sourceFile = `TESTFIL${connection.variantChars.local}`;
-          const members: string[] = [];
-          for (let i = 0; i < 5; i++) {
-            members.push(`TSTMBR${connection.variantChars.local}${i}`);
-          }
-          try {
-            const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
-            if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
-              //Not authorized: carry on, skip library name test
-              library = connection.config?.tempLibrary!;
-              skipLibrary = true
-            }
-            const crtSrcPF = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
-            if ((crtLib.code === 0 || skipLibrary) && crtSrcPF.code === 0) {
-              for (const member of members) {
-                const addPFM = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
-                if (addPFM.code !== 0) {
-                  throw new Error(`Failed to create member ${member}: ${addPFM.stderr}`);
-                }
-              }
-            }
-            else {
-              throw new Error(`Failed to create library and source file: ${crtLib.stderr || crtLib.stderr}`)
-            }
-
-            if (!skipLibrary) {
-              const [expectedLibrary] = await content.getLibraries({ library });
-              assert.ok(expectedLibrary);
-              assert.strictEqual(library, expectedLibrary.name);
-            }
-
-            const checkFile = (expectedObject: IBMiObject) => {
-              assert.ok(expectedObject);
-              assert.ok(expectedObject.sourceFile, `${expectedObject.name} not a source file`);
-              assert.strictEqual(expectedObject.name, sourceFile);
-              assert.strictEqual(expectedObject.library, library);
-            };
-
-            const [expectedObject] = await content.getObjectList({ library, object: sourceFile, types: ["*ALL"] });
-            checkFile(expectedObject);
-
-            const [expectedSourceFile] = await content.getObjectList({ library, object: sourceFile, types: ["*SRCPF"] });
-            checkFile(expectedSourceFile);
-
-            const expectedMembers = await content.getMemberList({ library, sourceFile });
-            assert.ok(expectedMembers);
-            assert.ok(expectedMembers.every(member => members.find(m => m === member.name)));
-          }
-          finally {
-            if (!skipLibrary && await content.checkObject({ library: "QSYS", name: library, type: "*LIB" })) {
-              await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true })
-            }
-            if (skipLibrary && await content.checkObject({ library, name: sourceFile, type: "*FILE" })) {
-              await connection.runCommand({ command: `DLTF FILE(${library}/${sourceFile})`, noLibList: true })
-            }
-          }
-        }
       }
     },
     {

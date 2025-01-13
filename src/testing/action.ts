@@ -32,6 +32,7 @@ let currentLibrary: string;
 
 export const ActionSuite: TestSuite = {
   name: `Action tests`,
+  notConcurrent: true,
   before: async () => {
     const config = instance.getConfig();
     const storage = instance.getStorage();
@@ -62,7 +63,8 @@ export const ActionSuite: TestSuite = {
   tests: [
     {
       name: `Variable expansion test`, test: async () => {
-        const result = await CompileTools.runCommand(instance, {
+        const connection = instance.getConnection()!;
+        const result = await CompileTools.runCommand(connection, {
           command: 'echo "&CURLIB &MYTEXT"',
           env: { '&MYTEXT': `&BRANCHLIB &BRANCH`, '&BRANCHLIB': 'MYLIB', '&BRANCH': 'my/lib' },
           environment: `pase`

@@ -53,11 +53,11 @@ export type LastConnection = {
 
 export type CachedServerSettings = {
   iAspInfo: AspInfo[];
+  lastCheckedOnVersion: string | undefined;
   qccsid: number | null;
   jobCcsid: number | null
   remoteFeatures: { [name: string]: string | undefined }
   remoteFeaturesKeys: string | null
-  variantChars: { american: string, local: string }
   badDataAreasChecked: boolean | null
   libraryListValidated: boolean | null
   pathChecked?: boolean

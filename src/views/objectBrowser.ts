@@ -283,18 +283,13 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
       console.log(e);
 
       // Work around since we can't get the member list if the users CCSID is not setup.
-      const config = getConfig();
       if (connection.enableSQL) {
         if (e && e.message && e.message.includes(`CCSID`)) {
-          vscode.window.showErrorMessage(`Error getting member list. Disabling SQL and refreshing. It is recommended you reload. ${e.message}`, `Reload`).then(async (value) => {
+          vscode.window.showErrorMessage(`Error getting member list. It is recommended you disconnect and correctly set your user profile CCSID. ${e.message}`, `Reload`).then(async (value) => {
             if (value === `Reload`) {
               await vscode.commands.executeCommand(`workbench.action.reloadWindow`);
             }
           });
-
-          connection.enableSQL = false;
-          await ConnectionConfiguration.update(config);
-          return this.getChildren();
         }
       } else {
         throw e;
@@ -583,7 +578,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         });
 
         if (error) {
-          if (await vscode.window.showErrorMessage(vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error), vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error))) {
+          if (await vscode.window.showErrorMessage(vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error), vscode.l10n.t("Retry"))) {
             vscode.commands.executeCommand(`code-for-ibmi.createMember`, node, fullName);
           }
         }
@@ -620,7 +615,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             const newMemberExists = checkResult.code === 0;
 
             if (newMemberExists) {
-              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Are you sure you want overwrite member {0}?`, memberPath.name), { modal: true }, vscode.l10n.t(`Are you sure you want overwrite member {0}?`, memberPath.name), vscode.l10n.t(`Are you sure you want overwrite member {0}?`, memberPath.name))
+              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Are you sure you want overwrite member {0}?`, memberPath.name), { modal: true }, vscode.l10n.t("Yes"));
               if (result === vscode.l10n.t(`Yes`)) {
                 await connection.runCommand({
                   command: `RMVM FILE(${memberPath.library}/${memberPath.file}) MBR(${memberPath.name})`,
@@ -669,7 +664,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         });
 
         if (error) {
-          if (await vscode.window.showErrorMessage(vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error), vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error))) {
+          if (await vscode.window.showErrorMessage(vscode.l10n.t(`Error creating member {0}: {1}`, fullPath, error), vscode.l10n.t("Retry"))) {
             vscode.commands.executeCommand(`code-for-ibmi.copyMember`, node, fullPath);
           }
         }
@@ -727,7 +722,17 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         newBasename = await vscode.window.showInputBox({
           value: newBasename,
           prompt: vscode.l10n.t(`Rename {0}`, oldMember.basename),
-          validateInput: value => connection.upperCaseName(value) === oldMember.basename ? vscode.l10n.t(`New member name must be different from it's current name`) : undefined
+          validateInput: value => {
+            if (connection.upperCaseName(value) === oldMember.basename) {
+              return vscode.l10n.t(`New member name must be different from it's current name`)
+            }
+
+            const parsedNewName = path.parse(value);
+            if (!connection.validQsysName(parsedNewName.name)) {
+              return vscode.l10n.t(`Not a valid member name!`);
+            }
+            return undefined;
+          }
         });
 
         if (newBasename) {
@@ -843,7 +848,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
         const toBeDownloaded = members
           .filter((member, index, list) => list.findIndex(m => m.library === member.library && m.file === member.file && m.name === member.name) === index)
           .sort((m1, m2) => m1.name.localeCompare(m2.name))
-          .map(member => ({ path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
+          .map(member => ({ member, path: Tools.qualifyPath(member.library, member.file, member.name, member.asp), name: `${member.name}.${member.extension || "MBR"}`, copy: true }));
 
         if (!saveIntoDirectory) {
           toBeDownloaded[0].name = basename(downloadLocationURI.path);
@@ -890,18 +895,22 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
             await connection.withTempDirectory(async directory => {
               task.report({ message: vscode.l10n.t(`copying to streamfiles`), increment: 33 })
               const copyToStreamFiles = toBeDownloaded
-                .filter(member => member.copy)
-                .map(member => `@CPYTOSTMF FROMMBR('${member.path}') TOSTMF('${directory}/${member.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID}) ENDLINFMT(*LF);`)
+                .filter(item => item.copy)
+                .map(item =>
+                  [
+                    `@QSYS/CPYF FROMFILE(${item.member.library}/${item.member.file}) TOFILE(QTEMP/QTEMPSRC) FROMMBR(${item.member.name}) TOMBR(TEMPMEMBER) MBROPT(*REPLACE) CRTFILE(*YES);`,
+                    `@QSYS/CPYTOSTMF FROMMBR('${Tools.qualifyPath("QTEMP", "QTEMPSRC", "TEMPMEMBER", undefined)}') TOSTMF('${directory}/${item.name.toLocaleLowerCase()}') STMFOPT(*REPLACE) STMFCCSID(1208) DBFCCSID(${config.sourceFileCCSID});`
+                  ].join("\n"))
                 .join("\n");
               await contentApi.runSQL(copyToStreamFiles);
 
               task.report({ message: vscode.l10n.t(`getting streamfiles`), increment: 33 })
-              await connection.downloadDirectory(downloadLocation!, directory);
-              vscode.window.showInformationMessage(vscode.l10n.t(`Members download complete.`), vscode.l10n.t(`Members download complete.`))
-                .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, toBeDownloaded[0].name) : downloadLocationURI) : undefined);
+              await connection.getContent().downloadDirectory(downloadLocation!, directory);
+              vscode.window.showInformationMessage(vscode.l10n.t(`Members download complete.`), vscode.l10n.t(`Open`))
+                .then(open => open ? vscode.commands.executeCommand('revealFileInOS', saveIntoDirectory ? vscode.Uri.joinPath(downloadLocationURI, toBeDownloaded[0].name.toLocaleLowerCase()) : downloadLocationURI) : undefined);
             });
           } catch (e: any) {
-            vscode.window.showErrorMessage(vscode.l10n.t(`Error downloading member(s)! {0}`, e));
+            vscode.window.showErrorMessage(vscode.l10n.t(`Error downloading member(s)! {0}`, String(e)));
           }
         });
       }
@@ -967,7 +976,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
           const quickPick = vscode.window.createQuickPick();
           quickPick.items = list.length > 0 ? listHeader.concat(list.map(term => ({ label: term }))).concat(clearListArray) : [];
-          quickPick.placeholder = list.length > 0 ? vscode.l10n.t(`Enter search term or select one of the previous search terms.`) : vscode.l10n.t(`Enter search term or select one of the previous search terms.`);
+          quickPick.placeholder = list.length > 0 ? vscode.l10n.t(`Enter search term or select one of the previous search terms.`) : vscode.l10n.t(`Enter search term.`);
           quickPick.title = vscode.l10n.t(`Search {0} {1}`, parameters.path, aspText);
 
           quickPick.onDidChangeValue(() => {
@@ -1011,7 +1020,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
       const newLibrary = await vscode.window.showInputBox({
         prompt: vscode.l10n.t(`Name of new library`),
-        validateInput: (library => library.length > 10 ? vscode.l10n.t(`Library name too long.`) : undefined)
+        validateInput: (library => !connection.validQsysName(library) ? vscode.l10n.t(`Library name not valid.`) : undefined)
       });
 
       if (newLibrary) {
@@ -1043,7 +1052,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
         const autoRefresh = objectBrowser.autoRefresh();
 
         // Add to library list ?
-        await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Would you like to add the new library to the library list?`))
+        await vscode.window.showInformationMessage(vscode.l10n.t(`Would you like to add the new library to the library list?`), vscode.l10n.t(`Yes`))
           .then(async result => {
             switch (result) {
               case vscode.l10n.t(`Yes`):
@@ -1059,13 +1068,13 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
     vscode.commands.registerCommand(`code-for-ibmi.createSourceFile`, async (node: ObjectBrowserFilterItem | ObjectBrowserObjectItem) => {
       if (node.library) {
+        const connection = getConnection();
         const fileName = await vscode.window.showInputBox({
           prompt: vscode.l10n.t(`Name of new source file`),
-          validateInput: (fileName => fileName.length > 10 ? vscode.l10n.t(`Source filename must be 10 chars or less.`) : undefined)
+          validateInput: (fileName => !connection.validQsysName(fileName) ? vscode.l10n.t(`Source filename is not valid.`) : undefined)
         });
 
         if (fileName) {
-          const connection = getConnection();
           const library = node.library;
           const uriPath = `${library}/${connection.upperCaseName(fileName)}`
 
@@ -1251,7 +1260,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
 
       const toBeDeleted = candidates.filter(item => item instanceof ObjectBrowserFilterItem || !item.isProtected());
       if (toBeDeleted.length) {
-        const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete {0}?`, toBeDeleted[0].toString()) : vscode.l10n.t(`Are you sure you want to delete {0}?`, toBeDeleted[0].toString());
+        const message = toBeDeleted.length === 1 ? vscode.l10n.t(`Are you sure you want to delete {0}?`, toBeDeleted[0].toString()) : vscode.l10n.t("Are you sure you want to delete these {0} elements?", toBeDeleted.length);
         const detail = toBeDeleted.length === 1 ? undefined : toBeDeleted.map(item => `- ${item.toString()}`).join("\n");
         if (await vscode.window.showWarningMessage(message, { modal: true, detail }, vscode.l10n.t(`Yes`))) {
           const increment = 100 / toBeDeleted.length;

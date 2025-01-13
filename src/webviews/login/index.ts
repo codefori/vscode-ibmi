@@ -1,8 +1,8 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
 import { CustomUI, Section } from "../../api/CustomUI";
-import IBMi from "../../api/IBMi";
-import { disconnect, instance } from "../../instantiate";
+import { Tools } from "../../api/Tools";
+import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';
 
 type NewLoginSettings = ConnectionData & {
@@ -21,18 +21,21 @@ export class Login {
   static async show(context: vscode.ExtensionContext) {
     const connection = instance.getConnection();
     if (connection) {
-      if (!disconnect()) return;
+      if (!safeDisconnect()) return;
     }
 
     const connectionTab = new Section()
       .addInput(`name`, `Connection Name`, undefined, { minlength: 1 })
       .addInput(`host`, l10n.t(`Host or IP Address`), undefined, { minlength: 1 })
-      .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+      .addInput(`port`, l10n.t(`Port (SSH)`), ``, { default: `22`, min: 1, max: 65535, inputType: "number" })
       .addInput(`username`, l10n.t(`Username`), undefined, { minlength: 1, maxlength: 10 })
+      .addHorizontalRule()
       .addParagraph(l10n.t(`Only provide either the password or a private key - not both.`))
       .addPassword(`password`, l10n.t(`Password`))
       .addCheckbox(`savePassword`, l10n.t(`Save Password`))
-      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`Private Key`));
+      .addFile(`privateKeyPath`, l10n.t(`Private Key`), l10n.t(`OpenSSH, RFC4716, or PPK formats are supported.`))
+      .addHorizontalRule()
+      .addInput(`readyTimeout`, l10n.t(`Connection Timeout (in milliseconds)`), l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: "20000" });
 
     const tempTab = new Section()
       .addInput(`tempLibrary`, `Temporary library`, `Temporary library. Cannot be QTEMP.`, { default: `ILEDITOR`, minlength: 1, maxlength: 10 })
@@ -54,7 +57,8 @@ export class Login {
       page.panel.dispose();
 
       data.port = Number(data.port);
-      data.privateKeyPath = data.privateKeyPath?.trim() ? data.privateKeyPath : undefined;
+      data.readyTimeout = Number(data.readyTimeout);
+      data.privateKeyPath = data.privateKeyPath?.trim() ? Tools.normalizePath(data.privateKeyPath) : undefined;
       if (data.name) {
         const existingConnection = ConnectionManager.getByName(data.name);
 
@@ -95,7 +99,7 @@ export class Login {
 
               if (data.password || data.privateKeyPath) {
                 try {
-                  const connected = await new IBMi().connect(data, false, false, toDoOnConnected);
+                  const connected = await instance.connect({ data, onConnectedOperations: toDoOnConnected });
                   if (connected.success) {
                     if (newConnection) {
                       vscode.window.showInformationMessage(`Connected to ${data.host}! Would you like to configure this connection?`, `Open configuration`).then(async (selectionA) => {
@@ -115,7 +119,7 @@ export class Login {
                     }
 
                   } else {
-                    vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error.message || connected.error}`);
+                    vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error}`);
                   }
                 } catch (e) {
                   vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
@@ -145,7 +149,7 @@ export class Login {
       // If the user is already connected and trying to connect to a different system, disconnect them first
       if (name !== existingConnection.currentConnectionName) {
         vscode.window.showInformationMessage(`Disconnecting from ${existingConnection.currentHost}.`);
-        if (!await disconnect()) return false;
+        if (!await safeDisconnect()) return false;
       }
     }
 
@@ -171,11 +175,11 @@ export class Login {
       }
 
       try {
-        const connected = await new IBMi().connect(connectionConfig, undefined, reloadServerSettings, toDoOnConnected);
+        const connected = await instance.connect({ data: connectionConfig, onConnectedOperations: toDoOnConnected, reloadServerSettings });
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
-          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error.message || connected.error}`);
+          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error}`);
         }
 
         return true;

@@ -90,9 +90,9 @@ export interface ConnectionData {
   port: number;
   username: string;
   password?: string;
-  privateKey?: string;
   privateKeyPath?: string;
   keepaliveInterval?: number;
+  readyTimeout?: number;
 }
 
 export interface Server {

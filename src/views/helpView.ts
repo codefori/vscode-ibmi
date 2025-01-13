@@ -133,7 +133,7 @@ async function downloadLogs() {
       location: vscode.ProgressLocation.Notification,
       title: vscode.l10n.t(`Gathering logs...`),
     }, async () => {
-      const codeForIBMiLog = connection.outputChannelContent;
+      const codeForIBMiLog = connection.getOutputChannelContent();
       if (codeForIBMiLog !== undefined) {
         logs.push({
           label: vscode.l10n.t(`Code for IBM i Log`),
@@ -144,7 +144,7 @@ async function downloadLogs() {
         });
       }
 
-      const debugConfig = await new DebugConfiguration().load();
+      const debugConfig = await new DebugConfiguration(connection).load();
       try {
         const debugServiceLogPath = `${debugConfig.getRemoteServiceWorkDir()}/DebugService_log.txt`;
         const debugServiceLog = (await content.downloadStreamfileRaw(debugServiceLogPath));
@@ -209,7 +209,7 @@ async function downloadLogs() {
             const result = await zip.writeZipPromise(downloadLocation, { overwrite: false });
 
             if (result) {
-              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile));
+              const result = await vscode.window.showInformationMessage(vscode.l10n.t(`Successfully downloaded logs to {0}`, zipFile), vscode.l10n.t(`Open`));
               if (result && result === vscode.l10n.t(`Open`)) {
                 vscode.commands.executeCommand('revealFileInOS', vscode.Uri.file(downloadLocation))
               }
@@ -293,6 +293,8 @@ async function getRemoteSection() {
           `|CCSID Origin|${ccsids.qccsid}|`,
           `|Runtime CCSID|${ccsids.runtimeCcsid || '?'}|`,
           `|Default CCSID|${ccsids.userDefaultCCSID || '?'}|`,
+          `|SSHD CCSID|${ccsids.sshdCcsid || '?'}|`,
+          `|cqsh|${connection.canUseCqsh}|`,
           `|SQL|${connection.enableSQL ? 'Enabled' : 'Disabled'}`,
           `|Source dates|${config.enableSourceDates ? 'Enabled' : 'Disabled'}`,
           '',
@@ -307,11 +309,6 @@ async function getRemoteSection() {
           `\`\`\`json`,
           JSON.stringify(connection?.variantChars || {}, null, 2),
           `\`\`\``),
-        ``,
-        createSection(`Errors`,
-          `\`\`\`json`,
-          JSON.stringify(connection?.lastErrors || [], null, 2),
-          `\`\`\``)
       ].join("\n");
     });
   }

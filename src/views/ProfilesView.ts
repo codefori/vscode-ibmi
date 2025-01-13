@@ -59,7 +59,7 @@ export class ProfilesView {
           const currentProfiles = config.connectionProfiles;
           const chosenProfile = await getOrPickAvailableProfile(currentProfiles, profileNode);
           if (chosenProfile) {
-            vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name)).then(async result => {
+            vscode.window.showWarningMessage(l10n.t(`Are you sure you want to delete the "{0}" profile?`, chosenProfile.name), l10n.t("Yes")).then(async result => {
               if (result === l10n.t(`Yes`)) {
                 currentProfiles.splice(currentProfiles.findIndex(profile => profile === chosenProfile), 1);
                 config.connectionProfiles = currentProfiles;
@@ -115,13 +115,13 @@ export class ProfilesView {
         const connection = instance.getConnection();
         const config = instance.getConfig();
         const storage = instance.getStorage();
-        if (commandProfile && config && storage) {
+        if (commandProfile && connection && config && storage) {
           const storedProfile = config.commandProfiles.find(profile => profile.name === commandProfile.profile);
 
           if (storedProfile) {
             try {
-              const component = connection?.getComponent<GetNewLibl>(GetNewLibl)
-              const newSettings = await component?.getLibraryListFromCommand(storedProfile.command);
+              const component = connection?.getComponent<GetNewLibl>(GetNewLibl.ID)
+              const newSettings = await component?.getLibraryListFromCommand(connection, storedProfile.command);
 
               if (newSettings) {
                 config.libraryList = newSettings.libraryList;

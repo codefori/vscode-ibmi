@@ -83,10 +83,6 @@ export class QSysFS implements vscode.FileSystemProvider {
             if (connection.sqlRunnerAvailable()) {
                 this.extendedMemberSupport = true;
                 this.sourceDateHandler.changeSourceDateMode(config.sourceDateMode);
-                const ccsidDetail = connection.getEncoding();
-                if (ccsidDetail.invalid) {
-                    vscode.window.showWarningMessage(`Source date support is enabled, but CCSID is 65535. If you encounter problems with source date support, please disable it in the settings.`);
-                }
             } else {
                 vscode.window.showErrorMessage(`Source date support is enabled, but the remote system does not support SQL. Source date support will be disabled.`);
             }
@@ -154,7 +150,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             let memberContent;
             try {
                 memberContent = this.extendedMemberSupport ?
-                    await this.extendedContent.downloadMemberContentWithDates(asp, library, file, member) :
+                    await this.extendedContent.downloadMemberContentWithDates(uri) :
                     await contentApi.downloadMemberContent(asp, library, file, member);
             }
             catch (error) {
@@ -209,7 +205,7 @@ export class QSysFS implements vscode.FileSystemProvider {
             else {
                 this.savedAsMembers.delete(uri.path);
                 this.extendedMemberSupport ?
-                    await this.extendedContent.uploadMemberContentWithDates(asp, library, file, member, content.toString()) :
+                    await this.extendedContent.uploadMemberContentWithDates(uri, content.toString()) :
                     await contentApi.uploadMemberContent(asp, library, file, member, content);
             }
         }

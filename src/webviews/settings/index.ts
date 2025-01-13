@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import vscode from "vscode";
 import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
@@ -6,7 +7,6 @@ import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";
 import * as certificates from "../../api/debug/certificates";
 import { isSEPSupported } from "../../api/debug/server";
-import { IBMiComponent } from "../../components/component";
 import { extensionComponentRegistry } from "../../components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
@@ -201,7 +201,7 @@ export class SettingsUI {
               }
               debuggerTab.addParagraph(`<b>${localCertificateIssue || "Client certificate for service has been imported and matches remote certificate."}</b>`)
                 .addParagraph(`To debug on IBM i, Visual Studio Code needs to load a client certificate to connect to the Debug Service. Each server has a unique certificate. This client certificate should exist at <code>${certificates.getLocalCertPath(connection)}</code>`)
-                .addButtons({ id: `import`, label: `Download client certificate` });              
+                .addButtons({ id: `import`, label: `Download client certificate` });
             }
             else {
               debuggerTab.addParagraph(`The service certificate doesn't exist or is incomplete; it must be generated before the debug service can be started.`)
@@ -216,13 +216,14 @@ export class SettingsUI {
 
         const componentsTab = new Section();
         if (connection) {
+          const states = connection.getComponentStates();
           componentsTab.addParagraph(`The following extensions contribute these components:`);
           extensionComponentRegistry.getComponents().forEach((components, extensionId) => {
             const extension = vscode.extensions.getExtension(extensionId);
             componentsTab.addParagraph(`<p>
               <h3>${extension?.packageJSON.displayName || extension?.id || "Unnamed extension"}</h3>
               <ul>
-              ${components.map(type => connection.getComponent<IBMiComponent>(type, true)).map(component => `<li><code>${component?.toString()}</code>: ${component?.getState()}</li>`).join(``)}
+              ${components.map(component => `<li><code>${component?.getIdentification().name} (version ${component?.getIdentification().version})</code>: ${states.find(c => c.id.name === component.getIdentification().name)?.state}</li>`).join(``)}
               </ul>
               </p>`);
           })
@@ -303,6 +304,9 @@ export class SettingsUI {
                           .filter(item => item !== ``)
                           .filter(Tools.distinct);
                         break;
+                      case `defaultDeploymentMethod`:
+                        if (data[key] === 'No Default') data[key] = '';
+                        break;
                     }
                   }
 
@@ -352,14 +356,18 @@ export class SettingsUI {
           if (connection) {
             const storedPassword = await ConnectionManager.getStoredPassword(context, name);
             let { data: stored, index } = connection;
-
+            const privateKeyPath = stored.privateKeyPath ? Tools.resolvePath(stored.privateKeyPath) : undefined;
+            const privateKeyWarning = !privateKeyPath || existsSync(privateKeyPath) ? "" : "<b>⚠️ This private key doesn't exist on this system! ⚠️</b></br></br>";
             const ui = new CustomUI()
               .addInput(`host`, vscode.l10n.t(`Host or IP Address`), undefined, { default: stored.host, minlength: 1 })
-              .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), minlength: 1, maxlength: 5, regexTest: `^\\d+$` })
+              .addInput(`port`, vscode.l10n.t(`Port (SSH)`), undefined, { default: String(stored.port), min: 1, max: 65535, inputType: "number" })
               .addInput(`username`, vscode.l10n.t(`Username`), undefined, { default: stored.username, minlength: 1 })
+              .addHorizontalRule()
               .addParagraph(vscode.l10n.t(`Only provide either the password or a private key - not both.`))
               .addPassword(`password`, `${vscode.l10n.t(`Password`)}${storedPassword ? ` (${vscode.l10n.t(`stored`)})` : ``}`, vscode.l10n.t("Only provide a password if you want to update an existing one or set a new one."))
-              .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${stored.privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${stored.privateKeyPath})` : ``}`, vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
+              .addFile(`privateKeyPath`, `${vscode.l10n.t(`Private Key`)}${privateKeyPath ? ` (${vscode.l10n.t(`Private Key`)}: ${privateKeyPath})` : ``}`, privateKeyWarning + vscode.l10n.t("Only provide a private key if you want to update from the existing one or set one.") + '<br />' + vscode.l10n.t("OpenSSH, RFC4716 and PPK formats are supported."))
+              .addHorizontalRule()
+              .addInput(`readyTimeout`, vscode.l10n.t(`Connection Timeout (in milliseconds)`), vscode.l10n.t(`How long to wait for the SSH handshake to complete.`), { inputType: "number", min: 1, default: stored.readyTimeout ? String(stored.readyTimeout) : "20000" })              
               .addButtons(
                 { id: `submitButton`, label: vscode.l10n.t(`Save`), requiresValidation: true },
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
@@ -393,6 +401,7 @@ export class SettingsUI {
                       // If no password was entered, but a keypath exists
                       // then remove the password from the data and
                       // use the keypath instead
+                      data.privateKeyPath = Tools.normalizePath(data.privateKeyPath);
                       await ConnectionManager.deleteStoredPassword(context, name);
                       vscode.window.showInformationMessage(vscode.l10n.t(`Private key updated and will be used for "{0}".`, name));
                     }
@@ -404,6 +413,7 @@ export class SettingsUI {
 
                 //Fix values before assigning the data
                 data.port = Number(data.port);
+                data.readyTimeout = Number(data.readyTimeout);
                 delete data.password;
                 delete data.buttons;
 

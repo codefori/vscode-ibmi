@@ -309,17 +309,14 @@ export const ConnectionSuite: TestSuite = {
         const variantsBackup = connection.variantChars.local;
 
         try {
-          const checkVariants = () => connection.variantChars.local !== connection.variantChars.local.toLocaleUpperCase();
           //CCSID 297 variants
           connection.variantChars.local = '£à$';
-          connection.dangerousVariants = checkVariants();
           assert.strictEqual(connection.dangerousVariants, true);
           assert.strictEqual(connection.upperCaseName("àTesT£ye$"), "àTEST£YE$");
           assert.strictEqual(connection.upperCaseName("test_cAsE"), "TEST_CASE");
 
           //CCSID 37 variants
           connection.variantChars.local = '#@$';
-          connection.dangerousVariants = checkVariants();
           assert.strictEqual(connection.dangerousVariants, false);
           assert.strictEqual(connection.upperCaseName("@TesT#ye$"), "@TEST#YE$");
           assert.strictEqual(connection.upperCaseName("test_cAsE"), "TEST_CASE");

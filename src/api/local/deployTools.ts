@@ -294,7 +294,7 @@ export namespace DeployTools {
       }
     }
     else {
-      throw new Error("Cannot synchronize using MD5 comparison: 'md5sum' command not availabe on host.");
+      throw new Error("Cannot synchronize using MD5 comparison: 'md5sum' command not available on host.");
     }
   }
 

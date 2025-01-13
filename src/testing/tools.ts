@@ -5,6 +5,70 @@ import { Tools } from "../api/Tools";
 export const ToolsSuite: TestSuite = {
   name: `Tools API tests`,
   tests: [
+    { 
+      name: `assumeType tests (simple)`, test: async () => {
+        const row = {"CUSNUM":"938472","LSTNAM":"Henning","INIT":"G K","STREET":"4859 Elm Ave","CITY":"Dallas","STATE":"TX","ZIPCOD":"75217","CDTLMT":"5000","CHGCOD":"3","BALDUE":"37.00","CDTDUE":".00"};
+
+        let newRow: any = {};
+
+        for (const key in row) {
+          newRow[key] = Tools.assumeType(row[key as keyof typeof row]);
+        }
+
+        assert.strictEqual(newRow.CUSNUM, 938472);
+        assert.strictEqual(newRow.LSTNAM, `Henning`);
+        assert.strictEqual(newRow.INIT, `G K`);
+        assert.strictEqual(newRow.STREET, `4859 Elm Ave`);
+        assert.strictEqual(newRow.CITY, `Dallas`);
+        assert.strictEqual(newRow.STATE, `TX`);
+        assert.strictEqual(newRow.ZIPCOD, 75217);
+        assert.strictEqual(newRow.CDTLMT, 5000);
+        assert.strictEqual(newRow.CHGCOD, 3);
+        assert.strictEqual(newRow.BALDUE, 37);
+        assert.strictEqual(newRow.CDTDUE, 0);
+      }
+    },
+    {
+      name: `assumeType tests (for object list)`, test: async () => {
+        const rowA = {"NAME":"NETNS","TYPE":"*FILE","ATTRIBUTE":"PF","TEXT":"DATA BASE FILE FOR NETNS INCLUDES","IS_SOURCE":"1","SOURCE_LENGTH":"92","IASP_NUMBER":"0"};
+        const rowB = {"NAME":"NETNS","TYPE":"*FILE","ATTRIBUTE":"PF","TEXT":"DATA BASE FILE FOR NETNS INCLUDES","IS_SOURCE":"0","SOURCE_LENGTH":"92","IASP_NUMBER":"1"};
+
+        let newRowA: any = {};
+        let newRowB: any = {};
+
+        for (const key in rowA) {
+          newRowA[key] = Tools.assumeType(rowA[key as keyof typeof rowA]);
+        }
+
+        for (const key in rowB) {
+          newRowB[key] = Tools.assumeType(rowB[key as keyof typeof rowB]);
+        }
+
+        assert.strictEqual(newRowA.NAME, `NETNS`);
+        assert.strictEqual(newRowA.TYPE, `*FILE`);
+        assert.strictEqual(newRowA.ATTRIBUTE, `PF`);
+        assert.strictEqual(newRowA.TEXT, `DATA BASE FILE FOR NETNS INCLUDES`);
+        assert.strictEqual(newRowA.IS_SOURCE, 1);
+        assert.strictEqual(newRowA.SOURCE_LENGTH, 92);
+        assert.strictEqual(newRowA.IASP_NUMBER, 0);
+
+        assert.strictEqual(newRowB.NAME, `NETNS`);
+        assert.strictEqual(newRowB.TYPE, `*FILE`);
+        assert.strictEqual(newRowB.ATTRIBUTE, `PF`);
+        assert.strictEqual(newRowB.TEXT, `DATA BASE FILE FOR NETNS INCLUDES`);
+        assert.strictEqual(newRowB.IS_SOURCE, 0);
+        assert.strictEqual(newRowB.SOURCE_LENGTH, 92);
+        assert.strictEqual(newRowB.IASP_NUMBER, 1);
+      }
+    },
+    {
+      name: `assumeType tests (simple values)`, test: async () => {
+        assert.strictEqual(Tools.assumeType(``), ``);
+        assert.strictEqual(Tools.assumeType(`       `), ``);
+        assert.strictEqual(Tools.assumeType(`1`), 1);
+        assert.strictEqual(Tools.assumeType(`0`), 0);
+      }
+    },
     {
       name: `unqualifyPath (In a named library)`, test: async () => {
         const qualifiedPath = `/QSYS.LIB/MYLIB.LIB/DEVSRC.FILE/THINGY.MBR`;
@@ -35,9 +99,9 @@ export const ToolsSuite: TestSuite = {
     {
       name: `sanitizeLibraryNames ($ and #)`, test: async () => {
         const rawLibraryNames = [`QTEMP`, `#LIBRARY`, `My$lib`, `qsysinc`];
-        const sanitizedLibraryNames = Tools.sanitizeLibraryNames(rawLibraryNames);
+        const sanitizedLibraryNames = Tools.sanitizeObjNamesForPase(rawLibraryNames);
 
-        assert.deepStrictEqual(sanitizedLibraryNames, [`QTEMP`, `"#LIBRARY"`, `My\\$lib`, `qsysinc`]);
+        assert.deepStrictEqual(sanitizedLibraryNames, [`QTEMP`, `"#LIBRARY"`, `My$lib`, `qsysinc`]);
       },
     },
     {

@@ -4,7 +4,7 @@ import { instance } from "../../instantiate";
 import { CustomUI } from "../CustomUI";
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
-import { DebugConfiguration, getDebugServiceDetails } from "./config";
+import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE } from "./config";
 
 export type DebugJob = {
   name: string
@@ -21,14 +21,18 @@ export async function isSEPSupported() {
 
 export async function startService(connection: IBMi) {
   const checkAuthority = async (user?: string) => {
-    if (!(await connection.checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
+    if (!(await connection.getContent().checkUserSpecialAuthorities(["*ALLOBJ"], user)).valid) {
       throw new Error(`User ${user || connection.currentUser} doesn't have *ALLOBJ special authority`);
     }
   };
 
   try {
     await checkAuthority();
-    const debugConfig = await new DebugConfiguration().load();
+    const debugServiceVersion = (await getDebugServiceDetails()).semanticVersion();
+    const prestartCommand = (debugServiceVersion.major >= 2 && debugServiceVersion.patch >= 1) ?
+      `export DEBUG_SERVICE_EXTERNAL_CONFIG_FILE=${DEBUG_CONFIG_FILE}` :
+      `cp ${DEBUG_CONFIG_FILE} ${ORIGINAL_DEBUG_CONFIG_FILE}`
+    const debugConfig = await new DebugConfiguration(connection).load();
 
     const submitOptions = await window.showInputBox({
       title: l10n.t(`Debug Service submit options`),
@@ -41,7 +45,7 @@ export async function startService(connection: IBMi) {
       if (submitUser && submitUser !== "*CURRENT") {
         await checkAuthority(submitUser);
       }
-      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh')) JOB(DBGSVCE) ${submitOptions}`
+      const command = `SBMJOB CMD(STRQSH CMD('${connection.remoteFeatures[`bash`]} -c ''${prestartCommand}; /QIBM/ProdData/IBMiDebugService/bin/startDebugService.sh''')) JOB(DBGSVCE) ${submitOptions}`
       const submitResult = await connection.runCommand({ command, cwd: debugConfig.getRemoteServiceWorkDir(), noLibList: true });
       if (submitResult.code === 0) {
         const submitMessage = Tools.parseMessages(submitResult.stderr || submitResult.stdout).findId("CPC1221")?.text;
@@ -95,7 +99,7 @@ export async function startService(connection: IBMi) {
 }
 
 export async function stopService(connection: IBMi) {
-  const debugConfig = await new DebugConfiguration().load();
+  const debugConfig = await new DebugConfiguration(connection).load();
   const endResult = await connection.sendCommand({
     command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `stopDebugService.sh`)}`
   });
@@ -229,7 +233,7 @@ async function openQPRINT(connection: IBMi, job: string) {
       .setOptions({ fullWidth: true })
       .loadPage(`${job} QPRINT`);
   }
-  else{
+  else {
     window.showWarningMessage(`No QPRINT spooled file found for job ${job}!`);
   }
 }

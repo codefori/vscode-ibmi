@@ -4,8 +4,10 @@ import vscode, { commands } from 'vscode';
 import { instance } from '../instantiate';
 import { GlobalConfiguration } from './Configuration';
 import IBMi from './IBMi';
-import Instance from './Instance';
 import { Tools } from './Tools';
+
+const PASE_INIT_FLAG = '#C4IINIT';
+const PASE_INIT_FLAG_REGEX = /#+C+4+I+I+N+I+T+$/
 
 function getOrDefaultToUndefined(value: string) {
   if (value && value !== `default`) {
@@ -26,13 +28,14 @@ export namespace Terminal {
     }
   });
 
-  interface TerminalSettings {
+  type TerminalSettings = {
     type: TerminalType
     location: vscode.TerminalLocation
     encoding?: string
     terminal?: string
     name?: string
     connectionString?: string
+    currentDirectory?: string
   }
 
   let terminalCount = 0;
@@ -49,15 +52,14 @@ export namespace Terminal {
   export function registerTerminalCommands(context: vscode.ExtensionContext) {
     return [
       vscode.commands.registerCommand(`code-for-ibmi.launchTerminalPicker`, () => {
-        return selectAndOpen(context, instance);
+        return selectAndOpen(context);
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.openTerminalHere`, async (ifsNode) => {
         const content = instance.getContent();
         if (content) {
           const ifsPath = (await content.isDirectory(ifsNode.path)) ? ifsNode.path : path.dirname(ifsNode.path);
-          const terminal = await selectAndOpen(context, instance, TerminalType.PASE);
-          terminal?.sendText(`cd ${Tools.escapePath(ifsPath)}`);
+          await selectAndOpen(context, { openType: TerminalType.PASE, currentDirectory: ifsPath });
         }
       }),
 
@@ -71,11 +73,11 @@ export namespace Terminal {
     ];
   }
 
-  async function selectAndOpen(context: vscode.ExtensionContext, instance: Instance, openType?: TerminalType) {
+  async function selectAndOpen(context: vscode.ExtensionContext, options?: { openType?: TerminalType, currentDirectory?: string }) {
     const connection = instance.getConnection();
     const configuration = instance.getConfig();
     if (connection && configuration) {
-      const type = openType || (await vscode.window.showQuickPick(typeItems, {
+      const type = options?.openType || (await vscode.window.showQuickPick(typeItems, {
         placeHolder: `Select a terminal type`
       }))?.type;
 
@@ -83,7 +85,8 @@ export namespace Terminal {
         const terminalSettings: TerminalSettings = {
           type,
           location: GlobalConfiguration.get<boolean>(`terminals.${type.toLowerCase()}.openInEditorArea`) ? vscode.TerminalLocation.Editor : vscode.TerminalLocation.Panel,
-          connectionString: configuration.connectringStringFor5250
+          connectionString: configuration.connectringStringFor5250,
+          currentDirectory: options?.currentDirectory
         };
 
         if (terminalSettings.type === TerminalType._5250) {
@@ -115,102 +118,117 @@ export namespace Terminal {
   const HALTED = ` II`;
 
   async function createTerminal(context: vscode.ExtensionContext, connection: IBMi, terminalSettings: TerminalSettings) {
+    let ready = terminalSettings.type === TerminalType._5250;
     const writeEmitter = new vscode.EventEmitter<string>();
-    const paseWelcomeMessage = 'echo "Terminal started. Thanks for using Code for IBM i"';
-
-    const channel = await connection.client.requestShell();
-    channel.stdout.on(`data`, (data: any) => {
-      const dataString: string = data.toString();
-      if (dataString.trim().indexOf(paseWelcomeMessage) === -1) {
+    const channel = await connection.client.requestShell({ term: "xterm" });
+    channel.on(`data`, (data: Buffer) => {
+      const dataString = data.toString();
+      if (ready) {
         if (dataString.includes(HALTED)) {
           setHalted(true);
         }
         writeEmitter.fire(String(data));
       }
+
+      if (!ready) {
+        ready = PASE_INIT_FLAG_REGEX.test(dataString.trim());
+      }
     });
 
-    const emulatorTerminal = vscode.window.createTerminal({
-      name: `IBM i ${terminalSettings.type}: ${connection.config?.name}`,
-      location: terminalSettings.location,
-      pty: {
-        onDidWrite: writeEmitter.event,
-        open: () => { },
-        close: () => {
-          channel.close();
-        },
-        handleInput: (data: string) => {
-          if (terminalSettings.type === TerminalType._5250) {
-            const buffer = Buffer.from(data);
+    let emulatorTerminal: vscode.Terminal | undefined;
+    await new Promise((resolve) => {
+      emulatorTerminal = vscode.window.createTerminal({
+        name: `IBM i ${terminalSettings.type}: ${connection.config?.name}`,
+        location: terminalSettings.location,
+        pty: {
+          onDidWrite: writeEmitter.event,
+          open: resolve,
+          close: () => {
+            channel.close();
+          },
+          handleInput: (data: string) => {
+            if (terminalSettings.type === TerminalType._5250) {
+              const buffer = Buffer.from(data);
 
-            switch (buffer[0]) {
-              case BACKSPACE: //Backspace
-                //Move back one, space, move back again - deletes a character
-                channel.stdin.write(Buffer.from([
-                  27, 79, 68, //Move back one
-                  27, 91, 51, 126 //Delete character
-                ]));
-                break;
+              switch (buffer[0]) {
+                case BACKSPACE: //Backspace
+                  //Move back one, space, move back again - deletes a character
+                  channel.stdin.write(Buffer.from([
+                    27, 79, 68, //Move back one
+                    27, 91, 51, 126 //Delete character
+                  ]));
+                  break;
 
-              default:
-                if (buffer[0] === RESET || buffer[0] === ATTENTION) {
-                  setHalted(false);
-                }
+                default:
+                  if (buffer[0] === RESET || buffer[0] === ATTENTION) {
+                    setHalted(false);
+                  }
 
-                channel.stdin.write(data);
-                break;
+                  channel.stdin.write(data);
+                  break;
+              }
+            } else {
+              channel.stdin.write(data);
             }
-          } else {
-            channel.stdin.write(data);
+          },
+          setDimensions: (dim: vscode.TerminalDimensions) => {
+            channel.setWindow(String(dim.rows), String(dim.columns), `500`, `500`);
           }
         },
-        setDimensions: (dim: vscode.TerminalDimensions) => {
-          channel.setWindow(String(dim.rows), String(dim.columns), `500`, `500`);
-        },
-      },
-    });
-    channel.on(`close`, () => {
-      channel.destroy();
-      writeEmitter.dispose();
-    });
-    channel.on(`exit`, (code: number, signal: any, coreDump: boolean, desc: string) => {
-      writeEmitter.fire(`----------\r\n`);
-      if (code === 0) {
-        writeEmitter.fire(`Completed successfully.\r\n`);
-      }
-      else if (code) {
-        writeEmitter.fire(`Exited with error code ${code}.\r\n`);
-      }
-      else {
-        writeEmitter.fire(`Exited with signal ${signal}.\r\n`);
-      }
-    });
-    channel.on(`error`, (err: Error) => {
-      vscode.window.showErrorMessage(`Connection error: ${err.message}`);
-      emulatorTerminal.dispose();
-      channel.destroy();
-    });
+      });
+      emulatorTerminal.show();
+    })
 
-    emulatorTerminal.show();
-    if (terminalSettings.type === TerminalType._5250) {
-      channel.stdin.write([
-        `TERM=xterm /QOpenSys/pkgs/bin/tn5250`,
-        terminalSettings.encoding ? `map=${terminalSettings.encoding}` : ``,
-        terminalSettings.terminal ? `env.TERM=${terminalSettings.terminal}` : ``,
-        terminalSettings.name ? `env.DEVNAME=${terminalSettings.name}` : ``,
-        terminalSettings.connectionString || `localhost`,
-        `\n`
-      ].join(` `));
-    } else {
-      channel.stdin.write(`${paseWelcomeMessage}\n`);
+    if (emulatorTerminal) {
+      channel.on(`close`, () => {
+        channel.destroy();
+        writeEmitter.dispose();
+      });
+      channel.on(`exit`, (code: number, signal: any, coreDump: boolean, desc: string) => {
+        writeEmitter.fire(`----------\r\n`);
+        if (code === 0) {
+          writeEmitter.fire(`Completed successfully.\r\n`);
+        }
+        else if (code) {
+          writeEmitter.fire(`Exited with error code ${code}.\r\n`);
+        }
+        else {
+          writeEmitter.fire(`Exited with signal ${signal}.\r\n`);
+        }
+      });
+      channel.on(`error`, (err: Error) => {
+        vscode.window.showErrorMessage(`Connection error: ${err.message}`);
+        emulatorTerminal!.dispose();
+        channel.destroy();
+      });
+
+      if (terminalSettings.type === TerminalType._5250) {
+        channel.write([
+          `/QOpenSys/pkgs/bin/tn5250`,
+          terminalSettings.encoding ? `map=${terminalSettings.encoding}` : ``,
+          terminalSettings.terminal ? `env.TERM=${terminalSettings.terminal}` : ``,
+          terminalSettings.name ? `env.DEVNAME=${terminalSettings.name}` : ``,
+          terminalSettings.connectionString || `localhost`,
+          `\n`
+        ].join(` `));
+      } else {
+        const initialCommands = [];
+        if (terminalSettings.currentDirectory) {
+          initialCommands.push(`cd ${Tools.escapePath(terminalSettings.currentDirectory)}`);
+        }
+        initialCommands.push(`echo -e "\\0033[0;32mTerminal started, thanks for using \\0033[0;34mCode for IBM i. \\0033[0;32mCurrent directory is \\0033[0;34m"$(pwd)"\\0033[0m."`);
+        initialCommands.push([PASE_INIT_FLAG].join(" "));
+        channel.write(`${initialCommands.join('; ')}\n`);
+      }
+
+      instance.subscribe(
+        context,
+        'disconnected',
+        `Dispose Terminal ${terminalCount++}`,
+        () => emulatorTerminal!.dispose(),
+        true);
+
+      return emulatorTerminal;
     }
-
-    instance.subscribe(
-      context,
-      'disconnected',
-      `Dispose Terminal ${terminalCount++}`,
-      () => emulatorTerminal.dispose(),
-      true);
-
-    return emulatorTerminal;
   }
 }
