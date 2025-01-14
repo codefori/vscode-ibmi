@@ -1,10 +1,10 @@
 import path from "path";
 import { commands, TreeItem, Uri, WorkspaceFolder, window, Disposable } from "vscode";
-import { CompileTools } from "../api/CompileTools";
 import { ConnectionConfiguration } from "../api/Configuration";
-import { refreshDiagnosticsFromServer } from "../api/errors/diagnostics";
+import { refreshDiagnosticsFromServer } from "../views/diagnostics";
 import Instance from "../api/Instance";
 import { BrowserItem, Action, DeploymentMethod } from "../typings";
+import { runAction } from "../views/actions";
 
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
@@ -55,7 +55,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
           }
 
           if (canRun && [`member`, `streamfile`, `file`, 'object'].includes(uri.scheme)) {
-            return await CompileTools.runAction(instance, uri, action, method, browserItem, workspaceFolder);
+            return await runAction(instance, uri, action, method, browserItem, workspaceFolder);
           }
         }
         else {

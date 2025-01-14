@@ -6,10 +6,7 @@ import { ExtensionContext, commands, languages, window, workspace } from "vscode
 
 import { CustomUI } from "./api/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
-
-import { CompileTools } from "./api/CompileTools";
 import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./api/Configuration";
-import IBMi from "./api/IBMi";
 import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
 import * as Debug from './api/debug';
@@ -35,6 +32,7 @@ import { initializeIFSBrowser } from "./views/ifsBrowser";
 import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
+import { registerActionTools } from "./views/actions";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -87,7 +85,7 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
     languages.registerCompletionItemProvider({ language: 'json', pattern: "**/.vscode/actions.json" }, new LocalActionCompletionItemProvider(), "&")
   );
 
-  CompileTools.register(context);
+  registerActionTools(context);
   GlobalStorage.initialize(context);
   Debug.initialize(context);
   Deployment.initialize(context);

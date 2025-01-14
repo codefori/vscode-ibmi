@@ -2,7 +2,7 @@ import path from "path";
 import vscode, { l10n } from "vscode";
 import { GlobalConfiguration, ReconnectMode } from "../../api/Configuration";
 import { GlobalStorage } from "../../api/Storage";
-import { Tools } from "../../api/Tools";
+import { findUriTabs } from "../../views/tools";
 
 /**
  * Called when a member/streamfile is left open when VS Code is closed and re-opened to reconnect (or not) to the previous IBM i, based on the `autoReconnect` global configuration value.
@@ -36,7 +36,7 @@ export async function reconnectFS(uri: vscode.Uri) {
     return true;
   }
   else {
-    for (const tab of Tools.findUriTabs(uri)) {
+    for (const tab of findUriTabs(uri)) {
       await vscode.window.tabGroups.close(tab);
     }
     return false;

@@ -10,6 +10,7 @@ import { isSEPSupported } from "../../api/debug/server";
 import { extensionComponentRegistry } from "../../components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
+import { withContext } from "../../views/tools";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
@@ -260,7 +261,7 @@ export class SettingsUI {
           .addHorizontalRule()
           .addButtons({ id: `save`, label: `Save settings`, requiresValidation: true });
 
-        await Tools.withContext(EDITING_CONTEXT, async () => {
+        await withContext(EDITING_CONTEXT, async () => {
           const page = await ui.loadPage<any>(`Settings: ${config.name}`);
           if (page) {
             page.panel.dispose();
@@ -373,7 +374,7 @@ export class SettingsUI {
                 { id: `removeAuth`, label: vscode.l10n.t(`Remove auth methods`) }
               );
 
-            await Tools.withContext(EDITING_CONTEXT, async () => {
+            await withContext(EDITING_CONTEXT, async () => {
               const page = await ui.loadPage<LoginSettings>(vscode.l10n.t(`Login Settings: "{0}"`, name));
               if (page && page.data) {
                 page.panel.dispose();

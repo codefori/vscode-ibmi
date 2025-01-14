@@ -9,6 +9,7 @@ import IBMi from "../IBMi";
 import IBMiContent from '../IBMiContent';
 import { Tools } from '../Tools';
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaHome } from './config';
+import { fileToPath } from '../../views/tools';
 
 type HostInfo = {
   ip: string
@@ -109,7 +110,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
       password = imported.password;
       if (imported.localFile) {
         setProgress("importing local certificate");
-        await connection.getContent().uploadFiles([{ local: imported.localFile, remote: debugConfig.getRemoteServiceCertificatePath() }]);
+        await connection.getContent().uploadFiles([{ local: fileToPath(imported.localFile), remote: debugConfig.getRemoteServiceCertificatePath() }]);
       }
       else if (imported.remoteFile) {
         setProgress("importing remote certificate");

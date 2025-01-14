@@ -1,11 +1,11 @@
 
 import * as vscode from "vscode";
-import { FileError } from "../../typings";
-import { GlobalConfiguration } from "../Configuration";
-import Instance from "../Instance";
-import { Tools } from "../Tools";
-import { getEvfeventFiles } from "../local/actions";
-import { parseErrors } from "./parser";
+import { FileError } from "../typings";
+import { GlobalConfiguration } from "../api/Configuration";
+import Instance from "../api/Instance";
+import { getEvfeventFiles } from "../api/local/actions";
+import { parseErrors } from "../api/errors/parser";
+import { findExistingDocumentByName, findExistingDocumentUri } from "./tools";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -175,7 +175,7 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
           // tabs like we do below.
           if (evfeventInfo.extension) {
             const baseName = file.split(`/`).pop();
-            const openFile = Tools.findExistingDocumentByName(`${baseName}.${evfeventInfo.extension}`);
+            const openFile = findExistingDocumentByName(`${baseName}.${evfeventInfo.extension}`);
             if (openFile) {
               ileDiagnostics.set(openFile, diagnostics);
               continue;
@@ -185,10 +185,10 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
       }
 
       if (file.startsWith(`/`)) {
-        ileDiagnostics.set(Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
+        ileDiagnostics.set(findExistingDocumentUri(vscode.Uri.from({ scheme: `streamfile`, path: file })), diagnostics);
       }
       else {
-        const memberUri = Tools.findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
+        const memberUri = findExistingDocumentUri(vscode.Uri.from({ scheme: `member`, path: `/${asp}${file}${evfeventInfo.extension ? `.` + evfeventInfo.extension : ``}` }));
         ileDiagnostics.set(memberUri, diagnostics);
       }
     }

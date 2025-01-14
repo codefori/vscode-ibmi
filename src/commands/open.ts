@@ -1,12 +1,11 @@
 import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
-import IBMi from "../api/IBMi";
 import { MemberItem, OpenEditableOptions, WithPath } from "../typings";
 import Instance from "../api/Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import { DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
 import path from "path";
-import { GetMemberInfo } from "../components/getMemberInfo";
+import { findExistingDocument, findExistingDocumentUri } from "../views/tools";
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
@@ -34,7 +33,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
 
       const uri = getUriFromPath(path, options);
 
-      const existingUri = Tools.findExistingDocumentUri(uri);
+      const existingUri = findExistingDocumentUri(uri);
 
       if (existingUri) {
         const existingOptions = parseFSOptions(existingUri);
@@ -87,7 +86,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
     commands.registerCommand("code-for-ibmi.refreshFile", async (uri?: Uri) => {
       let doc: TextDocument | undefined;
       if (uri) {
-        doc = Tools.findExistingDocument(uri);
+        doc = findExistingDocument(uri);
       } else {
         const editor = window.activeTextEditor;
         doc = editor?.document;

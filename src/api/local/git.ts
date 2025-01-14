@@ -1,15 +1,15 @@
 import { ExtensionContext, WorkspaceFolder, commands, window } from "vscode";
-import { Tools } from "../Tools";
 import { getBranchLibraryName } from "./env";
 import { instance } from "../../instantiate";
 import { ConnectionConfiguration, GlobalConfiguration } from "../Configuration";
 import IBMi from "../IBMi";
 import IBMiContent from "../IBMiContent";
+import { getGitAPI } from "../../views/tools";
 
 const lastBranch: { [workspaceUri: string]: string } = {};
 
 export function getGitBranch(workspaceFolder: WorkspaceFolder) {
-  const gitApi = Tools.getGitAPI();
+  const gitApi = getGitAPI();
   if (gitApi) {
     const repo = gitApi.getRepository(workspaceFolder.uri);
     if (repo) {
@@ -19,7 +19,7 @@ export function getGitBranch(workspaceFolder: WorkspaceFolder) {
 }
 
 export function setupGitEventHandler(context: ExtensionContext) {
-  const gitApi = Tools.getGitAPI();
+  const gitApi = getGitAPI();
 
   if (gitApi) {
     gitApi.onDidOpenRepository((repo) => {

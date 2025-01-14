@@ -3,7 +3,7 @@ import { ConnectionData, IBMiEvent } from "../typings";
 import { ConnectionConfiguration } from "./Configuration";
 import IBMi, { ConnectionResult } from "./IBMi";
 import { ConnectionStorage, GlobalStorage } from "./Storage";
-import { Tools } from "./Tools";
+import { withContext } from "../views/tools";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -62,7 +62,7 @@ export default class Instance {
       }
     };
 
-    return Tools.withContext("code-for-ibmi:connecting", async () => {
+    return withContext("code-for-ibmi:connecting", async () => {
       while (true) {
         try {
           result = await connection.connect(options.data, options.reconnecting, options.reloadServerSettings, options.onConnectedOperations || [], timeoutHandler);
