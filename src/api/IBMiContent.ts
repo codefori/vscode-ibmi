@@ -4,7 +4,7 @@ import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
 import * as node_ssh from "node-ssh";
-import { GetMemberInfo } from '../components/getMemberInfo';
+import { GetMemberInfo } from './components/getMemberInfo';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from '../typings';
 import { ConnectionConfiguration } from './Configuration';

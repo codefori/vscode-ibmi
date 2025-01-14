@@ -1,6 +1,6 @@
 import { posix } from "path";
-import IBMi from "../api/IBMi";
-import { instance } from "../instantiate";
+import IBMi from "../IBMi";
+import { instance } from "../../instantiate";
 import { ComponentState, IBMiComponent } from "./component";
 
 export class GetNewLibl implements IBMiComponent {

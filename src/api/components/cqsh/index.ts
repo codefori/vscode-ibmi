@@ -2,7 +2,7 @@
 import { stat } from "fs/promises";
 import path from "path";
 import { extensions } from "vscode";
-import IBMi from "../../api/IBMi";
+import IBMi from "../../IBMi";
 import { ComponentState, IBMiComponent } from "../component";
 
 export class CustomQSh implements IBMiComponent {

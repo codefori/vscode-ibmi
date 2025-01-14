@@ -1,5 +1,5 @@
 import * as path from 'path';
-import { GetMemberInfo } from '../components/getMemberInfo';
+import { GetMemberInfo } from './components/getMemberInfo';
 import { IBMiMember, SearchHit, SearchResults } from '../typings';
 import { GlobalConfiguration } from './Configuration';
 import Instance from '../Instance';

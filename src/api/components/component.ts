@@ -1,4 +1,4 @@
-import IBMi from "../api/IBMi";
+import IBMi from "../IBMi";
 
 export type ComponentState = `NotChecked` | `NotInstalled` | `Installed` | `NeedsUpdate` | `Error`;
 

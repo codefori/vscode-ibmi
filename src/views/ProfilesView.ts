@@ -1,7 +1,7 @@
 
 import vscode, { l10n, window } from 'vscode';
 import { ConnectionConfiguration } from '../api/Configuration';
-import { GetNewLibl } from '../components/getNewLibl';
+import { GetNewLibl } from '../api/components/getNewLibl';
 import { instance } from '../instantiate';
 import { Profile } from '../typings';
 import { CommandProfile } from '../webviews/commandProfile';

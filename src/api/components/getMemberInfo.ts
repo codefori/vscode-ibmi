@@ -1,8 +1,8 @@
 import { posix } from "path";
-import IBMi from "../api/IBMi";
-import { Tools } from "../api/Tools";
-import { IBMiMember } from "../typings";
-import { ComponentState, IBMiComponent } from "./component";
+import IBMi from "../IBMi";
+import { Tools } from "../Tools";
+import { IBMiMember } from "../../typings";
+import { ComponentState, IBMiComponent } from "../components/component";
 
 export class GetMemberInfo implements IBMiComponent {
   static ID = 'GetMemberInfo';

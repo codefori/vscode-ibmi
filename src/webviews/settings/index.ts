@@ -7,7 +7,7 @@ import { Tools } from "../../api/Tools";
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
 import { isSEPSupported } from "../../debug/server";
-import { extensionComponentRegistry } from "../../components/manager";
+import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
 import { withContext } from "../../views/tools";

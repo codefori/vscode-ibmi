@@ -1,5 +1,5 @@
 import vscode from "vscode";
-import IBMi from "../api/IBMi";
+import IBMi from "../IBMi";
 import { ComponentState, IBMiComponent } from "./component";
 
 export class ComponentRegistry {

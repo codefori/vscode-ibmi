@@ -5,7 +5,7 @@ import { CustomUI } from "./webviews/CustomUI";
 import Instance from "./Instance";
 import { Tools } from "./api/Tools";
 import { DeployTools } from "./filesystems/local/deployTools";
-import { ComponentRegistry } from './components/manager';
+import { ComponentRegistry } from './api/components/manager';
 
 export interface CodeForIBMi {
   instance: Instance,
