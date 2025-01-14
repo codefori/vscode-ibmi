@@ -4,7 +4,7 @@ import IBMi from "../IBMi";
 import { ConfigFile } from "./configFile";
 
 export function getActionsConfig(connection: IBMi) {
-  const ActionsConfig = new ConfigFile<Action[]>(connection, `actions`);
+  const ActionsConfig = new ConfigFile<Action[]>(connection, `actions`, []);
 
   ActionsConfig.hasServerFile = true;
   ActionsConfig.mergeArrays = true;

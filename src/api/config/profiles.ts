@@ -9,7 +9,7 @@ export interface ProfilesConfigFile {
 }
 
 export function getProfilesConfig(connection: IBMi) {
-  const ProfilesConfig = new ConfigFile<ProfilesConfigFile>(connection, `profiles`);
+  const ProfilesConfig = new ConfigFile<ProfilesConfigFile>(connection, `profiles`, {profiles: []});
 
   ProfilesConfig.hasServerFile = true;
 

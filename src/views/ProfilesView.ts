@@ -244,20 +244,18 @@ export class ProfilesView {
 
 export async function getAllProfiles(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles;
-  const profilesConfig = await connection.getConfigFile<ProfilesConfigFile>(`profiles`).get();
-  const localProfiles = profilesConfig ? profilesConfig.profiles : [];
+  const profilesConfig = (await connection.getConfigFile<ProfilesConfigFile>(`profiles`).get()).profiles;
 
-  return [...profiles, ...localProfiles];
+  return [...profiles, ...profilesConfig];
 }
 
 async function getProfilesInGroups(connection: IBMi) {
   const profiles = connection.config!.connectionProfiles || [];
-  const profilesConfig = await connection.getConfigFile<ProfilesConfigFile>(`profiles`).get();
-  const localProfiles = profilesConfig ? profilesConfig.profiles : [];
+  const profilesConfig = (await connection.getConfigFile<ProfilesConfigFile>(`profiles`).get()).profiles;
 
   return {
     connectionProfiles: profiles,
-    localProfiles: localProfiles
+    localProfiles: profilesConfig
   }
 }
 

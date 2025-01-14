@@ -2,6 +2,7 @@
 import path from "path";
 import { RelativePattern, workspace, WorkspaceFolder } from "vscode";
 import IBMi from "../IBMi";
+import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "../../api/Configuration";
 
 const WORKSPACE_ROOT = `.vscode`;
 const SERVER_ROOT = path.posix.join(`/`, `etc`, `.vscode`);
@@ -24,7 +25,7 @@ export class ConfigFile<T> {
   public mergeArrays = false;
   public validateAndCleanInPlace: ((loadedConfig: any) => T)|undefined;
 
-  constructor(private connection: IBMi, configId: string) {
+  constructor(private connection: IBMi, configId: string, readonly fallback: T) {
     this.basename = configId + `.json`;
     this.workspaceFile = path.join(WORKSPACE_ROOT, this.basename);
     this.serverFile = path.posix.join(SERVER_ROOT, this.basename);
@@ -56,7 +57,7 @@ export class ConfigFile<T> {
     }
   }
 
-  async get(currentWorkspace?: WorkspaceFolder): Promise<T|undefined> {
+  async get(currentWorkspace?: WorkspaceFolder): Promise<T> {
     let resultingConfig: any;
     let workspaceConfig: any|undefined;
 
@@ -78,7 +79,7 @@ export class ConfigFile<T> {
     }
 
     if (workspaceConfig === undefined && this.serverData === undefined) {
-      return undefined;
+      return this.fallback;
     }
 
     if (this.mergeArrays && workspaceConfig && this.serverData) {
@@ -99,7 +100,12 @@ export class ConfigFile<T> {
 
     if (this.validateAndCleanInPlace) {
       // Should throw an error.
-      resultingConfig = this.validateAndCleanInPlace(resultingConfig);
+      try {
+        resultingConfig = this.validateAndCleanInPlace(resultingConfig);
+      } catch (e: any) {
+        resultingConfig = this.fallback;
+        console.log(`Error validating config file: ${e.message}`);
+      }
     }
 
     return resultingConfig as T;

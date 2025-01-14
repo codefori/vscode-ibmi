@@ -102,9 +102,7 @@ export namespace CompileTools {
         // we fetch the Actions defined from the workspace.
         if (workspaceFolder && uri.scheme === `file`) {
           const localActions = await connection.getConfigFile<Action[]>(`actions`).get(workspaceFolder);
-          if (localActions) {
-            allActions.push(...localActions);
-          }
+          allActions.push(...localActions);
         }
 
         // We make sure all extensions are uppercase
