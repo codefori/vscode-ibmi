@@ -945,7 +945,7 @@ async function doSearchInStreamfiles(searchTerm: string, searchPath: string) {
       progress.report({
         message: l10n.t(`"{0}" in {1}.`, searchTerm, searchPath)
       });
-      const results = await Search.searchIFS(instance, searchPath, searchTerm);
+      const results = await Search.searchIFS(instance.getConnection()!, searchPath, searchTerm);
       if (results?.hits.length) {
         openIFSSearchResults(searchPath, results);
       } else {
@@ -967,7 +967,7 @@ async function doFindStreamfiles(findTerm: string, findPath: string) {
       progress.report({
         message: l10n.t(`Finding filenames with "{0}" in {1}.`, findTerm, findPath)
       });
-      const results = (await Search.findIFS(instance, findPath, findTerm));
+      const results = (await Search.findIFS(instance.getConnection()!, findPath, findTerm));
       if (results?.hits.length) {
         openIFSSearchResults(findPath, results);
       } else {

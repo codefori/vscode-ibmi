@@ -2,14 +2,13 @@ import * as path from 'path';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { IBMiMember, SearchHit, SearchResults } from '../typings';
 import { GlobalConfiguration } from './Configuration';
-import Instance from '../Instance';
 import { Tools } from './Tools';
+import IBMi from './IBMi';
 
 export namespace Search {
-  export async function searchMembers(instance: Instance, library: string, sourceFile: string, searchTerm: string, members: string|IBMiMember[], readOnly?: boolean,): Promise<SearchResults> {
-    const connection = instance.getConnection();
-    const config = instance.getConfig();
-    const content = instance.getContent();
+  export async function searchMembers(connection: IBMi, library: string, sourceFile: string, searchTerm: string, members: string|IBMiMember[], readOnly?: boolean,): Promise<SearchResults> {
+    const config = connection.getConfig();
+    const content = connection.getContent();
 
     if (connection && config && content) {
       let detailedMembers: IBMiMember[]|undefined;
@@ -105,8 +104,7 @@ export namespace Search {
     }
   }
 
-  export async function searchIFS(instance: Instance, path: string, searchTerm: string): Promise<SearchResults | undefined> {
-    const connection = instance.getConnection();
+  export async function searchIFS(connection: IBMi, path: string, searchTerm: string): Promise<SearchResults | undefined> {
     if (connection) {
       const grep = connection.remoteFeatures.grep;
 
@@ -138,8 +136,7 @@ export namespace Search {
     }
   }
 
-  export async function findIFS(instance: Instance, path: string, findTerm: string): Promise<SearchResults | undefined> {
-    const connection = instance.getConnection();
+  export async function findIFS(connection: IBMi, path: string, findTerm: string): Promise<SearchResults | undefined> {
     if (connection) {
       const find = connection.remoteFeatures.find;
 
