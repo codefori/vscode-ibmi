@@ -5,7 +5,7 @@ import { TestSuite } from ".";
 import { CompileTools } from "../api/CompileTools";
 import { Tools } from "../api/Tools";
 import { LocalLanguageActions } from "../api/local/LocalLanguageActions";
-import { DeployTools } from "../api/local/deployTools";
+import { DeployTools } from "../filesystems/deployTools";
 import { getEnvConfig } from "../api/local/env";
 import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";

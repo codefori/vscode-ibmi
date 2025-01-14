@@ -8,7 +8,7 @@ import { DeploymentParameters } from '../../typings';
 import IBMi from '../IBMi';
 import { Tools } from '../Tools';
 import { getLocalActions } from './actions';
-import { DeployTools } from './deployTools';
+import { DeployTools } from '../../filesystems/deployTools';
 
 export namespace Deployment {
   export interface MD5Entry {

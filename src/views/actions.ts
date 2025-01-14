@@ -2,7 +2,7 @@
 import path from 'path';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
 import { getLocalActions } from '../api/local/actions';
-import { DeployTools } from '../api/local/deployTools';
+import { DeployTools } from '../filesystems/deployTools';
 import { getBranchLibraryName, getEnvConfig } from '../api/local/env';
 import { getGitBranch } from '../filesystems/git';
 import Instance from '../Instance';

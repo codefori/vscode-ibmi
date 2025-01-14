@@ -11,7 +11,7 @@ import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
 import * as Debug from './api/debug';
 import { parseErrors } from "./api/errors/parser";
-import { DeployTools } from "./api/local/deployTools";
+import { DeployTools } from "./filesystems/deployTools";
 import { Deployment } from "./api/local/deployment";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from "./components/cqsh";
