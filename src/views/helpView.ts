@@ -2,7 +2,7 @@
 import AdmZip from 'adm-zip';
 import path, { parse } from 'path';
 import vscode from 'vscode';
-import { DebugConfiguration } from '../debug/config';
+import { DebugConfiguration } from '../api/configuration/DebugConfiguration';
 import IBMi from '../api/IBMi';
 import { instance } from '../instantiate';
 

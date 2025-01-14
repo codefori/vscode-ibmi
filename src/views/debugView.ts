@@ -1,7 +1,7 @@
 import vscode from "vscode";
 import { Tools } from "../api/Tools";
-import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists, SERVICE_CERTIFICATE } from "../debug/certificates";
-import { DebugConfiguration, getDebugServiceDetails } from "../debug/config";
+import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists } from "../debug/certificates";
+import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../api/configuration/DebugConfiguration";
 import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../debug/server";
 import { instance } from "../instantiate";
 import { BrowserItem } from "../typings";

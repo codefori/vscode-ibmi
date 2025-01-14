@@ -13,8 +13,7 @@ import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, CodeForIStorage } from './configuration/Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
-import { DebugConfiguration } from "../debug/config";
-import { debugPTFInstalled } from "../debug/server";
+import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager, ConnectionConfig } from './configuration/ConnectionManager';
 
 export interface MemberParts extends IBMiMember {
@@ -739,7 +738,7 @@ export default class IBMi {
 
       let debugConfigLoaded = false
       if ((!quickConnect || !cachedServerSettings?.debugConfigLoaded)) {
-        if (debugPTFInstalled()) {
+        if (this.debugPTFInstalled()) {
           try {
             const debugServiceConfig = await new DebugConfiguration(this).load();
             delete this.config.debugCertDirectory;
@@ -1394,5 +1393,9 @@ export default class IBMi {
       userDefaultCCSID: this.userDefaultCCSID,
       sshdCcsid: this.sshdCcsid
     };
+  }
+
+  debugPTFInstalled() {
+    return this.remoteFeatures[`startDebugService.sh`] !== undefined;
   }
 }

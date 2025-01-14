@@ -8,8 +8,8 @@ import { instance } from '../instantiate';
 import IBMi from "../api/IBMi";
 import IBMiContent from '../api/IBMiContent';
 import { Tools } from '../api/Tools';
-import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaHome } from './config';
 import { fileToPath } from '../views/tools';
+import { DebugConfiguration, SERVICE_CERTIFICATE, CLIENT_CERTIFICATE, getDebugServiceDetails, getJavaHome, DEBUG_CONFIG_FILE, LEGACY_CERT_DIRECTORY } from '../api/configuration/DebugConfiguration';
 
 type HostInfo = {
   ip: string
@@ -25,10 +25,6 @@ export type ImportedCertificate = {
 const ENCRYPTION_KEY = ".code4i.debug";
 const IP_REGEX = /^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/gi;
 const dnsLookup = promisify(dns.lookup);
-export const SERVICE_CERTIFICATE = `debug_service.pfx`;
-export const CLIENT_CERTIFICATE = `debug_service.crt`;
-
-export const LEGACY_CERT_DIRECTORY = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
 
 async function getHostInfo(connection: IBMi): Promise<HostInfo> {
   const hostNames = [
@@ -170,7 +166,14 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         debugConfig.delete("DEBUG_SERVICE_KEYSTORE_PASSWORD");
         await debugConfig.save();
       }
-      const javaHome = getJavaHome(connection, (await getDebugServiceDetails()).java);
+      
+      const javaVersion = (await getDebugServiceDetails()).java;
+      const javaHome = getJavaHome(connection, javaVersion);
+
+      if (!javaHome) {
+        throw new Error(vscode.l10n.t(`Java version {0} is not installed.`, javaVersion));
+      }
+
       const encryptResult = await connection.sendCommand({
         command: `${path.posix.join(debugConfig.getRemoteServiceBin(), `encryptKeystorePassword.sh`)} | /usr/bin/tail -n 1`,
         env: {
@@ -265,7 +268,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
   //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
   const javaHome = debugConfig.get("JAVA_HOME");
   const expectedJavaHome = getJavaHome(connection, (await getDebugServiceDetails()).java);
-  if (javaHome && javaHome !== expectedJavaHome) {
+  if (javaHome && expectedJavaHome && javaHome !== expectedJavaHome) {
     if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
       //Automatically make the change if possible
       debugConfig.set("JAVA_HOME", expectedJavaHome);

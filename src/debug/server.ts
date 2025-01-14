@@ -4,7 +4,7 @@ import { instance } from "../instantiate";
 import { CustomUI } from "../webviews/CustomUI";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
-import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE } from "./config";
+import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE } from "../api/configuration/DebugConfiguration";
 
 export type DebugJob = {
   name: string
@@ -12,7 +12,7 @@ export type DebugJob = {
 }
 
 export function debugPTFInstalled() {
-  return instance.getConnection()?.remoteFeatures[`startDebugService.sh`] !== undefined;
+  return instance.getConnection()?.debugPTFInstalled()
 }
 
 export async function isSEPSupported() {

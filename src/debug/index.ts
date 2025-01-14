@@ -9,7 +9,7 @@ import { ObjectItem } from "../typings";
 import { ILELibrarySettings } from "../api/CompileTools";
 import { Env, getEnvConfig } from "../filesystems/local/env";
 import * as certificates from "./certificates";
-import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
+import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "../api/configuration/DebugConfiguration";
 import * as server from "./server";
 import { withContext } from "../views/tools";
 import { getStoredPassword } from "../config/passwords";

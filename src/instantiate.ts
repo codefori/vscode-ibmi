@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import Instance from "./Instance";
 import { Terminal } from './views/Terminal';
-import { getDebugServiceDetails } from './debug/config';
+import { getDebugServiceDetails } from './api/configuration/DebugConfiguration';
 import { debugPTFInstalled, isDebugEngineRunning } from './debug/server';
 import { setupGitEventHandler } from './filesystems/local/git';
 import { registerActionsCommands } from './commands/actions';

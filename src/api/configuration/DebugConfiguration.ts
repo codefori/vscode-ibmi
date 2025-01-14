@@ -1,8 +1,10 @@
 import path from "path";
-import vscode from "vscode";
-import { instance } from "../instantiate";
-import IBMi from "../api/IBMi";
-import { SERVICE_CERTIFICATE } from "./certificates";
+import { instance } from "../../instantiate";
+import IBMi from "../IBMi";
+
+export const SERVICE_CERTIFICATE = `debug_service.pfx`;
+export const CLIENT_CERTIFICATE = `debug_service.crt`;
+export const LEGACY_CERT_DIRECTORY = `/QIBM/ProdData/IBMiDebugService/bin/certs`;
 
 type ConfigLine = {
   key: string
@@ -149,24 +151,18 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
       const detailFilePath = path.posix.join((await new DebugConfiguration(connection).load()).getRemoteServiceRoot(), `package.json`);
       const detailExists = await content.testStreamFile(detailFilePath, "r");
       if (detailExists) {
-        try {
-          const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
-          const parsed = JSON.parse(fileContents);
-          details = {
-            ...parsed as DebugServiceDetails,
-            semanticVersion: () => {
-              const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
-              return {
-                major: parts[0],
-                minor: parts[1],
-                patch: parts[2]
-              };
-            }
+        const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
+        const parsed = JSON.parse(fileContents);
+        details = {
+          ...parsed as DebugServiceDetails,
+          semanticVersion: () => {
+            const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
+            return {
+              major: parts[0],
+              minor: parts[1],
+              patch: parts[2]
+            };
           }
-        } catch (e: any) {
-          // Something very very bad has happened
-          vscode.window.showErrorMessage(vscode.l10n.t(`Failed to read debug service detail file {0}: {1}`, detailFilePath, e));
-          console.log(e);
         }
       }
       else {
@@ -191,9 +187,5 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
 export function getJavaHome(connection: IBMi, version: string) {
   version = version.padEnd(2, '0');
   const javaHome = connection.remoteFeatures[`jdk${version}`];
-  if (!javaHome) {
-    throw new Error(vscode.l10n.t(`Java version {0} is not installed.`, version));
-  }
-
   return javaHome;
 }
