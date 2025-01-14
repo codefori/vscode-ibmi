@@ -12,7 +12,7 @@ import { Tools } from "./api/Tools";
 import * as Debug from './api/debug';
 import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./filesystems/deployTools";
-import { Deployment } from "./api/local/deployment";
+import { Deployment } from "./filesystems/deployment";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from "./components/cqsh";
 import { GetMemberInfo } from "./components/getMemberInfo";

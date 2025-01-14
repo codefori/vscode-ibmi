@@ -3,12 +3,12 @@ import path from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
 import vscode from 'vscode';
-import { instance } from '../../instantiate';
-import { DeploymentParameters } from '../../typings';
-import IBMi from '../IBMi';
-import { Tools } from '../Tools';
-import { getLocalActions } from './actions';
-import { DeployTools } from '../../filesystems/deployTools';
+import { instance } from '../instantiate';
+import { DeploymentParameters } from '../typings';
+import IBMi from '../api/IBMi';
+import { Tools } from '../api/Tools';
+import { getLocalActions } from '../api/local/actions';
+import { DeployTools } from './deployTools';
 
 export namespace Deployment {
   export interface MD5Entry {
@@ -232,7 +232,7 @@ export namespace Deployment {
       deploymentLog.appendLine(`Created deployment tarball ${localTarball.name}`);
 
       progress?.report({ message: `sending deployment tarball...` });
-      await connection.client.putFile(localTarball.name, remoteTarball);
+      await connection.client!.putFile(localTarball.name, remoteTarball);
       deploymentLog.appendLine(`Uploaded deployment tarball as ${remoteTarball}`);
 
       progress?.report({ message: `extracting deployment tarball to ${parameters.remotePath}...` });

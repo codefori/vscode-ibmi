@@ -4,7 +4,7 @@ import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../instantiate';
 import { DeploymentMethod, DeploymentParameters } from '../typings';
 import { LocalLanguageActions } from '../api/local/LocalLanguageActions';
-import { Deployment } from '../api/local/deployment';
+import { Deployment } from './deployment';
 import { getGitAPI, md5Hash } from '../views/tools';
 
 type ServerFileChanges = { uploads: Uri[], relativeRemoteDeletes: string[] };
