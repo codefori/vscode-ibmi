@@ -4,9 +4,9 @@ import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from 
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
 import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
-import { isManaged } from "../../api/debug";
-import * as certificates from "../../api/debug/certificates";
-import { isSEPSupported } from "../../api/debug/server";
+import { isManaged } from "../../debug";
+import * as certificates from "../../debug/certificates";
+import { isSEPSupported } from "../../debug/server";
 import { extensionComponentRegistry } from "../../components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';

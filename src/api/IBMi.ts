@@ -14,8 +14,8 @@ import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, GlobalStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
-import { DebugConfiguration } from "./debug/config";
-import { debugPTFInstalled } from "./debug/server";
+import { DebugConfiguration } from "../debug/config";
+import { debugPTFInstalled } from "../debug/server";
 
 export interface MemberParts extends IBMiMember {
   basename: string

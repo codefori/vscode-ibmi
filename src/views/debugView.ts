@@ -1,8 +1,8 @@
 import vscode from "vscode";
 import { Tools } from "../api/Tools";
-import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists, SERVICE_CERTIFICATE } from "../api/debug/certificates";
-import { DebugConfiguration, getDebugServiceDetails } from "../api/debug/config";
-import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../api/debug/server";
+import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists, SERVICE_CERTIFICATE } from "../debug/certificates";
+import { DebugConfiguration, getDebugServiceDetails } from "../debug/config";
+import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../debug/server";
 import { instance } from "../instantiate";
 import { BrowserItem } from "../typings";
 import { withContext } from "./tools";

@@ -1,18 +1,18 @@
 import { ExtensionContext, Uri } from "vscode";
-import Instance from "../../Instance";
+import Instance from "../Instance";
 
 import path from "path";
 import * as vscode from 'vscode';
 
-import { instance } from "../../instantiate";
-import { ObjectItem } from "../../typings";
-import { ILELibrarySettings } from "../CompileTools";
-import { ConnectionManager } from "../Configuration";
-import { Env, getEnvConfig } from "../../filesystems/local/env";
+import { instance } from "../instantiate";
+import { ObjectItem } from "../typings";
+import { ILELibrarySettings } from "../api/CompileTools";
+import { ConnectionManager } from "../api/Configuration";
+import { Env, getEnvConfig } from "../filesystems/local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";
-import { withContext } from "../../views/tools";
+import { withContext } from "../views/tools";
 
 const debugExtensionId = `IBM.ibmidebug`;
 

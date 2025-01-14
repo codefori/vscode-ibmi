@@ -4,12 +4,12 @@ import * as os from "os";
 import path, { dirname, posix } from "path";
 import { promisify } from 'util';
 import vscode from "vscode";
-import { instance } from '../../instantiate';
-import IBMi from "../IBMi";
-import IBMiContent from '../IBMiContent';
-import { Tools } from '../Tools';
+import { instance } from '../instantiate';
+import IBMi from "../api/IBMi";
+import IBMiContent from '../api/IBMiContent';
+import { Tools } from '../api/Tools';
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, getJavaHome } from './config';
-import { fileToPath } from '../../views/tools';
+import { fileToPath } from '../views/tools';
 
 type HostInfo = {
   ip: string

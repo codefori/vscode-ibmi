@@ -1,9 +1,9 @@
 import path from "path";
 import { commands, l10n, window } from "vscode";
-import { instance } from "../../instantiate";
-import { CustomUI } from "../../webviews/CustomUI";
-import IBMi from "../IBMi";
-import { Tools } from "../Tools";
+import { instance } from "../instantiate";
+import { CustomUI } from "../webviews/CustomUI";
+import IBMi from "../api/IBMi";
+import { Tools } from "../api/Tools";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE } from "./config";
 
 export type DebugJob = {

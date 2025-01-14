@@ -1,7 +1,7 @@
 import path from "path";
 import vscode from "vscode";
-import { instance } from "../../instantiate";
-import IBMi from "../IBMi";
+import { instance } from "../instantiate";
+import IBMi from "../api/IBMi";
 import { SERVICE_CERTIFICATE } from "./certificates";
 
 type ConfigLine = {

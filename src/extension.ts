@@ -9,7 +9,7 @@ import { instance, loadAllofExtension } from './instantiate';
 import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
-import * as Debug from './api/debug';
+import * as Debug from './debug';
 import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
