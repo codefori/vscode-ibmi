@@ -14,7 +14,7 @@ import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
 import { CopyToImport } from "./api/components/copyToImport";
-import { CustomQSh } from "./api/components/cqsh";
+import { CustomQSh } from "./components/cqsh";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
