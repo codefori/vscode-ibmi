@@ -2,7 +2,7 @@ import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
-import { GlobalVSCodeConfiguration } from "../../Configuration";
+import { GlobalVSCodeConfiguration } from "../../config/Configuration";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
 

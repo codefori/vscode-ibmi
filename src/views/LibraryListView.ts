@@ -1,5 +1,5 @@
 import vscode, { commands, l10n } from "vscode";
-import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../Configuration";
+import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../config/Configuration";
 import { instance } from "../instantiate";
 import { IBMiObject, WithLibrary } from "../typings";
 import { objectToToolTip } from "./tools";

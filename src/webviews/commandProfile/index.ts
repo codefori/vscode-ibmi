@@ -1,5 +1,5 @@
 import { commands, window } from "vscode";
-import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../../Configuration";
+import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../../config/Configuration";
 import { CustomUI } from "../CustomUI";
 import { instance } from "../../instantiate";
 

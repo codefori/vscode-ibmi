@@ -8,7 +8,7 @@ import { getGitBranch } from '../filesystems/local/git';
 import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, BrowserItem, DeploymentMethod, Variable } from '../typings';
-import { GlobalVSCodeConfiguration } from '../Configuration';
+import { GlobalVSCodeConfiguration } from '../config/Configuration';
 
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { CustomUI } from '../webviews/CustomUI';

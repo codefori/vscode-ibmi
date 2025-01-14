@@ -2,7 +2,7 @@
 import path from 'path';
 import vscode, { commands } from 'vscode';
 import { instance } from '../instantiate';
-import { GlobalVSCodeConfiguration } from '../Configuration';
+import { GlobalVSCodeConfiguration } from '../config/Configuration';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 

@@ -1,6 +1,6 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
-import { GlobalVSCodeConfiguration, ReconnectMode } from "../../Configuration";
+import { GlobalVSCodeConfiguration, ReconnectMode } from "../../config/Configuration";
 import { findUriTabs } from "../../views/tools";
 import IBMi from "../../api/IBMi";
 

@@ -7,7 +7,7 @@ import * as vscode from 'vscode';
 import { instance } from "../instantiate";
 import { ObjectItem } from "../typings";
 import { ILELibrarySettings } from "../api/CompileTools";
-import { ConnectionManager } from "../Configuration";
+import { ConnectionManager } from "../config/Configuration";
 import { Env, getEnvConfig } from "../filesystems/local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "./config";

@@ -6,7 +6,7 @@ import { ExtensionContext, commands, languages, window, workspace } from "vscode
 
 import { CustomUI } from "./webviews/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
-import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./Configuration";
+import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import { Tools } from "./api/Tools";
 import * as Debug from './debug';
 import { parseErrors } from "./api/errors/parser";

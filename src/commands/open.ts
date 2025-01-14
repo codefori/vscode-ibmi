@@ -3,7 +3,7 @@ import { MemberItem, OpenEditableOptions, WithPath } from "../typings";
 import Instance from "../Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
-import { DefaultOpenMode, GlobalVSCodeConfiguration } from "../Configuration";
+import { DefaultOpenMode, GlobalVSCodeConfiguration } from "../config/Configuration";
 import path from "path";
 import { findExistingDocument, findExistingDocumentUri } from "../views/tools";
 

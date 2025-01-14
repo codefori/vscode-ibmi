@@ -2,7 +2,7 @@ import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 
-import { GlobalVSCodeConfiguration, SourceDateMode } from "../../Configuration";
+import { GlobalVSCodeConfiguration, SourceDateMode } from "../../config/Configuration";
 import { instance } from "../../instantiate";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);

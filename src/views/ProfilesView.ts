@@ -1,6 +1,6 @@
 
 import vscode, { l10n, window } from 'vscode';
-import { ConnectionConfiguration } from '../Configuration';
+import { ConnectionConfiguration } from '../config/Configuration';
 import { GetNewLibl } from '../api/components/getNewLibl';
 import { instance } from '../instantiate';
 import { Profile } from '../typings';

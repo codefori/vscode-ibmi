@@ -1,7 +1,7 @@
 import vscode from 'vscode';
 import { ConnectionData, Server } from '../typings';
 
-import { ConnectionConfiguration, ConnectionManager, GlobalVSCodeConfiguration } from '../Configuration';
+import { ConnectionConfiguration, ConnectionManager, GlobalVSCodeConfiguration } from '../config/Configuration';
 import { instance } from '../instantiate';
 import { Login } from '../webviews/login';
 import IBMi from '../api/IBMi';

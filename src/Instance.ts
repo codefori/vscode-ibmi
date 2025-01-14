@@ -1,11 +1,11 @@
 import * as vscode from "vscode";
 import { ConnectionData, IBMiEvent } from "./typings";
-import { ConnectionConfiguration } from "./Configuration";
+import { ConnectionConfiguration } from "./config/Configuration";
 import IBMi, { ConnectionResult } from "./api/IBMi";
 import { CodeForIStorage, ConnectionStorage } from "./api/Storage";
 import { withContext } from "./views/tools";
 import { handleConnectionResults, messageCallback } from "./views/connection";
-import { VsStorage } from "./Storage";
+import { VsStorage } from "./config/Storage";
 
 type IBMiEventSubscription = {
   func: Function,

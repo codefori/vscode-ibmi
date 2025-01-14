@@ -3,7 +3,7 @@ import path, { dirname, extname } from "path";
 import vscode, { FileType, l10n, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
-import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../Configuration";
+import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../config/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { Tools } from "../api/Tools";

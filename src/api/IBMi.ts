@@ -9,7 +9,7 @@ import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "./components/manager";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
-import { ConnectionConfiguration } from "../Configuration";
+import { ConnectionConfiguration } from "../config/Configuration";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, CodeForIStorage } from './Storage';
 import { Tools } from './Tools';

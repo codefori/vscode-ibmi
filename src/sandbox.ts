@@ -1,7 +1,7 @@
 import { env } from "process";
 import querystring from "querystring";
 import { commands, ExtensionContext, l10n, Uri, window } from "vscode";
-import { ConnectionConfiguration, ConnectionManager } from "./Configuration";
+import { ConnectionConfiguration, ConnectionManager } from "./config/Configuration";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
 import { getGitAPI } from "./views/tools";

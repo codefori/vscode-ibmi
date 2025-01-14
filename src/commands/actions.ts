@@ -1,6 +1,6 @@
 import path from "path";
 import { commands, TreeItem, Uri, WorkspaceFolder, window, Disposable } from "vscode";
-import { ConnectionConfiguration } from "../Configuration";
+import { ConnectionConfiguration } from "../config/Configuration";
 import { refreshDiagnosticsFromServer } from "../views/diagnostics";
 import Instance from "../Instance";
 import { BrowserItem, Action, DeploymentMethod } from "../typings";

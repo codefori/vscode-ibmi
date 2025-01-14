@@ -1,6 +1,6 @@
 import { Ignore } from 'ignore';
 import { MarkdownString, ProviderResult, Range, ThemeColor, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
-import { ConnectionConfiguration } from './Configuration';
+import { ConnectionConfiguration } from './config/Configuration';
 import { CustomUI } from "./webviews/CustomUI";
 import Instance from "./Instance";
 import { Tools } from "./api/Tools";
