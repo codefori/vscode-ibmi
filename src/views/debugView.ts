@@ -5,6 +5,7 @@ import { DebugConfiguration, getDebugServiceDetails } from "../api/debug/config"
 import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../api/debug/server";
 import { instance } from "../instantiate";
 import { BrowserItem } from "../typings";
+import { withContext } from "./tools";
 
 const title = "IBM i debugger";
 type Certificates = {
@@ -47,9 +48,9 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
     debugTreeViewer,
     vscode.commands.registerCommand("code-for-ibmi.debug.refresh", updateDebugBrowser),
     vscode.commands.registerCommand("code-for-ibmi.debug.refresh.item", (item: DebugItem) => debugBrowser.refresh(item)),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.start", (item: DebugJobItem) => Tools.withContext(`code-for-ibmi:debugWorking`, () => item.start())),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.stop", (item: DebugJobItem) => Tools.withContext(`code-for-ibmi:debugWorking`, () => item.stop())),
-    vscode.commands.registerCommand("code-for-ibmi.debug.job.restart", async (item: DebugJobItem) => Tools.withContext(`code-for-ibmi:debugWorking`, async () => await item.stop() && item.start())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.start", (item: DebugJobItem) => withContext(`code-for-ibmi:debugWorking`, () => item.start())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.stop", (item: DebugJobItem) => withContext(`code-for-ibmi:debugWorking`, () => item.stop())),
+    vscode.commands.registerCommand("code-for-ibmi.debug.job.restart", async (item: DebugJobItem) => withContext(`code-for-ibmi:debugWorking`, async () => await item.stop() && item.start())),
   );
 }
 
@@ -66,7 +67,7 @@ class DebugBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   async getChildren(item?: DebugItem) {
-    return Tools.withContext(`code-for-ibmi:debugWorking`, async () => item?.getChildren?.() || this.getRootItems());
+    return withContext(`code-for-ibmi:debugWorking`, async () => item?.getChildren?.() || this.getRootItems());
   }
 
   private async getRootItems() {

@@ -2,6 +2,7 @@ import vscode, { commands, l10n } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { IBMiObject, WithLibrary } from "../typings";
+import { objectToToolTip } from "./tools";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode> {
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -300,7 +301,7 @@ class LibraryListNode extends vscode.TreeItem implements WithLibrary {
       ((context === `currentLibrary` ? `${l10n.t(`(current library)`)}` : ``)
         + (object.text !== `` && showDescInLibList ? ` ${object.text}` : ``)
         + (object.attribute !== `` ? ` (*${object.attribute})` : ``)).trim();
-    this.tooltip = instance.getContent()?.objectToToolTip([object.library, object.name].join(`/`), object);
+    this.tooltip = objectToToolTip([object.library, object.name].join(`/`), object);
   }
 }
 

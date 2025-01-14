@@ -13,6 +13,7 @@ import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
 import { editFilter } from "../webviews/filters";
+import { findUriTabs, memberToToolTip, objectToToolTip, sourcePhysicalFileToToolTip } from "./tools";
 
 const URI_LIST_SEPARATOR = "\r\n";
 
@@ -305,8 +306,8 @@ class ObjectBrowserSourcePhysicalFileItem extends ObjectBrowserItem implements O
     return deleteObject(this.object);
   }
 
-  async getToolTip() {
-    return await getContent().sourcePhysicalFileToToolTip(this.path, this.object);
+  getToolTip() {
+    return sourcePhysicalFileToToolTip(getConnection(), this.path, this.object);
   }
 }
 
@@ -325,7 +326,7 @@ class ObjectBrowserObjectItem extends ObjectBrowserItem implements ObjectItem, W
     this.updateDescription();
 
     this.contextValue = `object.${type.toLowerCase()}${object.attribute ? `.${object.attribute}` : ``}${isLibrary ? '_library' : ''}${this.isProtected() ? `_readonly` : ``}`;
-    this.tooltip = getContent().objectToToolTip(this.path, object);
+    this.tooltip = objectToToolTip(this.path, object);
 
     this.resourceUri = vscode.Uri.from({
       scheme: `object`,
@@ -377,7 +378,7 @@ class ObjectBrowserMemberItem extends ObjectBrowserItem implements MemberItem {
 
     this.resourceUri = getMemberUri(member, { readonly });
     this.path = this.resourceUri.path.substring(1);
-    this.tooltip = getContent().memberToToolTip(this.path, member);
+    this.tooltip = memberToToolTip(this.path, member);
 
     this.sortBy = (sort: SortOptions) => parent.sortBy(sort);
 
@@ -709,7 +710,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
       let newNameOK;
 
       // Check if the member is currently open in an editor tab.
-      const oldMemberTabs = Tools.findUriTabs(oldUri);
+      const oldMemberTabs = findUriTabs(oldUri);
 
       // If the member is currently open in an editor tab, and 
       // the member has unsaved changes, then prevent the renaming operation.
