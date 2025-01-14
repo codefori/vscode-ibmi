@@ -168,6 +168,20 @@ export const ConfigFileSuite: TestSuite = {
 
         const secondRead = await testConfig.get(ws);
         assert.deepStrictEqual(secondRead, {strings: [...workspaceConfig.strings, ...serverConfig.strings]});
+        
+        testConfig.mergeArrays = false;
+
+        // After merge arrays is disabled, the workspace config takes precedence over the server config
+
+        const afterMergeA = await testConfig.get(ws);
+        assert.deepStrictEqual(afterMergeA, workspaceConfig);
+
+        // But if we delete the workspace config, the server config will be used
+
+        await workspace.fs.delete(localFile);
+
+        const afterMergeB = await testConfig.get(ws);
+        assert.deepStrictEqual(afterMergeB, serverConfig);
       },
     },
   ]
