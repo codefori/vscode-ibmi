@@ -9,13 +9,13 @@ import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "./components/manager";
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
-import { ConnectionConfiguration } from "../config/Configuration";
 import IBMiContent from "./IBMiContent";
-import { CachedServerSettings, CodeForIStorage } from './Storage';
+import { CachedServerSettings, CodeForIStorage } from './configuration/Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "../debug/config";
 import { debugPTFInstalled } from "../debug/server";
+import { ConnectionManager, ConnectionConfig } from './configuration/ConnectionManager';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -64,6 +64,7 @@ interface ConnectionCallbacks{
 
 export default class IBMi {
   public static GlobalStorage: CodeForIStorage;
+  public static connectionManager: ConnectionManager = new ConnectionManager();
   static readonly CCSID_NOCONVERSION = 65535;
   static readonly CCSID_SYSVAL = -2;
   static readonly bashShellPath = '/QOpenSys/pkgs/bin/bash';
@@ -80,7 +81,7 @@ export default class IBMi {
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getConfig} instead.
    */
-  config?: ConnectionConfiguration.Parameters;
+  config?: ConnectionConfig;
   /**
    * @deprecated Will become private in v3.0.0 - use {@link IBMi.getContent} instead.
    */
@@ -169,7 +170,7 @@ export default class IBMi {
     }
   }
 
-  setConfig(newConfig: ConnectionConfiguration.Parameters) {
+  setConfig(newConfig: ConnectionConfig) {
     this.config = newConfig;
   }
 
@@ -246,7 +247,7 @@ export default class IBMi {
       });
 
       //Load existing config
-      this.config = await ConnectionConfiguration.load(this.currentConnectionName);
+      this.config = await IBMi.connectionManager.load(this.currentConnectionName);
 
       // Load cached server settings.
       const cachedServerSettings: CachedServerSettings = IBMi.GlobalStorage.getServerSettingsCache(this.currentConnectionName);
@@ -963,7 +964,7 @@ export default class IBMi {
       };
     }
     finally {
-      ConnectionConfiguration.update(this.config!);
+      IBMi.connectionManager.update(this.config!);
     }
   }
 
@@ -1199,7 +1200,7 @@ export default class IBMi {
   async setLastDownloadLocation(location: string) {
     if (this.config && location && location !== this.config.lastDownloadLocation) {
       this.config.lastDownloadLocation = location;
-      await ConnectionConfiguration.update(this.config);
+      await IBMi.connectionManager.update(this.config);
     }
   }
 

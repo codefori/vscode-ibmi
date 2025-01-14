@@ -1,6 +1,6 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
-import { GlobalVSCodeConfiguration, ReconnectMode } from "../../config/Configuration";
+import { ReconnectMode } from "../../config/Configuration";
 import { findUriTabs } from "../../views/tools";
 import IBMi from "../../api/IBMi";
 
@@ -12,7 +12,7 @@ import IBMi from "../../api/IBMi";
  * @returns `true` if the user choses to reconnect, `false` otherwise.
  */
 export async function reconnectFS(uri: vscode.Uri) {
-  const reconnect = GlobalVSCodeConfiguration.get<ReconnectMode>("autoReconnect") || "ask";
+  const reconnect = IBMi.connectionManager.get<ReconnectMode>("autoReconnect") || "ask";
   let doReconnect = false;
   switch (reconnect) {
     case "always":

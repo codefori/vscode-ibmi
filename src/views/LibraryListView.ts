@@ -1,8 +1,9 @@
 import vscode, { commands, l10n } from "vscode";
-import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../config/Configuration";
 import { instance } from "../instantiate";
 import { IBMiObject, WithLibrary } from "../typings";
 import { objectToToolTip } from "./tools";
+import { ConnectionConfig } from "../api/configuration/ConnectionManager";
+import IBMi from "../api/IBMi";
 
 export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListNode> {
   private readonly _emitter: vscode.EventEmitter<LibraryListNode | undefined | null | void> = new vscode.EventEmitter();
@@ -256,9 +257,9 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
     )
   }
 
-  private async updateConfig(config: ConnectionConfiguration.Parameters) {
-    await ConnectionConfiguration.update(config);
-    if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+  private async updateConfig(config: ConnectionConfig) {
+    await IBMi.connectionManager.update(config);
+    if (IBMi.connectionManager.get(`autoRefresh`)) {
       this.refresh();
     }
   }
@@ -319,7 +320,7 @@ async function changeCurrentLibrary(library: string) {
       const previousCurLibs = storage.getPreviousCurLibs().filter(lib => lib !== library);
       previousCurLibs.splice(0, 0, currentLibrary);
       await storage.setPreviousCurLibs(previousCurLibs);
-      await ConnectionConfiguration.update(config);
+      await IBMi.connectionManager.update(config);
       return true;
     } else {
       vscode.window.showErrorMessage(l10n.t(`Failed to set {0} as current library: {1}`, library,  commandResult.stderr));

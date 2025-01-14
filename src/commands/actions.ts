@@ -1,10 +1,10 @@
 import path from "path";
 import { commands, TreeItem, Uri, WorkspaceFolder, window, Disposable } from "vscode";
-import { ConnectionConfiguration } from "../config/Configuration";
 import { refreshDiagnosticsFromServer } from "../views/diagnostics";
 import Instance from "../Instance";
 import { BrowserItem, Action, DeploymentMethod } from "../typings";
 import { runAction } from "../views/actions";
+import IBMi from "../api/IBMi";
 
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [
@@ -43,7 +43,7 @@ export function registerActionsCommands(instance: Instance): Disposable[] {
                   break;
                 case `Save automatically`:
                   config.autoSaveBeforeAction = true;
-                  await ConnectionConfiguration.update(config);
+                  await IBMi.connectionManager.update(config);
                   await editor.document.save();
                   canRun = true;
                   break;

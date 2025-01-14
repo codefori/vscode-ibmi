@@ -1,9 +1,10 @@
-import { ConnectionConfiguration } from "../../config/Configuration";
 import { CustomUI } from "../CustomUI";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
+import { ObjectFilters } from "../../api/configuration/ConnectionManager";
+import IBMi from "../../api/IBMi";
 
-export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters, copy = false) {
+export async function editFilter(filter?: ObjectFilters, copy = false) {
   const connection = instance.getConnection();
   const config = instance.getConfig();
   if (config) {
@@ -103,7 +104,7 @@ export async function editFilter(filter?: ConnectionConfiguration.ObjectFilters,
         objectFilters[filterIndex] = Object.assign(filter, data);
       }
 
-      await ConnectionConfiguration.update(config);
+      await IBMi.connectionManager.update(config);
     }
   }
 }

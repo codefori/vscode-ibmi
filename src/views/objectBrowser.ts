@@ -2,7 +2,7 @@ import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
 import vscode from "vscode";
-import { ConnectionConfiguration, DefaultOpenMode, GlobalVSCodeConfiguration } from "../config/Configuration";
+import { DefaultOpenMode } from "../config/Configuration";
 import { parseFilter, singleGenericName } from "../api/Filter";
 import IBMi, { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
@@ -13,11 +13,12 @@ import { instance } from "../instantiate";
 import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
 import { editFilter } from "../webviews/filters";
 import { findUriTabs, memberToToolTip, objectToToolTip, sourcePhysicalFileToToolTip } from "./tools";
+import { ObjectFilters } from "../api/configuration/ConnectionManager";
 
 const URI_LIST_SEPARATOR = "\r\n";
 
-const objectNamesLower = () => GlobalVSCodeConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
-const objectSortOrder = () => GlobalVSCodeConfiguration.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+const objectNamesLower = () => IBMi.connectionManager.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
+const objectSortOrder = () => IBMi.connectionManager.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
 
 const correctCase = (value: string) => {
   ;
@@ -48,7 +49,7 @@ const objectIcons = {
 }
 
 abstract class ObjectBrowserItem extends BrowserItem {
-  constructor(readonly filter: ConnectionConfiguration.ObjectFilters, label: string, params?: BrowserItemParameters) {
+  constructor(readonly filter: ObjectFilters, label: string, params?: BrowserItemParameters) {
     super(label, params);
   }
 
@@ -100,7 +101,7 @@ class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
       objectFilters.splice(from, 1);
       objectFilters.splice(to, 0, filter);
       config.objectFilters = objectFilters;
-      await ConnectionConfiguration.update(config);
+      await IBMi.connectionManager.update(config);
       this.autoRefresh();
     }
   }
@@ -110,7 +111,7 @@ class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   autoRefresh(message?: string) {
-    const autoRefresh = GlobalVSCodeConfiguration.get(`autoRefresh`);
+    const autoRefresh = IBMi.connectionManager.get(`autoRefresh`);
     if (autoRefresh) {
       if (message) {
         vscode.window.showInformationMessage(message);
@@ -169,7 +170,7 @@ class CreateFilterItem extends BrowserItem {
 
 class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
   readonly library: string;
-  constructor(filter: ConnectionConfiguration.ObjectFilters) {
+  constructor(filter: ObjectFilters) {
     super(filter, filter.name, { icon: filter.protected ? `lock-small` : '', state: vscode.TreeItemCollapsibleState.Collapsed });
     this.library = parseFilter(filter.library, filter.filterType).noFilter ? filter.library : '';
     this.contextValue = `filter${this.library ? "_library" : ''}${this.isProtected() ? `_readonly` : ``}`;
@@ -205,7 +206,7 @@ class ObjectBrowserFilterItem extends ObjectBrowserItem implements WithLibrary {
 
     if (index > -1) {
       config.objectFilters.splice(index, 1);
-      await ConnectionConfiguration.update(config);
+      await IBMi.connectionManager.update(config);
 
     }
 
@@ -483,7 +484,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
             member: `*`,
             memberType: `*`,
             protected: false
-          } as ConnectionConfiguration.ObjectFilters;
+          } as ObjectFilters;
           objectFilters.push(filter);
         } else {
           regex = FILTER_REGEX.exec(connection.upperCaseName(newFilter));
@@ -498,13 +499,13 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               member: parsedFilter.mbr || `*`,
               memberType: parsedFilter.mbrType || `*`,
               protected: false
-            } as ConnectionConfiguration.ObjectFilters;
+            } as ObjectFilters;
             objectFilters.push(filter);
           }
         }
 
         config.objectFilters = objectFilters;
-        await ConnectionConfiguration.update(config);
+        await IBMi.connectionManager.update(config);
         objectBrowser.refresh();
       }
     }),
@@ -527,7 +528,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(`code-for-ibmi.sortFilters`, async () => {
       const config = getConfig();
       config.objectFilters.sort((filter1, filter2) => filter1.name.toLowerCase().localeCompare(filter2.name.toLowerCase()));
-      await ConnectionConfiguration.update(config);
+      await IBMi.connectionManager.update(config);
       objectBrowser.autoRefresh();
     }),
 
@@ -566,7 +567,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           })
 
           if (addResult.code === 0) {
-            if (GlobalVSCodeConfiguration.get(`autoOpenFile`)) {
+            if (IBMi.connectionManager.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
@@ -643,7 +644,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               });
             }
 
-            if (GlobalVSCodeConfiguration.get(`autoOpenFile`)) {
+            if (IBMi.connectionManager.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
@@ -1046,7 +1047,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
         });
 
         config.objectFilters = filters;
-        ConnectionConfiguration.update(config);
+        IBMi.connectionManager.update(config);
         const autoRefresh = objectBrowser.autoRefresh();
 
         // Add to library list ?
@@ -1347,7 +1348,7 @@ function storeMemberList(path: string, list: string[]) {
   }
 }
 
-async function doSearchInSourceFile(searchTerm: string, path: string, filter?: ConnectionConfiguration.ObjectFilters) {
+async function doSearchInSourceFile(searchTerm: string, path: string, filter?: ObjectFilters) {
   const content = getContent();
   const [library, sourceFile] = path.split(`/`);
   try {
@@ -1394,7 +1395,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
       const results = await Search.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
       clearInterval(messageTimeout)
       if (results.hits.length) {
-        const objectNamesLower = GlobalVSCodeConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
+        const objectNamesLower = IBMi.connectionManager.get(`ObjectBrowser.showNamesInLowercase`);
 
         // Format result to be lowercase if the setting is enabled
         results.hits.forEach(result => {
@@ -1419,7 +1420,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
   }
 }
 
-async function listObjects(item: ObjectBrowserFilterItem, filter?: ConnectionConfiguration.ObjectFilters) {
+async function listObjects(item: ObjectBrowserFilterItem, filter?: ObjectFilters) {
   return (await getContent().getObjectList(filter || item.filter, objectSortOrder()))
     .map(object => {
       return object.sourceFile ? new ObjectBrowserSourcePhysicalFileItem(item, object) : new ObjectBrowserObjectItem(item, object);

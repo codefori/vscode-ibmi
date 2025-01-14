@@ -2,7 +2,6 @@
 import path from 'path';
 import vscode, { commands } from 'vscode';
 import { instance } from '../instantiate';
-import { GlobalVSCodeConfiguration } from '../config/Configuration';
 import IBMi from '../api/IBMi';
 import { Tools } from '../api/Tools';
 
@@ -84,7 +83,7 @@ export namespace Terminal {
       if (type) {
         const terminalSettings: TerminalSettings = {
           type,
-          location: GlobalVSCodeConfiguration.get<boolean>(`terminals.${type.toLowerCase()}.openInEditorArea`) ? vscode.TerminalLocation.Editor : vscode.TerminalLocation.Panel,
+          location: IBMi.connectionManager.get<boolean>(`terminals.${type.toLowerCase()}.openInEditorArea`) ? vscode.TerminalLocation.Editor : vscode.TerminalLocation.Panel,
           connectionString: configuration.connectringStringFor5250,
           currentDirectory: options?.currentDirectory
         };

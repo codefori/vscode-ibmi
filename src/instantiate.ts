@@ -1,6 +1,6 @@
 
 import * as vscode from "vscode";
-import { GlobalVSCodeConfiguration, onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import Instance from "./Instance";
 import { Terminal } from './views/Terminal';
 import { getDebugServiceDetails } from './debug/config';
@@ -15,6 +15,7 @@ import { QSysFS } from "./filesystems/qsys/QSysFs";
 import { SEUColorProvider } from "./languages/general/SEUColorProvider";
 import { ActionsUI } from './webviews/actions';
 import { VariablesUI } from "./webviews/variables";
+import IBMi from "./api/IBMi";
 
 export let instance: Instance;
 
@@ -97,7 +98,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   );
 
   // Color provider
-  if (GlobalVSCodeConfiguration.get<boolean>(`showSeuColors`)) {
+  if (IBMi.connectionManager.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);
   }
 

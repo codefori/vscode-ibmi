@@ -3,7 +3,6 @@ import path, { dirname, extname } from "path";
 import vscode, { FileType, l10n, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
-import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../config/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { Tools } from "../api/Tools";
@@ -18,7 +17,7 @@ const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFile
 const ALWAYS_SHOW_FILES = /^(\.gitignore|\.vscode|\.deployignore)$/i;
 type DragNDropAction = "move" | "copy";
 type DragNDropBehavior = DragNDropAction | "ask";
-const getDragDropBehavior = () => GlobalVSCodeConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
+const getDragDropBehavior = () => IBMi.connectionManager.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
   return PROTECTED_DIRS.test(path) || instance.getContent()?.isProtectedPath(path);
@@ -81,8 +80,8 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
             }
             shortcuts.splice(newPosition, 0, moveDir);
             config.ifsShortcuts = shortcuts;
-            await ConnectionConfiguration.update(config);
-            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+            await IBMi.connectionManager.update(config);
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
               this.refresh();
             }
           }
@@ -334,7 +333,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         try {
           if (newDirectory && newDirectory !== homeDirectory) {
             config.homeDirectory = newDirectory;
-            await ConnectionConfiguration.update(config);
+            await IBMi.connectionManager.update(config);
             vscode.window.showInformationMessage(l10n.t(`Working directory changed to {0}.`, newDirectory));
           }
         } catch (e) {
@@ -360,11 +359,11 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             } else if (!shortcuts.includes(newDirectory)) {
               shortcuts.push(newDirectory);
               config.ifsShortcuts = shortcuts;
-              await ConnectionConfiguration.update(config);
+              await IBMi.connectionManager.update(config);
               if (config.autoSortIFSShortcuts) {
                 vscode.commands.executeCommand(`code-for-ibmi.sortIFSShortcuts`);
               }
-              if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
                 ifsBrowser.refresh();
               }
             }
@@ -389,8 +388,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             if (inx >= 0) {
               shortcuts.splice(inx, 1);
               config.ifsShortcuts = shortcuts;
-              await ConnectionConfiguration.update(config);
-              if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+              await IBMi.connectionManager.update(config);
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
                 ifsBrowser.refresh();
               }
             }
@@ -407,8 +406,8 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
       if (config) {
         try {
           config.ifsShortcuts.sort((a, b) => a.toLocaleLowerCase().localeCompare(b.toLocaleLowerCase()));
-          await ConnectionConfiguration.update(config);
-          if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+          await IBMi.connectionManager.update(config);
+          if (IBMi.connectionManager.get(`autoRefresh`)) {
             ifsBrowser.refresh();
           }
         } catch (e) {
@@ -438,7 +437,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           try {
             await connection.sendCommand({ command: `mkdir ${Tools.escapePath(fullName)}` });
 
-            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
             }
 
@@ -466,7 +465,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(l10n.t(`Creating streamfile {0}.`, fullName));
             await content.createStreamFile(fullName);
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
-            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
             }
             else {
@@ -524,7 +523,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 }
               }
 
-              if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+              if (IBMi.connectionManager.get(`autoRefresh`)) {
                 ifsBrowser.refresh(node);
               }
               vscode.window.showInformationMessage(l10n.t(`Upload completed.`));
@@ -558,7 +557,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
               const toBeDeleted: string[] = [];
               for (const item of items) {
-                if ((GlobalVSCodeConfiguration.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
+                if ((IBMi.connectionManager.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
                   const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
 
                   const deletionPrompt = l10n.t(`Once you delete the directory, it cannot be restored.
@@ -591,7 +590,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                 if (removeResult.code !== 0) {
                   throw removeResult.stderr;
                 }
-                if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+                if (IBMi.connectionManager.get(`autoRefresh`)) {
                   items.map(item => item.parent)
                     .filter(Tools.distinct)
                     .forEach(async parent => parent?.refresh?.());
@@ -653,7 +652,7 @@ Please type "{0}" to confirm deletion.`, dirName);
               throw moveResult.stderr;
             }
 
-            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
             let label;
@@ -699,7 +698,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
           try {
             await connection.sendCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
-            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
+            if (IBMi.connectionManager.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
             vscode.window.showInformationMessage(l10n.t(`{0} was copied to {1}.`, Tools.escapePath(node.path), Tools.escapePath(targetPath)));
@@ -917,7 +916,7 @@ vscode.commands.registerCommand(`code-for-ibmi.ifs.toggleShowHiddenFiles`, async
   const config = instance.getConfig();
   if (config) {
     config.showHiddenFiles = !config.showHiddenFiles;
-    await ConnectionConfiguration.update(config);
+    await IBMi.connectionManager.update(config);
     vscode.commands.executeCommand("code-for-ibmi.refreshIFSBrowser");
   }
 });

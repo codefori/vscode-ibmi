@@ -3,9 +3,10 @@ import { MemberItem, OpenEditableOptions, WithPath } from "../typings";
 import Instance from "../Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
-import { DefaultOpenMode, GlobalVSCodeConfiguration } from "../config/Configuration";
+import { DefaultOpenMode } from "../config/Configuration";
 import path from "path";
 import { findExistingDocument, findExistingDocumentUri } from "../views/tools";
+import IBMi from "../api/IBMi";
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;
@@ -53,7 +54,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
         }
 
         // Add file to front of recently opened files list.
-        const recentLimit = GlobalVSCodeConfiguration.get<number>(`recentlyOpenedFilesLimit`);
+        const recentLimit = IBMi.connectionManager.get<number>(`recentlyOpenedFilesLimit`);
         const storage = instance.getStorage();
         if (recentLimit) {
           const recent = storage!.getRecentlyOpenedFiles();
@@ -78,7 +79,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
     }),
 
     commands.registerCommand("code-for-ibmi.openWithDefaultMode", (item: WithPath, overrideMode?: DefaultOpenMode, position?: Range) => {
-      const readonly = (overrideMode || GlobalVSCodeConfiguration.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
+      const readonly = (overrideMode || IBMi.connectionManager.get<DefaultOpenMode>("defaultOpenMode")) === "browse";
       commands.executeCommand(`code-for-ibmi.openEditable`, item.path, { readonly, position } as OpenEditableOptions);
     }),
 
@@ -128,7 +129,7 @@ export function registerOpenCommands(instance: Instance): Disposable[] {
       let list: string[] = [];
 
       // Get recently opened files - cut if limit has been reduced.
-      const recentLimit = GlobalVSCodeConfiguration.get(`recentlyOpenedFilesLimit`) as number;
+      const recentLimit = IBMi.connectionManager.get(`recentlyOpenedFilesLimit`) as number;
       const recent = storage!.getRecentlyOpenedFiles();
       if (recent.length > recentLimit) {
         recent.splice(recentLimit);

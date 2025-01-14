@@ -6,7 +6,7 @@ import { ExtensionContext, commands, languages, window, workspace } from "vscode
 
 import { CustomUI } from "./webviews/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
-import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./config/Configuration";
+import { onCodeForIBMiConfigurationChange } from "./config/Configuration";
 import { Tools } from "./api/Tools";
 import * as Debug from './debug';
 import { parseErrors } from "./api/errors/parser";
@@ -40,8 +40,9 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   console.log(`Congratulations, your extension "code-for-ibmi" is now active!`);
 
   await loadAllofExtension(context);
+
   const updateLastConnectionAndServerCache = () => {
-    const connections = ConnectionManager.getAll();
+    const connections = IBMi.connectionManager.getAll();
     const lastConnections = (IBMi.GlobalStorage.getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
     IBMi.GlobalStorage.setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
@@ -69,13 +70,14 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       `profilesView`,
       new ProfilesView(context)
     ),
+    
     onCodeForIBMiConfigurationChange("connections", updateLastConnectionAndServerCache),
     onCodeForIBMiConfigurationChange("connectionSettings", async () => {
       const connection = instance.getConnection();
       if (connection) {
         const config = instance.getConfig();
         if (config) {
-          Object.assign(config, (await ConnectionConfiguration.load(config.name)));
+          Object.assign(config, (await IBMi.connectionManager.load(config.name)));
         }
       }
     }),

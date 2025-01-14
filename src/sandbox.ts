@@ -1,10 +1,10 @@
 import { env } from "process";
 import querystring from "querystring";
 import { commands, ExtensionContext, l10n, Uri, window } from "vscode";
-import { ConnectionConfiguration, ConnectionManager } from "./config/Configuration";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
 import { getGitAPI } from "./views/tools";
+import IBMi from "./api/IBMi";
 
 export async function registerUriHandler(context: ExtensionContext) {
   context.subscriptions.push(
@@ -64,11 +64,11 @@ export async function registerUriHandler(context: ExtensionContext) {
                     await initialSetup(connectionData.username);
 
                     if (save) {
-                      const existingConnection = ConnectionManager.getByName(connectionData.name);
+                      const existingConnection = IBMi.connectionManager.getByName(connectionData.name);
 
                       if (!existingConnection) {
                         // New connection!
-                        await ConnectionManager.storeNew(connectionData);
+                        await IBMi.connectionManager.storeNew(connectionData);
                       }
                     }
 
@@ -203,7 +203,7 @@ async function initialSetup(username: string) {
         },
       );
 
-      await ConnectionConfiguration.update(config);
+      await IBMi.connectionManager.update(config);
       commands.executeCommand(`code-for-ibmi.refreshLibraryListView`);
       commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
     }

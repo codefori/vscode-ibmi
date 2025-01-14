@@ -1,10 +1,10 @@
 import { ExtensionContext, WorkspaceFolder, commands, window } from "vscode";
 import { getBranchLibraryName } from "./env";
 import { instance } from "../../instantiate";
-import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../../config/Configuration";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
 import { getGitAPI } from "../../views/tools";
+import { ConnectionConfig } from "../../api/configuration/ConnectionManager";
 
 const lastBranch: { [workspaceUri: string]: string } = {};
 
@@ -26,7 +26,7 @@ export function setupGitEventHandler(context: ExtensionContext) {
       const workspaceUri = repo.rootUri.toString();
 
       const changeEvent = repo.state.onDidChange((_e) => {
-        if (GlobalVSCodeConfiguration.get(`createLibraryOnBranchChange`)) {
+        if (IBMi.connectionManager.get(`createLibraryOnBranchChange`)) {
           if (repo) {
             const head = repo.state.HEAD;
             const connection = instance.getConnection();
@@ -55,7 +55,7 @@ export function setupGitEventHandler(context: ExtensionContext) {
   }
 }
 
-function setupBranchLibrary(currentBranch: string, content: IBMiContent, connection: IBMi, config: ConnectionConfiguration.Parameters) {
+function setupBranchLibrary(currentBranch: string, content: IBMiContent, connection: IBMi, config: ConnectionConfig) {
   const filters = config.objectFilters;
   const newBranchLib = getBranchLibraryName(currentBranch);
   content.checkObject({ library: `QSYS`, name: newBranchLib, type: `*LIB` }).then(exists => {
@@ -75,7 +75,7 @@ function setupBranchLibrary(currentBranch: string, content: IBMiContent, connect
             });
 
             config.objectFilters = filters;
-            ConnectionConfiguration.update(config).then(() => {
+            IBMi.connectionManager.update(config).then(() => {
               commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
             });
           }
@@ -102,7 +102,7 @@ function setupBranchLibrary(currentBranch: string, content: IBMiContent, connect
                     });
   
                     config.objectFilters = filters;
-                    ConnectionConfiguration.update(config).then(() => {
+                    IBMi.connectionManager.update(config).then(() => {
                       commands.executeCommand(`code-for-ibmi.refreshObjectBrowser`);
                     });
                   }

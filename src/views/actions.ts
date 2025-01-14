@@ -8,12 +8,12 @@ import { getGitBranch } from '../filesystems/local/git';
 import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, BrowserItem, DeploymentMethod, Variable } from '../typings';
-import { GlobalVSCodeConfiguration } from '../config/Configuration';
 
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { CustomUI } from '../webviews/CustomUI';
 import { Tools } from '../api/Tools';
 import { CompileTools } from '../api/CompileTools';
+import IBMi from '../api/IBMi';
 
 interface CommandObject {
   object: string
@@ -50,7 +50,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
     let availableActions: { label: string; action: Action; }[] = [];
     if (!customAction) {
       // First we grab a copy the predefined Actions in the VS Code settings
-      const allActions = [...GlobalVSCodeConfiguration.get<Action[]>(`actions`) || []];
+      const allActions = [...IBMi.connectionManager.get<Action[]>(`actions`) || []];
 
       // Then, if we're being called from a local file
       // we fetch the Actions defined from the workspace.
@@ -250,7 +250,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
             break;
         }
 
-        const viewControl = GlobalVSCodeConfiguration.get<string>(`postActionView`) || "none";
+        const viewControl = IBMi.connectionManager.get<string>(`postActionView`) || "none";
         const outputBuffer: string[] = [];
         let actionName = chosenAction.name;
         let hasRun = false;
@@ -280,7 +280,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
             source: 'IBM i',
             presentationOptions: {
               showReuseMessage: true,
-              clear: GlobalVSCodeConfiguration.get<boolean>(`clearOutputEveryTime`),
+              clear: IBMi.connectionManager.get<boolean>(`clearOutputEveryTime`),
               focus: false,
               reveal: (viewControl === `task` ? TaskRevealKind.Always : TaskRevealKind.Never),
             },

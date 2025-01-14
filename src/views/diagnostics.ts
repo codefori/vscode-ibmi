@@ -1,11 +1,11 @@
 
 import * as vscode from "vscode";
 import { FileError } from "../typings";
-import { GlobalVSCodeConfiguration } from "../config/Configuration";
 import Instance from "../Instance";
 import { getEvfeventFiles } from "../filesystems/local/actions";
 import { parseErrors } from "../api/errors/parser";
 import { findExistingDocumentByName, findExistingDocumentUri } from "./tools";
+import IBMi from "../api/IBMi";
 
 const ileDiagnostics = vscode.languages.createDiagnosticCollection(`ILE`);
 
@@ -26,7 +26,7 @@ export function registerDiagnostics(): vscode.Disposable[] {
     }),
   ];
 
-  if (GlobalVSCodeConfiguration.get(`clearDiagnosticOnEdit`)) {
+  if (IBMi.connectionManager.get(`clearDiagnosticOnEdit`)) {
     disposables.push(
       vscode.workspace.onDidChangeTextDocument(e => {
         if (ileDiagnostics.has(e.document.uri)) {
@@ -64,7 +64,7 @@ export async function refreshDiagnosticsFromServer(instance: Instance, evfeventI
     const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => String(row.EVFEVENT));
 
-    if (GlobalVSCodeConfiguration.get(`clearErrorsBeforeBuild`)) {
+    if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`)) {
       // Clear all errors if the user has this setting enabled
       clearDiagnostics();
     }
@@ -81,7 +81,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
     if (evfeventFiles) {
       const filesContent = await Promise.all(evfeventFiles.map(uri => vscode.workspace.fs.readFile(uri)));
 
-      if (GlobalVSCodeConfiguration.get(`clearErrorsBeforeBuild`)) {
+      if (IBMi.connectionManager.get(`clearErrorsBeforeBuild`)) {
         // Clear all errors if the user has this setting enabled
         clearDiagnostics();
       }

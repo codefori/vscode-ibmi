@@ -2,11 +2,11 @@ import vscode from "vscode";
 
 import { CustomUI, Tab } from "../CustomUI";
 
-import { GlobalVSCodeConfiguration } from "../../config/Configuration";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typings";
 import { getVariablesInfo } from "./varinfo";
+import IBMi from "../../api/IBMi";
 
 type MainMenuPage = {
   buttons?: 'newAction' | 'duplicateAction'
@@ -301,12 +301,12 @@ export namespace ActionsUI {
   }
 }
 
-async function saveActions(actions: Action[]) {
-  return GlobalVSCodeConfiguration.set(`actions`, actions);
+function saveActions(actions: Action[]) {
+  return IBMi.connectionManager.set(`actions`, actions);
 }
 
 function loadActions(): Action[] {
-  return GlobalVSCodeConfiguration.get<Action[]>(`actions`) || [];
+  return IBMi.connectionManager.get<Action[]>(`actions`) || [];
 }
 
 function getDefaultTabIndex(type?: ActionType) {

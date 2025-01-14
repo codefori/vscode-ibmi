@@ -1,5 +1,5 @@
 
-import { ConnectionData } from '../typings';
+import { ConnectionData } from '../../typings';
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
 const LAST_PROFILE_KEY = `currentProfile`;

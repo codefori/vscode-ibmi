@@ -1,6 +1,6 @@
 import { commands, extensions, window, Disposable, ExtensionContext } from "vscode";
-import { ConnectionManager } from "../config/Configuration";
 import Instance from "../Instance";
+import { getStoredPassword } from "../config/passwords";
 
 
 const passwordAttempts: { [extensionId: string]: number } = {}
@@ -23,7 +23,7 @@ export function registerPasswordCommands(context: ExtensionContext, instance: In
               throw new Error(`Password request denied for extension ${displayName}.`);
             }
 
-            const storedPassword = await ConnectionManager.getStoredPassword(context, instance.getConnection()!.currentConnectionName);
+            const storedPassword = await getStoredPassword(context, instance.getConnection()!.currentConnectionName);
 
             if (storedPassword) {
               let isAuthed = storage.getExtensionAuthorisation(extension.id) !== undefined;

@@ -1,10 +1,11 @@
 
 import vscode, { l10n, window } from 'vscode';
-import { ConnectionConfiguration } from '../config/Configuration';
 import { GetNewLibl } from '../api/components/getNewLibl';
 import { instance } from '../instantiate';
 import { Profile } from '../typings';
-import { CommandProfile } from '../webviews/commandProfile';
+import { CommandProfileUi } from '../webviews/commandProfile';
+import IBMi from '../api/IBMi';
+import { ConnectionProfile } from '../api/configuration/ConnectionManager';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
@@ -43,7 +44,7 @@ export class ProfilesView {
             }
 
             await Promise.all([
-              ConnectionConfiguration.update(config),
+              IBMi.connectionManager.update(config),
               storage.setLastProfile(savedProfileName)
             ]);
             this.refresh();
@@ -63,7 +64,7 @@ export class ProfilesView {
               if (result === l10n.t(`Yes`)) {
                 currentProfiles.splice(currentProfiles.findIndex(profile => profile === chosenProfile), 1);
                 config.connectionProfiles = currentProfiles;
-                await ConnectionConfiguration.update(config)
+                await IBMi.connectionManager.update(config)
                 this.refresh();
                 // TODO: Add message about deleted profile!
               }
@@ -79,7 +80,7 @@ export class ProfilesView {
           const chosenProfile = await getOrPickAvailableProfile(config.connectionProfiles, profileNode);
           if (chosenProfile) {
             assignProfile(chosenProfile, config);
-            await ConnectionConfiguration.update(config);
+            await IBMi.connectionManager.update(config);
 
             await Promise.all([
               vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
@@ -95,7 +96,7 @@ export class ProfilesView {
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.manageCommandProfile`, async (commandProfile?: CommandProfileItem) => {
-        CommandProfile.show(commandProfile ? commandProfile.profile : undefined);
+        CommandProfileUi.show(commandProfile ? commandProfile.profile : undefined);
       }),
 
       vscode.commands.registerCommand(`code-for-ibmi.deleteCommandProfile`, async (commandProfile?: CommandProfileItem) => {
@@ -104,7 +105,7 @@ export class ProfilesView {
           const storedProfile = config.commandProfiles.findIndex(profile => profile.name === commandProfile.profile);
           if (storedProfile !== undefined) {
             config.commandProfiles.splice(storedProfile, 1);
-            await ConnectionConfiguration.update(config);
+            await IBMi.connectionManager.update(config);
             // TODO: Add message about deleting!
             this.refresh();
           }
@@ -126,7 +127,7 @@ export class ProfilesView {
               if (newSettings) {
                 config.libraryList = newSettings.libraryList;
                 config.currentLibrary = newSettings.currentLibrary;
-                await ConnectionConfiguration.update(config);
+                await IBMi.connectionManager.update(config);
 
                 await Promise.all([
                   storage.setLastProfile(storedProfile.name),
@@ -169,7 +170,7 @@ export class ProfilesView {
                 objectFilters: config.objectFilters,
               }, config);
 
-              await ConnectionConfiguration.update(config);
+              await IBMi.connectionManager.update(config);
 
               await Promise.all([
                 vscode.commands.executeCommand(`code-for-ibmi.refreshLibraryListView`),
@@ -221,7 +222,7 @@ export class ProfilesView {
   }
 }
 
-async function getOrPickAvailableProfile(availableProfiles: ConnectionConfiguration.ConnectionProfile[], profileNode?: Profile): Promise<ConnectionConfiguration.ConnectionProfile | undefined> {
+async function getOrPickAvailableProfile(availableProfiles: ConnectionProfile[], profileNode?: Profile): Promise<ConnectionProfile | undefined> {
   if (availableProfiles.length > 0) {
     if (profileNode) {
       return availableProfiles.find(profile => profile.name === profileNode.profile);
@@ -241,7 +242,7 @@ async function getOrPickAvailableProfile(availableProfiles: ConnectionConfigurat
   }
 }
 
-function assignProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, toProfile: ConnectionConfiguration.ConnectionProfile) {
+function assignProfile(fromProfile: ConnectionProfile, toProfile: ConnectionProfile) {
   toProfile.homeDirectory = fromProfile.homeDirectory;
   toProfile.currentLibrary = fromProfile.currentLibrary;
   toProfile.libraryList = fromProfile.libraryList;
@@ -250,7 +251,7 @@ function assignProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, t
   toProfile.customVariables = fromProfile.customVariables;
 }
 
-function cloneProfile(fromProfile: ConnectionConfiguration.ConnectionProfile, newName: string): ConnectionConfiguration.ConnectionProfile {
+function cloneProfile(fromProfile: ConnectionProfile, newName: string): ConnectionProfile {
   return {
     name: newName,
     homeDirectory: fromProfile.homeDirectory,

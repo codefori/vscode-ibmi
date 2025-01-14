@@ -7,12 +7,12 @@ import * as vscode from 'vscode';
 import { instance } from "../instantiate";
 import { ObjectItem } from "../typings";
 import { ILELibrarySettings } from "../api/CompileTools";
-import { ConnectionManager } from "../config/Configuration";
 import { Env, getEnvConfig } from "../filesystems/local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";
 import { withContext } from "../views/tools";
+import { getStoredPassword } from "../config/passwords";
 
 const debugExtensionId = `IBM.ibmidebug`;
 
@@ -174,7 +174,7 @@ export async function initialize(context: ExtensionContext) {
   const getPassword = async () => {
     const connection = instance.getConnection();
 
-    let password = await ConnectionManager.getStoredPassword(context, connection!.currentConnectionName);
+    let password = await getStoredPassword(context, connection!.currentConnectionName);
 
     if (!password) {
       password = temporaryPassword;

@@ -7,7 +7,6 @@ import * as node_ssh from "node-ssh";
 import { GetMemberInfo } from './components/getMemberInfo';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from '../typings';
-import { ConnectionConfiguration } from '../config/Configuration';
 import { FilterType, parseFilter, singleGenericName } from './Filter';
 import { default as IBMi } from './IBMi';
 import { Tools } from './Tools';
@@ -28,7 +27,7 @@ export type SortOptions = {
 export default class IBMiContent {
   constructor(readonly ibmi: IBMi) { }
 
-  private get config(): ConnectionConfiguration.Parameters {
+  private get config() {
     return this.ibmi.getConfig();
   }
 
