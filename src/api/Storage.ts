@@ -1,4 +1,4 @@
-import vscode from 'vscode';
+
 import { ConnectionData } from '../typings';
 
 const PREVIOUS_CUR_LIBS_KEY = `prevCurLibs`;
@@ -221,9 +221,9 @@ export class ConnectionStorage {
     return this.internalStorage.set(DEBUG_KEY, existingCommands);
   }
 
-  getWorkspaceDeployPath(workspaceFolder: vscode.WorkspaceFolder) {
+  getWorkspaceDeployPath(workspaceFolderFsPath: string) {
     const deployDirs = this.internalStorage.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
-    return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
+    return deployDirs[workspaceFolderFsPath].toLowerCase();
   }
 
   getRecentlyOpenedFiles() {
@@ -238,12 +238,12 @@ export class ConnectionStorage {
     await this.internalStorage.set(RECENTLY_OPENED_FILES_KEY, undefined);
   }
 
-  async grantExtensionAuthorisation(extension: vscode.Extension<any>) {
+  async grantExtensionAuthorisation(extensionId: string, displayName: string) {
     const extensions = this.getAuthorisedExtensions();
-    if (!this.getExtensionAuthorisation(extension)) {
+    if (!this.getExtensionAuthorisation(extensionId)) {
       extensions.push({
-        id: extension.id,
-        displayName: extension.packageJSON.displayName,
+        id: extensionId,
+        displayName: displayName,
         since: new Date().getTime(),
         lastAccess: new Date().getTime()
       });
@@ -251,8 +251,8 @@ export class ConnectionStorage {
     }
   }
 
-  getExtensionAuthorisation(extension: vscode.Extension<any>) {
-    const authorisedExtension = this.getAuthorisedExtensions().find(authorisedExtension => authorisedExtension.id === extension.id);
+  getExtensionAuthorisation(extensionId: string) {
+    const authorisedExtension = this.getAuthorisedExtensions().find(authorisedExtension => authorisedExtension.id === extensionId);
     if (authorisedExtension) {
       authorisedExtension.lastAccess = new Date().getTime();
     }

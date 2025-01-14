@@ -143,7 +143,7 @@ export function handleEvfeventLines(lines: string[], instance: Instance, evfeven
         const storage = instance.getStorage();
 
         if (workspaceFolder && storage) {
-          const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceFolder);
+          const workspaceDeployPath = storage.getWorkspaceDeployPath(workspaceFolder.uri.fsPath);
           const deployPathIndex = file.toLowerCase().indexOf(workspaceDeployPath.toLowerCase());
 
           let relativeCompilePath = (deployPathIndex !== -1 ? file.substring(0, deployPathIndex) + file.substring(deployPathIndex + workspaceDeployPath.length) : undefined);
