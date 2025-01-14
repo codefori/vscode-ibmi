@@ -2,7 +2,7 @@
 import * as vscode from "vscode";
 import { FileError } from "../typings";
 import { GlobalConfiguration } from "../api/Configuration";
-import Instance from "../api/Instance";
+import Instance from "../Instance";
 import { getEvfeventFiles } from "../api/local/actions";
 import { parseErrors } from "../api/errors/parser";
 import { findExistingDocumentByName, findExistingDocumentUri } from "./tools";

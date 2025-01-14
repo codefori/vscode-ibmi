@@ -2,7 +2,7 @@ import path from "path";
 import { commands, TreeItem, Uri, WorkspaceFolder, window, Disposable } from "vscode";
 import { ConnectionConfiguration } from "../api/Configuration";
 import { refreshDiagnosticsFromServer } from "../views/diagnostics";
-import Instance from "../api/Instance";
+import Instance from "../Instance";
 import { BrowserItem, Action, DeploymentMethod } from "../typings";
 import { runAction } from "../views/actions";
 

@@ -119,7 +119,7 @@ export class Login {
                     }
 
                   } else {
-                    vscode.window.showErrorMessage(`Not connected to ${data.host}! ${connected.error}`);
+                    vscode.window.showErrorMessage(`Not connected to ${data.host}!`);
                   }
                 } catch (e) {
                   vscode.window.showErrorMessage(`Error connecting to ${data.host}! ${e}`);
@@ -179,7 +179,7 @@ export class Login {
         if (connected.success) {
           vscode.window.showInformationMessage(`Connected to ${connectionConfig.host}!`);
         } else {
-          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}! ${connected.error}`);
+          vscode.window.showErrorMessage(`Not connected to ${connectionConfig.host}!`);
         }
 
         return true;

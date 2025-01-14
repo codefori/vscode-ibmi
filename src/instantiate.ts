@@ -1,7 +1,7 @@
 
 import * as vscode from "vscode";
 import { GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
-import Instance from "./api/Instance";
+import Instance from "./Instance";
 import { Terminal } from './api/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';

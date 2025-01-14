@@ -2,7 +2,7 @@ import { Ignore } from 'ignore';
 import { MarkdownString, ProviderResult, Range, ThemeColor, ThemeIcon, TreeItem, TreeItemCollapsibleState, WorkspaceFolder } from "vscode";
 import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./api/CustomUI";
-import Instance from "./api/Instance";
+import Instance from "./Instance";
 import { Tools } from "./api/Tools";
 import { DeployTools } from "./api/local/deployTools";
 import { ComponentRegistry } from './components/manager';

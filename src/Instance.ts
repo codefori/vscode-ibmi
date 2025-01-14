@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
-import { ConnectionData, IBMiEvent } from "../typings";
-import { ConnectionConfiguration } from "./Configuration";
-import IBMi, { ConnectionResult } from "./IBMi";
-import { ConnectionStorage, GlobalStorage } from "./Storage";
-import { withContext } from "../views/tools";
+import { ConnectionData, IBMiEvent } from "./typings";
+import { ConnectionConfiguration } from "./api/Configuration";
+import IBMi, { ConnectionResult } from "./api/IBMi";
+import { ConnectionStorage, GlobalStorage } from "./api/Storage";
+import { withContext } from "./views/tools";
+import { handleConnectionResults, messageCallback } from "./views/connection";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -21,6 +22,7 @@ export interface ConnectionOptions {
 
 export default class Instance {
   private connection: IBMi | undefined;
+  private outputChannel: vscode.OutputChannel = vscode.window.createOutputChannel(`Code for IBM i`);
   private storage: ConnectionStorage;
   private emitter: vscode.EventEmitter<IBMiEvent> = new vscode.EventEmitter();
   private subscribers: Map<IBMiEvent, SubscriptionMap> = new Map;
@@ -35,6 +37,11 @@ export default class Instance {
   connect(options: ConnectionOptions): Promise<ConnectionResult> {
     const connection = new IBMi();
 
+    this.outputChannel.clear();
+    connection.appendOutput = (message) => {
+      this.outputChannel.append(message);
+    }
+
     let result: ConnectionResult;
 
     const timeoutHandler = async (conn: IBMi) => {
@@ -47,12 +54,13 @@ export default class Instance {
         let reconnect = choice === `Yes`;
         let collectLogs = choice === `No, get logs`;
 
-        if (collectLogs) {
-          const logs = conn.getOutputChannelContent();
-          vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
-            vscode.window.showTextDocument(doc);
-          });
-        }
+        // TODO: how to get output channel stuff?
+        // if (collectLogs) {
+        //   const logs = conn.getOutputChannelContent();
+        //   vscode.workspace.openTextDocument({ content: logs, language: `plaintext` }).then(doc => {
+        //     vscode.window.showTextDocument(doc);
+        //   });
+        // }
 
         this.disconnect();
 
@@ -64,11 +72,27 @@ export default class Instance {
 
     return withContext("code-for-ibmi:connecting", async () => {
       while (true) {
-        try {
-          result = await connection.connect(options.data, options.reconnecting, options.reloadServerSettings, options.onConnectedOperations || [], timeoutHandler);
-        } catch (e: any) {
-          result = { success: false, error: e.message };
-        }
+        let customError: string|undefined;
+        await vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: `Code for IBM i`}, async (p) => {
+          try {
+            result = await connection.connect(
+              options.data, 
+              {
+                timeoutCallback: timeoutHandler,
+                onConnectedOperations: options.onConnectedOperations || [],
+                uiErrorHandler: handleConnectionResults,
+                progress: (message) => {p.report(message)},
+                message: messageCallback,
+              }, 
+              options.reconnecting, 
+              options.reloadServerSettings, 
+              
+            );
+          } catch (e: any) {
+            customError = e.message;
+            result = { success: false };
+          }
+        });
 
         if (result.success) {
           await this.setConnection(connection);
@@ -78,7 +102,7 @@ export default class Instance {
           await this.disconnect();
           if (options.reconnecting && await vscode.window.showWarningMessage(`Could not reconnect`, {
             modal: true,
-            detail: `Reconnection has failed. Would you like to try again?\n\n${result.error || `No error provided.`}`
+            detail: `Reconnection has failed. Would you like to try again?\n\n${customError || `No error provided.`}`
           }, `Yes`)) {
             
             options.reconnecting = true;

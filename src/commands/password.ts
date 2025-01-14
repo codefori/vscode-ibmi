@@ -1,6 +1,6 @@
 import { commands, extensions, window, Disposable, ExtensionContext } from "vscode";
 import { ConnectionManager } from "../api/Configuration";
-import Instance from "../api/Instance";
+import Instance from "../Instance";
 
 
 const passwordAttempts: { [extensionId: string]: number } = {}

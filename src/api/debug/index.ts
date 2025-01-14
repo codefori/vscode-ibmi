@@ -1,5 +1,5 @@
 import { ExtensionContext, Uri } from "vscode";
-import Instance from "../Instance";
+import Instance from "../../Instance";
 
 import path from "path";
 import * as vscode from 'vscode';

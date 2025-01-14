@@ -4,7 +4,6 @@ import path from 'path';
 import tmp from 'tmp';
 import util from 'util';
 import * as node_ssh from "node-ssh";
-import { MarkdownString, Uri, window } from 'vscode';
 import { GetMemberInfo } from '../components/getMemberInfo';
 import { ObjectTypes } from '../filesystems/qsys/Objects';
 import { AttrOperands, CommandResult, IBMiError, IBMiMember, IBMiObject, IFSFile, QsysPath, SpecialAuthorities } from '../typings';
@@ -247,7 +246,8 @@ export default class IBMiContent {
         if (copyResult.code === 0) {
           const messages = Tools.parseMessages(copyResult.stderr);
           if (messages.findId("CPIA083")) {
-            window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
+            // TODO: what do we do about this, really?
+            // window.showWarningMessage(`${library}/${sourceFile}(${member}) was saved with truncated records!`);
           }
           return true;
         } else {

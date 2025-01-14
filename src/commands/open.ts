@@ -1,6 +1,6 @@
 import { commands, Disposable, l10n, QuickInputButton, QuickPickItem, QuickPickItemButtonEvent, QuickPickItemKind, Range, TextDocument, TextDocumentShowOptions, ThemeIcon, Uri, window } from "vscode";
 import { MemberItem, OpenEditableOptions, WithPath } from "../typings";
-import Instance from "../api/Instance";
+import Instance from "../Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import { DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
