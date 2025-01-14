@@ -1,6 +1,6 @@
 import vscode, { l10n, ThemeIcon } from "vscode";
 import { ConnectionConfiguration, ConnectionManager } from "../../api/Configuration";
-import { CustomUI, Section } from "../../api/CustomUI";
+import { CustomUI, Section } from "../CustomUI";
 import { Tools } from "../../api/Tools";
 import { instance, safeDisconnect } from "../../instantiate";
 import { ConnectionData } from '../../typings';

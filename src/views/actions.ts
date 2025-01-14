@@ -11,7 +11,7 @@ import { Action, BrowserItem, DeploymentMethod, Variable } from '../typings';
 import { GlobalConfiguration } from '../api/Configuration';
 
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
-import { CustomUI } from '../api/CustomUI';
+import { CustomUI } from '../webviews/CustomUI';
 import { Tools } from '../api/Tools';
 import { CompileTools } from '../api/CompileTools';
 

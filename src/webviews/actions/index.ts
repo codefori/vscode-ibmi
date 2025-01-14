@@ -1,6 +1,6 @@
 import vscode from "vscode";
 
-import { CustomUI, Tab } from "../../api/CustomUI";
+import { CustomUI, Tab } from "../CustomUI";
 
 import { GlobalConfiguration } from "../../api/Configuration";
 import { Tools } from "../../api/Tools";

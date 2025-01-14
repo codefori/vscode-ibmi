@@ -1,5 +1,5 @@
 import { ConnectionConfiguration } from "../../api/Configuration";
-import { CustomUI } from "../../api/CustomUI";
+import { CustomUI } from "../CustomUI";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 

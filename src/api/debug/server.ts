@@ -1,7 +1,7 @@
 import path from "path";
 import { commands, l10n, window } from "vscode";
 import { instance } from "../../instantiate";
-import { CustomUI } from "../CustomUI";
+import { CustomUI } from "../../webviews/CustomUI";
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, ORIGINAL_DEBUG_CONFIG_FILE } from "./config";

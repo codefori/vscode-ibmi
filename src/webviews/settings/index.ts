@@ -1,7 +1,7 @@
 import { existsSync } from "fs";
 import vscode from "vscode";
 import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
-import { ComplexTab, CustomUI, Section } from "../../api/CustomUI";
+import { ComplexTab, CustomUI, Section } from "../CustomUI";
 import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../api/debug";

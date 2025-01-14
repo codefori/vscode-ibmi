@@ -1,6 +1,6 @@
 import { commands, window } from "vscode";
 import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
-import { CustomUI } from "../../api/CustomUI";
+import { CustomUI } from "../CustomUI";
 import { instance } from "../../instantiate";
 
 export class CommandProfile {

@@ -4,7 +4,7 @@ import { ExtensionContext, commands, languages, window, workspace } from "vscode
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
-import { CustomUI } from "./api/CustomUI";
+import { CustomUI } from "./webviews/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import { GlobalStorage } from "./api/Storage";

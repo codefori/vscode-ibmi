@@ -1,6 +1,6 @@
 import vscode from "vscode";
 import { ConnectionConfiguration } from "../../api/Configuration";
-import { CustomUI } from "../../api/CustomUI";
+import { CustomUI } from "../CustomUI";
 import { instance } from "../../instantiate";
 
 export class VariablesUI {
