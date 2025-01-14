@@ -1,7 +1,7 @@
 import os from "os";
 import * as vscode from 'vscode';
-import { ConnectionData, DeploymentMethod } from '../typings';
-import { FilterType } from './Filter';
+import { ConnectionData, DeploymentMethod } from './typings';
+import { FilterType } from './api/Filter';
 
 export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";

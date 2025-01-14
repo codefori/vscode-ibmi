@@ -1,7 +1,7 @@
 
 import * as vscode from "vscode";
 import { FileError } from "../typings";
-import { GlobalVSCodeConfiguration } from "../api/Configuration";
+import { GlobalVSCodeConfiguration } from "../Configuration";
 import Instance from "../Instance";
 import { getEvfeventFiles } from "../filesystems/local/actions";
 import { parseErrors } from "../api/errors/parser";

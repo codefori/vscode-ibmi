@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import { ConnectionData, IBMiEvent } from "./typings";
-import { ConnectionConfiguration } from "./api/Configuration";
+import { ConnectionConfiguration } from "./Configuration";
 import IBMi, { ConnectionResult } from "./api/IBMi";
 import { CodeForIStorage, ConnectionStorage } from "./api/Storage";
 import { withContext } from "./views/tools";

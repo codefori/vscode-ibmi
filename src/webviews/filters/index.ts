@@ -1,4 +1,4 @@
-import { ConnectionConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration } from "../../Configuration";
 import { CustomUI } from "../CustomUI";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";

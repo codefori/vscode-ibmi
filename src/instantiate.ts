@@ -1,6 +1,6 @@
 
 import * as vscode from "vscode";
-import { GlobalVSCodeConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { GlobalVSCodeConfiguration, onCodeForIBMiConfigurationChange } from "./Configuration";
 import Instance from "./Instance";
 import { Terminal } from './views/Terminal';
 import { getDebugServiceDetails } from './debug/config';

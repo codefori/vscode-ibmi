@@ -1,6 +1,6 @@
 import { existsSync } from "fs";
 import vscode from "vscode";
-import { ConnectionConfiguration, ConnectionManager, GlobalVSCodeConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalVSCodeConfiguration } from "../../Configuration";
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../debug";

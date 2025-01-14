@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { IBMiMember, SearchHit, SearchResults } from '../typings';
-import { GlobalVSCodeConfiguration } from './Configuration';
+import { GlobalVSCodeConfiguration } from '../Configuration';
 import { Tools } from './Tools';
 import IBMi from './IBMi';
 

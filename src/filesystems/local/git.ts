@@ -1,7 +1,7 @@
 import { ExtensionContext, WorkspaceFolder, commands, window } from "vscode";
 import { getBranchLibraryName } from "./env";
 import { instance } from "../../instantiate";
-import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../../Configuration";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
 import { getGitAPI } from "../../views/tools";

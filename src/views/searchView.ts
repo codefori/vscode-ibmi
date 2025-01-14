@@ -1,6 +1,6 @@
 import path from 'path';
 import vscode from "vscode";
-import { DefaultOpenMode } from "../api/Configuration";
+import { DefaultOpenMode } from "../Configuration";
 import { SearchHit, SearchHitLine, SearchResults, WithPath } from "../typings";
 
 export function initializeSearchView(context: vscode.ExtensionContext) {

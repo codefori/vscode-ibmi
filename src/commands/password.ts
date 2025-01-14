@@ -1,5 +1,5 @@
 import { commands, extensions, window, Disposable, ExtensionContext } from "vscode";
-import { ConnectionManager } from "../api/Configuration";
+import { ConnectionManager } from "../Configuration";
 import Instance from "../Instance";
 
 

@@ -1,5 +1,5 @@
 import { commands, Disposable, ExtensionContext, window } from "vscode";
-import { ConnectionManager } from "../api/Configuration";
+import { ConnectionManager } from "../Configuration";
 import Instance from "../Instance";
 import { ConnectionData } from "../typings";
 import { safeDisconnect } from "../instantiate";

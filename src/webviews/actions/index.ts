@@ -2,7 +2,7 @@ import vscode from "vscode";
 
 import { CustomUI, Tab } from "../CustomUI";
 
-import { GlobalVSCodeConfiguration } from "../../api/Configuration";
+import { GlobalVSCodeConfiguration } from "../../Configuration";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typings";
