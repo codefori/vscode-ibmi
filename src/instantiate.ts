@@ -5,7 +5,7 @@ import Instance from "./Instance";
 import { Terminal } from './views/Terminal';
 import { getDebugServiceDetails } from './api/debug/config';
 import { debugPTFInstalled, isDebugEngineRunning } from './api/debug/server';
-import { setupGitEventHandler } from './api/local/git';
+import { setupGitEventHandler } from './filesystems/git';
 import { registerActionsCommands } from './commands/actions';
 import { registerCompareCommands } from './commands/compare';
 import { registerConnectionCommands } from './commands/connection';

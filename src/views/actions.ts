@@ -4,7 +4,7 @@ import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer
 import { getLocalActions } from '../api/local/actions';
 import { DeployTools } from '../api/local/deployTools';
 import { getBranchLibraryName, getEnvConfig } from '../api/local/env';
-import { getGitBranch } from '../api/local/git';
+import { getGitBranch } from '../filesystems/git';
 import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, BrowserItem, DeploymentMethod, Variable } from '../typings';
