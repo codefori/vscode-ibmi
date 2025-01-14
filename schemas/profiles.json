@@ -60,30 +60,7 @@
       "properties": {
         "profiles": {
           "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string" },
-              "homeDirectory": { "type": "string" },
-              "currentLibrary": { "type": "string" },
-              "libraryList": {
-                "type": "array",
-                "items": { "type": "string" }
-              },
-              "objectFilters": {
-                "type": "array",
-                "items": { "$ref": "#/definitions/ObjectFilters" }
-              },
-              "ifsShortcuts": {
-                "type": "array",
-                "items": { "type": "string" }
-              },
-              "customVariables": {
-                "type": "array",
-                "items": { "$ref": "#/definitions/CustomVariable" }
-              }
-            }
-          }
+          "items": { "$ref": "#/definitions/ConnectionProfile" }
         }
       },
       "required": ["profiles"]

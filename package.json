@@ -47,14 +47,15 @@
 		"jsonValidation": [
 			{
 				"fileMatch": [
-					".vscode/actions.json"
+					".vscode/actions.json",
+					"/etc/.vscode/actions.json"
 				],
 				"url": "./schemas/actions.json"
 			},
 			{
 				"fileMatch": [
 					".vscode/profiles.json",
-					"/.vscode/profiles.json"
+					"/etc/.vscode/profiles.json"
 				],
 				"url": "./schemas/profiles.json"
 			}
