@@ -7,7 +7,7 @@ import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationC
 const WORKSPACE_ROOT = `.vscode`;
 const SERVER_ROOT = path.posix.join(`/`, `etc`, `.vscode`);
 
-type ConfigResult = `not_loaded`|`no_exist`|`failed_to_parse`|`ok`;
+type ConfigResult = `not_loaded`|`no_exist`|`failed_to_parse`|`invalid`|`ok`;
 
 interface LoadResult {
   workspace: ConfigResult;
@@ -31,6 +31,13 @@ export class ConfigFile<T> {
     this.serverFile = path.posix.join(SERVER_ROOT, this.basename);
   }
 
+  getPaths() {
+    return {
+      workspace: this.workspaceFile,
+      server: this.serverFile,
+    }
+  }
+
   async loadFromServer() {
     let serverConfig: any|undefined;
 
@@ -46,14 +53,17 @@ export class ConfigFile<T> {
         } catch (e: any) {
           this.state.server = `failed_to_parse`;
         }
-      }
 
-      if (this.validateAndCleanInPlace) {
-        // Should throw an error.
-        this.validateAndCleanInPlace(serverConfig);
+        if (this.validateAndCleanInPlace) {
+          // Should throw an error.
+          try {
+            this.serverData = this.validateAndCleanInPlace(serverConfig);
+          } catch (e) {
+            this.state.server = `invalid`;
+            this.serverData = undefined;
+          }
+        }
       }
-
-      this.serverData = serverConfig;
     }
   }
 
@@ -88,7 +98,7 @@ export class ConfigFile<T> {
     
       for (const key in resultingConfig) {
         if (Array.isArray(resultingConfig[key]) && Array.isArray((this.serverData as any)[key])) {
-          resultingConfig = [...workspaceConfig[key], ...(this.serverData as any)[key]];
+          resultingConfig[key] = [...workspaceConfig[key], ...(this.serverData as any)[key]];
         }
       }
 
@@ -104,6 +114,7 @@ export class ConfigFile<T> {
         resultingConfig = this.validateAndCleanInPlace(resultingConfig);
       } catch (e: any) {
         resultingConfig = this.fallback;
+        this.state.workspace = `invalid`;
         console.log(`Error validating config file: ${e.message}`);
       }
     }
