@@ -2,9 +2,9 @@
 import path from 'path';
 import vscode, { commands } from 'vscode';
 import { instance } from '../instantiate';
-import { GlobalConfiguration } from './Configuration';
-import IBMi from './IBMi';
-import { Tools } from './Tools';
+import { GlobalConfiguration } from '../api/Configuration';
+import IBMi from '../api/IBMi';
+import { Tools } from '../api/Tools';
 
 const PASE_INIT_FLAG = '#C4IINIT';
 const PASE_INIT_FLAG_REGEX = /#+C+4+I+I+N+I+T+$/
@@ -120,7 +120,7 @@ export namespace Terminal {
   async function createTerminal(context: vscode.ExtensionContext, connection: IBMi, terminalSettings: TerminalSettings) {
     let ready = terminalSettings.type === TerminalType._5250;
     const writeEmitter = new vscode.EventEmitter<string>();
-    const channel = await connection.client.requestShell({ term: "xterm" });
+    const channel = await connection.client!.requestShell({ term: "xterm" });
     channel.on(`data`, (data: Buffer) => {
       const dataString = data.toString();
       if (ready) {
