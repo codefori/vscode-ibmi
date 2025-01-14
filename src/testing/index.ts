@@ -15,9 +15,11 @@ import { StorageSuite } from "./storage";
 import { TestSuitesTreeProvider } from "./testCasesTree";
 import { ToolsSuite } from "./tools";
 import { Server } from "../typings";
+import { ConfigFileSuite } from "./configFile";
 
 const suites: TestSuite[] = [
   ActionSuite,
+  ConfigFileSuite,
   ConnectionSuite,
   ContentSuite,
   DebugSuite,

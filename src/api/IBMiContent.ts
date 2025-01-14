@@ -104,7 +104,7 @@ export default class IBMiContent {
    * @param encoding Optional encoding to write.
    */
   async writeStreamfileRaw(originalPath: string, content: Uint8Array, encoding?: string) {
-    const client = this.ibmi.client;
+    const client = this.ibmi.client!;
     const features = this.ibmi.remoteFeatures;
     const tmpobj = await tmpFile();
 
