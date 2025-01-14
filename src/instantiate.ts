@@ -1,6 +1,6 @@
 
 import * as vscode from "vscode";
-import { GlobalConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
+import { GlobalVSCodeConfiguration, onCodeForIBMiConfigurationChange } from "./api/Configuration";
 import Instance from "./Instance";
 import { Terminal } from './views/Terminal';
 import { getDebugServiceDetails } from './debug/config';
@@ -97,7 +97,7 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
   );
 
   // Color provider
-  if (GlobalConfiguration.get<boolean>(`showSeuColors`)) {
+  if (GlobalVSCodeConfiguration.get<boolean>(`showSeuColors`)) {
     SEUColorProvider.intitialize(context);
   }
 

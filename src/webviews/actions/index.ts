@@ -2,7 +2,7 @@ import vscode from "vscode";
 
 import { CustomUI, Tab } from "../CustomUI";
 
-import { GlobalConfiguration } from "../../api/Configuration";
+import { GlobalVSCodeConfiguration } from "../../api/Configuration";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
 import { Action, ActionEnvironment, ActionRefresh, ActionType } from "../../typings";
@@ -302,11 +302,11 @@ export namespace ActionsUI {
 }
 
 async function saveActions(actions: Action[]) {
-  return GlobalConfiguration.set(`actions`, actions);
+  return GlobalVSCodeConfiguration.set(`actions`, actions);
 }
 
 function loadActions(): Action[] {
-  return GlobalConfiguration.get<Action[]>(`actions`) || [];
+  return GlobalVSCodeConfiguration.get<Action[]>(`actions`) || [];
 }
 
 function getDefaultTabIndex(type?: ActionType) {

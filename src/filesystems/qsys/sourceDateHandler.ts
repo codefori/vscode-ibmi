@@ -2,7 +2,7 @@ import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 
-import { GlobalConfiguration, SourceDateMode } from "../../api/Configuration";
+import { GlobalVSCodeConfiguration, SourceDateMode } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
@@ -100,7 +100,7 @@ export class SourceDateHandler {
   changeSourceDateMode(sourceDateMode: SourceDateMode) {
     this.sourceDateMode = sourceDateMode;
 
-    const dateSearchButtonEnabled = GlobalConfiguration.get<boolean>(`showDateSearchButton`);
+    const dateSearchButtonEnabled = GlobalVSCodeConfiguration.get<boolean>(`showDateSearchButton`);
 
     if (this.sourceDateMode === "diff" && dateSearchButtonEnabled) {
       this.sourceDateSearchBarItem.show();

@@ -8,7 +8,7 @@ import { getGitBranch } from '../filesystems/local/git';
 import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, BrowserItem, DeploymentMethod, Variable } from '../typings';
-import { GlobalConfiguration } from '../api/Configuration';
+import { GlobalVSCodeConfiguration } from '../api/Configuration';
 
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { CustomUI } from '../webviews/CustomUI';
@@ -50,7 +50,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
     let availableActions: { label: string; action: Action; }[] = [];
     if (!customAction) {
       // First we grab a copy the predefined Actions in the VS Code settings
-      const allActions = [...GlobalConfiguration.get<Action[]>(`actions`) || []];
+      const allActions = [...GlobalVSCodeConfiguration.get<Action[]>(`actions`) || []];
 
       // Then, if we're being called from a local file
       // we fetch the Actions defined from the workspace.
@@ -250,7 +250,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
             break;
         }
 
-        const viewControl = GlobalConfiguration.get<string>(`postActionView`) || "none";
+        const viewControl = GlobalVSCodeConfiguration.get<string>(`postActionView`) || "none";
         const outputBuffer: string[] = [];
         let actionName = chosenAction.name;
         let hasRun = false;
@@ -280,7 +280,7 @@ export async function runAction(instance: Instance, uri: vscode.Uri, customActio
             source: 'IBM i',
             presentationOptions: {
               showReuseMessage: true,
-              clear: GlobalConfiguration.get<boolean>(`clearOutputEveryTime`),
+              clear: GlobalVSCodeConfiguration.get<boolean>(`clearOutputEveryTime`),
               focus: false,
               reveal: (viewControl === `task` ? TaskRevealKind.Always : TaskRevealKind.Never),
             },

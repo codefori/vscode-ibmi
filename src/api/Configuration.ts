@@ -7,7 +7,7 @@ export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";
 export type ReconnectMode = "always" | "never" | "ask";
 
-const getConfiguration = (): vscode.WorkspaceConfiguration => {
+const getExtensionConfig = (): vscode.WorkspaceConfiguration => {
   return vscode.workspace.getConfiguration(`code-for-ibmi`);
 }
 
@@ -20,13 +20,13 @@ export function onCodeForIBMiConfigurationChange<T>(props: string | string[], to
   })
 }
 
-export namespace GlobalConfiguration {
+export namespace GlobalVSCodeConfiguration {
   export function get<T>(key: string): T | undefined {
-    return getConfiguration().get<T>(key);
+    return getExtensionConfig().get<T>(key);
   }
 
   export function set(key: string, value: any) {
-    return getConfiguration().update(key, value, vscode.ConfigurationTarget.Global);
+    return getExtensionConfig().update(key, value, vscode.ConfigurationTarget.Global);
   }
 }
 
@@ -49,15 +49,15 @@ export namespace ConnectionManager {
   export function sort() {
     const connections = getAll();
     connections.sort((a, b) => a.name.localeCompare(b.name));
-    return GlobalConfiguration.set(`connections`, connections);
+    return GlobalVSCodeConfiguration.set(`connections`, connections);
   }
 
   export function getAll(): ConnectionData[] {
-    return GlobalConfiguration.get<ConnectionData[]>(`connections`) || [];
+    return GlobalVSCodeConfiguration.get<ConnectionData[]>(`connections`) || [];
   }
 
   function setAll(connections: ConnectionData[]) {
-    return GlobalConfiguration.set(`connections`, connections);
+    return GlobalVSCodeConfiguration.set(`connections`, connections);
   }
 
   export async function storeNew(data: ConnectionData): Promise<StoredConnection> {
@@ -84,7 +84,7 @@ export namespace ConnectionManager {
     // Remove possible password from any connection
     connections.forEach(conn => delete conn.password);
 
-    return GlobalConfiguration.set(`connections`, connections);
+    return GlobalVSCodeConfiguration.set(`connections`, connections);
   }
 
   export function getStoredPassword(context: vscode.ExtensionContext, connectionName: string) {
@@ -170,7 +170,7 @@ export namespace ConnectionConfiguration {
   }
 
   function getConnectionSettings(): Parameters[] {
-    return getConfiguration().get<Parameters[]>(`connectionSettings`) || [];
+    return getExtensionConfig().get<Parameters[]>(`connectionSettings`) || [];
   }
 
   function initialize(parameters: Partial<Parameters>): Parameters {
@@ -219,7 +219,7 @@ export namespace ConnectionConfiguration {
   }
 
   async function updateAll(connections: Parameters[]) {
-    await getConfiguration().update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
+    await getExtensionConfig().update(`connectionSettings`, connections, vscode.ConfigurationTarget.Global);
   }
 
   export async function update(parameters: Parameters) {

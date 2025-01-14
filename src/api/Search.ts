@@ -1,7 +1,7 @@
 import * as path from 'path';
 import { GetMemberInfo } from './components/getMemberInfo';
 import { IBMiMember, SearchHit, SearchResults } from '../typings';
-import { GlobalConfiguration } from './Configuration';
+import { GlobalVSCodeConfiguration } from './Configuration';
 import { Tools } from './Tools';
 import IBMi from './IBMi';
 
@@ -109,7 +109,7 @@ export namespace Search {
       const grep = connection.remoteFeatures.grep;
 
       if (grep) {
-        const dirsToIgnore = GlobalConfiguration.get<string[]>(`grepIgnoreDirs`) || [];
+        const dirsToIgnore = GlobalVSCodeConfiguration.get<string[]>(`grepIgnoreDirs`) || [];
         let ignoreString = ``;
 
         if (dirsToIgnore.length > 0) {
@@ -141,7 +141,7 @@ export namespace Search {
       const find = connection.remoteFeatures.find;
 
       if (find) {
-        const dirsToIgnore = GlobalConfiguration.get<string[]>(`grepIgnoreDirs`) || [];
+        const dirsToIgnore = GlobalVSCodeConfiguration.get<string[]>(`grepIgnoreDirs`) || [];
         let ignoreString = ``;
 
         if (dirsToIgnore.length > 0) {

@@ -1,7 +1,7 @@
 
 import * as vscode from "vscode";
 import { FileError } from "../typings";
-import { GlobalConfiguration } from "../api/Configuration";
+import { GlobalVSCodeConfiguration } from "../api/Configuration";
 import Instance from "../Instance";
 import { getEvfeventFiles } from "../filesystems/local/actions";
 import { parseErrors } from "../api/errors/parser";
@@ -26,7 +26,7 @@ export function registerDiagnostics(): vscode.Disposable[] {
     }),
   ];
 
-  if (GlobalConfiguration.get(`clearDiagnosticOnEdit`)) {
+  if (GlobalVSCodeConfiguration.get(`clearDiagnosticOnEdit`)) {
     disposables.push(
       vscode.workspace.onDidChangeTextDocument(e => {
         if (ileDiagnostics.has(e.document.uri)) {
@@ -64,7 +64,7 @@ export async function refreshDiagnosticsFromServer(instance: Instance, evfeventI
     const tableData = await content.getTable(evfeventInfo.library, `EVFEVENT`, evfeventInfo.object);
     const lines = tableData.map(row => String(row.EVFEVENT));
 
-    if (GlobalConfiguration.get(`clearErrorsBeforeBuild`)) {
+    if (GlobalVSCodeConfiguration.get(`clearErrorsBeforeBuild`)) {
       // Clear all errors if the user has this setting enabled
       clearDiagnostics();
     }
@@ -81,7 +81,7 @@ export async function refreshDiagnosticsFromLocal(instance: Instance, evfeventIn
     if (evfeventFiles) {
       const filesContent = await Promise.all(evfeventFiles.map(uri => vscode.workspace.fs.readFile(uri)));
 
-      if (GlobalConfiguration.get(`clearErrorsBeforeBuild`)) {
+      if (GlobalVSCodeConfiguration.get(`clearErrorsBeforeBuild`)) {
         // Clear all errors if the user has this setting enabled
         clearDiagnostics();
       }

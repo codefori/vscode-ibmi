@@ -2,7 +2,7 @@ import fs from "fs";
 import tmp from "tmp";
 import util from "util";
 import vscode from "vscode";
-import { GlobalConfiguration } from "../../api/Configuration";
+import { GlobalVSCodeConfiguration } from "../../api/Configuration";
 import { instance } from "../../instantiate";
 import { getAliasName, SourceDateHandler } from "./sourceDateHandler";
 
@@ -33,7 +33,7 @@ export class ExtendedIBMiContent {
     const config = instance.getConfig();
     const connection = instance.getConnection();
     if (connection && config && content) {
-      const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
+      const sourceColourSupport = GlobalVSCodeConfiguration.get<boolean>(`showSeuColors`);
       const tempLib = config.tempLibrary;
       const alias = getAliasName(uri);
       const aliasPath = `${tempLib}.${alias}`;
@@ -133,7 +133,7 @@ export class ExtendedIBMiContent {
       const { library, file, name } = connection.parserMemberPath(uri.path);
       const tempRmt = connection.getTempRemote(library + file + name);
       if (tempRmt) {
-        const sourceColourSupport = GlobalConfiguration.get<boolean>(`showSeuColors`);
+        const sourceColourSupport = GlobalVSCodeConfiguration.get<boolean>(`showSeuColors`);
         const tmpobj = await tmpFile();
 
         const sourceData = body.split(`\n`);

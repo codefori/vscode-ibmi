@@ -1,7 +1,7 @@
 import { ExtensionContext, WorkspaceFolder, commands, window } from "vscode";
 import { getBranchLibraryName } from "./env";
 import { instance } from "../../instantiate";
-import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../../api/Configuration";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
 import { getGitAPI } from "../../views/tools";
@@ -26,7 +26,7 @@ export function setupGitEventHandler(context: ExtensionContext) {
       const workspaceUri = repo.rootUri.toString();
 
       const changeEvent = repo.state.onDidChange((_e) => {
-        if (GlobalConfiguration.get(`createLibraryOnBranchChange`)) {
+        if (GlobalVSCodeConfiguration.get(`createLibraryOnBranchChange`)) {
           if (repo) {
             const head = repo.state.HEAD;
             const connection = instance.getConnection();

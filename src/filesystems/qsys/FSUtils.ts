@@ -1,8 +1,8 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
-import { GlobalConfiguration, ReconnectMode } from "../../api/Configuration";
-import { GlobalStorage } from "../../api/Storage";
+import { GlobalVSCodeConfiguration, ReconnectMode } from "../../api/Configuration";
 import { findUriTabs } from "../../views/tools";
+import IBMi from "../../api/IBMi";
 
 /**
  * Called when a member/streamfile is left open when VS Code is closed and re-opened to reconnect (or not) to the previous IBM i, based on the `autoReconnect` global configuration value.
@@ -12,7 +12,7 @@ import { findUriTabs } from "../../views/tools";
  * @returns `true` if the user choses to reconnect, `false` otherwise.
  */
 export async function reconnectFS(uri: vscode.Uri) {
-  const reconnect = GlobalConfiguration.get<ReconnectMode>("autoReconnect") || "ask";
+  const reconnect = GlobalVSCodeConfiguration.get<ReconnectMode>("autoReconnect") || "ask";
   let doReconnect = false;
   switch (reconnect) {
     case "always":
@@ -20,7 +20,7 @@ export async function reconnectFS(uri: vscode.Uri) {
       break;
 
     case "ask":
-      const lastConnection = GlobalStorage.get().getLastConnections()?.at(0)?.name;
+      const lastConnection = IBMi.GlobalStorage.getLastConnections()?.at(0)?.name;
       if (lastConnection) {
         if (await vscode.window.showInformationMessage(l10n.t("Do you want to reconnect to {0} and open {1}?", lastConnection, path.basename(uri.path)), l10n.t("Reconnect"))) {
           doReconnect = true;

@@ -11,7 +11,7 @@ import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, 
 import { CompileTools } from "./CompileTools";
 import { ConnectionConfiguration } from "./Configuration";
 import IBMiContent from "./IBMiContent";
-import { CachedServerSettings, GlobalStorage } from './Storage';
+import { CachedServerSettings, CodeForIStorage } from './Storage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "../debug/config";
@@ -63,6 +63,7 @@ interface ConnectionCallbacks{
 }
 
 export default class IBMi {
+  public static GlobalStorage: CodeForIStorage;
   static readonly CCSID_NOCONVERSION = 65535;
   static readonly CCSID_SYSVAL = -2;
   static readonly bashShellPath = '/QOpenSys/pkgs/bin/bash';
@@ -248,7 +249,7 @@ export default class IBMi {
       this.config = await ConnectionConfiguration.load(this.currentConnectionName);
 
       // Load cached server settings.
-      const cachedServerSettings: CachedServerSettings = GlobalStorage.get().getServerSettingsCache(this.currentConnectionName);
+      const cachedServerSettings: CachedServerSettings = IBMi.GlobalStorage.getServerSettingsCache(this.currentConnectionName);
 
       // Reload server settings?
       const quickConnect = () => {
@@ -924,7 +925,7 @@ export default class IBMi {
         }
       }
 
-      GlobalStorage.get().setServerSettingsCache(this.currentConnectionName, {
+      IBMi.GlobalStorage.setServerSettingsCache(this.currentConnectionName, {
         lastCheckedOnVersion: currentExtensionVersion,
         aspInfo: this.aspInfo,
         qccsid: this.qccsid,

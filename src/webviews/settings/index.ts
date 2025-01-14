@@ -1,8 +1,7 @@
 import { existsSync } from "fs";
 import vscode from "vscode";
-import { ConnectionConfiguration, ConnectionManager, GlobalConfiguration } from "../../api/Configuration";
+import { ConnectionConfiguration, ConnectionManager, GlobalVSCodeConfiguration } from "../../api/Configuration";
 import { ComplexTab, CustomUI, Section } from "../CustomUI";
-import { GlobalStorage } from '../../api/Storage';
 import { Tools } from "../../api/Tools";
 import { isManaged } from "../../debug";
 import * as certificates from "../../debug/certificates";
@@ -11,6 +10,7 @@ import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
 import { withContext } from "../../views/tools";
+import IBMi from "../../api/IBMi";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;
 
@@ -36,7 +36,7 @@ export class SettingsUI {
 
     context.subscriptions.push(
       vscode.commands.registerCommand(`code-for-ibmi.showAdditionalSettings`, async (server?: Server, tab?: string) => {
-        const connectionSettings = GlobalConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
+        const connectionSettings = GlobalVSCodeConfiguration.get<ConnectionConfiguration.Parameters[]>(`connectionSettings`);
         const connection = instance.getConnection();
         const passwordAuthorisedExtensions = instance.getStorage()?.getAuthorisedExtensions() || [];
 
@@ -321,7 +321,7 @@ export class SettingsUI {
                   Object.assign(config, data);
                   await instance.setConfig(config);
                   if (removeCachedSettings)
-                    GlobalStorage.get().deleteServerSettingsCache(config.name);
+                    IBMi.GlobalStorage.deleteServerSettingsCache(config.name);
 
                   if (connection) {
                     if (restart) {
@@ -420,7 +420,7 @@ export class SettingsUI {
 
                 stored = Object.assign(stored, data);
                 await ConnectionManager.updateByIndex(index, stored);
-                GlobalStorage.get().deleteServerSettingsCache(server.name);
+                IBMi.GlobalStorage.deleteServerSettingsCache(server.name);
                 vscode.commands.executeCommand(`code-for-ibmi.refreshConnections`);
               }
             });

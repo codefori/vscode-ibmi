@@ -7,7 +7,6 @@ import { ExtensionContext, commands, languages, window, workspace } from "vscode
 import { CustomUI } from "./webviews/CustomUI";
 import { instance, loadAllofExtension } from './instantiate';
 import { ConnectionConfiguration, ConnectionManager, onCodeForIBMiConfigurationChange } from "./api/Configuration";
-import { GlobalStorage } from "./api/Storage";
 import { Tools } from "./api/Tools";
 import * as Debug from './debug';
 import { parseErrors } from "./api/errors/parser";
@@ -33,6 +32,7 @@ import { initializeObjectBrowser } from "./views/objectBrowser";
 import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
 import { registerActionTools } from "./views/actions";
+import IBMi from "./api/IBMi";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -42,10 +42,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   await loadAllofExtension(context);
   const updateLastConnectionAndServerCache = () => {
     const connections = ConnectionManager.getAll();
-    const lastConnections = (GlobalStorage.get().getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
-    GlobalStorage.get().setLastConnections(lastConnections);
+    const lastConnections = (IBMi.GlobalStorage.getLastConnections() || []).filter(lc => connections.find(c => c.name === lc.name));
+    IBMi.GlobalStorage.setLastConnections(lastConnections);
     commands.executeCommand(`setContext`, `code-for-ibmi:hasPreviousConnection`, lastConnections.length > 0);
-    GlobalStorage.get().deleteStaleServerSettingsCache(connections);
+    IBMi.GlobalStorage.deleteStaleServerSettingsCache(connections);
     commands.executeCommand(`code-for-ibmi.refreshConnections`);
   };
 
@@ -86,7 +86,6 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
   );
 
   registerActionTools(context);
-  GlobalStorage.initialize(context);
   Debug.initialize(context);
   Deployment.initialize(context);
   updateLastConnectionAndServerCache();

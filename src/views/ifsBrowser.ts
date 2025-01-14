@@ -3,14 +3,14 @@ import path, { dirname, extname } from "path";
 import vscode, { FileType, l10n, window } from "vscode";
 
 import { existsSync, mkdirSync, rmdirSync } from "fs";
-import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
+import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../api/Configuration";
 import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
-import { GlobalStorage } from "../api/Storage";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
 import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../typings";
 import { fileToPath, findUriTabs, ifsFileToToolTip } from "./tools";
+import IBMi from "../api/IBMi";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";
@@ -18,7 +18,7 @@ const PROTECTED_DIRS = /^(\/|\/QOpenSys|\/QSYS\.LIB|\/QDLS|\/QOPT|\/QNTC|\/QFile
 const ALWAYS_SHOW_FILES = /^(\.gitignore|\.vscode|\.deployignore)$/i;
 type DragNDropAction = "move" | "copy";
 type DragNDropBehavior = DragNDropAction | "ask";
-const getDragDropBehavior = () => GlobalConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
+const getDragDropBehavior = () => GlobalVSCodeConfiguration.get<DragNDropBehavior>(`IfsBrowser.DragAndDropDefaultBehavior`) || "ask";
 
 function isProtected(path: string) {
   return PROTECTED_DIRS.test(path) || instance.getContent()?.isProtectedPath(path);
@@ -82,7 +82,7 @@ class IFSBrowser implements vscode.TreeDataProvider<BrowserItem> {
             shortcuts.splice(newPosition, 0, moveDir);
             config.ifsShortcuts = shortcuts;
             await ConnectionConfiguration.update(config);
-            if (GlobalConfiguration.get(`autoRefresh`)) {
+            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
               this.refresh();
             }
           }
@@ -364,7 +364,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               if (config.autoSortIFSShortcuts) {
                 vscode.commands.executeCommand(`code-for-ibmi.sortIFSShortcuts`);
               }
-              if (GlobalConfiguration.get(`autoRefresh`)) {
+              if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
                 ifsBrowser.refresh();
               }
             }
@@ -390,7 +390,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
               shortcuts.splice(inx, 1);
               config.ifsShortcuts = shortcuts;
               await ConnectionConfiguration.update(config);
-              if (GlobalConfiguration.get(`autoRefresh`)) {
+              if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
                 ifsBrowser.refresh();
               }
             }
@@ -408,7 +408,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
         try {
           config.ifsShortcuts.sort((a, b) => a.toLocaleLowerCase().localeCompare(b.toLocaleLowerCase()));
           await ConnectionConfiguration.update(config);
-          if (GlobalConfiguration.get(`autoRefresh`)) {
+          if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
             ifsBrowser.refresh();
           }
         } catch (e) {
@@ -438,7 +438,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
           try {
             await connection.sendCommand({ command: `mkdir ${Tools.escapePath(fullName)}` });
 
-            if (GlobalConfiguration.get(`autoRefresh`)) {
+            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
             }
 
@@ -466,7 +466,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(l10n.t(`Creating streamfile {0}.`, fullName));
             await content.createStreamFile(fullName);
             vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullName);
-            if (GlobalConfiguration.get(`autoRefresh`)) {
+            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh(node);
             }
             else {
@@ -524,7 +524,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
                 }
               }
 
-              if (GlobalConfiguration.get(`autoRefresh`)) {
+              if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
                 ifsBrowser.refresh(node);
               }
               vscode.window.showInformationMessage(l10n.t(`Upload completed.`));
@@ -558,7 +558,7 @@ export function initializeIFSBrowser(context: vscode.ExtensionContext) {
             if (await vscode.window.showWarningMessage(message, { modal: true, detail }, l10n.t(`Yes`))) {
               const toBeDeleted: string[] = [];
               for (const item of items) {
-                if ((GlobalConfiguration.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
+                if ((GlobalVSCodeConfiguration.get(`safeDeleteMode`)) && item.file.type === `directory`) { //Check if path is directory
                   const dirName = path.basename(item.path)  //Get the name of the directory to be deleted
 
                   const deletionPrompt = l10n.t(`Once you delete the directory, it cannot be restored.
@@ -591,7 +591,7 @@ Please type "{0}" to confirm deletion.`, dirName);
                 if (removeResult.code !== 0) {
                   throw removeResult.stderr;
                 }
-                if (GlobalConfiguration.get(`autoRefresh`)) {
+                if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
                   items.map(item => item.parent)
                     .filter(Tools.distinct)
                     .forEach(async parent => parent?.refresh?.());
@@ -653,7 +653,7 @@ Please type "{0}" to confirm deletion.`, dirName);
               throw moveResult.stderr;
             }
 
-            if (GlobalConfiguration.get(`autoRefresh`)) {
+            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
             let label;
@@ -699,7 +699,7 @@ Please type "{0}" to confirm deletion.`, dirName);
           const targetPath = target.startsWith(`/`) ? target : homeDirectory + `/` + target;
           try {
             await connection.sendCommand({ command: `cp -r ${Tools.escapePath(node.path)} ${Tools.escapePath(targetPath)}` });
-            if (GlobalConfiguration.get(`autoRefresh`)) {
+            if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
               ifsBrowser.refresh();
             }
             vscode.window.showInformationMessage(l10n.t(`{0} was copied to {1}.`, Tools.escapePath(node.path), Tools.escapePath(targetPath)));
@@ -724,7 +724,7 @@ Please type "{0}" to confirm deletion.`, dirName);
         });
 
         if (searchPath) {
-          const list = GlobalStorage.get().getPreviousSearchTerms();
+          const list = IBMi.GlobalStorage.getPreviousSearchTerms();
           const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
           const listHeader = [
             { label: l10n.t(`Previous search terms`), kind: vscode.QuickPickItemKind.Separator }
@@ -751,14 +751,14 @@ Please type "{0}" to confirm deletion.`, dirName);
             const searchTerm = quickPick.activeItems[0].label;
             if (searchTerm) {
               if (searchTerm === clearList) {
-                GlobalStorage.get().clearPreviousSearchTerms();
+                IBMi.GlobalStorage.clearPreviousSearchTerms();
                 quickPick.items = [];
                 quickPick.placeholder = l10n.t(`Enter search term.`);
                 vscode.window.showInformationMessage(l10n.t(`Cleared list.`));
                 quickPick.show();
               } else {
                 quickPick.hide();
-                GlobalStorage.get().addPreviousSearchTerm(searchTerm);
+                IBMi.GlobalStorage.addPreviousSearchTerm(searchTerm);
                 await doSearchInStreamfiles(searchTerm, searchPath);
               }
             }
@@ -784,7 +784,7 @@ Please type "{0}" to confirm deletion.`, dirName);
         });
 
         if (findPath) {
-          const list = GlobalStorage.get().getPreviousFindTerms();
+          const list = IBMi.GlobalStorage.getPreviousFindTerms();
           const items: vscode.QuickPickItem[] = list.map(term => ({ label: term }));
           const listHeader = [
             { label: l10n.t("Previous find terms"), kind: vscode.QuickPickItemKind.Separator }
@@ -811,14 +811,14 @@ Please type "{0}" to confirm deletion.`, dirName);
             const findTerm = quickPick.activeItems[0].label;
             if (findTerm) {
               if (findTerm === clearList) {
-                GlobalStorage.get().clearPreviousFindTerms();
+                IBMi.GlobalStorage.clearPreviousFindTerms();
                 quickPick.items = [];
                 quickPick.placeholder = l10n.t(`Enter find term.`);
                 vscode.window.showInformationMessage(l10n.t(`Cleared list.`));
                 quickPick.show();
               } else {
                 quickPick.hide();
-                GlobalStorage.get().addPreviousFindTerm(findTerm);
+                IBMi.GlobalStorage.addPreviousFindTerm(findTerm);
                 await doFindStreamfiles(findTerm, findPath);
               }
             }

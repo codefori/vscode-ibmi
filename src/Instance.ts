@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 import { ConnectionData, IBMiEvent } from "./typings";
 import { ConnectionConfiguration } from "./api/Configuration";
 import IBMi, { ConnectionResult } from "./api/IBMi";
-import { ConnectionStorage, GlobalStorage } from "./api/Storage";
+import { CodeForIStorage, ConnectionStorage } from "./api/Storage";
 import { withContext } from "./views/tools";
 import { handleConnectionResults, messageCallback } from "./views/connection";
+import { VsStorage } from "./Storage";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -30,7 +31,9 @@ export default class Instance {
   private deprecationCount = 0; //TODO: remove in v3.0.0
 
   constructor(context: vscode.ExtensionContext) {
-    this.storage = new ConnectionStorage(context);
+    const vscodeStorage = new VsStorage(context);
+    this.storage = new ConnectionStorage(vscodeStorage);
+    IBMi.GlobalStorage = new CodeForIStorage(vscodeStorage);
     this.emitter.event(e => this.processEvent(e));
   }
 
@@ -145,7 +148,7 @@ export default class Instance {
 
       this.connection = connection;
       this.storage.setConnectionName(connection.currentConnectionName);
-      await GlobalStorage.get().setLastConnection(connection.currentConnectionName);
+      await IBMi.GlobalStorage.setLastConnection(connection.currentConnectionName);
       this.fire(`connected`);
     }
     else {

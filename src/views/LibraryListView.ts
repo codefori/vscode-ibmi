@@ -1,5 +1,5 @@
 import vscode, { commands, l10n } from "vscode";
-import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
+import { ConnectionConfiguration, GlobalVSCodeConfiguration } from "../api/Configuration";
 import { instance } from "../instantiate";
 import { IBMiObject, WithLibrary } from "../typings";
 import { objectToToolTip } from "./tools";
@@ -258,7 +258,7 @@ export class LibraryListProvider implements vscode.TreeDataProvider<LibraryListN
 
   private async updateConfig(config: ConnectionConfiguration.Parameters) {
     await ConnectionConfiguration.update(config);
-    if (GlobalConfiguration.get(`autoRefresh`)) {
+    if (GlobalVSCodeConfiguration.get(`autoRefresh`)) {
       this.refresh();
     }
   }

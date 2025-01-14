@@ -24,28 +24,6 @@ type AuthorisedExtension = {
   lastAccess: number
 }
 
-abstract class Storage {
-  protected readonly globalState;
-
-  constructor(context: vscode.ExtensionContext) {
-    this.globalState = context.globalState;
-  }
-
-  protected keys(): readonly string[] {
-    return this.globalState.keys();
-  }
-
-  protected get<T>(key: string): T | undefined {
-    return this.globalState.get(this.getStorageKey(key)) as T | undefined;
-  }
-
-  protected async set(key: string, value: any) {
-    await this.globalState.update(this.getStorageKey(key), value);
-  }
-
-  protected abstract getStorageKey(key: string): string;
-}
-
 export type LastConnection = {
   name: string
   timestamp: number
@@ -66,29 +44,51 @@ export type CachedServerSettings = {
   maximumArgsLength: number
 } | undefined;
 
-export class GlobalStorage extends Storage {
-  private static instance: GlobalStorage;
+export abstract class Storage {
+  protected readonly globalState: any;
 
-  static initialize(context: vscode.ExtensionContext) {
-    if (!this.instance) {
-      this.instance = new GlobalStorage(context);
-    }
+  constructor() {
+    this.globalState = new Map<string, any>();
   }
 
-  static get() {
-    return this.instance;
+  keys(): readonly string[] {
+    return Array.from(this.globalState.keys());
   }
 
-  private constructor(context: vscode.ExtensionContext) {
-    super(context);
+  get<T>(key: string): T | undefined {
+    return this.globalState.get(this.getStorageKey(key)) as T | undefined;
   }
+
+  async set(key: string, value: any) {
+    await this.globalState.set(this.getStorageKey(key), value);
+  }
+
+  getStorageKey(key: string): string {
+    return key;
+  }
+}
+
+export class CodeForIStorage {
+  // private static instance: GlobalStorage;
+
+  // static initialize(context: vscode.ExtensionContext) {
+  //   if (!this.instance) {
+  //     this.instance = new GlobalStorage(context);
+  //   }
+  // }
+
+  // static get() {
+  //   return this.instance;
+  // }
+
+  constructor(private internalStorage: Storage) {}
 
   protected getStorageKey(key: string): string {
     return key;
   }
 
   getLastConnections() {
-    return this.get<LastConnection[]>("lastConnections");
+    return this.internalStorage.get<LastConnection[]>("lastConnections");
   }
 
   async setLastConnection(name: string) {
@@ -104,67 +104,65 @@ export class GlobalStorage extends Storage {
   }
 
   async setLastConnections(lastConnections: LastConnection[]) {
-    await this.set("lastConnections", lastConnections.sort((c1, c2) => c2.timestamp - c1.timestamp));
+    await this.internalStorage.set("lastConnections", lastConnections.sort((c1, c2) => c2.timestamp - c1.timestamp));
   }
 
   getServerSettingsCache(name: string) {
-    return this.get<CachedServerSettings>(SERVER_SETTINGS_CACHE_KEY(name));
+    return this.internalStorage.get<CachedServerSettings|undefined>(SERVER_SETTINGS_CACHE_KEY(name));
   }
 
   async setServerSettingsCache(name: string, serverSettings: CachedServerSettings) {
-    await this.set(SERVER_SETTINGS_CACHE_KEY(name), serverSettings);
+    await this.internalStorage.set(SERVER_SETTINGS_CACHE_KEY(name), serverSettings);
   }
 
   async setServerSettingsCacheSpecific(name: string, newSettings: Partial<CachedServerSettings>) {
-    await this.set(SERVER_SETTINGS_CACHE_KEY(name), {
+    await this.internalStorage.set(SERVER_SETTINGS_CACHE_KEY(name), {
       ...this.getServerSettingsCache(name),
       ...newSettings
     });
   }
 
   async deleteServerSettingsCache(name: string) {
-    await this.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
+    await this.internalStorage.set(SERVER_SETTINGS_CACHE_KEY(name), undefined);
   }
 
   async deleteStaleServerSettingsCache(connections: ConnectionData[]) {
     const validKeys = connections.map(connection => SERVER_SETTINGS_CACHE_KEY(connection.name));
-    const currentKeys = this.keys();
+    const currentKeys = this.internalStorage.keys();
     const keysToDelete = currentKeys.filter(key => key.startsWith(SERVER_SETTINGS_CACHE_PREFIX) && !validKeys.includes(key));
     for await (const key of keysToDelete) {
-      await this.set(key, undefined);
+      await this.internalStorage.set(key, undefined);
     }
   }
 
   getPreviousSearchTerms() {
-    return this.get<string[]>(PREVIOUS_SEARCH_TERMS_KEY) || [];
+    return this.internalStorage.get<string[]>(PREVIOUS_SEARCH_TERMS_KEY) || [];
   }
 
   async addPreviousSearchTerm(term: string) {    
-    await this.set(PREVIOUS_SEARCH_TERMS_KEY, [term].concat(this.getPreviousSearchTerms().filter(t => t !== term)));
+    await this.internalStorage.set(PREVIOUS_SEARCH_TERMS_KEY, [term].concat(this.getPreviousSearchTerms().filter(t => t !== term)));
   }
 
   async clearPreviousSearchTerms(){
-    await this.set(PREVIOUS_SEARCH_TERMS_KEY, undefined);
+    await this.internalStorage.set(PREVIOUS_SEARCH_TERMS_KEY, undefined);
   }
 
   getPreviousFindTerms() {
-    return this.get<string[]>(PREVIOUS_FIND_TERMS_KEY) || [];
+    return this.internalStorage.get<string[]>(PREVIOUS_FIND_TERMS_KEY) || [];
   }
 
   async addPreviousFindTerm(term: string) {
-    await this.set(PREVIOUS_FIND_TERMS_KEY, [term].concat(this.getPreviousFindTerms().filter(t => t !== term)));
+    await this.internalStorage.set(PREVIOUS_FIND_TERMS_KEY, [term].concat(this.getPreviousFindTerms().filter(t => t !== term)));
   }
 
   async clearPreviousFindTerms(){
-    await this.set(PREVIOUS_FIND_TERMS_KEY, undefined);
+    await this.internalStorage.set(PREVIOUS_FIND_TERMS_KEY, undefined);
   }
 }
 
-export class ConnectionStorage extends Storage {
+export class ConnectionStorage {
   private connectionName: string = "";
-  constructor(context: vscode.ExtensionContext) {
-    super(context);
-  }
+  constructor(private internalStorage: Storage) {}
 
   get ready(): boolean {
     if (this.connectionName) {
@@ -184,60 +182,60 @@ export class ConnectionStorage extends Storage {
   }
 
   getSourceList() {
-    return this.get<PathContent>(SOURCE_LIST_KEY) || {};
+    return this.internalStorage.get<PathContent>(SOURCE_LIST_KEY) || {};
   }
 
   async setSourceList(sourceList: PathContent) {
-    await this.set(SOURCE_LIST_KEY, sourceList);
+    await this.internalStorage.set(SOURCE_LIST_KEY, sourceList);
   }
 
   getLastProfile() {
-    return this.get<string>(LAST_PROFILE_KEY);
+    return this.internalStorage.get<string>(LAST_PROFILE_KEY);
   }
 
   async setLastProfile(lastProfile: string) {
-    await this.set(LAST_PROFILE_KEY, lastProfile);
+    await this.internalStorage.set(LAST_PROFILE_KEY, lastProfile);
   }
 
   getPreviousCurLibs() {
-    return this.get<string[]>(PREVIOUS_CUR_LIBS_KEY) || [];
+    return this.internalStorage.get<string[]>(PREVIOUS_CUR_LIBS_KEY) || [];
   }
 
   async setPreviousCurLibs(previousCurLibs: string[]) {
-    await this.set(PREVIOUS_CUR_LIBS_KEY, previousCurLibs);
+    await this.internalStorage.set(PREVIOUS_CUR_LIBS_KEY, previousCurLibs);
   }
 
   getDeployment() {
-    return this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
+    return this.internalStorage.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
   }
 
   async setDeployment(existingPaths: DeploymentPath) {
-    await this.set(DEPLOYMENT_KEY, existingPaths);
+    await this.internalStorage.set(DEPLOYMENT_KEY, existingPaths);
   }
 
   getDebugCommands() {
-    return this.get<DebugCommands>(DEBUG_KEY) || {};
+    return this.internalStorage.get<DebugCommands>(DEBUG_KEY) || {};
   }
 
   setDebugCommands(existingCommands: DebugCommands) {
-    return this.set(DEBUG_KEY, existingCommands);
+    return this.internalStorage.set(DEBUG_KEY, existingCommands);
   }
 
   getWorkspaceDeployPath(workspaceFolder: vscode.WorkspaceFolder) {
-    const deployDirs = this.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
+    const deployDirs = this.internalStorage.get<DeploymentPath>(DEPLOYMENT_KEY) || {};
     return deployDirs[workspaceFolder.uri.fsPath].toLowerCase();
   }
 
   getRecentlyOpenedFiles() {
-    return this.get<string[]>(RECENTLY_OPENED_FILES_KEY) || [];
+    return this.internalStorage.get<string[]>(RECENTLY_OPENED_FILES_KEY) || [];
   }
 
   async setRecentlyOpenedFiles(recentlyOpenedFiles: string[]) {
-    await this.set(RECENTLY_OPENED_FILES_KEY, recentlyOpenedFiles);
+    await this.internalStorage.set(RECENTLY_OPENED_FILES_KEY, recentlyOpenedFiles);
   }
 
   async clearRecentlyOpenedFiles() {
-    await this.set(RECENTLY_OPENED_FILES_KEY, undefined);
+    await this.internalStorage.set(RECENTLY_OPENED_FILES_KEY, undefined);
   }
 
   async grantExtensionAuthorisation(extension: vscode.Extension<any>) {
@@ -249,7 +247,7 @@ export class ConnectionStorage extends Storage {
         since: new Date().getTime(),
         lastAccess: new Date().getTime()
       });
-      await this.set(AUTHORISED_EXTENSIONS_KEY, extensions);
+      await this.internalStorage.set(AUTHORISED_EXTENSIONS_KEY, extensions);
     }
   }
 
@@ -262,7 +260,7 @@ export class ConnectionStorage extends Storage {
   }
 
   getAuthorisedExtensions(): AuthorisedExtension[] {
-    return this.get<AuthorisedExtension[]>(AUTHORISED_EXTENSIONS_KEY) || [];
+    return this.internalStorage.get<AuthorisedExtension[]>(AUTHORISED_EXTENSIONS_KEY) || [];
   }
 
   revokeAllExtensionAuthorisations() {
@@ -271,6 +269,6 @@ export class ConnectionStorage extends Storage {
 
   revokeExtensionAuthorisation(...extensions: AuthorisedExtension[]) {
     const newExtensions = this.getAuthorisedExtensions().filter(ext => !extensions.includes(ext));
-    return this.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
+    return this.internalStorage.set(AUTHORISED_EXTENSIONS_KEY, newExtensions);
   }
 }

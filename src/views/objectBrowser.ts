@@ -2,12 +2,11 @@ import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
 import vscode from "vscode";
-import { ConnectionConfiguration, DefaultOpenMode, GlobalConfiguration } from "../api/Configuration";
+import { ConnectionConfiguration, DefaultOpenMode, GlobalVSCodeConfiguration } from "../api/Configuration";
 import { parseFilter, singleGenericName } from "../api/Filter";
-import { MemberParts } from "../api/IBMi";
+import IBMi, { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
 import { Search } from "../api/Search";
-import { GlobalStorage } from '../api/Storage';
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
@@ -17,8 +16,8 @@ import { findUriTabs, memberToToolTip, objectToToolTip, sourcePhysicalFileToTool
 
 const URI_LIST_SEPARATOR = "\r\n";
 
-const objectNamesLower = () => GlobalConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
-const objectSortOrder = () => GlobalConfiguration.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
+const objectNamesLower = () => GlobalVSCodeConfiguration.get<boolean>(`ObjectBrowser.showNamesInLowercase`);
+const objectSortOrder = () => GlobalVSCodeConfiguration.get<SortOrder>(`ObjectBrowser.sortObjectsByName`) ? `name` : `type`;
 
 const correctCase = (value: string) => {
   ;
@@ -111,7 +110,7 @@ class ObjectBrowser implements vscode.TreeDataProvider<BrowserItem> {
   }
 
   autoRefresh(message?: string) {
-    const autoRefresh = GlobalConfiguration.get(`autoRefresh`);
+    const autoRefresh = GlobalVSCodeConfiguration.get(`autoRefresh`);
     if (autoRefresh) {
       if (message) {
         vscode.window.showInformationMessage(message);
@@ -567,7 +566,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
           })
 
           if (addResult.code === 0) {
-            if (GlobalConfiguration.get(`autoOpenFile`)) {
+            if (GlobalVSCodeConfiguration.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
@@ -644,7 +643,7 @@ export function initializeObjectBrowser(context: vscode.ExtensionContext) {
               });
             }
 
-            if (GlobalConfiguration.get(`autoOpenFile`)) {
+            if (GlobalVSCodeConfiguration.get(`autoOpenFile`)) {
               vscode.commands.executeCommand(`code-for-ibmi.openEditable`, fullPath);
             }
 
@@ -966,7 +965,7 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
         if (pathParts[1] !== `*ALL`) {
           const aspText = ((config.sourceASP && config.sourceASP.length > 0) ? vscode.l10n.t(`(in ASP {0})`, config.sourceASP) : ``);
 
-          const list = GlobalStorage.get().getPreviousSearchTerms();
+          const list = IBMi.GlobalStorage.getPreviousSearchTerms();
           const listHeader: vscode.QuickPickItem[] = [
             { label: vscode.l10n.t(`Previous search terms`), kind: vscode.QuickPickItemKind.Separator }
           ];
@@ -991,14 +990,14 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
             const searchTerm = quickPick.activeItems[0].label;
             if (searchTerm) {
               if (searchTerm === clearList) {
-                GlobalStorage.get().clearPreviousSearchTerms();
+                IBMi.GlobalStorage.clearPreviousSearchTerms();
                 quickPick.items = [];
                 quickPick.placeholder = vscode.l10n.t(`Enter search term.`);
                 vscode.window.showInformationMessage(vscode.l10n.t(`Cleared list.`));
                 quickPick.show();
               } else {
                 quickPick.hide();
-                GlobalStorage.get().addPreviousSearchTerm(searchTerm);
+                IBMi.GlobalStorage.addPreviousSearchTerm(searchTerm);
                 await doSearchInSourceFile(searchTerm, parameters.path, parameters.filter);
               }
             }
@@ -1395,7 +1394,7 @@ async function doSearchInSourceFile(searchTerm: string, path: string, filter?: C
       const results = await Search.searchMembers(instance.getConnection()!, library, sourceFile, searchTerm, memberFilter, filter?.protected);
       clearInterval(messageTimeout)
       if (results.hits.length) {
-        const objectNamesLower = GlobalConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
+        const objectNamesLower = GlobalVSCodeConfiguration.get(`ObjectBrowser.showNamesInLowercase`);
 
         // Format result to be lowercase if the setting is enabled
         results.hits.forEach(result => {
