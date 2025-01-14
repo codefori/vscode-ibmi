@@ -8,7 +8,7 @@ import { instance } from "../../instantiate";
 import { ObjectItem } from "../../typings";
 import { ILELibrarySettings } from "../CompileTools";
 import { ConnectionManager } from "../Configuration";
-import { Env, getEnvConfig } from "../local/env";
+import { Env, getEnvConfig } from "../../filesystems/local/env";
 import * as certificates from "./certificates";
 import { DEBUG_CONFIG_FILE, DebugConfiguration, getDebugServiceDetails, resetDebugServiceDetails } from "./config";
 import * as server from "./server";

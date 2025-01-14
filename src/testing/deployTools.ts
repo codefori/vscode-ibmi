@@ -7,7 +7,7 @@ import { basename, posix } from "path";
 import vscode from "vscode";
 import { TestSuite } from ".";
 import { Tools } from "../api/Tools";
-import { DeployTools } from "../filesystems/deployTools";
+import { DeployTools } from "../filesystems/local/deployTools";
 import { instance } from "../instantiate";
 import { Action, DeploymentMethod } from "../typings";
 import { md5Hash } from "../views/tools";

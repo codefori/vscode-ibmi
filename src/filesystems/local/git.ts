@@ -1,10 +1,10 @@
 import { ExtensionContext, WorkspaceFolder, commands, window } from "vscode";
-import { getBranchLibraryName } from "../api/local/env";
-import { instance } from "../instantiate";
-import { ConnectionConfiguration, GlobalConfiguration } from "../api/Configuration";
-import IBMi from "../api/IBMi";
-import IBMiContent from "../api/IBMiContent";
-import { getGitAPI } from "../views/tools";
+import { getBranchLibraryName } from "./env";
+import { instance } from "../../instantiate";
+import { ConnectionConfiguration, GlobalConfiguration } from "../../api/Configuration";
+import IBMi from "../../api/IBMi";
+import IBMiContent from "../../api/IBMiContent";
+import { getGitAPI } from "../../views/tools";
 
 const lastBranch: { [workspaceUri: string]: string } = {};
 

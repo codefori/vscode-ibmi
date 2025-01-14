@@ -3,11 +3,11 @@ import path from 'path';
 import tar from 'tar';
 import tmp from 'tmp';
 import vscode from 'vscode';
-import { instance } from '../instantiate';
-import { DeploymentParameters } from '../typings';
-import IBMi from '../api/IBMi';
-import { Tools } from '../api/Tools';
-import { getLocalActions } from '../api/local/actions';
+import { instance } from '../../instantiate';
+import { DeploymentParameters } from '../../typings';
+import IBMi from '../../api/IBMi';
+import { Tools } from '../../api/Tools';
+import { getLocalActions } from './actions';
 import { DeployTools } from './deployTools';
 
 export namespace Deployment {

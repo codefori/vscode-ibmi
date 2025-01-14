@@ -1,10 +1,10 @@
 
 import path from 'path';
 import { EvfEventInfo, refreshDiagnosticsFromLocal, refreshDiagnosticsFromServer, registerDiagnostics } from './diagnostics';
-import { getLocalActions } from '../api/local/actions';
-import { DeployTools } from '../filesystems/deployTools';
-import { getBranchLibraryName, getEnvConfig } from '../api/local/env';
-import { getGitBranch } from '../filesystems/git';
+import { getLocalActions } from '../filesystems/local/actions';
+import { DeployTools } from '../filesystems/local/deployTools';
+import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
+import { getGitBranch } from '../filesystems/local/git';
 import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
 import { Action, BrowserItem, DeploymentMethod, Variable } from '../typings';

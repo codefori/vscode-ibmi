@@ -4,7 +4,7 @@ import { ConnectionConfiguration } from './api/Configuration';
 import { CustomUI } from "./webviews/CustomUI";
 import Instance from "./Instance";
 import { Tools } from "./api/Tools";
-import { DeployTools } from "./filesystems/deployTools";
+import { DeployTools } from "./filesystems/local/deployTools";
 import { ComponentRegistry } from './components/manager';
 
 export interface CodeForIBMi {
