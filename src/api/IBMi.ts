@@ -1306,6 +1306,19 @@ export default class IBMi {
     return this.iAspInfo;
   }
 
+  getIAspDetail(by: string|number) {
+    let asp: AspInfo|undefined;
+    if (typeof by === 'string') {
+      asp = this.iAspInfo.find(asp => asp.name === by);
+    } else {
+      asp = this.iAspInfo.find(asp => asp.id === by);
+    }
+
+    if (asp) {
+      return asp;
+    }
+  }
+
   getIAspName(by: string|number): string|undefined {
     let asp: AspInfo|undefined;
     if (typeof by === 'string') {
