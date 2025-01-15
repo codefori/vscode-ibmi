@@ -42,7 +42,7 @@ export const SearchSuite: TestSuite = {
         const filter = parseFilter(memberFilter);
         const checkNames = (names: string[]) => names.every(filter.test);
 
-        const members = await getConnection().content.getMemberList({ library, sourceFile, members: memberFilter });
+        const members = await getConnection().getContent().getMemberList({ library, sourceFile, members: memberFilter });
         assert.ok(checkNames(members.map(member => member.name)));
 
         const result = await Search.searchMembers(instance, "QSYSINC", "QRPGLESRC", "SQL", members);
