@@ -28,16 +28,12 @@ export namespace Search {
       }
  
       // First, let's fetch the ASP info
-      const foundAsp = await connection.lookupLibraryIAsp(library);
-      let asp = ``;
-      if (foundAsp) {
-        asp = `/${foundAsp}`;
-      }
+      const asp = await connection.lookupLibraryIAsp(library);
 
       // Then search the members
       const result = await connection.sendQsh({
         command: `/usr/bin/grep -inHR -F "${sanitizeSearchTerm(searchTerm)}" ${memberFilter}`,
-        directory: connection.sysNameInAmerican(`${asp}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
+        directory: connection.sysNameInAmerican(`${asp ? `/${asp}` : ``}/QSYS.LIB/${library}.LIB/${sourceFile}.FILE`)
       });
 
       if (!result.stderr) {
@@ -80,13 +76,13 @@ export namespace Search {
           const foundMember = detailedMembers?.find(member => member.name === name && member.library === lib && member.file === spf);
 
           if (foundMember) {
-            hit.path = connection.sysNameInLocal(`${lib}/${spf}/${name}.${foundMember.extension}`);
+            hit.path = connection.sysNameInLocal(`${asp ? `${asp}/` : ``}${lib}/${spf}/${name}.${foundMember.extension}`);
           }
         }
 
         return {
           term: searchTerm,
-          hits: hits
+          hits
         }
       }
       else {
