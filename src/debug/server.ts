@@ -15,8 +15,8 @@ export function debugPTFInstalled() {
   return instance.getConnection()?.debugPTFInstalled()
 }
 
-export async function isSEPSupported() {
-  return (await getDebugServiceDetails()).semanticVersion().major > 1;
+export async function isSEPSupported(connection: IBMi) {
+  return (await getDebugServiceDetails(connection)).semanticVersion().major > 1;
 }
 
 export async function startService(connection: IBMi) {
@@ -28,7 +28,7 @@ export async function startService(connection: IBMi) {
 
   try {
     await checkAuthority();
-    const debugServiceVersion = (await getDebugServiceDetails()).semanticVersion();
+    const debugServiceVersion = (await getDebugServiceDetails(connection)).semanticVersion();
     const prestartCommand = (debugServiceVersion.major >= 2 && debugServiceVersion.patch >= 1) ?
       `export DEBUG_SERVICE_EXTERNAL_CONFIG_FILE=${DEBUG_CONFIG_FILE}` :
       `cp ${DEBUG_CONFIG_FILE} ${ORIGINAL_DEBUG_CONFIG_FILE}`

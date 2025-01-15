@@ -1,5 +1,4 @@
 import path from "path";
-import { instance } from "../../instantiate";
 import IBMi from "../IBMi";
 
 export const SERVICE_CERTIFICATE = `debug_service.pfx`;
@@ -133,7 +132,7 @@ export function resetDebugServiceDetails() {
   debugServiceDetails = undefined;
 }
 
-export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
+export async function getDebugServiceDetails(connection: IBMi): Promise<DebugServiceDetails> {
   if (!debugServiceDetails) {
     let details = {
       version: `1.0.0`,
@@ -145,40 +144,37 @@ export async function getDebugServiceDetails(): Promise<DebugServiceDetails> {
       })
     };
 
-    const connection = instance.getConnection();
-    if (connection) {
-      const content = connection.getContent();
-      const detailFilePath = path.posix.join((await new DebugConfiguration(connection).load()).getRemoteServiceRoot(), `package.json`);
-      const detailExists = await content.testStreamFile(detailFilePath, "r");
-      if (detailExists) {
-        const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
-        const parsed = JSON.parse(fileContents);
-        details = {
-          ...parsed as DebugServiceDetails,
-          semanticVersion: () => {
-            const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
-            return {
-              major: parts[0],
-              minor: parts[1],
-              patch: parts[2]
-            };
-          }
+    const content = connection.getContent();
+    const detailFilePath = path.posix.join((await new DebugConfiguration(connection).load()).getRemoteServiceRoot(), `package.json`);
+    const detailExists = await content.testStreamFile(detailFilePath, "r");
+    if (detailExists) {
+      const fileContents = (await content.downloadStreamfileRaw(detailFilePath)).toString("utf-8");
+      const parsed = JSON.parse(fileContents);
+      details = {
+        ...parsed as DebugServiceDetails,
+        semanticVersion: () => {
+          const parts = (parsed.version ? String(parsed.version).split('.') : []).map(Number);
+          return {
+            major: parts[0],
+            minor: parts[1],
+            patch: parts[2]
+          };
         }
       }
-      else {
-        details = {
-          version: `1.0.0`,
-          java: `8`,
-          semanticVersion: () => ({
-            major: 1,
-            minor: 0,
-            patch: 0
-          })
-        };
-      }
-
-      debugServiceDetails = details;
     }
+    else {
+      details = {
+        version: `1.0.0`,
+        java: `8`,
+        semanticVersion: () => ({
+          major: 1,
+          minor: 0,
+          patch: 0
+        })
+      };
+    }
+
+    debugServiceDetails = details;
   }
 
   return debugServiceDetails!;

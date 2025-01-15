@@ -167,7 +167,7 @@ export async function setup(connection: IBMi, imported?: ImportedCertificate) {
         await debugConfig.save();
       }
       
-      const javaVersion = (await getDebugServiceDetails()).java;
+      const javaVersion = (await getDebugServiceDetails(connection)).java;
       const javaHome = getJavaHome(connection, javaVersion);
 
       if (!javaHome) {
@@ -267,7 +267,7 @@ export async function sanityCheck(connection: IBMi, content: IBMiContent) {
 
   //Check if java home needs to be updated if the service got updated (e.g: v1 uses Java 8 and v2 uses Java 11)
   const javaHome = debugConfig.get("JAVA_HOME");
-  const expectedJavaHome = getJavaHome(connection, (await getDebugServiceDetails()).java);
+  const expectedJavaHome = getJavaHome(connection, (await getDebugServiceDetails(connection)).java);
   if (javaHome && expectedJavaHome && javaHome !== expectedJavaHome) {
     if (await content.testStreamFile(DEBUG_CONFIG_FILE, "w")) {
       //Automatically make the change if possible

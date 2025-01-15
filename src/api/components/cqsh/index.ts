@@ -1,12 +1,17 @@
 
 import { stat } from "fs/promises";
 import path from "path";
-import { extensions } from "vscode";
-import IBMi from "../../api/IBMi";
-import { ComponentState, IBMiComponent } from "../../api/components/component";
+import IBMi from "../../IBMi";
+import { ComponentState, IBMiComponent } from "../component";
 
 export class CustomQSh implements IBMiComponent {
   static ID = "cqsh";
+  private localAssetPath: string|undefined;
+
+  setLocalAssetPath(newPath: string) {
+    this.localAssetPath = newPath;
+  }
+
   installPath = "";
 
   getIdentification() {
@@ -36,16 +41,17 @@ export class CustomQSh implements IBMiComponent {
   }
 
   async update(connection: IBMi): Promise<ComponentState> {
-    const extensionPath = extensions.getExtension(`halcyontechltd.code-for-ibmi`)!.extensionPath;
+    if (!this.localAssetPath) {
+      return `Error`;
+    }
 
-    const assetPath = path.join(extensionPath, `dist`, this.getFileName());
-    const assetExistsLocally = await exists(assetPath);
+    const assetExistsLocally = await exists(this.localAssetPath);
 
     if (!assetExistsLocally) {
       return `Error`;
     }
 
-    await connection.getContent().uploadFiles([{ local: assetPath, remote: this.installPath }]);
+    await connection.getContent().uploadFiles([{ local: this.localAssetPath, remote: this.installPath }]);
 
     await connection.sendCommand({
       command: `chmod +x ${this.installPath}`,

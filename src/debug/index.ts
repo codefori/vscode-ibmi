@@ -378,15 +378,15 @@ export async function initialize(context: ExtensionContext) {
     async () => {
       activateDebugExtension();
       const connection = instance.getConnection();
-      const content = instance.getContent();
-      if (connection && content && server.debugPTFInstalled()) {
+      if (connection && server.debugPTFInstalled()) {
+        const content = connection.getContent();
         vscode.commands.executeCommand(`setContext`, ptfContext, true);
 
         //Enable debug related commands
         vscode.commands.executeCommand(`setContext`, debugContext, true);
 
         //Enable service entry points related commands
-        vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported());
+        vscode.commands.executeCommand(`setContext`, debugSEPContext, await server.isSEPSupported(connection));
 
         const isDebugManaged = isManaged();
         vscode.commands.executeCommand(`setContext`, `code-for-ibmi:debugManaged`, isDebugManaged);
@@ -434,11 +434,11 @@ type DebugType = "batch" | "sep";
 type DebugObjectType = "*PGM" | "*SRVPGM";
 
 export async function startDebug(instance: Instance, options: DebugOptions) {
-  const connection = instance.getConnection();
-  const config = instance.getConfig();
+  const connection = instance.getConnection()!;
+  const config = connection.getConfig();
   const storage = instance.getStorage();
 
-  const serviceDetails = await getDebugServiceDetails();
+  const serviceDetails = await getDebugServiceDetails(connection);
 
   const port = config?.debugPort;
   const updateProductionFiles = config?.debugUpdateProductionFiles;

@@ -1,5 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
-import { ExtensionContext, commands, languages, window, workspace } from "vscode";
+import { ExtensionContext, commands, extensions, languages, window, workspace } from "vscode";
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -13,7 +13,7 @@ import { parseErrors } from "./api/errors/parser";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { Deployment } from "./filesystems/local/deployment";
 import { CopyToImport } from "./api/components/copyToImport";
-import { CustomQSh } from "./components/cqsh";
+import { CustomQSh } from "./api/components/cqsh";
 import { GetMemberInfo } from "./api/components/getMemberInfo";
 import { GetNewLibl } from "./api/components/getNewLibl";
 import { extensionComponentRegistry } from "./api/components/manager";
@@ -33,6 +33,7 @@ import { initializeSearchView } from "./views/searchView";
 import { SettingsUI } from "./webviews/settings";
 import { registerActionTools } from "./views/actions";
 import IBMi from "./api/IBMi";
+import path from "path";
 
 export async function activate(context: ExtensionContext): Promise<CodeForIBMi> {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -112,7 +113,10 @@ export async function activate(context: ExtensionContext): Promise<CodeForIBMi> 
       commands.executeCommand("code-for-ibmi.refreshProfileView");
     });
 
-  extensionComponentRegistry.registerComponent(context, new CustomQSh());
+  const customQsh = new CustomQSh();
+  customQsh.setLocalAssetPath(path.join(context.extensionPath, `dist`, customQsh.getFileName()));
+
+  extensionComponentRegistry.registerComponent(context, customQsh);
   extensionComponentRegistry.registerComponent(context, new GetNewLibl);
   extensionComponentRegistry.registerComponent(context, new GetMemberInfo());
   extensionComponentRegistry.registerComponent(context, new CopyToImport());

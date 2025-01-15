@@ -183,7 +183,7 @@ export class SettingsUI {
           const debugServiceConfig: Map<string, string> = new Map()
             .set("Debug port", config.debugPort);
 
-          if (await isSEPSupported()) {
+          if (await isSEPSupported(connection)) {
             debugServiceConfig.set("SEP debug port", config.debugSepPort)
           }
           debuggerTab.addParagraph(`<ul>${Array.from(debugServiceConfig.entries()).map(([label, value]) => `<li><code>${label}</code>: ${value}</li>`).join("")}</ul>`);

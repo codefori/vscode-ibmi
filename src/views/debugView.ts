@@ -29,8 +29,9 @@ export function initializeDebugBrowser(context: vscode.ExtensionContext) {
   });
 
   const updateDebugBrowser = async () => {
-    if (instance.getConnection()) {
-      debugTreeViewer.title = `${title} ${(await getDebugServiceDetails()).version}`
+    const connection = instance.getConnection();
+    if (connection) {
+      debugTreeViewer.title = `${title} ${(await getDebugServiceDetails(connection)).version}`
       debugTreeViewer.description = await isDebugEngineRunning() ? vscode.l10n.t(`Online`) : vscode.l10n.t(`Offline`);
     }
     else {

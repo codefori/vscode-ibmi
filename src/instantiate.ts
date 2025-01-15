@@ -109,22 +109,23 @@ export async function loadAllofExtension(context: vscode.ExtensionContext) {
 }
 
 async function updateConnectedBar() {
-  const config = instance.getConnection()?.getConfig();
-  if (config) {
+  const connection = instance.getConnection();
+  if (connection) {
+    const config = connection.getConfig();
     connectedBarItem.text = `$(${config.readOnlyMode ? "lock" : "settings-gear"}) ${config.name}`;
-  }
 
-  const debugRunning = await isDebugEngineRunning();
-  connectedBarItem.tooltip = new vscode.MarkdownString([
-    `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
-    `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
-    `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
-    debugPTFInstalled() ?
-      `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails()).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
-      :
-      `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
-  ].join(`\n\n---\n\n`), true);
-  connectedBarItem.tooltip.isTrusted = true;
+    const debugRunning = await isDebugEngineRunning();
+    connectedBarItem.tooltip = new vscode.MarkdownString([
+      `[$(settings-gear) Settings](command:code-for-ibmi.showAdditionalSettings)`,
+      `[$(file-binary) Actions](command:code-for-ibmi.showActionsMaintenance)`,
+      `[$(terminal) Terminals](command:code-for-ibmi.launchTerminalPicker)`,
+      debugPTFInstalled() ?
+        `[$(${debugRunning ? "bug" : "debug"}) Debugger ${((await getDebugServiceDetails(connection)).version)} (${debugRunning ? "on" : "off"})](command:ibmiDebugBrowser.focus)`
+        :
+        `[$(debug) No debug PTF](https://codefori.github.io/docs/developing/debug/#required-ptfs)`
+    ].join(`\n\n---\n\n`), true);
+    connectedBarItem.tooltip.isTrusted = true;
+  }
 }
 
 async function onConnected() {

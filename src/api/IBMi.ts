@@ -5,7 +5,7 @@ import os from "os";
 import path, { parse as parsePath } from 'path';
 import { IBMiComponent } from "./components/component";
 import { CopyToImport } from "./components/copyToImport";
-import { CustomQSh } from '../components/cqsh';
+import { CustomQSh } from './components/cqsh';
 import { ComponentManager } from "./components/manager";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
