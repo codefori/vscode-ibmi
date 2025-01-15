@@ -1320,16 +1320,7 @@ export default class IBMi {
   }
 
   getIAspName(by: string|number): string|undefined {
-    let asp: AspInfo|undefined;
-    if (typeof by === 'string') {
-      asp = this.iAspInfo.find(asp => asp.name === by);
-    } else {
-      asp = this.iAspInfo.find(asp => asp.id === by);
-    }
-
-    if (asp) {
-      return asp.name;
-    }
+    return getIAspDetail(by)?.name;
   }
 
   getCurrentIAspName() {
