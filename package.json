@@ -2955,7 +2955,7 @@
 	"scripts": {
 		"lint": "eslint src/**/*.js --no-error-on-unmatched-pattern",
 		"pretest": "npm run lint",
-		"test": "vitest",
+		"test": "vitest run",
 		"package": "vsce package",
 		"build": "rm -rf dist && tsc",
 		"vscode:prepublish": "webpack --mode production",

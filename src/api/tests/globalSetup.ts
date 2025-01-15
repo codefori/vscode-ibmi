@@ -22,16 +22,17 @@ beforeAll(async () => {
     port: ENV_CREDS.port
   };
 
-  console.log(creds);
+  // Override this so not to spam the console.
+  conn.appendOutput = (data) => {};
 
   const result = await conn.connect(
     creds,
     {
       message: (type: string, message: string) => {
-        console.log(`${type.padEnd(10)} ${message}`);
+        // console.log(`${type.padEnd(10)} ${message}`);
       },
       progress: ({message}) => {
-        console.log(`PROGRESS: ${message}`);
+        // console.log(`PROGRESS: ${message}`);
       },
       uiErrorHandler: async (connection, code, data) => {
         console.log(`UI ERROR: ${code}: ${data}`);
@@ -40,12 +41,9 @@ beforeAll(async () => {
     }
   );
 
-  console.log(result);
   expect(result).toBeDefined();
+  expect(result.success).toBeTruthy();
 
-  setConnection(conn);
-
-  console.log('hi');
 }, 25000);
 
 afterAll(async () => {
