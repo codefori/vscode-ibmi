@@ -7,6 +7,7 @@ import { handleConnectionResults, messageCallback } from "./views/connection";
 import { VsStorage } from "./config/Storage";
 import { VsCodeConfig } from "./config/Configuration";
 import { ConnectionConfig } from "./api/configuration/ConnectionManager";
+import { EventEmitter } from "stream";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -80,8 +81,14 @@ export default class Instance {
     return withContext("code-for-ibmi:connecting", async () => {
       while (true) {
         let customError: string|undefined;
-        await vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: `Code for IBM i`}, async (p) => {
+        await vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: `Code for IBM i`, cancellable: true}, async (p, cancelToken) => {
           try {
+            const cancelEmitter = new EventEmitter();
+
+            cancelToken.onCancellationRequested(() => {
+              cancelEmitter.emit(`cancel`);
+            });
+
             result = await connection.connect(
               options.data, 
               {
@@ -90,10 +97,10 @@ export default class Instance {
                 uiErrorHandler: handleConnectionResults,
                 progress: (message) => {p.report(message)},
                 message: messageCallback,
+                cancelEmitter
               }, 
               options.reconnecting, 
-              options.reloadServerSettings, 
-              
+              options.reloadServerSettings,
             );
           } catch (e: any) {
             customError = e.message;

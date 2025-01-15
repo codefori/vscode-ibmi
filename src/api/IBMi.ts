@@ -15,6 +15,7 @@ import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager, ConnectionConfig } from './configuration/ConnectionManager';
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
+import { EventEmitter } from 'stream';
 
 export interface MemberParts extends IBMiMember {
   basename: string
@@ -58,7 +59,8 @@ interface ConnectionCallbacks{
   timeoutCallback?: (conn: IBMi) => Promise<void>,
   uiErrorHandler: (connection: IBMi, error: ConnectionErrorCode, data?: any) => Promise<boolean>,
   progress: (detail: {message: string}) => void,
-  message: (type: ConnectionMessageType, message: string) => void
+  message: (type: ConnectionMessageType, message: string) => void,
+  cancelEmitter?: EventEmitter,
 }
 
 export default class IBMi {
@@ -228,9 +230,14 @@ export default class IBMi {
         privateKeyPath: connectionObject.privateKeyPath ? Tools.resolvePath(connectionObject.privateKeyPath) : undefined
       } as node_ssh.Config);
 
-      // cancelToken.onCancellationRequested(() => {
-      //   this.dispose();
-      // });
+      let wasCancelled = false;
+
+      if (callbacks.cancelEmitter) {
+        callbacks.cancelEmitter.once('cancel', () => {
+          wasCancelled = true;
+          this.dispose();
+        });
+      }
 
       this.currentConnectionName = connectionObject.name;
       this.currentHost = connectionObject.host;
@@ -276,9 +283,9 @@ export default class IBMi {
       if (callbacks.timeoutCallback) {
         const timeoutCallbackWrapper = () => {
           // Don't call the callback function if it was based on a user cancellation request.
-          // if (!cancelToken.isCancellationRequested) {
-          //   callbacks.timeoutCallback!(this);
-          // }
+          if (!wasCancelled) {
+            callbacks.timeoutCallback!(this);
+          }
         }
 
         // Register handlers after we might have to abort due to bad configuration.
