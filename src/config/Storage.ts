@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { Storage } from '../api/configuration/Storage';
+import { BaseStorage } from '../api/configuration/Storage';
 
-export class VsStorage extends Storage {
+export class VsStorage extends BaseStorage {
   declare protected readonly globalState;
   private connectionName: string = "";
 

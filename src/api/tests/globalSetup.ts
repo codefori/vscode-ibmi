@@ -1,24 +1,31 @@
 import assert from "assert";
 import IBMi from "../IBMi";
 import { ENV_CREDS } from "./env";
-import { setConnection } from "./state";
-import { vi } from "vitest";
+import { getConnection, setConnection } from "./state";
+import { afterAll, beforeAll, expect } from "vitest";
+import { CodeForIStorage, ConnectionStorage, VirtualStorage } from "../configuration/Storage";
+import { VirtualConfig } from "../configuration/Config";
 
-export default async function setup() {
-  // vi.mock(import(`vscode`), async (importOriginal) => {
-  //   return {}
-  // });
+beforeAll(async () => {
+  const virtualStorage = new VirtualStorage();
+
+  IBMi.GlobalStorage = new CodeForIStorage(virtualStorage);
+  IBMi.connectionManager.configMethod = new VirtualConfig();
 
   const conn = new IBMi();
 
+  const creds = {
+    host: ENV_CREDS.host!,
+    name: `testsystem`,
+    username: ENV_CREDS.user!,
+    password: ENV_CREDS.password!,
+    port: ENV_CREDS.port
+  };
+
+  console.log(creds);
+
   const result = await conn.connect(
-    {
-      host: ENV_CREDS.host!,
-      name: `testsystem`,
-      username: ENV_CREDS.user!,
-      password: ENV_CREDS.password!,
-      port: ENV_CREDS.port
-    },
+    creds,
     {
       message: (type: string, message: string) => {
         console.log(`${type.padEnd(10)} ${message}`);
@@ -33,7 +40,20 @@ export default async function setup() {
     }
   );
 
-  assert.ok(result.success);
+  console.log(result);
+  expect(result).toBeDefined();
 
   setConnection(conn);
-}
+
+  console.log('hi');
+}, 25000);
+
+afterAll(async () => {
+  const conn = getConnection();
+
+  if (conn) {
+    await conn.dispose();
+  } else {
+    assert.fail(`Connection was not set`);
+  }
+})

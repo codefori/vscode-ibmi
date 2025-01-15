@@ -43,7 +43,7 @@ export type CachedServerSettings = {
   maximumArgsLength: number
 } | undefined;
 
-export abstract class Storage {
+export abstract class BaseStorage {
   protected readonly globalState: any;
 
   constructor() {
@@ -67,6 +67,14 @@ export abstract class Storage {
   }
 }
 
+export class VirtualStorage extends BaseStorage {
+  protected readonly globalState: Map<string, any> = new Map<string, any>();
+
+  constructor() {
+    super();
+  }
+}
+
 export class CodeForIStorage {
   // private static instance: GlobalStorage;
 
@@ -80,7 +88,7 @@ export class CodeForIStorage {
   //   return this.instance;
   // }
 
-  constructor(private internalStorage: Storage) {}
+  constructor(private internalStorage: BaseStorage) {}
 
   protected getStorageKey(key: string): string {
     return key;
@@ -161,7 +169,7 @@ export class CodeForIStorage {
 
 export class ConnectionStorage {
   private connectionName: string = "";
-  constructor(private internalStorage: Storage) {}
+  constructor(private internalStorage: BaseStorage) {}
 
   get ready(): boolean {
     if (this.connectionName) {
