@@ -496,7 +496,6 @@ export default class IBMiContent {
     const nameFilter = parseFilter(filters.object, filters.filterType);
     const objectFilter = filters.object && (nameFilter.noFilter || singleEntry) && filters.object !== `*` ? this.ibmi.upperCaseName(filters.object) : undefined;
 
-    const typeFilter = filters.types && filters.types.length > 1 ? (t: string) => filters.types?.includes(t) : undefined;
     const type = filters.types && filters.types.length === 1 && filters.types[0] !== '*' ? filters.types[0] : '*ALL';
 
     const sourceFilesOnly = filters.types && filters.types.length === 1 && filters.types.includes(`*SRCPF`);
@@ -615,7 +614,9 @@ export default class IBMiContent {
       owner: object.OWNER,
       asp: this.ibmi.aspInfo[Number(object.IASP_NUMBER)]
     } as IBMiObject))
-      .filter(object => !typeFilter || typeFilter(object.type))
+      .filter(object => !filters.types || filters.types.length < 1 
+                        || (filters.types.includes('*SRCPF') && object.sourceFile)
+                        || filters.types.includes(object.type))
       .filter(object => objectFilter || nameFilter.test(object.name))
       .sort((a, b) => {
         if (a.library.localeCompare(b.library) != 0) {
