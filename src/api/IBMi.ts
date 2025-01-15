@@ -22,7 +22,7 @@ export interface MemberParts extends IBMiMember {
 }
 
 export type ConnectionMessageType = 'info' | 'warning' | 'error';
-export type ConnectionErrorCode = `shell_config`|`home_directory_creation`|`QCPTOIMPF_exists`|`QCPFRMIMPF_exists`|`default_not_bash`|`invalid_bashrc`|`invalid_temp_lib`|`no_auto_conv_ebcdic`|`not_loaded_debug_config`|`no_sql_runner`|`ccsid_warning`;
+export type ConnectionErrorCode = `shell_config` | `home_directory_creation` | `QCPTOIMPF_exists` | `QCPFRMIMPF_exists` | `default_not_bash` | `invalid_bashrc` | `invalid_temp_lib` | `no_auto_conv_ebcdic` | `not_loaded_debug_config` | `no_sql_runner` | `ccsid_warning`;
 
 export interface ConnectionResult {
   success: boolean,
@@ -54,11 +54,11 @@ const remoteApps = [ // All names MUST also be defined as key in 'remoteFeatures
 ];
 
 type DisconnectCallback = (conn: IBMi) => Promise<void>;
-interface ConnectionCallbacks{
+interface ConnectionCallbacks {
   onConnectedOperations?: Function[],
   timeoutCallback?: (conn: IBMi) => Promise<void>,
   uiErrorHandler: (connection: IBMi, error: ConnectionErrorCode, data?: any) => Promise<boolean>,
-  progress: (detail: {message: string}) => void,
+  progress: (detail: { message: string }) => void,
   message: (type: ConnectionMessageType, message: string) => void,
   cancelEmitter?: EventEmitter,
 }
@@ -678,7 +678,7 @@ export default class IBMi {
                   reason = "/QOpenSys/pkgs/bin is not in the right position in your $PATH shell environment variable";
                   missingPath = "/QOpenSys/pkgs/bin"
                 }
-                
+
                 if (reason) {
                   callbacks.uiErrorHandler(this, `invalid_bashrc`, { missingPath, bashrcFile, bashrcExists, reason });
                 }
