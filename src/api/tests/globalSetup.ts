@@ -44,6 +44,7 @@ beforeAll(async () => {
   expect(result).toBeDefined();
   expect(result.success).toBeTruthy();
 
+  setConnection(conn);
 }, 25000);
 
 afterAll(async () => {
