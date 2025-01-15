@@ -2,9 +2,9 @@
 import AdmZip from 'adm-zip';
 import path, { parse } from 'path';
 import vscode from 'vscode';
-import { DebugConfiguration } from '../api/configuration/DebugConfiguration';
-import IBMi from '../api/IBMi';
-import { instance } from '../instantiate';
+import { DebugConfiguration } from '../../api/configuration/DebugConfiguration';
+import IBMi from '../../api/IBMi';
+import { instance } from '../../instantiate';
 
 export class HelpView implements vscode.TreeDataProvider<vscode.TreeItem> {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();

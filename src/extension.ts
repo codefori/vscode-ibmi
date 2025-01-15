@@ -22,16 +22,16 @@ import { LocalActionCompletionItemProvider } from "./languages/actions/completio
 import * as Sandbox from "./sandbox";
 import { initialise } from "./testing";
 import { CodeForIBMi, ConnectionData } from "./typings";
-import { initializeConnectionBrowser } from "./views/ConnectionBrowser";
-import { LibraryListProvider } from "./views/LibraryListView";
-import { ProfilesView } from "./views/ProfilesView";
-import { initializeDebugBrowser } from "./views/debugView";
-import { HelpView } from "./views/helpView";
-import { initializeIFSBrowser } from "./views/ifsBrowser";
-import { initializeObjectBrowser } from "./views/objectBrowser";
-import { initializeSearchView } from "./views/searchView";
+import { initializeConnectionBrowser } from "./ui/views/ConnectionBrowser";
+import { LibraryListProvider } from "./ui/views/LibraryListView";
+import { ProfilesView } from "./ui/views/ProfilesView";
+import { initializeDebugBrowser } from "./ui/views/debugView";
+import { HelpView } from "./ui/views/helpView";
+import { initializeIFSBrowser } from "./ui/views/ifsBrowser";
+import { initializeObjectBrowser } from "./ui/views/objectBrowser";
+import { initializeSearchView } from "./ui/views/searchView";
 import { SettingsUI } from "./webviews/settings";
-import { registerActionTools } from "./views/actions";
+import { registerActionTools } from "./ui/actions";
 import IBMi from "./api/IBMi";
 import path from "path";
 

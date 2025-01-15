@@ -1,11 +1,11 @@
 import vscode from 'vscode';
-import { ConnectionData, Server } from '../typings';
+import { ConnectionData, Server } from '../../typings';
 
-import { instance } from '../instantiate';
-import { Login } from '../webviews/login';
-import IBMi from '../api/IBMi';
-import { ConnectionConfig, ConnectionManager } from '../api/configuration/ConnectionManager';
-import { deleteStoredPassword, getStoredPassword, setStoredPassword } from '../config/passwords';
+import { instance } from '../../instantiate';
+import { Login } from '../../webviews/login';
+import IBMi from '../../api/IBMi';
+import { ConnectionConfig, ConnectionManager } from '../../api/configuration/ConnectionManager';
+import { deleteStoredPassword, getStoredPassword, setStoredPassword } from '../../config/passwords';
 
 type CopyOperationItem = {
   label: string

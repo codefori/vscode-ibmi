@@ -1,11 +1,11 @@
 import vscode from "vscode";
-import { Tools } from "../api/Tools";
-import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists } from "../debug/certificates";
-import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../api/configuration/DebugConfiguration";
-import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../debug/server";
-import { instance } from "../instantiate";
-import { withContext } from "./tools";
-import { BrowserItem } from "./types";
+import { Tools } from "../../api/Tools";
+import { checkClientCertificate, debugKeyFileExists, remoteCertificatesExists } from "../../debug/certificates";
+import { DebugConfiguration, getDebugServiceDetails, SERVICE_CERTIFICATE } from "../../api/configuration/DebugConfiguration";
+import { DebugJob, getDebugServerJob, getDebugServiceJob, isDebugEngineRunning, readActiveJob, readJVMInfo, startServer, startService, stopServer, stopService } from "../../debug/server";
+import { instance } from "../../instantiate";
+import { withContext } from "../tools";
+import { BrowserItem } from "../types";
 
 const title = "IBM i debugger";
 type Certificates = {

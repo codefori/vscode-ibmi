@@ -38,5 +38,5 @@ export interface DeploymentParameters {
 }
 
 export * from "./api/types";
-export * from "./views/types";
+export * from "./ui/types";
 export * from "./filesystems/local/types";

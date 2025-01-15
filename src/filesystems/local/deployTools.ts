@@ -4,7 +4,7 @@ import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
 import { LocalLanguageActions } from './LocalLanguageActions';
 import { Deployment } from './deployment';
-import { getGitAPI, md5Hash } from '../../views/tools';
+import { getGitAPI, md5Hash } from '../../ui/tools';
 import { DeploymentMethod } from '../../api/types';
 import { DeploymentParameters } from '../../typings';
 

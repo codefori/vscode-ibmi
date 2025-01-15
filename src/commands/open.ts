@@ -4,7 +4,7 @@ import Instance from "../Instance";
 import { Tools } from "../api/Tools";
 import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import path from "path";
-import { findExistingDocument, findExistingDocumentUri } from "../views/tools";
+import { findExistingDocument, findExistingDocumentUri } from "../ui/tools";
 import IBMi from "../api/IBMi";
 import { DefaultOpenMode } from "../api/configuration/ConnectionManager";
 

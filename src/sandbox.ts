@@ -3,7 +3,7 @@ import querystring from "querystring";
 import { commands, ExtensionContext, l10n, Uri, window } from "vscode";
 import { instance } from "./instantiate";
 import { ConnectionData } from "./typings";
-import { getGitAPI } from "./views/tools";
+import { getGitAPI } from "./ui/tools";
 import IBMi from "./api/IBMi";
 
 export async function registerUriHandler(context: ExtensionContext) {

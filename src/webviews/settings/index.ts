@@ -8,7 +8,7 @@ import { isSEPSupported } from "../../debug/server";
 import { extensionComponentRegistry } from "../../api/components/manager";
 import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
-import { withContext } from "../../views/tools";
+import { withContext } from "../../ui/tools";
 import IBMi from "../../api/IBMi";
 import { ConnectionConfig, ConnectionManager } from "../../api/configuration/ConnectionManager";
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";

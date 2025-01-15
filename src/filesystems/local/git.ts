@@ -3,7 +3,7 @@ import { getBranchLibraryName } from "./env";
 import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
-import { getGitAPI } from "../../views/tools";
+import { getGitAPI } from "../../ui/tools";
 import { ConnectionConfig } from "../../api/configuration/ConnectionManager";
 
 const lastBranch: { [workspaceUri: string]: string } = {};

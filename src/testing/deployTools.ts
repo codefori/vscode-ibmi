@@ -10,8 +10,8 @@ import { Tools } from "../api/Tools";
 import { DeployTools } from "../filesystems/local/deployTools";
 import { instance } from "../instantiate";
 import { Action, DeploymentMethod } from "../typings";
-import { md5Hash } from "../views/tools";
-import { runAction } from "../views/actions";
+import { md5Hash } from "../ui/tools";
+import { runAction } from "../ui/actions";
 
 type FileInfo = {
     md5: string

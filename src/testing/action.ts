@@ -11,7 +11,7 @@ import { getMemberUri, getUriFromPath } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
 import { Action, IBMiObject } from "../typings";
 import { File, Folder, createFolder } from "./deployTools";
-import { runAction } from "../views/actions";
+import { runAction } from "../ui/actions";
 
 export const helloWorldProject: Folder = {
   name: `DeleteMe_${Tools.makeid()}`,

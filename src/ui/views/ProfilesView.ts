@@ -1,11 +1,11 @@
 
 import vscode, { l10n, window } from 'vscode';
-import { GetNewLibl } from '../api/components/getNewLibl';
-import { instance } from '../instantiate';
-import { Profile } from '../typings';
-import { CommandProfileUi } from '../webviews/commandProfile';
-import IBMi from '../api/IBMi';
-import { ConnectionProfile } from '../api/configuration/ConnectionManager';
+import { GetNewLibl } from '../../api/components/getNewLibl';
+import { instance } from '../../instantiate';
+import { Profile } from '../../typings';
+import { CommandProfileUi } from '../../webviews/commandProfile';
+import IBMi from '../../api/IBMi';
+import { ConnectionProfile } from '../../api/configuration/ConnectionManager';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();
