@@ -4,10 +4,6 @@ import { ConnectionData, DeploymentMethod } from '../typings';
 import { FilterType } from '../api/Filter';
 import { Config } from "../api/configuration/Config";
 
-export type SourceDateMode = "edit" | "diff";
-export type DefaultOpenMode = "browse" | "edit";
-export type ReconnectMode = "always" | "never" | "ask";
-
 export function onCodeForIBMiConfigurationChange<T>(props: string | string[], todo: (value: vscode.ConfigurationChangeEvent) => void) {
   const keys = (Array.isArray(props) ? props : Array.of(props)).map(key => `code-for-ibmi.${key}`);
   return vscode.workspace.onDidChangeConfiguration(async event => {

@@ -7,9 +7,10 @@ import { SortOptions } from "../api/IBMiContent";
 import { Search } from "../api/Search";
 import { Tools } from "../api/Tools";
 import { instance } from "../instantiate";
-import { BrowserItem, BrowserItemParameters, FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../typings";
+import { FocusOptions, IFSFile, IFS_BROWSER_MIMETYPE, OBJECT_BROWSER_MIMETYPE, SearchHit, SearchResults, WithPath } from "../typings";
 import { fileToPath, findUriTabs, ifsFileToToolTip } from "./tools";
 import IBMi from "../api/IBMi";
+import { BrowserItem, BrowserItemParameters } from "./types";
 
 const URI_LIST_MIMETYPE = "text/uri-list";
 const URI_LIST_SEPARATOR = "\r\n";

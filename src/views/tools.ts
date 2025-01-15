@@ -2,7 +2,7 @@
 import Crypto from 'crypto';
 import { readFileSync } from "fs";
 import vscode, { MarkdownString } from "vscode";
-import { API, GitExtension } from "../api/import/git";
+import { API, GitExtension } from "../filesystems/local/gitApi";
 import { Tools } from '../api/Tools';
 import { IBMiObject, IBMiMember, IFSFile } from '../typings';
 import IBMi from '../api/IBMi';

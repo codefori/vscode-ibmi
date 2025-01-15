@@ -1,9 +1,12 @@
 
 import os from "os";
-import { SourceDateMode } from "../../config/Configuration";
-import { ConnectionData, DeploymentMethod } from "../../typings";
 import { FilterType } from "../Filter";
 import { Config, VirtualConfig } from "./Config";
+import { DeploymentMethod, ConnectionData } from "../types";
+
+export type SourceDateMode = "edit" | "diff";
+export type DefaultOpenMode = "browse" | "edit";
+export type ReconnectMode = "always" | "never" | "ask";
 
 export interface ConnectionConfig extends ConnectionProfile {
   host: string;

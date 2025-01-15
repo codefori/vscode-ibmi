@@ -7,13 +7,14 @@ import { getBranchLibraryName, getEnvConfig } from '../filesystems/local/env';
 import { getGitBranch } from '../filesystems/local/git';
 import Instance from '../Instance';
 import { parseFSOptions } from '../filesystems/qsys/QSysFs';
-import { Action, BrowserItem, DeploymentMethod, Variable } from '../typings';
+import { Action, DeploymentMethod, Variable } from '../typings';
 
 import vscode, { CustomExecution, Pseudoterminal, TaskGroup, TaskRevealKind, WorkspaceFolder, commands, tasks } from 'vscode';
 import { CustomUI } from '../webviews/CustomUI';
 import { Tools } from '../api/Tools';
 import { CompileTools } from '../api/CompileTools';
 import IBMi from '../api/IBMi';
+import { BrowserItem } from './types';
 
 interface CommandObject {
   object: string

@@ -2,10 +2,11 @@ import createIgnore, { Ignore } from 'ignore';
 import path, { basename } from 'path';
 import vscode, { Uri, WorkspaceFolder } from 'vscode';
 import { instance } from '../../instantiate';
-import { DeploymentMethod, DeploymentParameters } from '../../typings';
 import { LocalLanguageActions } from './LocalLanguageActions';
 import { Deployment } from './deployment';
 import { getGitAPI, md5Hash } from '../../views/tools';
+import { DeploymentMethod } from '../../api/types';
+import { DeploymentParameters } from '../../typings';
 
 type ServerFileChanges = { uploads: Uri[], relativeRemoteDeletes: string[] };
 

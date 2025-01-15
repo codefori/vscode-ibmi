@@ -2,9 +2,10 @@ import path from "path";
 import { commands, TreeItem, Uri, WorkspaceFolder, window, Disposable } from "vscode";
 import { refreshDiagnosticsFromServer } from "../views/diagnostics";
 import Instance from "../Instance";
-import { BrowserItem, Action, DeploymentMethod } from "../typings";
+import { Action, DeploymentMethod } from "../typings";
 import { runAction } from "../views/actions";
 import IBMi from "../api/IBMi";
+import { BrowserItem } from "../views/types";
 
 export function registerActionsCommands(instance: Instance): Disposable[] {
   return [

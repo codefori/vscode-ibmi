@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as os from 'os';
-import { ConnectionData } from "../typings";
+import { ConnectionData } from './types';
 
 function hasOwnProperty<O extends object, K extends PropertyKey>(
   obj: O,

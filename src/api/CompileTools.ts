@@ -1,7 +1,7 @@
 
-import { Variable, RemoteCommand, CommandResult, StandardIO } from '../typings';
 import IBMi from './IBMi';
 import { Tools } from './Tools';
+import { Variable, RemoteCommand, CommandResult, StandardIO } from './types';
 
 export interface ILELibrarySettings {
   currentLibrary: string;

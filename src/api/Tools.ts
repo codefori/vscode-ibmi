@@ -1,7 +1,7 @@
 
 import os from "os";
 import path from "path";
-import { IBMiMessage, IBMiMessages, QsysPath } from '../typings';
+import { IBMiMessage, IBMiMessages, QsysPath } from './types';
 
 export namespace Tools {
   export class SqlError extends Error {

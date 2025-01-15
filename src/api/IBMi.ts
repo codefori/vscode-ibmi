@@ -7,7 +7,6 @@ import { IBMiComponent } from "./components/component";
 import { CopyToImport } from "./components/copyToImport";
 import { CustomQSh } from '../components/cqsh';
 import { ComponentManager } from "./components/manager";
-import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from "../typings";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
 import { CachedServerSettings, CodeForIStorage } from './configuration/Storage';
@@ -15,6 +14,7 @@ import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
 import { ConnectionManager, ConnectionConfig } from './configuration/ConnectionManager';
+import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 
 export interface MemberParts extends IBMiMember {
   basename: string

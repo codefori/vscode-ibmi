@@ -2,9 +2,9 @@ import Crypto from "crypto";
 import vscode from "vscode";
 import { DiffComputer } from "vscode-diff";
 
-import { SourceDateMode } from "../../config/Configuration";
 import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
+import { SourceDateMode } from "../../api/configuration/ConnectionManager";
 
 const editedTodayColor = new vscode.ThemeColor(`gitDecoration.modifiedResourceForeground`);
 const seachGutterColor = new vscode.ThemeColor(`gitDecoration.addedResourceForeground`);

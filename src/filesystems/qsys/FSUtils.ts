@@ -1,8 +1,8 @@
 import path from "path";
 import vscode, { l10n } from "vscode";
-import { ReconnectMode } from "../../config/Configuration";
 import { findUriTabs } from "../../views/tools";
 import IBMi from "../../api/IBMi";
+import { ReconnectMode } from "../../api/configuration/ConnectionManager";
 
 /**
  * Called when a member/streamfile is left open when VS Code is closed and re-opened to reconnect (or not) to the previous IBM i, based on the `autoReconnect` global configuration value.

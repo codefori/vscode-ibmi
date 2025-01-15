@@ -1,5 +1,5 @@
 import { RelativePattern, window, workspace, WorkspaceFolder } from "vscode";
-import { Action } from "../../typings";
+import { Action } from "../../api/types";
 
 export async function getLocalActions(currentWorkspace: WorkspaceFolder) {
   const actions: Action[] = [];

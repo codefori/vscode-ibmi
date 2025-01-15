@@ -2,7 +2,6 @@ import fs, { existsSync } from "fs";
 import os from "os";
 import path, { basename, dirname } from "path";
 import vscode from "vscode";
-import { DefaultOpenMode } from "../config/Configuration";
 import { parseFilter, singleGenericName } from "../api/Filter";
 import IBMi, { MemberParts } from "../api/IBMi";
 import { SortOptions, SortOrder } from "../api/IBMiContent";
@@ -10,10 +9,11 @@ import { Search } from "../api/Search";
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
-import { BrowserItem, BrowserItemParameters, CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
+import { CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../typings";
 import { editFilter } from "../webviews/filters";
 import { findUriTabs, memberToToolTip, objectToToolTip, sourcePhysicalFileToToolTip } from "./tools";
-import { ObjectFilters } from "../api/configuration/ConnectionManager";
+import { DefaultOpenMode, ObjectFilters } from "../api/configuration/ConnectionManager";
+import { BrowserItem, BrowserItemParameters } from "./types";
 
 const URI_LIST_SEPARATOR = "\r\n";
 

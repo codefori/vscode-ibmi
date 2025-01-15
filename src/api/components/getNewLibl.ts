@@ -1,6 +1,5 @@
 import { posix } from "path";
 import IBMi from "../IBMi";
-import { instance } from "../../instantiate";
 import { ComponentState, IBMiComponent } from "./component";
 
 export class GetNewLibl implements IBMiComponent {
@@ -15,7 +14,7 @@ export class GetNewLibl implements IBMiComponent {
 
   update(connection: IBMi): Promise<ComponentState> {
     const config = connection.config!
-    const content = instance.getContent();
+    const content = connection.getContent();
     return connection.withTempDirectory(async (tempDir): Promise<ComponentState> => {
       const tempSourcePath = posix.join(tempDir, `getnewlibl.sql`);
 

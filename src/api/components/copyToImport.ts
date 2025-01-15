@@ -1,6 +1,6 @@
 import IBMi from "../IBMi";
 import { Tools } from "../Tools";
-import { WrapResult } from "../../typings";
+import { WrapResult } from "../types";
 import { ComponentState, IBMiComponent } from "./component";
 
 export class CopyToImport implements IBMiComponent {
