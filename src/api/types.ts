@@ -1,4 +1,4 @@
-import { ObjectFilters } from "./configuration/ConnectionManager";
+import { ObjectFilters } from "./configuration/config/ConnectionManager";
 
 export type DeploymentMethod = "all" | "staged" | "unstaged" | "changed" | "compare";
 

@@ -1,8 +1,8 @@
 
 import os from "os";
-import { FilterType } from "../Filter";
-import { Config, VirtualConfig } from "./Config";
-import { DeploymentMethod, ConnectionData } from "../types";
+import { FilterType } from "../../Filter";
+import { Config, VirtualConfig } from "./VirtualConfig";
+import { DeploymentMethod, ConnectionData } from "../../types";
 
 export type SourceDateMode = "edit" | "diff";
 export type DefaultOpenMode = "browse" | "edit";

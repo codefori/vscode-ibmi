@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { BaseStorage } from '../api/configuration/Storage';
+import { BaseStorage } from '../api/configuration/storage/BaseStorage';
 
 export class VsStorage extends BaseStorage {
   declare protected readonly globalState;

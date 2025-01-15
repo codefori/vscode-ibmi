@@ -1,8 +1,6 @@
 
 import * as vscode from 'vscode';
-import { ConnectionData, DeploymentMethod } from '../typings';
-import { FilterType } from '../api/Filter';
-import { Config } from "../api/configuration/Config";
+import { Config } from "../api/configuration/config/VirtualConfig";
 
 export function onCodeForIBMiConfigurationChange<T>(props: string | string[], todo: (value: vscode.ConfigurationChangeEvent) => void) {
   const keys = (Array.isArray(props) ? props : Array.of(props)).map(key => `code-for-ibmi.${key}`);

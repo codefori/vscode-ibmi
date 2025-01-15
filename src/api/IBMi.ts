@@ -9,11 +9,11 @@ import { CustomQSh } from './components/cqsh';
 import { ComponentManager } from "./components/manager";
 import { CompileTools } from "./CompileTools";
 import IBMiContent from "./IBMiContent";
-import { CachedServerSettings, CodeForIStorage } from './configuration/Storage';
+import { CachedServerSettings, CodeForIStorage } from './configuration/storage/CodeForIStorage';
 import { Tools } from './Tools';
 import * as configVars from './configVars';
 import { DebugConfiguration } from "./configuration/DebugConfiguration";
-import { ConnectionManager, ConnectionConfig } from './configuration/ConnectionManager';
+import { ConnectionManager, ConnectionConfig } from './configuration/config/ConnectionManager';
 import { CommandData, CommandResult, ConnectionData, IBMiMember, RemoteCommand, WrapResult } from './types';
 import { EventEmitter } from 'stream';
 

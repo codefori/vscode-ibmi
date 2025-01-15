@@ -1,13 +1,14 @@
 import * as vscode from "vscode";
 import { ConnectionData, IBMiEvent } from "./typings";
 import IBMi, { ConnectionResult } from "./api/IBMi";
-import { CodeForIStorage, ConnectionStorage } from "./api/configuration/Storage";
+import { CodeForIStorage } from "./api/configuration/storage/CodeForIStorage";
 import { withContext } from "./ui/tools";
 import { handleConnectionResults, messageCallback } from "./ui/connection";
 import { VsStorage } from "./config/Storage";
 import { VsCodeConfig } from "./config/Configuration";
-import { ConnectionConfig } from "./api/configuration/ConnectionManager";
+import { ConnectionConfig } from "./api/configuration/config/ConnectionManager";
 import { EventEmitter } from "stream";
+import { ConnectionStorage } from "./api/configuration/storage/ConnectionStorage";
 
 type IBMiEventSubscription = {
   func: Function,
@@ -35,7 +36,6 @@ export default class Instance {
   constructor(context: vscode.ExtensionContext) {
     const vscodeStorage = new VsStorage(context);
     this.storage = new ConnectionStorage(vscodeStorage);
-    
     IBMi.GlobalStorage = new CodeForIStorage(vscodeStorage);
     IBMi.connectionManager.configMethod = new VsCodeConfig();
 

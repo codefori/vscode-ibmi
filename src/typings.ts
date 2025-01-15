@@ -3,7 +3,7 @@ import Instance from "./Instance";
 import { Tools } from "./api/Tools";
 import { DeployTools } from "./filesystems/local/deployTools";
 import { ComponentRegistry } from './api/components/manager';
-import { ObjectFilters } from './api/configuration/ConnectionManager';
+import { ObjectFilters } from './api/configuration/config/ConnectionManager';
 import { DeploymentMethod, FileError, IBMiMember, IBMiObject, WithPath } from "./api/types";
 import { Ignore } from "ignore";
 import { WorkspaceFolder } from "vscode";

@@ -1,7 +1,7 @@
 import { CustomUI } from "../CustomUI";
 import { Tools } from "../../api/Tools";
 import { instance } from "../../instantiate";
-import { ObjectFilters } from "../../api/configuration/ConnectionManager";
+import { ObjectFilters } from "../../api/configuration/config/ConnectionManager";
 import IBMi from "../../api/IBMi";
 
 export async function editFilter(filter?: ObjectFilters, copy = false) {

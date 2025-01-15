@@ -6,7 +6,7 @@ import { getUriFromPath, parseFSOptions } from "../filesystems/qsys/QSysFs";
 import path from "path";
 import { findExistingDocument, findExistingDocumentUri } from "../ui/tools";
 import IBMi from "../api/IBMi";
-import { DefaultOpenMode } from "../api/configuration/ConnectionManager";
+import { DefaultOpenMode } from "../api/configuration/config/ConnectionManager";
 
 const CLEAR_RECENT = `$(trash) Clear recently opened`;
 const CLEAR_CACHED = `$(trash) Clear cached`;

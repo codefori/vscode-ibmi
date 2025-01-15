@@ -12,7 +12,7 @@ import { instance } from "../../instantiate";
 import { CommandResult, FilteredItem, FocusOptions, IBMiMember, IBMiObject, MemberItem, OBJECT_BROWSER_MIMETYPE, ObjectItem, WithLibrary } from "../../typings";
 import { editFilter } from "../../webviews/filters";
 import { findUriTabs, memberToToolTip, objectToToolTip, sourcePhysicalFileToToolTip } from "../tools";
-import { DefaultOpenMode, ObjectFilters } from "../../api/configuration/ConnectionManager";
+import { DefaultOpenMode, ObjectFilters } from "../../api/configuration/config/ConnectionManager";
 import { BrowserItem, BrowserItemParameters } from "../types";
 
 const URI_LIST_SEPARATOR = "\r\n";

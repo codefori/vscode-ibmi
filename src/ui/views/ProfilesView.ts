@@ -5,7 +5,7 @@ import { instance } from '../../instantiate';
 import { Profile } from '../../typings';
 import { CommandProfileUi } from '../../webviews/commandProfile';
 import IBMi from '../../api/IBMi';
-import { ConnectionProfile } from '../../api/configuration/ConnectionManager';
+import { ConnectionProfile } from '../../api/configuration/config/ConnectionManager';
 
 export class ProfilesView {
   private _onDidChangeTreeData = new vscode.EventEmitter<vscode.TreeItem | undefined | null | void>();

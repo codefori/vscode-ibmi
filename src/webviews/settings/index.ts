@@ -10,7 +10,7 @@ import { instance } from "../../instantiate";
 import { ConnectionData, Server } from '../../typings';
 import { withContext } from "../../ui/tools";
 import IBMi from "../../api/IBMi";
-import { ConnectionConfig, ConnectionManager } from "../../api/configuration/ConnectionManager";
+import { ConnectionConfig, ConnectionManager } from "../../api/configuration/config/ConnectionManager";
 import { deleteStoredPassword, getStoredPassword, setStoredPassword } from "../../config/passwords";
 
 const EDITING_CONTEXT = `code-for-ibmi:editingConnection`;

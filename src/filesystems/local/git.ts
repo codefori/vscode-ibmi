@@ -4,7 +4,7 @@ import { instance } from "../../instantiate";
 import IBMi from "../../api/IBMi";
 import IBMiContent from "../../api/IBMiContent";
 import { getGitAPI } from "../../ui/tools";
-import { ConnectionConfig } from "../../api/configuration/ConnectionManager";
+import { ConnectionConfig } from "../../api/configuration/config/ConnectionManager";
 
 const lastBranch: { [workspaceUri: string]: string } = {};
 
