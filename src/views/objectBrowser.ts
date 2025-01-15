@@ -960,8 +960,6 @@ Do you want to replace it?`, item.name), skipAllLabel, overwriteLabel, overwrite
       }
 
       if (parameters.path) {
-        const config = getConfig();
-
         const pathParts = parameters.path.split(`/`);
         if (pathParts[1] !== `*ALL`) {
           const selectedAsp = connection.getCurrentIAspName();
@@ -1350,7 +1348,6 @@ function storeMemberList(path: string, list: string[]) {
 }
 
 async function doSearchInSourceFile(searchTerm: string, path: string, filter?: ConnectionConfiguration.ObjectFilters) {
-  const content = getContent();
   const [library, sourceFile] = path.split(`/`);
   try {
     await vscode.window.withProgress({
