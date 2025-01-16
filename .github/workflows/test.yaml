@@ -16,9 +16,9 @@ jobs:
         with:
           node-version: 18
       - run: npm ci
+      - run: npm run test
         env:
           VITE_SERVER: ${{ secrets.VITE_SERVER }}
           VITE_DB_USER: ${{ secrets.VITE_DB_USER }}
           VITE_DB_PASS: ${{ secrets.VITE_DB_PASS }}
           VITE_DB_PORT: ${{ secrets.VITE_DB_PORT }}
-      - run: npm run test
