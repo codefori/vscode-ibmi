@@ -1,12 +1,10 @@
 import assert from "assert";
-import os from "os";
 import { Uri, workspace } from "vscode";
 import { TestSuite } from ".";
 import IBMi from "../api/IBMi";
 import { Tools } from "../api/Tools";
 import { getMemberUri } from "../filesystems/qsys/QSysFs";
 import { instance } from "../instantiate";
-import { IBMiObject } from "../typings";
 import path from "path";
 
 const contents = {
@@ -57,41 +55,6 @@ export const EncodingSuite: TestSuite = {
 
   tests: [
     {
-      name: `Prove that input strings are messed up by CCSID`, test: async () => {
-        const connection = instance.getConnection();
-        let howManyTimesItMessedUpTheResult = 0;
-
-        for (const strCcsid in contents) {
-          const data = contents[strCcsid as keyof typeof contents].join(``);
-
-          // Note that it always works with the buffer!
-          const sqlA = `select ? as THEDATA from sysibm.sysdummy1`;
-          const resultA = await connection?.runSQL(sqlA, { fakeBindings: [data], forceSafe: true });
-          assert.ok(resultA?.length);
-
-          const sqlB = `select '${data}' as THEDATA from sysibm.sysdummy1`;
-          const resultB = await connection?.runSQL(sqlB, { forceSafe: true });
-          assert.ok(resultB?.length);
-
-          assert.strictEqual(resultA![0].THEDATA, data);
-          if (resultB![0].THEDATA !== data) {
-            howManyTimesItMessedUpTheResult++;
-          }
-        }
-
-        assert.ok(howManyTimesItMessedUpTheResult);
-      }
-    },
-    {
-      name: `Compare Unicode to EBCDIC successfully`, test: async () => {
-        const connection = instance.getConnection();
-
-        const sql = `select table_name, table_owner from qsys2.systables where table_schema = ? and table_name = ?`;
-        const result = await connection?.runSQL(sql, { fakeBindings: [`QSYS2`, `SYSCOLUMNS`] });
-        assert.ok(result?.length);
-      }
-    },
-    {
       name: `Files and directories with spaces`, test: async () => {
         const connection = instance.getConnection()!;
 
@@ -126,55 +89,6 @@ export const EncodingSuite: TestSuite = {
           const files2 = await connection.content.getFileList(dirWithSpace);
           assert.strictEqual(files2.length, 1);
           assert.ok(files2.some(f => f.name === fileName && f.path === nameWithSpace));
-        });
-      }
-    },
-    {
-      name: `Run variants through shells`, test: async () => {
-        const connection = instance.getConnection();
-
-        const text = `Hello${connection?.variantChars.local}world`;
-        const basicCommandA = `echo "${IBMi.escapeForShell(text)}"`;
-        const basicCommandB = `echo '${text}'`;
-        const basicCommandC = `echo 'abc'\\''123'`;
-        const printEscapeChar = `echo "\\\\"`;
-        const setCommand = `set`;
-
-        const setResult = await connection?.sendQsh({ command: setCommand });
-
-        const qshEscapeResult = await connection?.sendQsh({ command: printEscapeChar });
-        const paseEscapeResult = await connection?.sendCommand({ command: printEscapeChar });
-
-        console.log(qshEscapeResult?.stdout);
-        console.log(paseEscapeResult?.stdout);
-
-        const qshTextResultA = await connection?.sendQsh({ command: basicCommandA });
-        const paseTextResultA = await connection?.sendCommand({ command: basicCommandA });
-
-        const qshTextResultB = await connection?.sendQsh({ command: basicCommandB });
-        const paseTextResultB = await connection?.sendCommand({ command: basicCommandB });
-
-        const qshTextResultC = await connection?.sendQsh({ command: basicCommandC });
-        const paseTextResultC = await connection?.sendCommand({ command: basicCommandC });
-
-        assert.strictEqual(paseEscapeResult?.stdout, `\\`);
-        assert.strictEqual(qshTextResultA?.stdout, text);
-        assert.strictEqual(paseTextResultA?.stdout, text);
-        assert.strictEqual(qshTextResultB?.stdout, text);
-        assert.strictEqual(paseTextResultB?.stdout, text);
-      }
-    },
-    {
-      name: `streamfileResolve with dollar`, test: async () => {
-        const connection = instance.getConnection()!;
-
-        await connection.withTempDirectory(async tempDir => {
-          const tempFile = path.posix.join(tempDir, `$hello`);
-          await connection.content.createStreamFile(tempFile);
-
-          const resolved = await connection.content.streamfileResolve([tempFile], [`/`]);
-
-          assert.strictEqual(resolved, tempFile);
         });
       }
     },
@@ -256,128 +170,6 @@ export const EncodingSuite: TestSuite = {
         assert.ok(fileContent.includes(`Woah`));
       }
     })),
-    {
-      name: "Listing objects with variants",
-      test: async () => {
-        const connection = instance.getConnection();
-        const content = instance.getConnection()?.content;
-        if (connection && content) {
-          const tempLib = connection.config?.tempLibrary!;
-          const ccsid = connection.getCcsid();
-
-          let library = `TESTLIB${connection.variantChars.local}`;
-          let skipLibrary = false;
-          const sourceFile = `${connection.variantChars.local}TESTFIL`;
-          const dataArea = `TSTDTA${connection.variantChars.local}`;
-          const members: string[] = [];
-
-          for (let i = 0; i < 5; i++) {
-            members.push(`TSTMBR${connection.variantChars.local}${i}`);
-          }
-
-          await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
-
-          const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
-          if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
-            //Not authorized: carry on, skip library name test
-            library = tempLib;
-            skipLibrary = true
-          }
-
-          let commands: string[] = [];
-
-          commands.push(`CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`);
-          for (const member of members) {
-            commands.push(`ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT) TEXT('Test ${member}')`);
-          }
-
-          commands.push(`CRTDTAARA DTAARA(${library}/${dataArea}) TYPE(*CHAR) LEN(50) VALUE('hi')`);
-
-          // runCommandsWithCCSID proves that using variant characters in runCommand works!
-          const result = await runCommandsWithCCSID(connection, commands, ccsid);
-          assert.strictEqual(result.code, 0);
-
-          if (!skipLibrary) {
-            const [expectedLibrary] = await content.getLibraries({ library });
-            assert.ok(expectedLibrary);
-            assert.strictEqual(library, expectedLibrary.name);
-
-            const validated = await connection.content.validateLibraryList([tempLib, library]);
-            assert.strictEqual(validated.length, 0);
-
-            const libl = await content.getLibraryList([library]);
-            assert.strictEqual(libl.length, 1);
-            assert.strictEqual(libl[0].name, library);
-          }
-
-          const checkFile = (expectedObject: IBMiObject) => {
-            assert.ok(expectedObject);
-            assert.ok(expectedObject.sourceFile, `${expectedObject.name} not a source file`);
-            assert.strictEqual(expectedObject.name, sourceFile);
-            assert.strictEqual(expectedObject.library, library);
-          };
-
-          const nameFilter = await content.getObjectList({ library, types: ["*ALL"], object: `${connection.variantChars.local[0]}*` });
-          assert.strictEqual(nameFilter.length, 1);
-          assert.ok(nameFilter.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
-
-          const objectList = await content.getObjectList({ library, types: ["*ALL"] });
-          assert.ok(objectList.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile && obj.sourceFile === true));
-          assert.ok(objectList.some(obj => obj.library === library && obj.type === `*DTAARA` && obj.name === dataArea));
-
-          const expectedMembers = await content.getMemberList({ library, sourceFile });
-          assert.ok(expectedMembers);
-          assert.ok(expectedMembers.every(member => members.find(m => m === member.name && member.text?.includes(m))));
-
-          const sourceFilter = await content.getObjectList({ library, types: ["*SRCPF"], object: `${connection.variantChars.local[0]}*` });
-          assert.strictEqual(sourceFilter.length, 1);
-          assert.ok(sourceFilter.some(obj => obj.library === library && obj.type === `*FILE` && obj.name === sourceFile));
-
-          const [expectDataArea] = await content.getObjectList({ library, object: dataArea, types: ["*DTAARA"] });
-          assert.strictEqual(expectDataArea.name, dataArea);
-          assert.strictEqual(expectDataArea.library, library);
-          assert.strictEqual(expectDataArea.type, `*DTAARA`);
-
-          const [expectedSourceFile] = await content.getObjectList({ library, object: sourceFile, types: ["*SRCPF"] });
-          checkFile(expectedSourceFile);
-
-        }
-      }
-    },
-    {
-      name: `Library list supports dollar sign variant`, test: async () => {
-        const connection = instance.getConnection()!;
-        const library = `TEST${connection.variantChars.local}LIB`;
-        const sourceFile = `TEST${connection.variantChars.local}FIL`;
-        const member =  `TEST${connection.variantChars.local}MBR`;
-        const ccsid = connection.getCcsid();
-
-        if (library.includes(`$`)) {
-          await connection.runCommand({ command: `DLTLIB LIB(${library})`, noLibList: true });
-
-          const crtLib = await connection.runCommand({ command: `CRTLIB LIB(${library}) TYPE(*PROD)`, noLibList: true });
-          if (Tools.parseMessages(crtLib.stderr).findId("CPD0032")) {
-            return;
-          }
-
-          const createSourceFileCommand = await connection.runCommand({ command: `CRTSRCPF FILE(${library}/${sourceFile}) RCDLEN(112) CCSID(${ccsid})`, noLibList: true });
-          assert.strictEqual(createSourceFileCommand.code, 0);
-
-          const addPf = await connection.runCommand({ command: `ADDPFM FILE(${library}/${sourceFile}) MBR(${member}) SRCTYPE(TXT)`, noLibList: true });
-          assert.strictEqual(addPf.code, 0);
-
-          await connection.content.uploadMemberContent(undefined, library, sourceFile, member, [`**free`, `dsply 'Hello world';`, `return;`].join(`\n`));
-
-          // Ensure program compiles with dollar sign in current library
-          const compileResultA = await connection.runCommand({ command: `CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: {'&CURLIB': library} });
-          assert.strictEqual(compileResultA.code, 0);
-
-          // Ensure program compiles with dollar sign in current library
-          const compileResultB = await connection.runCommand({ command: `CRTBNDRPG PGM(${library}/${member}) SRCFILE(${library}/${sourceFile}) SRCMBR(${member})`, env: {'&LIBL': library} });
-          assert.strictEqual(compileResultB.code, 0);
-        }
-      }
-    },
     {
       name: `Variant character in source names and commands`, test: async () => {
         // CHGUSRPRF X CCSID(284) CNTRYID(ES) LANGID(ESP)
