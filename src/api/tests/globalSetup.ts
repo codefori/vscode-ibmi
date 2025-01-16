@@ -6,6 +6,12 @@ import { afterAll, beforeAll, expect } from "vitest";
 import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
 import { VirtualConfig } from "../configuration/config/VirtualConfig";
 import { VirtualStorage } from "../configuration/storage/BaseStorage";
+import { CustomQSh } from "../components/cqsh";
+import path from "path";
+import { CopyToImport } from "../components/copyToImport";
+import { GetMemberInfo } from "../components/getMemberInfo";
+import { GetNewLibl } from "../components/getNewLibl";
+import { extensionComponentRegistry } from "../components/manager";
 
 beforeAll(async () => {
   const virtualStorage = new VirtualStorage();
@@ -14,6 +20,16 @@ beforeAll(async () => {
   IBMi.connectionManager.configMethod = new VirtualConfig();
 
   const conn = new IBMi();
+
+  const customQsh = new CustomQSh();
+  const cqshPath = path.join(__dirname, `..`, `components`, `cqsh`, `cqsh`);
+  customQsh.setLocalAssetPath(path.join(cqshPath));
+
+  const testingId = `testing`;
+  extensionComponentRegistry.registerComponent(testingId, customQsh);
+  extensionComponentRegistry.registerComponent(testingId, new GetNewLibl);
+  extensionComponentRegistry.registerComponent(testingId, new GetMemberInfo());
+  extensionComponentRegistry.registerComponent(testingId, new CopyToImport());
 
   const creds = {
     host: ENV_CREDS.host!,
