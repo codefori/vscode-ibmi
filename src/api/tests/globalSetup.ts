@@ -3,8 +3,9 @@ import IBMi from "../IBMi";
 import { ENV_CREDS } from "./env";
 import { getConnection, setConnection } from "./state";
 import { afterAll, beforeAll, expect } from "vitest";
-import { CodeForIStorage, ConnectionStorage, VirtualStorage } from "../configuration/storage/CodeForIStorage";
+import { CodeForIStorage } from "../configuration/storage/CodeForIStorage";
 import { VirtualConfig } from "../configuration/config/VirtualConfig";
+import { VirtualStorage } from "../configuration/storage/BaseStorage";
 
 beforeAll(async () => {
   const virtualStorage = new VirtualStorage();
