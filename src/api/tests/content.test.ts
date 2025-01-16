@@ -3,7 +3,7 @@ import { expect, test, describe } from 'vitest'
 import { getConnection } from './state'
 
 describe('Content Tests', () => {
-  test('Test memberResolve', async () => {
+  test('memberResolve', async () => {
     const connection = getConnection();
     const content = connection.getContent();
 
@@ -22,7 +22,7 @@ describe('Content Tests', () => {
     });
   });
 
-  test('Test memberResolve (with invalid ASP)', async () => {
+  test('memberResolve (with invalid ASP)', async () => {
     const connection = getConnection();
     const content = connection.getContent();
 
@@ -41,7 +41,7 @@ describe('Content Tests', () => {
     });
   });
 
-  test('Test memberResolve with variants', async () => {
+  test('memberResolve with variants', async () => {
     const connection = getConnection();
     const content = connection.getContent();
     const config = connection.getConfig();
@@ -76,7 +76,7 @@ describe('Content Tests', () => {
     });
   });
 
-  test('Test memberResolve with bad name', async () => {
+  test('memberResolve with bad name', async () => {
     const connection = getConnection();
     const content = connection.getContent();
 
@@ -89,7 +89,7 @@ describe('Content Tests', () => {
     expect(member).toBeUndefined();
   });
 
-  test('Test objectResolve .FILE', async () => {
+  test('objectResolve .FILE', async () => {
     const connection = getConnection();
     const content = connection.getContent();
 
@@ -101,7 +101,7 @@ describe('Content Tests', () => {
     expect(lib).toBe("QSYSINC");
   });
 
-  test('Test objectResolve .PGM', async () => {
+  test('objectResolve .PGM', async () => {
     const connection = getConnection();
     const content = connection.getContent();
 
@@ -113,7 +113,7 @@ describe('Content Tests', () => {
     expect(lib).toBe("QSYS2");
   });
 
-  test('Test objectResolve .DTAARA with variants', async () => {
+  test('objectResolve .DTAARA with variants', async () => {
     const connection = getConnection();
     const content = connection.getContent();
     const config = connection.getConfig();
@@ -140,7 +140,7 @@ describe('Content Tests', () => {
     });
   });
 
-  test('Test objectResolve with bad name', async () => {
+  test('objectResolve with bad name', async () => {
     const connection = getConnection();
     const content = connection.getContent();
 
@@ -153,7 +153,7 @@ describe('Content Tests', () => {
     expect(lib).toBeUndefined();
   });
 
-  test('Test streamfileResolve', async () => {
+  test('streamfileResolve', async () => {
     const content = getConnection().getContent();
 
     const streamfilePath = await content?.streamfileResolve([`git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`]);
@@ -161,7 +161,7 @@ describe('Content Tests', () => {
     expect(streamfilePath).toBe(`/QOpenSys/pkgs/bin/git`);
   });
 
-  test('Test streamfileResolve with bad name', async () => {
+  test('streamfileResolve with bad name', async () => {
     const content = getConnection().getContent();
 
     const streamfilePath = await content?.streamfileResolve([`sup`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`]);
@@ -169,7 +169,7 @@ describe('Content Tests', () => {
     expect(streamfilePath).toBeUndefined();
   });
 
-  test('Test streamfileResolve with multiple names', async () => {
+  test('streamfileResolve with multiple names', async () => {
     const content = getConnection().getContent();
 
     const streamfilePath = await content?.streamfileResolve([`sup`, `sup2`, `git`], [`/QOpenSys/pkgs/sbin`, `/QOpenSys/pkgs/bin`]);
@@ -177,7 +177,7 @@ describe('Content Tests', () => {
     expect(streamfilePath).toBe(`/QOpenSys/pkgs/bin/git`);
   });
 
-  test('Test streamfileResolve with blanks in names', async () => {
+  test('streamfileResolve with blanks in names', async () => {
     const connection = getConnection();
     const content = connection.getContent();
     const files = [`normalname`, `name with blank`, `name_with_quote'`, `name_with_dollar$`];
