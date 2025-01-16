@@ -1,4 +1,4 @@
-// sum.test.js
+
 import { expect, test } from 'vitest'
 import { getConnection } from './state'
 import { describe } from 'node:test';
