@@ -81,7 +81,7 @@ export default class Instance {
     return withContext("code-for-ibmi:connecting", async () => {
       while (true) {
         let customError: string|undefined;
-        await vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: `Code for IBM i`, cancellable: true}, async (p, cancelToken) => {
+        await vscode.window.withProgress({location: vscode.ProgressLocation.Notification, title: options.data.name, cancellable: true}, async (p, cancelToken) => {
           try {
             const cancelEmitter = new EventEmitter();
 
